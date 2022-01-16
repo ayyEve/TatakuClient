@@ -338,7 +338,7 @@ impl TaikoRsBeatmap for OsuBeatmap {
     }
     fn get_beatmap_meta(&self) -> BeatmapMeta {self.metadata.clone()}
 
-    fn playmode(&self, incoming:taiko_rs_common::types::PlayMode) -> taiko_rs_common::types::PlayMode {
+    fn playmode(&self, incoming:PlayMode) -> PlayMode {
         match self.metadata.mode {
             PlayMode::Standard => incoming,
             PlayMode::Adofai => panic!("osu map has adofai mode !?"),

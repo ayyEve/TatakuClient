@@ -1,4 +1,4 @@
-use taiko_rs_common::types::Score;
+use crate::prelude::*;
 
 
 /// used for ingame_manager leaderboard

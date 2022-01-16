@@ -2,13 +2,11 @@ use tokio::{sync::Mutex, net::TcpStream};
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message};
 
+use crate::prelude::*;
 use super::discord::Discord;
 use super::online_user::OnlineUser;
-use taiko_rs_common::packets::PacketId;
-use taiko_rs_common::serialization::SerializationReader;
 
 use PacketId::*;
-use crate::prelude::*;
 
 type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
@@ -29,7 +27,7 @@ type ThreadSafeSelf = Arc<Mutex<OnlineManager>>;
 #[macro_export]
 macro_rules! create_packet {
     ($($item:expr),+) => {
-        taiko_rs_common::serialization::SimpleWriter::new()
+        SimpleWriter::new()
         $(.write($item))+
         .done()
     };

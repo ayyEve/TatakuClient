@@ -1,7 +1,7 @@
-use std::path::Path;
-
-use crate::errors::{BeatmapError, TaikoError, TaikoResult};
-use self::{adofai::AdofaiBeatmap, common::{BeatmapMeta, TaikoRsBeatmap, TimingPoint}, osu::OsuBeatmap, quaver::QuaverBeatmap};
+use crate::prelude::*;
+use osu::OsuBeatmap;
+use adofai::AdofaiBeatmap;
+use quaver::QuaverBeatmap;
 
 pub mod osu;
 pub mod quaver;
@@ -68,7 +68,7 @@ impl TaikoRsBeatmap for Beatmap {
         }
     }
 
-    fn playmode(&self, incoming: taiko_rs_common::types::PlayMode) -> taiko_rs_common::types::PlayMode {
+    fn playmode(&self, incoming: PlayMode) -> PlayMode {
         match self {
             Beatmap::None => todo!(),
             Beatmap::Osu(map) => map.playmode(incoming),

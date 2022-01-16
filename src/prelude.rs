@@ -30,7 +30,7 @@ pub use ayyeve_piston_ui::render::fonts::get_font;
 pub type Font = Arc<Mutex<opengl_graphics::GlyphCache<'static>>>;
 
 // taiko-rs-common imports
-pub use taiko_rs_common::types::*;
+pub use tataku_common::types::*;
 
 // folder imports
 pub use crate::DOWNLOADS_DIR;
@@ -73,4 +73,5 @@ pub use crate::beatmaps::osu::hitobject_defs::*;
 pub use crate::send_packet;
 pub use crate::create_packet;
 pub use crate::game::online::*;
-pub use taiko_rs_common::PacketId;
+pub use tataku_common::PacketId;
+pub use tataku_common::serialization::*;

@@ -1,7 +1,4 @@
-use taiko_rs_common::types::PlayMode;
-use super::{BeatmapMeta, TimingPoint};
-
-
+use crate::prelude::*;
 
 pub trait TaikoRsBeatmap {
     fn hash(&self) -> String;

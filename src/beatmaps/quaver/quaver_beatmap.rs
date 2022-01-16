@@ -122,8 +122,8 @@ impl TaikoRsBeatmap for QuaverBeatmap {
         meta
     }
 
-    fn playmode(&self, _incoming:taiko_rs_common::types::PlayMode) -> taiko_rs_common::types::PlayMode {
-        taiko_rs_common::types::PlayMode::Mania
+    fn playmode(&self, _incoming:PlayMode) -> PlayMode {
+        PlayMode::Mania
     }
 
     fn slider_velocity_at(&self, time:f32) -> f32 {

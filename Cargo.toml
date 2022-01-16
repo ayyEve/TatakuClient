@@ -1,5 +1,5 @@
 [package]
-name = "taiko-rs-client"
+name = "tataku-client"
 version = "0.1.0"
 authors = ["Eve <hi.its.eve@gmail.com>"]
 edition = "2018"
@@ -15,7 +15,7 @@ debug_hitsounds = []
 gitlab_build = []
 
 [dependencies]
-taiko-rs-common = { path="../taiko-rs-common" }
+tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 
 # framework stuff
 rusqlite = { version = "0.25", features = ["bundled"] }
@@ -63,6 +63,6 @@ clipboard = "0.5.0"
 
 [build-dependencies]
 reqwest = { version = "0.11.4", features = ["blocking"] }
-taiko-rs-common = { path="../taiko-rs-common" }
+tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 serde = { version="1.0", features=["derive"] }
 serde_json = "1.0"
