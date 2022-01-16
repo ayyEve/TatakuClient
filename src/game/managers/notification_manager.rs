@@ -190,12 +190,13 @@ impl ProcessedNotif {
             ))
         )));
 
-        for text in self.lines.iter() {
+        for (i, text) in self.lines.iter().enumerate().rev() {
             let mut text = text.clone();
 
             let txt_pos = self.pos + Vector2::new(
-                0.0, 
-                (self.size.y - text.font_size as f64) / 2.0
+                0.0,
+                NOTIF_TEXT_HEIGHT * i as f64, 
+                // (self.size.y - (text.font_size as f64) * i as f64) / 2.0
             );
             text.initial_pos = txt_pos;
             text.current_pos = txt_pos;
