@@ -190,7 +190,7 @@ impl ProcessedNotif {
             ))
         )));
 
-        for (i, text) in self.lines.iter().enumerate().rev() {
+        for (i, text) in self.lines.iter().rev().enumerate() {
             let mut text = text.clone();
 
             let txt_pos = self.pos + Vector2::new(
