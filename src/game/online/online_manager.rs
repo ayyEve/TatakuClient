@@ -13,12 +13,6 @@ type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
 const EXTRA_ONLINE_LOGGING:bool = false;
 
-// url to connect to
-#[cfg(feature = "gitlab_build")]
-const CONNECT_URL:&str = "wss://taikors.ayyeve.xyz";
-#[cfg(not(feature = "gitlab_build"))]
-const CONNECT_URL:&str = "ws://127.0.0.1:8080";
-
 // how many frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
@@ -118,12 +112,13 @@ impl OnlineManager {
     }
     pub async fn start(s: ThreadSafeSelf) {
         // initialize the connection
-        match connect_async(CONNECT_URL.to_owned()).await {
+        match connect_async(Settings::get().server_url).await {
             Ok((ws_stream, _)) => {
                 s.lock().await.connected = true;
                 let (writer, mut reader) = ws_stream.split();
                 let writer = Arc::new(Mutex::new(writer));
 
+                // send login
                 {
                     let mut s = s.lock().await;
                     s.writer = Some(writer);
@@ -183,7 +178,6 @@ impl OnlineManager {
             if EXTRA_ONLINE_LOGGING {println!("[Online] got packet {:?}", packet)};
 
             match packet {
-
                 // ===== ping/pong =====
                 PacketId::Ping => {send_packet!(s.lock().await.writer, create_packet!(Pong));},
                 PacketId::Pong => {/* println!("[Online] got pong from server"); */},
@@ -191,13 +185,22 @@ impl OnlineManager {
                 // login
                 PacketId::Server_LoginResponse { status, user_id } => {
                     match status {
-                        LoginStatus::UnknownError => println!("[Login] Unknown Error"),
-                        LoginStatus::BadPassword => println!("[Login] auth failed"),
-                        LoginStatus::NoUser => println!("[Login] user not found"),
+                        LoginStatus::UnknownError => {
+                            println!("[Login] Unknown Error");
+                            NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED);
+                        },
+                        LoginStatus::BadPassword => {
+                            println!("[Login] auth failed");
+                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
+                        },
+                        LoginStatus::NoUser => {
+                            println!("[Login] user not found");
+                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
+                        },
                         LoginStatus::Ok => {
-                            s.lock().await.user_id = user_id;
                             println!("[Login] success");
-                            NotificationManager::add_text_notification("Logged in!", 2000.0, Color::GREEN);
+                            s.lock().await.user_id = user_id;
+                            NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN);
 
                             ping_handler()
                         },
@@ -216,7 +219,7 @@ impl OnlineManager {
                 }
                 // server error
                 PacketId::Server_Error { code, error } => {
-                    println!("got server error {:?}: '{}'", code, error)
+                    println!("[Online] got server error {:?}: '{}'", code, error)
                 }
 
 

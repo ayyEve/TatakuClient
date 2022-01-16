@@ -53,12 +53,13 @@ pub struct Settings {
     pub pause_on_focus_lost: bool,
 
 
-
     // misc keybinds
     pub key_offset_up: Key,
     pub key_offset_down: Key,
 
     pub last_git_hash: String,
+
+    pub server_url: String,
 }
 impl Settings {
     fn load() -> Settings {
@@ -154,7 +155,9 @@ impl Default for Settings {
             key_offset_down: Key::Minus,
 
             // other
-            last_git_hash: String::new()
+            last_git_hash: String::new(),
+
+            server_url: "wss://taikors.ayyeve.xyz".to_owned()
         }
     }
 }
