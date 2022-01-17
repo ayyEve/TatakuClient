@@ -81,7 +81,7 @@ impl Dialog<Game> for BeatmapDialog {
 
         // draw buttons
         let depth = depth - 0.0001;
-        list.extend(self.delete_map.draw(*args, Vector2::zero(), depth));
+        self.delete_map.draw(*args, Vector2::zero(), depth, list);
 
         list.push(Box::new(bg_rect));
     }

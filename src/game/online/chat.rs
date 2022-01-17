@@ -1,9 +1,12 @@
 #![allow(dead_code, unused, non_snake_case)]
 
 use futures_util::SinkExt;
-
 use crate::prelude::*;
+
 const INPUT_HEIGHT:f64 = 45.0;
+
+/// how many pixels away from the thing can it be to resize?
+const RESIZE_LENIENCE: f64 = 3.0;
 
 lazy_static::lazy_static! {
     static ref CHAT_EXISTS:AtomicBool = AtomicBool::new(false);
@@ -27,6 +30,12 @@ pub struct Chat {
     // sizes
     pub chat_height: f64,
     pub channel_list_width: f64,
+
+    // resizing helpers
+    width_resize: bool,
+    height_resize: bool,
+    width_resize_hover: bool,
+    height_resize_hover: bool,
 }
 impl Chat {
     pub fn new() -> Option<Self> {
@@ -65,7 +74,12 @@ impl Chat {
 
             // positions/sizes
             chat_height,
-            channel_list_width
+            channel_list_width,
+
+            width_resize:  false,
+            height_resize: false,
+            width_resize_hover:  false,
+            height_resize_hover: false,
         })
     }
 
@@ -81,10 +95,10 @@ impl Dialog<Game> for Chat {
     fn get_bounds(&self) -> Rectangle {
         let window_size = Settings::window_size();
         Rectangle::bounds_only(
-            Vector2::new(0.0, window_size.y - self.chat_height), 
+            Vector2::new(0.0, window_size.y - (self.chat_height + RESIZE_LENIENCE)), 
             Vector2::new(
                 window_size.x,
-                self.chat_height
+                self.chat_height + RESIZE_LENIENCE
             )
         )
     }
@@ -127,10 +141,8 @@ impl Dialog<Game> for Chat {
     }
 
     fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        println!("click");
         // check if a channel was clicked
         if let Some(channel_name) = self.channel_scroll.on_click_tagged(*pos, *button, *mods) {
-            println!("channel clicked: {}", channel_name);
 
             // find the channel name in the list
             for (channel, message_list) in self.messages.iter() {
@@ -161,13 +173,73 @@ impl Dialog<Game> for Chat {
         self.input.on_click(*pos, *button, *mods);
         //TODO: check messages click?
 
+        if self.height_resize_hover {
+            self.height_resize = true;
+        }
+        if self.width_resize_hover {
+            self.width_resize = true;
+        }
 
+        true
+    }
+    fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.height_resize = false;
+        self.width_resize = false;
+        self.width_resize_hover = false;
+        self.height_resize_hover = false;
         true
     }
 
     fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
         self.channel_scroll.on_mouse_move(*pos);
         self.message_scroll.on_mouse_move(*pos);
+
+        let window_size = Settings::window_size();
+        // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
+        self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
+
+        if self.height_resize {
+            self.chat_height = window_size.y - pos.y;
+
+            self.channel_scroll.set_pos(Vector2::new(
+                self.channel_scroll.get_pos().x,
+                window_size.y - self.chat_height
+            ));
+            self.channel_scroll.set_size(Vector2::new(
+                self.channel_scroll.size().x,
+                self.chat_height
+            ));
+
+            self.message_scroll.set_pos(Vector2::new(
+                self.message_scroll.get_pos().x,
+                window_size.y - self.chat_height
+            ));
+            self.message_scroll.set_size(Vector2::new(
+                self.message_scroll.size().x,
+                self.chat_height
+            ));
+        }
+        if self.width_resize {
+            self.channel_list_width = pos.x;
+
+            self.channel_scroll.set_size(Vector2::new(
+                self.channel_list_width,
+                self.channel_scroll.size().y
+            ));
+
+            self.input.set_pos(Vector2::new(
+                self.channel_list_width,
+                self.input.get_pos().y
+            ));
+            self.message_scroll.set_pos(Vector2::new(
+                self.channel_list_width,
+                self.message_scroll.get_pos().y
+            ));
+            self.message_scroll.set_size(Vector2::new(
+                window_size.x - self.channel_list_width,
+                self.message_scroll.size().x
+            ));
+        }
     }
 
     fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
@@ -215,8 +287,9 @@ impl Dialog<Game> for Chat {
                 }
             }
 
+
+            // scroll to the bottom
             if scroll_pending {
-                // scroll to the bottom
                 self.scroll_to_new_message();
             }
 
@@ -230,6 +303,7 @@ impl Dialog<Game> for Chat {
     fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         let args = *args;
         let depth = *depth;
+        let window_size = Settings::window_size();
 
         // draw backgrounds
         list.push(Box::new(Rectangle::new(
@@ -247,9 +321,30 @@ impl Dialog<Game> for Chat {
             Some(Border::new(Color::BLACK, 2.0))
         )));
 
-        list.extend(self.channel_scroll.draw(args, Vector2::zero(), depth));
-        list.extend(self.message_scroll.draw(args, Vector2::zero(), depth));
-        list.extend(self.input.draw(args, Vector2::zero(), depth - 10.0));
+        if self.width_resize_hover {
+            // red line at width
+            list.push(Box::new(Line::new(
+                Vector2::new(self.channel_list_width, window_size.y),
+                Vector2::new(self.channel_list_width, window_size.y - self.chat_height),
+                2.0,
+                depth - 0.8,
+                Color::RED
+            )))
+        }
+        if self.height_resize_hover {
+            // red line at height
+            list.push(Box::new(Line::new(
+                Vector2::new(0.0, window_size.y - self.chat_height),
+                Vector2::new(window_size.x, window_size.y - self.chat_height),
+                2.0,
+                depth - 0.8,
+                Color::RED
+            )))
+        }
+
+        self.channel_scroll.draw(args, Vector2::zero(), depth, list);
+        self.message_scroll.draw(args, Vector2::zero(), depth, list);
+        self.input.draw(args, Vector2::zero(), depth - 10.0, list);
     }
 }
 impl Drop for Chat {
@@ -257,6 +352,12 @@ impl Drop for Chat {
         CHAT_EXISTS.store(false, SeqCst);
     }
 }
+
+
+
+// fn can_resize(p1: Vector2, p2: Vector2) -> bool {
+//     p1.x - p2.x
+// }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChatMessage {
@@ -354,8 +455,7 @@ impl ScrollableItem for ChannelScroll {
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
 
         let text = Text::new(
             if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
@@ -366,7 +466,6 @@ impl ScrollableItem for ChannelScroll {
             self.font.clone()
         );
         list.push(Box::new(text));
-        list
     }
 }
 
@@ -401,9 +500,7 @@ impl ScrollableItem for MessageScroll {
     fn set_hover(&mut self, hover:bool) {self.hover = hover}
     // fn get_tag(&self) -> String {self.channel.get_name()}
 
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let text = Text::new(
             Color::BLACK,
             parent_depth,
@@ -413,6 +510,5 @@ impl ScrollableItem for MessageScroll {
             self.font.clone()
         );
         list.push(Box::new(text));
-        list
     }
 }

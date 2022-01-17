@@ -162,10 +162,10 @@ impl Menu<Game> for MainMenu {
         // list.push(Box::new(welcome_text));
 
         // draw buttons
-        list.extend(self.play_button.draw(args, pos_offset, depth));
-        list.extend(self.direct_button.draw(args, pos_offset, depth));
-        list.extend(self.settings_button.draw(args, pos_offset, depth));
-        list.extend(self.exit_button.draw(args, pos_offset, depth));
+        self.play_button.draw(args, pos_offset, depth, &mut list);
+        self.direct_button.draw(args, pos_offset, depth, &mut list);
+        self.settings_button.draw(args, pos_offset, depth, &mut list);
+        self.exit_button.draw(args, pos_offset, depth, &mut list);
 
         // visualization
         let mid = window_size / 2.0;
@@ -460,15 +460,12 @@ impl ScrollableItem for MenuButton {
         });
     }
 
-    fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-        if !self.visible {return list}
-        self.shapes.draw(&mut list);
+    fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+        if !self.visible {return}
+        self.shapes.draw(list);
 
         for i in self.disposable_shapes.iter_mut() {
-            i.draw(&mut list);
+            i.draw(list);
         }
-
-        list
     }
 }

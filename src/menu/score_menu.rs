@@ -138,12 +138,12 @@ impl Menu<Game> for ScoreMenu {
         )));
         
         // draw buttons
-        list.extend(self.back_button.draw(args, Vector2::zero(), depth));
-        list.extend(self.replay_button.draw(args, Vector2::zero(), depth));
+        self.back_button.draw(args, Vector2::zero(), depth, &mut list);
+        self.replay_button.draw(args, Vector2::zero(), depth, &mut list);
 
 
         // graph
-        list.extend(self.graph.draw(args, Vector2::zero(), depth));
+        self.graph.draw(args, Vector2::zero(), depth, &mut list);
         
         // draw background so score info is readable
         list.push(visibility_bg(

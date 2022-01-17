@@ -40,9 +40,9 @@ impl Menu<Game> for PauseMenu {
         let depth = 0.0;
 
         // draw buttons
-        list.extend(self.continue_button.draw(args, pos_offset, depth));
-        list.extend(self.retry_button.draw(args, pos_offset, depth));
-        list.extend(self.exit_button.draw(args, pos_offset, depth));
+        self.continue_button.draw(args, pos_offset, depth, &mut list);
+        self.retry_button.draw(args, pos_offset, depth, &mut list);
+        self.exit_button.draw(args, pos_offset, depth, &mut list);
 
         list
     }

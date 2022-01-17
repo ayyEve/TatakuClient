@@ -9,7 +9,8 @@ pub struct Line {
 
     depth: f64,
     lifetime: u64,
-    spawn_time: u64
+    spawn_time: u64,
+    context: Option<Context>,
 }
 impl Line {
     pub fn new(p1:Vector2, p2:Vector2, size:f64, depth: f64, color:Color) -> Self {
@@ -19,6 +20,7 @@ impl Line {
             size,
             depth,
             color,
+            context: None,
 
             lifetime: 0,
             spawn_time: 0
@@ -32,6 +34,8 @@ impl Renderable for Line {
 
     fn get_spawn_time(&self) -> u64 {self.spawn_time}
     fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
+    fn get_context(&self) -> Option<Context> {self.context}
+    fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&mut self, g: &mut GlGraphics, c:Context) {
         graphics::Line::new(self.color.into(), self.size).draw([self.p1.x, self.p1.y, self.p2.x, self.p2.y], &DrawState::default(), c.transform, g);

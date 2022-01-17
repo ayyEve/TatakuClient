@@ -23,7 +23,8 @@ pub struct Text {
     pub font: Font,
 
     lifetime:u64,
-    spawn_time:u64
+    spawn_time:u64,
+    context: Option<Context>,
 }
 impl Text {
     pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font) -> Text {
@@ -58,7 +59,8 @@ impl Text {
             text,
             font,
             lifetime: 0,
-            spawn_time: 0
+            spawn_time: 0,
+            context: None,
         }
     }
     pub fn measure_text(&self) -> Vector2 {
@@ -89,6 +91,9 @@ impl Renderable for Text {
     fn get_lifetime(&self) -> u64 {self.lifetime}
     fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
     fn get_spawn_time(&self) -> u64 {self.spawn_time}
+
+    fn get_context(&self) -> Option<Context> {self.context}
+    fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&mut self, g: &mut GlGraphics, c: Context) {
         // from image

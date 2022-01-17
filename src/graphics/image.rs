@@ -16,6 +16,7 @@ pub struct Image {
     pub initial_pos: Vector2,
     pub initial_scale: Vector2,
     pub initial_rotation: f64,
+    context: Option<Context>,
 
     // current
     pub current_pos: Vector2,
@@ -55,6 +56,7 @@ impl Image {
             origin,
             tex: Arc::new(tex),
             spawn_time: 0,
+            context: None,
         }
     }
 
@@ -83,6 +85,8 @@ impl Renderable for Image {
     fn get_spawn_time(&self) -> u64 {self.spawn_time}
     fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
     fn get_depth(&self) -> f64 {self.depth}
+    fn get_context(&self) -> Option<Context> {self.context}
+    fn set_context(&mut self, c:Option<Context>) {self.context = c}
     fn draw(&mut self, g: &mut GlGraphics, c: Context) {
 
         let pre_rotation = self.current_pos / self.current_scale;

@@ -37,8 +37,7 @@ pub fn read_lines<P: AsRef<Path>>(filename: P) -> io::Result<Lines<BufReader<Fil
 
 /// get a file's hash
 pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> std::io::Result<String> {
-    let body = std::fs::read(file_path)?;
-    Ok(format!("{:x}", md5::compute(body).to_owned()))
+    Ok(md5(std::fs::read(file_path)?))
 }
 
 // check if file or folder exists

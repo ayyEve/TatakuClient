@@ -124,15 +124,7 @@ impl OnlineManager {
                     s.writer = Some(writer);
                     let settings = Settings::get();
 
-                    use sha2::Digest;
-                    let mut hasher = sha2::Sha512::new();
-                    hasher.update(settings.password.as_bytes());
-                    let password = hasher.finalize();
-                    let password = format!("{:02x?}", &password[..])
-                        .replace(", ", "")
-                        .trim_start_matches("[")
-                        .trim_end_matches("]")
-                        .to_owned();
+                    let password = sha512(settings.password);
 
                     // send login packet
                     send_packet!(s.writer, create_packet!(Client_UserLogin {

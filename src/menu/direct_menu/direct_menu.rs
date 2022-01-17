@@ -190,8 +190,8 @@ impl Menu<Game> for DirectMenu {
 
     fn draw(&mut self, args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-        list.extend(self.scroll_area.draw(args, Vector2::zero(), 0.0));
-        list.extend(self.search_bar.draw(args, Vector2::zero(), -90.0));
+        self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
+        self.search_bar.draw(args, Vector2::zero(), -90.0, &mut list);
 
         // draw download items
         if self.downloading.len() > 0 {

@@ -102,7 +102,7 @@ impl Dialog<Game> for NormalDialog {
         // draw buttons
         let depth = depth - 0.0001;
         for button in self.buttons.iter_mut() {
-            list.extend(button.draw(*args, Vector2::zero(), depth));
+            button.draw(*args, Vector2::zero(), depth, list);
         }
 
         list.push(Box::new(bg_rect));

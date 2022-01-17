@@ -312,16 +312,16 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
 
         // beatmap scroll
-        items.extend(self.beatmap_scroll.draw(args, Vector2::zero(), 0.0));
+        self.beatmap_scroll.draw(args, Vector2::zero(), 0.0, &mut items);
 
         // leaderboard scroll
-        items.extend(self.leaderboard_scroll.draw(args, Vector2::zero(), 0.0));
+        self.leaderboard_scroll.draw(args, Vector2::zero(), 0.0, &mut items);
 
         // back button
-        items.extend(self.back_button.draw(args, Vector2::zero(), 0.0));
+        self.back_button.draw(args, Vector2::zero(), 0.0, &mut items);
 
         // filter text
-        items.extend(self.search_text.draw(args, Vector2::zero(), 0.0));
+        self.search_text.draw(args, Vector2::zero(), 0.0, &mut items);
 
         items
     }
@@ -580,13 +580,12 @@ impl ScrollableItem for BeatmapsetItem {
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut items: Vec<Box<dyn Renderable>> = Vec::new();
+    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let font = get_font("main");
         let meta = &self.beatmaps[0];
 
         // draw rectangle
-        items.push(Box::new(Rectangle::new(
+        list.push(Box::new(Rectangle::new(
             [0.2, 0.2, 0.2, 1.0].into(),
             parent_depth + 5.0,
             self.pos + pos_offset,
@@ -601,7 +600,7 @@ impl ScrollableItem for BeatmapsetItem {
         )));
 
         // line 1
-        items.push(Box::new(Text::new(
+        list.push(Box::new(Text::new(
             Color::WHITE,
             parent_depth + 4.0,
             self.pos + pos_offset + Vector2::new(5.0, 5.0),
@@ -628,7 +627,7 @@ impl ScrollableItem for BeatmapsetItem {
                 let meta = &self.beatmaps[i];
 
                 // bounding rect
-                items.push(Box::new(Rectangle::new(
+                list.push(Box::new(Rectangle::new(
                     [0.2, 0.2, 0.2, 1.0].into(),
                     parent_depth + 5.0,
                     pos,
@@ -642,7 +641,7 @@ impl ScrollableItem for BeatmapsetItem {
                     }
                 )));
                 // version text
-                items.push(Box::new(Text::new(
+                list.push(Box::new(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
                     pos + Vector2::new(5.0, 5.0),
@@ -654,8 +653,6 @@ impl ScrollableItem for BeatmapsetItem {
                 pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
             }
         }
-        
-        items
     }
 
     fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
@@ -717,13 +714,11 @@ impl ScrollableItem for LeaderboardItem {
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut items: Vec<Box<dyn Renderable>> = Vec::new();
-
+    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         const PADDING:Vector2 = Vector2::new(5.0, 5.0);
 
         // bounding rect
-        items.push(Box::new(Rectangle::new(
+        list.push(Box::new(Rectangle::new(
             [0.2, 0.2, 0.2, 1.0].into(),
             parent_depth + 5.0,
             self.pos + pos_offset,
@@ -732,7 +727,7 @@ impl ScrollableItem for LeaderboardItem {
         )));
 
         // score text
-        items.push(Box::new(Text::new(
+        list.push(Box::new(Text::new(
             Color::WHITE,
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING,
@@ -742,7 +737,7 @@ impl ScrollableItem for LeaderboardItem {
         )));
 
         // combo text
-        items.push(Box::new(Text::new(
+        list.push(Box::new(Text::new(
             Color::WHITE,
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING + Vector2::new(0.0, PADDING.y + 15.0),
@@ -750,8 +745,6 @@ impl ScrollableItem for LeaderboardItem {
             format!("{}x, {:.2}%", crate::format(self.score.max_combo), self.score.acc() * 100.0),
             self.font.clone()
         )));
-
-        items
     }
 
     // fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {self.hover}

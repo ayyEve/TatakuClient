@@ -63,7 +63,7 @@ impl ScrollableItem for OnlineUser {
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 
 
-    fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64) -> Vec<Box<dyn Renderable>> {
+    fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         let font = get_font("main");
 
@@ -103,8 +103,6 @@ impl ScrollableItem for OnlineUser {
                 font.clone()
             )));
         }
-
-        list
     }
 
     fn on_click(&mut self, _pos:Vector2, _button:piston::MouseButton, _mods: KeyModifiers) -> bool {

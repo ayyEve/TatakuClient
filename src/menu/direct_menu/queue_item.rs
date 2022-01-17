@@ -36,8 +36,7 @@ impl ScrollableItem for DirectItem {
 
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.item.clone())}
 
-    fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+    fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let font = get_font("main");
 
         list.push(Box::new(Rectangle::new(
@@ -65,8 +64,6 @@ impl ScrollableItem for DirectItem {
             format!("Mapped by {}", self.item.creator()),
             font.clone()
         )));
-
-        list
     }
 
     fn on_click(&mut self, _pos:Vector2, _button:piston::MouseButton, _mods:KeyModifiers) -> bool {

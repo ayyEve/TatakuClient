@@ -15,6 +15,8 @@ pub struct Circle {
     pub current_pos: Vector2,
     pub current_radius: f64,
 
+    context: Option<Context>,
+
     pub border: Option<Border>,
     spawn_time: u64,
     lifetime: u64
@@ -41,6 +43,7 @@ impl Circle {
             current_radius,
 
             border: None,
+            context: None,
             spawn_time: 0,
             lifetime: 0
         }
@@ -52,6 +55,9 @@ impl Renderable for Circle {
     fn get_lifetime(&self) -> u64 {self.lifetime}
     fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
     fn get_spawn_time(&self) -> u64 {self.spawn_time}
+    
+    fn get_context(&self) -> Option<Context> {self.context}
+    fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&mut self, g: &mut GlGraphics, c: Context) {
         graphics::ellipse::Ellipse {

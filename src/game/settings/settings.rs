@@ -116,8 +116,8 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             // audio
-            music_vol: 1.0,
-            effect_vol: 1.0,
+            music_vol: 0.5,
+            effect_vol: 0.5,
             master_vol: 0.3,
             global_offset: 0.0,
 
@@ -144,7 +144,7 @@ impl Default for Settings {
             background_dim: 0.8,
 
             // cursor
-            cursor_scale: 1.0,
+            cursor_scale: 2.0,
             cursor_border: 1.5,
             cursor_color: "#ffff32".to_owned(),
             cursor_border_color: "#000".to_owned(),

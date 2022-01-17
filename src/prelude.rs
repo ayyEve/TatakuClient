@@ -50,7 +50,7 @@ pub use crate::graphics::*;
 pub use crate::game::audio::*;
 pub use crate::game::managers::*;
 pub use crate::game::helpers::centered_text_helper::CenteredTextHelper;
-pub use crate::game::helpers::{*, io::*, math::*, curve::*, key_counter::*};
+pub use crate::game::helpers::{*, io::*, math::*, curve::*, key_counter::*, crypto::*};
 
 // sync imports
 pub use std::sync::{Arc, Weak};

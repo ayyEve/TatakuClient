@@ -16,6 +16,7 @@ pub struct Rectangle {
     pub current_scale: Vector2,
 
     pub origin: Vector2,
+    context: Option<Context>,
 
 
     pub depth: f64,
@@ -56,7 +57,8 @@ impl Rectangle {
             origin: size / 2.0,
 
             spawn_time: 0,
-            lifetime: 0
+            lifetime: 0,
+            context: None,
         }
     }
     
@@ -76,6 +78,9 @@ impl Renderable for Rectangle {
     fn get_lifetime(&self) -> u64 {self.lifetime}
     fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
     fn get_spawn_time(&self) -> u64 {self.spawn_time}
+    
+    fn get_context(&self) -> Option<Context> {self.context}
+    fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&mut self, g: &mut GlGraphics, c: Context) {
         let mut r = graphics::Rectangle::new(self.current_color.into());

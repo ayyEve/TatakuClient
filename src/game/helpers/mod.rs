@@ -7,6 +7,7 @@ mod benchmark_helper;
 pub mod io;
 pub mod math;
 pub mod curve;
+pub mod crypto;
 pub mod key_counter;
 pub mod centered_text_helper;
 

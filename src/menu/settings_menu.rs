@@ -213,7 +213,7 @@ impl SettingsMenu {
 impl Menu<Game> for SettingsMenu {
     fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
-        list.extend(self.scroll_area.draw(args, Vector2::zero(), 0.0));
+        self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
         let window_size = Settings::window_size();
 
         // background

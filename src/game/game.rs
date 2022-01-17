@@ -564,13 +564,13 @@ impl Game {
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
-                        let (m, h) = {
+                        let m = {
                             manager.start();
-                            (manager.metadata.clone(), manager.beatmap.hash())
+                            manager.metadata.clone()
                         };
 
                         self.set_background_beatmap(&m);
-                        let text = format!("Playing {}-{}[{}]\n{}", m.artist, m.title, m.version, h);
+                        let text = format!("Playing {}-{}[{}]", m.artist, m.title, m.version);
                         OnlineManager::set_action(UserAction::Ingame, text, m.mode);
                     },
                     GameState::InMenu(_) => {
@@ -704,7 +704,7 @@ impl Game {
                         u.set_pos(Vector2::new(x, y));
 
                         counter += 1;
-                        self.render_queue.extend(u.draw(args, Vector2::zero(), -100.0));
+                        u.draw(args, Vector2::zero(), -100.0, &mut self.render_queue);
                     }
                 }
             }
@@ -742,7 +742,37 @@ impl Game {
         self.render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
 
-        // slice the queue because loops
+        // TODO: use this for snipping
+        // // actually draw everything now
+        // let mut orig_c = self.graphics.draw_begin(args.viewport());
+
+        // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+        // for i in self.render_queue.iter_mut() {
+        //     let mut drawstate_changed = false;
+        //     let c = if let Some(ic) = i.get_context() {
+        //         drawstate_changed = true;
+        //         // println!("ic: {:?}", ic);
+        //         self.graphics.draw_end();
+        //         self.graphics.draw_begin(args.viewport());
+        //         self.graphics.use_draw_state(&ic.draw_state);
+        //         ic
+        //     } else {
+        //         orig_c
+        //     };
+            
+        //     // self.graphics.use_draw_state(&c.draw_state);
+        //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
+        //     i.draw(&mut self.graphics, c);
+
+        //     if drawstate_changed {
+        //         self.graphics.draw_end();
+        //         orig_c = self.graphics.draw_begin(args.viewport());
+        //         self.graphics.use_draw_state(&orig_c.draw_state);
+        //     }
+        // }
+        // self.graphics.draw_end();
+
+        // TODO: dont use this for snipping
         let queue = self.render_queue.as_mut_slice();
         self.graphics.draw(args.viewport(), |c, g| {
             graphics::clear(GFX_CLEAR_COLOR.into(), g);
