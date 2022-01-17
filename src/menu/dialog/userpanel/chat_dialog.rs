@@ -215,7 +215,7 @@ impl Dialog<Game> for Chat {
             ));
             self.message_scroll.set_size(Vector2::new(
                 self.message_scroll.size().x,
-                self.chat_height
+                self.chat_height - INPUT_HEIGHT
             ));
         }
         if self.width_resize {

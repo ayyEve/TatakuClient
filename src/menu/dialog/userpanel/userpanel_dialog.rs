@@ -43,8 +43,6 @@ impl Dialog<Game> for UserPanel {
                 // if u.game.starts_with("Tataku") {
                     user_menu_dialog.add_button("Spectate", Box::new(move |dialog, game| {
                         OnlineManager::start_spectating(user_id);
-                        //TODO: wait for a spec response from the server before setting the mode
-                        game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
                         dialog.should_close = true;
                     }));
                 // }

@@ -2382,7 +2382,7 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#c14ccd3138984d428d713962633f8500982081a7"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#6a74eeb8226936938d9a4bfb772187da406cfd1c"
 dependencies = [
  "serde",
  "tataku-proc-macros",

@@ -82,6 +82,9 @@ pub struct OnlineManager {
     /// which users are waiting for a spectator info response?
     /// TODO: should probably move the list itself to the server
     pub(crate) spectate_info_pending: Vec<u32>,
+
+    /// was a spectator request accepted? if so, this will be the user_id
+    spectate_pending: u32
 }
 impl OnlineManager {
     pub fn new() -> OnlineManager {
@@ -108,6 +111,7 @@ impl OnlineManager {
             spectator_list: Vec::new(),
             spectate_info_pending: Vec::new(),
             chat_messages: messages,
+            spectate_pending: 0
         }
     }
     pub async fn start() {
@@ -192,7 +196,7 @@ impl OnlineManager {
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
                         },
                         LoginStatus::Ok => {
-                            println!("[Login] success");
+                            println!("[Login] success, got user_id: {}", user_id);
                             s.lock().await.user_id = user_id;
                             NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN);
 
@@ -221,6 +225,7 @@ impl OnlineManager {
                 PacketId::Server_UserJoined { user_id, username } => {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {})", username, user_id)};
                     s.lock().await.users.insert(user_id, Arc::new(Mutex::new(OnlineUser::new(user_id, username))));
+
                 }
                 PacketId::Server_UserLeft {user_id} => {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user id {} left", user_id)};
@@ -302,6 +307,15 @@ impl OnlineManager {
                     
                     NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
                 }
+                PacketId::Server_SpectateResult {result, host_id} => {
+                    match result {
+                        SpectateResult::Ok => s.lock().await.spectate_pending = host_id,
+                        SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
+                        SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED),
+                        SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED),
+                        SpectateResult::Error_Unknown => NotificationManager::add_text_notification("Unknown error trying to spectate!", 3000.0, Color::RED),
+                    }
+                }
 
                 // spec info request
                 PacketId::Server_SpectatorPlayingRequest {user_id} => {
@@ -372,12 +386,20 @@ impl OnlineManager {
                         "pause" => {}
                         _ => self.spectate_info_pending.clear()
                     }
+
+                    if self.spectate_pending > 0 {
+                        println!("[Online] speccing {}", self.spectate_pending);
+                        self.buffered_spectator_frames.clear();
+                        self.spectating = true;
+                        self.spectate_pending = 0;
+                        game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
+                    }
                 }
 
                 // clear list for any other mode
                 GameState::Closing
-                |GameState::None
-                |GameState::Spectating(_) => {
+                | GameState::None
+                | GameState::Spectating(_) => {
                     self.spectate_info_pending.clear();
                 }
             }
@@ -427,10 +449,6 @@ impl OnlineManager {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
             let mut s = s.lock().await;
-            s.buffered_spectator_frames.clear();
-            s.spectating = true;
-            println!("[Online] speccing {}", host_id);
-
             send_packet!(s.writer, create_packet!(Client_Spectate {host_id:host_id}));
         });
     }
