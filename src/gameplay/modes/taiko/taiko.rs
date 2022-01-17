@@ -43,7 +43,7 @@ impl TaikoGame {
 impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {PlayMode::Taiko}
     fn end_time(&self) -> f32 {self.end_time}
-    fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TaikoError> {
+    fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
 
         match beatmap {
             Beatmap::Osu(beatmap) => {

@@ -7,7 +7,7 @@ pub use score_database::*;
 
 lazy_static::lazy_static! {
     pub static ref DATABASE: Arc<Mutex<Connection>> = {
-        let db = Connection::open("taiko-rs.db").unwrap();
+        let db = Connection::open("tataku.db").unwrap();
         // scores table
         db.execute(
             "CREATE TABLE IF NOT EXISTS scores (

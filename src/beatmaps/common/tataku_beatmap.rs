@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait TaikoRsBeatmap {
+pub trait TatakuBeatmap {
     fn hash(&self) -> String;
 
     fn get_timing_points(&self) -> Vec<TimingPoint>;

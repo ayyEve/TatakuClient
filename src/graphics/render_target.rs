@@ -28,7 +28,7 @@ pub struct RenderTarget {
     pub image: Image,
 }
 impl RenderTarget {
-    pub fn new(width: f64, height: f64) -> TaikoResult<Self> {
+    pub fn new(width: f64, height: f64) -> TatakuResult<Self> {
 
         // Generate and bind a FrameBuffer
         let framebuffer_id = unsafe {
@@ -89,7 +89,7 @@ impl RenderTarget {
         //Check if FrameBuffer created successfully
         unsafe {
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-                return Err(TaikoError::GlError(GlError::RenderBuffer))
+                return Err(TatakuError::GlError(GlError::RenderBuffer))
             }
         }
 

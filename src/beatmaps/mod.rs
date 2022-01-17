@@ -20,27 +20,27 @@ pub enum Beatmap {
     Adofai(adofai::AdofaiBeatmap)
 }
 impl Beatmap {
-    pub fn load<F:AsRef<Path>>(path: F) -> TaikoResult<Beatmap> {
+    pub fn load<F:AsRef<Path>>(path: F) -> TatakuResult<Beatmap> {
         let path = path.as_ref();
-        if path.extension().is_none() {return Err(TaikoError::Beatmap(BeatmapError::InvalidFile))}
+        if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned()))),
             "qua" => Ok(Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned()))),
             "adofai" => Ok(Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))),
             
-            _ => Err(TaikoError::Beatmap(BeatmapError::InvalidFile)),
+            _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
     }
 
-    pub fn from_metadata(meta: &BeatmapMeta) -> TaikoResult<Beatmap> {
+    pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         Self::load(&meta.file_path)
     }
 }
 impl Default for Beatmap {
     fn default() -> Self {Beatmap::None}
 }
-impl TaikoRsBeatmap for Beatmap {
+impl TatakuBeatmap for Beatmap {
     fn hash(&self) -> String {
         match self {
             Beatmap::None => todo!(),

@@ -25,7 +25,7 @@ pub struct SkinSettings {
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {
-    fn from_file(path:String) -> TaikoResult<Self> {
+    fn from_file(path:String) -> TatakuResult<Self> {
         enum SkinSection {
             General,
             Colors, // colours

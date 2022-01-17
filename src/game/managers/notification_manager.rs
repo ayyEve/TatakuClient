@@ -29,8 +29,8 @@ impl NotificationManager { // static
         println!("adding text notif");
         Self::add_notification(notif);
     }
-    pub fn add_error_notification<E: Into<TaikoError>>(msg:&str, error:E) {
-        let error:TaikoError = error.into();
+    pub fn add_error_notification<E: Into<TatakuError>>(msg:&str, error:E) {
+        let error:TatakuError = error.into();
         let text = format!("{}:\n{}", msg, error);
         
         println!("{}", text);

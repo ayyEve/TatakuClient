@@ -129,7 +129,7 @@ impl OnlineManager {
                     // send login packet
                     send_packet!(s.writer, create_packet!(Client_UserLogin {
                         protocol_version: 1,
-                        game: "TaikoRs".to_owned(),
+                        game: "Tataku\n0.1.0".to_owned(),
                         username: settings.username.clone(),
                         password
                     }));

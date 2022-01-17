@@ -112,7 +112,7 @@ impl AdofaiBeatmap {
         map
     }
 }
-impl TaikoRsBeatmap for AdofaiBeatmap {
+impl TatakuBeatmap for AdofaiBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {

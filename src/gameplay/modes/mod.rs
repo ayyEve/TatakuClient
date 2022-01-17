@@ -7,7 +7,7 @@ pub mod standard;
 
 pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
-pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> Result<IngameManager, crate::errors::TaikoError> {
+pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> Result<IngameManager, crate::errors::TatakuError> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let gamemode:Box<dyn GameMode> = match beatmap.playmode(playmode) {
         PlayMode::Standard => Box::new(standard::StandardGame::new(&beatmap)?),
@@ -17,9 +17,9 @@ pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> Resul
 
         // TODO
         PlayMode::Adofai | //=> Box::new(taiko::TaikoGame::new(&beatmap)?),
-        PlayMode::pTyping => return Err(TaikoError::GameMode(GameModeError::NotImplemented)),
+        PlayMode::pTyping => return Err(TatakuError::GameMode(GameModeError::NotImplemented)),
 
-        PlayMode::Unknown => return Err(TaikoError::GameMode(GameModeError::UnknownGameMode))
+        PlayMode::Unknown => return Err(TatakuError::GameMode(GameModeError::UnknownGameMode))
     };
 
     Ok(IngameManager::new(beatmap, gamemode))

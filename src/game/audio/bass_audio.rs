@@ -38,7 +38,7 @@ pub struct Audio {
     // pub sample_rate: u32,
 }
 impl Audio {
-    pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TaikoResult<StreamChannel> {
+    pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TatakuResult<StreamChannel> {
         println!("[audio] // play_song - playing {}", path.as_ref());
         // check if we're already playing, if restarting is allowed
         let string_path = path.as_ref().to_owned();
@@ -47,7 +47,7 @@ impl Audio {
         {
             if !exists(&string_path) {
                 println!("audio file does not exist! {}", string_path);
-                return TaikoResult::Err(TaikoError::Audio(AudioError::FileDoesntExist))
+                return TatakuResult::Err(TatakuError::Audio(AudioError::FileDoesntExist))
             }
         }
 
@@ -109,7 +109,7 @@ impl Audio {
         Ok(sound)
     }
     
-    pub fn play_song_raw(key: impl AsRef<str>, bytes: Vec<u8>) -> TaikoResult<StreamChannel> {
+    pub fn play_song_raw(key: impl AsRef<str>, bytes: Vec<u8>) -> TatakuResult<StreamChannel> {
         // stop current
         Audio::stop_song();
 
@@ -140,21 +140,21 @@ impl Audio {
     }
 
 
-    pub fn load_song(path: impl AsRef<str>) -> TaikoResult<StreamChannel> {
+    pub fn load_song(path: impl AsRef<str>) -> TatakuResult<StreamChannel> {
         let bytes = std::fs::read(path.as_ref())?;
         Self::load_song_raw(bytes)
     }
-    pub fn load_song_raw(bytes: Vec<u8>) -> TaikoResult<StreamChannel> {
+    pub fn load_song_raw(bytes: Vec<u8>) -> TatakuResult<StreamChannel> {
         Ok(StreamChannel::create_from_memory(bytes, 0i32)?)
     }
     
-    pub fn load(path: impl AsRef<str>) -> TaikoResult<SampleChannel> {
+    pub fn load(path: impl AsRef<str>) -> TatakuResult<SampleChannel> {
         let bytes = std::fs::read(path.as_ref())?;
         Ok(SampleChannel::load_from_memory(bytes, 0i32, 32)?)
     }
 
 
-    pub fn play_preloaded(name: impl AsRef<str>) -> TaikoResult<Channel> {
+    pub fn play_preloaded(name: impl AsRef<str>) -> TatakuResult<Channel> {
         match PRELOADED_SOUNDS.get(name.as_ref()).clone() {
             Some(sample) => {
                 let channel = sample.clone().get_channel()?;

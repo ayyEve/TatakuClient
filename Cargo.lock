@@ -68,7 +68,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "ayyeve-piston-ui"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#3e0caacd23aea344f6caf414c4f481747e07ba05"
+source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#86d16b4fed8de00ac885ab96bfcfbc2ca7e2f55f"
 dependencies = [
  "clipboard",
  "lazy_static",
@@ -2105,12 +2105,12 @@ dependencies = [
 
 [[package]]
 name = "serde_urlencoded"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edfa57a7f8d9c1d260a549e7224100f6c43d43f9103e06dd8b4095a9b2b43ce9"
+checksum = "d3491c14715ca2294c4d6a88f15e84739788c1d030eed8c110436aafdaa2f3fd"
 dependencies = [
  "form_urlencoded",
- "itoa 0.4.8",
+ "itoa 1.0.1",
  "ryu",
  "serde",
 ]

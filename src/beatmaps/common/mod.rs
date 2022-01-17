@@ -1,9 +1,9 @@
 mod timing_point;
-mod trs_beatmap;
+mod tataku_beatmap;
 mod beatmap_meta;
 
 pub use timing_point::*;
-pub use trs_beatmap::*;
+pub use tataku_beatmap::*;
 pub use beatmap_meta::*;
 
 

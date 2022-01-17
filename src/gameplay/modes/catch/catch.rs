@@ -46,7 +46,7 @@ impl CatchGame {
 impl GameMode for CatchGame {
     fn playmode(&self) -> PlayMode {PlayMode::Catch}
     fn end_time(&self) -> f32 {self.end_time}
-    fn new(map:&Beatmap) -> Result<Self, crate::errors::TaikoError> {
+    fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
 
         match map {

@@ -73,7 +73,7 @@ impl Image {
         self.current_scale = scale;
     }
 
-    pub fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TaikoResult<Self> {
+    pub fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
         let settings = TextureSettings::new();
         let tex = Texture::from_path(path, &settings)?;
         Ok(Self::new(pos, depth, tex, size))

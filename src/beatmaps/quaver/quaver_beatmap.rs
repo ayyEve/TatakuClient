@@ -52,7 +52,7 @@ impl QuaverBeatmap {
         s
     }
 }
-impl TaikoRsBeatmap for QuaverBeatmap {
+impl TatakuBeatmap for QuaverBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
 
     fn get_timing_points(&self) -> Vec<crate::beatmaps::common::TimingPoint> {

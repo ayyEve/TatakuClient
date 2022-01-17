@@ -3,7 +3,7 @@ use symphonia::core::{probe::Hint, audio::{AudioBufferRef, Signal}, io::{MediaSo
 use std::io::Cursor;
 use std::sync::Arc;
 
-use crate::errors::{TaikoError, TaikoResult};
+use crate::errors::{TatakuError, TatakuResult};
 
 #[derive(Clone)]
 pub struct Sound {
@@ -15,16 +15,16 @@ pub struct Sound {
 
 impl Sound {
     // todo: make not crash
-    pub fn load(path: impl AsRef<str>) -> TaikoResult<Self> {
+    pub fn load(path: impl AsRef<str>) -> TatakuResult<Self> {
         let file = std::fs::File::open(path.as_ref()).expect(&format!("Failed to open file. {:?}", path.as_ref()));
         Sound::decode(file)
     }
 
-    pub fn load_raw(bytes: Vec<u8>) -> TaikoResult<Self> {
+    pub fn load_raw(bytes: Vec<u8>) -> TatakuResult<Self> {
         Sound::decode(Cursor::new(bytes))
     }
 
-    fn decode(source: impl MediaSource + 'static) -> TaikoResult<Self> {
+    fn decode(source: impl MediaSource + 'static) -> TatakuResult<Self> {
         let source = MediaSourceStream::new(
             Box::new(source),
             Default::default()
@@ -103,7 +103,7 @@ impl Sound {
                     channels
                 })
             }
-            Err(e) => Err(TaikoError::Audio(e.into()))
+            Err(e) => Err(TatakuError::Audio(e.into()))
         }
     }
 }

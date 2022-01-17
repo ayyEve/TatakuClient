@@ -137,7 +137,7 @@ impl StandardGame {
 impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {PlayMode::Standard}
     fn end_time(&self) -> f32 {self.end_time}
-    fn new(map:&Beatmap) -> Result<Self, crate::errors::TaikoError> {
+    fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;

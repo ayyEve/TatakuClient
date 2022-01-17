@@ -59,11 +59,10 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let mut game_init_benchmark = BenchmarkHelper::new("Game::new");
-
         let window_size = Settings::window_size();
 
         let opengl = OpenGL::V3_2;
-        let mut window: AppWindow = WindowSettings::new("Taiko-rs", [window_size.x, window_size.y])
+        let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
             .graphics_api(opengl)
             .resizable(false)
             .build()
@@ -450,7 +449,7 @@ impl Game {
                                 self.threading.spawn(async move {
                                     //TODO: do this async
                                     println!("submitting score");
-                                    let mut writer = taiko_rs_common::serialization::SerializationWriter::new();
+                                    let mut writer = SerializationWriter::new();
                                     writer.write(score.clone());
                                     writer.write(replay.clone());
                                     let data = writer.data();

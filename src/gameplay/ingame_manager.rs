@@ -909,7 +909,7 @@ impl Default for IngameManager {
 
 
 pub trait GameMode {
-    fn new(beatmap:&Beatmap) -> Result<Self, TaikoError> where Self: Sized;
+    fn new(beatmap:&Beatmap) -> Result<Self, TatakuError> where Self: Sized;
 
     fn playmode(&self) -> PlayMode;
     fn end_time(&self) -> f32;
@@ -948,7 +948,7 @@ impl Default for Box<dyn GameMode> {
 // needed for std::mem::take/swap
 struct NoMode {}
 impl GameMode for NoMode {
-    fn new(_:&Beatmap) -> Result<Self, TaikoError> where Self: Sized {Ok(Self {})}
+    fn new(_:&Beatmap) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
     fn playmode(&self) -> PlayMode {PlayMode::Standard}
     fn end_time(&self) -> f32 {0.0}
     fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}

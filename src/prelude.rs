@@ -13,7 +13,6 @@ pub use piston::MouseButton;
 
 // graphics imports
 pub use graphics::CharacterCache;
-// pub use opengl_graphics::GlyphCache;
 
 // tokio imports
 pub use tokio::sync::OnceCell;
@@ -29,7 +28,7 @@ pub use ayyeve_piston_ui::render::{Renderable, Vector2, Color};
 pub use ayyeve_piston_ui::render::fonts::get_font;
 pub type Font = Arc<Mutex<opengl_graphics::GlyphCache<'static>>>;
 
-// taiko-rs-common imports
+// tataku-common imports
 pub use tataku_common::types::*;
 
 // folder imports

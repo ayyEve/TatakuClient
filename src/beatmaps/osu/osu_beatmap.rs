@@ -328,7 +328,7 @@ impl OsuBeatmap {
         self.control_point_at(time).bpm_multiplier()
     }
 }
-impl TaikoRsBeatmap for OsuBeatmap {
+impl TatakuBeatmap for OsuBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
     fn get_timing_points(&self) -> Vec<crate::beatmaps::common::TimingPoint> {
         self.timing_points
