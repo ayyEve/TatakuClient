@@ -11,7 +11,7 @@ use PacketId::*;
 type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
 
-const EXTRA_ONLINE_LOGGING:bool = false;
+const EXTRA_ONLINE_LOGGING:bool = true;
 
 // how many frames do we buffer before sending?
 // higher means less packet spam
@@ -110,7 +110,8 @@ impl OnlineManager {
             chat_messages: messages,
         }
     }
-    pub async fn start(s: ThreadSafeSelf) {
+    pub async fn start() {
+        let s = ONLINE_MANAGER.clone();
         // initialize the connection
         match connect_async(Settings::get().server_url).await {
             Ok((ws_stream, _)) => {
@@ -137,7 +138,7 @@ impl OnlineManager {
 
                 while let Some(message) = reader.next().await {
                     match message {
-                        Ok(Message::Binary(data)) => OnlineManager::handle_packet(s.clone(), data).await,
+                        Ok(Message::Binary(data)) => OnlineManager::handle_packet(data).await,
                         Ok(Message::Ping(_)) => {
                             if let Some(writer) = s.lock().await.writer.as_mut() {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
@@ -162,7 +163,8 @@ impl OnlineManager {
         }
     }
 
-    async fn handle_packet(s: ThreadSafeSelf, data:Vec<u8>) {
+    async fn handle_packet(data:Vec<u8>) {
+        let s = ONLINE_MANAGER.clone();
         let mut reader = SerializationReader::new(data);
 
         while reader.can_read() {
@@ -394,54 +396,61 @@ impl OnlineManager {
     }
 }
 impl OnlineManager {
-    pub async fn send_spec_frames(s: ThreadSafeSelf, frames:SpectatorFrames, force_send: bool) {
-        let mut lock = s.lock().await;
-        // if we arent speccing, exit
-        // hopefully resolves a bug
-        // if !lock.spectating {return}
+    pub fn send_spec_frames(frames:SpectatorFrames, force_send: bool) {
+        let s = ONLINE_MANAGER.clone();
+        tokio::spawn(async move {
+            let mut lock = s.lock().await;
+            // if we arent speccing, exit
+            // hopefully resolves a bug
+            // if !lock.spectating {return}
 
+            lock.buffered_spectator_frames.extend(frames);
+            let times_up = lock.last_spectator_frame.elapsed().as_secs_f32() > 1.0;
 
-        lock.buffered_spectator_frames.extend(frames);
-        let times_up = lock.last_spectator_frame.elapsed().as_secs_f32() > 1.0;
+            if force_send || times_up || lock.buffered_spectator_frames.len() >= SPECTATOR_BUFFER_FLUSH_SIZE {
+                let frames = std::mem::take(&mut lock.buffered_spectator_frames);
+                // if force_send {println!("[Online] sending spec buffer (force)")} else if times_up {println!("[Online] sending spec buffer (time)")} else {println!("[Online] sending spec buffer (len)")}
 
-        if force_send || times_up || lock.buffered_spectator_frames.len() >= SPECTATOR_BUFFER_FLUSH_SIZE {
-            let frames = std::mem::take(&mut lock.buffered_spectator_frames);
-            // if force_send {println!("[Online] sending spec buffer (force)")} else if times_up {println!("[Online] sending spec buffer (time)")} else {println!("[Online] sending spec buffer (len)")}
+                // for i in frames.iter() {
+                //     println!("writing spec packet")
+                // }
+                
+                println!("[Online] sending {} spec packets", frames.len());
+                send_packet!(lock.writer, create_packet!(Client_SpectatorFrames {frames}));
+                lock.last_spectator_frame = Instant::now();
+            }
+        });
 
-            // for i in frames.iter() {
-            //     println!("writing spec packet")
-            // }
+    }
+
+    pub fn start_spectating(host_id: u32) {
+        let s = ONLINE_MANAGER.clone();
+        tokio::spawn(async move {
+            let mut s = s.lock().await;
+            s.buffered_spectator_frames.clear();
+            s.spectating = true;
+            println!("[Online] speccing {}", host_id);
+
+            send_packet!(s.writer, create_packet!(Client_Spectate {host_id:host_id}));
+        });
+    }
+
+    pub fn stop_spectating() {
+        let s = ONLINE_MANAGER.clone();
+        tokio::spawn(async move {
+            let mut s = s.lock().await;
+            s.buffered_spectator_frames.clear();
+            if !s.spectating {return}
+            s.spectating = false;
+            println!("[Online] stop speccing");
             
-            println!("[Online] sending {} spec packets", frames.len());
-            send_packet!(lock.writer, create_packet!(Client_SpectatorFrames {frames}));
-            lock.last_spectator_frame = Instant::now();
-        }
-
-    }
-
-    pub async fn start_spectating(host_id: u32) {
-        let mut s = ONLINE_MANAGER.lock().await;
-        s.buffered_spectator_frames.clear();
-        s.spectating = true;
-        println!("[Online] speccing {}", host_id);
-
-        send_packet!(s.writer, create_packet!(Client_Spectate {host_id:host_id}));
-    }
-
-    pub async fn stop_spectating() {
-        let mut s = ONLINE_MANAGER.lock().await;
-        s.buffered_spectator_frames.clear();
-        if !s.spectating {return}
-        s.spectating = false;
-        println!("[Online] stop speccing");
-        
-        send_packet!(s.writer, create_packet!(Client_LeaveSpectator));
+            send_packet!(s.writer, create_packet!(Client_LeaveSpectator));
+        });
     }
 
     pub fn get_pending_spec_frames(&mut self) -> SpectatorFrames {
         std::mem::take(&mut self.buffered_spectator_frames)
     }
-
 }
 
 
@@ -463,6 +472,7 @@ fn ping_handler() {
 
 
 // tests
+#[allow(unused_imports, dead_code)]
 mod tests {
     const CONNECTION_COUNT: usize = 50;
     use crate::prelude::*;
@@ -479,10 +489,10 @@ mod tests {
     async fn load_test() {
         for i in 0..CONNECTION_COUNT {
             tokio::spawn(async move {
-                let thing = super::OnlineManager::new();
-                let thing = Arc::new(tokio::sync::Mutex::new(thing));
+                // let thing = super::OnlineManager::new();
+                // let thing = Arc::new(tokio::sync::Mutex::new(thing));
 
-                super::OnlineManager::start(thing).await;
+                super::OnlineManager::start().await;
                 println!("online thread {} stopped", i);
             });
         }

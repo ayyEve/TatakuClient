@@ -1,5 +1,4 @@
 #![allow(dead_code, unused, non_snake_case)]
-
 use futures_util::SinkExt;
 use crate::prelude::*;
 
@@ -353,11 +352,6 @@ impl Drop for Chat {
     }
 }
 
-
-
-// fn can_resize(p1: Vector2, p2: Vector2) -> bool {
-//     p1.x - p2.x
-// }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChatMessage {

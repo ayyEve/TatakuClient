@@ -340,7 +340,7 @@ impl SpectatorManager {
 // when the manager is dropped, tell the server we stopped spectating
 impl Drop for SpectatorManager {
     fn drop(&mut self) {
-        tokio::spawn(OnlineManager::stop_spectating());
+        OnlineManager::stop_spectating();
     }
 }
 

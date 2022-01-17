@@ -329,11 +329,7 @@ impl Menu<Game> for BeatmapSelectMenu {
     fn on_change(&mut self, into:bool) {
         if !into {return}
 
-        
-        let cloned = ONLINE_MANAGER.clone();
-        tokio::spawn(async move {
-            OnlineManager::send_spec_frames(cloned, vec![(0.0, SpectatorFrameData::ChangingMap)], true).await
-        });
+        OnlineManager::send_spec_frames(vec![(0.0, SpectatorFrameData::ChangingMap)], true);
 
         // play song if it exists
         if let Some(song) = Audio::get_song() {

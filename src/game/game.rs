@@ -36,9 +36,6 @@ pub struct Game {
     transition_last: Option<GameState>,
     transition_timer: u64,
 
-    // user list
-    show_user_list: bool,
-
     // cursor
     cursor_manager: CursorManager,
 
@@ -51,10 +48,6 @@ pub struct Game {
     #[allow(dead_code)]
     /// needed to prevent bass from deinitializing
     bass: bass_rs::Bass,
-
-
-    // user menu helper
-    selected_user: Option<u32>
 }
 impl Game {
     pub fn new() -> Game {
@@ -129,13 +122,10 @@ impl Game {
             cursor_manager: CursorManager::new(),
 
             // misc
-            show_user_list: false,
             game_start: Instant::now(),
             // register_timings: (0.0,0.0,0.0),
             #[cfg(feature="bass_audio")] 
             bass,
-
-            selected_user: None,
         };
         game_init_benchmark.log("game created", true);
 
@@ -149,10 +139,9 @@ impl Game {
         // set the dialog queue
         
         // online loop
-        let clone = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
             loop {
-                OnlineManager::start(clone.clone()).await;
+                OnlineManager::start().await;
                 tokio::time::sleep(Duration::from_millis(1_000)).await;
             }
         });
@@ -230,9 +219,9 @@ impl Game {
                     match *&ext {
                         "osz" | "qp" => {
                             if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
-                                println!("Error moving file: {}", e);
+                                println!("Error copying file: {}", e);
                                 NotificationManager::add_error_notification(
-                                    "Error moving file", 
+                                    "Error copying file", 
                                     e
                                 );
                             } else {
@@ -304,73 +293,11 @@ impl Game {
         // users list
         //TODO: maybe try to move this to a dialog?
         if keys_down.contains(&Key::F8) {
-            self.show_user_list = !self.show_user_list;
+            self.add_dialog(Box::new(UserPanel::new()));
             if let Some(chat) = Chat::new() {
                 self.add_dialog(Box::new(chat));
             }
-            println!("Show user list: {}", self.show_user_list);
-        }
-        if self.show_user_list {
-            if let Ok(om) = ONLINE_MANAGER.try_lock() {
-                for (_, user) in &om.users {
-                    if let Ok(mut u) = user.try_lock() {
-                        if mouse_moved {u.on_mouse_move(mouse_pos)}
-                        mouse_down.retain(|button| !u.on_click(mouse_pos, button.clone(), mods));
-
-                        if u.clicked {
-                            u.clicked = false;
-                            self.selected_user = Some(u.user_id);
-
-                            // user menu dialog
-                            let mut user_menu_dialog = NormalDialog::new("User Options");
-                            user_menu_dialog.add_button("Spectate", Box::new(|dialog, game| {
-                                // println!("spectate");
-                                if let Some(user_id) = game.selected_user.clone() {
-                                    tokio::spawn(OnlineManager::start_spectating(user_id));
-                                    //TODO: wait for a spec response from the server before setting the mode
-                                    game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
-                                    dialog.should_close = true;
-                                    game.selected_user = None;
-                                }
-                            }));
-                            user_menu_dialog.add_button("Send Message", Box::new(|dialog, game| {
-                                // println!("spectate");
-                                if let Some(user_id) = game.selected_user.clone() {
-
-                                    if let Some(chat) = Chat::new() {
-                                        game.add_dialog(Box::new(chat));
-                                    }
-
-                                    let clone = ONLINE_MANAGER.clone();
-                                    tokio::spawn(async move {
-                                        let mut lock = clone.lock().await;
-                                        if let Some(user) = lock.find_user_by_id(user_id) {
-                                            let username = user.lock().await.username.clone();
-                                            let channel = ChatChannel::User{username};
-                                            if !lock.chat_messages.contains_key(&channel) {
-                                                lock.chat_messages.insert(channel.clone(), Vec::new());
-                                            }
-                                        } else {
-                                            NotificationManager::add_text_notification("Error: user not found.", 2000.0, Color::RED)
-                                        }
-                                    });
-
-                                    dialog.should_close = true;
-                                    game.selected_user = None;
-                                }
-                            }));
-
-                            user_menu_dialog.add_button("Close", Box::new(|dialog, game| {
-                                // println!("close");
-                                dialog.should_close = true;
-                                game.selected_user = None;
-                            }));
-
-                            self.add_dialog(Box::new(user_menu_dialog));
-                        }
-                    }
-                }
-            }
+            // println!("Show user list: {}", self.show_user_list);
         }
 
         // update any dialogs
@@ -395,8 +322,9 @@ impl Game {
         }
         // remove any dialogs which should be closed
         dialog_list.retain(|d|!d.should_close());
-        self.dialogs = std::mem::take(&mut dialog_list);
-
+        // add any new dialogs to the end of the list
+        dialog_list.extend(std::mem::take(&mut self.dialogs));
+        self.dialogs = dialog_list;
 
         // run update on current state
         match &mut current_state {
@@ -688,37 +616,15 @@ impl Game {
             }
         }
 
-        // users list
-        // TODO: move this to a "dialog"
-        if self.show_user_list {
-            //TODO: move the set_pos code to update or smth
-            let mut counter = 0;
-            
-            if let Ok(om) = ONLINE_MANAGER.try_lock() {
-                for (_, user) in &om.users {
-                    if let Ok(mut u) = user.try_lock() {
-                        let users_per_col = 2;
-                        let x = USER_ITEM_SIZE.x * (counter % users_per_col) as f64;
-                        let y = USER_ITEM_SIZE.y * (counter / users_per_col) as f64;
-                        u.set_pos(Vector2::new(x, y));
-
-                        counter += 1;
-                        u.draw(args, Vector2::zero(), -100.0, &mut self.render_queue);
-                    }
-                }
-            }
-        }
-
-
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
         let mut current_depth = -50000000.0;
         const DIALOG_DEPTH_DIFF:f64 = 50.0;
-        for d in dialog_list.iter_mut().rev() {
+        for d in dialog_list.iter_mut() { //.rev() {
             d.draw(&args, &current_depth, &mut self.render_queue);
             current_depth += DIALOG_DEPTH_DIFF;
         }
-        self.dialogs = std::mem::take(&mut dialog_list);
+        self.dialogs = dialog_list;
 
         // volume control
         self.render_queue.extend(self.volume_controller.draw(args));
@@ -854,6 +760,7 @@ impl Game {
 
 
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
+        println!("[Dialog] adding dialog {}", dialog.name());
         self.dialogs.push(dialog)
     }
 }

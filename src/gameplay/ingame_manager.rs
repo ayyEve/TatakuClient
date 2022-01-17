@@ -852,17 +852,11 @@ impl IngameManager {
 impl IngameManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
         if self.menu_background || self.replaying {return}
-        let cloned = ONLINE_MANAGER.clone();
-        tokio::spawn(async move {
-            OnlineManager::send_spec_frames(cloned, vec![frame], false).await
-        });
+        OnlineManager::send_spec_frames(vec![frame], false)
     }
     pub fn outgoing_spectator_frame_force(&mut self, frame: SpectatorFrame) {
         if self.menu_background || self.replaying {return}
-        let cloned = ONLINE_MANAGER.clone();
-        tokio::spawn(async move {
-            OnlineManager::send_spec_frames(cloned, vec![frame], true).await
-        });
+        OnlineManager::send_spec_frames(vec![frame], true);
     }
 
 }

@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 
-
 /// a dialog is basically just a menu, except it does not occupy a whole gamemode,
 /// and should be drawn overtop every other menu
 pub trait Dialog<G> {
@@ -9,6 +8,7 @@ pub trait Dialog<G> {
     fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>);
     fn get_bounds(&self) -> Rectangle;
     fn should_close(&self) -> bool;
+    fn name(&self) -> &'static str {""}
 
     // input handlers
     fn on_mouse_move(&mut self, _pos:&Vector2, _g:&mut G) {}
