@@ -222,7 +222,7 @@ impl OnlineManager {
 
                 // ===== user updates =====
                 PacketId::Server_UserJoined { user_id, username, game } => {
-                    if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {})", username, user_id)};
+                    if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {}, game: {})", username, user_id, game)};
                     let mut user = OnlineUser::new(user_id, username);
                     user.game = game;
                     s.lock().await.users.insert(user_id, Arc::new(Mutex::new(user)));
@@ -308,7 +308,7 @@ impl OnlineManager {
                     NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
                 }
                 PacketId::Server_SpectateResult {result, host_id} => {
-                    println!("[Online] got spec result {:?}", result);
+                    println!("[Online] Got spec result {:?}", result);
                     match result {
                         SpectateResult::Ok => s.lock().await.spectate_pending = host_id,
                         SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
@@ -321,12 +321,12 @@ impl OnlineManager {
                 // spec info request
                 PacketId::Server_SpectatorPlayingRequest {user_id} => {
                     s.lock().await.spectate_info_pending.push(user_id);
-                    println!("[Online] got playing request");
+                    println!("[Online] Got playing request");
                 }
 
                 // other packets
                 PacketId::Unknown => {
-                    println!("[Online] got unknown packet, dropping remaining packets");
+                    println!("[Online] Got unknown packet, dropping remaining packets");
                     break;
                 }
 

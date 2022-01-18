@@ -55,22 +55,21 @@ impl Dialog<Game> for UserPanel {
         self.chat.on_mouse_down(pos, button, mods, game);
         for (_, i) in self.users.iter_mut() {
             if i.on_click(*pos, *button, *mods) {
-                // self.selected_user = Some(u.user_id);
                 let user_id = i.user.user_id;
                 let username = i.user.username.clone();
 
                 // user menu dialog
                 let mut user_menu_dialog = NormalDialog::new("User Options");
 
-                // if u.game.starts_with("Tataku") {
-                    user_menu_dialog.add_button("Spectate", Box::new(move |dialog, game| {
+                if i.user.game.starts_with("Tataku") {
+                    user_menu_dialog.add_button("Spectate", Box::new(move |dialog, _game| {
                         OnlineManager::start_spectating(user_id);
                         dialog.should_close = true;
                     }));
-                // }
+                }
 
                 let clone = SET_CURRENT_USER.clone();
-                user_menu_dialog.add_button("Send Message", Box::new(move |dialog, game| {
+                user_menu_dialog.add_button("Send Message", Box::new(move |dialog, _game| {
                     *clone.write() = username.clone();
                     dialog.should_close = true;
                 }));
