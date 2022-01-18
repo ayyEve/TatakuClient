@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub const USER_ITEM_SIZE:Vector2 = Vector2::new(200.0, 100.0);
+pub const USER_ITEM_SIZE:Vector2 = Vector2::new(300.0, 100.0);
 pub const USERNAME_OFFSET:Vector2 = Vector2::new(5.0, 5.0);
 
 #[derive(Clone)]
