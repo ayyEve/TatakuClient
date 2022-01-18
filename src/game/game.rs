@@ -266,6 +266,8 @@ impl Game {
         let mut text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
+        let settings_clone = Settings::get_mut("Game::update").clone();
+
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
         //     println!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
@@ -291,7 +293,7 @@ impl Game {
         self.volume_controller.on_key_press(&mut keys_down, mods);
         
         // check user panel
-        if keys_down.contains(&Key::F8) {
+        if keys_down.contains(&settings_clone.key_user_panel) {
             let mut user_panel_exists = false;
             let mut chat_exists = false;
             for i in self.dialogs.iter() {
@@ -312,6 +314,8 @@ impl Game {
                 }
                 
                 self.add_dialog(Box::new(UserPanel::new()));
+            } else {
+                self.dialogs.retain(|d|d.name() != "UserPanel");
             }
 
             // if let Some(chat) = Chat::new() {

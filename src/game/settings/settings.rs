@@ -56,9 +56,10 @@ pub struct Settings {
     // misc keybinds
     pub key_offset_up: Key,
     pub key_offset_down: Key,
+    pub key_user_panel: Key,
 
+    // other misc
     pub last_git_hash: String,
-
     pub server_url: String,
 }
 impl Settings {
@@ -153,6 +154,8 @@ impl Default for Settings {
             // keys
             key_offset_up: Key::Equals,
             key_offset_down: Key::Minus,
+            key_user_panel: Key::F8,
+            
 
             // other
             last_git_hash: String::new(),
