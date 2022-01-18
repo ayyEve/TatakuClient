@@ -9,6 +9,7 @@ vgcore.*
 /[Ss]ongs
 /replays
 taiko-rs.db
+tataku.db
 settings.json
 
 test-commits.rs
