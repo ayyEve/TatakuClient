@@ -221,10 +221,11 @@ impl OnlineManager {
 
 
                 // ===== user updates =====
-                PacketId::Server_UserJoined { user_id, username } => {
+                PacketId::Server_UserJoined { user_id, username, game } => {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {})", username, user_id)};
-                    s.lock().await.users.insert(user_id, Arc::new(Mutex::new(OnlineUser::new(user_id, username))));
-
+                    let mut user = OnlineUser::new(user_id, username);
+                    user.game = game;
+                    s.lock().await.users.insert(user_id, Arc::new(Mutex::new(user)));
                 }
                 PacketId::Server_UserLeft {user_id} => {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user id {} left", user_id)};
@@ -307,6 +308,7 @@ impl OnlineManager {
                     NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
                 }
                 PacketId::Server_SpectateResult {result, host_id} => {
+                    println!("[Online] got spec result {:?}", result);
                     match result {
                         SpectateResult::Ok => s.lock().await.spectate_pending = host_id,
                         SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
@@ -351,6 +353,14 @@ impl OnlineManager {
 
     // do things which require a reference to game
     pub fn do_game_things(&mut self, game: &mut Game) { 
+        if self.spectate_pending > 0 {
+            println!("[Online] speccing {}", self.spectate_pending);
+            self.buffered_spectator_frames.clear();
+            self.spectating = true;
+            self.spectate_pending = 0;
+            game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
+        }
+        
         if self.spectate_info_pending.len() > 0 {
 
             // only get info if the current mode is ingame
@@ -384,14 +394,6 @@ impl OnlineManager {
                         // so we want to wait until they decide if they want to play or quit
                         "pause" => {}
                         _ => self.spectate_info_pending.clear()
-                    }
-
-                    if self.spectate_pending > 0 {
-                        println!("[Online] speccing {}", self.spectate_pending);
-                        self.buffered_spectator_frames.clear();
-                        self.spectating = true;
-                        self.spectate_pending = 0;
-                        game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
                     }
                 }
 

@@ -454,7 +454,7 @@ impl IngameManager {
 
         // send map completed packets
         if self.completed {
-            self.outgoing_spectator_frame_force((time + 100.0, SpectatorFrameData::ScoreSync {score: self.score.clone()}));
+            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.clone()}));
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
         }
 
