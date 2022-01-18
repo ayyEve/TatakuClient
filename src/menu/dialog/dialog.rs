@@ -19,6 +19,9 @@ pub trait Dialog<G> {
     fn on_text(&mut self, _text:&String) -> bool {false}
     fn on_key_press(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
     fn on_key_release(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+
+    fn string_function1(&mut self, _val: String) {}
+    // fn string_function2(&mut self, _val: String) {}
 }
 
 // // toolbar options

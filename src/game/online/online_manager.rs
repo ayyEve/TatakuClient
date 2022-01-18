@@ -66,7 +66,6 @@ pub struct OnlineManager {
     pub writer: Option<Arc<Mutex<WsWriter>>>,
 
     // ====== chat ======
-
     pub chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
 
     // ====== spectator ======

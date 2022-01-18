@@ -290,15 +290,37 @@ impl Game {
         if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta, mods) {scroll_delta = 0.0}
         self.volume_controller.on_key_press(&mut keys_down, mods);
         
-        // users list
-        //TODO: maybe try to move this to a dialog?
+        // check user panel
         if keys_down.contains(&Key::F8) {
-            self.add_dialog(Box::new(UserPanel::new()));
-            if let Some(chat) = Chat::new() {
-                self.add_dialog(Box::new(chat));
+            let mut user_panel_exists = false;
+            let mut chat_exists = false;
+            for i in self.dialogs.iter() {
+                if i.name() == "UserPanel" {
+                    user_panel_exists = true;
+                }
+                if i.name() == "Chat" {
+                    chat_exists = true;
+                }
+                // if both exist, no need to continue looping
+                if user_panel_exists && chat_exists {break}
             }
+
+            if !user_panel_exists {
+                // close existing chat window
+                if chat_exists {
+                    self.dialogs.retain(|d|d.name() != "Chat");
+                }
+                
+                self.add_dialog(Box::new(UserPanel::new()));
+            }
+
+            // if let Some(chat) = Chat::new() {
+            //     self.add_dialog(Box::new(chat));
+            // }
             // println!("Show user list: {}", self.show_user_list);
         }
+
+
 
         // update any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
@@ -325,6 +347,7 @@ impl Game {
         // add any new dialogs to the end of the list
         dialog_list.extend(std::mem::take(&mut self.dialogs));
         self.dialogs = dialog_list;
+
 
         // run update on current state
         match &mut current_state {
@@ -618,7 +641,7 @@ impl Game {
 
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
-        let mut current_depth = -50000000.0;
+        let mut current_depth = -50_000_000.0;
         const DIALOG_DEPTH_DIFF:f64 = 50.0;
         for d in dialog_list.iter_mut() { //.rev() {
             d.draw(&args, &current_depth, &mut self.render_queue);
@@ -758,9 +781,7 @@ impl Game {
         // // }
     }
 
-
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
-        println!("[Dialog] adding dialog {}", dialog.name());
         self.dialogs.push(dialog)
     }
 }

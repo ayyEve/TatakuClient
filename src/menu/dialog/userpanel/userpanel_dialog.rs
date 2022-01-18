@@ -1,8 +1,12 @@
 use crate::prelude::*;
 
 
+lazy_static::lazy_static! {
+    static ref SET_CURRENT_USER:Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
+}
+
 pub struct UserPanel {
-    chat: Option<Chat>,
+    chat: Chat,
 
     /// user_id, user
     users: HashMap<u32, PanelUser>,
@@ -12,7 +16,7 @@ pub struct UserPanel {
 impl UserPanel {
     pub fn new() -> Self {
         Self {
-            chat: None,
+            chat: Chat::new(),
             users: HashMap::new(),
             should_close: false,
         }
@@ -20,6 +24,7 @@ impl UserPanel {
 }
 
 impl Dialog<Game> for UserPanel {
+    fn name(&self) -> &'static str {"UserPanel"}
     fn should_close(&self) -> bool {self.should_close}
     fn get_bounds(&self) -> Rectangle {
         let window_size = Settings::window_size();
@@ -29,8 +34,25 @@ impl Dialog<Game> for UserPanel {
         )
     }
     
+    fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_key_press(key, mods, game);
+
+        if key == &Key::Escape {
+            self.should_close = true;
+            return true;
+        }
+        true
+    }
+    fn on_key_release(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_key_release(key, mods, game);
+        true
+    }
+    fn on_text(&mut self, text:&String) -> bool {
+        self.chat.on_text(text)
+    }
 
     fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_mouse_down(pos, button, mods, game);
         for (_, i) in self.users.iter_mut() {
             if i.on_click(*pos, *button, *mods) {
                 // self.selected_user = Some(u.user_id);
@@ -47,22 +69,9 @@ impl Dialog<Game> for UserPanel {
                     }));
                 // }
 
-                let clone = ONLINE_MANAGER.clone();
+                let clone = SET_CURRENT_USER.clone();
                 user_menu_dialog.add_button("Send Message", Box::new(move |dialog, game| {
-                    if let Some(chat) = Chat::new() {
-                        game.add_dialog(Box::new(chat));
-                    }
-                    
-                    let username = username.clone();
-                    let clone = clone.clone();
-                    tokio::spawn(async move {
-                        let mut lock = clone.lock().await;
-                        let channel = ChatChannel::User{username};
-                        if !lock.chat_messages.contains_key(&channel) {
-                            lock.chat_messages.insert(channel.clone(), Vec::new());
-                        }
-                    });
-
+                    *clone.write() = username.clone();
                     dialog.should_close = true;
                 }));
 
@@ -75,14 +84,30 @@ impl Dialog<Game> for UserPanel {
         }
         true
     }
+    fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_mouse_up(pos, button, mods, game);
+        true
+    }
+    fn on_mouse_scroll(&mut self, delta:&f64, game:&mut Game) -> bool {
+        self.chat.on_mouse_scroll(delta, game)
+    }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
+    fn on_mouse_move(&mut self, pos:&Vector2, game:&mut Game) {
+        self.chat.on_mouse_move(pos, game);
+
         for (_, i) in self.users.iter_mut() {
             i.on_mouse_move(*pos)
         }
     }
 
-    fn update(&mut self, _game:&mut Game) {
+    fn update(&mut self, game:&mut Game) {
+        self.chat.update(game);
+
+        let mut lock = SET_CURRENT_USER.write();
+        if !lock.is_empty() {
+            self.chat.selected_channel = Some(ChatChannel::from_name(lock.clone()));
+            *lock = String::new();
+        }
 
         // update users from online manager
         if let Ok(om) = ONLINE_MANAGER.try_lock() {
@@ -98,9 +123,8 @@ impl Dialog<Game> for UserPanel {
         }
     }
 
-
-
     fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+        self.chat.draw(args, depth, list);
         //TODO: move the set_pos code to update or smth
         let mut counter = 0;
         

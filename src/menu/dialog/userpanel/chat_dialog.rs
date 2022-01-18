@@ -7,9 +7,6 @@ const INPUT_HEIGHT:f64 = 45.0;
 /// how many pixels away from the thing can it be to resize?
 const RESIZE_LENIENCE: f64 = 3.0;
 
-lazy_static::lazy_static! {
-    static ref CHAT_EXISTS:AtomicBool = AtomicBool::new(false);
-}
 
 pub struct Chat {
     // messages
@@ -37,13 +34,7 @@ pub struct Chat {
     height_resize_hover: bool,
 }
 impl Chat {
-    pub fn new() -> Option<Self> {
-        if CHAT_EXISTS.load(SeqCst) {
-            println!("chat exists, not creating");
-            return None
-        }
-        CHAT_EXISTS.store(true, SeqCst);
-
+    pub fn new() -> Self {
         let window_size = Settings::window_size();
 
         let chat_height = window_size.y / 3.0 - INPUT_HEIGHT;
@@ -61,7 +52,7 @@ impl Chat {
             ""
         );
         
-        Some(Self {
+        Self {
             // [channels][messages]
             messages:HashMap::new(),
             selected_channel: None,
@@ -79,7 +70,7 @@ impl Chat {
             height_resize: false,
             width_resize_hover:  false,
             height_resize_hover: false,
-        })
+        }
     }
 
     pub fn scroll_to_new_message(&mut self) {
@@ -248,10 +239,29 @@ impl Dialog<Game> for Chat {
         true
     }
 
-
     fn update(&mut self, _g:&mut Game) {
-        if let Ok(online_manager) = ONLINE_MANAGER.try_lock() {
+        if let Ok(mut online_manager) = ONLINE_MANAGER.try_lock() {
             let mut scroll_pending = false;
+
+            if let Some(selected_channel) = &self.selected_channel {
+                if !online_manager.chat_messages.contains_key(selected_channel) {
+                    online_manager.chat_messages.insert(selected_channel.clone(), Vec::new());
+                }
+
+                // ensure the selected channel is actually selected
+                let selected_name = selected_channel.get_name();
+                for i in self.channel_scroll.items.iter_mut() {
+                    if i.get_selected() && i.get_tag() != selected_name {
+                        i.set_selected(false)
+                    }
+
+                    if !i.get_selected() && i.get_tag() == selected_name {
+                        i.set_selected(true)
+                    }
+                }
+
+            }
+
             // get chat messages
             for (channel, messages) in online_manager.chat_messages.iter() {
                 if !self.messages.contains_key(channel) {
@@ -282,7 +292,6 @@ impl Dialog<Game> for Chat {
                             }
                         }
                     }
-                    
                 }
             }
 
@@ -346,11 +355,6 @@ impl Dialog<Game> for Chat {
         self.input.draw(args, Vector2::zero(), depth - 10.0, list);
     }
 }
-impl Drop for Chat {
-    fn drop(&mut self) {
-        CHAT_EXISTS.store(false, SeqCst);
-    }
-}
 
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -404,6 +408,13 @@ pub enum ChatChannel {
     User{username:String}
 }
 impl ChatChannel {
+    pub fn from_name(name:String) -> ChatChannel {
+        if name.starts_with("#") {
+            ChatChannel::Channel{name}
+        } else {
+            ChatChannel::User{username: name}
+        }
+    }
     pub fn get_name(&self) -> String {
         match self {
             ChatChannel::Channel { name } => format!("#{}", name),

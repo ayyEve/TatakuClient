@@ -4,7 +4,7 @@ use crate::prelude::*;
 const NOTIF_WIDTH:f64 = 300.0;
 const NOTIF_Y_OFFSET:f64 = 100.0; // window_size().y - this
 const NOTIF_TEXT_SIZE:u32 = 15;
-const NOTIF_DEPTH:f64 = -8_000.0;
+const NOTIF_DEPTH:f64 = -800_000_000.0;
 const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 const NOTIF_Y_MARGIN:f64 = 5.0;
 
