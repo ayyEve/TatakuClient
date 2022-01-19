@@ -201,7 +201,11 @@ impl BeatmapManager {
             Audio::play_song(audio_filename, false, time);
         }
         #[cfg(feature="bass_audio")]
-        Audio::play_song(audio_filename, false, time).unwrap();
+        if let Err(e) = Audio::play_song(audio_filename, false, time) {
+            println!("Error playing song: {:?}", e);
+            NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED);
+            // Audio::stop_song();
+        }
 
         // set bg
         game.set_background_beatmap(beatmap);
