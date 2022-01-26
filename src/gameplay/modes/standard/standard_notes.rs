@@ -1219,11 +1219,16 @@ impl HitObject for StandardSpinner {
 
         if beatmap_time >= self.time && beatmap_time <= self.end_time {
             if self.holding {
-                diff = self.last_rotation_val - mouse_angle;
+                diff = mouse_angle - self.last_rotation_val;
             }
-            if diff.abs() > PI {diff = 0.0}
-            self.rotation_velocity = f64::lerp(-diff, self.rotation_velocity, 0.005 * (beatmap_time - self.last_update) as f64);
+            if diff > PI {diff -= 2.0 * PI}
+            else if diff < -PI {diff += 2.0 * PI}
+            // println!("diff: {:.2}", diff / PI);
+            
+            // self.rotation_velocity = f64::lerp(-diff, self.rotation_velocity, 0.005 * (beatmap_time - self.last_update) as f64);
+            self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
             self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+            // println!("vel: {}", self.rotation_velocity);
 
             // println!("rotation: {}, diff: {}", self.rotation, diff);
         }
@@ -1269,13 +1274,13 @@ impl HitObject for StandardSpinner {
         }
         
         // draw a counter
-        let rpm = (self.rotation_velocity * 1000.0 * 60.0) / (2.0 * PI);
+        let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
         let mut txt = Text::new(
             Color::BLACK.alpha(self.alpha_mult),
             -999.9,
             Vector2::zero(),
             30,
-            format!("{:.0}rpm", rpm.abs()),
+            format!("{:.0}rpm", rpm.abs()), // format!("{:.0}rpm", rpm.abs()),
             get_font("main")
         );
         txt.center_text(Rectangle::bounds_only(
@@ -1300,7 +1305,7 @@ impl StandardHitObject for StandardSpinner {
     fn get_preempt(&self) -> f32 {0.0}
     fn point_draw_pos(&self, _: f32) -> Vector2 {Vector2::zero()} //TODO
     fn causes_miss(&self) -> bool {self.rotations_completed < self.rotations_required} // if the spinner wasnt completed in time, cause a miss
-    fn set_hitwindow_miss(&mut self, window: f32) {}
+    fn set_hitwindow_miss(&mut self, _window: f32) {}
 
     fn get_points(&mut self, _is_press:bool, _:f32, _:(f32,f32,f32,f32)) -> ScoreHit {
         ScoreHit::Other(100, false)
