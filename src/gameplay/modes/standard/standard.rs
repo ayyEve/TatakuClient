@@ -68,6 +68,8 @@ impl StandardGame {
         }
     }
 
+    // TODO: finish this
+    #[allow(dead_code, unused_variables)]
     fn apply_stacking(&mut self) {
         let stack_offset = self.scaling_helper.scaled_cs / 10.0;
 

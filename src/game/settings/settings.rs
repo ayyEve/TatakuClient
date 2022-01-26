@@ -5,9 +5,7 @@ const SETTINGS_FILE:&str = "settings.json";
 
 lazy_static::lazy_static! {
     static ref SETTINGS: Arc<Mutex<Settings>> = Arc::new(Mutex::new(Settings::load()));
-
     pub static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::new_with(Some(Settings::get_mut("WINDOW_SIZE").window_size.into()));
-
     static ref LAST_CALLER:Arc<Mutex<&'static str>> = Arc::new(Mutex::new("None"));
 }
 
@@ -45,7 +43,7 @@ pub struct Settings {
     pub cursor_scale: f64,
     pub cursor_border: f32,
     pub cursor_border_color: String,
-
+    
 
     // bg
     pub background_dim: f32,
@@ -161,32 +159,6 @@ impl Default for Settings {
             last_git_hash: String::new(),
 
             server_url: "wss://taikors.ayyeve.xyz".to_owned()
-        }
-    }
-}
-
-
-
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
-pub struct BackgroundGameSettings {
-    /// wether to have gameplay in the main menu bg or not
-    pub enabled: bool,
-    /// gameplay alpha multiplier
-    pub opacity: f32,
-    /// hitsound volume multiplier
-    pub hitsound_volume: f32,
-    /// what mode should be playing?
-    pub mode: PlayMode,
-}
-impl Default for BackgroundGameSettings {
-    fn default() -> Self {
-        Self { 
-            enabled: true,
-            opacity: 0.5,
-            hitsound_volume: 0.3,
-            mode: PlayMode::Standard
         }
     }
 }
