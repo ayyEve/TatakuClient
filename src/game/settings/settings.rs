@@ -139,7 +139,7 @@ impl Default for Settings {
             // window settings
             fps_target: 144,
             update_target: 1000,
-            window_size: [1000.0, 600.0],
+            window_size: [1280.0, 720.0],
             background_dim: 0.8,
 
             // cursor
