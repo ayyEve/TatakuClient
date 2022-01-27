@@ -266,7 +266,7 @@ impl Game {
         let mut text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
-        let settings_clone = Settings::get_mut("Game::update").clone();
+        let settings_clone = Settings::get();
 
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
