@@ -2,6 +2,15 @@ use super::*;
 use crate::prelude::*;
 
 
+// taiko drum controller:
+// outer left: button 6
+// inner left: button 10
+// innert right: button 11
+// outer right: button 7
+
+
+
+
 pub const NOTE_RADIUS:f64 = 32.0;
 pub const HIT_AREA_RADIUS:f64 = NOTE_RADIUS * 1.3;
 pub const HIT_POSITION:Vector2 = Vector2::new(180.0, 200.0);
@@ -472,6 +481,20 @@ impl GameMode for TaikoGame {
             _ => {}
         }
     }
+
+
+    fn controller_press(&mut self, _c_id: u32, btn: u8, manager:&mut IngameManager) {
+        // let id = btn.id;
+        let time = manager.time();
+        match btn {
+            6 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
+            7 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager),
+            10 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
+            11 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager),
+            _ => {println!("[Taiko::Controller] other button")} // other key, not accepted for now
+        }
+    }
+
 
     fn reset(&mut self, beatmap:&Beatmap) {
         let settings = Settings::get().taiko_settings;

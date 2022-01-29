@@ -19,6 +19,14 @@ pub struct InputManager {
     pub mouse_down: HashSet<(MouseButton, Instant)>,
     pub mouse_up: HashSet<(MouseButton, Instant)>,
 
+    
+    /// index is controller id
+    pub controller_buttons: HashMap<u32, HashSet<u8>>,
+    /// index is controller id
+    pub controller_down: HashMap<u32, HashSet<u8>>,
+    /// index is controller id
+    pub controller_up: HashMap<u32, HashSet<u8>>,
+
     /// currently pressed keys
     keys: HashSet<Key>,
     /// keys that were pressed but waiting to be registered
@@ -47,11 +55,29 @@ impl InputManager {
             keys: HashSet::new(),
             keys_down: HashSet::new(),
             keys_up:  HashSet::new(),
-            
+
+            controller_buttons: HashMap::new(),
+            controller_down: HashMap::new(),
+            controller_up: HashMap::new(),
+
             text_cache: String::new(),
             window_change_focus: None,
 
             raw_input: false
+        }
+    }
+
+    fn verify_controller_index_exists(&mut self, id: u32) {
+        if !self.controller_buttons.contains_key(&id) {
+            self.controller_buttons.insert(id, HashSet::new());
+        }
+
+        if !self.controller_down.contains_key(&id) {
+            self.controller_down.insert(id, HashSet::new());
+        }
+
+        if !self.controller_up.contains_key(&id) {
+            self.controller_up.insert(id, HashSet::new());
         }
     }
 
@@ -76,10 +102,13 @@ impl InputManager {
                 }
 
                 (Button::Controller(cb), ButtonState::Press) => {
-                    println!("got gamepad press: {:?}", cb);
+                    self.verify_controller_index_exists(cb.id);
+                    self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
+                    self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
                 (Button::Controller(cb), ButtonState::Release) => {
-                    println!("got gamepad release: {:?}", cb);
+                    self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
+                    self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
                 _ => {}
             }
@@ -159,6 +188,35 @@ impl InputManager {
         up
     }
 
+
+    /// get all pressed controller buttons, and reset the pressed array
+    /// (controller_id, button_id)
+    pub fn get_controller_down(&mut self) -> Vec<(u32, u8)> {
+        let mut down = Vec::new();
+        for (c, buttons) in self.controller_down.iter_mut() {
+            for b in buttons.iter() {
+                down.push((*c, *b));
+            }
+            buttons.clear()
+        }
+        down
+    }
+
+    /// get all released controller buttons, and reset the pressed array
+    /// (controller_id, button_id)
+    pub fn get_controller_up(&mut self) -> Vec<(u32, u8)> {
+        let mut up = Vec::new();
+        for (c, buttons) in self.controller_up.iter_mut() {
+            for b in buttons.iter() {
+                up.push((*c, *b)); 
+            }
+            buttons.clear()
+        }
+        up
+    }
+
+
+    
     /// get whether the mouse was moved or not
     pub fn get_mouse_moved(&mut self) -> bool {
         std::mem::take(&mut self.mouse_moved)

@@ -266,6 +266,10 @@ impl Game {
         let mut text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
+        let controller_down = self.input_manager.get_controller_down();
+        let controller_up = self.input_manager.get_controller_up();
+
+
         let settings_clone = Settings::get_mut("Game::update").clone();
 
         // if keys.len() > 0 {
@@ -370,18 +374,26 @@ impl Game {
                     self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                     println!("done");
                 } else {
-                    // // offset adjust
-                    // if keys_down.contains(&settings.key_offset_up) {manager.increment_offset(5.0)}
-                    // if keys_down.contains(&settings.key_offset_down) {manager.increment_offset(-5.0)}
 
                     // inputs
+                    // mouse
                     if mouse_moved {manager.mouse_move(mouse_pos)}
                     for btn in mouse_down {manager.mouse_down(btn)}
                     for btn in mouse_up {manager.mouse_up(btn)}
                     if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta)}
 
+                    // kb
                     for k in keys_down.iter() {manager.key_down(*k, mods)}
                     for k in keys_up.iter() {manager.key_up(*k)}
+
+                    // controller
+                    for (c, b) in controller_down {
+                        manager.controller_press(c, b);
+                    }
+                    for (c, b) in controller_up {
+                        manager.controller_release(c, b);
+                    }
+
 
                     // update, then check if complete
                     manager.update();

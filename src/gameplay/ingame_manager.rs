@@ -680,10 +680,36 @@ impl IngameManager {
         gamemode.mouse_up(btn, self);
         self.gamemode = gamemode;
     }
-
     pub fn mouse_scroll(&mut self, delta:f64) {
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_scroll(delta, self);
+        self.gamemode = gamemode;
+    }
+
+    
+    pub fn controller_press(&mut self, c_id: u32, btn: u8) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_press(c_id, btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_release(&mut self, c_id: u32, btn: u8) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_release(c_id, btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_hat_press(&mut self, hat: piston::controller::ControllerHat) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_hat_press(hat, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_hat_release(&mut self, hat: piston::controller::ControllerHat) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_hat_release(hat, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_axis(&mut self, event: piston::controller::ControllerAxisArgs) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_axis(event, self);
         self.gamemode = gamemode;
     }
 
@@ -926,6 +952,13 @@ pub trait GameMode {
     fn mouse_scroll(&mut self, _delta:f64, _manager:&mut IngameManager) {}
 
     fn apply_auto(&mut self, settings: &BackgroundGameSettings);
+
+
+    fn controller_press(&mut self, c_id: u32, btn: u8, _manager:&mut IngameManager) {}
+    fn controller_release(&mut self, c_id: u32, btn: u8, _manager:&mut IngameManager) {}
+    fn controller_hat_press(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
+    fn controller_hat_release(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
+    fn controller_axis(&mut self, _event: piston::controller::ControllerAxisArgs, _manager:&mut IngameManager) {}
 
 
     fn skip_intro(&mut self, manager: &mut IngameManager);
