@@ -32,17 +32,36 @@ fn main() {
             }
         };
     }
-    
+
+    if !TEST {
+        if let Err(_) = std::env::var("CI_PROJECT_ID") {
+            let dir = std::env::current_dir().unwrap().to_string_lossy().to_string();
+            let commit_file = format!(
+                "{}/{}/src/{}commits.rs", 
+                dir,
+                if dir.ends_with("tataku-client") {"."} else {"tataku-client"},
+                ""
+                // if TEST {"test-"} else {""}
+            );
+            std::fs::write(
+                commit_file, 
+                build_commits_file(Vec::new(), String::new())
+            ).expect("error writing commits.rs");
+            return
+        }
+    }
+
+    //TODO: try using git to get some of these
     let id = env!("CI_PROJECT_ID", "77");
     let dir = env!("CI_PROJECT_DIR", std::env::current_dir().unwrap().to_string_lossy().to_string());
-    let branch = env!("CI_COMMIT_BRANCH", "multi-mode");
+    let branch = env!("CI_COMMIT_BRANCH", "main");
     let url = env!("CI_API_V4_URL", "https://gitlab.ayyeve.xyz/api/v4");
     let this_commit = env!("CI_COMMIT_SHA", "1bc485e2bc088d837d893cdd22a04dc92dccd95d");
 
     let commit_file = format!(
         "{}/{}/src/{}commits.rs", 
         dir,
-        if dir.ends_with("taiko-rs-client") {"."} else {"taiko-rs-client"},
+        if dir.ends_with("tataku-client") {"."} else {"tataku-client"},
         ""
         // if TEST {"test-"} else {""}
     );

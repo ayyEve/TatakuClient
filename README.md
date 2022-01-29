@@ -32,26 +32,22 @@ How to build:
 TODO:
 - // UI
  - dropdown menu item
- - notification system
   
 - // Gameplay
  - letter ranking
- - spectator
  - multiplayer (oh boy lmao)
- - online leaderboard
- - online replays (should come with ^, might be best to make an online_score_menu menu to distinguish between local and online scores)
+ - online replays
+ - skin support (need better slider rendering and image coloring first)
 
 - // New Audio Engine
  - handle headphones being unplugged (might require a dropdown to select the output device)
 
 - // Code
- - better error handling/messages
- - handle peppy direct download moment (might be best if notifs exist first)
- - depths that actually make sense
- - make renderables a param instead of returning a new list
+ - handle peppy direct download moment
  - pass the whole keys list instead of one key at a time
+ - depth doc (detail what is drawn at what depth range)
   
 maybe todo:
  - profiler
  - read osu replays
- - mods (shouldnt be too bad for some)
+ - more mods

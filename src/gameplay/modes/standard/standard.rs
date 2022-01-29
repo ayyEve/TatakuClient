@@ -636,6 +636,8 @@ impl GameMode for StandardGame {
             note.draw(args, list);
         }
 
+
+
         // draw follow points
         if self.settings.draw_follow_points {
             for i in 0..self.notes.len() - 1 {
@@ -643,22 +645,70 @@ impl GameMode for StandardGame {
                     let n1 = &self.notes[i];
                     let n2 = &self.notes[i + 1];
 
+                    if n1.note_type() == NoteType::Spinner {continue}
+                    if n2.note_type() == NoteType::Spinner {continue}
+
                     let preempt = n2.get_preempt();
-                    // if time < n1.time() || time > n1.end_time(0.0) {continue}
+                    let n1_time = n1.time();
+                    if time < n1_time - preempt {continue} //|| time > n2.end_time(0.0) {continue}
+                    let n2_time = n2.time();
+                    if time >= n2_time {continue}//|| time <= n1_time {continue}
 
-                    let alpha = (1.0 - ((n2.time() - (preempt * (2.0/3.0))) - time) / (preempt * (1.0/3.0))).clamp(0.0, 1.0);
-                    if alpha <= 0.0 || time >= n2.time() {continue}
+                    // let bar_size = Vector2::new(7.0, 3.0) * self.scaling_helper.scale;
+                    let follow_dot_size = 3.0 * self.scaling_helper.scale;
+                    let follow_dot_distance = 20.0 * self.scaling_helper.scale;
 
-                    list.push(Box::new(Line::new(
-                        n1.pos_at(n1.end_time(0.0), &self.scaling_helper),
-                        n2.pos_at(n2.time(), &self.scaling_helper),
-                        2.0 * self.scaling_helper.scale,
-                        100_000.0,
-                        Color::WHITE.alpha(alpha)
-                    )));
+                    // setup follow points and the time they should exist at
+
+                    let n1_pos = n1.pos_at(n2_time, &self.scaling_helper);
+                    let n2_pos = n2.pos_at(n2_time, &self.scaling_helper);
+
+                    let distance = n1_pos.distance(n2_pos);
+                    let follow_dot_count = distance/follow_dot_distance;
+                    for i in 0..follow_dot_count as u64 {
+                        let lerp_amount = i as f64 / follow_dot_count as f64;
+                        let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
+                        let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
+                        
+                        // let thing = ((time_at_this_point - (preempt * (2.0/3.0))) - time) / (preempt * (1.0/3.0));
+                        // let alpha = if time >= time_at_this_point {
+                        //     1.0 + thing
+                        // } else {
+                        //     1.0 - thing
+                        // }.clamp(0.0, 1.0);
+
+                        let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
+                        let mut alpha = 1.0 - f64::easeinout_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32;
+                        if time < n1_time {
+                            // TODO!
+                            alpha = 0.1;
+                        }
+                        if alpha == 0.0 {continue}
+
+                        list.push(Box::new(Circle::new(
+                            Color::WHITE.alpha(alpha),
+                            100_000.0,
+                            point,
+                            follow_dot_size,
+                        )));
+                    }
+
+                    // let alpha = (1.0 - ((n2_time - (preempt * (2.0/3.0))) - time) / (preempt * (1.0/3.0))).clamp(0.0, 1.0);
+                    // if alpha <= 0.0 {continue}
+                    // list.push(Box::new(Line::new(
+                    //     n1.pos_at(n1.end_time(0.0), &self.scaling_helper),
+                    //     n2.pos_at(n2.time(), &self.scaling_helper),
+                    //     2.0 * self.scaling_helper.scale,
+                    //     100_000.0,
+                    //     Color::WHITE.alpha(alpha)
+                    // )));
                 }
             }
         }
+
+
+
+
     }
 
     

@@ -269,9 +269,7 @@ impl Game {
         let controller_down = self.input_manager.get_controller_down();
         let controller_up = self.input_manager.get_controller_up();
 
-
-        let settings_clone = Settings::get_mut("Game::update").clone();
-
+        let settings_clone = Settings::get();
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
         //     println!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
