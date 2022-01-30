@@ -2,15 +2,6 @@ use super::*;
 use crate::prelude::*;
 
 
-// taiko drum controller:
-// outer left: button 6
-// inner left: button 10
-// innert right: button 11
-// outer right: button 7
-
-
-
-
 pub const NOTE_RADIUS:f64 = 32.0;
 pub const HIT_AREA_RADIUS:f64 = NOTE_RADIUS * 1.3;
 pub const HIT_POSITION:Vector2 = Vector2::new(180.0, 200.0);
@@ -40,10 +31,10 @@ pub struct TaikoGame {
     hitwindow_miss: f32,
 
     end_time: f32,
-
     render_queue: Vec<Box<HalfCircle>>,
+    auto_helper: TaikoAutoHelper,
 
-    auto_helper: TaikoAutoHelper
+    taiko_settings: Arc<TaikoSettings>
 }
 impl TaikoGame {
     pub fn next_note(&mut self) {self.note_index += 1}
@@ -53,7 +44,6 @@ impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {PlayMode::Taiko}
     fn end_time(&self) -> f32 {self.end_time}
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
-
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -69,7 +59,8 @@ impl GameMode for TaikoGame {
                     hitwindow_miss: 0.0,
 
                     render_queue: Vec::new(),
-                    auto_helper: TaikoAutoHelper::new()
+                    auto_helper: TaikoAutoHelper::new(),
+                    taiko_settings: Arc::new(Settings::get().taiko_settings.clone())
                 };
 
                 // add notes
@@ -171,7 +162,9 @@ impl GameMode for TaikoGame {
                     hitwindow_miss: 0.0,
 
                     render_queue: Vec::new(),
-                    auto_helper: TaikoAutoHelper::new()
+                    auto_helper: TaikoAutoHelper::new(),
+                    
+                    taiko_settings: Arc::new(Settings::get().taiko_settings.clone())
                 };
 
                 // add notes
@@ -487,20 +480,34 @@ impl GameMode for TaikoGame {
         // let id = btn.id;
         let time = manager.time();
 
-        match &**c.1 {
-            "Taiko Controller" => {
-                match btn {
-                    6 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
-                    7 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager),
-                    10 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
-                    11 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager),
-                    _ => {println!("[Taiko::Controller] other button")} // other key, not accepted for now
-                }
+        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.name) {
+            if c_config.left_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
             }
 
-            other => {
-                println!("[Taiko::Controller] other controller: {}", other)
+            if c_config.left_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
             }
+
+            if c_config.right_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
+            }
+
+            if c_config.right_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
+            }
+
+        } else {
+            println!("[Taiko::Controller] Controller with no setup");
+
+            // TODO: if this is slow, we should store controller configs separately
+            // but i dont think this will be an issue, as its unlikely to happen in the first place,
+            // and if there is lag, the user is likely to retry the man anyways
+            println!("[Taiko::Controller] Setting up new controller");
+            let new_default = TaikoControllerConfig::defaults(c.name.clone());
+            let mut new_settings = self.taiko_settings.as_ref().clone();
+            new_settings.controller_config.insert((*c.name).clone(), new_default);
+            self.taiko_settings = Arc::new(new_settings);
         }
     }
 

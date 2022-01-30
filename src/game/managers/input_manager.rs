@@ -9,8 +9,20 @@ use piston::input::ButtonState;
 use piston::ControllerAxisEvent;
 
 use crate::prelude::*;
-/// (controller_id, controller_name)
-pub type Controller = (u32, Arc<String>);
+
+#[derive(Clone, Hash, PartialEq, Eq)]
+pub struct Controller {
+    pub id: u32,
+    pub name: Arc<String>
+}
+impl Controller {
+    fn new(id:u32, name:Arc<String>) -> Self {
+        Self {
+            id,
+            name
+        }
+    }
+}
 
 // lazy_static::lazy_static! {
 //     pub static ref CONTROLLER_NAMES: Arc<Mutex<HashMap<u32, String>>> = Arc::new(Mutex::new(HashMap::new()));
@@ -154,7 +166,7 @@ impl InputManager {
         }
 
         if let Some(axis) = e.controller_axis_args() {
-            println!("got controller axis: {:?}", axis);
+            // println!("got controller axis: {:?}", axis);
         }
 
         e.mouse_cursor(|[x, y]| {
@@ -234,7 +246,7 @@ impl InputManager {
         let mut down = Vec::new();
         for (c, buttons) in self.controller_down.iter_mut() {
             let name = self.controller_names.get(c).unwrap();
-            let controller = (*c, name.clone());
+            let controller = Controller::new(*c, name.clone());
 
             for b in buttons.iter() {
                 down.push((controller.clone(), *b));
@@ -250,7 +262,7 @@ impl InputManager {
         let mut up = Vec::new();
         for (c, buttons) in self.controller_up.iter_mut() {
             let name = self.controller_names.get(c).unwrap();
-            let controller = (*c, name.clone());
+            let controller = Controller::new(*c, name.clone());
             
             for b in buttons.iter() {
                 up.push((controller.clone(), *b));
@@ -297,5 +309,115 @@ impl InputManager {
         self.register_times.clear();
 
         (min,max,sum)
+    }
+}
+
+
+
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+pub struct AxisConfig {
+    pub axis_id: u8,
+    pub threshhold: f64
+}
+
+
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ControllerInputConfig {
+    pub button: Option<u8>,
+    pub axis: Option<AxisConfig>
+}
+impl ControllerInputConfig {
+    pub fn new(button: Option<u8>, axis: Option<AxisConfig>) -> Self {
+        Self {
+            button, 
+            axis
+        }
+    }
+    
+    pub fn check_button(&self, button: u8) -> bool {
+        if let Some(b) = self.button {
+            b == button
+        } else {
+            false
+        }
+    }
+}
+
+pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
+    match &**controller {
+        // nintendo switch taiko controller
+        "Taiko Controller" => match button {
+            0  => "Y",
+            1  => "B",
+            2  => "A",
+            3  => "X",
+            4  => "L",
+            5  => "R",
+            6  => "Outer Left",
+            7  => "Outer Right",
+            8  => "Minus",
+            9  => "Plus",
+            10 => "Inner Left",
+            11 => "Inner Right",
+            12 => "Home",
+            13 => "Share",
+            14 => "D-Pad Up",
+            15 => "D-Pad Right",
+            16 => "D-Pad Down",
+            17 => "D-Pad Left",
+
+            _ => "Other"
+        }
+
+        // xbox one controller
+        "Xbox Controller" => match button {
+            0 => "A",
+            1 => "B",
+            2 => "X",
+            3 => "Y",
+            4 => "LB",
+            5 => "RB",
+            6 => "Select/Options",
+            7 => "Start",
+
+            8 => "Left Stick Down",
+            9 => "Right Stick Down",
+
+            10 => "D-Pad Up",
+            11 => "D-Pad Right",
+            12 => "D-Pad Down",
+            13 => "D-Pad Left",
+
+            _ => "Other"
+        }
+
+        // ps4 controller
+        "Wireless Controller" => match button {
+            0 => "Square",
+            1 => "Cross",
+            2 => "Circle",
+            3 => "Triangle",
+            4 => "L1",
+            5 => "R1",
+            6 => "L2",
+            7 => "R2",
+
+            8 => "Share",
+            9 => "Start",
+            10 => "L3",
+            11 => "R3",
+            12 => "Home",
+
+            13 => "Touchpad Click",
+
+            14 => "D-Pad Up",
+            15 => "D-Pad Right",
+            16 => "D-Pad Down",
+            17 => "D-Pad Left",
+
+            _ => "Other"
+        }
+
+        _ => "Other"
     }
 }
