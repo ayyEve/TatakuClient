@@ -333,7 +333,7 @@ impl ControllerInputConfig {
             axis
         }
     }
-    
+
     pub fn check_button(&self, button: u8) -> bool {
         if let Some(b) = self.button {
             b == button
@@ -343,80 +343,82 @@ impl ControllerInputConfig {
     }
 }
 
-pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
-    match &**controller {
-        // nintendo switch taiko controller
-        "Taiko Controller" => match button {
-            0  => "Y",
-            1  => "B",
-            2  => "A",
-            3  => "X",
-            4  => "L",
-            5  => "R",
-            6  => "Outer Left",
-            7  => "Outer Right",
-            8  => "Minus",
-            9  => "Plus",
-            10 => "Inner Left",
-            11 => "Inner Right",
-            12 => "Home",
-            13 => "Share",
-            14 => "D-Pad Up",
-            15 => "D-Pad Right",
-            16 => "D-Pad Down",
-            17 => "D-Pad Left",
 
-            _ => "Other"
-        }
+pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
+    match (&**controller, button) {
+        // nintendo switch taiko controller
+        ("Taiko Controller", 0)  => "Y",
+        ("Taiko Controller", 1)  => "B",
+        ("Taiko Controller", 2)  => "A",
+        ("Taiko Controller", 3)  => "X",
+        ("Taiko Controller", 4)  => "L",
+        ("Taiko Controller", 5)  => "R",
+        ("Taiko Controller", 6)  => "Outer Left",
+        ("Taiko Controller", 7)  => "Outer Right",
+        ("Taiko Controller", 8)  => "Minus",
+        ("Taiko Controller", 9)  => "Plus",
+        ("Taiko Controller", 10) => "Inner Left",
+        ("Taiko Controller", 11) => "Inner Right",
+        ("Taiko Controller", 12) => "Home",
+        ("Taiko Controller", 13) => "Share",
+        ("Taiko Controller", 14) => "D-Pad Up",
+        ("Taiko Controller", 15) => "D-Pad Right",
+        ("Taiko Controller", 16) => "D-Pad Down",
+        ("Taiko Controller", 17) => "D-Pad Left",
 
         // xbox one controller
-        "Xbox Controller" => match button {
-            0 => "A",
-            1 => "B",
-            2 => "X",
-            3 => "Y",
-            4 => "LB",
-            5 => "RB",
-            6 => "Select/Options",
-            7 => "Start",
-
-            8 => "Left Stick Down",
-            9 => "Right Stick Down",
-
-            10 => "D-Pad Up",
-            11 => "D-Pad Right",
-            12 => "D-Pad Down",
-            13 => "D-Pad Left",
-
-            _ => "Other"
-        }
+        ("Xbox Controller", 0)  => "A",
+        ("Xbox Controller", 1)  => "B",
+        ("Xbox Controller", 2)  => "X",
+        ("Xbox Controller", 3)  => "Y",
+        ("Xbox Controller", 4)  => "LB",
+        ("Xbox Controller", 5)  => "RB",
+        ("Xbox Controller", 6)  => "Select/Options",
+        ("Xbox Controller", 7)  => "Start",
+        ("Xbox Controller", 8)  => "Left Stick Down",
+        ("Xbox Controller", 9)  => "Right Stick Down",
+        ("Xbox Controller", 10) => "D-Pad Up",
+        ("Xbox Controller", 11) => "D-Pad Right",
+        ("Xbox Controller", 12) => "D-Pad Down",
+        ("Xbox Controller", 13) => "D-Pad Left",
 
         // ps4 controller
-        "Wireless Controller" => match button {
-            0 => "Square",
-            1 => "Cross",
-            2 => "Circle",
-            3 => "Triangle",
-            4 => "L1",
-            5 => "R1",
-            6 => "L2",
-            7 => "R2",
+        ("Wireless Controller", 0) => "Square",
+        ("Wireless Controller", 1) => "Cross",
+        ("Wireless Controller", 2) => "Circle",
+        ("Wireless Controller", 3) => "Triangle",
+        ("Wireless Controller", 4) => "L1",
+        ("Wireless Controller", 5) => "R1",
+        ("Wireless Controller", 6) => "L2",
+        ("Wireless Controller", 7) => "R2",
+        ("Wireless Controller", 8) => "Share",
+        ("Wireless Controller", 9) => "Start",
+        ("Wireless Controller", 10) => "L3",
+        ("Wireless Controller", 11) => "R3",
+        ("Wireless Controller", 12) => "Home",
+        ("Wireless Controller", 13) => "Touchpad Click",
+        ("Wireless Controller", 14) => "D-Pad Up",
+        ("Wireless Controller", 15) => "D-Pad Right",
+        ("Wireless Controller", 16) => "D-Pad Down",
+        ("Wireless Controller", 17) => "D-Pad Left",
 
-            8 => "Share",
-            9 => "Start",
-            10 => "L3",
-            11 => "R3",
-            12 => "Home",
-
-            13 => "Touchpad Click",
-
-            14 => "D-Pad Up",
-            15 => "D-Pad Right",
-            16 => "D-Pad Down",
-            17 => "D-Pad Left",
-
-            _ => "Other"
-        }
+        // Mayflash Wiimote PC Adapter
+        ("Mayflash Wiimote PC Adapter", 0)  => "1",
+        ("Mayflash Wiimote PC Adapter", 1)  => "2",
+        ("Mayflash Wiimote PC Adapter", 2)  => "A",
+        ("Mayflash Wiimote PC Adapter", 3)  => "B",
+        ("Mayflash Wiimote PC Adapter", 4)  => "-",
+        ("Mayflash Wiimote PC Adapter", 5)  => "+",
+        ("Mayflash Wiimote PC Adapter", 6)  => "Z",
+        ("Mayflash Wiimote PC Adapter", 7)  => "C",
+        // ("Mayflash Wiimote PC Adapter", 8)  => "?",
+        // ("Mayflash Wiimote PC Adapter", 9)  => "?",
+        // ("Mayflash Wiimote PC Adapter", 10) => "?",
+        ("Mayflash Wiimote PC Adapter", 11) => "Home",
+        ("Mayflash Wiimote PC Adapter", 12) => "D-Pad Up",
+        ("Mayflash Wiimote PC Adapter", 13) => "D-Pad Right",
+        ("Mayflash Wiimote PC Adapter", 14) => "D-Pad Down",
+        ("Mayflash Wiimote PC Adapter", 15) => "D-Pad Left",
 
         _ => "Other"
     }
