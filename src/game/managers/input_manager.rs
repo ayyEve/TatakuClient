@@ -9,6 +9,13 @@ use piston::input::ButtonState;
 use piston::ControllerAxisEvent;
 
 use crate::prelude::*;
+/// (controller_id, controller_name)
+pub type Controller = (u32, Arc<String>);
+
+// lazy_static::lazy_static! {
+//     pub static ref CONTROLLER_NAMES: Arc<Mutex<HashMap<u32, String>>> = Arc::new(Mutex::new(HashMap::new()));
+// }
+
 
 pub struct InputManager {
     pub mouse_pos: Vector2,
@@ -19,7 +26,8 @@ pub struct InputManager {
     pub mouse_down: HashSet<(MouseButton, Instant)>,
     pub mouse_up: HashSet<(MouseButton, Instant)>,
 
-    
+    /// controller names
+    pub controller_names: HashMap<u32, Arc<String>>,
     /// index is controller id
     pub controller_buttons: HashMap<u32, HashSet<u8>>,
     /// index is controller id
@@ -56,6 +64,7 @@ impl InputManager {
             keys_down: HashSet::new(),
             keys_up:  HashSet::new(),
 
+            controller_names: HashMap::new(),
             controller_buttons: HashMap::new(),
             controller_down: HashMap::new(),
             controller_up: HashMap::new(),
@@ -67,7 +76,35 @@ impl InputManager {
         }
     }
 
-    fn verify_controller_index_exists(&mut self, id: u32) {
+    fn verify_controller_index_exists(&mut self, id: u32, window: &mut glfw_window::GlfwWindow) {
+        if !self.controller_names.contains_key(&id) {
+            use glfw::JoystickId::*;
+            let j_id = match id {
+                0  => Joystick1,
+                1  => Joystick2,
+                2  => Joystick3,
+                3  => Joystick4,
+                4  => Joystick5,
+                5  => Joystick6,
+                6  => Joystick7,
+                7  => Joystick8,
+                8  => Joystick9,
+                9  => Joystick10,
+                10 => Joystick11,
+                11 => Joystick12,
+                12 => Joystick13,
+                13 => Joystick14,
+                14 => Joystick15,
+                15 => Joystick16,
+                _ => panic!("unknown joystick id: {}", id)
+            };
+
+            let name = window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
+            println!("New controller: {}", name);
+            self.controller_names.insert(id, Arc::new(name));
+            // CONTROLLER_NAMES.lock().insert(id, name);
+        }
+
         if !self.controller_buttons.contains_key(&id) {
             self.controller_buttons.insert(id, HashSet::new());
         }
@@ -102,11 +139,13 @@ impl InputManager {
                 }
 
                 (Button::Controller(cb), ButtonState::Press) => {
-                    self.verify_controller_index_exists(cb.id);
+                    println!("press: c: {}, b: {}", cb.id, cb.button);
+                    self.verify_controller_index_exists(cb.id, window);
                     self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
                     self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
                 (Button::Controller(cb), ButtonState::Release) => {
+                    println!("release: c: {}, b: {}", cb.id, cb.button);
                     self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
                     self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
@@ -191,11 +230,14 @@ impl InputManager {
 
     /// get all pressed controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_down(&mut self) -> Vec<(u32, u8)> {
+    pub fn get_controller_down(&mut self) -> Vec<(Controller, u8)> {
         let mut down = Vec::new();
         for (c, buttons) in self.controller_down.iter_mut() {
+            let name = self.controller_names.get(c).unwrap();
+            let controller = (*c, name.clone());
+
             for b in buttons.iter() {
-                down.push((*c, *b));
+                down.push((controller.clone(), *b));
             }
             buttons.clear()
         }
@@ -204,11 +246,14 @@ impl InputManager {
 
     /// get all released controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_up(&mut self) -> Vec<(u32, u8)> {
+    pub fn get_controller_up(&mut self) -> Vec<(Controller, u8)> {
         let mut up = Vec::new();
         for (c, buttons) in self.controller_up.iter_mut() {
+            let name = self.controller_names.get(c).unwrap();
+            let controller = (*c, name.clone());
+            
             for b in buttons.iter() {
-                up.push((*c, *b)); 
+                up.push((controller.clone(), *b));
             }
             buttons.clear()
         }

@@ -386,10 +386,10 @@ impl Game {
 
                     // controller
                     for (c, b) in controller_down {
-                        manager.controller_press(c, b);
+                        manager.controller_press(&c, b);
                     }
                     for (c, b) in controller_up {
-                        manager.controller_release(c, b);
+                        manager.controller_release(&c, b);
                     }
 
 

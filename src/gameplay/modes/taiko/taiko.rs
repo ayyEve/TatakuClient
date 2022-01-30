@@ -483,15 +483,24 @@ impl GameMode for TaikoGame {
     }
 
 
-    fn controller_press(&mut self, _c_id: u32, btn: u8, manager:&mut IngameManager) {
+    fn controller_press(&mut self, c: &Controller, btn: u8, manager:&mut IngameManager) {
         // let id = btn.id;
         let time = manager.time();
-        match btn {
-            6 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
-            7 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager),
-            10 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
-            11 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager),
-            _ => {println!("[Taiko::Controller] other button")} // other key, not accepted for now
+
+        match &**c.1 {
+            "Taiko Controller" => {
+                match btn {
+                    6 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
+                    7 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager),
+                    10 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
+                    11 => self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager),
+                    _ => {println!("[Taiko::Controller] other button")} // other key, not accepted for now
+                }
+            }
+
+            other => {
+                println!("[Taiko::Controller] other controller: {}", other)
+            }
         }
     }
 
