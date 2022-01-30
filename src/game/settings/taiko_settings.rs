@@ -56,9 +56,9 @@ impl TaikoControllerConfig {
     }
     pub fn defaults(controller_name: Arc<String>) -> Self {
         match &**controller_name {
-            "Taiko Controller" => Self::new_default(6, 10, 11, 7),
-            "Xbox Controller" => Self::new_default(13, 12, 0, 1),
-            "Wireless Controller" => Self::new_default(17, 15, 0, 2),
+            "Taiko Controller"|"HORI CO.,LTD. Taiko Controller" => Self::new_default(6, 10, 11, 7),
+            "Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad" => Self::new_default(13, 12, 0, 1),
+            "Wireless Controller"|"Sony Interactive Entertainment Wireless Controller" => Self::new_default(17, 15, 0, 2),
 
             _ => Self {
                 left_kat: ControllerInputConfig::new(None, None),
