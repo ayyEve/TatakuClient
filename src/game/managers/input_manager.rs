@@ -367,20 +367,20 @@ pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
         ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 17) => "D-Pad Left",
 
         // xbox one controller (windows|probably linux)
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 0)  => "A",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 1)  => "B",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 2)  => "X",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 3)  => "Y",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 4)  => "LB",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 5)  => "RB",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 6)  => "Select/Options",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 7)  => "Start",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 8)  => "Left Stick Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 9)  => "Right Stick Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 10) => "D-Pad Up",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 11) => "D-Pad Right",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 12) => "D-Pad Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad", 13) => "D-Pad Left",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 0)  => "A",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 1)  => "B",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 2)  => "X",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 3)  => "Y",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 4)  => "LB",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 5)  => "RB",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 6)  => "Select/Options",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 7)  => "Start",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 8)  => "Left Stick Down",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 9)  => "Right Stick Down",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 10) => "D-Pad Up",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 11) => "D-Pad Right",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 12) => "D-Pad Down",
+        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 13) => "D-Pad Left",
 
         // ps3 controller (linux only, windows apparently is pain)
         ("Sony PLAYSTATION(R)3 Controller", 0) => "Cross",
@@ -467,7 +467,23 @@ pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
         ("Mayflash Wiimote PC Adapter", 14) => "D-Pad Down",
         ("Mayflash Wiimote PC Adapter", 15) => "D-Pad Left",
 
+        // TODO: verify the name
         // Generic\tUSB\tJoystick\t
+        // n64
+        // A:5
+        // B:4
+        // Start:9
+        // DPADUP:12
+        // DPADRIGHT:13
+        // DPADDOWN:14
+        // DPADLEFT:15
+        // C-UP:0
+        // C-RIGHT:1
+        // C-DOWN:2
+        // C-LEFT:3
+        // L:6
+        // R:7
+        // Z:8
 
         _ => "Other"
     }
