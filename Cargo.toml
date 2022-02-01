@@ -32,7 +32,7 @@ piston = "0.53.0"
 piston2d-graphics = "0.40.0"
 pistoncore-glfw_window = { git = "https://github.com/ayyEve/glfw_window" }
 piston2d-opengl_graphics = "0.78.0"
-ayyeve-piston-ui = { git = "https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui" }
+ayyeve-piston-ui = { git = "https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui"}
 
 # bass audio
 bass-rs = { version="0.1", optional = true }

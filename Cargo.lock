@@ -68,7 +68,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "ayyeve-piston-ui"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#7471c8eb6b67d8daa627eaae75ff9f71e05fa2bd"
+source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#fe49ccdb3653ea90db61a11637d182b6d65c83a5"
 dependencies = [
  "clipboard",
  "lazy_static",

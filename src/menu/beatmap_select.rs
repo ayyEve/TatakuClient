@@ -112,6 +112,38 @@ impl BeatmapSelectMenu {
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
         }
     }
+
+    fn select_map(&mut self, game: &mut Game, map: String, can_start: bool) {
+        let mut lock = BEATMAP_MANAGER.lock();
+
+        // compare last clicked map hash with the new hash.
+        // if the hashes are the same, the same map was clicked twice in a row.
+        // play it
+        if let Some(current) = &lock.current_beatmap {
+            if current.beatmap_hash == map && can_start {
+                self.play_map(game, current);
+                self.map_changing = (true, false, 0);
+                return;
+            }
+        }
+
+        // set the current map to the clicked
+        self.map_changing = (true, false, 0);
+        match lock.get_by_hash(&map) {
+            Some(clicked) => {
+                lock.set_current_beatmap(game, &clicked, true, true);
+            }
+            None => {
+                println!("no map?");
+                // map was deleted?
+                return
+            }
+        }
+        drop(lock);
+
+        self.beatmap_scroll.refresh_layout();
+        self.load_scores();
+    }
 }
 impl Menu<Game> for BeatmapSelectMenu {
     fn update(&mut self, game:&mut Game) {
@@ -375,40 +407,13 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         // check if beatmap item was clicked
         if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods) {
-            let mut lock = BEATMAP_MANAGER.lock();
-
-            // compare last clicked map hash with the new hash.
-            // if the hashes are the same, the same map was clicked twice in a row.
-            // play it
-            if let Some(current) = &lock.current_beatmap {
-                if current.beatmap_hash == clicked_hash && button == MouseButton::Left {
-                    self.play_map(game, current);
-                    self.map_changing = (true, false, 0);
-                    return;
-                }
-            }
-
             if button == MouseButton::Right {
                 // clicked hash is the target
                 let dialog = BeatmapDialog::new(clicked_hash.clone());
                 game.add_dialog(Box::new(dialog));
             }
 
-            // set the current map to the clicked
-            self.map_changing = (true, false, 0);
-            match lock.get_by_hash(&clicked_hash) {
-                Some(clicked) => {
-                    lock.set_current_beatmap(game, &clicked, true, true);
-                }
-                None => {
-                    // map was deleted?
-                    return
-                }
-            }
-            drop(lock);
-
-            self.beatmap_scroll.refresh_layout();
-            self.load_scores();
+            self.select_map(game, clicked_hash, button == MouseButton::Left);
             return;
         }
         
@@ -433,6 +438,18 @@ impl Menu<Game> for BeatmapSelectMenu {
 
     fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
+
+        if key == Left {
+            if let Some(hash) = self.beatmap_scroll.select_previous_item() {
+                self.select_map(game, hash, false);
+            }
+        }
+        if key == Right {
+            if let Some(hash) = self.beatmap_scroll.select_next_item() {
+                self.select_map(game, hash, false);
+            }
+        }
+
 
         if key == Escape {
             let menu = game.menus.get("main").unwrap().clone();
@@ -493,6 +510,16 @@ impl Menu<Game> for BeatmapSelectMenu {
             }
         }
 
+        // if enter was hit, or a beatmap item was updated
+        if self.beatmap_scroll.on_key_press(key, mods) || key == Return {
+            if let Some(selected_index) = self.beatmap_scroll.get_selected_index() {
+                if let Some(item) = self.beatmap_scroll.items.get(selected_index) {
+                    let hash = item.get_tag();
+                    self.select_map(game, hash, key == Return);
+                }
+            }
+        }
+        
 
         // only refresh if the text changed
         let old_text = self.search_text.get_text();
@@ -576,6 +603,52 @@ impl ScrollableItem for BeatmapsetItem {
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 
+    
+    fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
+        if self.selected && self.hover {
+            // find the clicked item
+            // we only care about y pos, because we know we were clicked
+            let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
+            let index = (((rel_y2 + BEATMAP_ITEM_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
+
+            self.selected_index = index;
+
+            return true;
+        }
+
+        self.selected = self.hover;
+        self.hover
+    }
+    fn on_mouse_move(&mut self, pos:Vector2) {
+        self.mouse_pos = pos;
+        self.check_hover(pos);
+    }
+
+    fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
+        if !self.selected {return false}
+
+        if key == Key::Down {
+            self.selected_index += 1;
+            if self.selected_index >= self.beatmaps.len() {
+                self.selected_index = 0;
+            }
+            
+            return true;
+        }
+
+        if key == Key::Up {
+            if self.selected_index == 0 {
+                self.selected_index = self.beatmaps.len() - 1;
+            } else {
+                self.selected_index -= 1;
+            }
+            
+            return true;
+        }
+
+        false
+    }
+
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let font = get_font("main");
         let meta = &self.beatmaps[0];
@@ -651,25 +724,6 @@ impl ScrollableItem for BeatmapsetItem {
         }
     }
 
-    fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
-        if self.selected && self.hover {
-            // find the clicked item
-            // we only care about y pos, because we know we were clicked
-            let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
-            let index = (((rel_y2 + BEATMAP_ITEM_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
-
-            self.selected_index = index;
-
-            return true;
-        }
-
-        self.selected = self.hover;
-        self.hover
-    }
-    fn on_mouse_move(&mut self, pos:Vector2) {
-        self.mouse_pos = pos;
-        self.check_hover(pos);
-    }
 }
 
 

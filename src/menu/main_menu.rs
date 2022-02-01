@@ -286,6 +286,7 @@ impl Menu<Game> for MainMenu {
 
 
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct MenuButton {
     pos: Vector2,
@@ -300,7 +301,7 @@ pub struct MenuButton {
     timer: Instant
 }
 impl MenuButton {
-    pub fn new(pos: Vector2, size: Vector2, text:&str) -> MenuButton {
+    pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MenuButton {
         let font_size: u32 = 12;
         let pos = Vector2::zero();
         
@@ -382,29 +383,29 @@ impl MenuButton {
 
 
 
-        let transform = Transformation::new(
-            0.0,
-            500.0,
-            TransformType::Transparency {start: 0.0, end: 1.0},
-            TransformEasing::EaseInSine,
-            time
-        );
+        // let transform = Transformation::new(
+        //     0.0,
+        //     500.0,
+        //     TransformType::Transparency {start: 0.0, end: 1.0},
+        //     TransformEasing::EaseInSine,
+        //     time
+        // );
 
-        let transform2 = Transformation::new(
-            0.0,
-            500.0,
-            TransformType::Rotation {start: 0.0, end: PI * 2.0},
-            TransformEasing::Linear,
-            time
-        );
+        // let transform2 = Transformation::new(
+        //     0.0,
+        //     500.0,
+        //     TransformType::Rotation {start: 0.0, end: PI * 2.0},
+        //     TransformEasing::Linear,
+        //     time
+        // );
 
-        let transform3 = Transformation::new(
-            500.0,
-            500.0,
-            TransformType::Scale {start: 1.0, end: 3.0},
-            TransformEasing::Linear,
-            time
-        );
+        // let transform3 = Transformation::new(
+        //     500.0,
+        //     500.0,
+        //     TransformType::Scale {start: 1.0, end: 3.0},
+        //     TransformEasing::Linear,
+        //     time
+        // );
 
         self.shapes.transforms.push(t1);
         // self.shapes.transforms.push(transform);
