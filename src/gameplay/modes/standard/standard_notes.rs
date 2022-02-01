@@ -804,44 +804,48 @@ impl HitObject for StandardSlider {
 
 
         // curve
-        // self.slider_draw.color.a = alpha;
-        // list.push(Box::new(self.slider_draw.clone()));
+        self.slider_draw.color.a = alpha;
+        list.push(Box::new(self.slider_draw.clone()));
 
 
         
-        // curve
+        // // curve
 
-        for line in self.curve.path.iter() {
-            let p1 = self.scaling_helper.scale_coords(line.p1);
-            let p2 = self.scaling_helper.scale_coords(line.p2);
-            let l = Line::new(
-                p1,
-                p2,
-                self.radius,
-                self.slider_depth,
-                color
-            );
-            list.push(Box::new(l));
+        // for line in self.curve.path.iter() {
+        //     let p1 = self.scaling_helper.scale_coords(line.p1);
+        //     let p2 = self.scaling_helper.scale_coords(line.p2);
+        //     let l = Line::new(
+        //         p1,
+        //         p2,
+        //         self.radius,
+        //         self.slider_depth,
+        //         color
+        //     );
+        //     list.push(Box::new(l));
 
-            // let line = Line::new(
-            //     line.p1,
-            //     p2,
-            //     5.0,
-            //     self.slider_depth - 1.0,
-            //     Color::YELLOW
-            // );
-            // list.push(Box::new(line));
+        //     // let line = Line::new(
+        //     //     line.p1,
+        //     //     p2,
+        //     //     5.0,
+        //     //     self.slider_depth - 1.0,
+        //     //     Color::YELLOW
+        //     // );
+        //     // list.push(Box::new(line));
 
-            // add a circle to smooth out the corners
-            list.push(Box::new(Circle::new(
-                color,
-                self.slider_depth,
-                p2,
-                self.radius,
-            )))
-        }
+        //     // add a circle to smooth out the corners
+        //     list.push(Box::new(Circle::new(
+        //         color,
+        //         self.slider_depth,
+        //         p2,
+        //         self.radius,
+        //     )))
+        // }
 
         
+
+
+
+
         // for line in self.curve.path.iter() {
         //     let p1 = self.scaling_helper.scale_coords(line.p1);
         //     let p2 = self.scaling_helper.scale_coords(line.p2);

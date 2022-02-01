@@ -5,6 +5,7 @@ use image::ImageError;
 #[cfg(feature="bass_audio")]
 use bass_rs::prelude::BassError;
 use serde_json::Error as JsonError;
+use tataku_common::SerializationError;
 
 use super::*;
 
@@ -23,6 +24,7 @@ pub enum TatakuError {
     GlError(GlError),
 
     String(String),
+    SerializationError(SerializationError),
 }
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -35,6 +37,7 @@ impl Display for TatakuError {
             TatakuError::String(e) => write!(f, "{:?}", e),
             TatakuError::GlError(e) => write!(f, "{:?}", e),
             TatakuError::GameMode(e) => write!(f, "{:?}", e),
+            TatakuError::SerializationError(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -69,6 +72,10 @@ impl From<String> for TatakuError {
 impl From<GameModeError> for TatakuError {
     fn from(e: GameModeError) -> Self {TatakuError::GameMode(e)}
 }
+impl From<SerializationError> for TatakuError {
+    fn from(e: SerializationError) -> Self {TatakuError::SerializationError(e)}
+}
+
 
 #[derive(Clone, Copy, Debug)]
 pub enum GameModeError {

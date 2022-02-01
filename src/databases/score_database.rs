@@ -75,17 +75,17 @@ pub fn save_score(s:&Score) {
 }
 
 
-pub fn save_replay(r:&Replay, s:&Score) -> std::io::Result<()> {
+pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<()> {
     let mut writer = SerializationWriter::new();
     writer.write(r.clone());
 
     let filename = format!("{}/{}.rs_replay", REPLAYS_DIR,s.hash());
-    save_database(&filename, writer)
+    Ok(save_database(&filename, writer)?)
 }
 
-pub fn get_local_replay(score_hash:String) -> std::io::Result<Replay> {
+pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let fullpath = format!("{}/{}.rs_replay", REPLAYS_DIR, score_hash);
     println!("[Replay] loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
-    Ok(reader.read())
+    Ok(reader.read()?)
 }

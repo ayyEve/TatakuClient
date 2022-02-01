@@ -141,7 +141,11 @@ impl OnlineManager {
 
                 while let Some(message) = reader.next().await {
                     match message {
-                        Ok(Message::Binary(data)) => OnlineManager::handle_packet(data).await,
+                        Ok(Message::Binary(data)) => {
+                            if let Err(e) = OnlineManager::handle_packet(data).await {
+                                println!("Error with packet: {}", e);
+                            }
+                        },
                         Ok(Message::Ping(_)) => {
                             if let Some(writer) = s.lock().await.writer.as_mut() {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
@@ -166,12 +170,12 @@ impl OnlineManager {
         }
     }
 
-    async fn handle_packet(data:Vec<u8>) {
+    async fn handle_packet(data:Vec<u8>) -> TatakuResult<()> {
         let s = ONLINE_MANAGER.clone();
         let mut reader = SerializationReader::new(data);
 
         while reader.can_read() {
-            let packet:PacketId = reader.read();
+            let packet:PacketId = reader.read()?;
             if EXTRA_ONLINE_LOGGING {println!("[Online] got packet {:?}", packet)};
 
             match packet {
@@ -336,6 +340,8 @@ impl OnlineManager {
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn set_action(action:UserAction, action_text:String, mode: PlayMode) {
