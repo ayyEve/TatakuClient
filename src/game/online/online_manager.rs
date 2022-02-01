@@ -455,7 +455,7 @@ impl OnlineManager {
     pub fn start_spectating(host_id: u32) {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let mut s = s.lock().await;
+            let s = s.lock().await;
             send_packet!(s.writer, create_packet!(Client_Spectate {host_id:host_id}));
         });
     }

@@ -179,12 +179,12 @@ impl Transformable for Text {
 
 
 
-fn measure_text(font:Font, font_size: u32, text: &String, scale: Vector2) -> Vector2 {
+fn measure_text(font:Font, font_size: u32, text: &String, _scale: Vector2) -> Vector2 {
     let mut text_size = Vector2::zero();
     let mut font = font.lock();
 
     let block_char = '█';
-    let character = font.character(font_size, block_char).unwrap();
+    let _character = font.character(font_size, block_char).unwrap();
 
     for _ch in text.chars() {
         let character = font.character(font_size, _ch).unwrap();

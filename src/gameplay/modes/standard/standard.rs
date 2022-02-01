@@ -121,11 +121,11 @@ impl StandardGame {
             }
 
             // check loop
-            if stack_base_index >= 0 {
-                stack_base_index -= 1
-            } else {
-                break
-            }
+            // if stack_base_index == 0 {
+            //     stack_base_index -= 1
+            // } else {
+            //     break
+            // }
         }
 
 

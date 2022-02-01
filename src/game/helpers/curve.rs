@@ -42,6 +42,7 @@ pub struct Curve {
     pub velocity: f32,
     pub score_times: Vec<f32>
 }
+#[allow(dead_code)]
 impl Curve {
     fn new(slider: SliderDef, path: Vec<CurveLine>, beatmap: &Beatmap) -> Self {
         let l = slider.length * 1.4 * slider.slides as f32;

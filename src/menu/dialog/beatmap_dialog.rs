@@ -13,8 +13,8 @@ impl BeatmapDialog {
         const Y_PADDING:f64 = 5.0;
         const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
-        let mut offset = 100.0;
-        let mut count = 0;
+        let offset = 100.0;
+        let count = 0;
 
         let delete_map = MenuButton::new(
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f64 * (BUTTON_SIZE.y + Y_PADDING))),
