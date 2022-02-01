@@ -11,11 +11,11 @@ use piston::ControllerAxisEvent;
 use crate::prelude::*;
 
 #[derive(Clone, Hash, PartialEq, Eq)]
-pub struct Controller {
+pub struct ControllerMeta {
     pub id: u32,
     pub name: Arc<String>
 }
-impl Controller {
+impl ControllerMeta {
     fn new(id:u32, name:Arc<String>) -> Self {
         Self {
             id,
@@ -242,14 +242,14 @@ impl InputManager {
 
     /// get all pressed controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_down(&mut self) -> Vec<(Controller, u8)> {
+    pub fn get_controller_down(&mut self) -> Vec<(Box<dyn Controller>, u8)> {
         let mut down = Vec::new();
         for (c, buttons) in self.controller_down.iter_mut() {
             let name = self.controller_names.get(c).unwrap();
-            let controller = Controller::new(*c, name.clone());
-
+           
             for b in buttons.iter() {
-                down.push((controller.clone(), *b));
+                let controller = make_controller(*c, name.clone());
+                down.push((controller, *b));
             }
             buttons.clear()
         }
@@ -258,14 +258,14 @@ impl InputManager {
 
     /// get all released controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_up(&mut self) -> Vec<(Controller, u8)> {
+    pub fn get_controller_up(&mut self) -> Vec<(Box<dyn Controller>, u8)> {
         let mut up = Vec::new();
         for (c, buttons) in self.controller_up.iter_mut() {
             let name = self.controller_names.get(c).unwrap();
-            let controller = Controller::new(*c, name.clone());
             
             for b in buttons.iter() {
-                up.push((controller.clone(), *b));
+                let controller = make_controller(*c, name.clone());
+                up.push((controller, *b));
             }
             buttons.clear()
         }
@@ -344,147 +344,28 @@ impl ControllerInputConfig {
 }
 
 
-pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
-    match (&**controller, button) {
-        // taiko drum (ps4, switch) (windows | linux)
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 0)  => "Y",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 1)  => "B",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 2)  => "A",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 3)  => "X",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 4)  => "L",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 5)  => "R",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 6)  => "Outer Left",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 7)  => "Outer Right",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 8)  => "Minus",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 9)  => "Plus",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 10) => "Inner Left",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 11) => "Inner Right",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 12) => "Home",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 13) => "Share",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 14) => "D-Pad Up",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 15) => "D-Pad Right",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 16) => "D-Pad Down",
-        ("Taiko Controller"|"HORI CO.,LTD. Taiko Controller", 17) => "D-Pad Left",
+// obsolete
+// pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
+//     match (&**controller, button) {
 
-        // xbox one controller (windows|probably linux)
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 0)  => "A",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 1)  => "B",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 2)  => "X",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 3)  => "Y",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 4)  => "LB",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 5)  => "RB",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 6)  => "Select/Options",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 7)  => "Start",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 8)  => "Left Stick Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 9)  => "Right Stick Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 10) => "D-Pad Up",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 11) => "D-Pad Right",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 12) => "D-Pad Down",
-        ("Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad", 13) => "D-Pad Left",
+//         // TODO: verify the name
+//         // Generic\tUSB\tJoystick\t
+//         // n64
+//         // A:5
+//         // B:4
+//         // Start:9
+//         // DPADUP:12
+//         // DPADRIGHT:13
+//         // DPADDOWN:14
+//         // DPADLEFT:15
+//         // C-UP:0
+//         // C-RIGHT:1
+//         // C-DOWN:2
+//         // C-LEFT:3
+//         // L:6
+//         // R:7
+//         // Z:8
 
-        // ps3 controller (linux only, windows apparently is pain)
-        ("Sony PLAYSTATION(R)3 Controller", 0) => "Cross",
-        ("Sony PLAYSTATION(R)3 Controller", 1) => "Circle",
-        ("Sony PLAYSTATION(R)3 Controller", 2) => "Triangle",
-        ("Sony PLAYSTATION(R)3 Controller", 3) => "Square",
-        ("Sony PLAYSTATION(R)3 Controller", 4) => "L1",
-        ("Sony PLAYSTATION(R)3 Controller", 5) => "R1",
-        ("Sony PLAYSTATION(R)3 Controller", 6) => "L2",
-        ("Sony PLAYSTATION(R)3 Controller", 7) => "R2",
-        ("Sony PLAYSTATION(R)3 Controller", 8) => "Select",
-        ("Sony PLAYSTATION(R)3 Controller", 9) => "Start",
-        ("Sony PLAYSTATION(R)3 Controller", 10) => "Home",
-        ("Sony PLAYSTATION(R)3 Controller", 11) => "L3",
-        ("Sony PLAYSTATION(R)3 Controller", 12) => "R3",
-        ("Sony PLAYSTATION(R)3 Controller", 13) => "D-Pad Up",
-        ("Sony PLAYSTATION(R)3 Controller", 14) => "D-Pad Down",
-        ("Sony PLAYSTATION(R)3 Controller", 15) => "D-Pad Left",
-        ("Sony PLAYSTATION(R)3 Controller", 16) => "D-Pad Right",
-
-        // ps4 controller (windows | linux)
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 0) => "Square",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 1) => "Cross",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 2) => "Circle",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 3) => "Triangle",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 4) => "L1",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 5) => "R1",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 6) => "L2",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 7) => "R2",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 8) => "Share",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 9) => "Start",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 10) => "L3",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 11) => "R3",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 12) => "Home",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 13) => "Touchpad Click",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 14) => "D-Pad Up",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 15) => "D-Pad Right",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 16) => "D-Pad Down",
-        ("Wireless Controller"|"Sony Interactive Entertainment Wireless Controller", 17) => "D-Pad Left",
-
-        // steam controller
-        ("Steam Controller", 0)  => "Left Touchpad Touch",
-        ("Steam Controller", 1)  => "Right Touchpad Touch",
-        ("Steam Controller", 2)  => "A",
-        ("Steam Controller", 3)  => "B",
-        ("Steam Controller", 4)  => "X",
-        ("Steam Controller", 5)  => "Y",
-        ("Steam Controller", 6)  => "Left Bumper",
-        ("Steam Controller", 7)  => "Right Bumper",
-        ("Steam Controller", 8)  => "Left Trigger Hard",
-        ("Steam Controller", 27) => "Left Trigger Mid", // should these
-        ("Steam Controller", 23) => "Left Trigger Soft", // be swapped?
-        ("Steam Controller", 9)  => "Right Trigger Hard",
-        ("Steam Controller", 26) => "Right Trigger Mid", // should these
-        ("Steam Controller", 22) => "Right Trigger Soft", // be swapped?
-        ("Steam Controller", 10) => "Back",
-        ("Steam Controller", 11) => "Forward",
-        ("Steam Controller", 12) => "Steam Button",
-        ("Steam Controller", 13) => "Analog Click",
-        ("Steam Controller", 14)  => "Right Touchpad Click",
-        ("Steam Controller", 15)  => "Left Back",
-        ("Steam Controller", 16)  => "right Back",
-        ("Steam Controller", 17) => "D-Pad Up",
-        ("Steam Controller", 18) => "D-Pad Down",
-        ("Steam Controller", 19) => "D-Pad Right",
-        ("Steam Controller", 20) => "D-Pad Left",
-
-
-        // Mayflash Wiimote PC Adapter
-        ("Mayflash Wiimote PC Adapter", 0)  => "1",
-        ("Mayflash Wiimote PC Adapter", 1)  => "2",
-        ("Mayflash Wiimote PC Adapter", 2)  => "A",
-        ("Mayflash Wiimote PC Adapter", 3)  => "B",
-        ("Mayflash Wiimote PC Adapter", 4)  => "-",
-        ("Mayflash Wiimote PC Adapter", 5)  => "+",
-        ("Mayflash Wiimote PC Adapter", 6)  => "Z",
-        ("Mayflash Wiimote PC Adapter", 7)  => "C",
-        // ("Mayflash Wiimote PC Adapter", 8)  => "?",
-        // ("Mayflash Wiimote PC Adapter", 9)  => "?",
-        // ("Mayflash Wiimote PC Adapter", 10) => "?",
-        ("Mayflash Wiimote PC Adapter", 11) => "Home",
-        ("Mayflash Wiimote PC Adapter", 12) => "D-Pad Up",
-        ("Mayflash Wiimote PC Adapter", 13) => "D-Pad Right",
-        ("Mayflash Wiimote PC Adapter", 14) => "D-Pad Down",
-        ("Mayflash Wiimote PC Adapter", 15) => "D-Pad Left",
-
-        // TODO: verify the name
-        // Generic\tUSB\tJoystick\t
-        // n64
-        // A:5
-        // B:4
-        // Start:9
-        // DPADUP:12
-        // DPADRIGHT:13
-        // DPADDOWN:14
-        // DPADLEFT:15
-        // C-UP:0
-        // C-RIGHT:1
-        // C-DOWN:2
-        // C-LEFT:3
-        // L:6
-        // R:7
-        // Z:8
-
-        _ => "Other"
-    }
-}
+//         _ => "Other"
+//     }
+// }

@@ -687,26 +687,17 @@ impl IngameManager {
     }
 
     
-    pub fn controller_press(&mut self, c: &Controller, btn: u8) {
+    pub fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.controller_press(c, btn, self);
         self.gamemode = gamemode;
     }
-    pub fn controller_release(&mut self, c: &Controller, btn: u8) {
+    pub fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.controller_release(c, btn, self);
         self.gamemode = gamemode;
     }
-    pub fn controller_hat_press(&mut self, hat: piston::controller::ControllerHat) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_hat_press(hat, self);
-        self.gamemode = gamemode;
-    }
-    pub fn controller_hat_release(&mut self, hat: piston::controller::ControllerHat) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_hat_release(hat, self);
-        self.gamemode = gamemode;
-    }
+
     pub fn controller_axis(&mut self, event: piston::controller::ControllerAxisArgs) {
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.controller_axis(event, self);
@@ -954,8 +945,8 @@ pub trait GameMode {
     fn apply_auto(&mut self, settings: &BackgroundGameSettings);
 
 
-    fn controller_press(&mut self, _c: &Controller, _btn: u8, _manager:&mut IngameManager) {}
-    fn controller_release(&mut self, _c: &Controller, _btn: u8, _manager:&mut IngameManager) {}
+    fn controller_press(&mut self, _c: &Box<dyn Controller>, _btn: u8, _manager:&mut IngameManager) {}
+    fn controller_release(&mut self, _c: &Box<dyn Controller>, _btn: u8, _manager:&mut IngameManager) {}
     fn controller_hat_press(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
     fn controller_hat_release(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
     fn controller_axis(&mut self, _event: piston::controller::ControllerAxisArgs, _manager:&mut IngameManager) {}

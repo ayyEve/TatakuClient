@@ -476,11 +476,11 @@ impl GameMode for TaikoGame {
     }
 
 
-    fn controller_press(&mut self, c: &Controller, btn: u8, manager:&mut IngameManager) {
+    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // let id = btn.id;
         let time = manager.time();
 
-        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.name) {
+        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
             if c_config.left_kat.check_button(btn) {
                 self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
             }
@@ -504,9 +504,9 @@ impl GameMode for TaikoGame {
             // but i dont think this will be an issue, as its unlikely to happen in the first place,
             // and if there is lag, the user is likely to retry the man anyways
             println!("[Taiko::Controller] Setting up new controller");
-            let new_default = TaikoControllerConfig::defaults(c.name.clone());
+            let new_default = TaikoControllerConfig::defaults(c.get_name());
             let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.name).clone(), new_default);
+            new_settings.controller_config.insert((*c.get_name()).clone(), new_default);
             self.taiko_settings = Arc::new(new_settings);
         }
     }
