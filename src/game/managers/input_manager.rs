@@ -272,7 +272,7 @@ impl InputManager {
         up
     }
 
-
+    
     
     /// get whether the mouse was moved or not
     pub fn get_mouse_moved(&mut self) -> bool {

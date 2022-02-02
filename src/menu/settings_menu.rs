@@ -250,6 +250,10 @@ impl Menu<Game> for SettingsMenu {
     fn on_scroll(&mut self, delta:f64, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
     fn on_text(&mut self, text:String) {self.scroll_area.on_text(text)}
 }
+impl ControllerInputMenu<Game> for SettingsMenu {
+    
+}
+
 
 trait OnFinalize {
     fn on_finalize(&self, menu: &SettingsMenu, settings: &mut Settings);

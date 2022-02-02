@@ -80,3 +80,6 @@ impl Menu<Game> for PauseMenu {
         }
     }
 }
+impl ControllerInputMenu<Game> for PauseMenu {
+    
+}

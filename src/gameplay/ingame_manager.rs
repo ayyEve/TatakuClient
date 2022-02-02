@@ -466,7 +466,7 @@ impl IngameManager {
         // if its time to send another score sync packet
         if self.last_spectator_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
             self.last_spectator_score_sync = time;
-
+            
             // create and send the packet
             self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.clone()}))
         }

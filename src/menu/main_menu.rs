@@ -7,13 +7,20 @@ const Y_MARGIN: f64 = 20.0;
 const Y_OFFSET: f64 = 10.0;
 
 pub struct MainMenu {
+    // index 0
     pub play_button: MenuButton,
+    // index 1
     pub direct_button: MenuButton,
+    // index 2
     pub settings_button: MenuButton,
+    // index 3
     pub exit_button: MenuButton,
 
     visualization: MenuVisualization,
     background_game: Option<IngameManager>,
+
+    selected_index: usize,
+    menu_visible: bool
 }
 impl MainMenu {
     pub fn new() -> MainMenu {
@@ -40,7 +47,9 @@ impl MainMenu {
             exit_button,
 
             visualization: MenuVisualization::new(),
-            background_game: None
+            background_game: None,
+            selected_index: 99,
+            menu_visible: false
         }
     }
 
@@ -75,6 +84,14 @@ impl MainMenu {
             }
         }
         println!("manager setup");
+    }
+
+    fn show_menu(&mut self) {
+        self.play_button.show(0, 4);
+        self.direct_button.show(1, 4);
+        self.settings_button.show(2, 4);
+        self.exit_button.show(3, 4);
+        self.menu_visible = true;
     }
 }
 impl Menu<Game> for MainMenu {
@@ -181,10 +198,7 @@ impl Menu<Game> for MainMenu {
 
     fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.visualization.on_click(pos) {
-            self.play_button.show(0, 4);
-            self.direct_button.show(1, 4);
-            self.settings_button.show(2, 4);
-            self.exit_button.show(3, 4);
+            self.show_menu();
         }
 
 
@@ -198,7 +212,7 @@ impl Menu<Game> for MainMenu {
         // open direct menu
         if self.direct_button.on_click(pos, button, mods) {
             let mode = Settings::get_mut("MainMenu::on_click").background_game_settings.mode;
-            let menu:Arc<Mutex<dyn Menu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
+            let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
@@ -283,7 +297,68 @@ impl Menu<Game> for MainMenu {
         }
     }
 }
+impl ControllerInputMenu<Game> for MainMenu {
+    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+        if !self.menu_visible {
+            if let Some(ControllerButton::A) = controller.map_button(button) {
+                self.show_menu();
+                return true;
+            }
+            return false;
+        }
 
+        let mut changed = false;
+        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
+            self.selected_index += 1;
+            if self.selected_index >= 4 {
+                self.selected_index = 0;
+            }
+
+            changed = true;
+        }
+
+        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
+            if self.selected_index == 0 {
+                self.selected_index = 3;
+            } else if self.selected_index >= 4 { // original value is 99
+                self.selected_index = 0;
+            } else {
+                self.selected_index -= 1;
+            }
+
+            changed = true;
+        }
+
+        if changed {
+            self.play_button.set_selected(self.selected_index == 0);
+            self.direct_button.set_selected(self.selected_index == 1);
+            self.settings_button.set_selected(self.selected_index == 2);
+            self.exit_button.set_selected(self.selected_index == 3);
+        }
+
+        if let Some(ControllerButton::A) = controller.map_button(button) {
+            match self.selected_index {
+                0 => {
+                    let menu = game.menus.get("beatmap").unwrap().clone();
+                    game.queue_state_change(GameState::InMenu(menu));
+                },
+                1 => {
+                    let mode = Settings::get_mut("MainMenu::on_click").background_game_settings.mode;
+                    let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
+                    game.queue_state_change(GameState::InMenu(menu));
+                },
+                2 => {
+                    let menu = game.menus.get("settings").unwrap().clone();
+                    game.queue_state_change(GameState::InMenu(menu));
+                },
+                3 => game.queue_state_change(GameState::Closing),
+                _ => {}
+            }
+        }
+
+        true
+    }
+}
 
 
 #[allow(dead_code)]
@@ -449,7 +524,33 @@ impl ScrollableItem for MenuButton {
         self.shapes.transforms.push(transform);
     }
     fn get_selected(&self) -> bool {self.selected}
-    fn set_selected(&mut self, selected:bool) {self.selected = selected}
+    fn set_selected(&mut self, mut selected:bool) {
+        if !self.visible {selected = false}
+        self.selected = selected;
+        println!("setting selected: {}", selected);
+
+        if selected {
+            let transform2 = Transformation::new(
+                0.0, 
+                1.0,
+                TransformType::BorderSize {start: 1.0, end: 1.0},
+                TransformEasing::Linear,
+                self.time()
+            );
+            let transform = Transformation::new(
+                1.0, 
+                1.0,
+                TransformType::BorderColor {start: Color::BLUE, end: Color::BLUE},
+                TransformEasing::Linear,
+                self.time()
+            );
+
+            self.shapes.transforms.push(transform);
+            self.shapes.transforms.push(transform2);
+        } else {
+            self.set_hover(self.hover)
+        }
+    }
     fn get_selectable(&self) -> bool {false}
 
     fn update(&mut self) {

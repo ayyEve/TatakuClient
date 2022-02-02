@@ -534,6 +534,33 @@ impl Menu<Game> for BeatmapSelectMenu {
         self.refresh_maps(&mut BEATMAP_MANAGER.lock());
     }
 }
+impl ControllerInputMenu<Game> for BeatmapSelectMenu {
+    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
+            self.on_key_press(Key::Up, game, KeyModifiers::default())
+        }
+        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
+            self.on_key_press(Key::Down, game, KeyModifiers::default())
+        }
+        if let Some(ControllerButton::DPad_Left) = controller.map_button(button) {
+            self.on_key_press(Key::Left, game, KeyModifiers::default())
+        }
+        if let Some(ControllerButton::DPad_Right) = controller.map_button(button) {
+            self.on_key_press(Key::Right, game, KeyModifiers::default())
+        }
+
+        if let Some(ControllerButton::A) = controller.map_button(button) {
+            self.on_key_press(Key::Return, game, KeyModifiers::default())
+        }
+
+        if let Some(ControllerButton::B) = controller.map_button(button) {
+            let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(menu));
+        }
+        
+        false
+    }
+}
 
 
 struct BeatmapsetItem {

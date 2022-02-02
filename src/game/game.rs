@@ -19,7 +19,7 @@ pub struct Game {
     pub input_manager: InputManager,
     pub volume_controller: VolumeControl,
     
-    pub menus: HashMap<&'static str, Arc<Mutex<dyn Menu<Game>>>>,
+    pub menus: HashMap<&'static str, Arc<Mutex<dyn ControllerInputMenu<Game>>>>,
     pub current_state: GameState,
     pub queued_state: GameState,
 
@@ -327,7 +327,6 @@ impl Game {
         }
 
 
-
         // update any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
         for d in dialog_list.iter_mut().rev() {
@@ -470,6 +469,16 @@ impl Game {
                 for key in keys_down {menu.on_key_press(key, self, mods)}
                 // check keys up
                 for key in keys_up {menu.on_key_release(key, self)}
+
+
+                // controller
+                for (c, b) in controller_down {
+                    menu.controller_down(self, &c, b);
+                }
+                for (c, b) in controller_up {
+                    menu.controller_up(self, &c, b);
+                }
+
 
                 // check text
                 if text.len() > 0 {menu.on_text(text)}
@@ -805,7 +814,7 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(IngameManager),
-    InMenu(Arc<Mutex<dyn Menu<Game>>>),
+    InMenu(Arc<Mutex<dyn ControllerInputMenu<Game>>>),
 
     #[allow(dead_code)]
     Spectating(SpectatorManager), // frames awaiting replay, state, beatmap

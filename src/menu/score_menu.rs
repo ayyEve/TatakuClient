@@ -198,3 +198,7 @@ impl Menu<Game> for ScoreMenu {
         }
     }
 }
+
+impl ControllerInputMenu<Game> for ScoreMenu {
+    
+}
