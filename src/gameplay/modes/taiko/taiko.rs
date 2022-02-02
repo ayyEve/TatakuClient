@@ -458,14 +458,10 @@ impl GameMode for TaikoGame {
     fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
             return;
         }
         
-        {
-            let settings = Settings::get().taiko_settings;
-            if settings.ignore_mouse_buttons {return}
-        }
         let time = manager.time();
 
         match btn {
@@ -477,6 +473,11 @@ impl GameMode for TaikoGame {
 
 
     fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
         // let id = btn.id;
         let time = manager.time();
 
