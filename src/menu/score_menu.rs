@@ -5,6 +5,8 @@ use crate::gameplay::modes::manager_from_playmode;
 const GRAPH_SIZE:Vector2 = Vector2::new(400.0, 200.0);
 const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
 
+const MENU_ITEM_COUNT:usize = 2;
+
 pub struct ScoreMenu {
     score: Score,
     beatmap: BeatmapMeta,
@@ -18,6 +20,8 @@ pub struct ScoreMenu {
 
     pub dont_do_menu: bool,
     pub should_close: bool,
+
+    selected_index: usize
 }
 impl ScoreMenu {
     pub fn new(score:&Score, beatmap: BeatmapMeta) -> ScoreMenu {
@@ -43,6 +47,8 @@ impl ScoreMenu {
 
             dont_do_menu: false,
             should_close: false,
+
+            selected_index: 99,
         }
     }
 
@@ -54,6 +60,26 @@ impl ScoreMenu {
 
         let menu = game.menus.get("beatmap").unwrap().clone();
         game.queue_state_change(GameState::InMenu(menu));
+    }
+
+    fn replay(&mut self, game: &mut Game) {
+        let replay = databases::get_local_replay(self.score.hash());
+        match replay {
+            Ok(replay) => {
+                // game.menus.get("beatmap").unwrap().lock().on_change(false);
+                // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
+                match manager_from_playmode(self.score.playmode, &self.beatmap) {
+                    Ok(mut manager) => {
+                        manager.replaying = true;
+                        manager.replay = replay.clone();
+                        manager.replay.speed = self.score.speed;
+                        game.queue_state_change(GameState::Ingame(manager));
+                    },
+                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
+                }
+            },
+            Err(e) => println!("error loading replay: {}", e),
+        }
     }
 }
 impl Menu<Game> for ScoreMenu {
@@ -155,31 +181,12 @@ impl Menu<Game> for ScoreMenu {
         list
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, _mods:KeyModifiers, game:&mut Game) {
-        let mods = game.input_manager.get_key_mods();
+    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.replay_button.on_click(pos, button, mods) {
             // self.beatmap.lock().reset();
-
-            let replay = databases::get_local_replay(self.score.hash());
-            match replay {
-                Ok(replay) => {
-                    // game.menus.get("beatmap").unwrap().lock().on_change(false);
-                    // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
-                    match manager_from_playmode(self.score.playmode, &self.beatmap) {
-                        Ok(mut manager) => {
-                            manager.replaying = true;
-                            manager.replay = replay.clone();
-                            manager.replay.speed = self.score.speed;
-                            game.queue_state_change(GameState::Ingame(manager));
-                        },
-                        Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
-                    }
-                },
-                Err(e) => println!("error loading replay: {}", e),
-            }
+            self.replay(game);
+            return;
         }
-
-
 
         if self.back_button.on_click(pos, button, mods) {
             self.close(game)
@@ -200,5 +207,49 @@ impl Menu<Game> for ScoreMenu {
 }
 
 impl ControllerInputMenu<Game> for ScoreMenu {
-    
+    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+
+        let mut changed = false;
+        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
+            self.selected_index += 1;
+            if self.selected_index >= MENU_ITEM_COUNT {
+                self.selected_index = 0;
+            }
+
+            changed = true;
+        }
+
+        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
+            if self.selected_index == 0 {
+                self.selected_index = 3;
+            } else if self.selected_index >= MENU_ITEM_COUNT { // original value is 99
+                self.selected_index = 0;
+            } else {
+                self.selected_index -= 1;
+            }
+
+            changed = true;
+        }
+
+        if changed {
+            self.replay_button.set_selected(self.selected_index == 0);
+            self.back_button.set_selected(self.selected_index == 1);
+        }
+
+        if let Some(ControllerButton::A) = controller.map_button(button) {
+            match self.selected_index {
+                0 => {
+                    // replay
+                    self.replay(game);
+                },
+                1 => {
+                    // back
+                    self.close(game);
+                },
+                _ => {}
+            }
+        }
+
+        true
+    }
 }
