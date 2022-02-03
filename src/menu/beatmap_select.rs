@@ -560,6 +560,17 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
         
         false
     }
+
+    fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f64)>) -> bool {
+        for (axis, (_, val)) in axis_data {
+            if Some(ControllerAxis::Right_Y) == controller.map_axis(axis) && val.abs() > 0.1 {
+                self.beatmap_scroll.set_hover(true);
+                self.beatmap_scroll.on_scroll(-val / 16.0);
+            }
+        }
+
+        false
+    }
 }
 
 

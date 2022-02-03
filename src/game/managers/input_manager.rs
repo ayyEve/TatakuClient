@@ -155,13 +155,13 @@ impl InputManager {
                 }
 
                 (Button::Controller(cb), ButtonState::Press) => {
-                    println!("press: c: {}, b: {}", cb.id, cb.button);
+                    // println!("press: c: {}, b: {}", cb.id, cb.button);
                     self.verify_controller_index_exists(cb.id, window);
                     self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
                     self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
                 (Button::Controller(cb), ButtonState::Release) => {
-                    println!("release: c: {}, b: {}", cb.id, cb.button);
+                    // println!("release: c: {}, b: {}", cb.id, cb.button);
                     self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
                     self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
                 }

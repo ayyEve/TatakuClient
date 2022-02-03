@@ -24,4 +24,5 @@ use crate::prelude::*;
 pub trait ControllerInputMenu<G>:Menu<G> {
     fn controller_down(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
     fn controller_up(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
+    fn controller_axis(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _axis_data: HashMap<u8, (bool, f64)>) -> bool {false}
 }

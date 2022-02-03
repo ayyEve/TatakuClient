@@ -484,6 +484,9 @@ impl Game {
                 for (c, b) in controller_up {
                     menu.controller_up(self, &c, b);
                 }
+                for (c, ad) in controller_axis {
+                    menu.controller_axis(self, &c, ad);
+                }
 
 
                 // check text
