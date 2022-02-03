@@ -11,6 +11,12 @@ impl Controller for WiiController {
     fn get_id(&self) -> u32 {self.id}
     fn get_name(&self) -> Arc<String> {self.name.clone()}
 
+    
+    fn map_axis(&self, _axis: u8) -> Option<ControllerAxis> {
+        // TODO:!
+        None
+    }
+
     fn map_button(&self, button: u8) -> Option<ControllerButton> {
         match button {
             // 0  => Some("1"),

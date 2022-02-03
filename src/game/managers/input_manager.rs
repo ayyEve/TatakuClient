@@ -24,10 +24,6 @@ impl ControllerMeta {
     }
 }
 
-// lazy_static::lazy_static! {
-//     pub static ref CONTROLLER_NAMES: Arc<Mutex<HashMap<u32, String>>> = Arc::new(Mutex::new(HashMap::new()));
-// }
-
 
 pub struct InputManager {
     pub mouse_pos: Vector2,
@@ -46,6 +42,9 @@ pub struct InputManager {
     pub controller_down: HashMap<u32, HashSet<u8>>,
     /// index is controller id
     pub controller_up: HashMap<u32, HashSet<u8>>,
+    /// index is controller id
+    /// value index is axis id, value value is (changed, value)
+    pub controller_axis: HashMap<u32, HashMap<u8, (bool, f64)>>,
 
     /// currently pressed keys
     keys: HashSet<Key>,
@@ -76,6 +75,7 @@ impl InputManager {
             keys_down: HashSet::new(),
             keys_up:  HashSet::new(),
 
+            controller_axis: HashMap::new(),
             controller_names: HashMap::new(),
             controller_buttons: HashMap::new(),
             controller_down: HashMap::new(),
@@ -111,10 +111,10 @@ impl InputManager {
                 _ => panic!("unknown joystick id: {}", id)
             };
 
+            // window.joystick_deadzone = 0.01;
             let name = window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
             println!("New controller: {}", name);
             self.controller_names.insert(id, Arc::new(name));
-            // CONTROLLER_NAMES.lock().insert(id, name);
         }
 
         if !self.controller_buttons.contains_key(&id) {
@@ -127,6 +127,10 @@ impl InputManager {
 
         if !self.controller_up.contains_key(&id) {
             self.controller_up.insert(id, HashSet::new());
+        }
+    
+        if !self.controller_axis.contains_key(&id) {
+            self.controller_axis.insert(id, HashMap::new());
         }
     }
 
@@ -167,6 +171,15 @@ impl InputManager {
 
         if let Some(axis) = e.controller_axis_args() {
             // println!("got controller axis: {:?}", axis);
+            let id = axis.axis;
+            let value = axis.position;
+            let controller_id = axis.id;
+            self.verify_controller_index_exists(controller_id, window);
+
+            let map = self.controller_axis.get_mut(&controller_id).unwrap();
+            if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
+                map.insert(id, (true, value));
+            }
         }
 
         e.mouse_cursor(|[x, y]| {
@@ -239,6 +252,15 @@ impl InputManager {
         up
     }
 
+    /// get whether the mouse was moved or not
+    pub fn get_mouse_moved(&mut self) -> bool {
+        std::mem::take(&mut self.mouse_moved)
+    }
+    /// get how much the mouse wheel as scrolled (vertically) since the last check
+    pub fn get_scroll_delta(&mut self) -> f64 {
+        std::mem::take(&mut self.scroll_delta)
+    }
+
 
     /// get all pressed controller buttons, and reset the pressed array
     /// (controller_id, button_id)
@@ -272,17 +294,25 @@ impl InputManager {
         up
     }
 
-    
-    
-    /// get whether the mouse was moved or not
-    pub fn get_mouse_moved(&mut self) -> bool {
-        std::mem::take(&mut self.mouse_moved)
-    }
-    /// get how much the mouse wheel as scrolled (vertically) since the last check
-    pub fn get_scroll_delta(&mut self) -> f64 {
-        std::mem::take(&mut self.scroll_delta)
-    }
+    /// get all controller axes
+    /// (controller, [axis_id, (changed, value)])
+    pub fn get_controller_axis(&mut self) -> Vec<(Box<dyn Controller>, HashMap<u8, (bool, f64)>)> {
+        let mut axis = Vec::new();
 
+        for (c, axis_data) in self.controller_axis.iter_mut() {
+            let name = self.controller_names.get(c).unwrap();
+            let controller = make_controller(*c, name.clone());
+            axis.push((controller, axis_data.clone()));
+
+            // update all the changed to false, since we've now checked them
+            for (_, (changed, _)) in axis_data.iter_mut() {
+                *changed = false
+            }
+        }
+
+        axis
+    }
+    
     /// gets any text typed since the last check
     pub fn get_text(&mut self) -> String {
         std::mem::take(&mut self.text_cache)

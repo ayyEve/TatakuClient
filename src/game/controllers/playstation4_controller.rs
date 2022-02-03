@@ -11,6 +11,20 @@ impl Controller for Playstation4Controller {
     fn get_id(&self) -> u32 {self.id}
     fn get_name(&self) -> Arc<String> {self.name.clone()}
 
+    
+    fn map_axis(&self, axis: u8) -> Option<ControllerAxis> {
+        match axis {
+            0 => Some(ControllerAxis::Left_X),
+            1 => Some(ControllerAxis::Left_Y),
+            2 => Some(ControllerAxis::Right_X),
+            3 => Some(ControllerAxis::Right_Y),
+            4 => Some(ControllerAxis::Left_Trigger),
+            5 => Some(ControllerAxis::Right_Trigger),
+
+            _ => None
+        }
+    }
+
     fn map_button(&self, button: u8) -> Option<ControllerButton> {
         match button {
             0 =>  Some(ControllerButton::X),

@@ -478,10 +478,9 @@ impl GameMode for TaikoGame {
             return;
         }
 
-        // let id = btn.id;
-        let time = manager.time();
-
         if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
+            let time = manager.time();
+
             if c_config.left_kat.check_button(btn) {
                 self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
             }
@@ -498,6 +497,11 @@ impl GameMode for TaikoGame {
                 self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
             }
 
+            // skip
+            if Some(ControllerButton::Y) == c.map_button(btn) {
+                self.skip_intro(manager);
+            }
+
         } else {
             println!("[Taiko::Controller] Controller with no setup");
 
@@ -509,6 +513,8 @@ impl GameMode for TaikoGame {
             let mut new_settings = self.taiko_settings.as_ref().clone();
             new_settings.controller_config.insert((*c.get_name()).clone(), new_default);
             self.taiko_settings = Arc::new(new_settings);
+            // rerun the handler now that the thing is setup
+            self.controller_press(c, btn, manager);
         }
     }
 

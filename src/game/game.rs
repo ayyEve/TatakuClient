@@ -268,6 +268,14 @@ impl Game {
 
         let controller_down = self.input_manager.get_controller_down();
         let controller_up = self.input_manager.get_controller_up();
+        let controller_axis = self.input_manager.get_controller_axis();
+
+        let mut controller_pause = false;
+        for (c, b) in controller_down.iter() {
+            if Some(crate::prelude::ControllerButton::Start) == c.map_button(*b) {
+                controller_pause = true
+            }
+        }
 
         let settings_clone = Settings::get();
         // if keys.len() > 0 {
@@ -360,16 +368,11 @@ impl Game {
                 let settings = Settings::get();
                 
                 // pause button, or focus lost, only if not replaying
-                if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) {
-                    println!("manager.pause");
+                if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause {
                     manager.pause();
-                    println!("taking manager");
                     let manager2 = std::mem::take(manager);
-                    println!("create menu");
                     let menu = PauseMenu::new(manager2);
-                    println!("state change");
                     self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
-                    println!("done");
                 } else {
 
                     // inputs
@@ -389,6 +392,9 @@ impl Game {
                     }
                     for (c, b) in controller_up {
                         manager.controller_release(&c, b);
+                    }
+                    for (c, b) in controller_axis {
+                        manager.controller_axis(&c, b);
                     }
 
 

@@ -697,10 +697,9 @@ impl IngameManager {
         gamemode.controller_release(c, btn, self);
         self.gamemode = gamemode;
     }
-
-    pub fn controller_axis(&mut self, event: piston::controller::ControllerAxisArgs) {
+    pub fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_axis(event, self);
+        gamemode.controller_axis(c, axis_data, self);
         self.gamemode = gamemode;
     }
 
@@ -949,7 +948,7 @@ pub trait GameMode {
     fn controller_release(&mut self, _c: &Box<dyn Controller>, _btn: u8, _manager:&mut IngameManager) {}
     fn controller_hat_press(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
     fn controller_hat_release(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
-    fn controller_axis(&mut self, _event: piston::controller::ControllerAxisArgs, _manager:&mut IngameManager) {}
+    fn controller_axis(&mut self, _c: &Box<dyn Controller>, _axis_data:HashMap<u8, (bool, f64)>, _manager:&mut IngameManager) {}
 
 
     fn skip_intro(&mut self, manager: &mut IngameManager);

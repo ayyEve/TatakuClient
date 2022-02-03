@@ -4,7 +4,9 @@ pub trait Controller {
     fn get_id(&self) -> u32;
     fn get_name(&self) -> Arc<String>;
 
+    fn map_axis(&self, axis: u8) -> Option<ControllerAxis>;
     fn map_button(&self, button: u8) -> Option<ControllerButton>;
+
     fn label_button(&self, _button: u8) -> Option<&'static str> {None}
 }
 
@@ -39,6 +41,17 @@ pub enum ControllerButton {
 }
 
 
+#[allow(non_camel_case_types, dead_code)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum ControllerAxis {
+    Left_X,
+    Left_Y,
+    Right_X,
+    Right_Y,
+    Left_Trigger,
+    Right_Trigger
+}
+
 /// this is a very sad controller indeed
 pub struct GenericController {
     id: u32,
@@ -50,6 +63,7 @@ impl GenericController {
 impl Controller for GenericController {
     fn get_id(&self) -> u32 {self.id}
     fn get_name(&self) -> Arc<String> {self.name.clone()}
+    fn map_axis(&self, _axis: u8) -> Option<ControllerAxis> {None}
     fn map_button(&self, _button: u8) -> Option<ControllerButton> {None}
 }
 

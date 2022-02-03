@@ -11,6 +11,9 @@ impl Controller for TaikoController {
     fn get_id(&self) -> u32 {self.id}
     fn get_name(&self) -> Arc<String> {self.name.clone()}
 
+    // drum has no axis
+    fn map_axis(&self, _axis: u8) -> Option<ControllerAxis> {None}
+
     fn map_button(&self, button: u8) -> Option<ControllerButton> {
         match button {
             0  => Some(ControllerButton::X),

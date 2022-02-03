@@ -55,7 +55,9 @@ pub struct StandardGame {
     auto_helper: StandardAutoHelper,
 
     /// list of note_indices which are new_combos
-    new_combos: Vec<usize>
+    new_combos: Vec<usize>,
+
+    use_controller_cursor: bool
 }
 impl StandardGame {
     fn playfield_changed(&mut self) {
@@ -180,6 +182,7 @@ impl GameMode for StandardGame {
                         ],
                         Vector2::zero()
                     ),
+                    use_controller_cursor: false,
         
                     settings,
                     auto_helper: StandardAutoHelper::new(),
@@ -601,7 +604,7 @@ impl GameMode for StandardGame {
 
 
         // if this is a replay, we need to draw the replay curser
-        if manager.replaying || manager.current_mods.autoplay {
+        if manager.replaying || manager.current_mods.autoplay || self.use_controller_cursor {
             list.push(Box::new(Circle::new(
                 Color::RED,
                 -999.9,
@@ -636,8 +639,6 @@ impl GameMode for StandardGame {
             note.draw(args, list);
         }
 
-
-
         // draw follow points
         if self.settings.draw_follow_points {
             for i in 0..self.notes.len() - 1 {
@@ -670,13 +671,6 @@ impl GameMode for StandardGame {
                         let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
                         let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
                         
-                        // let thing = ((time_at_this_point - (preempt * (2.0/3.0))) - time) / (preempt * (1.0/3.0));
-                        // let alpha = if time >= time_at_this_point {
-                        //     1.0 + thing
-                        // } else {
-                        //     1.0 - thing
-                        // }.clamp(0.0, 1.0);
-
                         let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
                         let mut alpha = 1.0 - f64::easeinout_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32;
                         if time < n1_time {
@@ -692,22 +686,9 @@ impl GameMode for StandardGame {
                             follow_dot_size,
                         )));
                     }
-
-                    // let alpha = (1.0 - ((n2_time - (preempt * (2.0/3.0))) - time) / (preempt * (1.0/3.0))).clamp(0.0, 1.0);
-                    // if alpha <= 0.0 {continue}
-                    // list.push(Box::new(Line::new(
-                    //     n1.pos_at(n1.end_time(0.0), &self.scaling_helper),
-                    //     n2.pos_at(n2.time(), &self.scaling_helper),
-                    //     2.0 * self.scaling_helper.scale,
-                    //     100_000.0,
-                    //     Color::WHITE.alpha(alpha)
-                    // )));
                 }
             }
         }
-
-
-
 
     }
 
@@ -845,6 +826,75 @@ impl GameMode for StandardGame {
         }
     }
 
+
+
+    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
+            let time = manager.time();
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager);
+        }
+
+        if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
+            let time = manager.time();
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
+        }
+    }
+    fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
+            let time = manager.time();
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager);
+        }
+
+        if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
+            let time = manager.time();
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager);
+        }
+    }
+    fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        self.use_controller_cursor = true;
+
+        let mut new_pos = self.mouse_pos;
+        let scaling_helper = self.scaling_helper.clone();
+        let playfield = scaling_helper.playfield_scaled_with_cs_border;
+
+        for (axis, &(_new, value)) in axis_data.iter() {
+            match c.map_axis(*axis) {
+                Some(ControllerAxis::Left_X) => {
+                    // -1.0 to 1.0
+                    // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
+                    let normalized = (value + 1.0) / 2.0;
+                    new_pos.x = playfield.pos.x + f64::lerp(0.0, playfield.size.x, normalized);
+                },
+                Some(ControllerAxis::Left_Y) => {
+                    
+                    let normalized = (value + 1.0) / 2.0;
+                    new_pos.y = playfield.pos.y + f64::lerp(0.0, playfield.size.y, normalized);
+                },
+                _ => {},
+            }
+        }
+
+        let time = manager.time();
+        let new_pos = scaling_helper.descale_coords(new_pos);
+        self.handle_replay_frame(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32), time, manager);
+    }
+
+
     fn reset(&mut self, beatmap:&Beatmap) {
         
         // setup hitwindows
@@ -876,7 +926,6 @@ impl GameMode for StandardGame {
         #[cfg(feature="neb_audio")]
         manager.song.upgrade().unwrap().set_position(time);
     }
-
 
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
         (vec![
