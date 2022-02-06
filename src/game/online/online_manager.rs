@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
 pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
-    pub discord: Discord,
+    pub discord: Option<Discord>,
 
     pub user_id: u32, // this user's id
 
@@ -99,7 +99,7 @@ impl OnlineManager {
         OnlineManager {
             user_id: 0,
             users: HashMap::new(),
-            discord: Discord::new(),
+            discord: Discord::new().ok(),
             // chat: Chat::new(),
             writer: None,
             connected: false,
@@ -352,7 +352,10 @@ impl OnlineManager {
             if action == UserAction::Leaving {
                 send_packet!(s.writer, create_packet!(Client_LogOut));
             }
-            s.discord.change_status(action_text.clone());
+
+            if let Some(discord) = &mut s.discord {
+                discord.change_status(action_text.clone());
+            }
         });
     }
 
