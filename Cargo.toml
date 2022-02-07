@@ -19,13 +19,14 @@ gitlab_build = []
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 
 # framework stuff
-rusqlite = { version = "0.25", features = ["bundled"] }
-lazy_static = "1.4.0"
-parking_lot = "0.11.1"
+rusqlite = { version = "0.26", features = ["bundled"] }
+lazy_static = "1.4"
+parking_lot = "0.12"
 tokio = { version = "1.7.1", features = ["full"] }
 futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 
 # piston etc
+# careful when updating these
 gl = "0.13"
 glfw = { version = "0.42.0", features = ["image"] }
 image = "0.23"
