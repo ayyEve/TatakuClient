@@ -10,6 +10,7 @@ edition = "2018"
 default = ["bass_audio"]
 bass_audio = ["bass-rs"]
 neb_audio = ["cpal", "symphonia", "rustfft"]
+discord = ["rustcord"]
 debug_sliders = []
 debug_hitsounds = []
 gitlab_build = []
@@ -46,7 +47,7 @@ rustfft = { version = "6.0", optional = true }
 sha2 = "0.10"
 tokio-tungstenite = {version = "0.16.0", features = ["rustls-tls-native-roots"]}
 reqwest = { version = "0.11.4", features = ["blocking"] }
-rustcord = {git="https://github.com/ayyEve/rustcord"}
+rustcord = {git="https://github.com/ayyEve/rustcord", optional=true}
 
 # serde
 serde = { version="1.0", features = ["derive"] }

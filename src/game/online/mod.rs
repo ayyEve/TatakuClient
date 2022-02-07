@@ -1,6 +1,15 @@
 mod online_user;
-pub mod discord;
 mod online_manager;
+#[cfg(feature="discord")]
+mod discord;
+#[cfg(not(feature="discord"))]
+mod discord_nobuild;
 
 pub use online_user::*;
 pub use online_manager::*;
+
+
+#[cfg(feature="discord")]
+pub use discord::*;
+#[cfg(not(feature="discord"))]
+pub use discord_nobuild::*;

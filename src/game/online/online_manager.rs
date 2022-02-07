@@ -3,7 +3,6 @@ use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message};
 
 use crate::prelude::*;
-use super::discord::Discord;
 use super::online_user::OnlineUser;
 
 use PacketId::*;

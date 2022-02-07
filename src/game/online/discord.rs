@@ -1,4 +1,3 @@
-// use discord_rpc_client::Client;
 use rustcord::{Rustcord, EventHandlers, User, RichPresenceBuilder};
 use crate::prelude::*;
 
@@ -7,7 +6,6 @@ const APP_ID:&'static str = "857981337423577109";
 lazy_static::lazy_static! {
     static ref CONTINUE_CALLBACKS:AtomicBool = AtomicBool::new(true);
 }
-
 pub struct Discord {
     rustcord: Arc<Rustcord>
 }
@@ -32,9 +30,12 @@ impl Discord {
                 Err(TatakuError::String(format!("[Discord] Error starting Discord: {}", e)))
             }
         }
+    
+        Err(TatakuError::String("".to_owned()))
     }
 
     pub fn change_status(&mut self, desc:String) {
+        #[cfg(feature="discord")]
         let presence = RichPresenceBuilder::new()
             .state("Tataku")
             .details(&desc)
@@ -43,16 +44,12 @@ impl Discord {
             // .small_image_key("amethyst")
             // .small_image_text("Amethyst")
             .build();
-
+        #[cfg(feature="discord")]
         if let Err(e) = self.rustcord.update_presence(presence) {
             println!("Error updating discord presence: {}", e);
         }
     }
 }
-
-// pub enum DiscordError {
-//     Whatever
-// }
 
 impl EventHandlers for Discord {
     fn ready(user: User) {
