@@ -15,8 +15,20 @@ const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
-
 const STACK_LENIENCY:u32 = 3;
+
+/// calculate the standard acc for `score`
+pub fn calc_acc(score: &Score) -> f64 {
+    let x50 = score.x50 as f64;
+    let x100 = score.x100 as f64;
+    let x300 = score.x300 as f64;
+    let geki = score.xgeki as f64;
+    let katu = score.xkatu as f64;
+    let miss = score.xmiss as f64;
+
+    (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
+    / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
+}
 
 
 pub struct StandardGame {

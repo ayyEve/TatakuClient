@@ -744,7 +744,7 @@ impl IngameManager {
             0.0,
             Vector2::new(window_size.x - 200.0, 40.0),
             30,
-            format!("{:.2}%", self.score.acc()*100.0),
+            format!("{:.2}%", calc_acc(&self.score)*100.0),
             font.clone()
         )));
 

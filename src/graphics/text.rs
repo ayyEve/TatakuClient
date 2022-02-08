@@ -50,7 +50,6 @@ impl Text {
         let text_size = measure_text(&fonts, font_size, &text, Vector2::one());
         let origin = text_size / 2.0;
 
-
         Text {
             initial_color,
             current_color,
@@ -195,7 +194,6 @@ impl Transformable for Text {
         self.current_scale.x != 0.0 && self.current_scale.y != 0.0
     }
 }
-
 
 
 

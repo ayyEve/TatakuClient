@@ -134,7 +134,7 @@ impl Menu<Game> for ScoreMenu {
             depth + 1.0,
             Vector2::new(50.0, 240.0),
             30,
-            format!("{}x, {:.2}%", format(self.score.max_combo), self.score.acc() * 100.0),
+            format!("{}x, {:.2}%", format(self.score.max_combo), calc_acc(&self.score) * 100.0),
             font.clone()
         )));
 

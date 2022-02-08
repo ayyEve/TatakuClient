@@ -15,6 +15,20 @@ const SV_FACTOR:f32 = 700.0; // bc sv is bonked, divide it by this amount
 const SV_CHANGE_DELTA:f32 = 0.1; // how much to change the sv by when a sv change key is pressed
 
 
+/// calculate the mania acc for `score`
+pub fn calc_acc(score: &Score) -> f64 {
+    let x50 = score.x50 as f64;
+    let x100 = score.x100 as f64;
+    let x300 = score.x300 as f64;
+    let geki = score.xgeki as f64;
+    let katu = score.xkatu as f64;
+    let miss = score.xmiss as f64;
+
+    // (50*count50 + 100*count100 + 200*count_katu + 300*(count300 + count_geki)) / (300*sum(count_miss, count50, count100, count300, count_geki, count_katu)); 
+    (50.0 * x50 + 100.0 * x100 + 200.0 * katu + 300.0 * (x300 + geki))
+    / (300.0 * (miss + x50 + x100 + x300 + geki + katu))
+}
+
 pub struct ManiaGame {
     // lists
     columns: Vec<Vec<Box<dyn ManiaHitObject>>>,

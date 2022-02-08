@@ -25,6 +25,19 @@ pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> Resul
     Ok(IngameManager::new(beatmap, gamemode))
 }
 
+pub fn calc_acc(score: &Score) -> f64 {
+    match score.playmode {
+        PlayMode::Standard => standard::calc_acc(score),
+        PlayMode::Taiko => taiko::calc_acc(score),
+        PlayMode::Catch => catch::calc_acc(score),
+        PlayMode::Mania => mania::calc_acc(score),
+        PlayMode::Adofai => 0.0,
+        // ptyping acc is already in the score
+        PlayMode::pTyping => score.accuracy,
+        PlayMode::Unknown => 0.0,
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
     /// scale setting in settings
@@ -136,5 +149,5 @@ impl ScalingHelper {
     pub fn descale_coords(&self, window_coords: Vector2) -> Vector2 {
         (window_coords - self.scaled_pos_offset) / self.scale
     }
-
 }
+

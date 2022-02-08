@@ -16,6 +16,18 @@ const SV_FACTOR:f32 = 700.0; // bc sv is bonked, divide it by this amount
 /// how long should the drum buttons last for?
 const DRUM_LIFETIME_TIME:u64 = 100;
 
+/// calculate the taiko acc for `score`
+pub fn calc_acc(score: &Score) -> f64 {
+    let x50 = score.x50 as f64;
+    let x100 = score.x100 as f64;
+    let x300 = score.x300 as f64;
+    let geki = score.xgeki as f64;
+    let katu = score.xkatu as f64;
+    let miss = score.xmiss as f64;
+
+    ((x100 + katu) / 2.0 + x300 + geki) 
+    / (miss + x100 + x300 + katu + geki)
+}
 
 pub struct TaikoGame {
     // lists

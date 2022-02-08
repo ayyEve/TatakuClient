@@ -14,6 +14,18 @@ pub fn hit_y() -> f64 {
 }
 // pub const HIT_Y:f64 = window_size().y - 100.0
 
+/// calculate the catch acc for `score`
+pub fn calc_acc(score: &Score) -> f64 {
+    let x50 = score.x50 as f64;
+    let x100 = score.x100 as f64;
+    let x300 = score.x300 as f64;
+    let geki = score.xgeki as f64;
+    let katu = score.xkatu as f64;
+    let miss = score.xmiss as f64;
+
+    (x50 + x100 + x300) 
+    / (miss + katu + x50 + x100 + x300)
+}
 
 pub struct CatchGame {
     // lists
