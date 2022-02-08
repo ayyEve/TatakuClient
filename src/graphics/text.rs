@@ -1,5 +1,13 @@
 use crate::prelude::*;
 
+lazy_static::lazy_static! {
+    pub static ref FALLBACK_FONT_1: Font = {
+        let glyphs = opengl_graphics::GlyphCache::new("fonts/main_fallback.ttf", (), opengl_graphics::TextureSettings::new()).unwrap();
+        Arc::new(Mutex::new(glyphs))
+    };
+}
+
+
 #[derive(Clone)]
 pub struct Text {
     // initial
@@ -20,7 +28,7 @@ pub struct Text {
     pub depth: f64,
     pub font_size: u32,
     pub text: String,
-    pub font: Font,
+    pub fonts: Vec<Font>,
 
     lifetime:u64,
     spawn_time:u64,
@@ -28,6 +36,7 @@ pub struct Text {
 }
 impl Text {
     pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font) -> Text {
+        let fonts = vec![font, FALLBACK_FONT_1.clone()];
 
         let initial_pos = pos;
         let current_pos = pos;
@@ -38,7 +47,7 @@ impl Text {
         let initial_scale = Vector2::one();
         let current_scale = Vector2::one();
 
-        let text_size = measure_text(font.clone(), font_size, &text, Vector2::one());
+        let text_size = measure_text(&fonts, font_size, &text, Vector2::one());
         let origin = text_size / 2.0;
 
 
@@ -57,12 +66,13 @@ impl Text {
             depth,
             font_size,
             text,
-            font,
+            fonts,
             lifetime: 0,
             spawn_time: 0,
             context: None,
         }
     }
+    
     pub fn measure_text(&self) -> Vector2 {
         // let mut text_size = Vector2::zero();
         // let mut font = self.font.lock();
@@ -77,7 +87,7 @@ impl Text {
         // }
         
         // text_size
-        measure_text(self.font.clone(), self.font_size, &self.text, self.current_scale) 
+        measure_text(&self.fonts, self.font_size, &self.text, self.current_scale) 
     }
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
@@ -113,15 +123,25 @@ impl Renderable for Text {
             // apply origin
             .trans(-self.origin.x, -self.origin.y + self.measure_text().y)
         ;
-
-        graphics::text(
-            self.color.into(),
-            self.font_size * self.current_scale.y as u32,
-            self.text.as_str(),
-            &mut *self.font.lock(),
-            transform,
+        
+        ayyeve_piston_ui::render::draw_text(
+            &(&self.text, self.color), 
+            (self.font_size as f64 * self.current_scale.y) as u32, 
+            false, 
+            &self.fonts, 
+            &c.draw_state, 
+            transform, 
             g
         ).unwrap();
+
+        // graphics::text(
+        //     self.color.into(),
+        //     self.font_size * self.current_scale.y as u32,
+        //     self.text.as_str(),
+        //     &mut *self.font.lock(),
+        //     transform,
+        //     g
+        // ).unwrap();
     }
 }
 
@@ -179,19 +199,43 @@ impl Transformable for Text {
 
 
 
-fn measure_text(font:Font, font_size: u32, text: &String, _scale: Vector2) -> Vector2 {
+fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector2) -> Vector2 {
+    if fonts.len() == 0 {return Vector2::zero()}
+
     let mut text_size = Vector2::zero();
-    let mut font = font.lock();
+    let mut fonts = fonts.iter().map(|f|f.lock()).collect::<Vec<_>>();
 
-    let block_char = '█';
-    let _character = font.character(font_size, block_char).unwrap();
+    // let block_char = '█';
+    // let _character = font.character(font_size, block_char).unwrap();
 
-    for _ch in text.chars() {
-        let character = font.character(font_size, _ch).unwrap();
+    for ch in text.chars() {
+        let mut character = None; //font_caches[0].character(font_size, ch)?;
+        for font in fonts.iter_mut() {
+            if let Ok(c) = font.character(font_size, ch) {
+                character = Some(c);
+                if !character.as_ref().unwrap().is_invalid {
+                    break
+                }
+            } else {
+                panic!("hurr durr")
+            }
+        }
+        
+        if character.as_ref().unwrap().is_invalid {
+            // stop fonts from being borrowed
+            character = None;
+            // get the error character from the first font
+            if let Ok(c) = fonts[0].character(font_size, ch) {
+                character = Some(c);
+            }
+        }
+        let character = character.unwrap();
+
+        // println!("invalid: {}", character.is_invalid);
+
         text_size.x += character.advance_width();
         text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();
     }
     
     text_size
 }
-
