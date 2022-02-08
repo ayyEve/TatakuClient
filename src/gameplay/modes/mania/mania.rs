@@ -456,9 +456,9 @@ impl GameMode for ManiaGame {
 
         let od = beatmap.get_beatmap_meta().od;
         // setup hitwindows
-        self.hitwindow_miss = map_difficulty(od, 135.0, 95.0, 70.0);
-        self.hitwindow_100 = map_difficulty(od, 120.0, 80.0, 50.0);
-        self.hitwindow_300 = map_difficulty(od, 50.0, 35.0, 20.0);
+        self.hitwindow_miss = map_difficulty(od, 188.0, 173.0, 158.0);
+        self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);
+        self.hitwindow_300 = map_difficulty(od, 64.0, 49.0, 34.0);
 
         let window_size = Settings::window_size();
 
