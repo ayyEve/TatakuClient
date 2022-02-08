@@ -1,24 +1,22 @@
 use super::*;
 use crate::prelude::*;
 
+/// timing bar color
+pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
+/// how wide is a timing bar
+const BAR_WIDTH:f64 = 4.0;
+/// how many beats between timing bars
+const BAR_SPACING:f32 = 4.0;
 
-pub const NOTE_RADIUS:f64 = 32.0;
-pub const HIT_AREA_RADIUS:f64 = NOTE_RADIUS * 1.3;
-pub const HIT_POSITION:Vector2 = Vector2::new(180.0, 200.0);
-pub const PLAYFIELD_RADIUS:f64 = NOTE_RADIUS * 2.0; // actually height, oops
-
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
-const BAR_WIDTH:f64 = 4.0; // how wide is a timing bar
-const BAR_SPACING:f32 = 4.0; // how many beats between timing bars
-
-const SV_FACTOR:f32 = 700.0; // bc sv is bonked, divide it by this amount
+/// bc sv is bonked, divide it by this amount
+const SV_FACTOR:f32 = 700.0;
 
 /// how long should the drum buttons last for?
 const DRUM_LIFETIME_TIME:u64 = 100;
 
 /// calculate the taiko acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
-    let x50 = score.x50 as f64;
+    // let x50 = score.x50 as f64;
     let x100 = score.x100 as f64;
     let x300 = score.x300 as f64;
     let geki = score.xgeki as f64;
@@ -56,6 +54,11 @@ impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {PlayMode::Taiko}
     fn end_time(&self) -> f32 {self.end_time}
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
+        let mut settings = Settings::get().taiko_settings.clone();
+        // calculate the hit area
+        settings.calc_hit_area();
+        let settings = Arc::new(settings);
+
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -72,7 +75,7 @@ impl GameMode for TaikoGame {
 
                     render_queue: Vec::new(),
                     auto_helper: TaikoAutoHelper::new(),
-                    taiko_settings: Arc::new(Settings::get().taiko_settings.clone())
+                    taiko_settings: settings.clone()
                 };
 
                 // add notes
@@ -83,7 +86,8 @@ impl GameMode for TaikoGame {
                     let note = Box::new(TaikoNote::new(
                         note.time,
                         hit_type,
-                        finisher
+                        finisher,
+                        settings.clone()
                     ));
                     s.notes.push(note);
                 }
@@ -130,7 +134,8 @@ impl GameMode for TaikoGame {
                             let note = Box::new(TaikoNote::new(
                                 j,
                                 sound_type.0,
-                                sound_type.1
+                                sound_type.1,
+                                settings.clone()
                             ));
                             s.notes.push(note);
 
@@ -140,7 +145,7 @@ impl GameMode for TaikoGame {
                             if !(j < end_time + skip_period / 8.0) {break}
                         }
                     } else {
-                        let slider = Box::new(TaikoSlider::new(time, end_time, finisher));
+                        let slider = Box::new(TaikoSlider::new(time, end_time, finisher, settings.clone()));
                         s.notes.push(slider);
                     }
                 }
@@ -151,7 +156,7 @@ impl GameMode for TaikoGame {
                     let diff_map = map_difficulty(beatmap.metadata.od, 3.0, 5.0, 7.5);
                     let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
 
-                    let spinner = Box::new(TaikoSpinner::new(*time, *end_time, hits_required));
+                    let spinner = Box::new(TaikoSpinner::new(*time, *end_time, hits_required, settings.clone()));
                     s.notes.push(spinner);
                 }
 
@@ -159,8 +164,9 @@ impl GameMode for TaikoGame {
                 s.end_time = s.notes.iter().last().unwrap().time();
 
                 Ok(s)
-            },
+            }
             Beatmap::Adofai(beatmap) => {
+                let settings = Arc::new(Settings::get().taiko_settings.clone());
                 let mut s = Self {
                     notes: Vec::new(),
                     note_index: 0,
@@ -176,7 +182,7 @@ impl GameMode for TaikoGame {
                     render_queue: Vec::new(),
                     auto_helper: TaikoAutoHelper::new(),
                     
-                    taiko_settings: Arc::new(Settings::get().taiko_settings.clone())
+                    taiko_settings: settings.clone()
                 };
 
                 // add notes
@@ -186,7 +192,8 @@ impl GameMode for TaikoGame {
                     let note = Box::new(TaikoNote::new(
                         note.time,
                         hit_type,
-                        false
+                        false,
+                        settings.clone()
                     ));
                     s.notes.push(note);
                 }
@@ -195,7 +202,7 @@ impl GameMode for TaikoGame {
                 s.end_time = s.notes.iter().last().unwrap().time();
 
                 Ok(s)
-            },
+            }
 
             _ => Err(crate::errors::BeatmapError::UnsupportedMode.into()),
         }
@@ -217,9 +224,9 @@ impl GameMode for TaikoGame {
             KeyPress::LeftKat => {
                 let mut hit = HalfCircle::new(
                     Color::BLUE,
-                    HIT_POSITION,
+                    self.taiko_settings.hit_position,
                     1.0,
-                    HIT_AREA_RADIUS,
+                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                     true
                 );
                 hit.set_lifetime(DRUM_LIFETIME_TIME);
@@ -228,9 +235,9 @@ impl GameMode for TaikoGame {
             KeyPress::LeftDon => {
                 let mut hit = HalfCircle::new(
                     Color::RED,
-                    HIT_POSITION,
+                    self.taiko_settings.hit_position,
                     1.0,
-                    HIT_AREA_RADIUS,
+                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                     true
                 );
                 hit.set_lifetime(DRUM_LIFETIME_TIME);
@@ -239,9 +246,9 @@ impl GameMode for TaikoGame {
             KeyPress::RightDon => {
                 let mut hit = HalfCircle::new(
                     Color::RED,
-                    HIT_POSITION,
+                    self.taiko_settings.hit_position,
                     1.0,
-                    HIT_AREA_RADIUS,
+                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                     false
                 );
                 hit.set_lifetime(DRUM_LIFETIME_TIME);
@@ -250,9 +257,9 @@ impl GameMode for TaikoGame {
             KeyPress::RightKat => {
                 let mut hit = HalfCircle::new(
                     Color::BLUE,
-                    HIT_POSITION,
+                    self.taiko_settings.hit_position,
                     1.0,
-                    HIT_AREA_RADIUS,
+                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                     false
                 );
                 hit.set_lifetime(DRUM_LIFETIME_TIME);
@@ -415,24 +422,16 @@ impl GameMode for TaikoGame {
         }
         self.render_queue.clear();
 
+
         // draw the playfield
-        let playfield = Rectangle::new(
-            [0.2, 0.2, 0.2, 1.0].into(),
-            f64::MAX-4.0,
-            Vector2::new(0.0, HIT_POSITION.y - (PLAYFIELD_RADIUS + 2.0)),
-            Vector2::new(args.window_size[0], (PLAYFIELD_RADIUS+2.0) * 2.0),
-            if manager.timing_points[self.timing_point_index].kiai {
-                Some(Border::new(Color::YELLOW, 2.0))
-            } else {None}
-        );
-        list.push(Box::new(playfield));
+        list.push(Box::new(self.taiko_settings.get_playfield(args.window_size[0], manager.timing_points[self.timing_point_index].kiai)));
 
         // draw the hit area
         list.push(Box::new(Circle::new(
             Color::BLACK,
             f64::MAX,
-            HIT_POSITION,
-            HIT_AREA_RADIUS + 2.0
+            self.taiko_settings.hit_position,
+            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult
         )));
 
         // draw notes
@@ -443,25 +442,23 @@ impl GameMode for TaikoGame {
 
 
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
-
         // dont accept key input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
         }
 
-        let settings = Settings::get().taiko_settings;
         let time = manager.time();
 
-        if key == settings.left_kat {
+        if key == self.taiko_settings.left_kat {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
         }
-        if key == settings.left_don {
+        if key == self.taiko_settings.left_don {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
         }
-        if key == settings.right_don {
+        if key == self.taiko_settings.right_don {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
         }
-        if key == settings.right_kat {
+        if key == self.taiko_settings.right_kat {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
         }
     }
@@ -475,7 +472,6 @@ impl GameMode for TaikoGame {
         }
         
         let time = manager.time();
-
         match btn {
             piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
             piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
@@ -521,9 +517,16 @@ impl GameMode for TaikoGame {
             // but i dont think this will be an issue, as its unlikely to happen in the first place,
             // and if there is lag, the user is likely to retry the man anyways
             println!("[Taiko::Controller] Setting up new controller");
-            let new_default = TaikoControllerConfig::defaults(c.get_name());
             let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.get_name()).clone(), new_default);
+            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
+
+            // update the global settings
+            {
+                let mut settings = Settings::get_mut("TaikoGame::controller_press");
+                settings.taiko_settings = new_settings.clone();
+                settings.save();
+            }
+            
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
             self.controller_press(c, btn, manager);
@@ -532,14 +535,12 @@ impl GameMode for TaikoGame {
 
 
     fn reset(&mut self, beatmap:&Beatmap) {
-        let settings = Settings::get().taiko_settings;
-        
         for note in self.notes.as_mut_slice() {
             note.reset();
 
             // set note svs
-            if settings.static_sv {
-                note.set_sv(settings.sv_multiplier);
+            if self.taiko_settings.static_sv {
+                note.set_sv(self.taiko_settings.sv_multiplier);
             } else {
                 let sv = beatmap.slider_velocity_at(note.time()) / SV_FACTOR;
                 note.set_sv(sv);
@@ -561,14 +562,14 @@ impl GameMode for TaikoGame {
             let tps = beatmap.get_timing_points();
             // load timing bars
             let parent_tps = tps.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
-            let mut sv = settings.sv_multiplier;
+            let mut sv = self.taiko_settings.sv_multiplier;
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
             let step = beatmap.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !settings.static_sv {sv = beatmap.slider_velocity_at(time) / SV_FACTOR}
+                if !self.taiko_settings.static_sv {sv = beatmap.slider_velocity_at(time) / SV_FACTOR}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
@@ -579,7 +580,7 @@ impl GameMode for TaikoGame {
                 }
 
                 // add timing bar at current time
-                self.timing_bars.push(TimingBar::new(time, sv));
+                self.timing_bars.push(TimingBar::new(time, sv, self.taiko_settings.clone()));
 
                 if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
                     time = parent_tps[tp_index].time;
@@ -635,8 +636,8 @@ impl GameMode for TaikoGame {
 
     fn combo_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::new(0.0, HIT_POSITION.y - HIT_AREA_RADIUS/2.0),
-            Vector2::new(HIT_POSITION.x - NOTE_RADIUS, HIT_AREA_RADIUS)
+            Vector2::new(0.0, self.taiko_settings.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
+            Vector2::new(self.taiko_settings.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
         )
     }
 
@@ -650,36 +651,41 @@ impl GameMode for TaikoGame {
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct TimingBar {
     time: f32,
     speed: f32,
-    pos: Vector2
+    pos: Vector2,
+    settings: Arc<TaikoSettings>,
+    size: Vector2
 }
 impl TimingBar {
-    pub fn new(time:f32, speed:f32) -> TimingBar {
+    pub fn new(time:f32, speed:f32, settings: Arc<TaikoSettings>) -> TimingBar {
+        let size = Vector2::new(BAR_WIDTH, settings.get_playfield(0.0, false).size.y);
+
         TimingBar {
             time, 
             speed,
-            pos: Vector2::zero(),
+            pos: Vector2::new(0.0, settings.hit_position.y - size.y/2.0),
+            settings,
+            size
         }
     }
 
     pub fn update(&mut self, time:f32) {
-        self.pos = HIT_POSITION + Vector2::new(((self.time - time) * self.speed) as f64 - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
+        self.pos.x = self.settings.hit_position.x + ((self.time - time) * self.speed) as f64 - BAR_WIDTH / 2.0;
     }
 
-    fn draw(&mut self, _args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
-        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > Settings::window_size().x as f64 {return}
+    fn draw(&mut self, args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
+        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
 
-        const SIZE:Vector2 = Vector2::new(BAR_WIDTH, PLAYFIELD_RADIUS*2.0);
         const DEPTH:f64 = f64::MAX-5.0;
 
         list.push(Box::new(Rectangle::new(
             BAR_COLOR,
             DEPTH,
             self.pos,
-            SIZE,
+            self.size,
             None
         )));
     }

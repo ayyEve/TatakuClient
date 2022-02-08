@@ -4,35 +4,87 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TaikoSettings {
-    // sv
-    pub static_sv: bool,
-    pub sv_multiplier: f32,
-
-    // keys
+    // input
     pub left_kat: Key,
     pub left_don: Key,
     pub right_don: Key,
     pub right_kat: Key,
-
     pub ignore_mouse_buttons: bool,
-    pub controller_config: HashMap<String, TaikoControllerConfig>
+    pub controller_config: HashMap<String, TaikoControllerConfig>,
+
+    // sv
+    pub static_sv: bool,
+    pub sv_multiplier: f32,
+
+    // size stuff
+    pub note_radius: f64,
+    pub big_note_multiplier: f64,
+
+    /// hit area, but calculated before use
+    #[serde(skip)]
+    pub hit_position: Vector2,
+    pub hit_position_relative_to_window_size: bool,
+    pub hit_position_relative_height_div: f64,
+    pub hit_position_offset: [f64; 2],
+
+    /// hit area raidus multiplier, 1.0 = note radius
+    pub hit_area_radius_mult: f64,
+    /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
+    pub playfield_height_padding: f64,
+}
+impl TaikoSettings {
+    pub fn calc_hit_area(&mut self) {
+        let base = if self.hit_position_relative_to_window_size {
+            let window_size = Settings::window_size();
+            window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
+        } else {
+            Vector2::zero()
+        };
+
+        self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1])
+    }
+
+    pub fn get_playfield(&self, width: f64, kiai: bool) -> Rectangle {
+        let height = self.note_radius * self.hit_area_radius_mult.max(self.big_note_multiplier) * 2.0 + self.playfield_height_padding;
+        Rectangle::new(
+            [0.2, 0.2, 0.2, 1.0].into(),
+            f64::MAX - 4.0,
+            Vector2::new(0.0, self.hit_position.y - height / 2.0),
+            Vector2::new(width, height),
+            if kiai {
+                Some(Border::new(Color::YELLOW, 2.0))
+            } else {None}
+        )
+    }
 }
 impl Default for TaikoSettings {
     fn default() -> Self {
         Self {
-            // keys
+            // input
             left_kat: Key::D,
             left_don: Key::F,
             right_don: Key::J,
             right_kat: Key::K,
+            ignore_mouse_buttons: false,
+            controller_config: HashMap::new(),
 
             // sv
             static_sv: false,
             sv_multiplier: 1.0,
             
-            ignore_mouse_buttons: false,
-
-            controller_config: HashMap::new()
+            // size stuff
+            note_radius: 42.0,
+            big_note_multiplier: 1.666666,
+            hit_area_radius_mult: 1.5,
+            playfield_height_padding: 8.0,
+            // hit area stuff
+            hit_position: Vector2::zero(),
+            hit_position_relative_to_window_size: true,
+            hit_position_relative_height_div: 1.666666,
+            hit_position_offset: [
+                200.0,
+                0.0
+            ],
         }
     }
 }

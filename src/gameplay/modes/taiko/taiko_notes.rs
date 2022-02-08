@@ -1,9 +1,8 @@
 use crate::prelude::*;
-use super::{BAR_COLOR, HIT_POSITION, NOTE_RADIUS};
+use super::BAR_COLOR;
 
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 const SPINNER_RADIUS:f64 = 200.0;
-const SPINNER_POSITION:Vector2 = Vector2::new(HIT_POSITION.x + 100.0, HIT_POSITION.y + 0.0);
 const FINISHER_LENIENCY:f32 = 20.0; // ms
 const NOTE_BORDER_SIZE:f64 = 2.0;
 
@@ -38,7 +37,7 @@ pub trait TaikoHitObject: HitObject {
 
 
 // note
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct TaikoNote {
     pos: Vector2,
     time: f32, // ms
@@ -49,10 +48,11 @@ pub struct TaikoNote {
     missed: bool,
     speed: f32,
 
-    alpha_mult: f32
+    alpha_mult: f32,
+    settings: Arc<TaikoSettings>,
 }
 impl TaikoNote {
-    pub fn new(time:f32, hit_type:HitType, finisher:bool) -> Self {
+    pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
         Self {
             time, 
             hit_time: 0.0,
@@ -62,7 +62,8 @@ impl TaikoNote {
             hit: false,
             missed: false,
             pos: Vector2::zero(),
-            alpha_mult: 1.0
+            alpha_mult: 1.0,
+            settings,
         }
     }
 
@@ -84,16 +85,16 @@ impl HitObject for TaikoNote {
             else if self.missed {GRAVITY_SCALING * 9.81 * ((beatmap_time - self.hit_time)/1000.0).powi(2)} 
             else {0.0};
         
-        self.pos = HIT_POSITION + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
+        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
     }
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.pos.x + NOTE_RADIUS < 0.0 || self.pos.x - NOTE_RADIUS > args.window_size[0] as f64 {return}
+        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
 
         let mut note = Circle::new(
             self.get_color().alpha(self.alpha_mult),
             self.time as f64,
             self.pos,
-            if self.finisher {NOTE_RADIUS*1.6666} else {NOTE_RADIUS}
+            if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius}
         );
         note.border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
         list.push(Box::new(note));
@@ -171,10 +172,11 @@ pub struct TaikoSlider {
     end_x: f64,
     
     alpha_mult: f32,
+    settings: Arc<TaikoSettings>,
 }
 impl TaikoSlider {
-    pub fn new(time:f32, end_time:f32, finisher:bool) -> Self {
-        let radius = if finisher {NOTE_RADIUS*1.6666} else {NOTE_RADIUS};
+    pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
+        let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
 
         Self {
             time, 
@@ -183,11 +185,12 @@ impl TaikoSlider {
             radius,
             speed: 0.0,
 
-            pos: Vector2::new(0.0,HIT_POSITION.y - radius),
+            pos: Vector2::new(0.0,settings.hit_position.y - radius),
             end_x: 0.0,
             hit_dots: Vec::new(),
             
             alpha_mult: 1.0,
+            settings,
         }
     }
 }
@@ -197,17 +200,17 @@ impl HitObject for TaikoSlider {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.end_time}
     fn update(&mut self, beatmap_time: f32) {
-        self.pos.x = HIT_POSITION.x + ((self.time - beatmap_time) * self.speed) as f64;
-        self.end_x = HIT_POSITION.x + ((self.end_time(0.0) - beatmap_time) * self.speed) as f64;
+        self.pos.x = self.settings.hit_position.x + ((self.time - beatmap_time) * self.speed) as f64;
+        self.end_x = self.settings.hit_position.x + ((self.end_time(0.0) - beatmap_time) * self.speed) as f64;
 
         // draw hit dots
         for dot in self.hit_dots.as_mut_slice() {
-            if dot.done {continue;}
+            if dot.done {continue}
             dot.update(beatmap_time);
         }
     }
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.end_x + NOTE_RADIUS < 0.0 || self.pos.x - NOTE_RADIUS > args.window_size[0] as f64 {return}
+        if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
 
         let color = Color::YELLOW.alpha(self.alpha_mult);
         let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
@@ -244,7 +247,7 @@ impl HitObject for TaikoSlider {
         // draw hit dots
         for dot in self.hit_dots.as_slice() {
             if dot.done {continue}
-            list.extend(dot.draw());
+            dot.draw(list);
         }
     }
 
@@ -265,38 +268,39 @@ impl TaikoHitObject for TaikoSlider {
         // too soon or too late
         if time < self.time || time > self.end_time {return ScoreHit::None}
 
-        self.hit_dots.push(SliderDot::new(time, self.speed));
+        self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));
         ScoreHit::Other(if self.finisher {200} else {100}, false)
     }
 
 }
 /// helper struct for drawing hit slider points
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct SliderDot {
     time: f32,
     speed: f32,
     pos: Vector2,
-    pub done: bool
+    pub done: bool,
+    settings: Arc<TaikoSettings>,
 }
 impl SliderDot {
-    pub fn new(time:f32, speed:f32) -> SliderDot {
+    pub fn new(time:f32, speed:f32, settings:Arc<TaikoSettings>) -> SliderDot {
         SliderDot {
             time,
             speed,
             pos: Vector2::zero(),
-            done: false
+            done: false,
+            settings
         }
     }
     pub fn update(&mut self, beatmap_time:f32) {
         let y = -((beatmap_time - self.time)*20.0).ln()*20.0 + 1.0;
-        self.pos = HIT_POSITION + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
+        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
         
         if !self.done && self.pos.x - SLIDER_DOT_RADIUS <= 0.0 {
             self.done = true;
         }
     }
-    pub fn draw(&self) -> [Box<dyn Renderable>; 2] {
-
+    pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
         let mut c = Circle::new(
             Color::YELLOW,
             -100.0,
@@ -305,21 +309,18 @@ impl SliderDot {
         );
         c.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0));
 
-        [
-            Box::new(c),
-            // "hole punch"
-            Box::new(Circle::new(
-                BAR_COLOR,
-                0.0,
-                Vector2::new(self.pos.x, HIT_POSITION.y),
-                SLIDER_DOT_RADIUS
-            )),
-        ]
+        list.push(Box::new(c));
+        list.push(Box::new(Circle::new(
+            BAR_COLOR,
+            0.0,
+            Vector2::new(self.pos.x, self.settings.hit_position.y),
+            SLIDER_DOT_RADIUS
+        )))
     }
 }
 
 // spinner
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct TaikoSpinner {
     pos: Vector2, // the note in the bar, not the spinner itself
     hit_count: u16,
@@ -331,10 +332,11 @@ pub struct TaikoSpinner {
     end_time: f32, // ms
     speed: f32,
 
-    alpha_mult: f32
+    alpha_mult: f32,
+    settings: Arc<TaikoSettings>,
 }
 impl TaikoSpinner {
-    pub fn new(time:f32, end_time:f32, hits_required:u16) -> Self {
+    pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>) -> Self {
         Self {
             time, 
             end_time,
@@ -346,7 +348,8 @@ impl TaikoSpinner {
             complete: false,
             pos: Vector2::zero(),
 
-            alpha_mult: 1.0
+            alpha_mult: 1.0,
+            settings
         }
     }
 }
@@ -360,20 +363,22 @@ impl HitObject for TaikoSpinner {
     }
 
     fn update(&mut self, beatmap_time: f32) {
-        self.pos = HIT_POSITION + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, 0.0);
+        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, 0.0);
         if beatmap_time > self.end_time {self.complete = true}
     }
     fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         // if done, dont draw anything
         if self.complete {return}
 
+        let spinner_position = Vector2::new(self.settings.hit_position.x + 100.0, self.settings.hit_position.y + 0.0);
+
         // if its time to start hitting the spinner
-        if self.pos.x <= HIT_POSITION.x {
+        if self.pos.x <= self.settings.hit_position.x {
             // bg circle
             let mut bg = Circle::new(
                 Color::YELLOW,
                 -10.0,
-                SPINNER_POSITION,
+                spinner_position,
                 SPINNER_RADIUS
             );
             bg.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
@@ -383,7 +388,7 @@ impl HitObject for TaikoSpinner {
             let mut fg = Circle::new(
                 Color::WHITE,
                 -11.0,
-                SPINNER_POSITION,
+                spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64)
             );
             fg.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
@@ -396,7 +401,7 @@ impl HitObject for TaikoSpinner {
                 Color::BLUE,
                 self.pos,
                 self.time as f64,
-                NOTE_RADIUS,
+                self.settings.note_radius,
                 false
             );
             list.push(Box::new(h1));
@@ -405,7 +410,7 @@ impl HitObject for TaikoSpinner {
                 Color::RED,
                 self.pos,
                 self.time as f64,
-                NOTE_RADIUS,
+                self.settings.note_radius,
                 true
             );
             list.push(Box::new(h2));
