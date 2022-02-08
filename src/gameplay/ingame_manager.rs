@@ -806,7 +806,6 @@ impl IngameManager {
        
 
         // draw hit timings
-        let time = time;
         for (hit_time, diff) in self.hitbar_timings.as_slice() {
             let hit_time = hit_time.clone();
             let mut diff = diff.clone();

@@ -33,7 +33,6 @@ pub struct TaikoGame {
     timing_bars: Vec<TimingBar>,
     // list indices
     note_index: usize,
-    timing_point_index: usize,
 
     // hit timing bar stuff
     hitwindow_300: f32,
@@ -66,7 +65,6 @@ impl GameMode for TaikoGame {
                     note_index: 0,
 
                     timing_bars: Vec::new(),
-                    timing_point_index: 0,
                     end_time: 0.0,
 
                     hitwindow_100: 0.0,
@@ -172,7 +170,6 @@ impl GameMode for TaikoGame {
                     note_index: 0,
 
                     timing_bars: Vec::new(),
-                    timing_point_index: 0,
                     end_time: 0.0,
 
                     hitwindow_100: 0.0,
@@ -270,7 +267,7 @@ impl GameMode for TaikoGame {
 
         let hit_type:HitType = key.into();
         let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
-        let hit_volume = Settings::get().get_effect_vol() * (manager.timing_points[self.timing_point_index].volume as f32 / 100.0);
+        let hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
 
         // if theres no more notes to hit, return after playing the sound
         if self.note_index >= self.notes.len() {
@@ -408,12 +405,6 @@ impl GameMode for TaikoGame {
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
-
-        let timing_points = &manager.timing_points;
-        // check timing point
-        if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
-            self.timing_point_index += 1;
-        }
     }
     fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         list.reserve(self.render_queue.len());
@@ -424,7 +415,7 @@ impl GameMode for TaikoGame {
 
 
         // draw the playfield
-        list.push(Box::new(self.taiko_settings.get_playfield(args.window_size[0], manager.timing_points[self.timing_point_index].kiai)));
+        list.push(Box::new(self.taiko_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai)));
 
         // draw the hit area
         list.push(Box::new(Circle::new(
@@ -548,7 +539,6 @@ impl GameMode for TaikoGame {
         }
         
         self.note_index = 0;
-        self.timing_point_index = 0;
 
         let od = beatmap.get_beatmap_meta().od;
         // setup hitwindows
