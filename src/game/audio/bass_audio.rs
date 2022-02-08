@@ -10,7 +10,6 @@ const SOUND_LIST:&[&'static str] = &[
 ];
 
 lazy_static::lazy_static!(
-    // pub static ref AUDIO: Arc<Audio> = Arc::new(Audio::setup());
     static ref CURRENT_SONG: Arc<Mutex<Option<(String, StreamChannel)>>> = Arc::new(Mutex::new(None));
 
     static ref PRELOADED_SOUNDS: HashMap<String, SampleChannel> = {
@@ -58,19 +57,20 @@ impl Audio {
             }
         }
         
-        let id = format!("{}", uuid::Uuid::new_v4());
+        
+        // let id = format!("{}", uuid::Uuid::new_v4());
 
-        // set the pending song to us
-        *PLAY_PENDING.lock() = id.clone();
+        // // set the pending song to us
+        // *PLAY_PENDING.lock() = id.clone();
 
-        // // load the audio data (this is what takes a million years)
-        // let sound = Audio::load_song(path.as_ref())?;
+        // // // load the audio data (this is what takes a million years)
+        // // let sound = Audio::load_song(path.as_ref())?;
 
-        // if the pending song is no longer us, return a fake pointer
-        if *PLAY_PENDING.lock() != id {
-            println!("[audio] // play_song - pending song changed, leaving");
-            return Err(AudioError::DifferentSong.into())
-        }
+        // // if the pending song is no longer us
+        // if *PLAY_PENDING.lock() != id {
+        //     println!("[audio] // play_song - pending song changed, leaving");
+        //     return Err(AudioError::DifferentSong.into())
+        // }
 
         match CURRENT_SONG.lock().clone() {
             Some((c_path, audio)) => { // audio set
