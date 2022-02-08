@@ -867,9 +867,9 @@ dependencies = [
 
 [[package]]
 name = "httparse"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
+checksum = "9100414882e15fb7feccb4897e5f0ff0ff1ca7d1a86a23208ada4d7a18e6c6c4"
 
 [[package]]
 name = "httpdate"
@@ -2416,7 +2416,6 @@ version = "0.1.0"
 dependencies = [
  "ayyeve-piston-ui",
  "bass-rs",
- "clipboard",
  "cpal",
  "futures-util",
  "gl",
@@ -2449,7 +2448,7 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#8d31731ce3224d3c2f46bbf06c9326d56400f8b0"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#2e224bf4c4d4b0d7b42092965c879b33b22c5a2d"
 dependencies = [
  "serde",
  "tataku-proc-macros",
