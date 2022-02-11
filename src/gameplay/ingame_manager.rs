@@ -73,7 +73,7 @@ pub struct IngameManager {
     replay_frame: u64,
     spectator_cache: Vec<(u32, String)>,
 
-    background_game_settings: BackgroundGameSettings,
+    pub background_game_settings: BackgroundGameSettings,
 
 
     // spectator variables

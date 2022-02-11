@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TaikoSettings {
     // input
@@ -31,17 +31,29 @@ pub struct TaikoSettings {
     pub hit_area_radius_mult: f64,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     pub playfield_height_padding: f64,
+
+    pub don_color_hex: String,
+    pub kat_color_hex: String,
+
+    #[serde(skip)]
+    pub don_color: Color,
+    #[serde(skip)]
+    pub kat_color: Color,
 }
 impl TaikoSettings {
-    pub fn calc_hit_area(&mut self) {
+    pub fn init_settings(&mut self) {
+        // load hit_position
         let base = if self.hit_position_relative_to_window_size {
             let window_size = Settings::window_size();
             window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
         } else {
             Vector2::zero()
         };
+        self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1]);
 
-        self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1])
+        // load colors
+        self.don_color = Color::from_hex(&self.don_color_hex);
+        self.kat_color = Color::from_hex(&self.kat_color_hex);
     }
 
     pub fn get_playfield(&self, width: f64, kiai: bool) -> Rectangle {
@@ -75,16 +87,21 @@ impl Default for TaikoSettings {
             // size stuff
             note_radius: 42.0,
             big_note_multiplier: 1.666666,
-            hit_area_radius_mult: 1.5,
+            hit_area_radius_mult: 1.2,
             playfield_height_padding: 8.0,
             // hit area stuff
             hit_position: Vector2::zero(),
             hit_position_relative_to_window_size: true,
-            hit_position_relative_height_div: 1.666666,
+            hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
             hit_position_offset: [
                 200.0,
                 0.0
             ],
+            don_color_hex: "#F00".to_owned(),
+            kat_color_hex: "#00F".to_owned(),
+        
+            don_color: Color::new(1.0, 0.0, 0.0, 1.0),
+            kat_color: Color::new(0.0, 0.0, 1.0, 1.0),
         }
     }
 }

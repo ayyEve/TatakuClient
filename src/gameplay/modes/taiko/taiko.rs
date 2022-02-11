@@ -12,7 +12,7 @@ const BAR_SPACING:f32 = 4.0;
 const SV_FACTOR:f32 = 700.0;
 
 /// how long should the drum buttons last for?
-const DRUM_LIFETIME_TIME:u64 = 100;
+const DRUM_LIFETIME_TIME:f32 = 100.0;
 
 /// calculate the taiko acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
@@ -40,8 +40,9 @@ pub struct TaikoGame {
     hitwindow_miss: f32,
 
     end_time: f32,
-    render_queue: Vec<Box<HalfCircle>>,
     auto_helper: TaikoAutoHelper,
+
+    hit_cache: HashMap<TaikoHit, f32>,
 
     taiko_settings: Arc<TaikoSettings>
 }
@@ -55,8 +56,15 @@ impl GameMode for TaikoGame {
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = Settings::get().taiko_settings.clone();
         // calculate the hit area
-        settings.calc_hit_area();
+        settings.init_settings();
         let settings = Arc::new(settings);
+
+
+        let mut hit_cache = HashMap::new();
+        for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
+            hit_cache.insert(i, -999.9);
+        }
+
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
@@ -71,9 +79,9 @@ impl GameMode for TaikoGame {
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    render_queue: Vec::new(),
                     auto_helper: TaikoAutoHelper::new(),
-                    taiko_settings: settings.clone()
+                    taiko_settings: settings.clone(),
+                    hit_cache,
                 };
 
                 // add notes
@@ -175,11 +183,10 @@ impl GameMode for TaikoGame {
                     hitwindow_100: 0.0,
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
-
-                    render_queue: Vec::new(),
                     auto_helper: TaikoAutoHelper::new(),
                     
-                    taiko_settings: settings.clone()
+                    taiko_settings: settings.clone(),
+                    hit_cache
                 };
 
                 // add notes
@@ -218,56 +225,19 @@ impl GameMode for TaikoGame {
 
         // draw drum
         match key {
-            KeyPress::LeftKat => {
-                let mut hit = HalfCircle::new(
-                    Color::BLUE,
-                    self.taiko_settings.hit_position,
-                    1.0,
-                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                    true
-                );
-                hit.set_lifetime(DRUM_LIFETIME_TIME);
-                self.render_queue.push(Box::new(hit));
-            },
-            KeyPress::LeftDon => {
-                let mut hit = HalfCircle::new(
-                    Color::RED,
-                    self.taiko_settings.hit_position,
-                    1.0,
-                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                    true
-                );
-                hit.set_lifetime(DRUM_LIFETIME_TIME);
-                self.render_queue.push(Box::new(hit));
-            },
-            KeyPress::RightDon => {
-                let mut hit = HalfCircle::new(
-                    Color::RED,
-                    self.taiko_settings.hit_position,
-                    1.0,
-                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                    false
-                );
-                hit.set_lifetime(DRUM_LIFETIME_TIME);
-                self.render_queue.push(Box::new(hit));
-            },
-            KeyPress::RightKat => {
-                let mut hit = HalfCircle::new(
-                    Color::BLUE,
-                    self.taiko_settings.hit_position,
-                    1.0,
-                    self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                    false
-                );
-                hit.set_lifetime(DRUM_LIFETIME_TIME);
-                self.render_queue.push(Box::new(hit));
-            },
+            KeyPress::LeftKat => *self.hit_cache.get_mut(&TaikoHit::LeftKat).unwrap() = time,
+            KeyPress::LeftDon => *self.hit_cache.get_mut(&TaikoHit::LeftDon).unwrap() = time,
+            KeyPress::RightDon => *self.hit_cache.get_mut(&TaikoHit::RightDon).unwrap() = time,
+            KeyPress::RightKat => *self.hit_cache.get_mut(&TaikoHit::RightKat).unwrap() = time,
             _=> {}
         }
 
         let hit_type:HitType = key.into();
         let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
-        let hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
+        let mut hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
+        if manager.menu_background {
+            hit_volume *= manager.background_game_settings.hitsound_volume;
+        }
 
         // if theres no more notes to hit, return after playing the sound
         if self.note_index >= self.notes.len() {
@@ -307,17 +277,12 @@ impl GameMode for TaikoGame {
         let note = self.notes.get_mut(self.note_index).unwrap();
         let note_time = note.time();
         match note.get_points(hit_type, time, (self.hitwindow_miss, self.hitwindow_100, self.hitwindow_300)) {
-            ScoreHit::None | ScoreHit::X50 => {
-                // play sound
-                // Audio::play_preloaded(sound);
-            },
+            ScoreHit::None | ScoreHit::X50 => {},
             ScoreHit::Miss => {
                 manager.score.hit_miss(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
+                manager.combo_break();
                 self.next_note();
-                // Audio::play_preloaded(sound);
-
-                //TODO: play miss sound
                 //TODO: indicate this was a miss
             },
             ScoreHit::X100 | ScoreHit::Xkatu => {
@@ -327,7 +292,6 @@ impl GameMode for TaikoGame {
                 // only play finisher sounds if the note is both a finisher and was hit
                 // could maybe also just change this to HitObject.get_sound() -> &str
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
-                // Audio::play_preloaded(sound);
                 //TODO: indicate this was a bad hit
 
                 self.next_note();
@@ -337,14 +301,12 @@ impl GameMode for TaikoGame {
                 manager.hitbar_timings.push((time, time - note_time));
                 
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
-                // Audio::play_preloaded(sound);
 
                 self.next_note();
             },
             ScoreHit::Other(score, consume) => { // used by sliders and spinners
                 manager.score.score += score as u64;
                 if consume {self.next_note()}
-                // Audio::play_preloaded(sound);
             }
         }
 
@@ -407,12 +369,51 @@ impl GameMode for TaikoGame {
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
     fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
-        list.reserve(self.render_queue.len());
-        for i in self.render_queue.iter() {
-            list.push(i.clone());
-        }
-        self.render_queue.clear();
+        let time = manager.time();
+        for (hit_type, hit_time) in self.hit_cache.iter() {
+            if time - hit_time > DRUM_LIFETIME_TIME {continue}
 
+            let alpha = 1.0 - (time - hit_time) / (DRUM_LIFETIME_TIME * 4.0);
+
+            match hit_type {
+                TaikoHit::LeftKat => {
+                    list.push(Box::new(HalfCircle::new(
+                        self.taiko_settings.kat_color.alpha(alpha),
+                        self.taiko_settings.hit_position,
+                        1.0,
+                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                        true
+                    )));
+                }
+                TaikoHit::LeftDon => {
+                    list.push(Box::new(HalfCircle::new(
+                        self.taiko_settings.don_color.alpha(alpha),
+                        self.taiko_settings.hit_position,
+                        1.0,
+                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                        true
+                    )));
+                }
+                TaikoHit::RightDon => {
+                    list.push(Box::new(HalfCircle::new(
+                        self.taiko_settings.don_color.alpha(alpha),
+                        self.taiko_settings.hit_position,
+                        1.0,
+                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                        false
+                    )));
+                }
+                TaikoHit::RightKat => {
+                    list.push(Box::new(HalfCircle::new(
+                        self.taiko_settings.kat_color.alpha(alpha),
+                        self.taiko_settings.hit_position,
+                        1.0,
+                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                        false
+                    )));
+                }
+            }
+        }
 
         // draw the playfield
         list.push(Box::new(self.taiko_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai)));
@@ -641,7 +642,7 @@ impl GameMode for TaikoGame {
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct TimingBar {
     time: f32,
     speed: f32,
@@ -803,4 +804,13 @@ impl TaikoAutoHelper {
             }
         }
     }
+}
+
+
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TaikoHit {
+    LeftKat,
+    LeftDon,
+    RightDon,
+    RightKat
 }

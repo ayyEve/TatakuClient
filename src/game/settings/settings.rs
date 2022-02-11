@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 const SETTINGS_FILE:&str = "settings.json";
 
 lazy_static::lazy_static! {
@@ -9,7 +8,7 @@ lazy_static::lazy_static! {
     static ref LAST_CALLER:Arc<Mutex<&'static str>> = Arc::new(Mutex::new("None"));
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     // audio

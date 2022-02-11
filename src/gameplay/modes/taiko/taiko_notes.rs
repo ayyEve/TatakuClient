@@ -8,10 +8,6 @@ const NOTE_BORDER_SIZE:f64 = 2.0;
 
 const GRAVITY_SCALING:f32 = 400.0;
 
-const DON_COLOR:Color = Color::new(1.0, 0.0, 0.0, 1.0);
-const KAT_COLOR:Color = Color::new(0.0, 0.0, 1.0, 1.0);
-
-
 pub trait TaikoHitObject: HitObject {
     fn is_kat(&self) -> bool {false}// needed for diff calc and autoplay
 
@@ -69,8 +65,8 @@ impl TaikoNote {
 
     fn get_color(&mut self) -> Color {
         match self.hit_type {
-            HitType::Don => DON_COLOR,
-            HitType::Kat => KAT_COLOR,
+            HitType::Don => self.settings.don_color,
+            HitType::Kat => self.settings.kat_color,
         }
     }
 }
@@ -204,7 +200,7 @@ impl HitObject for TaikoSlider {
         self.end_x = self.settings.hit_position.x + ((self.end_time(0.0) - beatmap_time) * self.speed) as f64;
 
         // draw hit dots
-        for dot in self.hit_dots.as_mut_slice() {
+        for dot in self.hit_dots.iter_mut() {
             if dot.done {continue}
             dot.update(beatmap_time);
         }
@@ -267,7 +263,7 @@ impl TaikoHitObject for TaikoSlider {
     fn get_points(&mut self, _hit_type:HitType, time:f32, _:(f32,f32,f32)) -> ScoreHit {
         // too soon or too late
         if time < self.time || time > self.end_time {return ScoreHit::None}
-
+        
         self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));
         ScoreHit::Other(if self.finisher {200} else {100}, false)
     }
@@ -301,6 +297,7 @@ impl SliderDot {
         }
     }
     pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
+        println!("drawing dot");
         let mut c = Circle::new(
             Color::YELLOW,
             -100.0,
