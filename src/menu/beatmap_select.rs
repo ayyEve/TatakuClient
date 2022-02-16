@@ -622,7 +622,7 @@ impl BeatmapsetItem {
         false
     }
 }
-impl ScrollableItem for BeatmapsetItem {
+impl ScrollableItemGettersSetters for BeatmapsetItem {
     fn size(&self) -> Vector2 {
         if !self.selected {
             BEATMAPSET_ITEM_SIZE
@@ -634,14 +634,16 @@ impl ScrollableItem for BeatmapsetItem {
     // fn set_tag(&mut self, _tag:&str) {self.pending_play = false} // bit of a jank strat: when this is called, reset the pending_play property
     fn get_pos(&self) -> Vector2 {self.pos}
     fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
-    fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.beatmaps[self.selected_index].clone())}
 
     fn get_hover(&self) -> bool {self.hover}
     fn set_hover(&mut self, hover:bool) {self.hover = hover}
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
+}
 
-    
+impl ScrollableItem for BeatmapsetItem {
+    fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.beatmaps[self.selected_index].clone())}
+
     fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
         if self.selected && self.hover {
             // find the clicked item
@@ -765,9 +767,10 @@ impl ScrollableItem for BeatmapsetItem {
 }
 
 
-
+#[derive(ScrollableGettersSetters)]
 pub struct LeaderboardItem {
     pos: Vector2,
+    size: Vector2,
     hover: bool,
     selected: bool,
     tag: String,
@@ -782,6 +785,7 @@ impl LeaderboardItem {
 
         LeaderboardItem {
             pos: Vector2::zero(),
+            size: LEADERBOARD_ITEM_SIZE,
             score,
             tag,
             hover: false,
@@ -791,17 +795,6 @@ impl LeaderboardItem {
     }
 }
 impl ScrollableItem for LeaderboardItem {
-    fn size(&self) -> Vector2 {LEADERBOARD_ITEM_SIZE}
-    fn get_tag(&self) -> String {self.tag.clone()}
-    fn set_tag(&mut self, tag:&str) {self.tag = tag.to_owned()}
-    fn get_pos(&self) -> Vector2 {self.pos}
-    fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
-
-    fn get_hover(&self) -> bool {self.hover}
-    fn set_hover(&mut self, hover:bool) {self.hover = hover}
-    fn get_selected(&self) -> bool {self.selected}
-    fn set_selected(&mut self, selected:bool) {self.selected = selected}
-
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         const PADDING:Vector2 = Vector2::new(5.0, 5.0);
 

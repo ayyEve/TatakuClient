@@ -498,7 +498,7 @@ impl MenuButton {
         self.timer.elapsed().as_secs_f64() * 1000.0
     }
 }
-impl ScrollableItem for MenuButton {
+impl ScrollableItemGettersSetters for MenuButton {
     fn size(&self) -> Vector2 {self.size}
     fn get_pos(&self) -> Vector2 {self.shapes.items[0].get_pos()}
 
@@ -553,6 +553,8 @@ impl ScrollableItem for MenuButton {
     }
     fn get_selectable(&self) -> bool {false}
 
+}
+impl ScrollableItem for MenuButton {
     fn update(&mut self) {
         let time = self.timer.elapsed().as_secs_f64() * 1000.0;
         self.shapes.update(time);

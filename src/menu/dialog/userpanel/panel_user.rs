@@ -3,17 +3,21 @@ use crate::prelude::*;
 pub const USER_ITEM_SIZE:Vector2 = Vector2::new(300.0, 100.0);
 pub const USERNAME_OFFSET:Vector2 = Vector2::new(5.0, 5.0);
 
-#[derive(Clone)]
+#[derive(Clone, ScrollableGettersSetters)]
 pub struct PanelUser {
     pos: Vector2,
+    size: Vector2,
     hover: bool,
     selected: bool,
+    tag: String,
 
     pub user: OnlineUser
 }
 impl PanelUser {
     pub fn new(user: OnlineUser) -> Self {
         Self {
+            tag: user.username.clone(),
+            size: USER_ITEM_SIZE,
             user,
             hover: false,
             selected: false,
@@ -25,6 +29,8 @@ impl Default for PanelUser {
     fn default() -> Self {
         Self { 
             pos: Vector2::zero(), 
+            size: USER_ITEM_SIZE,
+            tag: String::new(),
             hover: Default::default(), 
             selected: Default::default(), 
 
@@ -34,17 +40,6 @@ impl Default for PanelUser {
 }
 
 impl ScrollableItem for PanelUser {
-    fn size(&self) -> Vector2 {USER_ITEM_SIZE}
-    fn get_pos(&self) -> Vector2 {self.pos}
-    fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
-    fn get_tag(&self) -> String {self.user.username.clone()}
-    fn set_tag(&mut self, _tag:&str) {}
-
-    fn get_hover(&self) -> bool {self.hover}
-    fn set_hover(&mut self, hover:bool) {self.hover = hover}
-    fn get_selected(&self) -> bool {self.selected}
-    fn set_selected(&mut self, selected:bool) {self.selected = selected}
-
     fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let font = get_font("main");
         let pos = self.pos + pos;

@@ -6,9 +6,9 @@ const SKIN_FOLDER:&str = "./skins";
 const DEFAULT_SKIN:&str = "default";
 
 
-lazy_static::lazy_static! {
-    static ref SKIN_MANAGER: RwLock<SkinHelper> = RwLock::new(SkinHelper::new());
-}
+// lazy_static::lazy_static! {
+//     static ref SKIN_MANAGER: RwLock<SkinHelper> = RwLock::new(SkinHelper::new());
+// }
 
 
 /// path to a texture file

@@ -21,8 +21,7 @@ impl DirectItem {
         }
     }
 }
-impl ScrollableItem for DirectItem {
-    // fn update(&mut self) {}
+impl ScrollableItemGettersSetters for DirectItem {
     fn size(&self) -> Vector2 {DIRECT_ITEM_SIZE}
     fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
     fn get_pos(&self) -> Vector2 {self.pos}
@@ -33,7 +32,9 @@ impl ScrollableItem for DirectItem {
     fn set_hover(&mut self, hover:bool) {self.hover = hover}
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
+}
 
+impl ScrollableItem for DirectItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.item.clone())}
 
     fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {

@@ -23,6 +23,7 @@ pub use serde::{Serialize, Deserialize};
 pub use ayyeve_piston_ui::menu::*;
 pub use ayyeve_piston_ui::menu::menu_elements::*;
 pub use ayyeve_piston_ui::render::{Renderable, Vector2, Color};
+pub use ayyeve_piston_ui::prelude::{ScrollableItemGettersSetters, ScrollableGettersSetters};
 
 // font things
 pub use ayyeve_piston_ui::render::fonts::get_font;
@@ -74,3 +75,6 @@ pub use crate::create_packet;
 pub use crate::game::online::*;
 pub use tataku_common::PacketId;
 pub use tataku_common::serialization::*;
+
+
+pub use crate::RetainMut;

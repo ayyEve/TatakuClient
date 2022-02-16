@@ -1,4 +1,5 @@
 #![allow(dead_code, unused, non_snake_case)]
+use ayyeve_piston_ui::prelude::ScrollableGettersSetters;
 use futures_util::SinkExt;
 use crate::prelude::*;
 
@@ -424,11 +425,14 @@ impl ChatChannel {
 }
 
 
+#[derive(ScrollableGettersSetters)]
+#[Scrollable(selectable)]
 struct ChannelScroll {
     pos: Vector2,
     size: Vector2,
     hover: bool,
     selected: bool,
+    tag: String,
 
     channel: ChatChannel,
     font_size: u32,
@@ -437,6 +441,7 @@ struct ChannelScroll {
 impl ChannelScroll {
     fn new(channel: ChatChannel, width: f64, font_size: u32) -> Self {
         Self {
+            tag: channel.get_name(),
             channel,
             font_size,
 
@@ -449,17 +454,6 @@ impl ChannelScroll {
     }
 }
 impl ScrollableItem for ChannelScroll {
-    fn size(&self) -> Vector2 {self.size}
-    fn get_pos(&self) -> Vector2 {self.pos}
-    fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
-    fn get_tag(&self) -> String {self.channel.get_name()}
-    fn get_hover(&self) -> bool {self.hover}
-    fn set_hover(&mut self, hover:bool) {self.hover = hover}
-
-    fn get_selectable(&self) -> bool {true}
-    fn get_selected(&self) -> bool {self.selected}
-    fn set_selected(&mut self, selected:bool) {self.selected = selected}
-
     fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
 
         let text = Text::new(
@@ -475,6 +469,7 @@ impl ScrollableItem for ChannelScroll {
 }
 
 
+#[derive(ScrollableGettersSetters)]
 struct MessageScroll {
     pos: Vector2,
     size: Vector2,
@@ -498,12 +493,6 @@ impl MessageScroll {
     }
 }
 impl ScrollableItem for MessageScroll {
-    fn size(&self) -> Vector2 {self.size}
-    fn get_pos(&self) -> Vector2 {self.pos}
-    fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
-    fn get_hover(&self) -> bool {self.hover}
-    fn set_hover(&mut self, hover:bool) {self.hover = hover}
-    // fn get_tag(&self) -> String {self.channel.get_name()}
 
     fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let text = Text::new(

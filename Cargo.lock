@@ -96,15 +96,28 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "ayyeve-piston-ui"
-version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#4701de794f2aeffd1a090cc3f3a8296215129180"
+version = "0.2.0"
+source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
+checksum = "e61955ef935d1ee9f1ef1b7cf344d861282def775c735ebf816e2ea85edaa32f"
 dependencies = [
+ "ayyeve-ui-proc-macros",
  "clipboard",
  "lazy_static",
  "parking_lot 0.12.0",
  "piston",
  "piston2d-graphics",
  "piston2d-opengl_graphics",
+]
+
+[[package]]
+name = "ayyeve-ui-proc-macros"
+version = "0.1.2"
+source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
+checksum = "c3940dd0a69ebc006658e1cc56a5cdbe746a48527238a932f4c16366df0b34bf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -769,16 +782,15 @@ dependencies = [
 
 [[package]]
 name = "glfw"
-version = "0.42.0"
+version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06a3f9afbfd6576fca75be1e5cfc6db259b3a9b65844d34890b0711e82953605"
+checksum = "ae1439ba800d82c8fc55b86c400b5a4c30c5de5c5c24bb549981274bffba7b05"
 dependencies = [
  "bitflags",
  "glfw-sys",
  "image",
  "objc",
- "raw-window-handle 0.3.4",
- "semver",
+ "raw-window-handle",
  "winapi",
 ]
 
@@ -1642,7 +1654,8 @@ dependencies = [
 [[package]]
 name = "piston2d-graphics"
 version = "0.41.0"
-source = "git+https://github.com/ayyEve/graphics#aea6cf301b6fb71d7c02bca47032f8addf118f10"
+source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
+checksum = "c3a6149f7bda22b9b77c79a883b331dc047c38fd1484031013f0086367ed1af6"
 dependencies = [
  "fnv",
  "interpolation",
@@ -1655,8 +1668,9 @@ dependencies = [
 
 [[package]]
 name = "piston2d-opengl_graphics"
-version = "0.79.0"
-source = "git+https://github.com/ayyEve/opengl_graphics#b80b85175b79450347155868f6e3476a9e2847dd"
+version = "0.79.1"
+source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
+checksum = "500d1e76e5dbd98c2eee2dbc2b3c0f4aaa693c6349717168fd103ca9f90b10fb"
 dependencies = [
  "fnv",
  "gl",
@@ -1682,8 +1696,9 @@ dependencies = [
 
 [[package]]
 name = "pistoncore-glfw_window"
-version = "0.72.0"
-source = "git+https://github.com/ayyEve/glfw_window#e85fb5e36eca6cc3da987f5fd747d43366cb2825"
+version = "0.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab1a175660678bb0ad27fc3d26f58159bef109e9f244dd89956c8b2a0bd8d6f2"
 dependencies = [
  "gl",
  "glfw",
@@ -1819,16 +1834,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
 dependencies = [
  "rand_core",
-]
-
-[[package]]
-name = "raw-window-handle"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e28f55143d0548dad60bb4fbdc835a3d7ac6acc3324506450c5fdd6e42903a76"
-dependencies = [
- "libc",
- "raw-window-handle 0.4.2",
 ]
 
 [[package]]
@@ -2122,21 +2127,6 @@ dependencies = [
  "core-foundation-sys",
  "libc",
 ]
-
-[[package]]
-name = "semver"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
-dependencies = [
- "semver-parser",
-]
-
-[[package]]
-name = "semver-parser"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"

@@ -284,7 +284,7 @@ impl GameMode for TaikoGame {
                 manager.combo_break();
                 self.next_note();
                 //TODO: indicate this was a miss
-            },
+            }
             ScoreHit::X100 | ScoreHit::Xkatu => {
                 manager.score.hit100(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
@@ -295,7 +295,7 @@ impl GameMode for TaikoGame {
                 //TODO: indicate this was a bad hit
 
                 self.next_note();
-            },
+            }
             ScoreHit::X300 | ScoreHit::Xgeki => {
                 manager.score.hit300(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
@@ -303,7 +303,7 @@ impl GameMode for TaikoGame {
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
 
                 self.next_note();
-            },
+            }
             ScoreHit::Other(score, consume) => { // used by sliders and spinners
                 manager.score.score += score as u64;
                 if consume {self.next_note()}
