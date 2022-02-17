@@ -9,6 +9,8 @@ lazy_static::lazy_static! {
 pub struct ModManager {
     pub speed: f32,
     pub autoplay: bool,
+
+    pub nofail: bool,
 }
 
 // static 
@@ -17,6 +19,7 @@ impl ModManager {
         Self {
             speed: 1.0,
             autoplay: false,
+            nofail: false,
         }
     }
     
@@ -26,5 +29,4 @@ impl ModManager {
 }
 
 // instance
-impl ModManager {
-}
+impl ModManager {}

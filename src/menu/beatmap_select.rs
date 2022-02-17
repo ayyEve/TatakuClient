@@ -466,6 +466,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             return;
         }
 
+        // mode change
         if mods.alt {
             let new_mode = match key {
                 D1 => Some(PlayMode::Standard),
@@ -482,6 +483,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             }
         }
 
+        // mods and speed
         if mods.ctrl {
             let mut speed = ModManager::get().speed;
             let prev_speed = speed;
@@ -498,7 +500,16 @@ impl Menu<Game> for BeatmapSelectMenu {
 
                     let state = if manager.autoplay {"on"} else {"off"};
                     NotificationManager::add_text_notification(&format!("Autoplay {}", state), 2000.0, Color::BLUE);
-                },
+                }
+
+                // nofail enable/disable
+                N => {
+                    let mut manager = ModManager::get();
+                    manager.nofail = !manager.nofail;
+
+                    let state = if manager.nofail {"on"} else {"off"};
+                    NotificationManager::add_text_notification(&format!("Nofail {}", state), 2000.0, Color::BLUE);
+                }
 
                 _ => {}
             }

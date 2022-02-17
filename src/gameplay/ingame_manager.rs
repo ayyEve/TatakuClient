@@ -392,7 +392,7 @@ impl IngameManager {
         }
     }
     pub fn fail(&mut self) {
-        if self.failed {return}
+        if self.failed || self.current_mods.nofail {return}
         self.failed = true;
         self.failed_time = self.time();
     }
