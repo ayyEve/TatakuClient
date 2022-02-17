@@ -196,6 +196,16 @@ impl IngameManager {
         !(self.current_mods.autoplay || self.replaying || self.failed)
     }
 
+    #[inline]
+    pub fn game_speed(&self) -> f32 {
+        if self.replaying {
+            // if we're replaying, make sure we're using the score's speed
+            self.replay.speed
+        } else {
+            self.current_mods.speed
+        }
+    }
+
 
     pub fn current_timing_point(&self) -> TimingPoint {
         self.timing_points[self.timing_point_index]
@@ -342,7 +352,7 @@ impl IngameManager {
         } else {
             // reset song
             #[cfg(feature="bass_audio")] {
-                self.song.set_rate(self.current_mods.speed).unwrap();
+                self.song.set_rate(self.game_speed()).unwrap();
                 self.song.set_position(0.0).unwrap();
                 self.song.pause().unwrap();
             }
@@ -352,14 +362,14 @@ impl IngameManager {
                 Some(song) => {
                     song.set_position(0.0);
                     song.pause();
-                    song.set_playback_speed(self.current_mods.speed as f64);
+                    song.set_playback_speed(self.game_speed());
                 }
                 None => {
                     while let None = self.song.upgrade() {
                         self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
                     }
                     let song = self.song.upgrade().unwrap();
-                    song.set_playback_speed(self.current_mods.speed as f64);
+                    song.set_playback_speed(self.game_speed() as f64);
                     song.pause();
                 }
             }
@@ -378,14 +388,7 @@ impl IngameManager {
         self.timing_bar_things = self.gamemode.timing_bar_things();
         self.hitbar_timings = Vec::new();
         
-        if self.replaying {
-            // if we're replaying, make sure we're using the score's speed
-            #[cfg(feature="bass_audio")]
-            self.song.set_rate(self.replay.speed).unwrap();
-
-            #[cfg(feature="neb_audio")]
-            self.song.upgrade().unwrap().set_playback_speed(self.replay.speed as f64);
-        } else {
+        if !self.replaying {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
@@ -403,18 +406,14 @@ impl IngameManager {
         if self.lead_in_time > 0.0 {
             let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
             self.lead_in_timer = Instant::now();
-            self.lead_in_time -= elapsed * if self.replaying {self.replay.speed} else {self.current_mods.speed};
+            self.lead_in_time -= elapsed * self.game_speed();
 
             if self.lead_in_time <= 0.0 {
 
                 #[cfg(feature="bass_audio")] {
                     self.song.set_position(-self.lead_in_time as f64).unwrap();
                     self.song.set_volume(Settings::get().get_music_vol()).unwrap();
-                    if self.replaying {
-                        self.song.set_rate(self.replay.speed).unwrap();
-                    } else {
-                        self.song.set_rate(self.current_mods.speed).unwrap();
-                    }
+                    self.song.set_rate(self.game_speed()).unwrap();
                     self.song.play(true).unwrap();
                 }
                 
@@ -422,7 +421,7 @@ impl IngameManager {
                     let song = self.song.upgrade().unwrap();
                     song.set_position(-self.lead_in_time);
                     song.set_volume(Settings::get().get_music_vol());
-                    song.set_playback_speed(self.current_mods.speed as f64);
+                    song.set_playback_speed(self.game_speed() as f64);
                     song.play();
                 }
 
@@ -464,7 +463,7 @@ impl IngameManager {
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
         if self.failed {
-            let new_rate = f64::lerp(1.0, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
+            let new_rate = f64::lerp(self.game_speed() as f64, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
 
             if new_rate <= 0.05 {
                 self.song.pause().unwrap();
