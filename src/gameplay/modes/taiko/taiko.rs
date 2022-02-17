@@ -53,6 +53,7 @@ impl TaikoGame {
 impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {PlayMode::Taiko}
     fn end_time(&self) -> f32 {self.end_time}
+
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = Settings::get().taiko_settings.clone();
         // calculate the hit area
@@ -282,12 +283,20 @@ impl GameMode for TaikoGame {
                 manager.score.hit_miss(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
                 manager.combo_break();
+
+                manager.health.take_damage();
+                if manager.health.is_dead() {
+                    manager.fail()
+                }
+
                 self.next_note();
                 //TODO: indicate this was a miss
             }
             ScoreHit::X100 | ScoreHit::Xkatu => {
                 manager.score.hit100(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
+
+                manager.health.give_life();
 
                 // only play finisher sounds if the note is both a finisher and was hit
                 // could maybe also just change this to HitObject.get_sound() -> &str
@@ -299,9 +308,9 @@ impl GameMode for TaikoGame {
             ScoreHit::X300 | ScoreHit::Xgeki => {
                 manager.score.hit300(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
+                manager.health.give_extra_life();
                 
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
-
                 self.next_note();
             }
             ScoreHit::Other(score, consume) => { // used by sliders and spinners
@@ -361,6 +370,11 @@ impl GameMode for TaikoGame {
                 let s = &mut manager.score;
                 s.xmiss += 1;
                 s.combo = 0;
+                
+                manager.health.take_damage();
+                if manager.health.is_dead() {
+                    manager.fail()
+                }
             }
             self.next_note();
         }

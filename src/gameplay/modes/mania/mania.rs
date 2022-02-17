@@ -249,6 +249,7 @@ impl GameMode for ManiaGame {
             manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
         }
 
+        let sound = "kat";
         macro_rules! play_sound {
             ($sound:expr) => {
                 #[cfg(feature="bass_audio")]
@@ -273,7 +274,6 @@ impl GameMode for ManiaGame {
                     _ => return
                 };
                 // let hit_type:HitType = key.into();
-                let sound = "kat";
                 // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
@@ -292,6 +292,8 @@ impl GameMode for ManiaGame {
 
                     manager.score.hit300(time, note_time);
                     manager.hitbar_timings.push((time, time - note_time));
+                    manager.health.give_life();
+
                     play_sound!(sound);
                     if note.note_type() != NoteType::Hold {
                         self.next_note(col);
@@ -301,6 +303,7 @@ impl GameMode for ManiaGame {
 
                     manager.score.hit100(time, note_time);
                     manager.hitbar_timings.push((time, time - note_time));
+                    manager.health.give_life();
                     play_sound!(sound);
                     //TODO: indicate this was a bad hit
 
@@ -312,11 +315,16 @@ impl GameMode for ManiaGame {
 
                     manager.score.hit_miss(time, note_time);
                     manager.hitbar_timings.push((time, time - note_time));
+                    
+                    manager.health.take_damage();
+                    if manager.health.is_dead() {
+                        manager.fail()
+                    }
+
                     if note.note_type() != NoteType::Hold {
                         self.next_note(col);
                     }
                     play_sound!(sound);
-                    //TODO: play miss sound
                     //TODO: indicate this was a miss
                 } else { // way too early, ignore
                     // play sound
@@ -352,19 +360,31 @@ impl GameMode for ManiaGame {
                     if diff < self.hitwindow_300 {
                         manager.score.hit300(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
-                        // Audio::play_preloaded(sound);
+                        manager.health.give_life();
+                        
+                        // play sound
+                        play_sound!(sound);
 
                         self.next_note(col);
                     } else if diff < self.hitwindow_100 {
                         manager.score.hit100(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
-                        // Audio::play_preloaded(sound);
+                        manager.health.give_life();
                         //TODO: indicate this was a bad hit
+
+                        // play sound
+                        play_sound!(sound);
 
                         self.next_note(col);
                     } else if diff < self.hitwindow_miss { // too early, miss
                         manager.score.hit_miss(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
+                        
+                        manager.health.take_damage();
+                        if manager.health.is_dead() {
+                            manager.fail()
+                        }
+
                         // Audio::play_preloaded(sound);
                         //TODO: play miss sound
                         //TODO: indicate this was a miss
@@ -538,6 +558,11 @@ impl GameMode for ManiaGame {
                 let s = &mut manager.score;
                 s.xmiss += 1;
                 s.combo = 0;
+                
+                manager.health.take_damage();
+                if manager.health.is_dead() {
+                    manager.fail()
+                }
                 
                 self.next_note(col);
             }

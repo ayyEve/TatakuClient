@@ -86,7 +86,6 @@ impl Game {
             }
         }
 
-
         let graphics = GlGraphics::new(opengl);
         game_init_benchmark.log("graphics created", true);
 
@@ -371,7 +370,7 @@ impl Game {
                 if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
-                    let menu = PauseMenu::new(manager2);
+                    let menu = PauseMenu::new(manager2, false);
                     self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                 } else {
 
@@ -402,56 +401,64 @@ impl Game {
                     manager.update();
                     if manager.completed {
                         println!("beatmap complete");
-                        let score = &manager.score;
-                        let replay = &manager.replay;
 
-                        if manager.should_save_score() {
-                            // save score
-                            save_score(&score);
-                            match save_replay(&replay, &score) {
-                                Ok(_)=> println!("replay saved ok"),
-                                Err(e) => NotificationManager::add_error_notification("error saving replay", e),
-                            }
-
-                            // submit score
-                            #[cfg(feature = "online_scores")] 
-                            {
-                                self.threading.spawn(async move {
-                                    //TODO: do this async
-                                    println!("submitting score");
-                                    let mut writer = SerializationWriter::new();
-                                    writer.write(score.clone());
-                                    writer.write(replay.clone());
-                                    let data = writer.data();
-                                    
-                                    let c = reqwest::Client::new();
-                                    let res = c.post("http://localhost:8000/score_submit")
-                                        .body(data)
-                                        .send().await;
-
-                                    match res {
-                                        Ok(_isgood) => {
-                                            //TODO: do something with the response?
-                                            println!("score submitted successfully");
-                                        },
-                                        Err(e) => println!("error submitting score: {}", e),
-                                    }
-                                });
-                            }
-
-                        }
-
-                        // used to indicate user stopped watching a replay
-                        if manager.replaying && !manager.started {
-                            // go back to beatmap select
-                            let menu = self.menus.get("beatmap").unwrap();
-                            let menu = menu.clone();
-                            self.queue_state_change(GameState::InMenu(menu));
+                        if manager.failed {
+                            println!("player failed");
+                            let manager2 = std::mem::take(manager);
+                            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true)))));
+                            
                         } else {
-                            // show score menu
-                            let menu = ScoreMenu::new(&score, manager.metadata.clone());
-                            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                            let score = &manager.score;
+                            let replay = &manager.replay;
+
+                            if manager.should_save_score() {
+                                // save score
+                                save_score(&score);
+                                match save_replay(&replay, &score) {
+                                    Ok(_)=> println!("replay saved ok"),
+                                    Err(e) => NotificationManager::add_error_notification("error saving replay", e),
+                                }
+
+                                // submit score
+                                #[cfg(feature = "online_scores")] {
+                                    self.threading.spawn(async move {
+                                        //TODO: do this async
+                                        println!("submitting score");
+                                        let mut writer = SerializationWriter::new();
+                                        writer.write(score.clone());
+                                        writer.write(replay.clone());
+                                        let data = writer.data();
+                                        
+                                        let c = reqwest::Client::new();
+                                        let res = c.post("http://localhost:8000/score_submit")
+                                            .body(data)
+                                            .send().await;
+
+                                        match res {
+                                            Ok(_isgood) => {
+                                                //TODO: do something with the response?
+                                                println!("score submitted successfully");
+                                            },
+                                            Err(e) => println!("error submitting score: {}", e),
+                                        }
+                                    });
+                                }
+
+                            }
+
+                            // used to indicate user stopped watching a replay
+                            if manager.replaying && !manager.started {
+                                // go back to beatmap select
+                                let menu = self.menus.get("beatmap").unwrap();
+                                let menu = menu.clone();
+                                self.queue_state_change(GameState::InMenu(menu));
+                            } else {
+                                // show score menu
+                                let menu = ScoreMenu::new(&score, manager.metadata.clone());
+                                self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                            }
                         }
+
                     }
                 }
             }

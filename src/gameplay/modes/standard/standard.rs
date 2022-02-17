@@ -17,6 +17,7 @@ pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
 const STACK_LENIENCY:u32 = 3;
 
+
 /// calculate the standard acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
     let x50 = score.x50 as f64;
@@ -29,7 +30,6 @@ pub fn calc_acc(score: &Score) -> f64 {
     (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
     / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
 }
-
 
 pub struct StandardGame {
     // lists
@@ -152,6 +152,7 @@ impl StandardGame {
 
 impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {PlayMode::Standard}
+
     fn end_time(&self) -> f32 {self.end_time}
     fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
@@ -384,10 +385,14 @@ impl GameMode for StandardGame {
                 match &pts {
                     ScoreHit::None | ScoreHit::Other(_,_) => {}
                     ScoreHit::Miss => {
-                        println!("miss (press)");
                         manager.combo_break();
                         manager.score.hit_miss(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
+
+                        manager.health.take_damage();
+                        if manager.health.is_dead() {
+                            manager.fail()
+                        }
                     }
 
                     pts => {
@@ -401,6 +406,8 @@ impl GameMode for StandardGame {
                             ScoreHit::X300 | ScoreHit::Xgeki => manager.score.hit300(time, note_time),
                             _ => {}
                         }
+
+                        manager.health.give_life();
 
                         manager.hitbar_timings.push((time, time - note_time));
                     }
@@ -496,6 +503,11 @@ impl GameMode for StandardGame {
                         manager.combo_break();
                         manager.score.hit_miss(time, end_time);
                         self.draw_points.push((time, note.point_draw_pos(time), ScoreHit::Miss));
+                        
+                        manager.health.take_damage();
+                        if manager.health.is_dead() {
+                            manager.fail()
+                        }
                     }
                     NoteType::Slider if end_time <= time => {
                         let note_time = note.end_time(0.0);
@@ -509,6 +521,11 @@ impl GameMode for StandardGame {
                                 manager.combo_break();
                                 manager.score.hit_miss(time, note_time);
                                 manager.hitbar_timings.push((time, time - note_time));
+                                
+                                manager.health.take_damage();
+                                if manager.health.is_dead() {
+                                    manager.fail()
+                                }
                             }
                             pts => {
                                 match pts {
@@ -526,6 +543,8 @@ impl GameMode for StandardGame {
                                 let hitsamples = note.get_hitsamples().clone();
                                 manager.play_note_sound(note_time, hitsound, hitsamples);
                                 manager.hitbar_timings.push((time, time - note_time));
+
+                                manager.health.give_life();
                             }
                         }
                     }

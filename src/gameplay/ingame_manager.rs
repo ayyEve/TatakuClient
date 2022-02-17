@@ -28,12 +28,16 @@ pub struct IngameManager {
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
 
+    pub health: HealthHelper,
+
     pub score: Score,
     pub replay: Replay,
 
     pub started: bool,
     pub completed: bool,
     pub replaying: bool,
+    pub failed: bool,
+    pub failed_time: f32,
     /// is this playing in the background of the main menu?
     pub menu_background: bool,
     pub end_time: f32,
@@ -84,7 +88,7 @@ pub struct IngameManager {
 
     /// what should the game do on start?
     /// mainly a helper for spectator
-    pub on_start: Box<dyn FnOnce(&mut Self)>
+    pub on_start: Box<dyn FnOnce(&mut Self)>,
 }
 impl IngameManager {
     pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
@@ -95,17 +99,19 @@ impl IngameManager {
         let timing_points = beatmap.get_timing_points();
         let font = get_font("main");
         let hitsound_cache = HashMap::new();
-
         let current_mods = Arc::new(ModManager::get().clone());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode);
         score.speed = current_mods.speed;
+
+        let health = HealthHelper::new(Some(metadata.hp));
 
         Self {
             metadata,
             timing_points,
             hitsound_cache,
             current_mods,
+            health,
 
             lead_in_timer: Instant::now(),
             score,
@@ -121,6 +127,7 @@ impl IngameManager {
             started: false,
             completed: false,
             replaying: false,
+            failed: false,
             menu_background: false,
 
             lead_in_time: LEAD_IN_TIME,
@@ -146,30 +153,6 @@ impl IngameManager {
             ..Self::default()
         }
     }
-
-    pub fn should_save_score(&self) -> bool {
-        let should = !(self.replaying || self.current_mods.autoplay);
-        should
-    }
-
-
-    pub fn current_timing_point(&self) -> TimingPoint {
-        self.timing_points[self.timing_point_index]
-    }
-
-    pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
-        let mut tp = &self.timing_points[0];
-
-        for i in self.timing_points.iter() {
-            if i.is_inherited() && !allow_inherited {continue}
-            if i.time <= time {
-                tp = i
-            }
-        }
-
-        tp
-    }
-
 
     pub fn time(&mut self) -> f32 {
         #[cfg(feature="bass_audio")]
@@ -203,12 +186,39 @@ impl IngameManager {
         t - (self.lead_in_time + self.offset.value + self.global_offset.value)
     }
 
+    pub fn should_save_score(&self) -> bool {
+        let should = !(self.replaying || self.current_mods.autoplay);
+        should
+    }
+
+    // is this game pausable
+    pub fn can_pause(&mut self) -> bool {
+        !(self.current_mods.autoplay || self.replaying || self.failed)
+    }
+
+
+    pub fn current_timing_point(&self) -> TimingPoint {
+        self.timing_points[self.timing_point_index]
+    }
+    pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
+        let mut tp = &self.timing_points[0];
+
+        for i in self.timing_points.iter() {
+            if i.is_inherited() && !allow_inherited {continue}
+            if i.time <= time {
+                tp = i
+            }
+        }
+
+        tp
+    }
+
+
     pub fn increment_offset(&mut self, delta:f32) {
         let time = self.time();
         let new_val = self.offset.value + delta;
         self.offset.set_value(new_val, time);
     }
-
     /// locks settings
     pub fn increment_global_offset(&mut self, delta:f32) {
         let mut settings = Settings::get_mut("IngameManager::increment_global_offset");
@@ -216,12 +226,6 @@ impl IngameManager {
 
         let time = self.time();
         self.global_offset.set_value(settings.global_offset, time);
-    }
-
-
-    // is this game pausable
-    pub fn can_pause(&mut self) -> bool {
-        !(self.current_mods.autoplay || self.replaying)
     }
 
     pub fn apply_mods(&mut self, mods: ModManager) {
@@ -235,7 +239,7 @@ impl IngameManager {
         }
     }
 
-    //TODO: implement this properly, gamemode will probably have to handle some things too
+    // TODO: implement this properly, gamemode will probably have to handle some things too
     pub fn jump_to_time(&mut self, time: f32, skip_intro: bool) {
         self.song.set_position(time as f64).unwrap();
         if skip_intro {
@@ -330,6 +334,7 @@ impl IngameManager {
         let settings = Settings::get();
         
         self.gamemode.reset(&self.beatmap);
+        self.health.reset();
 
         if self.menu_background {
             self.background_game_settings = settings.background_game_settings.clone();
@@ -362,8 +367,8 @@ impl IngameManager {
 
         self.completed = false;
         self.started = false;
+        self.failed = false;
         self.lead_in_time = LEAD_IN_TIME;
-        // self.offset_changed_time = 0.0;
         self.lead_in_timer = Instant::now();
         self.score = Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode());
         self.replay_frame = 0;
@@ -385,6 +390,11 @@ impl IngameManager {
             self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
         }
+    }
+    pub fn fail(&mut self) {
+        if self.failed {return}
+        self.failed = true;
+        self.failed_time = self.time();
     }
 
 
@@ -450,6 +460,25 @@ impl IngameManager {
 
         // update gamemode
         gamemode.update(self, time);
+
+        // do fail things
+        // TODO: handle edge cases, like replays, spec, autoplay, etc
+        if self.failed {
+            let new_rate = f64::lerp(1.0, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
+
+            if new_rate <= 0.05 {
+                self.song.pause().unwrap();
+                self.completed = true;
+                // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
+                println!("show fail menu");
+            } else {
+                self.song.set_rate(new_rate).unwrap();
+            }
+
+            // put it back
+            self.gamemode = gamemode;
+            return;
+        }
 
 
         // send map completed packets
@@ -621,88 +650,7 @@ impl IngameManager {
         self.score.combo = 0;
     }
 
-    pub fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
-        if (self.replaying || self.current_mods.autoplay) && !self.menu_background {
-            // check replay-only keys
-            if key == piston::Key::Escape {
-                self.started = false;
-                self.completed = true;
-                return;
-            }
-        }
-
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-
-        // skip intro
-        if key == piston::Key::Space {
-            gamemode.skip_intro(self);
-        }
-
-        // check for offset changing keys
-        {
-            let settings = Settings::get_mut("IngameManager::key_down");
-            if mods.shift {
-                let mut t = 0.0;
-                if key == settings.key_offset_up {t = 5.0}
-                if key == settings.key_offset_down {t = -5.0}
-                drop(settings);
-
-                if t != 0.0 {
-                    self.increment_global_offset(t);
-                }
-            } else {
-                if key == settings.key_offset_up {self.increment_offset(5.0)}
-                if key == settings.key_offset_down {self.increment_offset(-5.0)}
-            }
-        }
-
-
-        gamemode.key_down(key, self);
-        self.gamemode = gamemode;
-    }
-    pub fn key_up(&mut self, key:piston::Key) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.key_up(key, self);
-        self.gamemode = gamemode;
-    }
-    pub fn mouse_move(&mut self, pos:Vector2) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_move(pos, self);
-        self.gamemode = gamemode;
-    }
-    pub fn mouse_down(&mut self, btn:piston::MouseButton) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_down(btn, self);
-        self.gamemode = gamemode;
-    }
-    pub fn mouse_up(&mut self, btn:piston::MouseButton) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_up(btn, self);
-        self.gamemode = gamemode;
-    }
-    pub fn mouse_scroll(&mut self, delta:f64) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_scroll(delta, self);
-        self.gamemode = gamemode;
-    }
-
-    
-    pub fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_press(c, btn, self);
-        self.gamemode = gamemode;
-    }
-    pub fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_release(c, btn, self);
-        self.gamemode = gamemode;
-    }
-    pub fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_axis(c, axis_data, self);
-        self.gamemode = gamemode;
-    }
-
+    // draw
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();
         let font = self.font.clone();
@@ -776,6 +724,23 @@ impl IngameManager {
             2.0,
             Vector2::new(0.0, window_size.y - (DURATION_HEIGHT + 3.0)),
             Vector2::new(window_size.x * (time/self.end_time) as f64, DURATION_HEIGHT),
+            None
+        )));
+
+        // health bar
+        list.push(Box::new(Rectangle::new(
+            Color::new(0.4, 0.4, 0.4, 0.5),
+            1.0,
+            Vector2::new(0.0, 0.0),
+            Vector2::new(window_size.x / 2.0, DURATION_HEIGHT),
+            Some(Border::new(Color::BLACK, 1.8))
+        )));
+        // fill
+        list.push(Box::new(Rectangle::new(
+            Color::LIME,
+            2.0,
+            Vector2::new(0.0, 0.0),
+            Vector2::new((window_size.x / 2.0) * self.health.get_ratio() as f64, DURATION_HEIGHT),
             None
         )));
 
@@ -863,6 +828,106 @@ impl IngameManager {
         }
     }
 }
+
+// input handlers
+impl IngameManager {
+    pub fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
+
+        if (self.replaying || self.current_mods.autoplay) && !self.menu_background {
+            // check replay-only keys
+            if key == piston::Key::Escape {
+                self.started = false;
+                self.completed = true;
+                return;
+            }
+        }
+
+        if self.failed && key == piston::Key::Escape {
+            // set the failed time to negative, so it triggers the end
+            self.failed_time = -1000.0;
+        }
+        if self.failed {return}
+
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+
+        // skip intro
+        if key == piston::Key::Space {
+            gamemode.skip_intro(self);
+        }
+
+        // check for offset changing keys
+        {
+            let settings = Settings::get_mut("IngameManager::key_down");
+            if mods.shift {
+                let mut t = 0.0;
+                if key == settings.key_offset_up {t = 5.0}
+                if key == settings.key_offset_down {t = -5.0}
+                drop(settings);
+
+                if t != 0.0 {
+                    self.increment_global_offset(t);
+                }
+            } else {
+                if key == settings.key_offset_up {self.increment_offset(5.0)}
+                if key == settings.key_offset_down {self.increment_offset(-5.0)}
+            }
+        }
+
+
+        gamemode.key_down(key, self);
+        self.gamemode = gamemode;
+    }
+    pub fn key_up(&mut self, key:piston::Key) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.key_up(key, self);
+        self.gamemode = gamemode;
+    }
+    pub fn mouse_move(&mut self, pos:Vector2) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.mouse_move(pos, self);
+        self.gamemode = gamemode;
+    }
+    pub fn mouse_down(&mut self, btn:piston::MouseButton) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.mouse_down(btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn mouse_up(&mut self, btn:piston::MouseButton) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.mouse_up(btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn mouse_scroll(&mut self, delta:f64) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.mouse_scroll(delta, self);
+        self.gamemode = gamemode;
+    }
+
+    pub fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_press(c, btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_release(c, btn, self);
+        self.gamemode = gamemode;
+    }
+    pub fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.controller_axis(c, axis_data, self);
+        self.gamemode = gamemode;
+    }
+}
+
 // spectator stuff
 impl IngameManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
@@ -875,6 +940,8 @@ impl IngameManager {
     }
 
 }
+
+// default
 impl Default for IngameManager {
     fn default() -> Self {
         Self { 
@@ -886,7 +953,10 @@ impl Default for IngameManager {
             font: get_font("main"),
             combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
             timing_bar_things: (Vec::new(), (0.0, Color::WHITE)),
-            
+
+            failed: false,
+            failed_time: 0.0,
+            health: HealthHelper::default(),
             beatmap: Default::default(),
             metadata: Default::default(),
             gamemode: Default::default(),
@@ -919,8 +989,8 @@ impl Default for IngameManager {
 
 pub trait GameMode {
     fn new(beatmap:&Beatmap) -> Result<Self, TatakuError> where Self: Sized;
-
     fn playmode(&self) -> PlayMode;
+
     fn end_time(&self) -> f32;
     fn combo_bounds(&self) -> Rectangle;
     /// f64 is hitwindow, color is color for that window. last is miss hitwindow
