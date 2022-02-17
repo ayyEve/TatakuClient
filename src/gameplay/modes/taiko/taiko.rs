@@ -384,10 +384,13 @@ impl GameMode for TaikoGame {
     }
     fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         let time = manager.time();
+        let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
+        
         for (hit_type, hit_time) in self.hit_cache.iter() {
-            if time - hit_time > DRUM_LIFETIME_TIME {continue}
 
-            let alpha = 1.0 - (time - hit_time) / (DRUM_LIFETIME_TIME * 4.0);
+            if time - hit_time > lifetime_time {continue}
+
+            let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
 
             match hit_type {
                 TaikoHit::LeftKat => {
@@ -548,7 +551,7 @@ impl GameMode for TaikoGame {
             if self.taiko_settings.static_sv {
                 note.set_sv(self.taiko_settings.sv_multiplier);
             } else {
-                let sv = beatmap.slider_velocity_at(note.time()) / SV_FACTOR;
+                let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
                 note.set_sv(sv);
             }
         }
@@ -600,7 +603,9 @@ impl GameMode for TaikoGame {
 
             println!("created {} timing bars", self.timing_bars.len());
         }
-    
+        
+        // reset hitcache times
+        self.hit_cache.iter_mut().for_each(|(_, t)| *t = -999.9);
     }
 
 
