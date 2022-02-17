@@ -55,7 +55,7 @@ pub struct StandardGame {
     hold_count: u16,
 
     /// scaling helper to help with scaling
-    scaling_helper: ScalingHelper,
+    scaling_helper: Arc<ScalingHelper>,
     /// needed for scaling recalc
     cs: f32,
     stack_leniency: f32,
@@ -73,12 +73,12 @@ pub struct StandardGame {
 }
 impl StandardGame {
     fn playfield_changed(&mut self) {
-        let new_scale = ScalingHelper::new(self.cs, PlayMode::Standard);
-        self.scaling_helper = new_scale;
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, PlayMode::Standard));
+        self.scaling_helper = new_scale.clone();
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(&new_scale);
+            note.playfield_changed(new_scale.clone());
         }
     }
 
@@ -116,10 +116,10 @@ impl StandardGame {
                     break;
                 }
 
-                let obj_pos = obj.pos_at(obj.time(), &self.scaling_helper);
-                let obj_n_pos = obj.pos_at(obj.time(), &self.scaling_helper);
+                let obj_pos = obj.pos_at(obj.time());
+                let obj_n_pos = obj.pos_at(obj.time());
                 let obj_is_slider = obj.note_type() == NoteType::Slider;
-                let obj_end_pos = obj.pos_at(obj.end_time(0.0), &self.scaling_helper);
+                let obj_end_pos = obj.pos_at(obj.end_time(0.0));
 
                 if obj_pos.distance(obj_n_pos) < STACK_LENIENCY as f64 || (obj_is_slider && obj_end_pos.distance(obj_n_pos) < STACK_LENIENCY as f64) {
                     stack_base_index = n;
@@ -159,7 +159,7 @@ impl GameMode for StandardGame {
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
         let settings = Settings::get_mut("StandardGame::new()").standard_settings.clone();
-        let scaling_helper = ScalingHelper::new(metadata.cs, PlayMode::Standard);
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, PlayMode::Standard));
 
         let combo_colors:Vec<Color> = settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect();
 
@@ -183,7 +183,7 @@ impl GameMode for StandardGame {
                     draw_points: Vec::new(),
         
                     move_playfield: None,
-                    scaling_helper,
+                    scaling_helper: scaling_helper.clone(),
                     cs: beatmap.metadata.cs,
         
                     key_counter: KeyCounter::new(
@@ -277,7 +277,7 @@ impl GameMode for StandardGame {
                             ar,
                             color,
                             combo_num as u16,
-                            &scaling_helper,
+                            scaling_helper.clone(),
                             depth,
                             std_settings.clone()
                         )));
@@ -302,7 +302,7 @@ impl GameMode for StandardGame {
 
                                 Color::new(0.0, 0.0, 0.0, 1.0),
                                 combo_num as u16,
-                                &scaling_helper,
+                                scaling_helper.clone(),
                                 depth,
                                 std_settings.clone()
                             )));
@@ -328,7 +328,7 @@ impl GameMode for StandardGame {
                     if let Some(spinner) = spinner {
                         s.notes.push(Box::new(StandardSpinner::new(
                             spinner.clone(),
-                            &scaling_helper
+                            scaling_helper.clone()
                         )))
                     }
                     
@@ -694,8 +694,8 @@ impl GameMode for StandardGame {
 
                     // setup follow points and the time they should exist at
 
-                    let n1_pos = n1.pos_at(n2_time, &self.scaling_helper);
-                    let n2_pos = n2.pos_at(n2_time, &self.scaling_helper);
+                    let n1_pos = n1.pos_at(n2_time);
+                    let n2_pos = n2.pos_at(n2_time);
 
                     let distance = n1_pos.distance(n2_pos);
                     let follow_dot_count = distance/follow_dot_distance;
@@ -1017,7 +1017,7 @@ impl StandardAutoHelper {
         std::mem::take(&mut self.release_queue)
     }
 
-    fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn StandardHitObject>>, scaling_helper: &ScalingHelper, frames: &mut Vec<ReplayFrame>) {
+    fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn StandardHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
         let mut any_checked = false;
 
         for i in 0..notes.len() {
@@ -1028,7 +1028,7 @@ impl StandardAutoHelper {
                 if time >= note.end_time(0.0) {
                     self.release_queue.push(ReplayFrame::Release(KeyPress::LeftMouse));
 
-                    let pos = scaling_helper.descale_coords(note.pos_at(time, &scaling_helper));
+                    let pos = scaling_helper.descale_coords(note.pos_at(time));
 
                     self.holding.remove(ind);
                     if i+1 >= notes.len() {
@@ -1040,12 +1040,12 @@ impl StandardAutoHelper {
                     let next_note = &notes[i + 1];
 
                     self.point_trail_start_pos = pos;
-                    self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time, scaling_helper));
+                    self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
                     
                     self.point_trail_start_time = time;
                     self.point_trail_end_time = next_note.time();
                 } else {
-                    let pos = scaling_helper.descale_coords(note.pos_at(time, &scaling_helper));
+                    let pos = scaling_helper.descale_coords(note.pos_at(time));
                     // move the mouse to the pos
                     frames.push(ReplayFrame::MousePos(
                         pos.x as f32,
@@ -1058,7 +1058,7 @@ impl StandardAutoHelper {
             }
             
             if time >= note.time() {
-                let pos = scaling_helper.descale_coords(note.pos_at(time, &scaling_helper));
+                let pos = scaling_helper.descale_coords(note.pos_at(time));
                 // move the mouse to the pos
                 frames.push(ReplayFrame::MousePos(
                     pos.x as f32,
@@ -1086,7 +1086,7 @@ impl StandardAutoHelper {
                 let next_note = &notes[i + 1];
 
                 self.point_trail_start_pos = pos;
-                self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time, scaling_helper));
+                self.point_trail_end_pos = scaling_helper.descale_coords(next_note.pos_at(self.point_trail_end_time));
                 
                 self.point_trail_start_time = time;
                 self.point_trail_end_time = next_note.time();

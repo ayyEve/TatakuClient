@@ -14,14 +14,14 @@ const USE_BROKEN_SLIDERS:bool = false;
 
 pub trait StandardHitObject: HitObject {
     /// return the window-scaled coords of this object at time
-    fn pos_at(&self, time:f32, scaling_helper:&ScalingHelper) -> Vector2;
+    fn pos_at(&self, time:f32) -> Vector2;
     /// does this object count as a miss if it is not hit?
     fn causes_miss(&self) -> bool; //TODO: might change this to return an enum of "no", "yes". "yes_combo_only" 
     fn get_points(&mut self, is_press:bool, time:f32, hit_windows:(f32,f32,f32,f32)) -> ScoreHit;
     /// return negative for combo break
     fn pending_combo(&mut self) -> i8 {0}
 
-    fn playfield_changed(&mut self, new_scale: &ScalingHelper);
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
 
     fn press(&mut self, _time:f32) {}
     fn release(&mut self, _time:f32) {}
@@ -72,7 +72,7 @@ pub struct StandardNote {
     time_preempt: f32,
     /// what is the scaling value? needed for approach circle
     // (lol)
-    scaling_scale: f64,
+    scaling_helper: Arc<ScalingHelper>,
     
     /// combo num text cache
     combo_text: Box<Text>,
@@ -94,7 +94,7 @@ pub struct StandardNote {
     circle_image: Option<HitCircleImageHelper>
 }
 impl StandardNote {
-    pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper:&ScalingHelper, base_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
+    pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -127,19 +127,18 @@ impl StandardNote {
 
             map_time: 0.0,
             mouse_pos: Vector2::zero(),
+            circle_image: HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color),
 
             time_preempt,
             hitwindow_miss: 0.0,
             radius,
-            scaling_scale: scaling_helper.scale,
+            scaling_helper,
             alpha_mult: 1.0,
             
             combo_text,
 
             standard_settings,
             shapes: Vec::new(),
-
-            circle_image: HitCircleImageHelper::new(pos, scaling_helper, base_depth, color),
         }
     }
 
@@ -204,7 +203,7 @@ impl HitObject for StandardNote {
 
         // timing circle
         let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
-        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_scale, alpha, approach_circle_color));
+        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scale, alpha, approach_circle_color));
 
 
         // combo number
@@ -220,7 +219,7 @@ impl HitObject for StandardNote {
                 self.base_depth,
                 self.pos,
                 self.radius,
-                Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_scale))
+                Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_helper.scale))
             )));
         }
 
@@ -270,10 +269,10 @@ impl StandardHitObject for StandardNote {
         }
     }
 
-    fn playfield_changed(&mut self, new_scale: &ScalingHelper) {
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
-        self.scaling_scale = new_scale.scale;
+        self.scaling_helper = new_scale;
 
         let mut combo_text =  Box::new(Text::new(
             Color::BLACK,
@@ -292,7 +291,7 @@ impl StandardHitObject for StandardNote {
     }
 
     
-    fn pos_at(&self, _time: f32, _scaling_helper:&ScalingHelper) -> Vector2 {
+    fn pos_at(&self, _time: f32) -> Vector2 {
         self.pos
     }
 
@@ -374,7 +373,7 @@ pub struct StandardSlider {
     sound_queue: Vec<(f32, u8, HitSamples)>,
 
     /// scaling helper, should greatly improve rendering speed due to locking
-    scaling_helper: ScalingHelper,
+    scaling_helper: Arc<ScalingHelper>,
 
     /// is the mouse in a good state for sliding? (pos + key down)
     sliding_ok: bool,
@@ -394,10 +393,14 @@ pub struct StandardSlider {
     /// list of shapes to be drawn
     shapes: Vec<TransformGroup>,
 
+
+    start_circle_image: Option<HitCircleImageHelper>,
+    end_circle_image: Option<Image>,
+
     hitwindow_miss: f32
 }
 impl StandardSlider {
-    pub fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:ScalingHelper, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
+    pub fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -513,6 +516,9 @@ impl StandardSlider {
         //     // println!("{:?}\n\n", aids);
         // }
 
+        let start_circle_image = HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color);
+        let end_circle_image = SKIN_MANAGER.write().get_texture("sliderendcircle", true);
+
         let mut slider = Self {
             def,
             curve,
@@ -560,6 +566,9 @@ impl StandardSlider {
             standard_settings,
             shapes: Vec::new(),
             hitwindow_miss: 0.0,
+
+            start_circle_image,
+            end_circle_image
         };
     
         slider.make_dots();
@@ -859,28 +868,39 @@ impl HitObject for StandardSlider {
 
 
         // end pos
-        list.push(Box::new(Circle::new(
-            color,
-            self.circle_depth, // should be above curves but below slider ball
-            self.visual_end_pos,
-            self.radius,
-            Some(Border::new(
-                if end_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
-                self.scaling_helper.border_scaled
-            ))
-        )));
+        if let Some(end_circle) = &self.end_circle_image {
+            let mut im = end_circle.clone();
+            im.current_color.a = alpha;
+            list.push(Box::new(im))
+        } else {
+            list.push(Box::new(Circle::new(
+                color,
+                self.circle_depth, // should be above curves but below slider ball
+                self.visual_end_pos,
+                self.radius,
+                Some(Border::new(
+                    if end_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
+                    self.scaling_helper.border_scaled
+                ))
+            )));
+        }
 
         // start pos
-        list.push(Box::new(Circle::new(
-            self.color.alpha(alpha),
-            self.circle_depth, // should be above curves but below slider ball
-            self.pos,
-            self.radius,
-            Some(Border::new(
-                if start_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
-                self.scaling_helper.border_scaled
-            ))
-        )));
+        if let Some(start_circle) = &mut self.start_circle_image {
+            start_circle.set_alpha(alpha);
+            start_circle.draw(list);
+        } else {
+            list.push(Box::new(Circle::new(
+                self.color.alpha(alpha),
+                self.circle_depth, // should be above curves but below slider ball
+                self.pos,
+                self.radius,
+                Some(Border::new(
+                    if start_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
+                    self.scaling_helper.border_scaled
+                ))
+            )));
+        }
 
         // draw hit dots
         // for dot in self.hit_dots.as_slice() {
@@ -948,9 +968,8 @@ impl StandardHitObject for StandardSlider {
         self.def.edge_sounds[self.sound_index.min(self.def.edge_sounds.len() - 1)]
     }
     fn causes_miss(&self) -> bool {false}
-    fn point_draw_pos(&self, time: f32) -> Vector2 {
-        self.pos_at(time, &self.scaling_helper)
-    }
+    fn point_draw_pos(&self, time: f32) -> Vector2 {self.pos_at(time)}
+
     fn get_preempt(&self) -> f32 {self.time_preempt}
     fn press(&mut self, _:f32) {self.holding = true}
     fn release(&mut self, _:f32) {self.holding = false}
@@ -1059,11 +1078,11 @@ impl StandardHitObject for StandardSlider {
     }
 
 
-    fn playfield_changed(&mut self, new_scale: &ScalingHelper) {
-        self.scaling_helper = new_scale.clone();
-        self.pos = new_scale.scale_coords(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
-        self.visual_end_pos = new_scale.scale_coords(self.curve.position_at_length(self.curve.length()));
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+        self.scaling_helper = new_scale;
+        self.pos = self.scaling_helper.scale_coords(self.def.pos);
+        self.radius = CIRCLE_RADIUS_BASE *  self.scaling_helper.scaled_cs;
+        self.visual_end_pos =  self.scaling_helper.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
         
         let mut combo_text =  Box::new(Text::new(
@@ -1083,11 +1102,11 @@ impl StandardHitObject for StandardSlider {
         self.make_dots();
     }
 
-    fn pos_at(&self, time: f32, scaling_helper:&ScalingHelper) -> Vector2 {
+    fn pos_at(&self, time: f32) -> Vector2 {
         if time >= self.curve.end_time {
             self.time_end_pos
         } else {
-            scaling_helper.scale_coords(self.curve.position_at_time(time))
+            self.scaling_helper.scale_coords(self.curve.position_at_time(time))
         }
     }
 }
@@ -1169,12 +1188,14 @@ pub struct StandardSpinner {
     /// should we count mouse movements?
     holding: bool,
 
+    scaling_helper: Arc<ScalingHelper>,
+
 
     /// alpha multiplier, used for background game
     alpha_mult: f32,
 }
 impl StandardSpinner {
-    pub fn new(def: SpinnerDef, scaling_helper: &ScalingHelper) -> Self {
+    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>) -> Self {
         let time = def.time;
         let end_time = def.end_time;
         Self {
@@ -1187,6 +1208,7 @@ impl StandardSpinner {
             rotation: 0.0,
             rotation_velocity: 0.0,
             last_rotation_val: 0.0,
+            scaling_helper,
 
             rotations_required: 0,
             rotations_completed: 0,
@@ -1311,11 +1333,12 @@ impl StandardHitObject for StandardSpinner {
         self.mouse_pos = pos;
     }
 
-    fn playfield_changed(&mut self, new_scale: &ScalingHelper) {
-        self.pos = new_scale.window_size / 2.0
+    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+        self.scaling_helper = new_scale;
+        self.pos =  self.scaling_helper.window_size / 2.0
     } 
 
-    fn pos_at(&self, time: f32, scaling_helper:&ScalingHelper) -> Vector2 {
+    fn pos_at(&self, time: f32) -> Vector2 {
         // println!("time: {}, {}, {}", time, self.time, self.end_time);
 
         if time < self.time || time >= self.end_time {
@@ -1327,19 +1350,39 @@ impl StandardHitObject for StandardSpinner {
         self.pos + Vector2::new(
             r.cos(),
             r.sin()
-        ) * scaling_helper.scale * 20.0
+        ) * self.scaling_helper.scale * 20.0
     }
 }
 
 
-fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scale:f64, alpha: f32, color: Color) -> Box<Circle> {
-    Box::new(Circle::new(
-        Color::TRANSPARENT_WHITE,
-        depth - 100.0,
-        pos,
-        radius + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale),
-        Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scale))
-    ))
+fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scale:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
+    // let instant = Instant::now();
+
+    if let Some(mut tex) = SKIN_MANAGER.write().get_texture("approachcircle", true) {
+        tex.depth = depth - 100.0;
+        let scale = 1.0 + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale) / radius;
+
+        tex.initial_pos = pos;
+        tex.initial_color = color.alpha(alpha);
+        tex.initial_scale = Vector2::one() * scale;
+
+        tex.current_pos = tex.initial_pos;
+        tex.current_color = tex.initial_color;
+        tex.current_scale = tex.initial_scale;
+
+        // let time = instant.elapsed();
+        // println!("took:{}", time.as_secs_f32() * 1000.0);
+
+        Box::new(tex)
+    } else {
+        Box::new(Circle::new(
+            Color::TRANSPARENT_WHITE,
+            depth - 100.0,
+            pos,
+            radius + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale),
+            Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scale))
+        ))
+    }
 }
 
 
@@ -1383,15 +1426,17 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    fn new(pos: Vector2, scaling_helper: &ScalingHelper, depth: f64, color: Color) -> Option<Self> {
+    fn new(pos: Vector2, scaling_helper: &Arc<ScalingHelper>, depth: f64, color: Color) -> Option<Self> {
         let mut circle = SKIN_MANAGER.write().get_texture("hitcircle", true);
         if let Some(circle) = &mut circle {
             circle.depth = depth;
             circle.initial_pos = pos;
             circle.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
+            circle.initial_color = color;
             
             circle.current_pos = circle.initial_pos;
             circle.current_scale = circle.initial_scale;
+            circle.current_color = circle.initial_color;
         }
 
         let mut overlay = SKIN_MANAGER.write().get_texture("hitcircleoverlay", true);
