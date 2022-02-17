@@ -58,23 +58,17 @@ impl CursorManager {
         }
 
         let settings = Settings::get_mut("CursorManager::draw");
-
-        let mut circle = Circle::new(
+        list.push(Box::new(Circle::new(
             self.color,
             -f64::MAX,
             self.pos,
-            radius * settings.cursor_scale
-        );
-        if settings.cursor_border > 0.0 {
-            let col = Color::from_hex(&settings.cursor_border_color);
-            if col.a > 0.0 {
-                circle.border = Some(Border::new(
-                    col,
+            radius * settings.cursor_scale,
+            if settings.cursor_border > 0.0 {
+                Some(Border::new(
+                    Color::from_hex(&settings.cursor_border_color),
                     settings.cursor_border as f64
-                ));
-            }
-        }
-        
-        list.push(Box::new(circle));
+                ))
+            } else {None}
+        )));
     }
 }

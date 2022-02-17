@@ -89,7 +89,9 @@ pub struct StandardNote {
     /// cached settings for this game
     standard_settings: Arc<StandardSettings>,
     /// list of shapes to be drawn
-    shapes: Vec<TransformGroup>
+    shapes: Vec<TransformGroup>,
+
+    circle_image: Option<HitCircleImageHelper>
 }
 impl StandardNote {
     pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper:&ScalingHelper, base_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
@@ -103,7 +105,7 @@ impl StandardNote {
             Color::BLACK,
             base_depth - 0.0000001,
             pos,
-            (radius) as u32,
+            radius as u32,
             format!("{}", combo_num),
             get_font("main")
         ));
@@ -135,7 +137,9 @@ impl StandardNote {
             combo_text,
 
             standard_settings,
-            shapes: Vec::new()
+            shapes: Vec::new(),
+
+            circle_image: HitCircleImageHelper::new(pos, scaling_helper, base_depth, color),
         }
     }
 
@@ -145,14 +149,13 @@ impl StandardNote {
         if self.standard_settings.hit_ripples {
             let mut group = TransformGroup::new();
 
-            let mut ripple = Circle::new(
+            group.items.push(DrawItem::Circle(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.base_depth,
                 self.pos,
-                self.radius
-            );
-            ripple.border = Some(Border::new(self.color, 2.0));
-            group.items.push(DrawItem::Circle(ripple));
+                self.radius,
+                Some(Border::new(self.color, 2.0))
+            )));
 
             let duration = 500.0;
             group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
@@ -195,6 +198,9 @@ impl HitObject for StandardNote {
         }
 
         alpha *= self.alpha_mult;
+        if let Some(image) = &mut self.circle_image {
+            image.set_alpha(alpha);
+        }
 
         // timing circle
         let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
@@ -206,14 +212,17 @@ impl HitObject for StandardNote {
         list.push(self.combo_text.clone());
 
         // note
-        let mut note = Circle::new(
-            self.color.alpha(alpha),
-            self.base_depth,
-            self.pos,
-            self.radius
-        );
-        note.border = Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_scale));
-        list.push(Box::new(note));
+        if let Some(image) = &mut self.circle_image {
+            image.draw(list);
+        } else {
+            list.push(Box::new(Circle::new(
+                self.color.alpha(alpha),
+                self.base_depth,
+                self.pos,
+                self.radius,
+                Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_scale))
+            )));
+        }
 
     }
 
@@ -591,7 +600,6 @@ impl StandardSlider {
         }
     }
 
-    
     fn add_ripple(&mut self, time: f32, pos: Vector2, is_tick: bool) {
         if self.standard_settings.hit_ripples {
             let mut group = TransformGroup::new();
@@ -599,15 +607,13 @@ impl StandardSlider {
             // border is white if ripple caused by slider tick
             let border_color = if is_tick {Color::WHITE} else {self.color};
 
-            let mut ripple = Circle::new(
+            group.items.push(DrawItem::Circle(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.slider_depth, // slider depth?
                 pos,
-                self.radius
-            );
-
-            ripple.border = Some(Border::new(border_color, 2.0));
-            group.items.push(DrawItem::Circle(ripple));
+                self.radius,
+                Some(Border::new(border_color, 2.0))
+            )));
 
             let duration = 500.0;
             group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
@@ -615,7 +621,6 @@ impl StandardSlider {
             self.shapes.push(group);
         }
     }
-
 
     fn check_end_points(&mut self, time: f32) -> ScoreHit {
         self.end_checked = true;
@@ -774,34 +779,22 @@ impl HitObject for StandardSlider {
             list.push(self.combo_text.clone());
         } else if self.map_time < self.curve.end_time {
             // slider ball
-            let mut inner = Circle::new(
+            // inner
+            list.push(Box::new(Circle::new(
                 color,
                 self.circle_depth - 0.0000001,
                 self.slider_ball_pos,
-                self.radius
-            );
-            inner.border = Some(Border::new(
-                Color::WHITE.alpha(alpha),
-                2.0
-            ));
-            list.push(Box::new(inner));
+                self.radius,
+                Some(Border::new(Color::WHITE.alpha(alpha), 2.0))
+            )));
 
-
-            let mut outer = Circle::new(
+            list.push(Box::new(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.circle_depth - 0.0000001,
                 self.slider_ball_pos,
-                self.radius* 2.0
-            );
-            outer.border = Some(Border::new(
-                if self.sliding_ok {
-                    Color::GREEN
-                } else {
-                    Color::RED
-                }.alpha(alpha),
-                2.0
-            ));
-            list.push(Box::new(outer));
+                self.radius * 2.0,
+                Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),2.0)
+            ))));
         }
 
 
@@ -838,6 +831,7 @@ impl HitObject for StandardSlider {
                     self.slider_depth,
                     p2,
                     self.radius,
+                    None
                 )))
             }
         }
@@ -865,30 +859,28 @@ impl HitObject for StandardSlider {
 
 
         // end pos
-        let mut c = Circle::new(
+        list.push(Box::new(Circle::new(
             color,
             self.circle_depth, // should be above curves but below slider ball
             self.visual_end_pos,
-            self.radius
-        );
-        c.border = Some(Border::new(
-            if end_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
-            self.scaling_helper.border_scaled
-        ));
-        list.push(Box::new(c));
+            self.radius,
+            Some(Border::new(
+                if end_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
+                self.scaling_helper.border_scaled
+            ))
+        )));
 
         // start pos
-        let mut c = Circle::new(
+        list.push(Box::new(Circle::new(
             self.color.alpha(alpha),
             self.circle_depth, // should be above curves but below slider ball
             self.pos,
-            self.radius
-        );
-        c.border = Some(Border::new(
-            if start_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
-            self.scaling_helper.border_scaled
-        ));
-        list.push(Box::new(c));
+            self.radius,
+            Some(Border::new(
+                if start_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
+                self.scaling_helper.border_scaled
+            ))
+        )));
 
         // draw hit dots
         // for dot in self.hit_dots.as_slice() {
@@ -1140,14 +1132,13 @@ impl SliderDot {
     pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
         if self.hit {return}
 
-        let mut c = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::WHITE,
             self.depth,
             self.pos,
-            SLIDER_DOT_RADIUS * self.scale
-        );
-        c.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale));
-        list.push(Box::new(c));
+            SLIDER_DOT_RADIUS * self.scale,
+            Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale))
+        )));
     }
 }
 
@@ -1243,24 +1234,22 @@ impl HitObject for StandardSpinner {
         let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
 
         // bg circle
-        let mut bg = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::YELLOW.alpha(self.alpha_mult),
             -10.0,
             self.pos,
-            SPINNER_RADIUS
-        );
-        bg.border = border.clone();
-        list.push(Box::new(bg));
+            SPINNER_RADIUS,
+            border.clone()
+        )));
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
-        let mut fg = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::WHITE.alpha(self.alpha_mult),
             -11.0,
             self.pos,
-            SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64)
-        );
-        fg.border = border.clone();
-        list.push(Box::new(fg));
+            SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64),
+            border.clone()
+        )));
 
         // draw line to show rotation
         {
@@ -1344,14 +1333,13 @@ impl StandardHitObject for StandardSpinner {
 
 
 fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scale:f64, alpha: f32, color: Color) -> Box<Circle> {
-    let mut c = Circle::new(
+    Box::new(Circle::new(
         Color::TRANSPARENT_WHITE,
         depth - 100.0,
         pos,
-        radius + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale)
-    );
-    c.border = Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scale));
-    Box::new(c)
+        radius + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale),
+        Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scale))
+    ))
 }
 
 
@@ -1370,13 +1358,6 @@ impl SliderPath {
 impl Renderable for SliderPath {
     fn get_depth(&self) -> f64 {self.depth}
 
-    fn get_lifetime(&self) -> u64 {0}
-
-    fn set_lifetime(&mut self, _lifetime:u64) {}
-
-    fn get_spawn_time(&self) -> u64 {0}
-    fn set_spawn_time(&mut self, _time:u64) {}
-
     fn draw(&mut self, g: &mut opengl_graphics::GlGraphics, c:graphics::Context) {
         graphics::polygon(self.color.into(), &self.path, c.transform, g);
 
@@ -1392,5 +1373,54 @@ impl Renderable for SliderPath {
                 g
             )
         }
+    }
+}
+
+
+#[derive(Clone)]
+struct HitCircleImageHelper {
+    circle: Image,
+    overlay: Image,
+}
+impl HitCircleImageHelper {
+    fn new(pos: Vector2, scaling_helper: &ScalingHelper, depth: f64, color: Color) -> Option<Self> {
+        let mut circle = SKIN_MANAGER.write().get_texture("hitcircle", true);
+        if let Some(circle) = &mut circle {
+            circle.depth = depth;
+            circle.initial_pos = pos;
+            circle.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
+            
+            circle.current_pos = circle.initial_pos;
+            circle.current_scale = circle.initial_scale;
+        }
+
+        let mut overlay = SKIN_MANAGER.write().get_texture("hitcircleoverlay", true);
+        if let Some(overlay) = &mut overlay {
+            overlay.depth = depth - 0.0000001;
+            overlay.initial_pos = pos;
+            overlay.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
+            overlay.initial_color = color;
+            
+            overlay.current_pos = overlay.initial_pos;
+            overlay.current_scale = overlay.initial_scale;
+            overlay.current_color = overlay.initial_color;
+        }
+
+        if overlay.is_none() || circle.is_none() {return None}
+
+        Some(Self {
+            circle: circle.unwrap(),
+            overlay: overlay.unwrap(),
+        })
+    }
+
+    fn set_alpha(&mut self, alpha: f32) {
+        self.circle.current_color.a = alpha;
+        self.overlay.current_color.a = alpha;
+    }
+
+    fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
+        list.push(Box::new(self.circle.clone()));
+        list.push(Box::new(self.overlay.clone()));
     }
 }

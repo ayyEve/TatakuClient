@@ -440,7 +440,8 @@ impl GameMode for TaikoGame {
             Color::BLACK,
             f64::MAX,
             self.taiko_settings.hit_position,
-            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult
+            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+            None
         )));
 
         // draw notes

@@ -640,7 +640,8 @@ impl GameMode for StandardGame {
                 Color::RED,
                 -999.9,
                 self.mouse_pos,
-                20.0
+                20.0,
+                None
             )))
         }
 
@@ -661,7 +662,8 @@ impl GameMode for StandardGame {
                 color.alpha(alpha),
                 -99_999.9,
                 *pos,
-                CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs * (1.0/3.0)
+                CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs * (1.0/3.0),
+                None
             )))
         }
 
@@ -715,6 +717,7 @@ impl GameMode for StandardGame {
                             100_000.0,
                             point,
                             follow_dot_size,
+                            None
                         )));
                     }
                 }

@@ -96,9 +96,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "ayyeve-piston-ui"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
-checksum = "e61955ef935d1ee9f1ef1b7cf344d861282def775c735ebf816e2ea85edaa32f"
+checksum = "5d25efedff9e34c800a2d058753f77035ddce2d00d3149efc6d63980c14209c6"
 dependencies = [
  "ayyeve-ui-proc-macros",
  "clipboard",

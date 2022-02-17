@@ -446,7 +446,7 @@ impl OnlineManager {
                 //     println!("writing spec packet")
                 // }
                 
-                println!("[Online] sending {} spec packets", frames.len());
+                // println!("[Online] sending {} spec packets", frames.len());
                 send_packet!(lock.writer, create_packet!(Client_SpectatorFrames {frames}));
                 lock.last_spectator_frame = Instant::now();
             }

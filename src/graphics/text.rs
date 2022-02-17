@@ -30,8 +30,6 @@ pub struct Text {
     pub text: String,
     pub fonts: Vec<Font>,
 
-    lifetime:u64,
-    spawn_time:u64,
     context: Option<Context>,
 }
 impl Text {
@@ -66,8 +64,6 @@ impl Text {
             font_size,
             text,
             fonts,
-            lifetime: 0,
-            spawn_time: 0,
             context: None,
         }
     }
@@ -96,11 +92,6 @@ impl Text {
 }
 impl Renderable for Text {
     fn get_depth(&self) -> f64 {self.depth}
-    fn set_lifetime(&mut self, lifetime:u64) {self.lifetime = lifetime}
-    fn get_lifetime(&self) -> u64 {self.lifetime}
-    fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
-    fn get_spawn_time(&self) -> u64 {self.spawn_time}
-
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 

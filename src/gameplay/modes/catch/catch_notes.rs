@@ -74,14 +74,13 @@ impl HitObject for CatchFruit {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.pos.y + self.radius < 0.0 || self.pos.y - self.radius > args.window_size[1] as f64 || self.hit {return}
 
-        let mut note = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::BLUE.alpha(self.alpha_mult),
             -100.0,
             self.pos,
-            self.radius
-        );
-        note.border = Some(Border::new((if self.dash {Color::RED} else {Color::BLACK}).alpha(self.alpha_mult), NOTE_BORDER_SIZE));
-        list.push(Box::new(note));
+            self.radius,
+            Some(Border::new((if self.dash {Color::RED} else {Color::BLACK}).alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+        )));
     }
 
     fn reset(&mut self) {
@@ -146,14 +145,13 @@ impl HitObject for CatchDroplet {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>){
         if self.pos.y + self.radius < 0.0 || self.pos.y - self.radius > args.window_size[1] || self.hit {return}
 
-        let mut note = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::BLUE.alpha(self.alpha_mult),
             -100.0,
             self.pos,
-            self.radius
-        );
-        note.border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
-        list.push(Box::new(note));
+            self.radius,
+            Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+        )));
     }
 
     fn reset(&mut self) {
@@ -212,14 +210,13 @@ impl HitObject for CatchBanana {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.pos.y + self.radius < 0.0 || self.pos.y - self.radius > args.window_size[1] as f64 || self.hit {return}
 
-        let mut note = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::YELLOW.alpha(self.alpha_mult),
             -100.0,
             self.pos,
-            self.radius
-        );
-        note.border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
-        list.push(Box::new(note));
+            self.radius,
+            Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+        )));
     }
 
     fn reset(&mut self) {

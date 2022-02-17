@@ -86,14 +86,13 @@ impl HitObject for TaikoNote {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
 
-        let mut note = Circle::new(
+        list.push(Box::new(Circle::new(
             self.get_color().alpha(self.alpha_mult),
             self.time as f64,
             self.pos,
-            if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius}
-        );
-        note.border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
-        list.push(Box::new(note));
+            if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
+            Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+        )));
     }
 
     fn reset(&mut self) {
@@ -221,24 +220,22 @@ impl HitObject for TaikoSlider {
         )));
 
         // start circle
-        let mut start_c = Circle::new(
+        list.push(Box::new(Circle::new(
             color,
             self.time as f64,
             self.pos + Vector2::new(0.0, self.radius),
-            self.radius
-        );
-        start_c.border = border.clone();
-        list.push(Box::new(start_c));
+            self.radius,
+            border.clone()
+        )));
         
         // end circle
-        let mut end_c = Circle::new(
+        list.push(Box::new(Circle::new(
             color,
             self.time as f64,
             Vector2::new(self.end_x, self.pos.y + self.radius),
-            self.radius
-        );
-        end_c.border = border.clone();
-        list.push(Box::new(end_c));
+            self.radius,
+            border.clone()
+        )));
 
         // draw hit dots
         for dot in self.hit_dots.as_slice() {
@@ -298,20 +295,19 @@ impl SliderDot {
     }
     pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
         println!("drawing dot");
-        let mut c = Circle::new(
+        list.push(Box::new(Circle::new(
             Color::YELLOW,
             -100.0,
             self.pos,
-            SLIDER_DOT_RADIUS
-        );
-        c.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0));
-
-        list.push(Box::new(c));
+            SLIDER_DOT_RADIUS,
+            Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
+        )));
         list.push(Box::new(Circle::new(
             BAR_COLOR,
             0.0,
             Vector2::new(self.pos.x, self.settings.hit_position.y),
-            SLIDER_DOT_RADIUS
+            SLIDER_DOT_RADIUS,
+            None
         )))
     }
 }
@@ -372,24 +368,22 @@ impl HitObject for TaikoSpinner {
         // if its time to start hitting the spinner
         if self.pos.x <= self.settings.hit_position.x {
             // bg circle
-            let mut bg = Circle::new(
+            list.push(Box::new(Circle::new(
                 Color::YELLOW,
                 -10.0,
                 spinner_position,
-                SPINNER_RADIUS
-            );
-            bg.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
-            list.push(Box::new(bg));
+                SPINNER_RADIUS,
+                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
+            )));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
-            let mut fg = Circle::new(
+            list.push(Box::new(Circle::new(
                 Color::WHITE,
                 -11.0,
                 spinner_position,
-                SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64)
-            );
-            fg.border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
-            list.push(Box::new(fg));
+                SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64),
+                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
+            )));
             
             //TODO: draw a counter
 

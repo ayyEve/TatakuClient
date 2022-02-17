@@ -32,8 +32,8 @@ image = "0.23"
 piston = "0.53.0"
 
 pistoncore-glfw_window = { version = "0.74" }
+ayyeve-piston-ui = { version = "0.2.2", registry = "tataku" }
 piston2d-graphics = {version = "0.41.0", registry = "tataku"}
-ayyeve-piston-ui = { version = "0.2.0", registry = "tataku" }
 piston2d-opengl_graphics = {version = "0.79.1", registry = "tataku"}
 
 

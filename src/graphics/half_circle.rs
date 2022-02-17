@@ -8,9 +8,6 @@ pub struct HalfCircle {
     pub radius: f64,
     pub left_side: bool,
     context: Option<Context>,
-
-    spawn_time: u64,
-    lifetime: u64,
 }
 impl HalfCircle {
     pub fn new(color: Color, pos: Vector2, depth: f64, radius: f64, left_side: bool) -> HalfCircle {
@@ -21,19 +18,11 @@ impl HalfCircle {
             radius,
             left_side,
             context: None,
-
-            spawn_time:0,
-            lifetime:0
         }
     }
 }
 impl Renderable for HalfCircle {
     fn get_depth(&self) -> f64 {self.depth}
-    fn set_lifetime(&mut self, lifetime:u64) {self.lifetime = lifetime}
-    fn get_lifetime(&self) -> u64 {self.lifetime}
-    fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
-    fn get_spawn_time(&self) -> u64 {self.spawn_time}
-    
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 

@@ -8,8 +8,6 @@ pub struct Line {
     size: f64,
 
     depth: f64,
-    lifetime: u64,
-    spawn_time: u64,
     context: Option<Context>,
 }
 impl Line {
@@ -21,19 +19,11 @@ impl Line {
             depth,
             color,
             context: None,
-
-            lifetime: 0,
-            spawn_time: 0
         }
     }
 }
 impl Renderable for Line {
     fn get_depth(&self) -> f64 {self.depth}
-    fn get_lifetime(&self) -> u64 {self.lifetime}
-    fn set_lifetime(&mut self, lifetime:u64) {self.lifetime = lifetime}
-
-    fn get_spawn_time(&self) -> u64 {self.spawn_time}
-    fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 

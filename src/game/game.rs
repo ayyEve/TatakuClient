@@ -744,7 +744,6 @@ impl Game {
         self.graphics.draw(args.viewport(), |c, g| {
             graphics::clear(GFX_CLEAR_COLOR.into(), g);
             for i in queue.as_mut() {
-                if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
                 i.draw(g, c);
             }
         });
@@ -758,15 +757,16 @@ impl Game {
         // }
     }
 
-    pub fn clear_render_queue(&mut self, remove_all:bool) {
-        if remove_all {return self.render_queue.clear()}
+    pub fn clear_render_queue(&mut self, _remove_all:bool) {
+        // if remove_all {return self.render_queue.clear()}
 
-        let elapsed = self.game_start.elapsed().as_millis() as u64;
+        // let elapsed = self.game_start.elapsed().as_millis() as u64;
         // only return items who's lifetime has expired
-        self.render_queue.retain(|e| {
-            let lifetime = e.get_lifetime();
-            lifetime > 0 && elapsed - e.get_spawn_time() < lifetime
-        });
+        // self.render_queue.retain(|e| {
+        //     let lifetime = e.get_lifetime();
+        //     lifetime > 0 && elapsed - e.get_spawn_time() < lifetime
+        // });
+        self.render_queue.clear();
     }
     
     pub fn queue_state_change(&mut self, state:GameState) {self.queued_state = state}

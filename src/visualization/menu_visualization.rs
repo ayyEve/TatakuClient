@@ -53,14 +53,13 @@ impl MenuVisualization {
             let mut group = TransformGroup::new();
             let duration = 1000.0;
 
-            let mut circle = Circle::new(
+            group.items.push(DrawItem::Circle(Circle::new(
                 Color::WHITE.alpha(0.5),
                 10.0,
                 Settings::window_size() / 2.0,
-                self.initial_inner_radius / SIZE_FACTOR
-            );
-            circle.border = Some(Border::new(Color::WHITE, 2.0));
-            group.items.push(DrawItem::Circle(circle));
+                self.initial_inner_radius / SIZE_FACTOR,
+                Some(Border::new(Color::WHITE, 2.0))
+            )));
             group.ripple(0.0, duration, time as f64, 2.0, true, Some(0.5));
 
             self.ripples.push(group);

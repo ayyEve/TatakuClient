@@ -23,10 +23,6 @@ pub struct Rectangle {
     pub pos: Vector2,
     pub size: Vector2,
     pub border: Option<Border>,
-
-
-    spawn_time: u64,
-    lifetime: u64
 }
 impl Rectangle {
     pub fn new(color: Color, depth: f64, pos: Vector2, size: Vector2, border: Option<Border>) -> Rectangle {
@@ -55,9 +51,6 @@ impl Rectangle {
             size,
             border,
             origin: size / 2.0,
-
-            spawn_time: 0,
-            lifetime: 0,
             context: None,
         }
     }
@@ -74,11 +67,6 @@ impl Rectangle {
 }
 impl Renderable for Rectangle {
     fn get_depth(&self) -> f64 {self.depth}
-    fn set_lifetime(&mut self, lifetime:u64) {self.lifetime = lifetime}
-    fn get_lifetime(&self) -> u64 {self.lifetime}
-    fn set_spawn_time(&mut self, time:u64) {self.spawn_time = time}
-    fn get_spawn_time(&self) -> u64 {self.spawn_time}
-    
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
