@@ -46,6 +46,8 @@ pub struct TaikoNote {
 
     alpha_mult: f32,
     settings: Arc<TaikoSettings>,
+
+    image: Option<HitCircleImageHelper>
 }
 impl TaikoNote {
     pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
@@ -59,6 +61,7 @@ impl TaikoNote {
             missed: false,
             pos: Vector2::zero(),
             alpha_mult: 1.0,
+            image: HitCircleImageHelper::new(&settings, time as f64, hit_type, finisher),
             settings,
         }
     }
@@ -82,17 +85,25 @@ impl HitObject for TaikoNote {
             else {0.0};
         
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
+
+        if let Some(image) = &mut self.image {
+            image.set_pos(self.pos)
+        }
     }
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
 
-        list.push(Box::new(Circle::new(
-            self.get_color().alpha(self.alpha_mult),
-            self.time as f64,
-            self.pos,
-            if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
-            Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
-        )));
+        if let Some(image) = &mut self.image {
+            image.draw(list);
+        } else {
+            list.push(Box::new(Circle::new(
+                self.get_color().alpha(self.alpha_mult),
+                self.time as f64,
+                self.pos,
+                if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
+                Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+            )));
+        }
     }
 
     fn reset(&mut self) {
@@ -453,5 +464,77 @@ impl Into<HitType> for KeyPress {
             KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
             _ => {panic!("mania key while playing taiko")}
         }
+    }
+}
+
+
+
+#[derive(Clone)]
+struct HitCircleImageHelper {
+    circle: Image,
+    overlay: Image,
+}
+impl HitCircleImageHelper {
+    fn new(settings: &Arc<TaikoSettings>, depth: f64, hit_type: HitType, finisher: bool) -> Option<Self> {
+
+        let color = match hit_type {
+            HitType::Don => settings.don_color,
+            HitType::Kat => settings.kat_color,
+        };
+
+        let scale;
+        let hitcircle = if finisher {
+            scale = settings.big_note_multiplier;
+            "taikobighitcircle"
+        } else {
+            scale = 1.0;
+            "taikohitcircle"
+        };
+
+
+        let mut circle = SKIN_MANAGER.write().get_texture(hitcircle, true);
+        if let Some(circle) = &mut circle {
+            circle.depth = depth;
+            circle.initial_pos = Vector2::zero();
+            circle.initial_scale = Vector2::one() * scale;
+            circle.initial_color = color;
+            
+            circle.current_pos = circle.initial_pos;
+            circle.current_scale = circle.initial_scale;
+            circle.current_color = circle.initial_color;
+        }
+
+        let mut overlay = SKIN_MANAGER.write().get_texture(hitcircle.to_owned() + "overlay", true);
+        if let Some(overlay) = &mut overlay {
+            overlay.depth = depth - 0.0000001;
+            overlay.initial_pos = Vector2::zero();
+            overlay.initial_scale = Vector2::one() * scale;
+            overlay.initial_color = color;
+            
+            overlay.current_pos = overlay.initial_pos;
+            overlay.current_scale = overlay.initial_scale;
+            overlay.current_color = overlay.initial_color;
+        }
+
+        if overlay.is_none() || circle.is_none() {return None}
+
+        Some(Self {
+            circle: circle.unwrap(),
+            overlay: overlay.unwrap(),
+        })
+    }
+
+    fn set_alpha(&mut self, alpha: f32) {
+        self.circle.current_color.a = alpha;
+        self.overlay.current_color.a = alpha;
+    }
+
+    fn set_pos(&mut self, pos: Vector2) {
+        self.circle.current_pos  = pos;
+        self.overlay.current_pos = pos;
+    }
+    fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
+        list.push(Box::new(self.circle.clone()));
+        list.push(Box::new(self.overlay.clone()));
     }
 }

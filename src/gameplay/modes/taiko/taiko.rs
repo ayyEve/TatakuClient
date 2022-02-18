@@ -44,7 +44,12 @@ pub struct TaikoGame {
 
     hit_cache: HashMap<TaikoHit, f32>,
 
-    taiko_settings: Arc<TaikoSettings>
+    taiko_settings: Arc<TaikoSettings>,
+
+    left_kat_image: Option<Image>,
+    left_don_image: Option<Image>,
+    right_don_image: Option<Image>,
+    right_kat_image: Option<Image>,
 }
 impl TaikoGame {
     pub fn next_note(&mut self) {self.note_index += 1}
@@ -66,6 +71,38 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
+        let mut don_image = SKIN_MANAGER.write().get_texture("taiko-drum-inner", true);
+        let mut kat_image = SKIN_MANAGER.write().get_texture("taiko-drum-outer", true);
+
+
+        let mut left_kat_image = None;
+        let mut left_don_image = None;
+        let mut right_don_image = None;
+        let mut right_kat_image = None;
+
+        if let Some(don) = &mut don_image {
+            don.depth = 1.0;
+            don.origin.x = don.tex_size().x;
+            don.current_pos = settings.hit_position;
+
+            left_don_image = Some(don.clone());
+            left_don_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+
+            right_don_image = Some(don.clone());
+            right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+        }
+        if let Some(kat) = &mut kat_image {
+            kat.depth = 1.0;
+            kat.origin.x = 0.0;
+            kat.current_pos = settings.hit_position;
+            
+            left_kat_image = Some(kat.clone());
+            left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+
+            right_kat_image = Some(kat.clone());
+            right_kat_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+        }
+
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
@@ -83,6 +120,11 @@ impl GameMode for TaikoGame {
                     auto_helper: TaikoAutoHelper::new(),
                     taiko_settings: settings.clone(),
                     hit_cache,
+
+                    left_kat_image,
+                    left_don_image,
+                    right_don_image,
+                    right_kat_image,
                 };
 
                 // add notes
@@ -187,7 +229,12 @@ impl GameMode for TaikoGame {
                     auto_helper: TaikoAutoHelper::new(),
                     
                     taiko_settings: settings.clone(),
-                    hit_cache
+                    hit_cache,
+
+                    left_kat_image,
+                    left_don_image,
+                    right_don_image,
+                    right_kat_image,
                 };
 
                 // add notes
@@ -389,45 +436,68 @@ impl GameMode for TaikoGame {
         for (hit_type, hit_time) in self.hit_cache.iter() {
 
             if time - hit_time > lifetime_time {continue}
-
             let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
 
             match hit_type {
                 TaikoHit::LeftKat => {
-                    list.push(Box::new(HalfCircle::new(
-                        self.taiko_settings.kat_color.alpha(alpha),
-                        self.taiko_settings.hit_position,
-                        1.0,
-                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                        true
-                    )));
+                    if let Some(kat) = &self.left_kat_image {
+                        let mut img = kat.clone();
+                        img.current_color.a = alpha;
+                        list.push(Box::new(img));
+                    } else {
+                        list.push(Box::new(HalfCircle::new(
+                            self.taiko_settings.kat_color.alpha(alpha),
+                            self.taiko_settings.hit_position,
+                            1.0,
+                            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                            true
+                        )));
+                    }
                 }
                 TaikoHit::LeftDon => {
-                    list.push(Box::new(HalfCircle::new(
-                        self.taiko_settings.don_color.alpha(alpha),
-                        self.taiko_settings.hit_position,
-                        1.0,
-                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                        true
-                    )));
+                    if let Some(don) = &self.left_don_image {
+                        let mut img = don.clone();
+                        img.current_color.a = alpha;
+                        list.push(Box::new(img));
+                    } else {
+                        list.push(Box::new(HalfCircle::new(
+                            self.taiko_settings.don_color.alpha(alpha),
+                            self.taiko_settings.hit_position,
+                            1.0,
+                            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                            true
+                        )));
+                    }
                 }
                 TaikoHit::RightDon => {
-                    list.push(Box::new(HalfCircle::new(
-                        self.taiko_settings.don_color.alpha(alpha),
-                        self.taiko_settings.hit_position,
-                        1.0,
-                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                        false
-                    )));
+                    if let Some(don) = &self.right_don_image {
+                        let mut img = don.clone();
+                        img.current_color.a = alpha;
+                        list.push(Box::new(img));
+                    } else {
+                        list.push(Box::new(HalfCircle::new(
+                            self.taiko_settings.don_color.alpha(alpha),
+                            self.taiko_settings.hit_position,
+                            1.0,
+                            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                            false
+                        )));
+                    }
                 }
                 TaikoHit::RightKat => {
-                    list.push(Box::new(HalfCircle::new(
-                        self.taiko_settings.kat_color.alpha(alpha),
-                        self.taiko_settings.hit_position,
-                        1.0,
-                        self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
-                        false
-                    )));
+                    if let Some(kat) = &self.right_kat_image {
+                        let mut img = kat.clone();
+                        img.current_color.a = alpha;
+                        list.push(Box::new(img));
+                    } else {
+                        list.push(Box::new(HalfCircle::new(
+                            self.taiko_settings.kat_color.alpha(alpha),
+                            self.taiko_settings.hit_position,
+                            1.0,
+                            self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
+                            false
+                        )));
+                    }
                 }
             }
         }
@@ -834,3 +904,4 @@ pub enum TaikoHit {
     RightDon,
     RightKat
 }
+
