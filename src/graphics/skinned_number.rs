@@ -1,3 +1,5 @@
+use std::thread::current;
+
 use crate::prelude::*;
 
 #[derive(Clone)]
@@ -44,7 +46,9 @@ impl SkinnedNumber {
         let mut textures =  Vec::new();
         for i in 0..10 {
             let tex = format!("{tn}-{i}");
-            textures.push(skin_manager.get_texture(&tex, true).ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?)
+            let mut tex2 = skin_manager.get_texture(&tex, true).ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
+            tex2.origin = origin;
+            textures.push(tex2)
         }
 
         Ok(Self {
@@ -104,6 +108,8 @@ impl SkinnedNumber {
         
         Vector2::new(width, max_height)
     }
+
+
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
         self.initial_pos = rect.pos + (rect.size - text_size) / 2.0;
@@ -115,9 +121,25 @@ impl Renderable for SkinnedNumber {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&mut self, g: &mut GlGraphics, context: Context) {
+        let size = self.measure_text();
+
         // from image
         let pre_rotation = self.current_pos / self.current_scale + self.origin;
+
+        // ignore origin for now, will be pain
+
+        //TODO: cache `s`
+        let mut current_pos = self.current_pos;
+        let s = format!("{}", self.number);
+        for c in s.chars() {
+            let mut t = self.get_char_tex(c).clone();
+            t.current_pos = current_pos;
+            current_pos.x += t.size().x;
+            t.draw(g, context);
+        }
+
+
 
         // let transform = c
         //     .transform

@@ -89,6 +89,9 @@ pub struct IngameManager {
     /// what should the game do on start?
     /// mainly a helper for spectator
     pub on_start: Box<dyn FnOnce(&mut Self)>,
+
+
+    score_image: Option<SkinnedNumber>
 }
 impl IngameManager {
     pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
@@ -148,6 +151,7 @@ impl IngameManager {
 
             gamemode,
             spectator_cache: Vec::new(),
+            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0, "default").ok(),
 
             // initialize defaults for anything else not specified
             ..Self::default()
@@ -666,24 +670,33 @@ impl IngameManager {
         self.global_offset.draw(time, list);
 
 
+        // dont draw score, combo, etc if this is a menu bg
         if self.menu_background {return}
-        // gamemode things
 
-        // score bg
-        list.push(visibility_bg(
-            Vector2::new(window_size.x - 200.0, 10.0),
-            Vector2::new(180.0, 75.0 - 10.0),
-            1.0
-        ));
-        // score text
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            0.0,
-            Vector2::new(window_size.x - 200.0, 10.0),
-            30,
-            crate::format(self.score.score),
-            font.clone()
-        )));
+
+        // gamemode things
+        if let Some(score) = &mut self.score_image {
+            score.number = self.score.score;
+            score.current_pos = Vector2::new(window_size.x - score.measure_text().x, 0.0);
+
+            list.push(Box::new(score.clone()));
+        } else {
+            // score bg
+            list.push(visibility_bg(
+                Vector2::new(window_size.x - 200.0, 10.0),
+                Vector2::new(180.0, 75.0 - 10.0),
+                1.0
+            ));
+            // score text
+            list.push(Box::new(Text::new(
+                Color::BLACK,
+                0.0,
+                Vector2::new(window_size.x - 200.0, 10.0),
+                30,
+                crate::format(self.score.score),
+                font.clone()
+            )));
+        }
 
         // acc text
         list.push(Box::new(Text::new(
@@ -979,7 +992,9 @@ impl Default for IngameManager {
             background_game_settings: Default::default(), 
             spectator_cache: Default::default(),
             last_spectator_score_sync: 0.0,
-            on_start: Box::new(|_|{})
+            on_start: Box::new(|_|{}),
+
+            score_image: None,
         }
     }
 }
