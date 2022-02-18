@@ -151,7 +151,7 @@ impl IngameManager {
 
             gamemode,
             spectator_cache: Vec::new(),
-            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0, "default").ok(),
+            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0, "score").ok(),
 
             // initialize defaults for anything else not specified
             ..Self::default()
