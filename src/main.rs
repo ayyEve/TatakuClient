@@ -29,6 +29,7 @@ pub const REQUIRED_FILES:&[&str] = &[
     "resources/icon-small.png",
     "resources/icon.png",
     "fonts/main.ttf",
+    "fonts/main_fallback.ttf",
 ];
 
 const FIRST_MAPS: &[u32] = &[
@@ -55,14 +56,14 @@ async fn main() {
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        check_file(file, &format!("https://cdn.ayyeve.xyz/taiko-rs/{}", file)).await;
+        check_file(file, &format!("https://cdn.ayyeve.xyz/tataku/{}", file)).await;
     }
 
     // hitsounds
     for sample_set in ["normal", "soft", "drum"] {
         for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
             let file = &format!("resources/audio/{}-{}.wav", sample_set, hitsound);
-            check_file(file, &format!("https://cdn.ayyeve.xyz/taiko-rs/{}", file)).await;
+            check_file(file, &format!("https://cdn.ayyeve.xyz/tataku/{}", file)).await;
         }
     }
 
@@ -71,7 +72,7 @@ async fn main() {
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
         // no songs, download some
         for id in FIRST_MAPS {
-            check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &format!("https://cdn.ayyeve.xyz/taiko-rs/maps/{}.osz", id)).await;
+            check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &format!("https://cdn.ayyeve.xyz/tataku/maps/{}.osz", id)).await;
         }
     }
 
