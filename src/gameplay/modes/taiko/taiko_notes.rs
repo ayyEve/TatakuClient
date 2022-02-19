@@ -485,7 +485,7 @@ impl HitCircleImageHelper {
         let scale;
         let hitcircle = if finisher {
             scale = settings.big_note_multiplier;
-            "taikobighitcircle"
+            "taikobigcircle"
         } else {
             scale = 1.0;
             "taikohitcircle"
