@@ -46,7 +46,7 @@ impl SkinHelper {
                     Some(Image::new(Vector2::zero(), f64::MAX, tex, Vector2::new(og_size_x as f64, og_size_y as f64)))
                 }
                 Err(e) => {
-                    println!("[Skin] Error loading tex \"{}/{}\": {}", self.current_skin, name, e);
+                    println!("[Skin] Error loading tex '{}': {}", get_tex_path(&name, &self.current_skin), e);
                     None
                 }
             };
