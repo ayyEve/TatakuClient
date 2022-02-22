@@ -91,7 +91,8 @@ pub struct StandardNote {
     /// list of shapes to be drawn
     shapes: Vec<TransformGroup>,
 
-    circle_image: Option<HitCircleImageHelper>
+    circle_image: Option<HitCircleImageHelper>,
+    combo_image: Option<SkinnedNumber>,
 }
 impl StandardNote {
     pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
@@ -113,6 +114,22 @@ impl StandardNote {
             pos - Vector2::one() * radius / 2.0,
             Vector2::one() * radius,
         ));
+
+        
+        let mut combo_image = SkinnedNumber::new(
+            Color::WHITE,  // TODO: setting: colored same as note or just white?
+            combo_text.depth, 
+            combo_text.current_pos, 
+            combo_num as u64,
+            "default",
+        ).ok();
+        if let Some(combo) = &mut combo_image {
+            combo.center_text(Rectangle::bounds_only(
+                pos - Vector2::one() * radius / 2.0,
+                Vector2::one() * radius,
+            ));
+        }
+
 
         Self {
             def,
@@ -139,6 +156,7 @@ impl StandardNote {
 
             standard_settings,
             shapes: Vec::new(),
+            combo_image
         }
     }
 
@@ -207,8 +225,13 @@ impl HitObject for StandardNote {
 
 
         // combo number
-        self.combo_text.color.a = alpha;
-        list.push(self.combo_text.clone());
+        if let Some(combo) = &mut self.combo_image {
+            combo.current_color.a = alpha;
+            list.push(Box::new(combo.clone()));
+        } else {
+            self.combo_text.color.a = alpha;
+            list.push(self.combo_text.clone());
+        }
 
         // note
         if let Some(image) = &mut self.circle_image {
@@ -367,6 +390,7 @@ pub struct StandardSlider {
 
     /// combo text cache, probably not needed but whatever
     combo_text: Box<Text>,
+    combo_image: Option<SkinnedNumber>,
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
     /// (time, hitsound, samples, override sample name)
@@ -519,6 +543,20 @@ impl StandardSlider {
         let start_circle_image = HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color);
         let end_circle_image = SKIN_MANAGER.write().get_texture("sliderendcircle", true);
 
+        let mut combo_image = SkinnedNumber::new(
+            Color::WHITE,  // TODO: setting: colored same as note or just white?
+            combo_text.depth, 
+            combo_text.current_pos, 
+            combo_num as u64,
+            "default",
+        ).ok();
+        if let Some(combo) = &mut combo_image {
+            combo.center_text(Rectangle::bounds_only(
+                pos - Vector2::one() * radius / 2.0,
+                Vector2::one() * radius,
+            ));
+        }
+
         let mut slider = Self {
             def,
             curve,
@@ -552,6 +590,7 @@ impl StandardSlider {
             start_judgment: ScoreHit::None,
 
             combo_text,
+            combo_image,
             sound_queue: Vec::new(),
 
             scaling_helper,
@@ -766,11 +805,8 @@ impl HitObject for StandardSlider {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss {return}
-
-        // let alpha = (self.time_preempt / 4.0) / ((self.time - self.time_preempt / 4.0) - self.map_time).clamp(0.0, 1.0);
+        
         let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
-        
-        
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
@@ -784,8 +820,13 @@ impl HitObject for StandardSlider {
             list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scale, alpha, approach_circle_color));
 
             // combo number
-            self.combo_text.color.a = alpha;
-            list.push(self.combo_text.clone());
+            if let Some(combo) = &mut self.combo_image {
+                combo.current_color.a = alpha;
+                list.push(Box::new(combo.clone()));
+            } else {
+                self.combo_text.color.a = alpha;
+                list.push(self.combo_text.clone());
+            }
         } else if self.map_time < self.curve.end_time {
             // slider ball
             // inner
@@ -1424,6 +1465,7 @@ impl Renderable for SliderPath {
 struct HitCircleImageHelper {
     circle: Image,
     overlay: Image,
+
 }
 impl HitCircleImageHelper {
     fn new(pos: Vector2, scaling_helper: &Arc<ScalingHelper>, depth: f64, color: Color) -> Option<Self> {
