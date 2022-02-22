@@ -91,7 +91,8 @@ pub struct IngameManager {
     pub on_start: Box<dyn FnOnce(&mut Self)>,
 
 
-    score_image: Option<SkinnedNumber>
+    combo_image: Option<SkinnedNumber>,
+    score_image: Option<SkinnedNumber>,
 }
 impl IngameManager {
     pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
@@ -152,6 +153,7 @@ impl IngameManager {
             gamemode,
             spectator_cache: Vec::new(),
             score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0, "score").ok(),
+            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0, "combo").ok(),
 
             // initialize defaults for anything else not specified
             ..Self::default()
@@ -708,17 +710,23 @@ impl IngameManager {
             font.clone()
         )));
 
-        // combo text
-        let mut combo_text = Text::new(
-            Color::WHITE,
-            0.0,
-            Vector2::zero(),
-            30,
-            crate::format(self.score.combo),
-            font.clone()
-        );
-        combo_text.center_text(self.combo_text_bounds);
-        list.push(Box::new(combo_text));
+        if let Some(combo) = &mut self.combo_image {
+            combo.number = self.score.combo as u64;
+            combo.center_text(self.combo_text_bounds);
+            list.push(Box::new(combo.clone()));
+        } else {
+            // combo text
+            let mut combo_text = Text::new(
+                Color::WHITE,
+                0.0,
+                Vector2::zero(),
+                30,
+                crate::format(self.score.combo),
+                font.clone()
+            );
+            combo_text.center_text(self.combo_text_bounds);
+            list.push(Box::new(combo_text));
+        }
 
 
         // duration bar
@@ -994,6 +1002,7 @@ impl Default for IngameManager {
             last_spectator_score_sync: 0.0,
             on_start: Box::new(|_|{}),
 
+            combo_image: None,
             score_image: None,
         }
     }
