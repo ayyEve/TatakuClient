@@ -9,7 +9,7 @@ const HITWINDOW_CIRCLE_RADIUS:f64 = CIRCLE_RADIUS_BASE * 2.0;
 const PREEMPT_MIN:f32 = 450.0;
 
 // temp var for testing alternate slider rendering
-const USE_BROKEN_SLIDERS:bool = false;
+const USE_BROKEN_SLIDERS:bool = true;
 
 
 pub trait StandardHitObject: HitObject {
@@ -446,100 +446,6 @@ impl StandardSlider {
             Vector2::one() * radius,
         ));
 
-
-
-        // let mut lines_cache = Vec::new();
-        // let mut circles_cache = Vec::new();
-
-        // // curves
-        // for i in 0..curve.path.len() {
-        //     let line = curve.path[i];
-
-        //     let p1 = scaling_helper.scale_coords(line.p1);
-        //     let p2 = scaling_helper.scale_coords(line.p2);
-        //     lines_cache.push(Box::new(Line::new(
-        //         p1,
-        //         p2,
-        //         radius,
-        //         slider_depth,
-        //         color
-        //     )));
-
-        //     // add a circle to smooth out the corners
-        //     circles_cache.push(Box::new(Circle::new(
-        //         color,
-        //         slider_depth,
-        //         p2,
-        //         radius,
-        //     )))
-        // }
-
-
-
-        // let side1_angle = PI / 2.0;
-        // let side2_angle = 3.0*PI / 2.0;
-
-        let mut side1 = vec![];
-        let mut side2 = vec![];
-
-        for (i, line) in curve.path.iter().enumerate() {
-            let p1 = scaling_helper.scale_coords(line.p1);
-            let p2 = scaling_helper.scale_coords(line.p2);
-            // let p3 = scaling_helper.scale_coords(
-            //     if i + 1 < curve.path.len() {
-            //         curve.path[i + 1].p2
-            //     } else {
-            //         p2
-            //     }
-            // );
-
-            let direction = Vector2::normalize(p2 - p1);
-            let perpendicular1 = Vector2::new(direction.y, -direction.x);
-            let perpendicular2 = Vector2::new(-direction.y, direction.x);
-            side1.push(p1 + perpendicular1 * radius);
-            // side2.push(p1 + perpendicular2 * radius);
-            
-            side2.insert(0, p1 + perpendicular2 * radius);
-
-            // let theta = Vector2::atan2(p2 - p1);
-            // let s1 = p1 + Vector2::from_angle(theta + side1_angle) * radius;
-            // let s2 = p1 + Vector2::from_angle(theta + side2_angle) * radius;
-            // side1.push(s1);
-            // side2.push(s2);
-
-            if i == curve.path.len() - 1 {
-                // let theta = Vector2::atan2(p1 - p2);
-                // let s1 = p2 + Vector2::from_angle(theta + side1_angle) * radius;
-                // let s2 = p2 + Vector2::from_angle(theta + side2_angle) * radius;
-                // side1.push(s2);
-                // side2.push(s1);
-
-                let direction = Vector2::normalize(p2 - p1);
-                let perpendicular1 = Vector2::new(direction.y, -direction.x);
-                let perpendicular2 = Vector2::new(-direction.y, direction.x);
-                side1.push(p2 + perpendicular1 * radius);
-                // side2.push(p2 + perpendicular2 * radius);
-                side2.insert(0, p2 + perpendicular2 * radius);
-            }
-        }
-
-
-        let mut full:Vec<Vector2> = Vec::new();
-        full.extend(side1.iter());
-        full.extend(side2.iter());
-
-        // close the loop
-        // full.push(full[0]);
-
-        // if let CurveType::Perfect = def.curve_type {
-        //     for i in full.iter() {
-        //         println!("{}, {}", i.x, i.y)
-        //     }
-        //     println!("\n\n")
-        //     // println!("{:?}", full.iter().map(|a|(a.x, a.y)).collect::<Vec<(f64, f64)>>());
-        //     // println!("{:?}\n\n", aids);
-        // }
-
         let start_circle_image = HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color);
         let end_circle_image = SKIN_MANAGER.write().get_texture("sliderendcircle", true);
 
@@ -596,10 +502,7 @@ impl StandardSlider {
             scaling_helper,
             sliding_ok: false,
             slider_ball_pos: Vector2::zero(),
-            // lines_cache,
-            // circles_cache,
-            slider_draw: SliderPath::new(full, Color::BLUE, slider_depth),
-            // slider_draw2: SliderPath::new(side2, Color::GREEN, slider_depth),
+            slider_draw: SliderPath::default(),
 
 
             standard_settings,
@@ -611,7 +514,59 @@ impl StandardSlider {
         };
     
         slider.make_dots();
+        slider.make_body();
         slider
+    }
+
+    fn make_body(&mut self) {
+        let mut side1 = Vec::new();
+        let mut side2 = Vec::new();
+        let mut og_path = Vec::new();
+
+        for (i, line) in self.curve.path.iter().enumerate() {
+            let p1 = self.scaling_helper.scale_coords(line.p1);
+            let p2 = self.scaling_helper.scale_coords(line.p2);
+
+            let direction = Vector2::normalize(p2 - p1);
+            let perpendicular1 = Vector2::new(direction.y, -direction.x);
+            let perpendicular2 = Vector2::new(-direction.y, direction.x);
+
+            // if this is the first entry in the list
+            if i == 0 {
+                side1.push(p1 + perpendicular1 * self.radius);
+                side2.push(p1 + perpendicular2 * self.radius);
+                og_path.push(p1);
+            }
+            side1.push(p2 + perpendicular1 * self.radius);
+            side2.push(p2 + perpendicular2 * self.radius);
+            og_path.push(p2);
+        }
+
+        // we need to start a arc at side1[0] that ends at side2[side2.len() - 1] with radius self.radius, and angle ((og_path[1] - og_path[0]).atan2())
+        let mut start_cap = Vec::new();
+        {
+            // let middle_direction = Vector2::atan2(og_path[1] - og_path[0]);
+            let start = side1[0];
+            // let end = side2[side2.len() - 1];
+            let origin = og_path[0];
+
+            // from middle direction to side 1
+            let start_angle = Vector2::atan2(start - origin).to_degrees().floor() as u16;
+            for a in start_angle..(180 + start_angle) {
+                let a = (a as f64).to_radians();
+                let p = origin + Vector2::from_angle(a) * (self.radius + 0.001);
+                start_cap.push(p);
+            }
+        }
+
+        let mut full:Vec<Vector2> = Vec::new();
+        full.extend(start_cap);
+        full.extend(side1.iter());
+        full.extend(side2.iter().rev());
+
+        snippy(&og_path, &mut full, self.radius);
+
+        self.slider_draw = SliderPath::new(full, Color::BLUE, self.slider_depth)
     }
 
     fn make_dots(&mut self) {
@@ -852,8 +807,16 @@ impl HitObject for StandardSlider {
         if USE_BROKEN_SLIDERS {
             self.slider_draw.color.a = alpha;
             list.push(Box::new(self.slider_draw.clone()));
-        } else {
 
+            for line in self.curve.path.iter() {
+                let p1 = self.scaling_helper.scale_coords(line.p1);
+                let p2 = self.scaling_helper.scale_coords(line.p2);
+                let line = Line::new(p1, p2, 6.0, -999999.9, Color::YELLOW);
+                list.push(Box::new(line));
+            }
+
+
+        } else {
             for line in self.curve.path.iter() {
                 let p1 = self.scaling_helper.scale_coords(line.p1);
                 let p2 = self.scaling_helper.scale_coords(line.p2);
@@ -866,15 +829,6 @@ impl HitObject for StandardSlider {
                 );
                 list.push(Box::new(l));
 
-                // let line = Line::new(
-                //     line.p1,
-                //     p2,
-                //     5.0,
-                //     self.slider_depth - 1.0,
-                //     Color::YELLOW
-                // );
-                // list.push(Box::new(line));
-
                 // add a circle to smooth out the corners
                 list.push(Box::new(Circle::new(
                     color,
@@ -884,6 +838,15 @@ impl HitObject for StandardSlider {
                     None
                 )))
             }
+            
+            // add extra circle to start of slider as well
+            list.push(Box::new(Circle::new(
+                color,
+                self.slider_depth,
+                self.scaling_helper.scale_coords(self.curve.path[0].p1),
+                self.radius,
+                None
+            )))
         }
 
 
@@ -1430,21 +1393,81 @@ fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, dep
 #[derive(Clone)]
 pub struct SliderPath {
     path: Vec<[f64; 2]>,
+    geom: Vec<[[f64;2]; 3]>,
     color: Color,
     depth: f64
 }
 impl SliderPath {
-    fn new(path: Vec<Vector2>, color: Color, depth: f64) -> Self {
+    fn new(path: Vec<Vector2>, color: Color, depth: f64,) -> Self {
+        macro_rules! point {
+            ($v: expr) => {
+                lyon_tessellation::geom::Point::new($v.x as f32, $v.y as f32)
+            }
+        }
+
+        use lyon_tessellation::*;
+        use lyon_tessellation::geometry_builder::simple_builder;
+        use lyon_tessellation::math::Point;
+
+        let mut path_builder = lyon_tessellation::path::Path::builder();
+        path_builder.begin(point!(path[0]));
+
+        for i in 1..path.len() {
+            path_builder.line_to(point!(path[i]));
+        }
+        path_builder.end(true);
+
+        let path2 = path_builder.build();
+
+        
+        let mut buffers: &mut VertexBuffers<Point, u16> = &mut VertexBuffers::new();
+        {
+            // Create the destination vertex and index buffers.
+            let mut vertex_builder = simple_builder(&mut buffers);
+        
+            // Create the tessellator.
+            let mut tessellator = FillTessellator::new();
+        
+            // Compute the tessellation.
+            let result = tessellator.tessellate_path(
+                path2.as_slice(), //.path_iter().flattened(0.05),
+                &FillOptions::default(),
+                &mut vertex_builder
+            );
+            assert!(result.is_ok());
+        }
+
+        let mut geom = Vec::new();
+        for i in (0..buffers.indices.len()).step_by(3) {
+            let i1 = buffers.indices[i + 0];
+            let i2 = buffers.indices[i + 1];
+            let i3 = buffers.indices[i + 2];
+
+            let v1 = buffers.vertices[i1 as usize];
+            let v2 = buffers.vertices[i2 as usize];
+            let v3 = buffers.vertices[i3 as usize];
+
+            let p1 = [v1.x as f64, v1.y as f64];
+            let p2 = [v2.x as f64, v2.y as f64];
+            let p3 = [v3.x as f64, v3.y as f64];
+
+            geom.push([p1, p2, p3]);
+        }
+
+
         let path = path.iter().map(|a|(*a).into()).collect();
-        Self {path, color, depth}
+        Self {path, color, depth, geom}
     }
 }
 impl Renderable for SliderPath {
     fn get_depth(&self) -> f64 {self.depth}
 
     fn draw(&mut self, g: &mut opengl_graphics::GlGraphics, c:graphics::Context) {
-        graphics::polygon(self.color.into(), &self.path, c.transform, g);
+        for tri in self.geom.iter() {
+            graphics::polygon(self.color.into(), tri, c.transform, g);
+        }
 
+        // outline
         for i in 0..self.path.len() - 1 {
             graphics::line(
                 Color::BLACK.into(),
@@ -1459,7 +1482,16 @@ impl Renderable for SliderPath {
         }
     }
 }
-
+impl Default for SliderPath {
+    fn default() -> Self {
+        Self { 
+            path: Default::default(), 
+            geom: Default::default(), 
+            color: Color::WHITE, 
+            depth: Default::default() 
+        }
+    }
+}
 
 #[derive(Clone)]
 struct HitCircleImageHelper {
@@ -1510,4 +1542,18 @@ impl HitCircleImageHelper {
         list.push(Box::new(self.circle.clone()));
         list.push(Box::new(self.overlay.clone()));
     }
+}
+
+
+fn snippy(og_path: &Vec<Vector2>, path: &mut Vec<Vector2>, note_radius: f64) {
+    path.retain(|p| {
+        for p2 in og_path {
+            let dist = p.distance(*p2).ceil();
+            if dist < note_radius.ceil() {
+                println!("removing point: {} < {}", dist, note_radius);
+                return false
+            }
+        }
+        true
+    });
 }
