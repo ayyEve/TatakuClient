@@ -135,8 +135,6 @@ impl Game {
     }
 
     pub fn init(&mut self) {
-        // set the dialog queue
-        
         // online loop
         tokio::spawn(async move {
             loop {
@@ -151,7 +149,7 @@ impl Game {
         let mut loading_menu = LoadingMenu::new();
         loading_menu.load();
 
-        //region == menu setup ==
+        // region == menu setup ==
         let mut menu_init_benchmark = BenchmarkHelper::new("Game::init");
         // main menu
         let main_menu = Arc::new(Mutex::new(MainMenu::new()));

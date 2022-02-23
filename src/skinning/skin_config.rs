@@ -3,25 +3,25 @@ use crate::prelude::*;
 #[allow(unused, dead_code)]
 pub struct SkinSettings {
     // general
-    name: String,
-    author: String,
+    pub name: String,
+    pub author: String,
 
-    cursor_rotate: bool,
-    cursor_expand: bool,
-    cursor_center: bool,
+    pub cursor_rotate: bool,
+    pub cursor_expand: bool,
+    pub cursor_center: bool,
 
-    sliderball_frames: u8,
-    hit_circle_overlay_above_number: bool,
+    pub sliderball_frames: u8,
+    pub hit_circle_overlay_above_number: bool,
     /// ??
-    slider_style: u8, 
+    pub slider_style: u8, 
 
 
     // colors
-    combo_colors: Vec<Color>,
-    slider_border: Color,
-    slider_track_override: Color,
+    pub combo_colors: Vec<Color>,
+    pub slider_border: Color,
+    pub slider_track_override: Color,
     /// ???
-    spinner_approach_circle: Color,
+    pub spinner_approach_circle: Color,
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {

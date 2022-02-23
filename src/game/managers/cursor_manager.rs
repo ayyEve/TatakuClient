@@ -19,10 +19,19 @@ pub struct CursorManager {
 
     pub left_pressed: bool,
     pub right_pressed: bool,
+
+    pub cursor_image: Option<Image>,
+    pub trail_images: Vec<TransformGroup>,
 }
 
 impl CursorManager {
     pub fn new() -> Self {
+
+        let mut cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
+        if let Some(cursor) = &mut cursor_image {
+            cursor.depth = -f64::MAX;
+        }
+
         Self {
             pos: Vector2::zero(),
             visible: true,
@@ -31,8 +40,17 @@ impl CursorManager {
             color: Color::from_hex(&Settings::get_mut("CursorManager::new").cursor_color),
 
             left_pressed: false,
-            right_pressed: false
+            right_pressed: false,
+
+            trail_images: Vec::new(),
+            cursor_image,
         }
+    }
+
+
+    pub fn reload_skin(&mut self) {
+        // TODO: this
+        self.cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
     }
 
     /// set replay mode.
@@ -49,6 +67,10 @@ impl CursorManager {
         self.pos = pos;
     }
 
+    pub fn update(&mut self) {
+        // TODO: trail stuff
+    }
+
     pub fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
         if !self.visible {return}
 
@@ -58,17 +80,24 @@ impl CursorManager {
         }
 
         let settings = Settings::get_mut("CursorManager::draw");
-        list.push(Box::new(Circle::new(
-            self.color,
-            -f64::MAX,
-            self.pos,
-            radius * settings.cursor_scale,
-            if settings.cursor_border > 0.0 {
-                Some(Border::new(
-                    Color::from_hex(&settings.cursor_border_color),
-                    settings.cursor_border as f64
-                ))
-            } else {None}
-        )));
+
+        if let Some(cursor) = &mut self.cursor_image {
+            cursor.current_pos = self.pos;
+            cursor.current_color = self.color;
+            list.push(Box::new(cursor.clone()));
+        } else {
+            list.push(Box::new(Circle::new(
+                self.color,
+                -f64::MAX,
+                self.pos,
+                radius * settings.cursor_scale,
+                if settings.cursor_border > 0.0 {
+                    Some(Border::new(
+                        Color::from_hex(&settings.cursor_border_color),
+                        settings.cursor_border as f64
+                    ))
+                } else {None}
+            )));
+        }
     }
 }
