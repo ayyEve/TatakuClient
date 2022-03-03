@@ -9,7 +9,7 @@ const HITWINDOW_CIRCLE_RADIUS:f64 = CIRCLE_RADIUS_BASE * 2.0;
 const PREEMPT_MIN:f32 = 450.0;
 
 // temp var for testing alternate slider rendering
-const USE_BROKEN_SLIDERS:bool = true;
+const USE_BROKEN_SLIDERS:bool = false;
 
 
 pub trait StandardHitObject: HitObject {
@@ -429,7 +429,7 @@ impl StandardSlider {
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
         let pos = scaling_helper.scale_coords(def.pos);
-        let visual_end_pos = scaling_helper.scale_coords(curve.path.last().unwrap().p2);
+        let visual_end_pos = scaling_helper.scale_coords(curve.smooth_lines.last().unwrap().p1);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
@@ -519,52 +519,125 @@ impl StandardSlider {
     }
 
     fn make_body(&mut self) {
-        let mut side1 = Vec::new();
-        let mut side2 = Vec::new();
-        let mut og_path = Vec::new();
+        let mut side1_total = Vec::new();
+        let mut side2_total = Vec::new();
 
-        for (i, line) in self.curve.path.iter().enumerate() {
-            let p1 = self.scaling_helper.scale_coords(line.p1);
-            let p2 = self.scaling_helper.scale_coords(line.p2);
+        for segment in self.curve.path.iter() {
+            let mut side1 = Vec::new();
+            let mut side2 = Vec::new();
 
-            let direction = Vector2::normalize(p2 - p1);
-            let perpendicular1 = Vector2::new(direction.y, -direction.x);
-            let perpendicular2 = Vector2::new(-direction.y, direction.x);
 
-            // if this is the first entry in the list
-            if i == 0 {
-                side1.push(p1 + perpendicular1 * self.radius);
-                side2.push(p1 + perpendicular2 * self.radius);
-                og_path.push(p1);
+            macro_rules! check_sides {
+                ($p1:expr, $direction:expr, $perpendicular1:expr, $perpendicular2:expr) => {{
+                    let s1 = $p1 + $perpendicular1;
+                    let s2 = $p1 + $perpendicular2;
+                    let origin = $p1;
+                    
+                    if side1_total.len() > 0 {
+                        let last_point = *side1_total.last().unwrap();
+                        let middle_of_curve = origin + $direction * self.radius;
+
+                        let (center, radius, t_initial, t_final) = circle_through_points(last_point, middle_of_curve, s1);
+                        let curve_length = ((t_final - t_initial) * radius).abs();
+                        let segments = (curve_length * 0.125) as u32;
+
+                        let mut curve = Vec::new();
+                        curve.push(last_point);
+
+                        for i in 0..segments {
+                            let progress = i as f64 / segments as f64;
+                            let t = t_final * progress + t_initial * (1.0 - progress);
+                            let new_point = circle_point(center, radius, t);
+                            side1.push(new_point);
+                        }
+                    }
+
+                    if side2_total.len() > 0 {
+                        let last_point = *side2_total.last().unwrap();
+                        let middle_of_curve = origin + $direction * self.radius;
+
+                        let (center, radius, t_initial, t_final) = circle_through_points(last_point, middle_of_curve, s2);
+                        let curve_length = ((t_final - t_initial) * radius).abs();
+                        let segments = (curve_length * 0.125) as u32;
+
+                        let mut curve = Vec::new();
+                        curve.push(last_point);
+
+                        for i in 0..segments {
+                            let progress = i as f64 / segments as f64;
+                            let t = t_final * progress + t_initial * (1.0 - progress);
+                            let new_point = circle_point(center, radius, t);
+                            side2.push(new_point);
+                        }
+                    }
+
+                    side1.push(s1);
+                    side2.push(s2);
+                }}
             }
-            side1.push(p2 + perpendicular1 * self.radius);
-            side2.push(p2 + perpendicular2 * self.radius);
-            og_path.push(p2);
+
+            match segment {
+                CurveSegment::Bezier { curve } 
+                | CurveSegment::Catmull { curve }
+                | CurveSegment::Perfect { curve } => {
+                    for i in 1..curve.len() {
+                        let p1 = self.scaling_helper.scale_coords(curve[i - 1]);
+                        let p2 = self.scaling_helper.scale_coords(curve[i]);
+
+                        let direction = Vector2::normalize(p2 - p1);
+                        let perpendicular1 = Vector2::new(direction.y, -direction.x) * self.radius;
+                        let perpendicular2 = Vector2::new(-direction.y, direction.x) * self.radius;
+
+                        // if this is the first entry in this list
+                        if i == 1 {
+                            check_sides!(p1, direction, perpendicular1, perpendicular2)
+                        }
+                        side1.push(p2 + perpendicular1);
+                        side2.push(p2 + perpendicular2);
+                    }
+                },
+
+                &CurveSegment::Linear { p1, p2 } => {
+                    let p1 = self.scaling_helper.scale_coords(p1);
+                    let p2 = self.scaling_helper.scale_coords(p2);
+
+                    let direction = Vector2::normalize(p2 - p1);
+                    let perpendicular1 = Vector2::new(direction.y, -direction.x) * self.radius;
+                    let perpendicular2 = Vector2::new(-direction.y, direction.x) * self.radius;
+
+                    check_sides!(p1, direction, perpendicular1, perpendicular2);
+                },
+            }
+
+            side1_total.extend(side1.iter());
+            side2_total.extend(side2.iter());
         }
 
-        // we need to start a arc at side1[0] that ends at side2[side2.len() - 1] with radius self.radius, and angle ((og_path[1] - og_path[0]).atan2())
-        let mut start_cap = Vec::new();
-        {
-            // let middle_direction = Vector2::atan2(og_path[1] - og_path[0]);
-            let start = side1[0];
-            // let end = side2[side2.len() - 1];
-            let origin = og_path[0];
+        // for (i, line) in self.curve.smooth_lines.iter().enumerate() {
+        //     let p1 = self.scaling_helper.scale_coords(line.p1);
+        //     let p2 = self.scaling_helper.scale_coords(line.p2);
 
-            // from middle direction to side 1
-            let start_angle = Vector2::atan2(start - origin).to_degrees().floor() as u16;
-            for a in start_angle..(180 + start_angle) {
-                let a = (a as f64).to_radians();
-                let p = origin + Vector2::from_angle(a) * (self.radius + 0.001);
-                start_cap.push(p);
-            }
-        }
+        //     let direction = Vector2::normalize(p2 - p1);
+        //     let perpendicular1 = Vector2::new(direction.y, -direction.x);
+        //     let perpendicular2 = Vector2::new(-direction.y, direction.x);
+
+        //     // if this is the first entry in the list
+        //     if i == 0 {
+        //         side1.push(p1 + perpendicular1 * self.radius);
+        //         side2.push(p1 + perpendicular2 * self.radius);
+        //         // og_path.push(p1);
+        //     }
+        //     side1.push(p2 + perpendicular1 * self.radius);
+        //     side2.push(p2 + perpendicular2 * self.radius);
+        //     // og_path.push(p2);
+        // }
 
         let mut full:Vec<Vector2> = Vec::new();
-        full.extend(start_cap);
-        full.extend(side1.iter());
-        full.extend(side2.iter().rev());
+        // full.extend(start_cap);
+        full.extend(side1_total.iter());
+        full.extend(side2_total.iter().rev());
 
-        snippy(&og_path, &mut full, self.radius);
+        // snippy(&og_path, &mut full, self.radius);
 
         self.slider_draw = SliderPath::new(full, Color::BLUE, self.slider_depth)
     }
@@ -808,16 +881,15 @@ impl HitObject for StandardSlider {
             self.slider_draw.color.a = alpha;
             list.push(Box::new(self.slider_draw.clone()));
 
-            for line in self.curve.path.iter() {
+            for line in self.curve.smooth_lines.iter() {
                 let p1 = self.scaling_helper.scale_coords(line.p1);
                 let p2 = self.scaling_helper.scale_coords(line.p2);
                 let line = Line::new(p1, p2, 6.0, -999999.9, Color::YELLOW);
                 list.push(Box::new(line));
             }
 
-
         } else {
-            for line in self.curve.path.iter() {
+            for line in self.curve.smooth_lines.iter() {
                 let p1 = self.scaling_helper.scale_coords(line.p1);
                 let p2 = self.scaling_helper.scale_coords(line.p2);
                 let l = Line::new(
@@ -843,7 +915,7 @@ impl HitObject for StandardSlider {
             list.push(Box::new(Circle::new(
                 color,
                 self.slider_depth,
-                self.scaling_helper.scale_coords(self.curve.path[0].p1),
+                self.scaling_helper.scale_coords(self.curve.smooth_lines[0].p1),
                 self.radius,
                 None
             )))
@@ -1427,11 +1499,14 @@ impl SliderPath {
         
             // Create the tessellator.
             let mut tessellator = FillTessellator::new();
+
+            let mut fill_options = FillOptions::default();
+            fill_options.fill_rule = FillRule::NonZero;
         
             // Compute the tessellation.
             let result = tessellator.tessellate_path(
                 path2.as_slice(), //.path_iter().flattened(0.05),
-                &FillOptions::default(),
+                &fill_options,
                 &mut vertex_builder
             );
             assert!(result.is_ok());
@@ -1550,7 +1625,7 @@ fn snippy(og_path: &Vec<Vector2>, path: &mut Vec<Vector2>, note_radius: f64) {
         for p2 in og_path {
             let dist = p.distance(*p2).ceil();
             if dist < note_radius.ceil() {
-                println!("removing point: {} < {}", dist, note_radius);
+                // println!("removing point: {} < {}", dist, note_radius);
                 return false
             }
         }
