@@ -71,16 +71,13 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
-        let mut don_image = SKIN_MANAGER.write().get_texture("taiko-drum-inner", true);
-        let mut kat_image = SKIN_MANAGER.write().get_texture("taiko-drum-outer", true);
-
 
         let mut left_kat_image = None;
         let mut left_don_image = None;
         let mut right_don_image = None;
         let mut right_kat_image = None;
 
-        if let Some(don) = &mut don_image {
+        if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
             don.depth = 1.0;
             don.origin.x = don.tex_size().x;
             don.current_pos = settings.hit_position;
@@ -91,7 +88,7 @@ impl GameMode for TaikoGame {
             right_don_image = Some(don.clone());
             right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
         }
-        if let Some(kat) = &mut kat_image {
+        if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
             kat.depth = 1.0;
             kat.origin.x = 0.0;
             kat.current_pos = settings.hit_position;

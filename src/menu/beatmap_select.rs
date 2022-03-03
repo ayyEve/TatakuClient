@@ -743,6 +743,10 @@ impl ScrollableItem for BeatmapsetItem {
                 index = ((rel_y2 + BEATMAP_ITEM_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING)).floor() as usize;
             }
 
+            if self.mouse_pos.y < self.pos.y {
+                index = 999;
+            }
+
             for i in 0..self.beatmaps.len() {
                 let meta = &self.beatmaps[i];
 

@@ -372,30 +372,3 @@ impl ControllerInputConfig {
         }
     }
 }
-
-
-// obsolete
-// pub fn map_button_to_name(controller: Arc<String>, button: u8) -> &'static str {
-//     match (&**controller, button) {
-
-//         // TODO: verify the name
-//         // Generic\tUSB\tJoystick\t
-//         // n64
-//         // A:5
-//         // B:4
-//         // Start:9
-//         // DPADUP:12
-//         // DPADRIGHT:13
-//         // DPADDOWN:14
-//         // DPADLEFT:15
-//         // C-UP:0
-//         // C-RIGHT:1
-//         // C-DOWN:2
-//         // C-LEFT:3
-//         // L:6
-//         // R:7
-//         // Z:8
-
-//         _ => "Other"
-//     }
-// }
