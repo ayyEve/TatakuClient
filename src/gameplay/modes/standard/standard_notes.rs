@@ -1471,6 +1471,17 @@ pub struct SliderPath {
 }
 impl SliderPath {
     fn new(path: Vec<Vector2>, color: Color, depth: f64,) -> Self {
+
+        if !USE_BROKEN_SLIDERS {
+            return Self {
+                path: Vec::new(),
+                geom: Vec::new(),
+                color: Color::WHITE,
+                depth: 0.0
+            }
+        }
+
+
         macro_rules! point {
             ($v: expr) => {
                 lyon_tessellation::geom::Point::new($v.x as f32, $v.y as f32)

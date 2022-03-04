@@ -199,7 +199,7 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
                 };
                 
-                // init defaults for the columsn
+                // init defaults for the columns
                 for _col in 0..s.column_count {
                     s.columns.push(Vec::new());
                     s.column_indices.push(0);
