@@ -82,7 +82,7 @@ impl Default for TaikoSettings {
 
             // sv
             static_sv: false,
-            sv_multiplier: 1.0,
+            sv_multiplier: 1.1,
             
             // size stuff
             note_radius: 42.0,

@@ -645,7 +645,7 @@ impl GameMode for TaikoGame {
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !self.taiko_settings.static_sv {sv = beatmap.slider_velocity_at(time) / SV_FACTOR}
+                if !self.taiko_settings.static_sv {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
