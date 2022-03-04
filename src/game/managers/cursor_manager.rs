@@ -1,5 +1,9 @@
 use crate::prelude::*;
 
+const TRAIL_CREATE_TIMER:f64 = 10.0;
+const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
+const TRAIL_FADEOUT_TIMER_DURATION:f64 = 100.0;
+
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
@@ -8,6 +12,7 @@ pub struct CursorManager {
     pub visible: bool,
 
     pub color: Color,
+    pub border_color: Color,
 
     /// should the mouse not follow the user's cursor.
     /// actually used inside game, not here
@@ -21,29 +26,40 @@ pub struct CursorManager {
     pub right_pressed: bool,
 
     pub cursor_image: Option<Image>,
+    pub cursor_trail_image: Option<Image>,
     pub trail_images: Vec<TransformGroup>,
+    last_trail_time: f64,
 }
 
 impl CursorManager {
     pub fn new() -> Self {
-
         let mut cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
         if let Some(cursor) = &mut cursor_image {
             cursor.depth = -f64::MAX;
         }
+
+        let mut cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
+        if let Some(cursor) = &mut cursor_trail_image {
+            cursor.depth = (-f64::MAX) + 0.01;
+        }
+
+        let settings = Settings::get_mut("CursorManager::new");
 
         Self {
             pos: Vector2::zero(),
             visible: true,
             replay_mode: false,
             replay_mode_changed: false,
-            color: Color::from_hex(&Settings::get_mut("CursorManager::new").cursor_color),
+            color: Color::from_hex(&settings.cursor_color),
+            border_color: Color::from_hex(&settings.cursor_border_color),
 
             left_pressed: false,
             right_pressed: false,
 
             trail_images: Vec::new(),
             cursor_image,
+            cursor_trail_image,
+            last_trail_time: 0.0,
         }
     }
 
@@ -51,6 +67,7 @@ impl CursorManager {
     pub fn reload_skin(&mut self) {
         // TODO: this
         self.cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
+        self.cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
     }
 
     /// set replay mode.
@@ -67,8 +84,35 @@ impl CursorManager {
         self.pos = pos;
     }
 
-    pub fn update(&mut self) {
-        // TODO: trail stuff
+    pub fn update(&mut self, game_time: f64) {
+        // trail stuff
+
+        // check if we should add a new trail
+        if self.cursor_trail_image.is_some() && game_time - self.last_trail_time >= TRAIL_CREATE_TIMER {
+            if let Some(mut trail) = self.cursor_trail_image.clone() {
+                let mut g = TransformGroup::new();
+                g.transforms.push(Transformation::new(
+                    TRAIL_FADEOUT_TIMER_START, 
+                    TRAIL_FADEOUT_TIMER_DURATION, 
+                    TransformType::Transparency {start: 1.0, end: 0.0}, 
+                    TransformEasing::EaseOutSine, 
+                    game_time
+                ));
+                trail.current_pos = self.pos;
+                trail.depth = (-f64::MAX) + 0.01;
+                g.items.push(DrawItem::Image(trail));
+
+                self.trail_images.push(g);
+                self.last_trail_time = game_time;
+            }
+
+        }
+    
+        // update the transforms, removing any that are not visible
+        self.trail_images.retain_mut(|i| {
+            i.update(game_time);
+            i.items[0].visible()
+        });
     }
 
     pub fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
@@ -81,6 +125,13 @@ impl CursorManager {
 
         let settings = Settings::get_mut("CursorManager::draw");
 
+        if self.cursor_trail_image.is_some() {
+            // draw the transforms
+            for i in self.trail_images.iter_mut() {
+                i.draw(list);
+            }
+        }
+        
         if let Some(cursor) = &mut self.cursor_image {
             cursor.current_pos = self.pos;
             cursor.current_color = self.color;
@@ -93,11 +144,12 @@ impl CursorManager {
                 radius * settings.cursor_scale,
                 if settings.cursor_border > 0.0 {
                     Some(Border::new(
-                        Color::from_hex(&settings.cursor_border_color),
+                        self.border_color,
                         settings.cursor_border as f64
                     ))
                 } else {None}
             )));
         }
+
     }
 }

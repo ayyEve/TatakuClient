@@ -358,6 +358,10 @@ impl Game {
         dialog_list.extend(std::mem::take(&mut self.dialogs));
         self.dialogs = dialog_list;
 
+        
+        // update cursor
+        self.cursor_manager.update(elapsed as f64);
+
 
         // run update on current state
         match &mut current_state {

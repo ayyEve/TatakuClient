@@ -132,7 +132,6 @@ impl Transformable for Image {
                 self.current_rotation = self.current_rotation + val;
             }
             
-            //TODO!
             TransformType::Transparency { .. } => {
                 let val:f64 = val.into();
                 self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
@@ -151,7 +150,7 @@ impl Transformable for Image {
     }
     
     fn visible(&self) -> bool {
-        self.current_scale.x != 0.0 && self.current_scale.y != 0.0
+        self.current_scale.x != 0.0 && self.current_scale.y != 0.0 && self.current_color.a != 0.0
     }
 
 }
