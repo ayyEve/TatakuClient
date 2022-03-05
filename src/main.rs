@@ -28,8 +28,8 @@ pub const REQUIRED_FILES:&[&str] = &[
     "resources/audio/combobreak.mp3",
     "resources/icon-small.png",
     "resources/icon.png",
-    "fonts/main.ttf",
-    "fonts/main_fallback.ttf",
+    "resources/fonts/main.ttf",
+    "resources/fonts/main_fallback.ttf",
 ];
 
 const FIRST_MAPS: &[u32] = &[
@@ -48,10 +48,10 @@ async fn main() {
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
     check_folder(SONGS_DIR);
-    check_folder("fonts");
     check_folder("skins");
     check_folder("resources");
     check_folder("resources/audio");
+    check_folder("resources/fonts");
 
     main_benchmark.log("Folder check done, downloading files", true);
 

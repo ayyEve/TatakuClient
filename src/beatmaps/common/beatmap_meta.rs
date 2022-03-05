@@ -76,9 +76,8 @@ impl BeatmapMeta {
 
             // test calc
             let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
-            let diff = calc.calc().unwrap();
             
-            self.diff = diff;
+            self.diff = calc.calc().unwrap_or_default();
         }
         
         self.diff

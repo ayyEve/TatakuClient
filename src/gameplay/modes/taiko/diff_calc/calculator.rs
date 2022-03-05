@@ -144,6 +144,8 @@ impl TaikoDifficultyCalculator {
     }
 }
 
+const WRITE_DEBUG_FILES:bool = false;
+
 impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
     fn new(g: &TaikoGame) -> TatakuResult<Self> {
         
@@ -181,8 +183,9 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
             let combined = strain_value + density_value;
 
             diff.push(combined);
-
-            lines.push(format!("{},{},{}", strain_value, density_value, combined));
+            if WRITE_DEBUG_FILES {
+                lines.push(format!("{},{},{}", strain_value, density_value, combined));
+            }
         }
         
         let count = diff.len() as f32;
@@ -203,101 +206,105 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
 
         difficulty /= (1.0 - weight) / (1.0 - PERCENT);
 
+
+
         // TEMP: for writing to csv, nicer graphs
-        for i in 1..lines.len() {
-            lines[i] += &format!(",{}", difficulty);
-        }
-        let file_name = self
-            .version_string
-            .replace("/", "")
-            .replace("\\", "")
-            .replace("?", "")
-            .replace("'", "")
-            .replace("*", "")
-            .replace("&", "")
-            .replace("<", "")
-            .replace(">", "")
-            .replace(";", "")
-            .replace("\"", "")
-            .replace("?", "")
-            .replace("|", "")
-            ;
-        
-        std::fs::write(format!("./csv/{}.csv", file_name), lines.join("\n"))?;
-
-        {
-            let mut hashmap = HashMap::new();
-            let column_count = lines[0].split(",").count();
-            let mut labels = Vec::new();
-
-            for i in 0..column_count {
-                hashmap.insert(i, Vec::new());
+        if WRITE_DEBUG_FILES {
+            for i in 1..lines.len() {
+                lines[i] += &format!(",{}", difficulty);
             }
+            let file_name = self
+                .version_string
+                .replace("/", "")
+                .replace("\\", "")
+                .replace("?", "")
+                .replace("'", "")
+                .replace("*", "")
+                .replace("&", "")
+                .replace("<", "")
+                .replace(">", "")
+                .replace(";", "")
+                .replace("\"", "")
+                .replace("?", "")
+                .replace("|", "")
+                ;
+            
+            std::fs::write(format!("./csv/{}.csv", file_name), lines.join("\n"))?;
 
-            for (i, line) in lines.iter().enumerate() {
-                let split = line.split(",");
+            {
+                let mut hashmap = HashMap::new();
+                let column_count = lines[0].split(",").count();
+                let mut labels = Vec::new();
 
-                if i == 0 {
-                    for (_n, c) in split.into_iter().enumerate() {
-                        labels.push(c);
-                    }
-                } else {
-                    for (n, c) in split.into_iter().enumerate() {
-                        hashmap.get_mut(&n).unwrap().push(c);
+                for i in 0..column_count {
+                    hashmap.insert(i, Vec::new());
+                }
+
+                for (i, line) in lines.iter().enumerate() {
+                    let split = line.split(",");
+
+                    if i == 0 {
+                        for (_n, c) in split.into_iter().enumerate() {
+                            labels.push(c);
+                        }
+                    } else {
+                        for (n, c) in split.into_iter().enumerate() {
+                            hashmap.get_mut(&n).unwrap().push(c);
+                        }
                     }
                 }
-            }
 
-            let colors = [
-                "66,133,244",
-                "234,67,53",
-                "251,188,4",
-                "52,168,83"
-            ];
+                let colors = [
+                    "66,133,244",
+                    "234,67,53",
+                    "251,188,4",
+                    "52,168,83"
+                ];
 
-            let mut data_sets = Vec::new();
-            for (i, values) in hashmap.iter() {
-                let label = labels[*i];
-                let color = colors[i % colors.len()];
-                let data = values.join(",");
-                {
-                    data_sets.push(format!(r#"{{
-                        label: '{label}',
-                        data: [{data}],
-                        backgroundColor: ['rgba({color}, 0.2)'],
-                        borderColor: ['rgba({color}, 1)'],
-                        borderWidth: 1
-                    }}"#));
+                let mut data_sets = Vec::new();
+                for (i, values) in hashmap.iter() {
+                    let label = labels[*i];
+                    let color = colors[i % colors.len()];
+                    let data = values.join(",");
+                    {
+                        data_sets.push(format!(r#"{{
+                            label: '{label}',
+                            data: [{data}],
+                            backgroundColor: ['rgba({color}, 0.2)'],
+                            borderColor: ['rgba({color}, 1)'],
+                            borderWidth: 1
+                        }}"#));
+                    }
                 }
-            }
 
 
-            let x_line = (0..lines.len()-1).into_iter().fold(String::new(), |f, g| format!("{}'{}',", f, g));
+                let x_line = (0..lines.len()-1).into_iter().fold(String::new(), |f, g| format!("{}'{}',", f, g));
 
-            let datasets = data_sets.join(",");
-            let all_data = format!(r#"
-            <script src='https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js'></script>
-            <canvas id="myChart" width="1280" height="720"></canvas>
-            <script>
-            const ctx = document.getElementById('myChart').getContext('2d');
-            const myChart = new Chart(ctx, {{
-                type: 'line',
-                data: {{
-                    labels: [{x_line}],
-                    datasets: [{datasets}]
-                }},
-                options: {{
-                    scales: {{
-                        y: {{
-                            beginAtZero: true
+                let datasets = data_sets.join(",");
+                let all_data = format!(r#"
+                <script src='https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js'></script>
+                <canvas id="myChart" width="1280" height="720"></canvas>
+                <script>
+                const ctx = document.getElementById('myChart').getContext('2d');
+                const myChart = new Chart(ctx, {{
+                    type: 'line',
+                    data: {{
+                        labels: [{x_line}],
+                        datasets: [{datasets}]
+                    }},
+                    options: {{
+                        scales: {{
+                            y: {{
+                                beginAtZero: true
+                            }}
                         }}
                     }}
-                }}
-            }});
-            </script>
-            "#);
+                }});
+                </script>
+                "#);
 
-            std::fs::write(format!("./html/{}.html", file_name), all_data)?
+                std::fs::write(format!("./html/{}.html", file_name), all_data)?
+            }
         }
 
         Ok(difficulty)
