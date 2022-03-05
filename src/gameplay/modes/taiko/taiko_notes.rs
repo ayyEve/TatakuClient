@@ -180,10 +180,29 @@ pub struct TaikoSlider {
     
     alpha_mult: f32,
     settings: Arc<TaikoSettings>,
+
+    middle_image:Option<Image>,
+    end_image: Option<Image>,
+
 }
 impl TaikoSlider {
     pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
         let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
+
+        let mut middle_image = SKIN_MANAGER.write().get_texture("taiko-roll-middle", true);
+        if let Some(image) = &mut middle_image {
+            image.depth = time as f64 + 1.0;
+            image.origin.x = 0.0;
+            image.current_color = Color::YELLOW;
+        }
+
+        let mut end_image = SKIN_MANAGER.write().get_texture("taiko-roll-end", true);
+        if let Some(image) = &mut end_image {
+            image.depth = time as f64;
+            image.origin.x = 0.0;
+            image.current_color = Color::YELLOW;
+        }
+
 
         Self {
             time, 
@@ -198,6 +217,9 @@ impl TaikoSlider {
             
             alpha_mult: 1.0,
             settings,
+
+            middle_image,
+            end_image
         }
     }
 }
@@ -222,32 +244,55 @@ impl HitObject for TaikoSlider {
         let color = Color::YELLOW.alpha(self.alpha_mult);
         let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
 
-        // middle
-        list.push(Box::new(Rectangle::new(
-            color,
-            self.time as f64 + 1.0,
-            self.pos,
-            Vector2::new(self.end_x - self.pos.x , self.radius * 2.0),
-            border.clone()
-        )));
+        if let Some(image) = &self.middle_image {
+            let mut image = image.clone();
+            image.current_pos = self.pos + Vector2::y_only(self.radius);
+            image.current_scale = Vector2::new(self.end_x - self.pos.x, 1.0);
+            list.push(Box::new(image));
+        } else {
+            // middle
+            list.push(Box::new(Rectangle::new(
+                color,
+                self.time as f64 + 1.0,
+                self.pos,
+                Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
+                border.clone()
+            )));
+        }
 
-        // start circle
-        list.push(Box::new(Circle::new(
-            color,
-            self.time as f64,
-            self.pos + Vector2::new(0.0, self.radius),
-            self.radius,
-            border.clone()
-        )));
-        
-        // end circle
-        list.push(Box::new(Circle::new(
-            color,
-            self.time as f64,
-            Vector2::new(self.end_x, self.pos.y + self.radius),
-            self.radius,
-            border.clone()
-        )));
+        if let Some(image) = &self.end_image {
+
+            // start
+            let mut start = image.clone();
+            start.current_pos = self.pos + Vector2::new(0.0, self.radius);
+            start.current_scale.x *= -1.0;
+            list.push(Box::new(start));
+
+            // end
+            let mut end = image.clone();
+            end.current_pos = Vector2::new(self.end_x, self.pos.y + self.radius);
+            list.push(Box::new(end));
+            
+        } else {
+            // start circle
+            list.push(Box::new(Circle::new(
+                color,
+                self.time as f64,
+                self.pos + Vector2::new(0.0, self.radius),
+                self.radius,
+                border.clone()
+            )));
+            
+            // end circle
+            list.push(Box::new(Circle::new(
+                color,
+                self.time as f64,
+                Vector2::new(self.end_x, self.pos.y + self.radius),
+                self.radius,
+                border.clone()
+            )));
+        }
+
 
         // draw hit dots
         for dot in self.hit_dots.as_slice() {
