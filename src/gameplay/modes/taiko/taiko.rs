@@ -60,7 +60,7 @@ impl GameMode for TaikoGame {
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
-        let mut settings = Settings::get().taiko_settings.clone();
+        let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings();
         let settings = Arc::new(settings);
@@ -213,7 +213,7 @@ impl GameMode for TaikoGame {
                 Ok(s)
             }
             Beatmap::Adofai(beatmap) => {
-                let settings = Arc::new(Settings::get().taiko_settings.clone());
+                let settings = Arc::new(get_settings!().taiko_settings.clone());
                 let mut s = Self {
                     notes: Vec::new(),
                     note_index: 0,
@@ -280,7 +280,7 @@ impl GameMode for TaikoGame {
 
         let hit_type:HitType = key.into();
         let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
-        let mut hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
+        let mut hit_volume = get_settings!().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
         if manager.menu_background {
             hit_volume *= manager.background_game_settings.hitsound_volume;
         }
@@ -600,7 +600,7 @@ impl GameMode for TaikoGame {
 
             // update the global settings
             {
-                let mut settings = Settings::get_mut("TaikoGame::controller_press");
+                let mut settings = get_settings_mut!();
                 settings.taiko_settings = new_settings.clone();
                 settings.save();
             }

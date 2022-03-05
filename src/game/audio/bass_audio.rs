@@ -103,7 +103,7 @@ impl Audio {
         if let Err(e) = sound.set_position(position as f64) {
             println!("error setting position: {:?}", e);
         }
-        sound.set_volume(Settings::get().get_music_vol()).unwrap();
+        sound.set_volume(get_settings!().get_music_vol()).unwrap();
 
         *CURRENT_SONG.lock() = Some((string_path, sound.clone()));
         Ok(sound)
@@ -115,7 +115,7 @@ impl Audio {
 
         let sound = Self::load_song_raw(bytes)?;
         sound.play(true).unwrap();
-        sound.set_volume(Settings::get().get_music_vol()).unwrap();
+        sound.set_volume(get_settings!().get_music_vol()).unwrap();
         
         *CURRENT_SONG.lock() = Some((key.as_ref().to_owned(), sound.clone()));
         Ok(sound)
@@ -159,7 +159,7 @@ impl Audio {
             Some(sample) => {
                 let channel = sample.clone().get_channel()?;
 
-                channel.set_volume(Settings::get().get_effect_vol()).unwrap();
+                channel.set_volume(get_settings!().get_effect_vol()).unwrap();
                 channel.play(true).expect("Error playing sample");
 
                 Ok(channel)

@@ -43,7 +43,7 @@ impl CursorManager {
             cursor.depth = (-f64::MAX) + 0.01;
         }
 
-        let settings = Settings::get_mut("CursorManager::new");
+        let settings = get_settings!();
 
         Self {
             pos: Vector2::zero(),
@@ -123,7 +123,7 @@ impl CursorManager {
             radius *= 2.0;
         }
 
-        let settings = Settings::get_mut("CursorManager::draw");
+        let settings = get_settings!();
 
         if self.cursor_trail_image.is_some() {
             // draw the transforms

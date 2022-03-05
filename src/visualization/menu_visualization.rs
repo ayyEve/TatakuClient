@@ -34,7 +34,7 @@ impl MenuVisualization {
             //TODO!: skins
             cookie: Image::from_path("./resources/icon.png", Vector2::zero(), 0.0, Vector2::one() * initial_inner_radius).unwrap(),
 
-            bar_height: 1.0, //(Settings::get_mut().window_size[1] - INNER_RADIUS) / 128.0,
+            bar_height: 1.0,
             initial_inner_radius,
             current_inner_radius: initial_inner_radius,
 

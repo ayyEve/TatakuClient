@@ -19,7 +19,7 @@ impl DirectApi for OsuDirect {
 
     fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
         println!("[OsuDirect] searching");
-        let settings = Settings::get();
+        let settings = get_settings!();
 
 
         // TODO: do a proper sort (and convert from generic sort to osu sort number)
@@ -31,7 +31,7 @@ impl DirectApi for OsuDirect {
         let url = format!(
             "https://osu.ppy.sh/web/osu-search.php?u={}&h={:x}&m={}&p={}&s={}&r={}{}",
             /*   username  */ settings.osu_username,
-            /*   password  */ md5::compute(settings.osu_password),
+            /*   password  */ md5::compute(&settings.osu_password),
             /*   playmode  */ search_params.mode.unwrap_or_default() as u8,
             /*   page num  */ search_params.page,
             /*   sort num  */ sort,
@@ -107,10 +107,10 @@ impl DirectDownloadable for OsuDirectDownloadable {
         self.downloading.store(true, SeqCst);
 
         let download_dir = format!("downloads/{}", self.filename);
-        let settings = Settings::get();
+        let settings = get_settings!();
         
-        let username = settings.osu_username;
-        let password = settings.osu_password;
+        let username = &settings.osu_username;
+        let password = &settings.osu_password;
         let url = format!("https://osu.ppy.sh/d/{}?u={}&h={:x}", self.filename, username, md5::compute(password));
 
         perform_download(url, download_dir);

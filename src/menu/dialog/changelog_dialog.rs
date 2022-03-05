@@ -17,7 +17,7 @@ pub struct ChangelogDialog {
 impl ChangelogDialog {
     pub fn new() -> Self {
         // assume the settings hasnt been updated
-        let mut settings = Settings::get_mut("ChangelogDialog::new()");
+        let mut settings = get_settings_mut!();
         let last_commit = &settings.last_git_hash;
 
         let mut items = Vec::new();

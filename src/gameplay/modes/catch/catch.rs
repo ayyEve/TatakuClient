@@ -364,7 +364,7 @@ impl GameMode for CatchGame {
         };
     }
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        let settings = Settings::get().catch_settings;
+        let settings = &get_settings!().catch_settings;
         let time = manager.time();
 
         
@@ -392,7 +392,7 @@ impl GameMode for CatchGame {
         }
 
 
-        let settings = Settings::get().catch_settings;
+        let settings = &get_settings!().catch_settings;
         let time = manager.time();
 
         if !manager.replaying {

@@ -36,6 +36,8 @@ pub fn calc_acc(score: &Score) -> f64 {
         PlayMode::pTyping => score.accuracy,
         PlayMode::Unknown => 0.0,
     }
+    // if the number is nan,infinity, etc, replace it with 1.0 (100%)
+    .normal_or(1.0)
 }
 
 #[derive(Copy, Clone)]
@@ -76,7 +78,7 @@ impl ScalingHelper {
 
         match mode {
             PlayMode::Standard => {
-                let things = Settings::get_mut("ScalingHelper::new(PlayMode::Standard)").standard_settings.get_playfield();
+                let things = get_settings!().standard_settings.get_playfield();
                 settings_scale = things.0;
                 settings_offset = things.1;
                 circle_size = standard::CIRCLE_RADIUS_BASE;
@@ -85,7 +87,7 @@ impl ScalingHelper {
             },
 
             PlayMode::Catch => {
-                let things = Settings::get_mut("ScalingHelper::new(PlayMode::Catch)").standard_settings.get_playfield();
+                let things = get_settings!().standard_settings.get_playfield();
                 settings_scale = things.0;
                 settings_offset = things.1;
                 circle_size = standard::CIRCLE_RADIUS_BASE;

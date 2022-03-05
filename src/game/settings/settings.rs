@@ -2,11 +2,30 @@ use crate::prelude::*;
 
 const SETTINGS_FILE:&str = "settings.json";
 
+use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
+
 lazy_static::lazy_static! {
-    static ref SETTINGS: Arc<Mutex<Settings>> = Arc::new(Mutex::new(Settings::load()));
-    pub static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::new_with(Some(Settings::get_mut("WINDOW_SIZE").window_size.into()));
-    static ref LAST_CALLER:Arc<Mutex<&'static str>> = Arc::new(Mutex::new("None"));
+    pub static ref SETTINGS: Arc<RwLock<Settings>> = Arc::new(RwLock::new(Settings::load()));
+    pub static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::new_with(Some(get_settings!().window_size.into()));
+    pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 }
+
+#[macro_export]
+macro_rules! get_settings {
+    () => {{
+        let caller = format!("{}:{}:{}", file!(), line!(), column!());
+        Settings::get(caller)
+    }}
+}
+
+#[macro_export]
+macro_rules! get_settings_mut {
+    () => {{
+        let caller = format!("{}:{}:{}", file!(), line!(), column!());
+        Settings::get_mut(caller)
+    }}
+}
+
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -91,10 +110,19 @@ impl Settings {
     }
 
     /// relatively slow, if you need a more performant get, use get_mut
-    pub fn get() -> Settings {SETTINGS.lock().clone()}
+    pub fn get<'a>(caller: String) -> RwLockReadGuard<'a, Settings> {
+        if SETTINGS.is_locked_exclusive() {
+            // panic bc the devs should know when this error occurs, as it completely locks up the app
+            let last_caller = LAST_CALLER.lock();
+            panic!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
+        }
+
+        *LAST_CALLER.lock() = caller;
+        SETTINGS.read()
+    }
 
     /// more performant, but can double lock if you arent careful
-    pub fn get_mut<'a>(caller:&'static str) -> MutexGuard<'a, Settings> {
+    pub fn get_mut<'a>(caller:String) -> RwLockWriteGuard<'a, Settings> {
         if SETTINGS.is_locked() {
             // panic bc the devs should know when this error occurs, as it completely locks up the app
             let last_caller = LAST_CALLER.lock();
@@ -102,7 +130,7 @@ impl Settings {
         }
 
         *LAST_CALLER.lock() = caller;
-        SETTINGS.lock()
+        SETTINGS.write()
     }
 
     pub fn window_size() -> Vector2 {*WINDOW_SIZE.get().unwrap()}

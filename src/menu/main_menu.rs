@@ -56,7 +56,7 @@ impl MainMenu {
     fn setup_manager(&mut self, called_by: &str) {
         println!("setup manager called by {}", called_by);
 
-        let settings = Settings::get().background_game_settings;
+        let settings = &get_settings!().background_game_settings;
         if !settings.enabled {return}
 
         let lock = BEATMAP_MANAGER.lock();
@@ -211,7 +211,7 @@ impl Menu<Game> for MainMenu {
 
         // open direct menu
         if self.direct_button.on_click(pos, button, mods) {
-            let mode = Settings::get_mut("MainMenu::on_click").background_game_settings.mode;
+            let mode = get_settings!().background_game_settings.mode;
             let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
             game.queue_state_change(GameState::InMenu(menu));
             return;
@@ -283,7 +283,7 @@ impl Menu<Game> for MainMenu {
             };
 
             if let Some(new_mode) = new_mode {
-                let mut settings = Settings::get_mut("MainMenu::on_key_press");
+                let mut settings = get_settings_mut!();
                 if settings.background_game_settings.mode != new_mode {
                     needs_manager_setup = true;
                     settings.background_game_settings.mode = new_mode;
@@ -343,7 +343,7 @@ impl ControllerInputMenu<Game> for MainMenu {
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 1 => {
-                    let mode = Settings::get_mut("MainMenu::on_click").background_game_settings.mode;
+                    let mode = get_settings!().background_game_settings.mode;
                     let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
                     game.queue_state_change(GameState::InMenu(menu));
                 },

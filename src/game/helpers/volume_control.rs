@@ -27,7 +27,7 @@ impl VolumeControl {
     }
     fn change(&mut self, delta:f32) {
         let elapsed = self.elapsed();
-        let mut settings = Settings::get_mut("VolumeControl::change");
+        let mut settings = get_settings_mut!();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
         if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 {self.vol_selected_index = 0}
@@ -59,7 +59,7 @@ impl VolumeControl {
         // draw the volume things if needed
         if self.vol_selected_time > 0 && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
             let font = get_font("main");
-            let settings = Settings::get();
+            let settings = get_settings!();
             let window_size:Vector2 = settings.window_size.into();
 
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);

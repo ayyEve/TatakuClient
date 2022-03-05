@@ -99,7 +99,7 @@ impl IngameManager {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = Settings::get_mut("IngameManager::new").clone();
+        let settings = get_settings!();
         let timing_points = beatmap.get_timing_points();
         let font = get_font("main");
         let hitsound_cache = HashMap::new();
@@ -237,7 +237,7 @@ impl IngameManager {
     }
     /// locks settings
     pub fn increment_global_offset(&mut self, delta:f32) {
-        let mut settings = Settings::get_mut("IngameManager::increment_global_offset");
+        let mut settings = get_settings_mut!();
         settings.global_offset += delta;
 
         let time = self.time();
@@ -335,7 +335,7 @@ impl IngameManager {
     }
     pub fn pause(&mut self) {
         #[cfg(feature="bass_audio")]
-        self.song.pause().unwrap();
+        let _ = self.song.pause();
         #[cfg(feature="neb_audio")]
         self.song.upgrade().unwrap().pause();
 
@@ -347,7 +347,7 @@ impl IngameManager {
         self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
     }
     pub fn reset(&mut self) {
-        let settings = Settings::get();
+        let settings = get_settings!();
         
         self.gamemode.reset(&self.beatmap);
         self.health.reset();
@@ -418,7 +418,7 @@ impl IngameManager {
 
                 #[cfg(feature="bass_audio")] {
                     self.song.set_position(-self.lead_in_time as f64).unwrap();
-                    self.song.set_volume(Settings::get().get_music_vol()).unwrap();
+                    self.song.set_volume(get_settings!().get_music_vol()).unwrap();
                     self.song.set_rate(self.game_speed()).unwrap();
                     self.song.play(true).unwrap();
                 }
@@ -426,7 +426,7 @@ impl IngameManager {
                 #[cfg(feature="neb_audio")] {
                     let song = self.song.upgrade().unwrap();
                     song.set_position(-self.lead_in_time);
-                    song.set_volume(Settings::get().get_music_vol());
+                    song.set_volume(get_settings!().get_music_vol());
                     song.set_playback_speed(self.game_speed() as f64);
                     song.play();
                 }
@@ -519,7 +519,7 @@ impl IngameManager {
         let play_clap = (note_hitsound & 8) > 0; // 3: Clap
 
         // get volume
-        let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * Settings::get_mut("IngameManager::play_note_sound").get_effect_vol();
+        let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * get_settings!().get_effect_vol();
         if self.menu_background {vol *= self.background_game_settings.hitsound_volume};
 
 
@@ -877,7 +877,7 @@ impl IngameManager {
 
         // check for offset changing keys
         {
-            let settings = Settings::get_mut("IngameManager::key_down");
+            let settings = get_settings!();
             if mods.shift {
                 let mut t = 0.0;
                 if key == settings.key_offset_up {t = 5.0}

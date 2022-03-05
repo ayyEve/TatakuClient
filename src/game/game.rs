@@ -194,7 +194,7 @@ impl Game {
 
         {
             // input and rendering thread times
-            let settings = Settings::get_mut("Game::game_loop");
+            let settings = get_settings!();
             events.set_max_fps(settings.fps_target);
             events.set_ups(settings.update_target);
         }
@@ -274,7 +274,7 @@ impl Game {
             }
         }
 
-        let settings_clone = Settings::get();
+        let settings_clone = get_settings!().clone();
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
         //     println!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
@@ -366,10 +366,8 @@ impl Game {
         // run update on current state
         match &mut current_state {
             GameState::Ingame(manager) => {
-                let settings = Settings::get();
-                
                 // pause button, or focus lost, only if not replaying
-                if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause {
+                if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings_clone.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
                     let menu = PauseMenu::new(manager2, false);
@@ -539,7 +537,7 @@ impl Game {
             // queued mode didnt change, set the unlocked's mode to the updated mode
             GameState::None => self.current_state = current_state,
             GameState::Closing => {
-                Settings::get().save();
+                get_settings!().save();
                 self.window.set_should_close(true);
             }
 
@@ -627,7 +625,7 @@ impl Game {
 
     fn render(&mut self, args: RenderArgs) {
         // let timer = Instant::now();
-        let settings = Settings::get(); 
+        let settings = get_settings!(); 
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
         // draw background image here

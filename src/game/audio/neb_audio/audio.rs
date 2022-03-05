@@ -210,7 +210,7 @@ impl Audio {
         let upgraded = sound.upgrade().unwrap();
         upgraded.is_music.store(true, std::sync::atomic::Ordering::SeqCst); 
         upgraded.play();
-        upgraded.set_volume(Settings::get().get_music_vol());
+        upgraded.set_volume(get_settings!().get_music_vol());
         upgraded.set_position(position);
 
         sound
@@ -222,7 +222,7 @@ impl Audio {
         let sound = Self::play_raw(bytes);
         let upgraded = sound.upgrade().unwrap();
         upgraded.play();
-        upgraded.set_volume(Settings::get().get_music_vol());
+        upgraded.set_volume(get_settings!().get_music_vol());
         
         *CURRENT_SONG.lock() = Some((key.as_ref().to_owned(), sound.clone()));
         sound
@@ -273,7 +273,7 @@ impl Audio {
             let handle = Audio::play_sound(x.clone());
 
             let upgraded = handle.upgrade().unwrap();
-            upgraded.set_volume(Settings::get().get_effect_vol());
+            upgraded.set_volume(get_settings!().get_effect_vol());
             upgraded.play();
             handle
         }).expect("audio was not preloaded")

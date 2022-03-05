@@ -87,7 +87,7 @@ impl GameMode for ManiaGame {
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = Settings::get_mut("ManiaGame::new").mania_settings.clone();
+        let settings = get_settings!().mania_settings.clone();
         let playfields = &settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
 
@@ -274,7 +274,7 @@ impl GameMode for ManiaGame {
                     _ => return
                 };
                 // let hit_type:HitType = key.into();
-                // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
+                // let hit_volume = get_settings!().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
                 if self.column_indices[col] >= self.columns[col].len() {
@@ -423,7 +423,7 @@ impl GameMode for ManiaGame {
         }
 
 
-        let settings = Settings::get();
+        let settings = get_settings!();
         let mut game_key = KeyPress::RightDon;
 
         let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
@@ -447,7 +447,7 @@ impl GameMode for ManiaGame {
             return;
         }
 
-        let settings = Settings::get();
+        let settings = get_settings!();
         let mut game_key = KeyPress::RightDon;
 
         let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];

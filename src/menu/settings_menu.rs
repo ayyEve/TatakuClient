@@ -14,7 +14,7 @@ pub struct SettingsMenu {
 }
 impl SettingsMenu {
     pub fn new() -> SettingsMenu {
-        let settings = Settings::get();
+        let settings = get_settings!();
         let p = Vector2::new(10.0 + SECTION_XOFFSET, 0.0); // scroll area edits the y
         let window_size = Settings::window_size();
 
@@ -200,7 +200,7 @@ impl SettingsMenu {
 
     pub fn finalize(&mut self, game:&mut Game) {
         // write settings to settings
-        let mut settings = Settings::get_mut("SettingsMenu::finalize");
+        let mut settings = get_settings_mut!();
 
         let list = std::mem::take(&mut self.finalize_list);
         for i in list {

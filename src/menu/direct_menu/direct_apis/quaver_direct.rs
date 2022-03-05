@@ -90,10 +90,10 @@ impl DirectDownloadable for QuaverDirectDownloadable {
         self.downloading.store(true, SeqCst);
 
         let download_dir = format!("downloads/{}", self.filename);
-        let settings = Settings::get();
+        let settings = get_settings!();
         
-        let username = settings.osu_username;
-        let password = settings.osu_password;
+        let username = &settings.osu_username;
+        let password = &settings.osu_password;
         let url = format!("https://osu.ppy.sh/d/{}?u={}&h={:x}", self.filename, username, md5::compute(password));
 
         perform_download(url, download_dir);

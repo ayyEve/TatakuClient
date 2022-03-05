@@ -35,7 +35,8 @@ impl ScoreMenu {
             GRAPH_SIZE,
             score.hit_timings.iter().map(|e|*e as f32).collect(),
             -50.0,
-            50.0
+            50.0,
+            font.clone()
         );
 
         ScoreMenu {

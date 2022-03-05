@@ -158,7 +158,7 @@ impl GameMode for StandardGame {
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
-        let settings = Settings::get_mut("StandardGame::new()").standard_settings.clone();
+        let settings = get_settings!().standard_settings.clone();
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, PlayMode::Standard));
 
         let combo_colors:Vec<Color> = settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect();
@@ -729,7 +729,7 @@ impl GameMode for StandardGame {
     
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
-            let old = Settings::get_mut("StandardGame::key_down").standard_settings.get_playfield();
+            let old = get_settings!().standard_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
             return;
         }
@@ -774,7 +774,7 @@ impl GameMode for StandardGame {
         
         if let Some((original, mouse_start)) = self.move_playfield {
             {
-                let settings = &mut Settings::get_mut("StandardGame::mouse_move").standard_settings;
+                let settings = &mut get_settings_mut!().standard_settings;
                 let mut change = original + (pos - mouse_start);
 
                 // check playfield snapping
@@ -852,7 +852,7 @@ impl GameMode for StandardGame {
     fn mouse_scroll(&mut self, delta:f64, _manager:&mut IngameManager) {
         if self.move_playfield.is_some() {
             {
-                let settings = &mut Settings::get_mut("StandardGame::mouse_scroll").standard_settings;
+                let settings = &mut get_settings_mut!().standard_settings;
                 settings.playfield_scale += delta / 40.0;
             }
 

@@ -34,6 +34,10 @@ pub use tataku_common::types::*;
 // folder imports
 pub use crate::DOWNLOADS_DIR;
 
+// macro imports
+pub use crate::get_settings;
+pub use crate::get_settings_mut;
+
 // audio imports
 #[cfg(feature="bass_audio")]
 pub use bass_rs::prelude::*;

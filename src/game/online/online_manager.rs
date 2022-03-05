@@ -114,8 +114,9 @@ impl OnlineManager {
     }
     pub async fn start() {
         let s = ONLINE_MANAGER.clone();
+        let url = get_settings!().server_url.clone();
         // initialize the connection
-        match connect_async(Settings::get().server_url).await {
+        match connect_async(url).await {
             Ok((ws_stream, _)) => {
                 s.lock().await.connected = true;
                 let (writer, mut reader) = ws_stream.split();
@@ -125,7 +126,7 @@ impl OnlineManager {
                 {
                     let mut s = s.lock().await;
                     s.writer = Some(writer);
-                    let settings = Settings::get();
+                    let settings = get_settings!().clone();
 
                     let password = sha512(settings.password);
 

@@ -93,3 +93,18 @@ impl<T> Remove<T> for Vec<T> where T:Eq {
         }
     }
 }
+
+
+pub trait UnwrapNormal {
+    fn normal_or(self, other:Self) -> Self;
+}
+impl UnwrapNormal for f32 {
+    fn normal_or(self, other:Self) -> Self {
+        if self.is_normal() {self} else {other}
+    }
+}
+impl UnwrapNormal for f64 {
+    fn normal_or(self, other:Self) -> Self {
+        if self.is_normal() {self} else {other}
+    }
+}
