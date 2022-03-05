@@ -1191,8 +1191,9 @@ impl StandardHitObject for StandardSlider {
     }
 }
 
+
 /// helper struct for drawing hit slider points
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct SliderDot {
     time: f32,
     pos: Vector2,
@@ -1203,9 +1204,11 @@ struct SliderDot {
 
     /// which slide "layer" is this on?
     slide_layer: u64,
+    dot_image: Option<Image>
 }
 impl SliderDot {
     pub fn new(time:f32, pos:Vector2, depth: f64, scale: f64, slide_layer: u64) -> SliderDot {
+
         SliderDot {
             time,
             pos,
@@ -1214,7 +1217,8 @@ impl SliderDot {
             slide_layer,
 
             hit: false,
-            checked: false
+            checked: false,
+            dot_image: SKIN_MANAGER.write().get_texture("sliderscorepoint", true)
         }
     }
     /// returns true if the hitsound should play
@@ -1231,13 +1235,21 @@ impl SliderDot {
     pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
         if self.hit {return}
 
-        list.push(Box::new(Circle::new(
-            Color::WHITE,
-            self.depth,
-            self.pos,
-            SLIDER_DOT_RADIUS * self.scale,
-            Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale))
-        )));
+        if let Some(image) = &self.dot_image {
+            let mut image = image.clone();
+            image.current_pos = self.pos;
+            image.depth = self.depth;
+            list.push(Box::new(image));
+        } else {
+            list.push(Box::new(Circle::new(
+                Color::WHITE,
+                self.depth,
+                self.pos,
+                SLIDER_DOT_RADIUS * self.scale,
+                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale))
+            )));
+        }
+
     }
 }
 
