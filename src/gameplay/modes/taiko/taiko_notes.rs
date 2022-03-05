@@ -398,10 +398,8 @@ impl TaikoSpinner {
             image.depth = time as f64;
         }
 
-        let (don_color, kat_color) = {
-            let s = &get_settings!().taiko_settings;
-            (s.don_color,s.kat_color)
-        };
+        let don_color = settings.don_color;
+        let kat_color = settings.kat_color;
 
         Self {
             time, 

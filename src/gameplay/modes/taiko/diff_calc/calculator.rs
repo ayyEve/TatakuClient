@@ -369,14 +369,13 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
     let s = beatmap.get_beatmap_meta().version_string();
     println!("\n\n\n--- trying map: {}", s);
     // let mut benchmark = BenchmarkHelper::new("calc");
-    let mode = TaikoGame::new(&beatmap)?;
+    if let Ok(mode) = TaikoGame::new(&beatmap) {
+        // test calc
+        let mut calc = TaikoDifficultyCalculator::new(&mode)?;
+        calc.version_string = s;
+        let diff = calc.calc()?;
+    }
 
-    // test calc
-    let mut calc = TaikoDifficultyCalculator::new(&mode)?;
-    calc.version_string = s;
-    let diff = calc.calc()?;
-    println!("got diff: {}", diff);
-    // benchmark.log("done", true);
 
     Ok(())
 }

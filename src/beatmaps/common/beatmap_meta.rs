@@ -71,13 +71,16 @@ impl BeatmapMeta {
     pub fn get_diff(&mut self) -> f32 {
         if self.diff == -1.0 {
             let b = Beatmap::from_metadata(self).unwrap();
-            let mode = taiko::TaikoGame::new(&b).unwrap();
-            use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
+            if let Ok(mode) = taiko::TaikoGame::new(&b) {
+                use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
+                let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
+                
+                self.diff = calc.calc().unwrap_or_default();
+            } else {
+                self.diff = 0.0;
+            }
 
             // test calc
-            let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
-            
-            self.diff = calc.calc().unwrap_or_default();
         }
         
         self.diff
