@@ -339,9 +339,25 @@ pub struct TaikoSpinner {
 
     alpha_mult: f32,
     settings: Arc<TaikoSettings>,
+
+    spinner_image: Option<Image>,
+
+    don_color: Color,
+    kat_color: Color,
 }
 impl TaikoSpinner {
     pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>) -> Self {
+        let mut spinner_image = SKIN_MANAGER.write().get_texture("spinner-warning", true);
+
+        if let Some(image) = &mut spinner_image {
+            image.depth = time as f64;
+        }
+
+        let (don_color, kat_color) = {
+            let s = &get_settings!().taiko_settings;
+            (s.don_color,s.kat_color)
+        };
+
         Self {
             time, 
             end_time,
@@ -354,7 +370,11 @@ impl TaikoSpinner {
             pos: Vector2::zero(),
 
             alpha_mult: 1.0,
-            settings
+            settings,
+            
+            spinner_image,
+            don_color,
+            kat_color
         }
     }
 }
@@ -400,23 +420,27 @@ impl HitObject for TaikoSpinner {
             //TODO: draw a counter
 
         } else { // just draw the note on the playfield
-            let h1 = HalfCircle::new(
-                Color::BLUE,
-                self.pos,
-                self.time as f64,
-                self.settings.note_radius,
-                false
-            );
-            list.push(Box::new(h1));
+            if let Some(image) = &self.spinner_image {
+                let mut i = image.clone();
+                i.current_pos = self.pos;
+                list.push(Box::new(i));
+            } else {
+                list.push(Box::new(HalfCircle::new(
+                    self.don_color,
+                    self.pos,
+                    self.time as f64,
+                    self.settings.note_radius,
+                    true
+                )));
 
-            let h2 = HalfCircle::new(
-                Color::RED,
-                self.pos,
-                self.time as f64,
-                self.settings.note_radius,
-                true
-            );
-            list.push(Box::new(h2));
+                list.push(Box::new(HalfCircle::new(
+                    self.kat_color,
+                    self.pos,
+                    self.time as f64,
+                    self.settings.note_radius,
+                    false
+                )));
+            }
         }
     }
 
