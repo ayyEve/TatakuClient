@@ -23,7 +23,12 @@ pub trait TaikoHitObject: HitObject {
     fn check_finisher(&mut self, _hit_type:HitType, _time:f32) -> ScoreHit {ScoreHit::None}
 
 
-    fn x_at(&self, time:f32) -> f32 {(self.time() - time) * self.get_sv()}
+    fn x_at(&self, time:f32) -> f32 {
+        (self.time() - time) * self.get_sv()
+    }
+    fn time_at(&self, x: f32) -> f32 {
+        -(x / self.get_sv()) + self.time()
+    }
 
     fn was_hit(&self) -> bool;
     fn force_hit(&mut self) {}
@@ -47,10 +52,19 @@ pub struct TaikoNote {
     alpha_mult: f32,
     settings: Arc<TaikoSettings>,
 
+    bounce_factor: f32,
+
     image: Option<HitCircleImageHelper>
 }
 impl TaikoNote {
     pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
+
+        // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
+        // let y = settings.hit_position.y + big_note_radius * 2.0;
+        // let a = GRAVITY_SCALING * 9.81;
+        // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
+        let bounce_factor = 1.6;
+
         Self {
             time, 
             hit_time: 0.0,
@@ -63,6 +77,7 @@ impl TaikoNote {
             alpha_mult: 1.0,
             image: HitCircleImageHelper::new(&settings, time as f64, hit_type, finisher),
             settings,
+            bounce_factor
         }
     }
 
@@ -81,7 +96,7 @@ impl HitObject for TaikoNote {
     fn update(&mut self, beatmap_time: f32) {
         let delta_time = beatmap_time - self.hit_time;
         let y = 
-            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * 1.5)} 
+            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
             else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
             else {0.0};
         

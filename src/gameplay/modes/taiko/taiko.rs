@@ -683,14 +683,20 @@ impl GameMode for TaikoGame {
         if self.note_index > 0 {return}
 
         let x_needed = Settings::window_size().x as f32;
-        let mut time = manager.time();
+        let mut time = self.end_time; //manager.time();
 
-        loop {
-            let mut found = false;
-            for note in self.notes.iter() {if note.x_at(time) <= x_needed {found = true; break}}
-            if found {break}
-            time += 1.0;
+        for i in self.notes.iter().rev() {
+            let time_at = i.time_at(x_needed);
+            time = time.min(time_at)
         }
+        // loop {
+        //     let mut found = false;
+        //     for note in self.notes.iter() {if note.x_at(time) <= x_needed {found = true; break}}
+        //     if found {break}
+        //     time += 1.0;
+        // }
+
+        if manager.time() >= time {return}
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
