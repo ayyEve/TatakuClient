@@ -130,7 +130,7 @@ async fn check_bass() {
 
 
 /// format a number into a locale string ie 1000000 -> 1,000,000
-fn format<T:Display>(num:T) -> String {
+pub fn format_number<T:Display>(num:T) -> String {
     let str = format!("{}", num);
     let mut split = str.split(".");
     let num = split.next().unwrap();
@@ -146,15 +146,47 @@ fn format<T:Display>(num:T) -> String {
             new_str.push(',');
         }
     });
-    if dec.is_some() {
-        new_str += &format!(".{}", dec.unwrap());
-    }
 
     let mut new_new = String::with_capacity(new_str.len());
     new_new.extend(new_str.chars().rev());
+    if let Some(dec) = dec {
+        new_new += &format!(".{}", dec);
+    }
     new_new.trim_start_matches(",").to_owned()
 }
 
+/// format a number into a locale string ie 1000000 -> 1,000,000
+pub fn format_float<T:Display>(num:T, precis: usize) -> String {
+    let str = format!("{}", num);
+    let mut split = str.split(".");
+    let num = split.next().unwrap();
+    let dec = split.next();
+
+    // split num into 3s
+    let mut new_str = String::new();
+    let offset = num.len() % 3;
+
+    num.char_indices().rev().for_each(|(pos, char)| {
+        new_str.push(char);
+        if pos % 3 == offset {
+            new_str.push(',');
+        }
+    });
+
+    let mut new_new = String::with_capacity(new_str.len());
+    new_new.extend(new_str.chars().rev());
+    if let Some(dec) = dec {
+        let dec = if dec.len() < precis {
+            format!("{}{}", dec, "0".repeat(precis - dec.len()))
+        } else {
+            dec.split_at(precis.min(dec.len())).0.to_owned()
+        };
+        new_new += &format!(".{}", dec);
+    } else if precis > 0 {
+        new_new += & format!(".{}", "0".repeat(precis))
+    }
+    new_new.trim_start_matches(",").to_owned()
+}
 
 // because rust broke the feature somehow
 pub trait RetainMut<T> {

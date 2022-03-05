@@ -93,6 +93,7 @@ pub struct IngameManager {
 
     combo_image: Option<SkinnedNumber>,
     score_image: Option<SkinnedNumber>,
+    acc_image: Option<SkinnedNumber>,
 }
 impl IngameManager {
     pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
@@ -152,8 +153,9 @@ impl IngameManager {
 
             gamemode,
             spectator_cache: Vec::new(),
-            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0, "score").ok(),
-            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0, "combo").ok(),
+            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).ok(),
+            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "combo", Some('x'), 0).ok(),
+            acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "score", Some('%'), 2).ok(),
 
             // initialize defaults for anything else not specified
             ..Self::default()
@@ -678,7 +680,7 @@ impl IngameManager {
 
         // gamemode things
         if let Some(score) = &mut self.score_image {
-            score.number = self.score.score;
+            score.number = self.score.score as f64;
             score.current_pos = Vector2::new(window_size.x - score.measure_text().x, 0.0);
 
             list.push(Box::new(score.clone()));
@@ -695,23 +697,32 @@ impl IngameManager {
                 0.0,
                 Vector2::new(window_size.x - 200.0, 10.0),
                 30,
-                crate::format(self.score.score),
+                crate::format_number(self.score.score),
                 font.clone()
             )));
         }
 
-        // acc text
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            0.0,
-            Vector2::new(window_size.x - 200.0, 40.0),
-            30,
-            format!("{:.2}%", calc_acc(&self.score)*100.0),
-            font.clone()
-        )));
 
+        // acc text
+        if let Some(acc) = &mut self.acc_image {
+            acc.number = calc_acc(&self.score) * 100.0;
+            let size = acc.measure_text();
+            acc.current_pos = Vector2::new(window_size.x - size.x, 40.0);
+            list.push(Box::new(acc.clone()));
+        } else {
+            list.push(Box::new(Text::new(
+                Color::BLACK,
+                0.0,
+                Vector2::new(window_size.x - 200.0, 40.0),
+                30,
+                format!("{:.2}%", calc_acc(&self.score)*100.0),
+                font.clone()
+            )));
+        }
+
+        // combo
         if let Some(combo) = &mut self.combo_image {
-            combo.number = self.score.combo as u64;
+            combo.number = self.score.combo as f64;
             combo.center_text(self.combo_text_bounds);
             list.push(Box::new(combo.clone()));
         } else {
@@ -721,7 +732,7 @@ impl IngameManager {
                 0.0,
                 Vector2::zero(),
                 30,
-                crate::format(self.score.combo),
+                crate::format_number(self.score.combo),
                 font.clone()
             );
             combo_text.center_text(self.combo_text_bounds);
@@ -1004,6 +1015,7 @@ impl Default for IngameManager {
 
             combo_image: None,
             score_image: None,
+            acc_image: None,
         }
     }
 }

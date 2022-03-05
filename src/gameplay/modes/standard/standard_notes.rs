@@ -120,8 +120,10 @@ impl StandardNote {
             Color::WHITE,  // TODO: setting: colored same as note or just white?
             combo_text.depth, 
             combo_text.current_pos, 
-            combo_num as u64,
+            combo_num as f64,
             "default",
+            None,
+            0
         ).ok();
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
@@ -453,8 +455,10 @@ impl StandardSlider {
             Color::WHITE,  // TODO: setting: colored same as note or just white?
             combo_text.depth, 
             combo_text.current_pos, 
-            combo_num as u64,
+            combo_num as f64,
             "default",
+            None,
+            0
         ).ok();
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(

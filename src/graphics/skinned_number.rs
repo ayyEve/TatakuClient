@@ -8,7 +8,7 @@ pub struct SkinnedNumber {
     pub initial_rotation: f64,
     pub initial_scale: Vector2,
 
-    // current
+    // currentz
     pub current_color: Color,
     pub current_pos: Vector2,
     pub current_rotation: f64,
@@ -19,14 +19,17 @@ pub struct SkinnedNumber {
     pub color: Color,
     pub depth: f64,
 
-    textures: Vec<Image>,
+    number_textures: Vec<Image>,
+    symbol_textures: HashMap<char, Image>,
 
+    pub symbol: Option<char>,
 
-    pub number: u64,
+    pub number: f64,
+    pub floating_precision: usize,
     context: Option<Context>,
 }
 impl SkinnedNumber {
-    pub fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: u64, texture_name: TN) -> TatakuResult<Self> {
+    pub fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
         let initial_pos = pos;
         let current_pos = pos;
         let initial_rotation = 0.0;
@@ -49,6 +52,26 @@ impl SkinnedNumber {
             textures.push(tex2)
         }
 
+
+        // try to load symbols
+        // x, %, ',', .,
+        let chars = [
+            ('x', "x"),
+            ('.', "dot"),
+            (',', "comma"),
+            ('%', "percent"),
+        ];
+
+        let mut symbol_textures = HashMap::new();
+        for (c, name) in chars {
+            let name = format!("{}-{}", tn, name);
+            if let Some(mut tex) = skin_manager.get_texture(name, true) {
+                tex.origin = origin;
+                symbol_textures.insert(c, tex);
+            }
+        }
+
+
         Ok(Self {
             initial_color,
             current_color,
@@ -64,14 +87,31 @@ impl SkinnedNumber {
             depth,
             number,
 
-            textures,
+            number_textures: textures,
+            symbol_textures,
+            symbol,
+            floating_precision,
 
             context: None
         })
     }
 
+    pub fn number_as_text(&self) -> String {
+        let mut s = crate::format_float(self.number, self.floating_precision);
+
+        if self.floating_precision == 0 {
+            s = s.split(".").next().unwrap().to_owned();
+        }
+
+        if let Some(symb) = self.symbol {
+            s.push(symb);
+        }
+
+        s
+    }
+
     
-    pub fn get_char_tex(&self, c: char) -> &Image {
+    pub fn get_char_tex(&self, c: char) -> Option<&Image> {
         let num = match c {
             '0' => 0,
             '1' => 1,
@@ -83,30 +123,31 @@ impl SkinnedNumber {
             '7' => 7,
             '8' => 8,
             '9' => 9,
-            _ => panic!("trying to get non-number char"),
+            _ => return self.symbol_textures.get(&c), //panic!("trying to get non-number char"),
         };
-        self.get_num_tex(num)
+        Some(self.get_num_tex(num))
     }
     pub fn get_num_tex(&self, num: usize) -> &Image {
         if num > 9 {panic!("trying to get tex for num > 9")}
-        &self.textures[num]
+        &self.number_textures[num]
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        let s = format!("{}", self.number);
+        let s = self.number_as_text();
 
         let mut width = 0.0;
         let mut max_height:f64 = 0.0;
 
         for c in s.chars() {
-            let t = self.get_char_tex(c).size();
-            width += t.x;
-            max_height = max_height.max(t.y)
+            if let Some(t) = self.get_char_tex(c) {
+                let t = t.size();
+                width += t.x;
+                max_height = max_height.max(t.y)
+            }
         }
         
         Vector2::new(width, max_height)
     }
-
 
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
@@ -119,7 +160,7 @@ impl Renderable for SkinnedNumber {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, context: Context) {
+    fn draw(&mut self, g: &mut GlGraphics, mut context: Context) {
         // let size = self.measure_text();
 
         // from image
@@ -127,17 +168,19 @@ impl Renderable for SkinnedNumber {
 
         // ignore origin for now, will be pain
 
+
         //TODO: cache `s`
+        let s = self.number_as_text();
         let mut current_pos = self.current_pos;
-        let s = format!("{}", self.number);
         for c in s.chars() {
-            let mut t = self.get_char_tex(c).clone();
-            t.current_pos = current_pos;
-            current_pos.x += t.size().x;
-            t.draw(g, context);
+            if let Some(t) = self.get_char_tex(c) {
+                let mut t = t.clone();
+                t.current_pos = current_pos;
+                current_pos.x += t.size().x;
+
+                t.draw(g, context);
+            }
         }
-
-
 
         // let transform = c
         //     .transform

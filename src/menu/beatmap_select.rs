@@ -855,7 +855,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING,
             15,
-            format!("{}: {}", self.score.username, crate::format(self.score.score)),
+            format!("{}: {}", self.score.username, crate::format_number(self.score.score)),
             self.font.clone()
         )));
 
@@ -865,7 +865,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING + Vector2::new(0.0, PADDING.y + 15.0),
             12,
-            format!("{}x, {:.2}%", crate::format(self.score.max_combo), calc_acc(&self.score) * 100.0),
+            format!("{}x, {:.2}%", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
             self.font.clone()
         )));
     }
