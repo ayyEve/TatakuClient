@@ -120,10 +120,10 @@ impl Renderable for SkinnedNumber {
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&mut self, g: &mut GlGraphics, context: Context) {
-        let size = self.measure_text();
+        // let size = self.measure_text();
 
         // from image
-        let pre_rotation = self.current_pos / self.current_scale + self.origin;
+        // let pre_rotation = self.current_pos / self.current_scale + self.origin;
 
         // ignore origin for now, will be pain
 

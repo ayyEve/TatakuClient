@@ -49,6 +49,7 @@ async fn main() {
     check_folder(REPLAYS_DIR);
     check_folder(SONGS_DIR);
     check_folder("fonts");
+    check_folder("skins");
     check_folder("resources");
     check_folder("resources/audio");
 

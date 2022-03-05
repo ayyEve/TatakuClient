@@ -1,5 +1,6 @@
 mod line;
 mod text;
+mod font;
 mod image;
 mod circle;
 mod border;
@@ -12,6 +13,7 @@ mod skinned_number;
 mod transform_group;
 
 pub use line::*;
+pub use font::*;
 pub use text::*;
 pub use circle::*;
 pub use border::*;

@@ -15,3 +15,7 @@ settings.json
 test-commits.rs
 commits.rs
 test.log
+
+
+/csv
+/html

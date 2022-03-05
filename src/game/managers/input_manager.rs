@@ -10,19 +10,19 @@ use piston::ControllerAxisEvent;
 
 use crate::prelude::*;
 
-#[derive(Clone, Hash, PartialEq, Eq)]
-pub struct ControllerMeta {
-    pub id: u32,
-    pub name: Arc<String>
-}
-impl ControllerMeta {
-    fn new(id:u32, name:Arc<String>) -> Self {
-        Self {
-            id,
-            name
-        }
-    }
-}
+// #[derive(Clone, Hash, PartialEq, Eq)]
+// pub struct ControllerMeta {
+//     pub id: u32,
+//     pub name: Arc<String>
+// }
+// impl ControllerMeta {
+//     fn new(id:u32, name:Arc<String>) -> Self {
+//         Self {
+//             id,
+//             name
+//         }
+//     }
+// }
 
 
 pub struct InputManager {

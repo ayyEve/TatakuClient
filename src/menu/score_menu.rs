@@ -27,7 +27,8 @@ impl ScoreMenu {
     pub fn new(score:&Score, beatmap: BeatmapMeta) -> ScoreMenu {
         let window_size = Settings::window_size();
         let hit_error = score.hit_error();
-        let back_button = MenuButton::back_button(window_size);
+        let font = get_font("");
+        let back_button = MenuButton::back_button(window_size, font.clone());
 
         let graph = Graph::new(
             Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
@@ -42,7 +43,7 @@ impl ScoreMenu {
             beatmap,
             hit_error,
             graph,
-            replay_button: MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay"),
+            replay_button: MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", font.clone()),
             back_button,
 
             dont_do_menu: false,

@@ -76,19 +76,20 @@ impl SettingsMenu {
                 $settings_type
             }
         }
+        let font = get_font("");
 
         macro_rules! add_item {
             ($text:expr, TextInput, $setting:expr) => {
-                TextInput::new(p, Vector2::new(600.0, 50.0), $text.clone(), convert_settings_value!($setting, String))
+                TextInput::new(p, Vector2::new(600.0, 50.0), $text.clone(), convert_settings_value!($setting, String), font.clone())
             };
             ($text:expr, KeyButton, $setting:expr) => {
-                KeyButton::new(p, KEYBUTTON_SIZE, convert_settings_value!($setting, Key), $text.clone())
+                KeyButton::new(p, KEYBUTTON_SIZE, convert_settings_value!($setting, Key), $text.clone(), font.clone())
             };
             ($text:expr, Checkbox, $setting:expr) => {
-                Checkbox::new(p, Vector2::new(200.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, bool))
+                Checkbox::new(p, Vector2::new(200.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, bool), font.clone())
             };
             ($text:expr, Slider, $setting:expr) => {
-                Slider::new(p, Vector2::new(400.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, f64), None, None)
+                Slider::new(p, Vector2::new(400.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, f64), None, None, font.clone())
             };
             
 
@@ -97,7 +98,8 @@ impl SettingsMenu {
                 scroll_area.add_item(Box::new(MenuSection::new(
                     p - Vector2::new(SECTION_XOFFSET, 0.0), 
                     SECTION_HEIGHT, 
-                    $text
+                    $text, 
+                    font.clone()
                 )));
             };
 
@@ -185,7 +187,7 @@ impl SettingsMenu {
         });
 
         // done button
-        let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done");
+        let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done", font.clone());
         done_button.set_tag("done");
         //TODO: make this not part of the scrollable?!?!
         scroll_area.add_item(Box::new(done_button));

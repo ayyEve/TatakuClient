@@ -32,6 +32,8 @@ pub struct BeatmapMeta {
 
     pub bpm_min: f32,
     pub bpm_max: f32,
+
+    pub diff: f32
 }
 impl BeatmapMeta {
     pub fn new(file_path:String, beatmap_hash:String) -> BeatmapMeta {
@@ -61,9 +63,27 @@ impl BeatmapMeta {
 
             duration: 0.0,
             bpm_min: 0.0,
-            bpm_max: 0.0
+            bpm_max: 0.0,
+            diff: -1.0
         }
     }
+
+    pub fn get_diff(&mut self) -> f32 {
+        if self.diff == -1.0 {
+            let b = Beatmap::from_metadata(self).unwrap();
+            let mode = taiko::TaikoGame::new(&b).unwrap();
+            use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
+
+            // test calc
+            let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
+            let diff = calc.calc().unwrap();
+            
+            self.diff = diff;
+        }
+        
+        self.diff
+    }
+
     pub fn do_checks(&mut self) {
         if self.ar < 0.0 {self.ar = self.od}
     }
@@ -83,13 +103,14 @@ impl BeatmapMeta {
     }
 
     /// get the difficulty string (od, hp, sr, bpm, len)
-    pub fn diff_string(&self) -> String {
+    pub fn diff_string(&mut self) -> String {
         let mods = ModManager::get();
         let symb = if mods.speed > 1.0 {"+"} else if mods.speed < 1.0 {"-"} else {""};
 
         // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}",secs)}
+        let diff = self.get_diff();
 
         let mut txt = format!(
             "od: {:.2}{} hp: {:.2}{}, dur: {}:{}", 
@@ -110,6 +131,8 @@ impl BeatmapMeta {
                 txt += &format!(" bpm: {:.2}-{:.2}", min * mods.speed, max * mods.speed);
             }
         }
+
+        txt += &format!(", diff: {:.2}", diff);
 
         txt
     }

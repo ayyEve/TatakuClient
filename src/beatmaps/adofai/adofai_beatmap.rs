@@ -158,7 +158,9 @@ impl TatakuBeatmap for AdofaiBeatmap {
             slider_tick_rate: 1.0,
             stack_leniency: 0.0,
             bpm_min: 0.0,
-            bpm_max: 0.0
+            bpm_max: 0.0,
+            
+            diff: -1.0,
         }
     }
 

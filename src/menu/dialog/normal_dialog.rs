@@ -46,7 +46,8 @@ impl NormalDialog {
         let mut button = MenuButton::new(
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, y_pos),
             BUTTON_SIZE,
-            &text
+            &text,
+            get_font("main"),
         );
         button.set_tag(&text);
         self.buttons.push(button);

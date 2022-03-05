@@ -26,7 +26,6 @@ pub use ayyeve_piston_ui::render::{Renderable, Vector2, Color};
 pub use ayyeve_piston_ui::prelude::{ScrollableItemGettersSetters, ScrollableGettersSetters};
 
 // font things
-pub use ayyeve_piston_ui::render::fonts::get_font;
 pub type Font = Arc<Mutex<opengl_graphics::GlyphCache<'static>>>;
 
 // tataku-common imports

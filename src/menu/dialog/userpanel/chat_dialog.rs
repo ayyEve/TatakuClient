@@ -50,7 +50,8 @@ impl Chat {
             Vector2::new(channel_list_width, window_size.y - INPUT_HEIGHT), 
             Vector2::new(chat_size.x, INPUT_HEIGHT), 
             "Chat: ", 
-            ""
+            "",
+            get_font("main"),
         );
         
         Self {

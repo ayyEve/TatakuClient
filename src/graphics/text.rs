@@ -1,13 +1,5 @@
 use crate::prelude::*;
 
-lazy_static::lazy_static! {
-    pub static ref FALLBACK_FONT_1: Font = {
-        let glyphs = opengl_graphics::GlyphCache::new("fonts/main_fallback.ttf", (), opengl_graphics::TextureSettings::new()).unwrap();
-        Arc::new(Mutex::new(glyphs))
-    };
-}
-
-
 #[derive(Clone)]
 pub struct Text {
     // initial
@@ -34,7 +26,7 @@ pub struct Text {
 }
 impl Text {
     pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font) -> Text {
-        let fonts = vec![font, FALLBACK_FONT_1.clone()];
+        let fonts = vec![font, get_fallback_font()];
 
         let initial_pos = pos;
         let current_pos = pos;

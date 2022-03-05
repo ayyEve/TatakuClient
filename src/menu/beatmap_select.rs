@@ -33,11 +33,15 @@ pub struct BeatmapSelectMenu {
 
     /// internal search box
     search_text: TextInput,
-    no_maps_notif_sent: bool
+    no_maps_notif_sent: bool,
+
+    sort_method: SortBy
 }
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
         let window_size = Settings::window_size();
+        let font = get_font("main");
+
         BeatmapSelectMenu {
             mode: PlayMode::Standard,
             no_maps_notif_sent: false,
@@ -48,12 +52,14 @@ impl BeatmapSelectMenu {
             // pending_refresh: false,
             map_changing: (false, false, 0),
             current_scores: HashMap::new(),
-            back_button: MenuButton::back_button(window_size),
+            back_button: MenuButton::back_button(window_size, font.clone()),
 
             // beatmap_scroll: ScrollableArea::new(Vector2::new(window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT), INFO_BAR_HEIGHT), Vector2::new(window_size().x - LEADERBOARD_ITEM_SIZE.x, window_size().y - INFO_BAR_HEIGHT), true),
             beatmap_scroll: ScrollableArea::new(Vector2::new(LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x, INFO_BAR_HEIGHT), Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), true),
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
-            search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "")
+            search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
+        
+            sort_method: SortBy::Difficulty,
         }
     }
 
@@ -76,6 +82,22 @@ impl BeatmapSelectMenu {
             let mut i = BeatmapsetItem::new(maps);
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
+        }
+
+        macro_rules! sort {
+            ($property:tt, String) => {
+                full_list.sort_by(|a, b| a.beatmaps[0].$property.to_lowercase().cmp(&b.beatmaps[0].$property.to_lowercase()))
+            };
+            ($property:ident, Integer) => {
+                full_list.sort_by(|a, b| a.beatmaps[0].$property.partial_cmp(&b.beatmaps[0].$property).unwrap())
+            }
+        }
+
+        match self.sort_method {
+            SortBy::Artist => sort!(artist, String),
+            SortBy::Title => sort!(title, String),
+            SortBy::Creator => sort!(creator, String),
+            SortBy::Difficulty => sort!(diff, Integer),
         }
 
         // sort by artist
@@ -321,7 +343,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         items.push(Box::new(bar_rect));
 
         // draw selected map info
-        if let Some(meta) = &BEATMAP_MANAGER.lock().current_beatmap {
+        if let Some(meta) = &mut BEATMAP_MANAGER.lock().current_beatmap {
             // draw map name top-most left-most
             items.push(Box::new(Text::new(
                 Color::BLACK,
@@ -595,7 +617,7 @@ struct BeatmapsetItem {
     mouse_pos: Vector2
 }
 impl BeatmapsetItem {
-    fn new(beatmaps: Vec<BeatmapMeta>) -> BeatmapsetItem {
+    fn new(mut beatmaps: Vec<BeatmapMeta>) -> BeatmapsetItem {
         // sort beatmaps by sr
         // let mut beatmaps = beatmaps.clone();
         // todo once mode diff calcs get re-implemented
@@ -604,6 +626,11 @@ impl BeatmapsetItem {
         //     let b = b.lock().metadata.sr;
         //     a.partial_cmp(&b).unwrap()
         // });
+
+        // ensure diff is calced for all maps
+        beatmaps.iter_mut().for_each(|b|{b.get_diff();});
+        
+        beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
 
@@ -844,4 +871,13 @@ impl ScrollableItem for LeaderboardItem {
     }
 
     // fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {self.hover}
+}
+
+
+#[derive(Copy, Clone, Debug, ayyeve_piston_ui::prelude::Dropdown)]
+pub enum SortBy {
+    Artist,
+    Title,
+    Creator,
+    Difficulty,
 }

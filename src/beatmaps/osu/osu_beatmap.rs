@@ -92,7 +92,7 @@ impl OsuBeatmap {
                     BeatmapSection::Metadata => {
                         let mut split = line.split(":");
                         let key = split.next().unwrap().trim();
-                        let val = split.next().unwrap().trim();
+                        let val = split.next().unwrap_or("").trim();
                         
                         if key == "Title" {beatmap.metadata.title = val.to_owned()}
                         if key == "TitleUnicode" {beatmap.metadata.title_unicode = val.to_owned()}

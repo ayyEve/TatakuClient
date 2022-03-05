@@ -61,7 +61,7 @@ impl DirectMenu {
             selected: None,
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::zero(), Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", ""),
+            search_bar: TextInput::new(Vector2::zero(), Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font("main")),
             current_api: Box::new(OsuDirect::new()),
 
             mode,

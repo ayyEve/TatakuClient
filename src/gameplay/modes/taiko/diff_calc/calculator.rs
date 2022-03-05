@@ -3,8 +3,9 @@ use prelude::taiko::TaikoGame;
 
 use crate::prelude::*;
 use super::difficulty_hit_object::DifficultyHitObject;
+use super::super::FINISHER_LENIENCY;
 
-// how long each "group" of notes is
+// how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;
 
 
@@ -14,33 +15,61 @@ pub trait DiffCalc<G:GameMode> where Self:Sized {
 }
 
 
+
 pub struct TaikoDifficultyCalculator {
     time_rate: f64,
-    difficulty_hitobjects: Vec<DifficultyHitObject>
+    difficulty_hitobjects: Vec<DifficultyHitObject>,
+    version_string: String,
 }
 impl TaikoDifficultyCalculator {
 
-    fn note_density(&mut self) -> TatakuResult<Vec<usize>> {
+    fn note_density(&mut self) -> TatakuResult<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
+        let mut last_note_time = start_bucket_time;
 
-        let mut note_density:Vec<usize> = Vec::new();
-        let mut notes = 0;
+        let mut note_density = Vec::new();
+        let mut density = 0.0;
 
-        for o in self.difficulty_hitobjects.iter() {
+        for o in self.difficulty_hitobjects.iter().skip(1) {
             // If over threshold, move to the next bucket.
             if o.time > start_bucket_time + BUCKET_LENGTH {
-                note_density.push(notes);
-                notes = 0;
+                // Add final note to current bucket density
+                density += BUCKET_LENGTH / (o.time - last_note_time).max(FINISHER_LENIENCY);
+
+                note_density.push(density);
+                density = 0.0;
                 start_bucket_time = o.time;
             }
 
             match o.note_type {
                 NoteType::Note => {
-                    notes += 1;
+                    density += BUCKET_LENGTH / (o.time - last_note_time).max(FINISHER_LENIENCY);
+
+                    last_note_time = o.time;
                 },
                 
                 NoteType::Spinner => {
-                    // TODO: assume notes are evenly spread across duration.
+                    // TODO: assume d,k are evenly spread across duration.
+
+                    // let duration = o.end_time - o.time;
+                    // let count = o.hits_to_complete;
+
+                    // let add_per = duration / count as f32;
+
+                    // for i in 0..count {
+                    //     let time = o.time + add_per * (i as f32);
+                        
+                    //     if time > start_bucket_time + BUCKET_LENGTH {
+                    //         note_density.push(density);
+                    //         density = 0.0;
+                    //         start_bucket_time = time;
+                    //     }
+
+                    //     density += 0.5 / (o.time - last_note_time);
+
+                    //     last_note_time = o.time;
+                    // }
+
                 },
 
                 // Do not affect density.
@@ -52,7 +81,7 @@ impl TaikoDifficultyCalculator {
         }
 
         // Push last changes amount.
-        note_density.push(notes);
+        note_density.push(density);
         
         Ok(note_density)
     }
@@ -64,7 +93,7 @@ impl TaikoDifficultyCalculator {
 
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
 
-        let mut change_density:Vec<usize> = Vec::new();
+        let mut change_density = Vec::new();
         let mut changes = 0;
 
         for o in self.difficulty_hitobjects.iter() {
@@ -133,52 +162,143 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
 
         Ok(Self {
             time_rate: 1.0,
-            difficulty_hitobjects
+            difficulty_hitobjects,
+            version_string: String::new()
         })
     }
 
     fn calc(&mut self) -> TatakuResult<f32> {
         let strain = self.strain()?;
-
         let note_density = self.note_density()?;
 
-        let mut total = 0.0;
-        let mut total_squared = 0.0;
-        let count = strain.len() as f32;
+        let mut diff = Vec::new();
 
+        let mut lines = vec!["strainvalue,densityvalue,combined,diff".to_owned()];
         for (strain, density) in strain.into_iter().zip(note_density.into_iter()) {
-            let mut strain_value = strain as f32;
-            let mut density_value = density as f32;
-
-            strain_value = strain_value.powf(1.2);
-            density_value = density_value.powf(1.2);
+            let strain_value = (strain as f32).powf(1.75);
+            let density_value = density;
 
             let combined = strain_value + density_value;
 
-            total += combined;
-            total_squared += combined * combined;
-            
-            if strain == 0 && density == 0 {
-                continue;
-            }
+            diff.push(combined);
 
-            // println!("strain: {}, density: {}, strain value: {}, density value: {}, combined: {}", strain, density, strain_value, density_value, combined);
+            lines.push(format!("{},{},{}", strain_value, density_value, combined));
         }
         
-        let mean = total / count;
-        let variance = total_squared / count - mean * mean;
+        let count = diff.len() as f32;
 
-        let standard_deviation = variance.sqrt();
+        let mut difficulty = 0.0;
+        let mut weight = 1.0;
 
-        // Calculate difficulty based on normal distribution.
-        // z = 1.0 corresponds to 15.9% from the peak difficulty.
-        // z = 2.0 corresponds to 2.3% from the peak difficulty.
-        // Difficulty values which lie at z>2.0 are considered statistically improbable.
-        let z = 1.5; // 6.7% 
+        const PERCENT: f32 = 0.99;
 
-        let difficulty = mean + z * standard_deviation;
+        // Sort by descending
+        diff.sort_by(|a, b| b.partial_cmp(a).unwrap());
 
-        println!("mean: {}, std dev: {}, diff: {}", mean, standard_deviation, difficulty);
+        for x in diff {
+            //println!("hi: {} * {}%", x, weight);
+            difficulty += x * weight;
+            weight *= PERCENT;
+        }
+
+        difficulty /= (1.0 - weight) / (1.0 - PERCENT);
+
+        // TEMP: for writing to csv, nicer graphs
+        for i in 1..lines.len() {
+            lines[i] += &format!(",{}", difficulty);
+        }
+        let file_name = self
+            .version_string
+            .replace("/", "")
+            .replace("\\", "")
+            .replace("?", "")
+            .replace("'", "")
+            .replace("*", "")
+            .replace("&", "")
+            .replace("<", "")
+            .replace(">", "")
+            .replace(";", "")
+            .replace("\"", "")
+            .replace("?", "")
+            .replace("|", "")
+            ;
+        
+        std::fs::write(format!("./csv/{}.csv", file_name), lines.join("\n"))?;
+
+        {
+            let mut hashmap = HashMap::new();
+            let column_count = lines[0].split(",").count();
+            let mut labels = Vec::new();
+
+            for i in 0..column_count {
+                hashmap.insert(i, Vec::new());
+            }
+
+            for (i, line) in lines.iter().enumerate() {
+                let split = line.split(",");
+
+                if i == 0 {
+                    for (_n, c) in split.into_iter().enumerate() {
+                        labels.push(c);
+                    }
+                } else {
+                    for (n, c) in split.into_iter().enumerate() {
+                        hashmap.get_mut(&n).unwrap().push(c);
+                    }
+                }
+            }
+
+            let colors = [
+                "66,133,244",
+                "234,67,53",
+                "251,188,4",
+                "52,168,83"
+            ];
+
+            let mut data_sets = Vec::new();
+            for (i, values) in hashmap.iter() {
+                let label = labels[*i];
+                let color = colors[i % colors.len()];
+                let data = values.join(",");
+                {
+                    data_sets.push(format!(r#"{{
+                        label: '{label}',
+                        data: [{data}],
+                        backgroundColor: ['rgba({color}, 0.2)'],
+                        borderColor: ['rgba({color}, 1)'],
+                        borderWidth: 1
+                    }}"#));
+                }
+            }
+
+
+            let x_line = (0..lines.len()-1).into_iter().fold(String::new(), |f, g| format!("{}'{}',", f, g));
+
+            let datasets = data_sets.join(",");
+            let all_data = format!(r#"
+            <script src='https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js'></script>
+            <canvas id="myChart" width="1280" height="720"></canvas>
+            <script>
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const myChart = new Chart(ctx, {{
+                type: 'line',
+                data: {{
+                    labels: [{x_line}],
+                    datasets: [{datasets}]
+                }},
+                options: {{
+                    scales: {{
+                        y: {{
+                            beginAtZero: true
+                        }}
+                    }}
+                }}
+            }});
+            </script>
+            "#);
+
+            std::fs::write(format!("./html/{}.html", file_name), all_data)?
+        }
 
         Ok(difficulty)
     }
@@ -193,6 +313,40 @@ enum Thing {
 }
 
 
+
+
+
+
+#[test]
+fn taiko_calc_test() -> TatakuResult<()> {
+    use glfw_window::GlfwWindow;
+
+    // need to init opengl
+    let _window: GlfwWindow = piston::WindowSettings::new("Tataku!", [10, 10])
+        .graphics_api(opengl_graphics::OpenGL::V3_2)
+        .build()
+        .expect("Error creating window");
+
+
+    // let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs";
+    let path = "D:/Games/osu!/Songs";
+    
+
+    for folder in std::fs::read_dir(path)? {
+        let f = folder?;
+        for map in std::fs::read_dir(f.path())? {
+            let map = map?;
+            if map.file_name().to_str().unwrap().ends_with(".osu") {
+                let _ = try_calc(map.path());
+            }
+        }
+    }
+
+    panic!();
+    Ok(())
+}
+
+#[allow(unused)]
 fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
 
     // muzu
@@ -203,42 +357,19 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
 
     // load map
     let beatmap = Beatmap::load(path)?;
-    if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
+    // if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
 
-    
-    println!("--- trying map: {}", beatmap.get_beatmap_meta().version_string());
-    let mut benchmark = BenchmarkHelper::new("a");
+    let s = beatmap.get_beatmap_meta().version_string();
+    println!("\n\n\n--- trying map: {}", s);
+    // let mut benchmark = BenchmarkHelper::new("calc");
     let mode = TaikoGame::new(&beatmap)?;
 
     // test calc
     let mut calc = TaikoDifficultyCalculator::new(&mode)?;
+    calc.version_string = s;
     let diff = calc.calc()?;
     println!("got diff: {}", diff);
-    benchmark.log("done", true);
+    // benchmark.log("done", true);
 
-    Ok(())
-}
-
-#[test]
-fn taiko_calc_test() -> TatakuResult<()> {
-    use glfw_window::GlfwWindow;
-
-    let window: GlfwWindow = piston::WindowSettings::new("Tataku!", [10, 10])
-        .graphics_api(opengl_graphics::OpenGL::V3_2)
-        .build()
-        .expect("Error creating window");
-    
-
-    for folder in std::fs::read_dir("C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs")? {
-        let f = folder?;
-        for map in std::fs::read_dir(f.path())? {
-            let map = map?;
-            if map.file_name().to_str().unwrap().ends_with(".osu") {
-                try_calc(map.path())?;
-            }
-        }
-    }
-
-    panic!();
     Ok(())
 }

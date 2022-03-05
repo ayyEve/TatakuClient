@@ -101,7 +101,8 @@ impl TatakuBeatmap for QuaverBeatmap {
             stack_leniency: 0.0,
 
             bpm_min,
-            bpm_max
+            bpm_max,
+            diff: -1.0,
         };
 
 

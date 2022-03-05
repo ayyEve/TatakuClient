@@ -1630,16 +1630,3 @@ impl HitCircleImageHelper {
     }
 }
 
-
-fn snippy(og_path: &Vec<Vector2>, path: &mut Vec<Vector2>, note_radius: f64) {
-    path.retain(|p| {
-        for p2 in og_path {
-            let dist = p.distance(*p2).ceil();
-            if dist < note_radius.ceil() {
-                // println!("removing point: {} < {}", dist, note_radius);
-                return false
-            }
-        }
-        true
-    });
-}

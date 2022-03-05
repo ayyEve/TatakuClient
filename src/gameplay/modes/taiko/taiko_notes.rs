@@ -3,7 +3,7 @@ use super::BAR_COLOR;
 
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 const SPINNER_RADIUS:f64 = 200.0;
-const FINISHER_LENIENCY:f32 = 20.0; // ms
+pub const FINISHER_LENIENCY:f32 = 20.0; // ms
 const NOTE_BORDER_SIZE:f64 = 2.0;
 
 const GRAVITY_SCALING:f32 = 400.0;
@@ -79,9 +79,10 @@ impl HitObject for TaikoNote {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
     fn update(&mut self, beatmap_time: f32) {
+        let delta_time = beatmap_time - self.hit_time;
         let y = 
-            if self.hit {-((beatmap_time - self.hit_time)*20.0).ln()*20.0 + 1.0} 
-            else if self.missed {GRAVITY_SCALING * 9.81 * ((beatmap_time - self.hit_time)/1000.0).powi(2)} 
+            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * 1.5)} 
+            else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
             else {0.0};
         
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);

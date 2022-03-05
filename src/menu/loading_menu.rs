@@ -96,6 +96,9 @@ impl LoadingMenu {
                     duration: r.get("duration")?,
                     bpm_min: r.get("bpm_min").unwrap_or(0.0),
                     bpm_max: r.get("bpm_max").unwrap_or(0.0),
+
+                    // TODO: store this
+                    diff: -1.0
                 };
 
                 Ok(meta)

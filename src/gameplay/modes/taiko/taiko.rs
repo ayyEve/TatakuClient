@@ -206,6 +206,7 @@ impl GameMode for TaikoGame {
                     s.notes.push(spinner);
                 }
 
+                if s.notes.len() == 0 {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
                 s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
                 s.end_time = s.notes.iter().last().unwrap().time();
 
