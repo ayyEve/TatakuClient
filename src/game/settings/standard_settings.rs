@@ -19,6 +19,8 @@ pub struct StandardSettings {
     // display
     pub draw_follow_points: bool,
     pub combo_colors: Vec<String>,
+    pub show_300s: bool,
+    pub indicator_draw_duration: f32,
 
     // special effects
     pub hit_ripples: bool,
@@ -46,6 +48,7 @@ impl Default for StandardSettings {
             playfield_movelines_thickness: 2.0,
 
             draw_follow_points: true,
+            show_300s: true,
 
             combo_colors: vec![
                 "#CC0000".to_owned(),
@@ -58,6 +61,8 @@ impl Default for StandardSettings {
             ripple_scale: 2.0,
             slider_tick_ripples: true,
             approach_combo_color: true,
+
+            indicator_draw_duration: 300.0,
         }
     }
 }

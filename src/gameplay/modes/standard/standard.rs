@@ -9,7 +9,7 @@ use super::*;
 // use crate::helpers::{curve::get_curve, key_counter::KeyCounter, math::Lerp};
 
 
-const POINTS_DRAW_DURATION:f32 = 200.0;
+// const POINTS_DRAW_DURATION:f32 = 500.0;
 const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
@@ -380,7 +380,12 @@ impl GameMode for StandardGame {
                 let note = &mut check_notes[0];
                 let note_time = note.time();
                 let pts = note.get_points(true, time, (self.hitwindow_miss, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
-                self.draw_points.push((time, note.point_draw_pos(time), pts.clone()));
+                
+                
+                let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
+                if !is_300 || (is_300 && self.settings.show_300s) {
+                    self.draw_points.push((time, note.point_draw_pos(time), pts.clone()));
+                }
 
                 match &pts {
                     ScoreHit::None | ScoreHit::Other(_,_) => {}
@@ -514,7 +519,12 @@ impl GameMode for StandardGame {
                         // check slider release points
                         // -1.0 for miss hitwindow to indidate it was held to the end (ie, no hitwindow to check)
                         let pts = note.get_points(false, time, (-1.0, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
-                        self.draw_points.push((time, note.point_draw_pos(time), pts));
+                        
+                        let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
+                        if !is_300 || (is_300 && self.settings.show_300s) {
+                            self.draw_points.push((time, note.point_draw_pos(time), pts));
+                        }
+                        
                         match pts {
                             ScoreHit::Other(_, _) => {}
                             ScoreHit::None | ScoreHit::Miss => {
@@ -561,7 +571,8 @@ impl GameMode for StandardGame {
         }
         
         // remove old draw points
-        self.draw_points.retain(|a| time < a.0 + POINTS_DRAW_DURATION);
+        let indicator_draw_duration = self.settings.indicator_draw_duration;
+        self.draw_points.retain(|a| time < a.0 + indicator_draw_duration);
 
 
         // handle note releases
@@ -657,7 +668,7 @@ impl GameMode for StandardGame {
                 ScoreHit::None | ScoreHit::Other(_, _) => continue,
             }
             
-            let alpha = (1.0 - (time - (p_time + (POINTS_DRAW_DURATION - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
+            let alpha = (1.0 - (time - (p_time + (self.settings.indicator_draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
             list.push(Box::new(Circle::new(
                 color.alpha(alpha),
                 -99_999.9,
