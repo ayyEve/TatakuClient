@@ -138,12 +138,13 @@ impl OsuBeatmap {
                         let time = split.next().unwrap().parse::<f32>().unwrap();
                         let read_type = split.next().unwrap().parse::<u64>().unwrap_or(0); // see below
 
-                        let hitsound = split.next().unwrap().parse::<u8>();
+                        let hitsound_raw = split.next().unwrap();
+                        let hitsound = hitsound_raw.parse::<i8>();
                         if let Err(e) = &hitsound {
-                            println!("error parsing hitsound: {}", e)
+                            println!("error parsing hitsound: {} (line: {})", e, line)
                         }
                         
-                        let hitsound = hitsound.unwrap_or(0); // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
+                        let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
 
                         // read type:
                         // abcdefgh
