@@ -139,7 +139,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
             beatmap_version: 10,
-            mode: PlayMode::Adofai,
+            mode: "adofai".to_owned(),
             artist: self.settings.artist.clone(),
             title: self.settings.song.clone(),
             artist_unicode: self.settings.artist.clone(),
@@ -166,7 +166,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
 
     fn playmode(&self, _incoming:PlayMode) -> PlayMode {
         //TODO
-        PlayMode::Taiko
+        "taiko".to_owned()
     }
 
     fn slider_velocity_at(&self, time:f32) -> f32 {

@@ -1,6 +1,10 @@
 mod taiko;
 mod taiko_notes;
-pub mod diff_calc;
+mod diff_calc;
 
-pub use taiko::*;
-pub use taiko_notes::*;
+use taiko::*;
+use taiko_notes::*;
+
+pub use taiko::calc_acc;
+pub use taiko::TaikoGame as Game;
+pub use diff_calc::TaikoDifficultyCalculator as DiffCalc;

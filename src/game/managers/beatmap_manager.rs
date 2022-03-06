@@ -330,7 +330,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
         ) VALUES (
             \"{}\", \"{}\",
 
-            {}, {}, 
+            \"{}\", {}, 
             \"{}\", \"{}\",
             \"{}\", \"{}\",
             \"{}\", \"{}\",
@@ -345,7 +345,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
         )",
         map.file_path, map.beatmap_hash, 
 
-        map.mode as u8, map.beatmap_version,
+        map.mode, map.beatmap_version,
         map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
         map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
         map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),

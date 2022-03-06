@@ -86,7 +86,7 @@ impl OsuBeatmap {
                         if key == "StackLeniency" {beatmap.metadata.stack_leniency = val.parse().unwrap_or(0.0)}
                         if key == "Mode" {
                             let m = val.parse::<u8>().unwrap();
-                            beatmap.metadata.mode = m.into();
+                            beatmap.metadata.mode = playmode_from_u8(m);
                         }
                     }
                     BeatmapSection::Metadata => {
@@ -340,10 +340,10 @@ impl TatakuBeatmap for OsuBeatmap {
     fn get_beatmap_meta(&self) -> BeatmapMeta {self.metadata.clone()}
 
     fn playmode(&self, incoming:PlayMode) -> PlayMode {
-        match self.metadata.mode {
-            PlayMode::Standard => incoming,
-            PlayMode::Adofai => panic!("osu map has adofai mode !?"),
-            m => m
+        match &*self.metadata.mode {
+            "osu" => incoming,
+            "adofai" => panic!("osu map has adofai mode !?"),
+            m => m.to_owned()
         }
     }
 

@@ -65,7 +65,7 @@ impl MainMenu {
             None => return println!("manager no map")
         };
 
-        match manager_from_playmode(settings.mode, &map) {
+        match manager_from_playmode(settings.mode.clone(), &map) {
             Ok(mut manager) => {
                 manager.current_mods = Arc::new(ModManager {
                     autoplay: true,
@@ -211,7 +211,7 @@ impl Menu<Game> for MainMenu {
 
         // open direct menu
         if self.direct_button.on_click(pos, button, mods) {
-            let mode = get_settings!().background_game_settings.mode;
+            let mode = get_settings!().background_game_settings.mode.clone();
             let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
             game.queue_state_change(GameState::InMenu(menu));
             return;
@@ -275,19 +275,19 @@ impl Menu<Game> for MainMenu {
         
         if mods.alt {
             let new_mode = match key {
-                D1 => Some(PlayMode::Standard),
-                D2 => Some(PlayMode::Taiko),
-                D3 => Some(PlayMode::Catch),
-                D4 => Some(PlayMode::Mania),
+                D1 => Some("osu".to_owned()),
+                D2 => Some("taiko".to_owned()),
+                D3 => Some("catch".to_owned()),
+                D4 => Some("mania".to_owned()),
                 _ => None
             };
 
             if let Some(new_mode) = new_mode {
                 let mut settings = get_settings_mut!();
                 if settings.background_game_settings.mode != new_mode {
+                    NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
                     needs_manager_setup = true;
                     settings.background_game_settings.mode = new_mode;
-                    NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
                 }
             }
         }
@@ -343,7 +343,7 @@ impl ControllerInputMenu<Game> for MainMenu {
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 1 => {
-                    let mode = get_settings!().background_game_settings.mode;
+                    let mode = get_settings!().background_game_settings.mode.clone();
                     let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
                     game.queue_state_change(GameState::InMenu(menu));
                 },

@@ -56,7 +56,7 @@ impl TaikoGame {
 }
 
 impl GameMode for TaikoGame {
-    fn playmode(&self) -> PlayMode {PlayMode::Taiko}
+    fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
@@ -152,7 +152,7 @@ impl GameMode for TaikoGame {
                     let bl = beatmap.beat_length_at(time, beatmap.metadata.beatmap_version < 8);
                     let skip_period = (bl / beatmap.metadata.slider_tick_rate).min((end_time - time) / slides as f32);
 
-                    if skip_period > 0.0 && beatmap.metadata.mode != PlayMode::Taiko && l / v * 1000.0 < 2.0 * bl {
+                    if skip_period > 0.0 && beatmap.metadata.mode != "taiko" && l / v * 1000.0 < 2.0 * bl {
                         let mut i = 0;
                         let mut j = time;
 

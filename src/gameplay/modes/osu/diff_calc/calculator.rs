@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 
-pub struct CatchDifficultyCalculator {}
+pub struct OsuDifficultyCalculator {}
 
-impl DiffCalc<super::super::Game> for CatchDifficultyCalculator {
+impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
     fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         Ok(Self {})
     }

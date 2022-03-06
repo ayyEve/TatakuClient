@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::prelude::*;
-use super::*;
+use super::osu_notes::*;
 
 // use crate::gameplay::{DURATION_HEIGHT, GameMode, IngameManager};
 // use crate::beatmaps::common::{NoteType, TaikoRsBeatmap, map_difficulty};
@@ -73,7 +73,7 @@ pub struct StandardGame {
 }
 impl StandardGame {
     fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, PlayMode::Standard));
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned()));
         self.scaling_helper = new_scale.clone();
 
         // update playfield for notes
@@ -151,7 +151,7 @@ impl StandardGame {
 }
 
 impl GameMode for StandardGame {
-    fn playmode(&self) -> PlayMode {PlayMode::Standard}
+    fn playmode(&self) -> PlayMode {"osu".to_owned()}
 
     fn end_time(&self) -> f32 {self.end_time}
     fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
@@ -159,7 +159,7 @@ impl GameMode for StandardGame {
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, PlayMode::Standard));
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, "osu".to_owned()));
 
         let combo_colors:Vec<Color> = settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect();
 

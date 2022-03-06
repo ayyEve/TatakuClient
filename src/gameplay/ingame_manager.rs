@@ -1070,7 +1070,7 @@ impl Default for Box<dyn GameMode> {
 struct NoMode {}
 impl GameMode for NoMode {
     fn new(_:&Beatmap) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
-    fn playmode(&self) -> PlayMode {PlayMode::Standard}
+    fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {0.0}
     fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {(Vec::new(), (0.0, Color::WHITE))}

@@ -7,7 +7,7 @@ pub struct BeatmapMeta {
     pub beatmap_hash: String,
 
     pub beatmap_version: u8,
-    pub mode: PlayMode,
+    pub mode: String,
     pub artist: String,
     pub title: String,
     pub artist_unicode: String,
@@ -43,7 +43,7 @@ impl BeatmapMeta {
             file_path,
             beatmap_hash,
             beatmap_version: 0,
-            mode: PlayMode::Standard,
+            mode: String::new(),
             artist: unknown.clone(),
             title: unknown.clone(),
             artist_unicode: unknown.clone(),
@@ -68,17 +68,19 @@ impl BeatmapMeta {
         }
     }
 
-    pub fn get_diff(&mut self) -> f32 {
+    pub fn get_diff(&mut self, mode_override: PlayMode, mods: &ModManager) -> f32 {
         if self.diff == -1.0 {
-            let b = Beatmap::from_metadata(self).unwrap();
-            if let Ok(mode) = taiko::TaikoGame::new(&b) {
-                use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
-                let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
+
+            self.diff = calc_diff(self, mode_override, mods).unwrap_or_default()
+            
+            // if let Ok(mode) = taiko::TaikoGame::new(&b) {
+            //     use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
+            //     let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
                 
-                self.diff = calc.calc().unwrap_or_default();
-            } else {
-                self.diff = 0.0;
-            }
+            //     self.diff = calc.calc().unwrap_or_default();
+            // } else {
+            //     self.diff = 0.0;
+            // }
 
             // test calc
         }
@@ -105,14 +107,13 @@ impl BeatmapMeta {
     }
 
     /// get the difficulty string (od, hp, sr, bpm, len)
-    pub fn diff_string(&mut self) -> String {
-        let mods = ModManager::get();
+    pub fn diff_string(&mut self, mode_override: PlayMode, mods: &ModManager) -> String {
         let symb = if mods.speed > 1.0 {"+"} else if mods.speed < 1.0 {"-"} else {""};
 
         // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}",secs)}
-        let diff = self.get_diff();
+        let diff = self.get_diff(mode_override, mods);
 
         let mut txt = format!(
             "od: {:.2}{} hp: {:.2}{}, dur: {}:{}", 
@@ -148,11 +149,11 @@ impl BeatmapMeta {
         || self.version.to_ascii_lowercase().contains(filter_str) 
     }
 
-    pub fn check_mode_override(&self, override_mode:PlayMode) -> PlayMode {
-        if self.mode == PlayMode::Standard {
+    pub fn check_mode_override(&self, override_mode:String) -> String {
+        if self.mode == "osu" {
             override_mode
         } else {
-            self.mode
+            self.mode.clone()
         }
     }
 }

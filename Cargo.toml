@@ -16,6 +16,7 @@ debug_hitsounds = []
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
+# tataku-common = { path = "/home/ayyeve/Desktop/projects/rust/tataku/tataku-common" }
 
 # framework stuff
 lazy_static = "1.4"
@@ -51,7 +52,7 @@ uuid = { version = "0.8", features = ["v4"], optional = true }
 
 # networking
 sha2 = "0.10"
-tokio-tungstenite = {version = "0.16.0", features = ["rustls-tls-native-roots"]}
+tokio-tungstenite = { version = "0.16.0", features = ["rustls-tls-native-roots"] }
 reqwest = { version = "0.11.4", features = ["blocking"] }
 rustcord = { git = "https://github.com/ayyEve/rustcord", optional=true }
 
@@ -70,6 +71,8 @@ rand = "0.8.4"
 
 [build-dependencies]
 reqwest = { version = "0.11.4", features = ["blocking"] }
-tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 serde = { version="1.0", features=["derive"] }
 serde_json = "1.0"
+
+tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
+# tataku-common = { path = "/home/ayyeve/Desktop/projects/rust/tataku/tataku-common" }

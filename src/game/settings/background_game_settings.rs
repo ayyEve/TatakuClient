@@ -18,7 +18,7 @@ impl Default for BackgroundGameSettings {
             enabled: true,
             opacity: 0.5,
             hitsound_volume: 0.3,
-            mode: PlayMode::Standard
+            mode: "osu".to_owned()
         }
     }
 }

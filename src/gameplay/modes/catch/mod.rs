@@ -1,6 +1,7 @@
 mod catch;
 mod catch_notes;
-// pub mod diff_calc;
+mod diff_calc;
 
-pub use catch::*;
-pub use catch_notes::*;
+pub use catch::calc_acc;
+pub use catch::CatchGame as Game;
+pub use diff_calc::CatchDifficultyCalculator as DiffCalc;

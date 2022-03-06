@@ -10,10 +10,10 @@ impl DirectApi for OsuDirect {
     fn api_name(&self) -> &'static str {"Osu"}
     fn supported_modes(&self) -> Vec<PlayMode> {
         vec![
-            PlayMode::Standard,
-            PlayMode::Taiko,
-            PlayMode::Catch,
-            PlayMode::Mania
+            "osu".to_owned(),
+            "taiko".to_owned(),
+            "catch".to_owned(),
+            "mania".to_owned()
         ]
     }
 
@@ -32,7 +32,7 @@ impl DirectApi for OsuDirect {
             "https://osu.ppy.sh/web/osu-search.php?u={}&h={:x}&m={}&p={}&s={}&r={}{}",
             /*   username  */ settings.osu_username,
             /*   password  */ md5::compute(&settings.osu_password),
-            /*   playmode  */ search_params.mode.unwrap_or_default() as u8,
+            /*   playmode  */ playmode_to_u8(search_params.mode.unwrap_or("osu".to_owned())),
             /*   page num  */ search_params.page,
             /*   sort num  */ sort,
             /*  rank state */ status as i8,

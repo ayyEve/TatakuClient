@@ -15,6 +15,10 @@ const LEADERBOARD_PADDING: f64 = 100.0;
 const LEADERBOARD_POS: Vector2 = Vector2::new(10.0, LEADERBOARD_PADDING);
 const LEADERBOARD_ITEM_SIZE: Vector2 = Vector2::new(200.0, 50.0);
 
+lazy_static::lazy_static! {
+    static ref SELECTED_MODE: Arc<RwLock<PlayMode>> = Arc::new(RwLock::new("osu".to_owned()));
+}
+
 
 pub struct BeatmapSelectMenu {
     mode: PlayMode,
@@ -43,7 +47,7 @@ impl BeatmapSelectMenu {
         let font = get_font("main");
 
         BeatmapSelectMenu {
-            mode: PlayMode::Standard,
+            mode: "osu".to_owned(),
             no_maps_notif_sent: false,
 
             // mouse_down: false,
@@ -63,6 +67,10 @@ impl BeatmapSelectMenu {
         }
     }
 
+    fn set_selected_mode(&mut self, new_mode: PlayMode) {
+        // self.on_key_press(Key::Calculator, M)
+    }
+
     pub fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
         let filter_text = self.search_text.get_text().to_ascii_lowercase();
         self.beatmap_scroll.clear();
@@ -79,7 +87,7 @@ impl BeatmapSelectMenu {
                 if maps.len() == 0 {continue}
             }
 
-            let mut i = BeatmapsetItem::new(maps);
+            let mut i = BeatmapsetItem::new(maps, self.mode.clone());
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
@@ -101,7 +109,7 @@ impl BeatmapSelectMenu {
         }
 
         // sort by artist
-        full_list.sort_by(|a, b| a.beatmaps[0].artist.to_lowercase().cmp(&b.beatmaps[0].artist.to_lowercase()));
+        // full_list.sort_by(|a, b| a.beatmaps[0].artist.to_lowercase().cmp(&b.beatmaps[0].artist.to_lowercase()));
         for i in full_list {self.beatmap_scroll.add_item(i)}
 
         self.beatmap_scroll.scroll_to_selection();
@@ -116,7 +124,7 @@ impl BeatmapSelectMenu {
             self.current_scores.clear();
 
             // load scores
-            let mut scores = get_scores(&map.beatmap_hash, map.check_mode_override(self.mode));
+            let mut scores = get_scores(&map.beatmap_hash, map.check_mode_override(self.mode.clone()));
             scores.sort_by(|a, b| b.score.cmp(&a.score));
 
             // add scores to list
@@ -129,7 +137,7 @@ impl BeatmapSelectMenu {
 
     fn play_map(&self, game: &mut Game, map: &BeatmapMeta) {
         // Audio::stop_song();
-        match manager_from_playmode(self.mode, map) {
+        match manager_from_playmode(self.mode.clone(), map) {
             Ok(manager) => game.queue_state_change(GameState::Ingame(manager)),
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
         }
@@ -360,7 +368,7 @@ impl Menu<Game> for BeatmapSelectMenu {
                 -10.0,
                 Vector2::new(0.0, 35.0),
                 15,
-                meta.diff_string(),
+                meta.diff_string(self.mode.clone(), &ModManager::get()),
                 font.clone()
             )));
         }
@@ -491,17 +499,17 @@ impl Menu<Game> for BeatmapSelectMenu {
         // mode change
         if mods.alt {
             let new_mode = match key {
-                D1 => Some(PlayMode::Standard),
-                D2 => Some(PlayMode::Taiko),
-                D3 => Some(PlayMode::Catch),
-                D4 => Some(PlayMode::Mania),
+                D1 => Some("osu".to_owned()),
+                D2 => Some("taiko".to_owned()),
+                D3 => Some("catch".to_owned()),
+                D4 => Some("mania".to_owned()),
                 _ => None
             };
 
             if let Some(new_mode) = new_mode {
+                NotificationManager::add_text_notification(&format!("Mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
                 self.mode = new_mode;
                 self.load_scores();
-                NotificationManager::add_text_notification(&format!("Mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
             }
         }
 
@@ -617,18 +625,11 @@ struct BeatmapsetItem {
     mouse_pos: Vector2
 }
 impl BeatmapsetItem {
-    fn new(mut beatmaps: Vec<BeatmapMeta>) -> BeatmapsetItem {
-        // sort beatmaps by sr
-        // let mut beatmaps = beatmaps.clone();
-        // todo once mode diff calcs get re-implemented
-        // beatmaps.sort_by(|a, b| {
-        //     let a = a.lock().metadata.sr;
-        //     let b = b.lock().metadata.sr;
-        //     a.partial_cmp(&b).unwrap()
-        // });
+    fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
+        let mods = ModManager::get();
 
         // ensure diff is calced for all maps
-        beatmaps.iter_mut().for_each(|b|{b.get_diff();});
+        beatmaps.iter_mut().for_each(|b|{b.get_diff(playmode.clone(), &mods);});
         
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 
@@ -703,6 +704,19 @@ impl ScrollableItem for BeatmapsetItem {
     }
 
     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
+        // press this key if you want to recalculate things
+        if key == Key::Calculator {
+            let playmode = SELECTED_MODE.read().clone();
+            let mods = ModManager::get();
+
+            for i in self.beatmaps.iter_mut() {
+                i.diff = -1.0;
+                i.get_diff(playmode.clone(), &mods);
+            }
+            
+            self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
+        }
+
         if !self.selected {return false}
 
         if key == Key::Down {
@@ -797,7 +811,7 @@ impl ScrollableItem for BeatmapsetItem {
                     parent_depth + 4.0,
                     pos + Vector2::new(5.0, 5.0),
                     12,
-                    format!("({:?}) - {}", meta.mode, meta.version),
+                    format!("{} - {}", gamemode_display_name(meta.mode.clone()), meta.version),
                     font.clone()
                 )));
 

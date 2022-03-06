@@ -574,11 +574,11 @@ impl Game {
                             }
                         }
 
-                        OnlineManager::set_action(UserAction::Idle, String::new(), PlayMode::Taiko);
+                        OnlineManager::set_action(UserAction::Idle, String::new(), String::new());
                     },
                     GameState::Closing => {
                         // send logoff
-                        OnlineManager::set_action(UserAction::Leaving, String::new(), PlayMode::Taiko);
+                        OnlineManager::set_action(UserAction::Leaving, String::new(), String::new());
                     }
                     _ => {}
                 }

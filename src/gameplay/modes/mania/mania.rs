@@ -81,7 +81,7 @@ impl ManiaGame {
     }
 }
 impl GameMode for ManiaGame {
-    fn playmode(&self) -> PlayMode {PlayMode::Mania}
+    fn playmode(&self) -> PlayMode {"mania".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
@@ -121,7 +121,7 @@ impl GameMode for ManiaGame {
         
                 // add notes
                 for note in beatmap.notes.iter() {
-                    if metadata.mode == PlayMode::Mania {
+                    if metadata.mode == "mania" {
                         let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
                         let x = s.col_pos(column);
                         s.columns[column as usize].push(Box::new(ManiaNote::new(

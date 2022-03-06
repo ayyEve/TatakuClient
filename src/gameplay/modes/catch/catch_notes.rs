@@ -1,6 +1,6 @@
 use piston::RenderArgs;
 
-use super::hit_y;
+use super::catch::hit_y;
 use crate::prelude::*;
 
 const NOTE_BORDER_SIZE:f64 = 2.0;

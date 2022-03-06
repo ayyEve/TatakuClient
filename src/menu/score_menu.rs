@@ -70,7 +70,7 @@ impl ScoreMenu {
             Ok(replay) => {
                 // game.menus.get("beatmap").unwrap().lock().on_change(false);
                 // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
-                match manager_from_playmode(self.score.playmode, &self.beatmap) {
+                match manager_from_playmode(self.score.playmode.clone(), &self.beatmap) {
                     Ok(mut manager) => {
                         manager.replaying = true;
                         manager.replay = replay.clone();

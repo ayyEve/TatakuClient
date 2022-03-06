@@ -10,7 +10,7 @@ pub struct DifficultyHitObject {
 }
 
 impl DifficultyHitObject {
-    pub fn new(base:&Box<dyn prelude::taiko::TaikoHitObject>) -> Self {
+    pub fn new(base:&Box<dyn super::super::TaikoHitObject>) -> Self {
         let time = base.time();
         let end_time = base.end_time(0.0);
         let hits_to_complete = base.hits_to_complete();

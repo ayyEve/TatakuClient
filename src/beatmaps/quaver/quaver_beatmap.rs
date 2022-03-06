@@ -81,7 +81,7 @@ impl TatakuBeatmap for QuaverBeatmap {
             file_path: self.path.clone(), 
             beatmap_hash: self.hash.clone(), 
             beatmap_version: 0, 
-            mode: PlayMode::Mania, 
+            mode: "mania".to_owned(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
             artist_unicode: self.artist.clone(), 
@@ -124,7 +124,7 @@ impl TatakuBeatmap for QuaverBeatmap {
     }
 
     fn playmode(&self, _incoming:PlayMode) -> PlayMode {
-        PlayMode::Mania
+        "mania".to_owned()
     }
 
     fn slider_velocity_at(&self, time:f32) -> f32 {

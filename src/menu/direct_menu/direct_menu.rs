@@ -78,7 +78,7 @@ impl DirectMenu {
         let mut search_params = SearchParams::default();
         let q = self.search_bar.get_text();
         if q.len() > 0 {search_params.text = Some(q)}
-        search_params.mode = Some(self.mode);
+        search_params.mode = Some(self.mode.clone());
 
         // perform request
         let items = self.current_api.do_search(search_params);
@@ -301,18 +301,18 @@ impl Menu<Game> for DirectMenu {
 
         if mods.alt {
             let new_mode = match key {
-                D1 => Some(PlayMode::Standard),
-                D2 => Some(PlayMode::Taiko),
-                D3 => Some(PlayMode::Catch),
-                D4 => Some(PlayMode::Mania),
+                D1 => Some("osu".to_owned()),
+                D2 => Some("taiko".to_owned()),
+                D3 => Some("catch".to_owned()),
+                D4 => Some("mania".to_owned()),
                 _ => None
             };
 
             if let Some(new_mode) = new_mode {
                 if self.mode != new_mode {
+                    NotificationManager::add_text_notification(&format!("Searching for {} maps", new_mode), 1000.0, Color::BLUE);
                     self.mode = new_mode;
                     self.do_search();
-                    NotificationManager::add_text_notification(&format!("Searching for {:?} maps", new_mode), 1000.0, Color::BLUE);
                 }
             }
         }

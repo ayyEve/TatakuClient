@@ -3,7 +3,7 @@ use crate::REPLAYS_DIR;
 
 pub fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
     let db = crate::databases::DATABASE.lock();
-    let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{}' AND playmode={}", hash, playmode as u8)).unwrap();
+    let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{}' AND playmode='{}'", hash, playmode)).unwrap();
 
     s.query_map([], |r| {
         let _score_hash:String = r.get("score_hash")?;
@@ -11,7 +11,7 @@ pub fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
         let score = Score {
             version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
             username: r.get("username")?,
-            playmode: r.get::<&str, u8>("playmode")?.into(),
+            playmode: r.get("playmode")?,
             score: r.get("score")?,
             combo: r.get("combo")?,
             max_combo: r.get("max_combo")?,
@@ -63,7 +63,7 @@ pub fn save_score(s:&Score) {
             {}
         )", 
         s.beatmap_hash, s.hash(),
-        s.username, s.playmode as u8,
+        s.username, s.playmode,
         s.score,
         s.combo, s.max_combo,
         s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 

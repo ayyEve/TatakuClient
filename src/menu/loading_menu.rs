@@ -75,7 +75,7 @@ impl LoadingMenu {
                     file_path: r.get("beatmap_path")?,
                     beatmap_hash: r.get("beatmap_hash")?,
                     beatmap_version: r.get("beatmap_version")?,
-                    mode: r.get::<&str, u8>("playmode")?.into(),
+                    mode: r.get("playmode")?,
                     artist: r.get("artist")?,
                     title: r.get("title")?,
                     artist_unicode: r.get("artist_unicode")?,

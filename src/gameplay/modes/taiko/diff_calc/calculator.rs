@@ -1,5 +1,5 @@
 
-use prelude::taiko::TaikoGame;
+use super::super::TaikoGame;
 
 use crate::prelude::*;
 use super::difficulty_hit_object::DifficultyHitObject;
@@ -7,13 +7,6 @@ use super::super::FINISHER_LENIENCY;
 
 // how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;
-
-
-pub trait DiffCalc<G:GameMode> where Self:Sized {
-    fn new(g: &G) -> TatakuResult<Self>;
-    fn calc(&mut self) -> TatakuResult<f32>;
-}
-
 
 
 pub struct TaikoDifficultyCalculator {
@@ -147,7 +140,10 @@ impl TaikoDifficultyCalculator {
 const WRITE_DEBUG_FILES:bool = false;
 
 impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
-    fn new(g: &TaikoGame) -> TatakuResult<Self> {
+    fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
+
+        let g = Beatmap::from_metadata(g)?;
+        let g = TaikoGame::new(&g)?;
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter() {
@@ -169,7 +165,7 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         })
     }
 
-    fn calc(&mut self) -> TatakuResult<f32> {
+    fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
         let strain = self.strain()?;
         let note_density = self.note_density()?;
 
@@ -366,14 +362,16 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
     let beatmap = Beatmap::load(path)?;
     // if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
 
+    let mods = ModManager::new();
+
     let s = beatmap.get_beatmap_meta().version_string();
     println!("\n\n\n--- trying map: {}", s);
     // let mut benchmark = BenchmarkHelper::new("calc");
     if let Ok(mode) = TaikoGame::new(&beatmap) {
         // test calc
-        let mut calc = TaikoDifficultyCalculator::new(&mode)?;
+        let mut calc = TaikoDifficultyCalculator::new(&beatmap.get_beatmap_meta())?;
         calc.version_string = s;
-        let diff = calc.calc()?;
+        let diff = calc.calc(&mods)?;
     }
 
 

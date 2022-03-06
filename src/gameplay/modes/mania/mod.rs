@@ -1,6 +1,7 @@
 mod mania;
 mod mania_notes;
-// pub mod diff_calc;
+mod diff_calc;
 
-pub use mania::*;
-pub use mania_notes::*;
+pub use mania::calc_acc;
+pub use mania::ManiaGame as Game;
+pub use diff_calc::ManiaDifficultyCalculator as DiffCalc;

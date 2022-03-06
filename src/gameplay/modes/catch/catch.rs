@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_variables, unused_mut, unreachable_code)]
-use super::*;
+use super::catch_notes::*;
 use crate::prelude::*;
 
 // const SV_FACTOR:f64 = 700.0; // bc sv is bonked, divide it by this amount
@@ -56,14 +56,14 @@ impl CatchGame {
     pub fn next_note(&mut self) {self.note_index += 1}
 }
 impl GameMode for CatchGame {
-    fn playmode(&self) -> PlayMode {PlayMode::Catch}
+    fn playmode(&self) -> PlayMode {"catch".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
     fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
 
         match map {
             Beatmap::Osu(beatmap) => {
-                let scaling_helper = ScalingHelper::new(metadata.cs, PlayMode::Catch);
+                let scaling_helper = ScalingHelper::new(metadata.cs, "catch".to_owned());
                 let mut s = Self {
                     notes: Vec::new(),
                     note_index: 0,
