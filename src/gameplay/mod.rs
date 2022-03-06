@@ -55,7 +55,7 @@ impl ScalingHelper {
         let settings_offset;
 
         match &*mode {
-            "std" => {
+            "osu" => {
                 let things = get_settings!().standard_settings.get_playfield();
                 settings_scale = things.0;
                 settings_offset = things.1;
