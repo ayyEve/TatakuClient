@@ -55,7 +55,7 @@ pub fn save_score(s:&Score) {
             version
         ) VALUES (
             '{}', '{}',
-            '{}', {},
+            '{}', '{}',
             {},
             {}, {},
             {}, {}, {}, {}, {}, {},
@@ -79,12 +79,16 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<()> {
     let mut writer = SerializationWriter::new();
     writer.write(r.clone());
 
-    let filename = format!("{}/{}.rs_replay", REPLAYS_DIR,s.hash());
+    let hash = s.hash();
+    let actual_hash = format!("{:x}", md5::compute(hash));
+    let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     Ok(save_database(&filename, writer)?)
 }
 
 pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
-    let fullpath = format!("{}/{}.rs_replay", REPLAYS_DIR, score_hash);
+    let actual_hash = format!("{:x}", md5::compute(score_hash));
+    let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
+
     println!("[Replay] loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)

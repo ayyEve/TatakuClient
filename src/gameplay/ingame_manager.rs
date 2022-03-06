@@ -362,7 +362,7 @@ impl IngameManager {
             #[cfg(feature="bass_audio")] {
                 self.song.set_rate(self.game_speed()).unwrap();
                 self.song.set_position(0.0).unwrap();
-                self.song.pause().unwrap();
+                let _ = self.song.pause();
             }
             
             #[cfg(feature="neb_audio")] 
