@@ -19,3 +19,5 @@ test.log
 
 /csv
 /html
+
+/src/gameplay/modes/mod.rs
