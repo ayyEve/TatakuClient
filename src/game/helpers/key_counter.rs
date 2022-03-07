@@ -61,24 +61,25 @@ impl KeyCounter {
         let font = get_font("main");
         let window_size:Vector2 = args.window_size.into();
 
-        let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {
-            let btn_size = btn.size();
-            let btn_count = self.key_order.len() as f64;
-            Vector2::new(
-                btn_size.x,
-                (bg.size().y - btn_size.y * btn_count) / btn_count
-            )
-        } else {
-            BOX_SIZE
-        };
-
+        // let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {
+        //     let btn_size = btn.size();
+        //     let btn_count = self.key_order.len() as f64;
+        //     Vector2::new(
+        //         btn_size.x,
+        //         (bg.size().y - btn_size.y * btn_count) / btn_count
+        //     )
+        // } else {
+        //     BOX_SIZE
+        // };
+        let pad = BOX_SIZE;
+        
         let base_pos = Vector2::new(window_size.x, window_size.y / 2.0) - (self.pos + pad);
 
-        if let Some(bg) = &self.background_image {
-            let mut bg = bg.clone();
-            bg.current_pos = base_pos + Vector2::new(pad.x, pad.y * self.key_order.len() as f64);
-            list.push(Box::new(bg));
-        }
+        // if let Some(bg) = &self.background_image {
+        //     let mut bg = bg.clone();
+        //     bg.current_pos = base_pos + Vector2::new(pad.x, pad.y * self.key_order.len() as f64);
+        //     list.push(Box::new(bg));
+        // }
 
         //TODO: center properly somehow
         for i in 0..self.key_order.len() {
