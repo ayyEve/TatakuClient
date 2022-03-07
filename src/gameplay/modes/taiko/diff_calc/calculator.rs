@@ -16,29 +16,33 @@ pub struct TaikoDifficultyCalculator {
 }
 impl TaikoDifficultyCalculator {
 
-    fn note_density(&mut self) -> TatakuResult<Vec<f32>> {
+    fn note_density(&mut self, mods: &ModManager) -> TatakuResult<Vec<f32>> {
         let mut start_bucket_time = self.difficulty_hitobjects.first().unwrap().time;
         let mut last_note_time = start_bucket_time;
 
         let mut note_density = Vec::new();
         let mut density = 0.0;
 
+        let bucket_length = BUCKET_LENGTH * mods.speed;
+
         for o in self.difficulty_hitobjects.iter().skip(1) {
+            let o_time = o.time;// * mods.speed;
+
             // If over threshold, move to the next bucket.
-            if o.time > start_bucket_time + BUCKET_LENGTH {
+            if o_time > start_bucket_time + bucket_length {
                 // Add final note to current bucket density
-                density += BUCKET_LENGTH / (o.time - last_note_time).max(FINISHER_LENIENCY);
+                density += bucket_length / (o_time - last_note_time).max(FINISHER_LENIENCY);
 
                 note_density.push(density);
                 density = 0.0;
-                start_bucket_time = o.time;
+                start_bucket_time = o_time;
             }
 
             match o.note_type {
                 NoteType::Note => {
-                    density += BUCKET_LENGTH / (o.time - last_note_time).max(FINISHER_LENIENCY);
+                    density += bucket_length / (o_time - last_note_time).max(FINISHER_LENIENCY);
 
-                    last_note_time = o.time;
+                    last_note_time = o_time;
                 },
                 
                 NoteType::Spinner => {
@@ -79,7 +83,7 @@ impl TaikoDifficultyCalculator {
         Ok(note_density)
     }
 
-    fn strain(&mut self) -> TatakuResult<Vec<usize>> {
+    fn strain(&mut self, mods: &ModManager) -> TatakuResult<Vec<usize>> {
         // 0th hand is the dominant hand.
         let mut hands = [Thing::None; 2];
         let mut count_since_reset = 0;
@@ -89,12 +93,17 @@ impl TaikoDifficultyCalculator {
         let mut change_density = Vec::new();
         let mut changes = 0;
 
+        
+        let bucket_length = BUCKET_LENGTH * mods.speed;
+
         for o in self.difficulty_hitobjects.iter() {
+            let o_time = o.time; // * mods.speed;
+
             // If over threshold, move to the next bucket.
-            if o.time > start_bucket_time + BUCKET_LENGTH {
+            if o_time > start_bucket_time + bucket_length {
                 change_density.push(changes);
                 changes = 0;
-                start_bucket_time = o.time;
+                start_bucket_time = o_time;
             }
 
             match o.note_type {
@@ -166,8 +175,8 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
     }
 
     fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
-        let strain = self.strain()?;
-        let note_density = self.note_density()?;
+        let strain = self.strain(mods)?;
+        let note_density = self.note_density(mods)?;
 
         let mut diff = Vec::new();
 
@@ -201,8 +210,6 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         }
 
         difficulty /= (1.0 - weight) / (1.0 - PERCENT);
-
-
 
         // TEMP: for writing to csv, nicer graphs
         if WRITE_DEBUG_FILES {

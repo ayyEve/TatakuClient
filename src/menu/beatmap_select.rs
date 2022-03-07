@@ -15,10 +15,6 @@ const LEADERBOARD_PADDING: f64 = 100.0;
 const LEADERBOARD_POS: Vector2 = Vector2::new(10.0, LEADERBOARD_PADDING);
 const LEADERBOARD_ITEM_SIZE: Vector2 = Vector2::new(200.0, 50.0);
 
-lazy_static::lazy_static! {
-    static ref SELECTED_MODE: Arc<RwLock<PlayMode>> = Arc::new(RwLock::new("osu".to_owned()));
-}
-
 
 pub struct BeatmapSelectMenu {
     mode: PlayMode,
@@ -67,8 +63,10 @@ impl BeatmapSelectMenu {
         }
     }
 
-    fn set_selected_mode(&mut self, new_mode: PlayMode) {
-        // self.on_key_press(Key::Calculator, M)
+    fn set_selected_mode(&mut self, new_mode: PlayMode, game: &mut Game) {
+        self.mode = new_mode.clone();
+        BEATMAP_MANAGER.lock().update_diffs(new_mode.clone(), &ModManager::get());
+        self.on_key_press(Key::Calculator, game, KeyModifiers::default());
     }
 
     pub fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
@@ -507,6 +505,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             };
 
             if let Some(new_mode) = new_mode {
+                self.set_selected_mode(new_mode.clone(), game);
                 NotificationManager::add_text_notification(&format!("Mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
                 self.mode = new_mode;
                 self.load_scores();
@@ -547,6 +546,10 @@ impl Menu<Game> for BeatmapSelectMenu {
             speed = speed.clamp(SPEED_DIFF, 10.0);
             if speed != prev_speed {
                 ModManager::get().speed = speed;
+
+                // force diff recalc
+                self.set_selected_mode(self.mode.clone(), game);
+
                 NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE);
             }
         }
@@ -706,15 +709,23 @@ impl ScrollableItem for BeatmapsetItem {
     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
         // press this key if you want to recalculate things
         if key == Key::Calculator {
-            let playmode = SELECTED_MODE.read().clone();
-            let mods = ModManager::get();
+            let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
 
+            // get the diff values from the beatmap manager
             for i in self.beatmaps.iter_mut() {
-                i.diff = -1.0;
-                i.get_diff(playmode.clone(), &mods);
+                i.diff = BEATMAP_MANAGER.lock().get_by_hash(&i.beatmap_hash).unwrap().diff;
             }
-            
             self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
+
+            // reselect the proper index
+            for (i, map) in self.beatmaps.iter().enumerate() {
+                if map.beatmap_hash == previous_selected {
+                    self.selected_index = i;
+                    break
+                }
+            }
+
+            return false;
         }
 
         if !self.selected {return false}

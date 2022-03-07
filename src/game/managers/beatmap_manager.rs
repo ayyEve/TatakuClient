@@ -297,6 +297,25 @@ impl BeatmapManager {
             None => false
         }
     }
+
+    
+    // changers
+    pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
+        for i in self.beatmaps.iter_mut() {
+            i.diff = -1.0;
+            i.get_diff(playmode.clone(), mods);
+        }
+        for i in self.beatmaps.iter() {
+            if let Some(b) = self.beatmaps_by_hash.get_mut(&i.beatmap_hash){
+                b.diff = i.diff;
+            }
+            if let Some(current_beatmap) = &mut self.current_beatmap {
+                if i.beatmap_hash == current_beatmap.beatmap_hash {
+                    current_beatmap.diff = i.diff
+                }
+            }
+        }
+    }
 }
 
 
