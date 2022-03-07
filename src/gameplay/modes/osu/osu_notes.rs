@@ -223,7 +223,7 @@ impl HitObject for StandardNote {
 
         // timing circle
         let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
-        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scale, alpha, approach_circle_color));
+        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color));
 
 
         // combo number
@@ -422,6 +422,7 @@ pub struct StandardSlider {
 
     start_circle_image: Option<HitCircleImageHelper>,
     end_circle_image: Option<Image>,
+    slider_reverse_image: Option<Image>,
 
     hitwindow_miss: f32
 }
@@ -431,7 +432,7 @@ impl StandardSlider {
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
         let pos = scaling_helper.scale_coords(def.pos);
-        let visual_end_pos = scaling_helper.scale_coords(curve.smooth_lines.last().unwrap().p1);
+        let visual_end_pos = scaling_helper.scale_coords(curve.smooth_lines.last().unwrap().p2);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
@@ -466,6 +467,9 @@ impl StandardSlider {
                 Vector2::one() * radius,
             ));
         }
+
+        
+        let slider_reverse_image = SKIN_MANAGER.write().get_texture("reversearrow", true);
 
         let mut slider = Self {
             def,
@@ -514,7 +518,8 @@ impl StandardSlider {
             hitwindow_miss: 0.0,
 
             start_circle_image,
-            end_circle_image
+            end_circle_image,
+            slider_reverse_image
         };
     
         slider.make_dots();
@@ -849,7 +854,7 @@ impl HitObject for StandardSlider {
         if self.time > self.map_time {
             // timing circle
             let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
-            list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scale, alpha, approach_circle_color));
+            list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color));
 
             // combo number
             if let Some(combo) = &mut self.combo_image {
@@ -951,7 +956,23 @@ impl HitObject for StandardSlider {
         if let Some(end_circle) = &self.end_circle_image {
             let mut im = end_circle.clone();
             im.current_color.a = alpha;
-            list.push(Box::new(im))
+            list.push(Box::new(im));
+
+            if end_repeat {
+                if let Some(reverse_arrow) = &self.slider_reverse_image {
+                    let mut im = reverse_arrow.clone();
+                    im.current_pos = self.visual_end_pos;
+                    im.depth = self.circle_depth;
+                    im.current_color.a = alpha;
+                    im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+
+                    let l = self.curve.smooth_lines[self.curve.smooth_lines.len() - 1];
+                    im.current_rotation = Vector2::atan2(l.p1 - l.p2);
+
+                    list.push(Box::new(im));
+                }
+            }
+
         } else {
             list.push(Box::new(Circle::new(
                 color,
@@ -969,6 +990,21 @@ impl HitObject for StandardSlider {
         if let Some(start_circle) = &mut self.start_circle_image {
             start_circle.set_alpha(alpha);
             start_circle.draw(list);
+            
+            if start_repeat {
+                if let Some(reverse_arrow) = &self.slider_reverse_image {
+                    let mut im = reverse_arrow.clone();
+                    im.current_pos = self.pos;
+                    im.depth = self.circle_depth;
+                    im.current_color.a = alpha;
+                    im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+
+                    let l = self.curve.smooth_lines[0];
+                    im.current_rotation = Vector2::atan2(l.p2 - l.p1);
+
+                    list.push(Box::new(im));
+                }
+            }
         } else {
             list.push(Box::new(Circle::new(
                 self.color.alpha(alpha),
@@ -1599,7 +1635,6 @@ impl Default for SliderPath {
 struct HitCircleImageHelper {
     circle: Image,
     overlay: Image,
-
 }
 impl HitCircleImageHelper {
     fn new(pos: Vector2, scaling_helper: &Arc<ScalingHelper>, depth: f64, color: Color) -> Option<Self> {
