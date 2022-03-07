@@ -33,6 +33,8 @@ pub fn build_gamemodes() {
             }
         }
 
+        if let Some(true) = config.ignore {continue}
+
 
         // used for identification
         let internal_name = config.internal_name.unwrap_or(mode_folder.clone());
@@ -96,4 +98,5 @@ pub fn gamemode_display_name(mode: PlayMode) -> &'static str {{
 struct GameModeInfo {
     internal_name: Option<String>,
     display_name: Option<String>,
+    ignore: Option<bool>
 }
