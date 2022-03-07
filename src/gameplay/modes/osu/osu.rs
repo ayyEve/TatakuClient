@@ -957,6 +957,7 @@ impl GameMode for StandardGame {
         }
 
         self.draw_points.clear();
+        self.key_counter.reset();
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {

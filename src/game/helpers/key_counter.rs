@@ -56,6 +56,13 @@ impl KeyCounter {
         }
     }
 
+    pub fn reset(&mut self) {
+        for i in self.keys.values_mut() {
+            i.count = 0;
+            i.held = false;
+        }
+    }
+
 
     pub fn draw(&mut self, args: piston::RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let font = get_font("main");
