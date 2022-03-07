@@ -209,6 +209,7 @@ impl TaikoSlider {
             image.depth = time as f64 + 1.0;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
+            if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
         }
 
         let mut end_image = SKIN_MANAGER.write().get_texture("taiko-roll-end", true);
@@ -216,6 +217,7 @@ impl TaikoSlider {
             image.depth = time as f64;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
+            if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
         }
 
 
