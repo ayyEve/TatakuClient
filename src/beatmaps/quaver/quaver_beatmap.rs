@@ -46,8 +46,10 @@ impl QuaverBeatmap {
         s.hash = get_file_hash(&path).unwrap();
         s.path = path.clone();
 
-        let parent_dir = Path::new(&path).parent().unwrap();
-        s.audio_file = format!("{}/{}", parent_dir.to_str().unwrap(), s.audio_file);
+        let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
+        s.audio_file = format!("{}/{}", parent_dir, s.audio_file);
+        s.background_file = format!("{}/{}", parent_dir, s.background_file);
+        // println!("bg: {}", s.background_file);
 
         s
     }
