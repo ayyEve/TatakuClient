@@ -128,31 +128,20 @@ impl IngameManager {
             song: Audio::get_song().unwrap_or(create_empty_stream()), // temp until we get the audio file path
             #[cfg(feature="neb_audio")]
             song: Weak::new(),
-            
-            started: false,
-            completed: false,
-            replaying: false,
-            failed: false,
-            menu_background: false,
 
             lead_in_time: LEAD_IN_TIME,
             end_time: gamemode.end_time(),
 
             offset: CenteredTextHelper::new("Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
             global_offset: CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
-            
-            replay_frame: 0,
-            timing_point_index: 0,
-
+        
             font,
             combo_text_bounds: gamemode.combo_bounds(),
             timing_bar_things: gamemode.timing_bar_things(),
-            hitbar_timings: Vec::new(),
 
             background_game_settings: settings.background_game_settings.clone(),
 
             gamemode,
-            spectator_cache: Vec::new(),
             score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).ok(),
             combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "combo", Some('x'), 0).ok(),
             acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "score", Some('%'), 2).ok(),
@@ -206,7 +195,9 @@ impl IngameManager {
 
     #[inline]
     pub fn game_speed(&self) -> f32 {
-        if self.replaying {
+        if self.menu_background {
+            1.0 // TODO: 
+        } else if self.replaying {
             // if we're replaying, make sure we're using the score's speed
             self.replay.speed
         } else {

@@ -254,7 +254,7 @@ impl GameMode for TaikoGame {
                 Ok(s)
             }
 
-            _ => Err(crate::errors::BeatmapError::UnsupportedMode.into()),
+            _ => Err(BeatmapError::UnsupportedMode.into()),
         }
     }
 
@@ -388,7 +388,7 @@ impl GameMode for TaikoGame {
             // update index
             for i in 0..notes.len() {
                 self.note_index = i;
-                if !notes[i].was_hit() && notes[i].note_type() != NoteType::Slider {
+                if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
                     break;
                 }
             }
@@ -432,7 +432,6 @@ impl GameMode for TaikoGame {
         let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
         for (hit_type, hit_time) in self.hit_cache.iter() {
-
             if time - hit_time > lifetime_time {continue}
             let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
 

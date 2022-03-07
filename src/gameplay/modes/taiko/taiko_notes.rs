@@ -139,8 +139,7 @@ impl TaikoHitObject for TaikoNote {
 
     fn causes_miss(&self) -> bool {true}
 
-    fn get_points(&mut self, hit_type:HitType, time:f32, hit_windows:(f32,f32,f32)) -> ScoreHit {
-        let (hitwindow_miss, hitwindow_100, hitwindow_300) = hit_windows;
+    fn get_points(&mut self, hit_type:HitType, time:f32, (hitwindow_miss, hitwindow_100, hitwindow_300):(f32,f32,f32)) -> ScoreHit {
         let diff = (time - self.time).abs();
 
         if diff < hitwindow_300 {
@@ -183,7 +182,7 @@ impl TaikoHitObject for TaikoNote {
 #[derive(Clone)]
 pub struct TaikoSlider {
     pos: Vector2,
-    hit_dots:Vec<SliderDot>, // list of times the slider was hit at
+    hit_dots: Vec<SliderDot>, // list of times the slider was hit at
 
     time: f32, // ms
     end_time: f32, // ms
@@ -198,7 +197,6 @@ pub struct TaikoSlider {
 
     middle_image:Option<Image>,
     end_image: Option<Image>,
-
 }
 impl TaikoSlider {
     pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
@@ -368,7 +366,6 @@ impl SliderDot {
         }
     }
     pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
-        println!("drawing dot");
         list.push(Box::new(Circle::new(
             Color::YELLOW,
             -100.0,
