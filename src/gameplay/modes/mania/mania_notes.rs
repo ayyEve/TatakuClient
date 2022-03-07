@@ -71,9 +71,9 @@ impl HitObject for ManiaNote {
 
     fn reset(&mut self) {
         self.pos.y = 0.0;
+        self.hit_time = 0.0;
         self.hit = false;
         self.missed = false;
-        self.hit_time = 0.0;
     }
 }
 impl ManiaHitObject for ManiaNote {
@@ -236,6 +236,7 @@ impl HitObject for ManiaHold {
 
     fn reset(&mut self) {
         self.pos.y = 0.0;
+        self.holding = false;
         self.hold_starts.clear();
         self.hold_ends.clear();
     }

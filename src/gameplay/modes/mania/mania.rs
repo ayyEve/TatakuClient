@@ -471,6 +471,10 @@ impl GameMode for ManiaGame {
                 note.reset();
             }
         }
+        for i in 0..self.columns.len() {
+            self.column_indices[i] = 0;
+            self.column_states[i] = false;
+        }
         
         self.timing_point_index = 0;
 
