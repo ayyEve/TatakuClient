@@ -4,6 +4,10 @@ const TRAIL_CREATE_TIMER:f64 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
 const TRAIL_FADEOUT_TIMER_DURATION:f64 = 100.0;
 
+const TRAIL_CREATE_TIMER_IF_MIDDLE:f64 = 0.1;
+const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
+const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
+
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
@@ -29,6 +33,11 @@ pub struct CursorManager {
     pub cursor_trail_image: Option<Image>,
     pub trail_images: Vec<TransformGroup>,
     last_trail_time: f64,
+
+
+    trail_create_timer: f64,
+    trail_fadeout_timer_start: f64,
+    trail_fadeout_timer_duration: f64,
 }
 
 impl CursorManager {
@@ -45,6 +54,14 @@ impl CursorManager {
 
         let settings = get_settings!();
 
+
+        let has_middle = SKIN_MANAGER.write().get_texture("cursormiddle", false).is_some();
+        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
+            (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
+        } else {
+            (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
+        };
+
         Self {
             pos: Vector2::zero(),
             visible: true,
@@ -60,6 +77,10 @@ impl CursorManager {
             cursor_image,
             cursor_trail_image,
             last_trail_time: 0.0,
+
+            trail_create_timer, 
+            trail_fadeout_timer_start,
+            trail_fadeout_timer_duration,
         }
     }
 
@@ -88,12 +109,12 @@ impl CursorManager {
         // trail stuff
 
         // check if we should add a new trail
-        if self.cursor_trail_image.is_some() && game_time - self.last_trail_time >= TRAIL_CREATE_TIMER {
+        if self.cursor_trail_image.is_some() && game_time - self.last_trail_time >= self.trail_create_timer {
             if let Some(mut trail) = self.cursor_trail_image.clone() {
                 let mut g = TransformGroup::new();
                 g.transforms.push(Transformation::new(
-                    TRAIL_FADEOUT_TIMER_START, 
-                    TRAIL_FADEOUT_TIMER_DURATION, 
+                    self.trail_fadeout_timer_start, 
+                    self.trail_fadeout_timer_duration, 
                     TransformType::Transparency {start: 1.0, end: 0.0}, 
                     TransformEasing::EaseOutSine, 
                     game_time
