@@ -403,7 +403,7 @@ impl IngameManager {
         }
     }
     pub fn fail(&mut self) {
-        if self.failed || self.current_mods.nofail {return}
+        if self.failed || self.current_mods.nofail || self.current_mods.autoplay || self.menu_background {return}
         self.failed = true;
         self.failed_time = self.time();
     }
