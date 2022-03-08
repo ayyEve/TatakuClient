@@ -31,8 +31,8 @@ impl SkinHelper {
         }
     }
 
-    pub fn current_skin(&self) -> String {
-        self.current_skin.clone()
+    pub fn current_skin(&self) -> &String {
+        &self.current_skin
     }
 
     pub fn change_skin(&mut self, new_skin:String) {

@@ -18,13 +18,13 @@ pub struct SkinSelect {
 }
 impl SkinSelect {
     pub fn new() -> Self {
-        let current_skin = SKIN_MANAGER.read().current_skin();
+        let current_skin = SKIN_MANAGER.read().current_skin().clone();
         Self {
             dropdown: Dropdown::new(
                 Vector2::new(300.0, 200.0),
                 500.0,
                 20,
-                "Skin:",
+                "Skin",
                 Some(SkinDropdownable::Skin("default".to_owned())),
                 get_font("")
             ),
@@ -52,7 +52,7 @@ impl Dialog<Game> for SkinSelect {
     fn get_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Settings::window_size())}
     
     fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
-        self.draw_background(*depth, Color::PINK_LEMONADE, list);
+        self.draw_background(*depth, Color::WHITE, list);
         self.dropdown.draw(*args, Vector2::zero(), *depth, list)
     }
 
@@ -116,30 +116,24 @@ impl Dropdownable for SkinDropdownable {
 
 
 
-const CHECK_DURATION: f32 = 1000.0;
 pub struct SkinChangeHelper {
     current_skin: String,
-
-    interval: Instant
 }
 impl SkinChangeHelper {
     pub fn new() -> Self {
-        let current_skin = SKIN_MANAGER.read().current_skin();
+        let current_skin = SKIN_MANAGER.read().current_skin().clone();
         Self {
             current_skin,
-            interval: Instant::now()
         }
     }
     pub fn check(&mut self) -> bool {
         let mut changed = false;
 
-        if self.interval.elapsed().as_secs_f32() * 1000.0 > CHECK_DURATION {
-            let current_skin = SKIN_MANAGER.read().current_skin();
-            if self.current_skin != current_skin {
-                changed = true;
-                self.current_skin = current_skin;
-                self.interval = Instant::now();
-            }
+        let skin_manager = SKIN_MANAGER.read();
+        let current_skin = skin_manager.current_skin();
+        if &self.current_skin != current_skin {
+            changed = true;
+            self.current_skin = current_skin.clone();
         }
         changed
     }

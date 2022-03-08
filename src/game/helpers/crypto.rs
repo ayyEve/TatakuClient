@@ -1,5 +1,3 @@
-
-
 pub fn md5<B:AsRef<[u8]>>(body: B) -> String {
     format!("{:x}", md5::compute(body).to_owned())
 }
