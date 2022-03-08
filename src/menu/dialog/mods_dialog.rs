@@ -38,7 +38,7 @@ impl Dialog<Game> for ModDialog {
     fn get_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Settings::window_size())}
     
     fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
-        self.draw_background(depth + 0.00000001, list);
+        self.draw_background(depth + 0.00000001, Color::BLACK, list);
         for b in self.buttons.iter_mut() {
             b.draw(*args, Vector2::zero(), *depth, list)
         }

@@ -1,7 +1,7 @@
 #[allow(unused, dead_code)]
 use crate::prelude::*;
 
-const SKIN_FOLDER:&str = "./skins";
+pub const SKIN_FOLDER:&str = "./skins";
 const DEFAULT_SKIN:&str = "default";
 
 
@@ -29,6 +29,10 @@ impl SkinHelper {
             texture_cache: HashMap::new(),
             // audio_cache: HashMap::new(),
         }
+    }
+
+    pub fn current_skin(&self) -> String {
+        self.current_skin.clone()
     }
 
     pub fn change_skin(&mut self, new_skin:String) {

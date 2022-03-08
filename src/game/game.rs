@@ -481,6 +481,8 @@ impl Game {
 
                 // TODO: this is temp
                 if keys_up.contains(&Key::M) && mods.ctrl {self.add_dialog(Box::new(ModDialog::new()))}
+                // TODO: this too
+                if keys_up.contains(&Key::S) && mods.ctrl {self.add_dialog(Box::new(SkinSelect::new()))}
 
                 // check keys down
                 for key in keys_down {menu.on_key_press(key, self, mods)}
