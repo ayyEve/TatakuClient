@@ -43,7 +43,7 @@ impl BeatmapMeta {
             file_path,
             beatmap_hash,
             beatmap_version: 0,
-            mode: String::new(),
+            mode: "osu".to_owned(),
             artist: unknown.clone(),
             title: unknown.clone(),
             artist_unicode: unknown.clone(),
