@@ -22,6 +22,17 @@ pub trait Dialog<G> {
 
     fn string_function1(&mut self, _val: String) {}
     // fn string_function2(&mut self, _val: String) {}
+
+    fn draw_background(&mut self, depth: f64, list: &mut Vec<Box<dyn Renderable>>) {
+        let bounds = self.get_bounds();
+        list.push(Box::new(Rectangle::new(
+            Color::BLACK.alpha(0.8),
+            depth, 
+            bounds.pos,
+            bounds.size,
+            Some(Border::new(Color::BLACK, 2.0))
+        )))
+    }
 }
 
 // // toolbar options

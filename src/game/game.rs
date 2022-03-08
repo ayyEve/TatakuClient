@@ -478,6 +478,10 @@ impl Game {
                 // mouse scroll
                 if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self)}
 
+
+                // TODO: this is temp
+                if keys_up.contains(&Key::M) && mods.ctrl {self.add_dialog(Box::new(ModDialog::new()))}
+
                 // check keys down
                 for key in keys_down {menu.on_key_press(key, self, mods)}
                 // check keys up
