@@ -33,6 +33,7 @@ pub struct CursorManager {
     pub cursor_trail_image: Option<Image>,
     pub trail_images: Vec<TransformGroup>,
     last_trail_time: f64,
+    skin_change_helper: SkinChangeHelper,
 
 
     trail_create_timer: f64,
@@ -48,12 +49,11 @@ impl CursorManager {
         }
 
         let mut cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
-        if let Some(cursor) = &mut cursor_trail_image {
-            cursor.depth = (-f64::MAX) + 0.01;
+        if let Some(trail) = &mut cursor_trail_image {
+            trail.depth = (-f64::MAX) + 50.0;
         }
 
         let settings = get_settings!();
-
 
         let has_middle = SKIN_MANAGER.write().get_texture("cursormiddle", false).is_some();
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
@@ -69,6 +69,8 @@ impl CursorManager {
             replay_mode_changed: false,
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
+            
+            skin_change_helper: SkinChangeHelper::new(),
 
             left_pressed: false,
             right_pressed: false,
@@ -89,6 +91,23 @@ impl CursorManager {
         // TODO: this
         self.cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
         self.cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
+        let has_middle = SKIN_MANAGER.write().get_texture("cursormiddle", false).is_some();
+        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
+            (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
+        } else {
+            (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
+        };
+
+        self.trail_create_timer = trail_create_timer;
+        self.trail_fadeout_timer_start = trail_fadeout_timer_start;
+        self.trail_fadeout_timer_duration = trail_fadeout_timer_duration;
+
+        if let Some(trail) = &mut self.cursor_trail_image {
+            trail.depth = (-f64::MAX) + 50.0;
+        }
+        if let Some(cursor) = &mut self.cursor_image {
+            cursor.depth = -f64::MAX;
+        }
     }
 
     /// set replay mode.
@@ -106,6 +125,10 @@ impl CursorManager {
     }
 
     pub fn update(&mut self, game_time: f64) {
+        if self.skin_change_helper.check() {
+            self.reload_skin();
+        }
+
         // trail stuff
 
         // check if we should add a new trail
@@ -120,7 +143,6 @@ impl CursorManager {
                     game_time
                 ));
                 trail.current_pos = self.pos;
-                trail.depth = (-f64::MAX) + 0.01;
                 g.items.push(DrawItem::Image(trail));
 
                 self.trail_images.push(g);
