@@ -80,7 +80,7 @@ pub struct Settings {
 }
 impl Settings {
     fn load() -> Settings {
-        let s = match std::fs::read_to_string(SETTINGS_FILE) {
+        let mut s = match std::fs::read_to_string(SETTINGS_FILE) {
             Ok(b) => match serde_json::from_str(&b) {
                 Ok(settings) => settings,
                 Err(e) => {
@@ -95,6 +95,10 @@ impl Settings {
                 Settings::default()
             }
         };
+
+        // check password hashes
+        s.check_hashes();
+
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
         s.save();
@@ -137,6 +141,11 @@ impl Settings {
 
     pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}
     pub fn get_music_vol(&self) -> f32 {self.music_vol * self.master_vol}
+
+    pub fn check_hashes(&mut self) {
+        if self.osu_password.len() > 0 {self.osu_password = check_md5(self.osu_password.clone())}
+        if self.password.len() > 0 {self.password = check_sha512(self.password.clone())}
+    }
 }
 impl Default for Settings {
     fn default() -> Self {

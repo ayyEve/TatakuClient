@@ -19,5 +19,6 @@ test.log
 
 /csv
 /html
+/skins
 
 /src/gameplay/modes/mod.rs

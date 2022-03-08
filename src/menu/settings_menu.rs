@@ -206,6 +206,8 @@ impl SettingsMenu {
         for i in list {
             i.on_finalize(self, &mut settings)
         }
+
+        settings.check_hashes();
         settings.save();
 
         let menu = game.menus.get("main").unwrap().clone();

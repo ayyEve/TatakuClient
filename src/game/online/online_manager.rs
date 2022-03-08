@@ -128,14 +128,12 @@ impl OnlineManager {
                     s.writer = Some(writer);
                     let settings = get_settings!().clone();
 
-                    let password = sha512(settings.password);
-
                     // send login packet
                     send_packet!(s.writer, create_packet!(Client_UserLogin {
                         protocol_version: 1,
                         game: "Tataku\n0.1.0".to_owned(),
                         username: settings.username.clone(),
-                        password
+                        password: settings.password.clone()
                     }));
                 }
 

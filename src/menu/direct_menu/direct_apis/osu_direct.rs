@@ -29,9 +29,9 @@ impl DirectApi for OsuDirect {
         
         // url = "https://osu.ppy.sh/web/osu-search.php?u=[]&h=[]".to_owned();
         let url = format!(
-            "https://osu.ppy.sh/web/osu-search.php?u={}&h={:x}&m={}&p={}&s={}&r={}{}",
+            "https://osu.ppy.sh/web/osu-search.php?u={}&h={}&m={}&p={}&s={}&r={}{}",
             /*   username  */ settings.osu_username,
-            /*   password  */ md5::compute(&settings.osu_password),
+            /*   password  */ settings.osu_password,
             /*   playmode  */ playmode_to_u8(search_params.mode.unwrap_or("osu".to_owned())),
             /*   page num  */ search_params.page,
             /*   sort num  */ sort,
@@ -111,7 +111,7 @@ impl DirectDownloadable for OsuDirectDownloadable {
         
         let username = &settings.osu_username;
         let password = &settings.osu_password;
-        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={:x}", self.filename, username, md5::compute(password));
+        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
 
         perform_download(url, download_dir);
     }

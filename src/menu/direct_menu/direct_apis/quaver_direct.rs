@@ -94,7 +94,7 @@ impl DirectDownloadable for QuaverDirectDownloadable {
         
         let username = &settings.osu_username;
         let password = &settings.osu_password;
-        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={:x}", self.filename, username, md5::compute(password));
+        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
 
         perform_download(url, download_dir);
     }

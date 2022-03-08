@@ -43,8 +43,6 @@ impl SkinSelect {
                 self.current_skin = s.clone();
                 SKIN_MANAGER.write().change_skin(s);
             }
-        } else {
-            println!("KFLFE$EKOPFREKOONYBHCRFEGBHYJNUYBHTGRCFERBY^HU&^Y%T$R#E")
         }
     }
 }
@@ -113,5 +111,36 @@ impl Dropdownable for SkinDropdownable {
 
     fn from_string(s:String) -> Self {
         Self::Skin(s)
+    }
+}
+
+
+
+const CHECK_DURATION: f32 = 1000.0;
+pub struct SkinChangeHelper {
+    current_skin: String,
+
+    interval: Instant
+}
+impl SkinChangeHelper {
+    pub fn new() -> Self {
+        let current_skin = SKIN_MANAGER.read().current_skin();
+        Self {
+            current_skin,
+            interval: Instant::now()
+        }
+    }
+    pub fn check(&mut self) -> bool {
+        let mut changed = false;
+
+        if self.interval.elapsed().as_secs_f32() * 1000.0 > CHECK_DURATION {
+            let current_skin = SKIN_MANAGER.read().current_skin();
+            if self.current_skin != current_skin {
+                changed = true;
+                self.current_skin = current_skin;
+                self.interval = Instant::now();
+            }
+        }
+        changed
     }
 }
