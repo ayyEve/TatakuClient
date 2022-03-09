@@ -1,6 +1,3 @@
 #!/usr/bin/env bash
-
 export RUST_BACKTRACE=1
-cd taiko-rs-client
 cargo run --release
-cd ..

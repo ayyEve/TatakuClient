@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
 
 export RUST_BACKTRACE=1
-cd taiko-rs-client
 cargo run --release --no-default-features --features neb_audio
-cd ..
