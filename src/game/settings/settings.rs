@@ -77,6 +77,7 @@ pub struct Settings {
     // other misc
     pub last_git_hash: String,
     pub server_url: String,
+    pub current_skin: String
 }
 impl Settings {
     fn load() -> Settings {
@@ -194,7 +195,8 @@ impl Default for Settings {
             // other
             last_git_hash: String::new(),
 
-            server_url: "wss://taikors.ayyeve.xyz".to_owned()
+            server_url: "wss://taikors.ayyeve.xyz".to_owned(),
+            current_skin: "default".to_owned(),
         }
     }
 }

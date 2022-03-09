@@ -24,8 +24,9 @@ pub struct SkinHelper {
 
 impl SkinHelper {
     pub fn new() -> Self {
+        let current_skin = get_settings!().current_skin.clone();
         Self {
-            current_skin: DEFAULT_SKIN.to_owned(),
+            current_skin,
             texture_cache: HashMap::new(),
             // audio_cache: HashMap::new(),
         }
@@ -36,8 +37,10 @@ impl SkinHelper {
     }
 
     pub fn change_skin(&mut self, new_skin:String) {
-        self.current_skin = new_skin;
+        get_settings_mut!().current_skin = new_skin.clone();
+        self.current_skin = new_skin.clone();
         self.texture_cache.clear();
+
         // self.audio_cache.clear();
     }
 
