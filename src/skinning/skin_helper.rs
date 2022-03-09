@@ -11,6 +11,7 @@ lazy_static::lazy_static! {
 
 
 /// path to a texture file
+#[inline]
 fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
     format!("{}/{}/{}.png", SKIN_FOLDER, skin_name, tex_name)
 }
@@ -64,8 +65,9 @@ impl SkinHelper {
                         let (og_size_x, og_size_y) = tex.get_size();
                         Some(Image::new(Vector2::zero(), f64::MAX, tex, Vector2::new(og_size_x as f64, og_size_y as f64)))
                     }
-                    Err(e) => {
-                        println!("[Skin] Error loading default tex \"{}\": {}", name, e);
+                    Err(_e) => {
+                        // ignore loading default tex errors for now.
+                        // println!("[Skin] Error loading default tex \"{}\": {}", name, e);
                         None
                     }
                 };
