@@ -10,14 +10,12 @@ pub struct OsuDifficultyCalculator {
 }
 impl OsuDifficultyCalculator {
     fn calc_aim(&mut self, mods: &ModManager) -> TatakuResult<Vec<f64>> {
-        // 0th hand is the dominant hand.
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
+        let bucket_length = BUCKET_LENGTH * mods.speed;
         let mut aim_density = Vec::new();
         let mut aims = 0.0;
 
-        
-        let bucket_length = BUCKET_LENGTH * mods.speed;
 
         for i in 0..self.notes.len() - 1 {
             let note1 = &self.notes[i];
@@ -31,7 +29,7 @@ impl OsuDifficultyCalculator {
             }
 
             match note1.note_type {
-                NoteType::Note | NoteType::Slider  => {
+                NoteType::Note | NoteType::Slider => {
                     aims += note1.end_pos.distance(note2.pos);
                 },
 
