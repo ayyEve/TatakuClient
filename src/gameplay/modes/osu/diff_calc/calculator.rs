@@ -31,16 +31,14 @@ impl OsuDifficultyCalculator {
             }
 
             match note1.note_type {
-                NoteType::Note => {
+                NoteType::Note | NoteType::Slider  => {
                     aims += note1.end_pos.distance(note2.pos);
                 },
 
-                NoteType::Slider 
-                | NoteType::Spinner => {
-                },
+                NoteType::Spinner => {},
 
                 // Not relevant to this gamemode.
-                NoteType::Hold => panic!("hold in std map?!?!"),
+                NoteType::Hold => panic!("hold in osu map?!?!"),
             }
         }
 
@@ -73,7 +71,7 @@ impl OsuDifficultyCalculator {
             }
 
             match o.note_type {
-                NoteType::Note => {
+                NoteType::Note | NoteType::Slider => {
                     density += bucket_length / (o_time - last_note_time).max(1.0);
 
                     last_note_time = o.end_time;
@@ -102,11 +100,9 @@ impl OsuDifficultyCalculator {
                     // }
                 },
 
-                // Do not affect density.
-                NoteType::Slider => {}
 
                 // Not relevant to this gamemode.
-                NoteType::Hold => panic!("hold in taiko map?!?!"),
+                NoteType::Hold => panic!("hold in osu map?!?!"),
             }
         }
 
