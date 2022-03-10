@@ -50,6 +50,7 @@ pub struct Settings {
     pub catch_settings: CatchSettings,
     pub mania_settings: ManiaSettings,
     pub background_game_settings: BackgroundGameSettings,
+    pub last_played_mode: PlayMode,
 
     // window settings
     pub fps_target: u64,
@@ -172,6 +173,7 @@ impl Default for Settings {
             mania_settings: ManiaSettings {..Default::default()},
             background_game_settings: BackgroundGameSettings {..Default::default()},
             pause_on_focus_lost: true,
+            last_played_mode: "osu".to_owned(),
 
             // window settings
             fps_target: 144,
