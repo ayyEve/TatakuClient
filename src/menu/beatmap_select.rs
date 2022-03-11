@@ -43,7 +43,7 @@ impl BeatmapSelectMenu {
         let font = get_font("main");
 
         BeatmapSelectMenu {
-            mode: "osu".to_owned(),
+            mode: get_settings!().last_played_mode.clone(),
             no_maps_notif_sent: false,
 
             // mouse_down: false,
@@ -65,6 +65,7 @@ impl BeatmapSelectMenu {
 
     fn set_selected_mode(&mut self, new_mode: PlayMode, game: &mut Game) {
         self.mode = new_mode.clone();
+        get_settings_mut!().last_played_mode = new_mode.clone();
         BEATMAP_MANAGER.lock().update_diffs(new_mode.clone(), &ModManager::get());
         self.on_key_press(Key::Calculator, game, KeyModifiers::default());
     }
