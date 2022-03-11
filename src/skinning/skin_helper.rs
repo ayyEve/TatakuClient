@@ -72,8 +72,9 @@ impl SkinHelper {
             }
 
             if let Some(img) = &mut maybe_img {
-                img.initial_scale = Vector2::one();
-                img.current_scale = img.initial_scale;
+                img.set_size(img.tex_size());
+                // img.initial_scale = Vector2::one();
+                // img.current_scale = img.initial_scale;
             }
 
             self.texture_cache.insert(name.clone(), maybe_img);

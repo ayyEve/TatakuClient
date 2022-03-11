@@ -4,7 +4,7 @@ use opengl_graphics::{TextureSettings};
 
 #[derive(Clone)]
 pub struct Image {
-    size: Vector2,
+    pub size: Vector2,
     pub depth: f64,
     pub tex: Arc<Texture>,
 
@@ -54,7 +54,7 @@ impl Image {
             current_rotation,
             current_color,
 
-            size,
+            size: tex_size,
             depth,
             origin,
             tex: Arc::new(tex),

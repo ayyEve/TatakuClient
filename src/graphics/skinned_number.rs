@@ -49,6 +49,7 @@ impl SkinnedNumber {
             let tex = format!("{tn}-{i}");
             let mut tex2 = skin_manager.get_texture(&tex, true).ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
             tex2.origin = origin;
+            // tex2.size = tex2.tex_size();
             textures.push(tex2)
         }
 
@@ -160,7 +161,7 @@ impl Renderable for SkinnedNumber {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, mut context: Context) {
+    fn draw(&mut self, g: &mut GlGraphics, context: Context) {
         // let size = self.measure_text();
 
         // from image
@@ -177,6 +178,7 @@ impl Renderable for SkinnedNumber {
                 let mut t = t.clone();
                 t.current_pos = current_pos;
                 current_pos.x += t.size().x;
+                println!("size: {:?}", t.size());
 
                 t.draw(g, context);
             }
