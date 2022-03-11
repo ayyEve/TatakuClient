@@ -49,7 +49,9 @@ pub struct ManiaGame {
     column_count: u8,
 
     auto_helper: ManiaAutoHelper,
-    playfield: Arc<ManiaPlayfieldSettings>
+    playfield: Arc<ManiaPlayfieldSettings>,
+
+    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaGame {
     /// get the x_pos for `col`
@@ -60,8 +62,13 @@ impl ManiaGame {
         x_offset + self.playfield.x_offset + (self.playfield.column_width + self.playfield.column_spacing) * col as f64
     }
 
-    pub fn get_color(&self, _col:u8) -> Color {
-        Color::WHITE
+    pub fn get_color(&self, col:u8) -> Color {
+        match col {
+            0|3 => Color::BLUE_ORCHID,
+            1|2 => Color::ACID_GREEN,
+
+            _ => Color::WHITE
+        }
     }
 
     fn next_note(&mut self, col:usize) {
@@ -91,6 +98,78 @@ impl GameMode for ManiaGame {
         let playfields = &settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
 
+        let all_mania_skin_settings = &SKIN_MANAGER.read().current_skin_config().mania_settings;
+        let mut mania_skin_settings = None;
+
+        const DEFAULT_SNAP: Color = Color::SILVER;
+
+        const SNAP_COLORS:&[(f32, Color)] = &[
+            (0.0,        Color::RED),
+            (1.0,        Color::RED),
+            (1.0 / 2.0,  Color::BLUE),
+            (1.0 / 3.0,  Color::PURPLE),
+            (2.0 / 3.0,  Color::PURPLE),
+            (1.0 / 4.0,  Color::YELLOW),
+            (3.0 / 4.0,  Color::YELLOW),
+            (1.0 / 6.0,  Color::PINK),
+            (5.0 / 6.0,  Color::PINK),
+            (1.0 / 8.0,  Color::ORANGE),
+            (3.0 / 8.0,  Color::ORANGE),
+            (5.0 / 8.0,  Color::ORANGE),
+            (7.0 / 8.0,  Color::ORANGE),
+            (1.0 / 12.0, Color::AQUA),
+            (5.0 / 12.0, Color::AQUA),
+            (7.0 / 12.0, Color::AQUA),
+            (11.0 / 12.0, Color::AQUA),
+            (1.0 / 16.0, Color::GREEN),
+            (3.0 / 16.0, Color::GREEN),
+            (5.0 / 16.0, Color::GREEN),
+            (7.0 / 16.0, Color::GREEN),
+            (9.0 / 16.0, Color::GREEN),
+            (11.0 / 16.0, Color::GREEN),
+            (13.0 / 16.0, Color::GREEN),
+            (15.0 / 16.0, Color::GREEN),
+        ];
+        let timing_points = beatmap.get_timing_points();
+        let get_color = |time| {
+            let mut tp = &timing_points[0];
+            for t in timing_points.iter() {
+                if t.is_inherited() { continue }
+
+                if t.time <= time {
+                    tp = t
+                }
+                else { break }
+            }
+        
+            let offset = tp.time;
+            let length = tp.beat_length;
+
+            let threshold = 1.0 / length;
+
+            let diff = time - offset;
+            let snap = (diff / length) % 1.0;
+            
+            // temp/debug
+            let mut closest_snap = (0.0, 99999.0);
+
+            for (time, color) in SNAP_COLORS {
+                let diff = (snap - *time).abs();
+                if diff < 2.5 * threshold {
+                    return *color;
+                }
+                if diff < closest_snap.1 {
+                    closest_snap = (1.0 / *time, diff);
+                }
+            }
+            
+            // println!("threshold: {}", threshold);
+            // println!("snap: {} - {:.1}", snap,  1.0 / snap);
+            // println!("lowestdiff: {:.5} {:.5}", closest_snap.0, closest_snap.1);
+
+            DEFAULT_SNAP
+        };
+
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -110,24 +189,35 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
+                    mania_skin_settings
                 };
-        
+
+                for i in all_mania_skin_settings.iter() {
+                    if i.keys == s.column_count {
+                        s.mania_skin_settings = Some(Arc::new(i.clone()));
+                    }
+                }
+
                 // init defaults for the columsn
                 for _col in 0..s.column_count {
                     s.columns.push(Vec::new());
                     s.column_indices.push(0);
                     s.column_states.push(false);
                 }
-        
+
                 // add notes
                 for note in beatmap.notes.iter() {
                     if metadata.mode == "mania" {
                         let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
                         let x = s.col_pos(column);
+
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             note.time,
+                            column,
+                            get_color(note.time),
                             x,
-                            s.playfield.clone()
+                            s.playfield.clone(),
+                            s.mania_skin_settings.clone(),
                         )));
                     }
                 }
@@ -139,11 +229,14 @@ impl GameMode for ManiaGame {
                     s.columns[column as usize].push(Box::new(ManiaHold::new(
                         time,
                         end_time,
+                        column,
+                        get_color(time),
                         x,
-                        s.playfield.clone()
+                        s.playfield.clone(),
+                        s.mania_skin_settings.clone(),
                     )));
                 }
-                
+
                 for _slider in beatmap.sliders.iter() {
                     // let SliderDef {pos, time, slides, length, ..} = slider.to_owned();
                     // let time = time as u64;
@@ -165,7 +258,7 @@ impl GameMode for ManiaGame {
                     // let SpinnerDef {time, end_time, ..} = spinner;
                     //TODO
                 }
-            
+
                 // get end time
                 for col in s.columns.iter_mut() {
                     col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
@@ -173,11 +266,16 @@ impl GameMode for ManiaGame {
                         s.end_time = s.end_time.max(last_note.time());
                     }
                 }
-                
+
                 Ok(s)
             },
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
+                for i in all_mania_skin_settings.iter() {
+                    if i.keys == column_count {
+                        mania_skin_settings = Some(Arc::new(i.clone()));
+                    }
+                }
 
                 let mut s = Self {
                     columns: Vec::new(),
@@ -197,6 +295,7 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
+                    mania_skin_settings
                 };
                 
                 // init defaults for the columns
@@ -216,14 +315,20 @@ impl GameMode for ManiaGame {
                         s.columns[column as usize].push(Box::new(ManiaHold::new(
                             time,
                             end_time,
+                            column,
+                            get_color(time),
                             x,
-                            s.playfield.clone()
+                            s.playfield.clone(),
+                            s.mania_skin_settings.clone(),
                         )));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             time,
+                            column,
+                            get_color(time),
                             x,
-                            s.playfield.clone()
+                            s.playfield.clone(),
+                            s.mania_skin_settings.clone(),
                         )));
                     }
                 }
@@ -236,6 +341,7 @@ impl GameMode for ManiaGame {
                     }
                 }
                 
+        
                 Ok(s)
             },
             
@@ -609,14 +715,35 @@ impl GameMode for ManiaGame {
                 Some(Border::new(Color::GREEN, 1.2))
             )));
 
+
             // hit area/button state for this col
-            list.push(Box::new(Rectangle::new(
-                if self.column_states[col as usize] {self.get_color(col)} else {Color::TRANSPARENT_WHITE},
-                HIT_AREA_DEPTH,
-                Vector2::new(x, self.playfield.hit_y()),
-                self.playfield.note_size(),
-                Some(Border::new(Color::RED, self.playfield.note_border_width))
-            )));
+            let mut drew_image = false;
+            if let Some(settings) = &self.mania_skin_settings {
+                let map = if self.column_states[col as usize] {&settings.key_image_d} else {&settings.key_image};
+                
+                if let Some(path) = map.get(&col) {
+                    if let Some(img) = SKIN_MANAGER.write().get_texture(path, true) {
+                        let mut img = img.clone();
+                        img.origin = Vector2::zero();
+                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
+                        img.current_scale = self.playfield.note_size() / img.tex_size();
+
+                        list.push(Box::new(img));
+                        drew_image = true;
+                    }
+                }
+            }
+
+
+            if !drew_image {
+                list.push(Box::new(Rectangle::new(
+                    if self.column_states[col as usize] {self.get_color(col)} else {Color::TRANSPARENT_WHITE},
+                    HIT_AREA_DEPTH,
+                    Vector2::new(x, self.playfield.hit_y()),
+                    self.playfield.note_size(),
+                    Some(Border::new(Color::RED, self.playfield.note_border_width))
+                )));
+            }
         }
 
         // draw notes

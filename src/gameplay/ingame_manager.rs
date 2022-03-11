@@ -111,6 +111,7 @@ impl IngameManager {
 
         let health = HealthHelper::new(Some(metadata.hp));
 
+
         Self {
             metadata,
             timing_points,

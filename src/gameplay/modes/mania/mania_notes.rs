@@ -18,6 +18,9 @@ pub trait ManiaHitObject: HitObject {
 pub struct ManiaNote {
     pos: Vector2,
     time: f32, // ms
+    column: u8,
+    color: Color,
+
     hit_time: f32,
     hit: bool,
     missed: bool,
@@ -25,12 +28,16 @@ pub struct ManiaNote {
 
     alpha_mult: f32,
     playfield: Arc<ManiaPlayfieldSettings>,
+
+    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaNote {
-    pub fn new(time:f32, x:f64, playfield: Arc<ManiaPlayfieldSettings>) -> Self {
+    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
         Self {
             time, 
             speed: 1.0,
+            column,
+            color,
 
             hit_time: 0.0,
             hit: false,
@@ -38,13 +45,11 @@ impl ManiaNote {
             pos: Vector2::new(x, 0.0),
 
             alpha_mult: 1.0,
-            playfield
+            playfield,
+            mania_skin_settings
         }
     }
 
-    fn get_color(&mut self) -> Color {
-        Color::WHITE.alpha(self.alpha_mult)
-    }
 }
 impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
@@ -59,14 +64,35 @@ impl HitObject for ManiaNote {
         if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         if self.hit {return}
 
-        let note = Rectangle::new(
-            self.get_color(),
-            MANIA_NOTE_DEPTH,
-            self.pos,
-            self.playfield.note_size(),
-            Some(Border::new(Color::BLACK, self.playfield.note_border_width))
-        );
-        list.push(Box::new(note));
+        
+        let mut drew_image = false;
+        if let Some(settings) = &self.mania_skin_settings {
+            let map = &settings.note_image;
+            
+            if let Some(path) = map.get(&self.column) {
+                if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                    let mut img = img.clone();
+                    img.current_color = self.color;
+                    img.origin = Vector2::zero();
+                    img.current_pos = self.pos;
+                    img.current_scale = self.playfield.note_size() / img.tex_size();
+                    img.depth = MANIA_NOTE_DEPTH;
+
+                    list.push(Box::new(img));
+                    drew_image = true;
+                }
+            }
+        }
+
+        if !drew_image {
+            list.push(Box::new(Rectangle::new(
+                self.color,
+                MANIA_NOTE_DEPTH,
+                self.pos,
+                self.playfield.note_size(),
+                Some(Border::new(Color::BLACK, self.playfield.note_border_width))
+            )));
+        }
     }
 
     fn reset(&mut self) {
@@ -102,6 +128,8 @@ pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
+    column: u8,
+    color: Color,
 
     /// when the user started holding
     hold_starts: Vec<f32>,
@@ -114,14 +142,18 @@ pub struct ManiaHold {
 
     alpha_mult: f32,
     playfield: Arc<ManiaPlayfieldSettings>,
+    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaHold {
-    pub fn new(time:f32, end_time:f32, x:f64, playfield: Arc<ManiaPlayfieldSettings>) -> Self {
+    pub fn new(time:f32, end_time:f32, column: u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+
         Self {
             time, 
             end_time,
+            column,
             speed: 1.0,
             holding: false,
+            color,
 
             pos: Vector2::new(x, 0.0),
             hold_starts: Vec::new(),
@@ -129,7 +161,8 @@ impl ManiaHold {
             end_y: 0.0,
 
             alpha_mult: 1.0,
-            playfield
+            playfield,
+            mania_skin_settings
         }
     }
 }
@@ -155,11 +188,11 @@ impl HitObject for ManiaHold {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
+        let note_size = self.playfield.note_size();
 
         let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), self.playfield.note_border_width));
-        let color = Color::YELLOW.alpha(self.alpha_mult);
+        let color = self.color.alpha(self.alpha_mult); //Color::YELLOW.alpha(self.alpha_mult);
 
-        
         if self.playfield.upside_down {
             // start
             if self.pos.y > self.playfield.hit_y() {
@@ -183,27 +216,110 @@ impl HitObject for ManiaHold {
                 )));
             }
         } else {
-            // start
-            if self.pos.y < self.playfield.hit_y() {
-                list.push(Box::new(Rectangle::new(
-                    color,
-                    MANIA_NOTE_DEPTH,
-                    self.pos,
-                    self.playfield.note_size(),
-                    border.clone()
-                )));
+
+            // middle
+            if self.end_y < self.playfield.hit_y() {
+                let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
+
+                let mut drew_image = false;
+                if let Some(settings) = &self.mania_skin_settings {
+                    let map = &settings.note_image_l;
+                    
+                    if let Some(path) = map.get(&self.column) {
+                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+
+                            let mut img = img.clone();
+                            img.origin = Vector2::zero();
+                            img.current_color = Color::WHITE;
+                            img.current_pos = Vector2::new(self.pos.x, y);
+                            img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+                            img.depth = MANIA_NOTE_DEPTH;
+
+                            list.push(Box::new(img));
+                            drew_image = true;
+                        }
+                    }
+                }
+
+                if !drew_image {
+                    list.push(Box::new(Rectangle::new(
+                        color,
+                        MANIA_SLIDER_DEPTH,
+                        Vector2::new(self.pos.x, y),
+                        Vector2::new(self.playfield.column_width, self.end_y - y),
+                        border.clone()
+                    )));
+                }
             }
+
+            // start of hold
+            if self.pos.y < self.playfield.hit_y() {
+                let mut drew_image = false;
+                if let Some(settings) = &self.mania_skin_settings {
+                    let map = &settings.note_image_h;
+                    
+                    if let Some(path) = map.get(&self.column) {
+                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                            let mut img = img.clone();
+                            img.current_color = color;
+                            img.origin = Vector2::zero();
+                            img.current_pos = self.pos;
+                            img.current_scale = self.playfield.note_size() / img.tex_size();
+                            img.depth = MANIA_NOTE_DEPTH;
+
+                            list.push(Box::new(img));
+                            drew_image = true;
+                        }
+                    }
+                }
+
+                if !drew_image {
+                    list.push(Box::new(Rectangle::new(
+                        color,
+                        MANIA_NOTE_DEPTH,
+                        self.pos,
+                        self.playfield.note_size(),
+                        border.clone()
+                    )));
+                }
+            }
+
 
             // end
             if self.end_y < self.playfield.hit_y() {
-                list.push(Box::new(Rectangle::new(
-                    color,
-                    MANIA_NOTE_DEPTH,
-                    Vector2::new(self.pos.x, self.end_y),
-                    self.playfield.note_size(),
-                    border.clone()
-                )));
+                let mut drew_image = false;
+                if let Some(settings) = &self.mania_skin_settings {
+                    let map = &settings.note_image_t;
+                    
+                    if let Some(path) = map.get(&self.column) {
+                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                            let mut img = img.clone();
+                            img.origin = Vector2::zero();
+                            img.current_color = Color::WHITE;
+                            img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
+                            img.current_scale = self.playfield.note_size() / img.tex_size();
+                            img.current_scale.y *= -1.0;
+                            img.depth = MANIA_NOTE_DEPTH;
+
+                            list.push(Box::new(img));
+                            drew_image = true;
+                        }
+                    }
+                }
+
+                if !drew_image {
+                    list.push(Box::new(Rectangle::new(
+                        color,
+                        MANIA_NOTE_DEPTH,
+                        Vector2::new(self.pos.x, self.end_y + note_size.y),
+                        self.playfield.note_size(),
+                        border.clone()
+                    )));
+                }
             }
+        
+        
+        
         }
 
         // draw hold fragments
@@ -221,17 +337,6 @@ impl HitObject for ManiaHold {
         //     )));
         // }
 
-        // middle
-        if self.end_y < self.playfield.hit_y() {
-            let y = if self.holding {self.playfield.hit_y()} else {self.pos.y};
-            list.push(Box::new(Rectangle::new(
-                color,
-                MANIA_SLIDER_DEPTH,
-                Vector2::new(self.pos.x, y),
-                Vector2::new(self.playfield.column_width, self.end_y - y),
-                border.clone()
-            )));
-        }
     }
 
     fn reset(&mut self) {

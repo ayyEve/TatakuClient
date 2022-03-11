@@ -175,7 +175,7 @@ impl Game {
             Ok(list) => {
                 for wall_file in list {
                     if let Ok(file) = wall_file {
-                        if let Some(wallpaper) = load_image(file.path().to_str().unwrap()) {
+                        if let Some(wallpaper) = load_image(file.path().to_str().unwrap(), false) {
                             self.wallpapers.push(wallpaper)
                         }
                     }
@@ -781,7 +781,7 @@ impl Game {
     pub fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // let mut helper = BenchmarkHelper::new("loaad image");
 
-        self.background_image = load_image(&beatmap.image_filename);
+        self.background_image = load_image(&beatmap.image_filename, false);
 
         if self.background_image.is_none() && self.wallpapers.len() > 0 {
             self.background_image = Some(self.wallpapers[0].clone());

@@ -97,8 +97,8 @@ impl Default for TaikoSettings {
                 200.0,
                 0.0
             ],
-            don_color_hex: "#F00".to_owned(),
-            kat_color_hex: "#00F".to_owned(),
+            don_color_hex: "#E74721".to_owned(),
+            kat_color_hex: "#3797CA".to_owned(),
         
             don_color: Color::new(1.0, 0.0, 0.0, 1.0),
             kat_color: Color::new(0.0, 0.0, 1.0, 1.0),

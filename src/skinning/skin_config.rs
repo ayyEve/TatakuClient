@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 #[allow(unused, dead_code)]
+#[derive(Clone, Debug)]
 pub struct SkinSettings {
     // general
     pub name: String,
@@ -41,11 +42,11 @@ pub struct SkinSettings {
     pub combo_overlap: u8,
     
     // mania
-    mania_settings: Vec<ManiaSkinSettings>
+    pub mania_settings: Vec<ManiaSkinSettings>
 }
 #[allow(unused, dead_code)]
 impl SkinSettings {
-    fn from_file(path:String) -> TatakuResult<Self> {
+    pub fn from_file(path:String) -> TatakuResult<Self> {
         enum SkinSection {
             General,
             Colors, // colours
@@ -54,6 +55,13 @@ impl SkinSettings {
         }
 
         let mut s = Self::default();
+
+        // return defaults if skin does not exist
+        if !exists(&path) {
+            println!("[Skin] skin.ini missing, using defaults");
+            return Ok(s)
+        }
+
 
 
         // read lines
@@ -149,7 +157,7 @@ impl SkinSettings {
 
                     let len = s.mania_settings.len();
                     let s = &mut s.mania_settings[len - 1];
-                    
+
                     if key.starts_with("KeyImage") {
                         let num:u8 = key.trim_start_matches("KeyImage").trim_end_matches("D").parse().unwrap_or(10);
                         if num > 9 {continue}
@@ -177,6 +185,13 @@ impl SkinSettings {
                             s.note_image_t.insert(num, val);
                         } else {
                             s.note_image.insert(num, val);
+                        }
+                    } else {
+                        match &*key {
+                            "Keys" => s.keys = val.parse().unwrap_or_default(),
+                            
+
+                            _ => {}
                         }
                     }
 
@@ -246,7 +261,7 @@ fn col(b:&[u8]) -> Color {
     )
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct ManiaSkinSettings {
     pub keys: u8,
 

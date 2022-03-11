@@ -18,6 +18,7 @@ fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
 
 pub struct SkinHelper {
     current_skin: String,
+    current_skin_config: Arc<SkinSettings>,
 
     texture_cache: HashMap<String, Option<Image>>,
     // audio_cache: HashMap<String, Option<Sound>>,
@@ -26,11 +27,18 @@ pub struct SkinHelper {
 impl SkinHelper {
     pub fn new() -> Self {
         let current_skin = get_settings!().current_skin.clone();
+        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
+        
         Self {
             current_skin,
+            current_skin_config,
             texture_cache: HashMap::new(),
             // audio_cache: HashMap::new(),
         }
+    }
+
+    pub fn current_skin_config(&self) -> Arc<SkinSettings> {
+        self.current_skin_config.clone()
     }
 
     pub fn current_skin(&self) -> &String {
@@ -40,40 +48,35 @@ impl SkinHelper {
     pub fn change_skin(&mut self, new_skin:String) {
         get_settings_mut!().current_skin = new_skin.clone();
         self.current_skin = new_skin.clone();
+        self.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
         self.texture_cache.clear();
 
         // self.audio_cache.clear();
     }
 
     pub fn get_texture<N: AsRef<str>>(&mut self, name:N, allow_default:bool) -> Option<Image> {
-        let name = name.as_ref().to_owned();
-        if !self.texture_cache.contains_key(&name) {
-            let mut t = match opengl_graphics::Texture::from_path(get_tex_path(&name, &self.current_skin), &opengl_graphics::TextureSettings::new()) {
-                Ok(tex) => {
-                    let (og_size_x, og_size_y) = tex.get_size();
-                    Some(Image::new(Vector2::zero(), f64::MAX, tex, Vector2::new(og_size_x as f64, og_size_y as f64)))
-                }
-                Err(e) => {
-                    println!("[Skin] Error loading tex '{}': {}", get_tex_path(&name, &self.current_skin), e);
-                    None
-                }
-            };
+        self.get_texture_grayscale(name, allow_default, false)
+    }
 
-            if t.is_none() && allow_default {
-                t = match opengl_graphics::Texture::from_path(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), &opengl_graphics::TextureSettings::new()) {
-                    Ok(tex) => {
-                        let (og_size_x, og_size_y) = tex.get_size();
-                        Some(Image::new(Vector2::zero(), f64::MAX, tex, Vector2::new(og_size_x as f64, og_size_y as f64)))
-                    }
-                    Err(_e) => {
-                        // ignore loading default tex errors for now.
-                        // println!("[Skin] Error loading default tex \"{}\": {}", name, e);
-                        None
-                    }
-                };
+    
+
+    pub fn get_texture_grayscale<N: AsRef<str>>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
+        let name = name.as_ref().to_owned();
+
+        if !self.texture_cache.contains_key(&name) {
+            let mut maybe_img = load_image(get_tex_path(&name, &self.current_skin), grayscale);
+
+            if maybe_img.is_none() && allow_default {
+                println!("[Skin] Skin missing tex {}", name);
+                maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale);
             }
 
-            self.texture_cache.insert(name.clone(), t);
+            if let Some(img) = &mut maybe_img {
+                img.initial_scale = Vector2::one();
+                img.current_scale = img.initial_scale;
+            }
+
+            self.texture_cache.insert(name.clone(), maybe_img);
         }
 
         self.texture_cache.get(&name).unwrap().clone()

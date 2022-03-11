@@ -1,6 +1,9 @@
 use crate::prelude::*;
 use rusqlite::Connection;
 
+mod difficulty_database;
+pub use difficulty_database::*;
+
 mod score_database;
 pub use score_database::*;
 

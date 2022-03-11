@@ -47,7 +47,7 @@ pub fn exists<P: AsRef<Path>>(path: P) -> bool {
 
 
 /// load an image file to an image struct
-pub fn load_image<T:AsRef<str>>(path: T) -> Option<Image> {
+pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
     let settings = opengl_graphics::TextureSettings::new();
     // helper.log("settings made", true);
 
@@ -58,7 +58,24 @@ pub fn load_image<T:AsRef<str>>(path: T) -> Option<Image> {
 
     match image::load_from_memory(&buf) {
         Ok(img) => {
-            let img = img.into_rgba8();
+            let mut img = img.into_rgba8();
+
+            if use_grayscale {
+                for i in img.pixels_mut() {
+                    let [r, g, b, _a] = &mut i.0;
+
+                    let rf = *r as f32 / 255.0;
+                    let gf = *g as f32 / 255.0;
+                    let bf = *b as f32 / 255.0;
+
+                    let gray = 0.299 * rf + 0.587 * gf + 0.114 * bf;
+
+                    *r = (gray * 255.0) as u8;
+                    *g = (gray * 255.0) as u8;
+                    *b = (gray * 255.0) as u8;
+                }
+            }
+
             let tex = opengl_graphics::Texture::from_image(&img, &settings);
             Some(Image::new(Vector2::zero(), f64::MAX, tex, Settings::window_size()))
         }
