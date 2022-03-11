@@ -14,6 +14,8 @@ use crate::game::managers::NotificationManager;
 use super::instance::AudioInstance;
 use super::queue::{AudioQueueController, AudioQueue};
 
+use crate::prelude::*;
+
 const SOUND_LIST:&[&'static str] = &[
     "resources/audio/don.wav",
     "resources/audio/kat.wav",

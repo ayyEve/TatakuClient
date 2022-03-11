@@ -307,6 +307,7 @@ impl SpectatorManager {
             game.queue_state_change(GameState::InMenu(menu));
             // resume song if paused
 
+            #[cfg(feature="bass_audio")]
             if let Some(song) = Audio::get_song() {
                 if song.get_playback_state() == Ok(PlaybackState::Paused) {
                     let _ = song.play(false);

@@ -95,9 +95,13 @@ impl MenuVisualization {
             
             self.check_ripple(time);
         } else if let Some(song) = Audio::get_song() {
+            #[cfg(feature="bass_audio")]
             if let Ok(pos) = song.get_position() {
                 self.check_ripple(pos as f32)
             }
+            
+            #[cfg(feature="neb_audio")] 
+            self.check_ripple(song.current_time())
         }
     }
 
@@ -125,7 +129,12 @@ impl Visualization for MenuVisualization {
 
         if self.data.len() < 3 {return}
 
+        
+        #[cfg(feature="bass_audio")]
         let val = self.data[3] as f64 / 500.0;
+        
+        #[cfg(feature="neb_audio")]
+        let val = self.data[3].1 as f64 / 500.0;
         self.current_inner_radius = f64::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;

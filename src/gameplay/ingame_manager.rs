@@ -251,7 +251,14 @@ impl IngameManager {
 
     // TODO: implement this properly, gamemode will probably have to handle some things too
     pub fn jump_to_time(&mut self, time: f32, skip_intro: bool) {
+        #[cfg(feature="bass_audio")]
         self.song.set_position(time as f64).unwrap();
+
+        #[cfg(feature="neb_audio")]
+        if let Some(song) = self.song.upgrade() {
+            song.set_position(time)
+        }
+
         if skip_intro {
             self.lead_in_time = 0.0;
         }
@@ -362,7 +369,7 @@ impl IngameManager {
                 Some(song) => {
                     song.set_position(0.0);
                     song.pause();
-                    song.set_playback_speed(self.game_speed());
+                    song.set_playback_speed(self.game_speed() as f64);
                 }
                 None => {
                     while let None = self.song.upgrade() {
@@ -466,12 +473,25 @@ impl IngameManager {
             let new_rate = f64::lerp(self.game_speed() as f64, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
 
             if new_rate <= 0.05 {
+                #[cfg(feature="bass_audio")]
                 self.song.pause().unwrap();
+            
+                #[cfg(feature="neb_audio")]
+                if let Some(song) = self.song.upgrade() {
+                    song.pause()
+                }
+
                 self.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
                 println!("show fail menu");
             } else {
+                #[cfg(feature="bass_audio")]
                 self.song.set_rate(new_rate).unwrap();
+
+                #[cfg(feature="neb_audio")]
+                if let Some(song) = self.song.upgrade() {
+                    song.set_playback_speed(new_rate as f64)
+                }
             }
 
             // put it back
