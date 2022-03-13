@@ -201,7 +201,7 @@ impl SpectatorManager {
 
         let mods:ModManager = serde_json::from_str(&mods).unwrap();
         // find the map
-        let mut beatmap_manager = BEATMAP_MANAGER.lock();
+        let mut beatmap_manager = BEATMAP_MANAGER.write();
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
                 beatmap_manager.set_current_beatmap(game, &map, false, false);

@@ -68,7 +68,7 @@ impl Dialog<Game> for BeatmapDialog {
         if self.delete_map.on_click(*pos, *button, *mods) {
             println!("delete map {}", self.target_map);
 
-            BEATMAP_MANAGER.lock().delete_beatmap(self.target_map.clone(), game);
+            BEATMAP_MANAGER.write().delete_beatmap(self.target_map.clone(), game);
             self.should_close = true;
         }
         true

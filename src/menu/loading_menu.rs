@@ -110,7 +110,7 @@ impl LoadingMenu {
             
             status.lock().loading_count = rows.len();
             // load from db
-            let mut lock = BEATMAP_MANAGER.lock();
+            let mut lock = BEATMAP_MANAGER.write();
             for meta in rows {
                 // verify the map exists
                 if !std::path::Path::new(&meta.file_path).exists() {
@@ -124,11 +124,11 @@ impl LoadingMenu {
         }
         
         // look through the songs folder to make sure everything is already added
-        BEATMAP_MANAGER.lock().initialized = true; // these are new maps
+        BEATMAP_MANAGER.write().initialized = true; // these are new maps
         status.lock().loading_count += folders.len();
 
         for f in folders {
-            BEATMAP_MANAGER.lock().check_folder(f);
+            BEATMAP_MANAGER.write().check_folder(f);
             status.lock().loading_done += 1;
         }
 
@@ -143,7 +143,7 @@ impl Menu<Game> for LoadingMenu {
             game.queue_state_change(crate::game::GameState::InMenu(menu));
 
             // select a map to load bg and intro audio from (TODO! add our own?)
-            let mut manager = BEATMAP_MANAGER.lock();
+            let mut manager = BEATMAP_MANAGER.write();
 
             if let Some(map) = manager.random_beatmap() {
                 manager.set_current_beatmap(game, &map, false, false);

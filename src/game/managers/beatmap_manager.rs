@@ -6,7 +6,9 @@ use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER: Arc<Mutex<BeatmapManager>> = Arc::new(Mutex::new(BeatmapManager::new()));
+    pub static ref BEATMAP_MANAGER: Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
+
+    pub static ref DIFFICULTIES: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
 pub struct BeatmapManager {
@@ -59,7 +61,7 @@ impl BeatmapManager {
                     folders.push(f.to_str().unwrap().to_owned());
                 });
 
-            for f in folders {BEATMAP_MANAGER.lock().check_folder(f)}
+            for f in folders {BEATMAP_MANAGER.write().check_folder(f)}
         }
 
     }

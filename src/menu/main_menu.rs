@@ -59,7 +59,7 @@ impl MainMenu {
         let settings = &get_settings!().background_game_settings;
         if !settings.enabled {return}
 
-        let lock = BEATMAP_MANAGER.lock();
+        let lock = BEATMAP_MANAGER.read();
         let map = match &lock.current_beatmap {
             Some(map) => map,
             None => return println!("manager no map")
@@ -128,18 +128,18 @@ impl Menu<Game> for MainMenu {
 
         if song_done {
             println!("song done");
-            let map = BEATMAP_MANAGER.lock().random_beatmap();
+            let map = BEATMAP_MANAGER.read().random_beatmap();
 
             // it should?
             if let Some(map) = map {
-                BEATMAP_MANAGER.lock().set_current_beatmap(g, &map, false, false);
+                BEATMAP_MANAGER.write().set_current_beatmap(g, &map, false, false);
                 self.setup_manager("update song done");
             }
         }
 
-        let maps = BEATMAP_MANAGER.lock().get_new_maps();
+        let maps = BEATMAP_MANAGER.write().get_new_maps();
         if maps.len() > 0 {
-            BEATMAP_MANAGER.lock().set_current_beatmap(g, &maps[maps.len() - 1], true, false);
+            BEATMAP_MANAGER.write().set_current_beatmap(g, &maps[maps.len() - 1], true, false);
             self.setup_manager("update new map");
         }
 
@@ -251,7 +251,7 @@ impl Menu<Game> for MainMenu {
         if !mods.alt {
             match key {
                 Left => {
-                    let mut manager = BEATMAP_MANAGER.lock();
+                    let mut manager = BEATMAP_MANAGER.write();
 
                     if manager.previous_beatmap(game) {
                         needs_manager_setup = true;
@@ -260,7 +260,7 @@ impl Menu<Game> for MainMenu {
                     }
                 }
                 Right => {
-                    let mut manager = BEATMAP_MANAGER.lock();
+                    let mut manager = BEATMAP_MANAGER.write();
 
                     if manager.next_beatmap(game) {
                         needs_manager_setup = true;
