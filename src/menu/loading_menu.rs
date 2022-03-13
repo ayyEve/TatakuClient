@@ -154,7 +154,7 @@ impl Menu<Game> for LoadingMenu {
 
     fn draw(&mut self, _args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
-        let font = get_font("main");
+        let font = get_font();
 
         // since this is just loading, we dont care about performance here
         let state = self.status.lock();

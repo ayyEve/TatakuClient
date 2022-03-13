@@ -152,7 +152,7 @@ struct ProcessedNotif {
 }
 impl ProcessedNotif {
     fn new(notification: Notification) -> Self {
-        let font = get_font("main");
+        let font = get_font();
         let window_size = Settings::window_size();
 
         let mut lines = Vec::new();

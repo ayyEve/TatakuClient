@@ -76,7 +76,7 @@ impl SettingsMenu {
                 $settings_type
             }
         }
-        let font = get_font("");
+        let font = get_font();
 
         macro_rules! add_item {
             ($text:expr, TextInput, $setting:expr) => {

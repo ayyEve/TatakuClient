@@ -27,7 +27,7 @@ impl ScoreMenu {
     pub fn new(score:&Score, beatmap: BeatmapMeta) -> ScoreMenu {
         let window_size = Settings::window_size();
         let hit_error = score.hit_error();
-        let font = get_font("");
+        let font = get_font();
         let back_button = MenuButton::back_button(window_size, font.clone());
 
         let graph = Graph::new(
@@ -87,7 +87,7 @@ impl ScoreMenu {
 impl Menu<Game> for ScoreMenu {
     fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
-        let font = get_font("main");
+        let font = get_font();
 
         let window_size = Settings::window_size();
 

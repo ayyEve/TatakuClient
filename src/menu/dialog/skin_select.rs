@@ -26,7 +26,7 @@ impl SkinSelect {
                 20,
                 "Skin",
                 Some(SkinDropdownable::Skin("default".to_owned())),
-                get_font("")
+                get_font()
             ),
             current_skin,
             should_close: false,

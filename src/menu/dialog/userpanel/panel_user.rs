@@ -41,7 +41,7 @@ impl Default for PanelUser {
 
 impl ScrollableItem for PanelUser {
     fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
-        let font = get_font("main");
+        let font = get_font();
         let pos = self.pos + pos;
 
         // bounding box

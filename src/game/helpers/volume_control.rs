@@ -58,7 +58,7 @@ impl VolumeControl {
 
         // draw the volume things if needed
         if self.vol_selected_time > 0 && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
-            let font = get_font("main");
+            let font = get_font();
             let settings = get_settings!();
             let window_size:Vector2 = settings.window_size.into();
 

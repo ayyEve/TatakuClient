@@ -41,7 +41,7 @@ impl FpsDisplay {
         self.frametime_timer = Instant::now();
     }
     pub fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
-        let font = get_font("main");
+        let font = get_font();
 
         let fps_elapsed = self.timer.elapsed().as_micros() as f64 / 1000.0;
         if fps_elapsed >= 100.0 {

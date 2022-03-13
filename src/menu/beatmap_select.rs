@@ -40,7 +40,7 @@ pub struct BeatmapSelectMenu {
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
         let window_size = Settings::window_size();
-        let font = get_font("main");
+        let font = get_font();
 
         BeatmapSelectMenu {
             mode: get_settings!().last_played_mode.clone(),
@@ -337,7 +337,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         let mut items: Vec<Box<dyn Renderable>> = Vec::new();
         // let mut counter: usize = 0;
         let depth: f64 = 5.0;
-        let font = get_font("main");
+        let font = get_font();
 
         // draw a bar on the top for the info
         let bar_rect = Rectangle::new(
@@ -753,7 +753,7 @@ impl ScrollableItem for BeatmapsetItem {
     }
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
-        let font = get_font("main");
+        let font = get_font();
         let meta = &self.beatmaps[0];
 
         // draw rectangle
@@ -848,7 +848,7 @@ pub struct LeaderboardItem {
 impl LeaderboardItem {
     pub fn new(score:Score) -> LeaderboardItem {
         let tag = score.username.clone();
-        let font = get_font("main");
+        let font = get_font();
 
         LeaderboardItem {
             pos: Vector2::zero(),

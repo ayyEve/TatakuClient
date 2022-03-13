@@ -108,7 +108,7 @@ impl StandardNote {
             pos,
             radius as u32,
             format!("{}", combo_num),
-            get_font("main")
+            get_font()
         ));
         combo_text.center_text(Rectangle::bounds_only(
             pos - Vector2::one() * radius / 2.0,
@@ -305,7 +305,7 @@ impl StandardHitObject for StandardNote {
             self.pos,
             self.radius as u32,
             format!("{}", self.combo_num),
-            get_font("main")
+            get_font()
         ));
         combo_text.center_text(Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
@@ -442,7 +442,7 @@ impl StandardSlider {
             pos,
             radius as u32,
             format!("{}", combo_num),
-            get_font("main")
+            get_font()
         ));
         combo_text.center_text(Rectangle::bounds_only(
             pos - Vector2::one() * radius / 2.0,
@@ -1207,7 +1207,7 @@ impl StandardHitObject for StandardSlider {
             self.pos,
             self.radius as u32,
             format!("{}", self.combo_num),
-            get_font("main")
+            get_font()
         ));
         combo_text.center_text(Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
@@ -1421,7 +1421,7 @@ impl HitObject for StandardSpinner {
             Vector2::zero(),
             30,
             format!("{:.0}rpm", rpm.abs()), // format!("{:.0}rpm", rpm.abs()),
-            get_font("main")
+            get_font()
         );
         txt.center_text(Rectangle::bounds_only(
             Vector2::new(0.0, self.pos.y + 50.0),

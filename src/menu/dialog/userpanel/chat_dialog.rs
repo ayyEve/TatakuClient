@@ -51,7 +51,7 @@ impl Chat {
             Vector2::new(chat_size.x, INPUT_HEIGHT), 
             "Chat: ", 
             "",
-            get_font("main"),
+            get_font(),
         );
         
         Self {
@@ -450,7 +450,7 @@ impl ChannelScroll {
             selected: false,
             pos: Vector2::zero(),
             size: Vector2::new(width, font_size as f64),
-            font: get_font("main"),
+            font: get_font(),
         }
     }
 }
@@ -489,7 +489,7 @@ impl MessageScroll {
             hover: false,
             pos: Vector2::zero(),
             size: Vector2::new(width, font_size as f64),
-            font: get_font("main"),
+            font: get_font(),
         }
     }
 }

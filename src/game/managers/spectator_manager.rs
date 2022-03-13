@@ -348,7 +348,7 @@ impl Drop for SpectatorManager {
 
 fn draw_banner(text:&str, list: &mut Vec<Box<dyn Renderable>>) {
     let window_size = Settings::window_size();
-    let font = get_font("main");
+    let font = get_font();
 
     let mut offset_text = Text::new(
         Color::BLACK,

@@ -17,7 +17,7 @@ pub struct PauseMenu {
 impl PauseMenu {
     pub fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
         let middle = Settings::window_size().x /2.0 - BUTTON_SIZE.x/2.0;
-        let font = get_font("main");
+        let font = get_font();
 
         let mut n = 0.0;
         let continue_button = MenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Continue", font.clone());

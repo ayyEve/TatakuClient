@@ -47,7 +47,7 @@ impl NormalDialog {
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, y_pos),
             BUTTON_SIZE,
             &text,
-            get_font("main"),
+            get_font(),
         );
         button.set_tag(&text);
         self.buttons.push(button);

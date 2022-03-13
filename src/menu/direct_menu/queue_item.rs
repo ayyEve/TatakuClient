@@ -38,7 +38,7 @@ impl ScrollableItem for DirectItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.item.clone())}
 
     fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
-        let font = get_font("main");
+        let font = get_font();
 
         list.push(Box::new(Rectangle::new(
             Color::WHITE,

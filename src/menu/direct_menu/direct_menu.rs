@@ -61,7 +61,7 @@ impl DirectMenu {
             selected: None,
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::zero(), Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font("main")),
+            search_bar: TextInput::new(Vector2::zero(), Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font()),
             current_api: Box::new(OsuDirect::new()),
 
             mode,
@@ -208,7 +208,7 @@ impl Menu<Game> for DirectMenu {
             )));
             
             let mut counter = 0.0;
-            let font = get_font("main");
+            let font = get_font();
 
             // downloading
             for i in self.downloading.iter() {

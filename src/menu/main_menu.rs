@@ -167,7 +167,7 @@ impl Menu<Game> for MainMenu {
             pos_offset,
             40,
             "Welcome to Tataku!".to_owned(),
-            get_font("main")
+            get_font()
         );
         welcome_text.center_text(Rectangle::bounds_only(Vector2::new(0.0, 30.0), Vector2::new(window_size.x , 50.0)));
         
@@ -400,7 +400,7 @@ impl MenuButton {
             Vector2::zero(),
             font_size,
             text.to_owned(),
-            get_font("main")
+            get_font()
         );
         txt.center_text(r);
 

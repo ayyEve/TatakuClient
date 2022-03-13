@@ -5,7 +5,7 @@ lazy_static::lazy_static! {
     static ref FALLBACK_FONT: Font = load_font("main_fallback");
 }
 
-pub fn get_font(_name:&str) -> Font {
+pub fn get_font() -> Font {
     MAIN_FONT.clone()
 }
 

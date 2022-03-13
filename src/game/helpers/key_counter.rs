@@ -65,7 +65,7 @@ impl KeyCounter {
 
 
     pub fn draw(&mut self, args: piston::RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        let font = get_font("main");
+        let font = get_font();
         let window_size:Vector2 = args.window_size.into();
 
         // let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {

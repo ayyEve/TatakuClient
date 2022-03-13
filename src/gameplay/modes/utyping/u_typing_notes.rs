@@ -249,7 +249,7 @@ impl HitObject for UTypingNote {
             self.pos,
             32,
             self.romaji.clone(), //self.text.clone(),
-            get_font("")
+            get_font()
         );
         t.center_text(Rectangle::bounds_only(self.pos - size / 2.0, size));
         list.push(Box::new(t))

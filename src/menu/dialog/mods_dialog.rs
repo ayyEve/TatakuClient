@@ -155,7 +155,7 @@ impl ScrollableItem for ModButton {
                 Vector2::zero(),
                 32,
                 self.mod_names[selected_mod].clone(),
-                get_font("main")
+                get_font()
             );
             text.center_text(Rectangle::bounds_only(
                 self.pos + pos_offset + Vector2::new(0.0, self.size.y * (2.0/3.0)), 

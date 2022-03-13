@@ -20,7 +20,7 @@ impl BeatmapDialog {
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f64 * (BUTTON_SIZE.y + Y_PADDING))),
             BUTTON_SIZE,
             "Delete Map",
-            get_font("main"),
+            get_font(),
         );
 
 

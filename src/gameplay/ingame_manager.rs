@@ -102,7 +102,7 @@ impl IngameManager {
 
         let settings = get_settings!();
         let timing_points = beatmap.get_timing_points();
-        let font = get_font("main");
+        let font = get_font();
         let hitsound_cache = HashMap::new();
         let current_mods = Arc::new(ModManager::get().clone());
 
@@ -1001,7 +1001,7 @@ impl Default for IngameManager {
             #[cfg(feature="neb_audio")]
             song: Weak::new(),
 
-            font: get_font("main"),
+            font: get_font(),
             combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
             timing_bar_things: (Vec::new(), (0.0, Color::WHITE)),
 
