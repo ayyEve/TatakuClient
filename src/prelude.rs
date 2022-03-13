@@ -13,6 +13,7 @@ pub use piston::MouseButton;
 
 // graphics imports
 pub use graphics::CharacterCache;
+pub use graphics::rectangle::Shape;
 
 // tokio imports
 pub use tokio::sync::OnceCell;

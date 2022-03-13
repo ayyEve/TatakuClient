@@ -18,6 +18,8 @@ pub struct Rectangle {
     pub origin: Vector2,
     context: Option<Context>,
 
+    pub shape: Shape,
+
 
     pub depth: f64,
     pub pos: Vector2,
@@ -26,7 +28,6 @@ pub struct Rectangle {
 }
 impl Rectangle {
     pub fn new(color: Color, depth: f64, pos: Vector2, size: Vector2, border: Option<Border>) -> Rectangle {
-
         let initial_pos = pos;
         let current_pos = pos;
         let initial_rotation = 0.0;
@@ -45,6 +46,7 @@ impl Rectangle {
             current_scale,
             initial_rotation,
             current_rotation,
+            shape: Shape::Square,
 
             depth,
             pos,
@@ -65,6 +67,15 @@ impl Rectangle {
         p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
     }
 }
+
+// chaining properties
+impl Rectangle {
+    pub fn shape(mut self, shape: Shape) -> Self {
+        self.shape = shape;
+        self
+    }
+}
+
 impl Renderable for Rectangle {
     fn get_depth(&self) -> f64 {self.depth}
     fn get_context(&self) -> Option<Context> {self.context}
@@ -72,6 +83,8 @@ impl Renderable for Rectangle {
 
     fn draw(&mut self, g: &mut GlGraphics, c: Context) {
         let mut r = graphics::Rectangle::new(self.current_color.into());
+        r.shape = self.shape;
+
         if let Some(b) = self.border {r.border = Some(b.into())}
 
         let pre_rotation = self.current_pos / self.current_scale + self.origin;

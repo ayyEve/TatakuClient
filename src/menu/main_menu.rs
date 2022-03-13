@@ -243,6 +243,10 @@ impl Menu<Game> for MainMenu {
 
         let mut needs_manager_setup = false;
 
+        if mods.ctrl && key == Key::N {
+            NotificationManager::add_text_notification("test notif", 4000.0, Color::CRYSTAL_BLUE);
+        }
+
         // check offset keys
         if let Some(manager) = self.background_game.as_mut() {
             manager.key_down(key, mods);
