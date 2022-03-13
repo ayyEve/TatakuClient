@@ -90,7 +90,19 @@ pub fn gamemode_display_name(mode: PlayMode) -> &'static str {{
 }}
     "#);
 
-    std::fs::write(gamemode_path.join(Path::new("mod.rs")), output_file).unwrap();
+
+    let path = gamemode_path.join(Path::new("mod.rs"));
+
+    // check if we should actually write the file
+    if let Ok(file) = std::fs::read(&path) {
+        if let Ok(str_file) = String::from_utf8(file) {
+            if str_file == output_file {
+                return
+            }
+        }
+    }
+
+    std::fs::write(path, output_file).unwrap();
 }
 
 

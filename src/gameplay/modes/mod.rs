@@ -2,6 +2,7 @@ use crate::prelude::*;
 mod mania;
 mod osu;
 mod taiko;
+mod utyping;
 
 pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
@@ -9,6 +10,7 @@ pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> Tatak
     "mania" => Box::new(mania::Game::new(&beatmap)?),
     "osu" => Box::new(osu::Game::new(&beatmap)?),
     "taiko" => Box::new(taiko::Game::new(&beatmap)?),
+    "utyping" => Box::new(utyping::Game::new(&beatmap)?),
         _ => return Err(TatakuError::GameMode(GameModeError::UnknownGameMode))
     };
 
@@ -20,6 +22,7 @@ pub fn calc_acc(score: &Score) -> f64 {
     "mania" => mania::calc_acc(score),
     "osu" => osu::calc_acc(score),
     "taiko" => taiko::calc_acc(score),
+    "utyping" => utyping::calc_acc(score),
         _ => score.accuracy,
     }
     // if the number is nan,infinity, etc, replace it with 1.0 (100%)
@@ -31,6 +34,7 @@ pub fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) 
     "mania" => mania::DiffCalc::new(map)?.calc(mods),
     "osu" => osu::DiffCalc::new(map)?.calc(mods),
     "taiko" => taiko::DiffCalc::new(map)?.calc(mods),
+    "utyping" => utyping::DiffCalc::new(map)?.calc(mods),
         _ => Ok(0.0)
     }
 }
@@ -40,6 +44,7 @@ pub fn gamemode_display_name(mode: PlayMode) -> &'static str {
     "mania" => "Mania",
     "osu" => "Osu",
     "taiko" => "Taiko",
+    "utyping" => "uTyping",
         _ => ""
     }
 }

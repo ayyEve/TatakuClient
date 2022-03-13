@@ -178,7 +178,6 @@ impl Renderable for SkinnedNumber {
                 let mut t = t.clone();
                 t.current_pos = current_pos;
                 current_pos.x += t.size().x;
-                println!("size: {:?}", t.size());
 
                 t.draw(g, context);
             }

@@ -3,10 +3,13 @@ use osu::OsuBeatmap;
 use adofai::AdofaiBeatmap;
 use quaver::QuaverBeatmap;
 
+use self::u_typing::UTypingBeatmap;
+
 pub mod osu;
 pub mod quaver;
 pub mod common;
 pub mod adofai;
+pub mod u_typing;
 
 
 pub enum Beatmap {
@@ -17,7 +20,9 @@ pub enum Beatmap {
     /// quaver file
     Quaver(quaver::QuaverBeatmap),
     /// adofai file
-    Adofai(adofai::AdofaiBeatmap)
+    Adofai(adofai::AdofaiBeatmap),
+    /// uTyping beatmap
+    UTyping(u_typing::UTypingBeatmap)
 }
 impl Beatmap {
     pub fn load<F:AsRef<Path>>(path: F) -> TatakuResult<Beatmap> {
@@ -25,9 +30,10 @@ impl Beatmap {
         if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned()))),
+            "osu" => Ok(Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned())?)),
             "qua" => Ok(Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned()))),
             "adofai" => Ok(Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))),
+            "txt" => Ok(Beatmap::UTyping(UTypingBeatmap::load(path.to_str().unwrap().to_owned())?)),
             
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -47,6 +53,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.hash(),
             Beatmap::Quaver(map) => map.hash(),
             Beatmap::Adofai(map) => map.hash(),
+            Beatmap::UTyping(map) => map.hash(),
         }
     }
 
@@ -56,6 +63,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.get_timing_points(),
             Beatmap::Quaver(map) => map.get_timing_points(),
             Beatmap::Adofai(map) => map.get_timing_points(),
+            Beatmap::UTyping(map) => map.get_timing_points(),
         }
     }
 
@@ -65,6 +73,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.get_beatmap_meta(),
             Beatmap::Quaver(map) => map.get_beatmap_meta(),
             Beatmap::Adofai(map) => map.get_beatmap_meta(),
+            Beatmap::UTyping(map) => map.get_beatmap_meta(),
         }
     }
 
@@ -74,6 +83,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.playmode(incoming),
             Beatmap::Quaver(map) => map.playmode(incoming),
             Beatmap::Adofai(map) => map.playmode(incoming),
+            Beatmap::UTyping(map) => map.playmode(incoming),
         }
     }
 
@@ -83,6 +93,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.slider_velocity_at(time),
             Beatmap::Quaver(map) => map.slider_velocity_at(time),
             Beatmap::Adofai(map) => map.slider_velocity_at(time),
+            Beatmap::UTyping(map) => map.slider_velocity_at(time),
         }
     }
 
@@ -92,6 +103,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.beat_length_at(time, allow_multiplier),
             Beatmap::Quaver(map) => map.beat_length_at(time, allow_multiplier),
             Beatmap::Adofai(map) => map.beat_length_at(time, allow_multiplier),
+            Beatmap::UTyping(map) => map.beat_length_at(time, allow_multiplier),
         }
     }
 
@@ -101,6 +113,7 @@ impl TatakuBeatmap for Beatmap {
             Beatmap::Osu(map) => map.control_point_at(time),
             Beatmap::Quaver(map) => map.control_point_at(time),
             Beatmap::Adofai(map) => map.control_point_at(time),
+            Beatmap::UTyping(map) => map.control_point_at(time),
         }
     }
 }

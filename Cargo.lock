@@ -2451,6 +2451,7 @@ dependencies = [
  "ayyeve-piston-ui",
  "bass-rs",
  "cpal",
+ "encoding_rs",
  "futures-util",
  "gl",
  "glfw",

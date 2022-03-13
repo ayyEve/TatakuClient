@@ -14,7 +14,7 @@ pub struct OsuBeatmap {
     pub holds: Vec<HoldDef>,
 }
 impl OsuBeatmap {
-    pub fn load(file_path:String) -> OsuBeatmap {
+    pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
         let parent_dir = Path::new(&file_path).parent().unwrap();
         let hash = crate::get_file_hash(&file_path).unwrap();
 
@@ -314,12 +314,12 @@ impl OsuBeatmap {
         // make sure we have the ar set
         beatmap.metadata.do_checks();
 
-        beatmap
+        Ok(beatmap)
     }
 
     pub fn from_metadata(metadata: &BeatmapMeta) -> OsuBeatmap {
         // load the betmap
-        let mut b = Self::load(metadata.file_path.clone());
+        let mut b = Self::load(metadata.file_path.clone()).unwrap();
         // overwrite the loaded meta with the old meta, this maintains calculations etc
         b.metadata = metadata.clone();
         b

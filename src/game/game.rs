@@ -384,6 +384,9 @@ impl Game {
                     // kb
                     for k in keys_down.iter() {manager.key_down(*k, mods)}
                     for k in keys_up.iter() {manager.key_up(*k)}
+                    if text.len() > 0 {
+                        manager.on_text(&text, &mods)
+                    }
 
                     // controller
                     for (c, b) in controller_down {

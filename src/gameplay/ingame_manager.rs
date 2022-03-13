@@ -926,6 +926,14 @@ impl IngameManager {
         gamemode.key_up(key, self);
         self.gamemode = gamemode;
     }
+    pub fn on_text(&mut self, text:&String, mods: &ayyeve_piston_ui::menu::KeyModifiers) {
+        if self.failed {return}
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.on_text(text, mods, self);
+        self.gamemode = gamemode;
+    }
+    
+    
     pub fn mouse_move(&mut self, pos:Vector2) {
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
@@ -1052,6 +1060,8 @@ pub trait GameMode {
 
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager);
     fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager);
+    fn on_text(&mut self, _text: &String, _mods: &KeyModifiers, _manager: &mut IngameManager) {}
+
     fn mouse_move(&mut self, _pos:Vector2, _manager:&mut IngameManager) {}
     fn mouse_down(&mut self, _btn:piston::MouseButton, _manager:&mut IngameManager) {}
     fn mouse_up(&mut self, _btn:piston::MouseButton, _manager:&mut IngameManager) {}
