@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-use crate::visualization::{MenuVisualization, Visualization};
-
 const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
 const Y_MARGIN: f64 = 20.0;
 const Y_OFFSET: f64 = 10.0;
@@ -432,7 +430,7 @@ impl MenuButton {
 
 
         const X_OFFSET:f64 = 10.0;
-        let radius = crate::visualization::initial_radius() * crate::visualization::SIZE_FACTOR + X_OFFSET;
+        let radius = visualization_initial_radius() * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
         let center = Settings::window_size() / 2.0;
 
         const ITEM_PADDING:usize = 2;

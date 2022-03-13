@@ -1,5 +1,5 @@
-mod visualization;
-mod menu_visualization;
+pub mod visualization;
+pub mod menu_visualization;
 
 
 pub use visualization::*;

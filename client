@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 export RUST_BACKTRACE=1
+mkdir game
+cd game
 cargo run --release

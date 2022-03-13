@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write};
 
 use super::prelude::*;
-use crate::DOWNLOADS_DIR;
+use crate::prelude::DOWNLOADS_DIR;
 
 
 /// how big a direct download item is

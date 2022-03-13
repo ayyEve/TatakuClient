@@ -10,7 +10,6 @@ const BUCKET_LENGTH:f32 = 500.0;
 
 
 pub struct TaikoDifficultyCalculator {
-    time_rate: f64,
     difficulty_hitobjects: Vec<DifficultyHitObject>,
     version_string: String,
 }
@@ -168,7 +167,6 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         });
 
         Ok(Self {
-            time_rate: 1.0,
             difficulty_hitobjects,
             version_string: String::new()
         })

@@ -1,21 +1,18 @@
 /target
 *.zip
 .vscode
-vgcore.*
 
 /downloads
-/fonts
 /resources
 /[Ss]ongs
 /replays
-taiko-rs.db
 tataku.db
 settings.json
 
 test-commits.rs
 commits.rs
 test.log
-
+/game
 
 /csv
 /html

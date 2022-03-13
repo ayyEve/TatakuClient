@@ -1,7 +1,5 @@
 use std::fs::read_dir;
 
-
-use crate::SONGS_DIR;
 use crate::prelude::*;
 /// helper for when starting the game. will load beatmaps, settings, etc from storage
 /// all while providing the user with its progress (relatively anyways)

@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 // include files
 mod game;
-mod menu;
+mod menus;
 mod errors;
 mod prelude;
 mod graphics;
@@ -11,13 +11,12 @@ mod beatmaps;
 mod gameplay;
 mod databases;
 pub mod commits;
-pub mod skinning;
-mod visualization;
 
 // folders
 pub const DOWNLOADS_DIR:&str = "downloads";
 pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
+pub const SKIN_FOLDER:&str = "./skins";
 
 // https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[

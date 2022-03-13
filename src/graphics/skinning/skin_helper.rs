@@ -1,7 +1,6 @@
 #[allow(unused, dead_code)]
 use crate::prelude::*;
 
-pub const SKIN_FOLDER:&str = "./skins";
 const DEFAULT_SKIN:&str = "default";
 
 

@@ -2,9 +2,9 @@ use crate::prelude::*;
 use super::{FFTEntry, Visualization};
 
 const CUTOFF:f32 = 0.1;
-pub const SIZE_FACTOR:f64 = 1.2;
+pub const VISUALIZATION_SIZE_FACTOR:f64 = 1.2;
 
-pub fn initial_radius() -> f64 {
+pub fn visualization_initial_radius() -> f64 {
     Settings::window_size().y / 6.0
 }
 
@@ -26,7 +26,7 @@ pub struct MenuVisualization {
 }
 impl MenuVisualization {
     pub fn new() -> Self {
-        let initial_inner_radius  = initial_radius();
+        let initial_inner_radius  = visualization_initial_radius();
         Self {
             rotation: 0.0,
             data: Vec::new(),
@@ -57,7 +57,7 @@ impl MenuVisualization {
                 Color::WHITE.alpha(0.5),
                 10.0,
                 Settings::window_size() / 2.0,
-                self.initial_inner_radius / SIZE_FACTOR,
+                self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR,
                 Some(Border::new(Color::WHITE, 2.0))
             )));
             group.ripple(0.0, duration, time as f64, 2.0, true, Some(0.5));
@@ -124,8 +124,8 @@ impl Visualization for MenuVisualization {
         let since_last = self.timer.elapsed().as_secs_f64();
         self.update_data();
 
-        let min = self.initial_inner_radius / SIZE_FACTOR;
-        let max = self.initial_inner_radius * SIZE_FACTOR;
+        let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
+        let max = self.initial_inner_radius * VISUALIZATION_SIZE_FACTOR;
 
         if self.data.len() < 3 {return}
 
