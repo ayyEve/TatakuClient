@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use super::MusicBox;
 
 const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
 const Y_MARGIN: f64 = 20.0;
@@ -18,7 +19,9 @@ pub struct MainMenu {
     background_game: Option<IngameManager>,
 
     selected_index: usize,
-    menu_visible: bool
+    menu_visible: bool,
+
+    music_box: MusicBox,
 }
 impl MainMenu {
     pub fn new() -> MainMenu {
@@ -47,7 +50,8 @@ impl MainMenu {
             visualization: MenuVisualization::new(),
             background_game: None,
             selected_index: 99,
-            menu_visible: false
+            menu_visible: false,
+            music_box: MusicBox::new()
         }
     }
 
@@ -91,6 +95,43 @@ impl MainMenu {
         self.exit_button.show(3, 4);
         self.menu_visible = true;
     }
+
+    fn interactables(&mut self, include_buttons: bool) -> Vec<&mut dyn ScrollableItem> {
+        if include_buttons {
+            vec![
+                &mut self.music_box,
+                &mut self.play_button,
+                &mut self.direct_button,
+                &mut self.settings_button,
+                &mut self.exit_button,
+            ]
+        } else {
+            vec![
+                &mut self.music_box,
+            ]
+        }
+    }
+
+    fn next(&mut self, game: &mut Game) -> bool {
+        let mut manager = BEATMAP_MANAGER.write();
+
+        if manager.next_beatmap(game) {
+            true
+        } else {
+            println!("no next");
+            false
+        }
+    }
+    fn previous(&mut self, game: &mut Game) -> bool {
+        let mut manager = BEATMAP_MANAGER.write();
+
+        if manager.previous_beatmap(game) {
+            true
+        } else {
+            println!("no prev");
+            false
+        }
+    }
 }
 impl Menu<Game> for MainMenu {
     fn on_change(&mut self, _into:bool) {
@@ -102,12 +143,10 @@ impl Menu<Game> for MainMenu {
     fn update(&mut self, g:&mut Game) {
         let mut song_done = false;
 
-        // run updates on the transforms
-        self.play_button.update();
-        self.direct_button.update();
-        self.settings_button.update();
-        self.exit_button.update();
-
+        // run updates on the interactables
+        for i in self.interactables(true) {
+            i.update()
+        }
 
         #[cfg(feature = "bass_audio")]
         match Audio::get_song() {
@@ -177,11 +216,10 @@ impl Menu<Game> for MainMenu {
         ));
         list.push(Box::new(welcome_text));
 
-        // draw buttons
-        self.play_button.draw(args, pos_offset, depth, &mut list);
-        self.direct_button.draw(args, pos_offset, depth, &mut list);
-        self.settings_button.draw(args, pos_offset, depth, &mut list);
-        self.exit_button.draw(args, pos_offset, depth, &mut list);
+        // draw interactables
+        for i in self.interactables(true) {
+            i.draw(args, pos_offset, depth, &mut list)
+        }
 
         // visualization
         let mid = window_size / 2.0;
@@ -198,7 +236,6 @@ impl Menu<Game> for MainMenu {
         if self.visualization.on_click(pos) {
             self.show_menu();
         }
-
 
         // switch to beatmap selection
         if self.play_button.on_click(pos, button, mods) {
@@ -227,13 +264,29 @@ impl Menu<Game> for MainMenu {
             game.queue_state_change(GameState::Closing);
             return;
         }
+
+        // anything else
+        for i in self.interactables(false) {
+            if i.on_click(pos, button, mods) {
+                break
+            }
+        }
+
+        if self.music_box.get_next_pending() {
+            self.next(game);
+            self.setup_manager("on_click next_pending")
+        }
+        if self.music_box.get_prev_pending() {
+            self.previous(game);
+            self.setup_manager("on_click prev_pending")
+        }
+
     }
 
     fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
-        self.play_button.check_hover(pos);
-        self.direct_button.check_hover(pos);
-        self.settings_button.check_hover(pos);
-        self.exit_button.check_hover(pos);
+        for i in self.interactables(true) {
+            i.on_mouse_move(pos)
+        }
     }
 
     fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
@@ -252,25 +305,8 @@ impl Menu<Game> for MainMenu {
 
         if !mods.alt {
             match key {
-                Left => {
-                    let mut manager = BEATMAP_MANAGER.write();
-
-                    if manager.previous_beatmap(game) {
-                        needs_manager_setup = true;
-                    } else {
-                        println!("no prev")
-                    }
-                }
-                Right => {
-                    let mut manager = BEATMAP_MANAGER.write();
-
-                    if manager.next_beatmap(game) {
-                        needs_manager_setup = true;
-                    } else {
-                        println!("no next")
-                    }
-                }
-
+                Left => needs_manager_setup |= self.previous(game),
+                Right => needs_manager_setup |= self.next(game),
                 _ => {}
             }
         }
@@ -297,6 +333,7 @@ impl Menu<Game> for MainMenu {
         if needs_manager_setup {
             self.setup_manager("key press");
         }
+
     }
 }
 impl ControllerInputMenu<Game> for MainMenu {
@@ -554,7 +591,6 @@ impl ScrollableItemGettersSetters for MenuButton {
         }
     }
     fn get_selectable(&self) -> bool {false}
-
 }
 impl ScrollableItem for MenuButton {
     fn update(&mut self) {
@@ -576,3 +612,4 @@ impl ScrollableItem for MenuButton {
         }
     }
 }
+

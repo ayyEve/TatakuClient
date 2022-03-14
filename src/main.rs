@@ -16,19 +16,26 @@ pub mod commits;
 pub const DOWNLOADS_DIR:&str = "downloads";
 pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
-pub const SKIN_FOLDER:&str = "./skins";
+pub const SKIN_FOLDER:&str = "skins";
 
 // https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
+
+    // default audio
     "resources/audio/don.wav",
     "resources/audio/kat.wav",
     "resources/audio/bigdon.wav",
     "resources/audio/bigkat.wav",
     "resources/audio/combobreak.mp3",
+
+    // icons
     "resources/icon-small.png",
     "resources/icon.png",
+
+    // fonts
     "resources/fonts/main.ttf",
     "resources/fonts/main_fallback.ttf",
+    "resources/fonts/font_awesome_6_regular.otf",
 ];
 
 const FIRST_MAPS: &[u32] = &[

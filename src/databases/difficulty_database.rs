@@ -7,15 +7,15 @@ async fn save(data: HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>) {
     match serde_json::to_string(&data) {
         Ok(serialized) => {
             match tokio::fs::write(DIFFS_FILE, serialized).await {
-                Ok(_) => println!("[diffs] saved."),
-                Err(e) => println!("error saving diffs: {}", e)
+                Ok(_) => println!("[Diffs] saved."),
+                Err(e) => println!("[Diffs] error saving diffs: {}", e)
             }
         }
-        Err(e) => println!("error serializing: {}", e)
+        Err(e) => println!("[Diffs] error serializing: {}", e)
     }
 }
 fn save_loop() {
-    println!("starting loop ======================================");
+    // println!("starting loop ======================================");
     tokio::spawn(async {
         loop {
             tokio::time::sleep(Duration::from_millis(TIMER)).await;

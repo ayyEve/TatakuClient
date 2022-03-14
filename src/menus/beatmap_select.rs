@@ -106,7 +106,8 @@ impl BeatmapSelectMenu {
         get_settings_mut!().last_played_mode = new_mode.clone();
 
         // recalc diffs
-        BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &ModManager::get());
+        let mod_manager = ModManager::get().clone();
+        BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &mod_manager);
         
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
@@ -223,7 +224,7 @@ impl BeatmapSelectMenu {
         vec![
             &mut self.playmode_dropdown,
             &mut self.sort_by_dropdown,
-            &mut self.search_text
+            &mut self.search_text,
         ]
     }
 }
@@ -1090,3 +1091,6 @@ impl Dropdownable for PlayModeDropdown {
         Self::Mode(s)
     }
 }
+
+
+
