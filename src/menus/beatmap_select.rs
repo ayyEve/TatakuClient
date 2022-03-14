@@ -177,7 +177,11 @@ impl BeatmapSelectMenu {
 impl Menu<Game> for BeatmapSelectMenu {
     fn update(&mut self, game:&mut Game) {
         self.search_text.set_selected(true); // always have it selected
+        let old_text = self.search_text.get_text();
         self.search_text.update();
+        if old_text != self.search_text.get_text() {
+            self.refresh_maps(&mut BEATMAP_MANAGER.write());
+        }
 
         {
             let mut lock = BEATMAP_MANAGER.write();
@@ -420,6 +424,10 @@ impl Menu<Game> for BeatmapSelectMenu {
             return;
         }
 
+        if self.search_text.on_click(pos, button, mods) {
+            return;
+        }
+
         // check if leaderboard item was clicked
         if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
             // score display
@@ -455,7 +463,12 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         // self.beatmap_scroll.refresh_layout();
     }
+    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _game:&mut Game) {
+        self.search_text.on_click_release(pos, button);
+    }
+    
     fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+        self.search_text.on_mouse_move(pos);
         self.back_button.on_mouse_move(pos);
         self.beatmap_scroll.on_mouse_move(pos);
         self.leaderboard_scroll.on_mouse_move(pos);
@@ -500,7 +513,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             let new_mode = match key {
                 D1 => Some("osu".to_owned()),
                 D2 => Some("taiko".to_owned()),
-                D3 => Some("catch".to_owned()),
+                // D3 => Some("catch".to_owned()),
                 D4 => Some("mania".to_owned()),
                 _ => None
             };
@@ -572,6 +585,10 @@ impl Menu<Game> for BeatmapSelectMenu {
         if self.search_text.get_text() != old_text {
             self.refresh_maps(&mut BEATMAP_MANAGER.write());
         }
+    }
+
+    fn on_key_release(&mut self, key:piston::Key, game:&mut Game) {
+        self.search_text.on_key_release(key);
     }
 
     fn on_text(&mut self, text:String) {

@@ -476,6 +476,11 @@ impl Game {
                     // game.start_map() can happen here, which needs &mut self
                     menu.on_click(mouse_pos, b, mods, self);
                 }
+                for b in mouse_up { 
+                    // game.start_map() can happen here, which needs &mut self
+                    menu.on_click_release(mouse_pos, b, self);
+                }
+
                 // mouse move
                 if mouse_moved {menu.on_mouse_move(mouse_pos, self)}
                 // mouse scroll

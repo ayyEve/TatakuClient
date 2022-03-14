@@ -57,7 +57,7 @@ impl TaikoSettings {
     }
 
     pub fn get_playfield(&self, width: f64, kiai: bool) -> Rectangle {
-        let height = self.note_radius * self.hit_area_radius_mult.max(self.big_note_multiplier) * 2.0 + self.playfield_height_padding;
+        let height = self.note_radius * self.big_note_multiplier * 2.0 + self.playfield_height_padding;
         Rectangle::new(
             [0.2, 0.2, 0.2, 1.0].into(),
             f64::MAX - 4.0,
