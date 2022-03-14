@@ -17,7 +17,6 @@ const LEADERBOARD_ITEM_SIZE: Vector2 = Vector2::new(200.0, 50.0);
 
 
 pub struct BeatmapSelectMenu {
-    mode: PlayMode,
     
     current_scores: HashMap<String, Arc<Mutex<Score>>>,
     beatmap_scroll: ScrollableArea,
@@ -35,15 +34,38 @@ pub struct BeatmapSelectMenu {
     search_text: TextInput,
     no_maps_notif_sent: bool,
 
-    sort_method: SortBy
+    sort_method: SortBy,
+    mode: PlayMode,
+
+    sort_by_dropdown: Dropdown<SortBy>,
+    playmode_dropdown: Dropdown<PlayModeDropdown>,
 }
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
         let window_size = Settings::window_size();
         let font = get_font();
 
+        let sort_by = SortBy::Title;
+        let sort_by_dropdown = Dropdown::new(
+            Vector2::new(0.0, 5.0),
+            200.0,
+            15,
+            "Sort",
+            Some(sort_by),
+            font.clone()
+        );
+
+        let mode = get_settings!().last_played_mode.clone();
+        let playmode_dropdown = Dropdown::new(
+            Vector2::new(200.0, 5.0),
+            200.0,
+            15,
+            "Mode",
+            Some(PlayModeDropdown::Mode(mode.clone())),
+            font.clone()
+        );
+
         BeatmapSelectMenu {
-            mode: get_settings!().last_played_mode.clone(),
             no_maps_notif_sent: false,
 
             // mouse_down: false,
@@ -58,8 +80,12 @@ impl BeatmapSelectMenu {
             beatmap_scroll: ScrollableArea::new(Vector2::new(LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x, INFO_BAR_HEIGHT), Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), true),
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
             search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
-        
-            sort_method: SortBy::Difficulty,
+
+            mode,
+            sort_method: sort_by,
+
+            playmode_dropdown,
+            sort_by_dropdown,
         }
     }
 
@@ -67,6 +93,7 @@ impl BeatmapSelectMenu {
         self.mode = new_mode.clone();
         get_settings_mut!().last_played_mode = new_mode.clone();
         BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &ModManager::get());
+        self.beatmap_scroll.on_text(new_mode.clone());
         self.on_key_press(Key::Calculator, game, KeyModifiers::default());
     }
 
@@ -173,12 +200,24 @@ impl BeatmapSelectMenu {
         self.beatmap_scroll.refresh_layout();
         self.load_scores();
     }
+
+    fn interactables(&mut self) -> Vec<&mut dyn ScrollableItem> {
+        vec![
+            &mut self.playmode_dropdown,
+            &mut self.sort_by_dropdown,
+            &mut self.search_text
+        ]
+    }
 }
 impl Menu<Game> for BeatmapSelectMenu {
     fn update(&mut self, game:&mut Game) {
         self.search_text.set_selected(true); // always have it selected
         let old_text = self.search_text.get_text();
-        self.search_text.update();
+
+        for i in self.interactables() {
+            i.update();
+        }
+
         if old_text != self.search_text.get_text() {
             self.refresh_maps(&mut BEATMAP_MANAGER.write());
         }
@@ -341,7 +380,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         let mut items: Vec<Box<dyn Renderable>> = Vec::new();
         // let mut counter: usize = 0;
         let depth: f64 = 5.0;
-        let font = get_font();
+        // let font = get_font();
 
         // draw a bar on the top for the info
         let bar_rect = Rectangle::new(
@@ -353,28 +392,28 @@ impl Menu<Game> for BeatmapSelectMenu {
         );
         items.push(Box::new(bar_rect));
 
-        // draw selected map info
-        if let Some(meta) = &mut BEATMAP_MANAGER.write().current_beatmap {
-            // draw map name top-most left-most
-            items.push(Box::new(Text::new(
-                Color::BLACK,
-                -10.0,
-                Vector2::new(0.0, 5.0),
-                25,
-                meta.version_string(),
-                font.clone()
-            )));
+        // // draw selected map info
+        // if let Some(meta) = &mut BEATMAP_MANAGER.write().current_beatmap {
+        //     // draw map name top-most left-most
+        //     items.push(Box::new(Text::new(
+        //         Color::BLACK,
+        //         -10.0,
+        //         Vector2::new(0.0, 5.0),
+        //         25,
+        //         meta.version_string(),
+        //         font.clone()
+        //     )));
 
-            // diff string, under map string
-            items.push(Box::new(Text::new(
-                Color::BLACK,
-                -10.0,
-                Vector2::new(0.0, 35.0),
-                15,
-                meta.diff_string(self.mode.clone(), &ModManager::get()),
-                font.clone()
-            )));
-        }
+        //     // diff string, under map string
+        //     items.push(Box::new(Text::new(
+        //         Color::BLACK,
+        //         -10.0,
+        //         Vector2::new(0.0, 35.0),
+        //         15,
+        //         meta.diff_string(self.mode.clone(), &ModManager::get()),
+        //         font.clone()
+        //     )));
+        // }
 
         // beatmap scroll
         self.beatmap_scroll.draw(args, Vector2::zero(), 0.0, &mut items);
@@ -385,8 +424,10 @@ impl Menu<Game> for BeatmapSelectMenu {
         // back button
         self.back_button.draw(args, Vector2::zero(), 0.0, &mut items);
 
-        // filter text
-        self.search_text.draw(args, Vector2::zero(), 0.0, &mut items);
+        // everything else
+        for i in self.interactables() {
+            i.draw(args, Vector2::zero(), 0.0, &mut items);
+        }
 
         items
     }
@@ -424,9 +465,35 @@ impl Menu<Game> for BeatmapSelectMenu {
             return;
         }
 
-        if self.search_text.on_click(pos, button, mods) {
-            return;
+        for i in self.interactables() {
+            if i.on_click(pos, button, mods) {
+                break;
+            }
         }
+
+        // check if selected mode changed
+        let mut new_mode = None;
+        if let Some(PlayModeDropdown::Mode(selected_mode)) = &self.playmode_dropdown.value {
+            println!("playmode: {}", selected_mode);
+
+            if selected_mode != &self.mode {
+                new_mode = Some(selected_mode.clone())
+            }
+        }
+        if let Some(new_mode) = new_mode{
+            self.set_selected_mode(new_mode, game)
+        }
+
+        let mut map_refresh = false;
+        if let Some(sort_by) = &self.sort_by_dropdown.value {
+            if sort_by != &self.sort_method {
+                map_refresh = true;
+            }
+        }
+        if map_refresh {
+            self.refresh_maps(&mut BEATMAP_MANAGER.write())
+        }
+
 
         // check if leaderboard item was clicked
         if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
@@ -442,6 +509,16 @@ impl Menu<Game> for BeatmapSelectMenu {
             return;
         }
 
+
+        // find the previously selected item
+        let mut selected_index = None;
+        for (i, item) in self.beatmap_scroll.items.iter().enumerate() {
+            if item.get_selected() {
+                selected_index = Some(i);
+                break;
+            }
+        }
+
         // check if beatmap item was clicked
         if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods) {
             if button == MouseButton::Right {
@@ -452,6 +529,14 @@ impl Menu<Game> for BeatmapSelectMenu {
 
             self.select_map(game, clicked_hash, button == MouseButton::Left);
             return;
+        }
+
+        // if we got here, make sure a map is selected
+        if let Some(i) = selected_index {
+            if let Some(item) = self.beatmap_scroll.items.get_mut(i) {
+                item.set_selected(true);
+            }
+            self.beatmap_scroll.refresh_layout();
         }
         
         // else {
@@ -464,11 +549,15 @@ impl Menu<Game> for BeatmapSelectMenu {
         // self.beatmap_scroll.refresh_layout();
     }
     fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _game:&mut Game) {
-        self.search_text.on_click_release(pos, button);
+        for i in self.interactables() {
+            i.on_click_release(pos, button) 
+        }
     }
     
     fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
-        self.search_text.on_mouse_move(pos);
+        for i in self.interactables() {
+            i.on_mouse_move(pos) 
+        }
         self.back_button.on_mouse_move(pos);
         self.beatmap_scroll.on_mouse_move(pos);
         self.leaderboard_scroll.on_mouse_move(pos);
@@ -476,6 +565,10 @@ impl Menu<Game> for BeatmapSelectMenu {
     fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
         self.beatmap_scroll.on_scroll(delta);
         self.leaderboard_scroll.on_scroll(delta);
+
+        for i in self.interactables() {
+            i.on_scroll(delta);
+        }
     }
 
     fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
@@ -581,18 +674,28 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         // only refresh if the text changed
         let old_text = self.search_text.get_text();
-        self.search_text.on_key_press(key, mods);
+
+        for i in self.interactables() {
+            i.on_key_press(key, mods);
+        }
+
         if self.search_text.get_text() != old_text {
             self.refresh_maps(&mut BEATMAP_MANAGER.write());
         }
     }
 
-    fn on_key_release(&mut self, key:piston::Key, game:&mut Game) {
-        self.search_text.on_key_release(key);
+    fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
+        for i in self.interactables() {
+            i.on_key_release(key);
+        }
     }
 
     fn on_text(&mut self, text:String) {
-        self.search_text.on_text(text);
+        // DO NOT ACTIVAT FOR BEATMAP ITEMS!!
+        // on_text is used to change the playmode lol
+        for i in self.interactables() {
+            i.on_text(text.clone());
+        }
         self.refresh_maps(&mut BEATMAP_MANAGER.write());
     }
 }
@@ -643,7 +746,8 @@ struct BeatmapsetItem {
     
     beatmaps: Vec<BeatmapMeta>,
     selected_index: usize,
-    mouse_pos: Vector2
+    mouse_pos: Vector2,
+    playmode: String
 }
 impl BeatmapsetItem {
     fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
@@ -665,7 +769,8 @@ impl BeatmapsetItem {
             // tag,
 
             selected_index: 0,
-            mouse_pos: Vector2::zero()
+            mouse_pos: Vector2::zero(),
+            playmode
         }
     }
 
@@ -798,6 +903,7 @@ impl ScrollableItem for BeatmapsetItem {
             font.clone()
         )));
 
+
         // if selected, draw map items
         if self.selected {
             let mut pos = self.pos+pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING);
@@ -817,7 +923,7 @@ impl ScrollableItem for BeatmapsetItem {
             }
 
             for i in 0..self.beatmaps.len() {
-                let meta = &self.beatmaps[i];
+                let meta = &mut self.beatmaps[i];
 
                 // bounding rect
                 list.push(Box::new(Rectangle::new(
@@ -843,11 +949,24 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
+                // diff text
+                list.push(Box::new(Text::new(
+                    Color::WHITE,
+                    parent_depth + 4.0,
+                    pos + Vector2::new(5.0, 5.0 + 15.0),
+                    12,
+                    meta.diff_string(self.playmode.clone(), &ModManager::get()),
+                    font.clone()
+                )));
+
                 pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
             }
         }
     }
 
+    fn on_text(&mut self, playmode:String) {
+        self.playmode = playmode;
+    }
 }
 
 
@@ -916,10 +1035,30 @@ impl ScrollableItem for LeaderboardItem {
 }
 
 
-#[derive(Copy, Clone, Debug, ayyeve_piston_ui::prelude::Dropdown)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ayyeve_piston_ui::prelude::Dropdown)]
 pub enum SortBy {
     Artist,
     Title,
     Creator,
     Difficulty,
+}
+
+
+#[derive(Clone, Debug)]
+pub enum PlayModeDropdown {
+    Mode(PlayMode)
+}
+impl Dropdownable for PlayModeDropdown {
+    fn variants() -> Vec<Self> {
+        AVAILABLE_PLAYMODES.iter().map(|p|Self::Mode(p.to_owned().to_owned())).collect()
+    }
+
+    fn display_text(&self) -> String {
+        let Self::Mode(s) = self;
+        s.clone()
+    }
+
+    fn from_string(s:String) -> Self {
+        Self::Mode(s)
+    }
 }
