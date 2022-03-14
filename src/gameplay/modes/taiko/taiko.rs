@@ -58,6 +58,12 @@ impl TaikoGame {
 impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+    fn score_draw_start_pos(&self) -> Vector2 {
+        Vector2::new(
+            0.0,
+            self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0
+        )
+    }
 
     fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();

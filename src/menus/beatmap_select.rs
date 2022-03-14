@@ -594,7 +594,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             self.search_text.on_click_release(pos, button);
             return
         }
-        
+
 
         if let Some((_, was_drag, _, click_mods)) = self.mouse_down {
             if was_drag {
@@ -1114,8 +1114,6 @@ impl ScrollableItem for LeaderboardItem {
             self.font.clone()
         )));
     }
-
-    // fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {self.hover}
 }
 
 

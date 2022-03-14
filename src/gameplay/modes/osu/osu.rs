@@ -166,7 +166,6 @@ impl GameMode for StandardGame {
         match map {
             Beatmap::Osu(beatmap) => {
                 let std_settings = Arc::new(settings.clone());
-
                 let mut s = Self {
                     notes: Vec::new(),
                     mouse_pos:Vector2::zero(),
@@ -186,15 +185,17 @@ impl GameMode for StandardGame {
                     scaling_helper: scaling_helper.clone(),
                     cs: beatmap.metadata.cs,
         
-                    key_counter: KeyCounter::new(
-                        vec![
-                            (KeyPress::Left, "L".to_owned()),
-                            (KeyPress::Right, "R".to_owned()),
-                            (KeyPress::LeftMouse, "M1".to_owned()),
-                            (KeyPress::RightMouse, "M2".to_owned()),
-                        ],
-                        Vector2::zero()
-                    ),
+                    key_counter: if diff_calc_only {KeyCounter::default()} else {
+                            KeyCounter::new(
+                            vec![
+                                (KeyPress::Left, "L".to_owned()),
+                                (KeyPress::Right, "R".to_owned()),
+                                (KeyPress::LeftMouse, "M1".to_owned()),
+                                (KeyPress::RightMouse, "M2".to_owned()),
+                            ],
+                            Vector2::zero()
+                        )
+                    },
                     use_controller_cursor: false,
         
                     settings,
@@ -271,7 +272,6 @@ impl GameMode for StandardGame {
         
                     if let Some(note) = note {
                         let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
-        
                         s.notes.push(Box::new(StandardNote::new(
                             note.clone(),
                             ar,
@@ -284,7 +284,6 @@ impl GameMode for StandardGame {
                         )));
                     }
                     if let Some(slider) = slider {
-                        
                         // invisible note
                         if slider.curve_points.len() == 0 || slider.length == 0.0 {
                             let note = &NoteDef {

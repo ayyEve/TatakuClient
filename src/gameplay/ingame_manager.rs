@@ -1,3 +1,5 @@
+use prelude::helpers::score_helper::ScoreLoaderHelper;
+
 use crate::prelude::*;
 use crate::beatmaps::osu::hitobject_defs::HitSamples;
 
@@ -33,6 +35,9 @@ pub struct IngameManager {
     pub score: Score,
     pub replay: Replay,
 
+    pub score_list: Vec<Score>,
+    score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
+
     pub started: bool,
     pub completed: bool,
     pub replaying: bool,
@@ -67,6 +72,7 @@ pub struct IngameManager {
 
     /// (map.time, note.time - hit.time)
     pub hitbar_timings: Vec<(f32, f32)>,
+    score_draw_start_pos: Vector2,
 
     // draw helpers
     pub font: Font,
@@ -106,12 +112,12 @@ impl IngameManager {
         let hitsound_cache = HashMap::new();
         let current_mods = Arc::new(ModManager::get().clone());
 
-        let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode);
+        let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.speed;
 
         let health = HealthHelper::new(Some(metadata.hp));
 
-
+        let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
         Self {
             metadata,
             timing_points,
@@ -139,6 +145,7 @@ impl IngameManager {
             font,
             combo_text_bounds: gamemode.combo_bounds(),
             timing_bar_things: gamemode.timing_bar_things(),
+            score_draw_start_pos: gamemode.score_draw_start_pos(),
 
             background_game_settings: settings.background_game_settings.clone(),
 
@@ -147,9 +154,25 @@ impl IngameManager {
             combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "combo", Some('x'), 0).ok(),
             acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "score", Some('%'), 2).ok(),
 
+            score_list: Vec::new(),
+            score_loader,
             // initialize defaults for anything else not specified
             ..Self::default()
         }
+    }
+
+    fn all_scores(&self) -> Vec<&Score> {
+        let mut list = Vec::new();
+        for score in self.score_list.iter() {
+            list.push(score)
+        }
+
+        list.push(&self.score);
+
+        // sort by points
+        list.sort_by(|a,b| b.score.cmp(&a.score));
+
+        list
     }
 
     pub fn time(&mut self) -> f32 {
@@ -443,6 +466,15 @@ impl IngameManager {
             self.timing_point_index += 1;
         }
 
+        // check if scores have been loaded
+        if let Some(loader) = self.score_loader.clone() {
+            let loader = loader.read();
+            if loader.done {
+                self.score_list = loader.scores.clone();
+                self.score_loader = None;
+            }
+        }
+
         let mut gamemode = std::mem::take(&mut self.gamemode);
 
         // read inputs from replay if replaying
@@ -498,7 +530,6 @@ impl IngameManager {
             self.gamemode = gamemode;
             return;
         }
-
 
         // send map completed packets
         if self.completed {
@@ -689,6 +720,15 @@ impl IngameManager {
         // dont draw score, combo, etc if this is a menu bg
         if self.menu_background {return}
 
+        // draw scores
+        let mut base_pos = self.score_draw_start_pos;
+        for score in self.all_scores() {
+            let mut l = LeaderboardItem::new(score.clone());
+            l.set_pos(base_pos);
+            l.draw(args, Vector2::zero(), 0.0, list);
+            base_pos += Vector2::y_only(l.size().y + 5.0);
+        }
+
 
         // gamemode things
         if let Some(score) = &mut self.score_image {
@@ -788,11 +828,11 @@ impl IngameManager {
         )));
 
 
-        //TODO: rework this garbage lmao
+        // TODO: rework this garbage lmao
         // draw hit timings bar
         // draw hit timing colors below the bar
         let (windows, (miss, miss_color)) = &self.timing_bar_things;
-        //draw miss window first
+        // draw miss window first
         list.push(Box::new(Rectangle::new(
             *miss_color,
             17.1,
@@ -845,7 +885,6 @@ impl IngameManager {
 
         // draw spectators
         if self.spectator_cache.len() > 0 {
-
             const DEPTH:f64 = -1000.0;
 
             const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
@@ -1036,6 +1075,9 @@ impl Default for IngameManager {
             combo_image: None,
             score_image: None,
             acc_image: None,
+            score_list: Vec::new(),
+            score_loader: None,
+            score_draw_start_pos: Vector2::zero(),
         }
     }
 }
@@ -1048,6 +1090,7 @@ pub trait GameMode {
 
     fn end_time(&self) -> f32;
     fn combo_bounds(&self) -> Rectangle;
+    fn score_draw_start_pos(&self) -> Vector2 {Vector2::new(0.0, 200.0)}
     /// f64 is hitwindow, color is color for that window. last is miss hitwindow
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color));
     /// convert mouse pos to mode's playfield coords

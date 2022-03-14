@@ -102,8 +102,8 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "ayyeve-piston-ui"
-version = "0.4.2"
-source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#38716b1c03febe6f8e404aa155de36576ae5ff22"
+version = "0.4.3"
+source = "git+https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui#ac7b314fc0355a9f1dea15f91a2e50353f72c66a"
 dependencies = [
  "ayyeve-ui-proc-macros",
  "clipboard",
@@ -1086,9 +1086,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.119"
+version = "0.2.120"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bf2e165bb3457c8e098ea76f3e3bc9db55f87aa90d52d0e6be741470916aaa4"
+checksum = "ad5c14e80759d0939d013e6ca49930e59fc53dd8e5009132f76240c179380c09"
 
 [[package]]
 name = "libloading"
@@ -1934,9 +1934,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.9"
+version = "0.11.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87f242f1488a539a79bac6dbe7c8609ae43b7914b7736210f239a37cccb32525"
+checksum = "46a1f7aa4f35e5e8b4160449f51afc758f0ce6454315a9fa7d0d113e958c41eb"
 dependencies = [
  "base64",
  "bytes",
@@ -2410,9 +2410,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.86"
+version = "1.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a65b3f4ffa0092e9887669db0eae07941f023991ab58ea44da8fe8e2d511c6b"
+checksum = "1e59d925cf59d8151f25a3bedf97c9c157597c9df7324d32d68991cc399ed08b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2459,7 +2459,7 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.2.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#81f5c2c8d7fb8a4813c8ef63da433748c030c6c7"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#04e4faa9edf88d61fe9feee9175f57850cc5956e"
 dependencies = [
  "serde",
  "tataku-proc-macros",
@@ -3032,9 +3032,9 @@ checksum = "504a2476202769977a040c6364301a3f65d0cc9e3fb08600b2bda150a0488316"
 
 [[package]]
 name = "winreg"
-version = "0.7.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0120db82e8a1e0b9fb3345a539c478767c0048d842860994d96113d5b667bd69"
+checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi",
 ]

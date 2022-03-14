@@ -1,3 +1,5 @@
+use std::thread::ThreadId;
+
 #[allow(unused, dead_code)]
 use crate::prelude::*;
 
@@ -54,12 +56,19 @@ impl SkinHelper {
     }
 
     pub fn get_texture<N: AsRef<str>>(&mut self, name:N, allow_default:bool) -> Option<Image> {
+        // println!("thread: {:?}", std::thread::current().id());
+        // println!("[Skin] getting tex: '{}'", name.as_ref());
         self.get_texture_grayscale(name, allow_default, false)
     }
 
     
 
     pub fn get_texture_grayscale<N: AsRef<str>>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
+        if format!("{:?}", std::thread::current().id()) != "ThreadId(1)" {
+            return None
+        }
+
+
         let name = name.as_ref().to_owned();
 
         if !self.texture_cache.contains_key(&name) {

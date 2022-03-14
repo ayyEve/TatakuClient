@@ -25,7 +25,8 @@ pub fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
             beatmap_hash: r.get("map_hash")?,
             speed: r.get("speed").unwrap_or(1.0),
             hit_timings: Vec::new(),
-            replay_string: None
+            replay_string: None,
+            mods_string: r.get("mods_string").ok()
         };
 
         Ok(score)
@@ -52,7 +53,8 @@ pub fn save_score(s:&Score) {
             combo, max_combo,
             x50, x100, x300, geki, katu, xmiss,
             speed, 
-            version
+            version,
+            mods_string
         ) VALUES (
             '{}', '{}',
             '{}', '{}',
@@ -60,7 +62,8 @@ pub fn save_score(s:&Score) {
             {}, {},
             {}, {}, {}, {}, {}, {},
             {},
-            {}
+            {},
+            '{}'
         )", 
         s.beatmap_hash, s.hash(),
         s.username, s.playmode,
@@ -68,7 +71,8 @@ pub fn save_score(s:&Score) {
         s.combo, s.max_combo,
         s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
         s.speed,
-        s.version
+        s.version,
+        s.mods_string.clone().unwrap_or_default()
     );
     let mut s = db.prepare(&sql).unwrap();
     s.execute([]).unwrap();

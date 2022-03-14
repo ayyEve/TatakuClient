@@ -80,6 +80,7 @@ const SCORE_ENTRIES: &[(&str, &str)] = &[
     ("geki", "INTEGER"),
     ("speed", "INTEGER"),
     ("version", "INTEGER"),
+    ("mods_string", "TEXT"),
 ];
 const BEATMAP_ENTRIES: &[(&str, &str)] = &[
     ("bpm_min", "INTEGER"),

@@ -186,11 +186,13 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
     let mut text_size = Vector2::zero();
     let mut fonts = fonts.iter().map(|f|f.lock()).collect::<Vec<_>>();
 
+
     // let block_char = '█';
     // let _character = font.character(font_size, block_char).unwrap();
 
     for ch in text.chars() {
         let mut character = None; //font_caches[0].character(font_size, ch)?;
+        
         for font in fonts.iter_mut() {
             if let Ok(c) = font.character(font_size, ch) {
                 character = Some(c);
@@ -217,6 +219,7 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
         text_size.x += character.advance_width();
         text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();
     }
+    if text == "1000" {println!("9")};
     
     text_size
 }

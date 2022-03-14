@@ -49,7 +49,6 @@ const FIRST_MAPS: &[u32] = &[
 #[tokio::main]
 async fn main() {
     let mut main_benchmark = BenchmarkHelper::new("main");
-
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
@@ -74,6 +73,11 @@ async fn main() {
         }
     }
 
+
+    // init fonts
+    get_font();
+    get_fallback_font();
+    get_font_awesome();
     
     // check if songs folder is empty
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {

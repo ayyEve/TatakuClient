@@ -75,7 +75,7 @@ pub struct StandardNote {
     scaling_helper: Arc<ScalingHelper>,
     
     /// combo num text cache
-    combo_text: Box<Text>,
+    combo_text: Option<Box<Text>>,
 
 
     /// current map time
@@ -102,24 +102,29 @@ impl StandardNote {
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let mut combo_text =  Box::new(Text::new(
-            Color::BLACK,
-            base_depth - 0.0000001,
-            pos,
-            radius as u32,
-            format!("{}", combo_num),
-            get_font()
-        ));
-        combo_text.center_text(Rectangle::bounds_only(
-            pos - Vector2::one() * radius / 2.0,
-            Vector2::one() * radius,
-        ));
+        let combo_text = if diff_calc_only {None} else {
+            let mut combo_text =  Box::new(Text::new(
+                Color::BLACK,
+                base_depth - 0.0000001,
+                pos,
+                radius as u32,
+                format!("{}", combo_num),
+                get_font()
+            ));
+            combo_text.center_text(Rectangle::bounds_only(
+                pos - Vector2::one() * radius / 2.0,
+                Vector2::one() * radius,
+            ));
+
+            Some(combo_text)
+        };
 
         
-        let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
+        let mut combo_image = if diff_calc_only {None} else {
+            SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?
-            combo_text.depth, 
-            combo_text.current_pos, 
+            combo_text.as_ref().unwrap().depth, 
+            combo_text.as_ref().unwrap().current_pos, 
             combo_num as f64,
             "default",
             None,
@@ -231,8 +236,8 @@ impl HitObject for StandardNote {
             combo.current_color.a = alpha;
             list.push(Box::new(combo.clone()));
         } else {
-            self.combo_text.color.a = alpha;
-            list.push(self.combo_text.clone());
+            self.combo_text.as_mut().unwrap().color.a = alpha;
+            list.push(self.combo_text.clone().unwrap());
         }
 
         // note
@@ -312,7 +317,7 @@ impl StandardHitObject for StandardNote {
             Vector2::one() * self.radius,
         ));
 
-        self.combo_text = combo_text;
+        self.combo_text = Some(combo_text);
     }
 
     
@@ -391,7 +396,7 @@ pub struct StandardSlider {
     alpha_mult: f32,
 
     /// combo text cache, probably not needed but whatever
-    combo_text: Box<Text>,
+    combo_text: Option<Box<Text>>,
     combo_image: Option<SkinnedNumber>,
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
@@ -436,26 +441,29 @@ impl StandardSlider {
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let mut combo_text =  Box::new(Text::new(
-            Color::BLACK,
-            circle_depth - 0.0000001,
-            pos,
-            radius as u32,
-            format!("{}", combo_num),
-            get_font()
-        ));
-        combo_text.center_text(Rectangle::bounds_only(
-            pos - Vector2::one() * radius / 2.0,
-            Vector2::one() * radius,
-        ));
+        let combo_text = if diff_calc_only {None} else {
+            let mut combo_text =  Box::new(Text::new(
+                Color::BLACK,
+                circle_depth - 0.0000001,
+                pos,
+                radius as u32,
+                format!("{}", combo_num),
+                get_font()
+            ));
+            combo_text.center_text(Rectangle::bounds_only(
+                pos - Vector2::one() * radius / 2.0,
+                Vector2::one() * radius,
+            ));
+            Some(combo_text)
+        };
 
         let start_circle_image = if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color)};
         let end_circle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("sliderendcircle", true)};
 
         let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?
-            combo_text.depth, 
-            combo_text.current_pos, 
+            combo_text.as_ref().unwrap().depth, 
+            combo_text.as_ref().unwrap().current_pos, 
             combo_num as f64,
             "default",
             None,
@@ -861,8 +869,8 @@ impl HitObject for StandardSlider {
                 combo.current_color.a = alpha;
                 list.push(Box::new(combo.clone()));
             } else {
-                self.combo_text.color.a = alpha;
-                list.push(self.combo_text.clone());
+                self.combo_text.as_mut().unwrap().color.a = alpha;
+                list.push(self.combo_text.clone().unwrap());
             }
         } else if self.map_time < self.curve.end_time {
             // slider ball
@@ -1214,7 +1222,7 @@ impl StandardHitObject for StandardSlider {
             Vector2::one() * self.radius,
         ));
 
-        self.combo_text = combo_text;
+        self.combo_text = Some(combo_text);
         self.make_dots();
     }
 

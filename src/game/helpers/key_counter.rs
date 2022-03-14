@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
+#[derive(Default)]
 pub struct KeyCounter {
     pos: Vector2,
     keys: HashMap<KeyPress, KeyInfo>,
