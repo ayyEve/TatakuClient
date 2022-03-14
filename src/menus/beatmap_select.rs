@@ -28,6 +28,8 @@ pub struct BeatmapSelectMenu {
     back_button: MenuButton,
     // pending_refresh: bool,
 
+    score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
+
     /// is changing, update loop detected that it was changing, how long since it changed
     map_changing: (bool, bool, u32),
 
@@ -43,6 +45,8 @@ pub struct BeatmapSelectMenu {
 
     sort_by_dropdown: Dropdown<SortBy>,
     playmode_dropdown: Dropdown<PlayModeDropdown>,
+
+    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod>,
 
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
@@ -66,7 +70,7 @@ impl BeatmapSelectMenu {
 
         let mode = get_settings!().last_played_mode.clone();
         let playmode_dropdown = Dropdown::new(
-            Vector2::new(200.0, 5.0),
+            Vector2::new(205.0, 5.0),
             200.0,
             15,
             "Mode",
@@ -81,6 +85,16 @@ impl BeatmapSelectMenu {
         // tokio::spawn(async {
         //     BEATMAP_MANAGER.write().update_diffs(mode_clone, &ModManager::get());
         // });
+        
+        let leaderboard_method = SCORE_HELPER.read().current_method;
+        let leaderboard_method_dropdown = Dropdown::new(
+            Vector2::new(410.0, 5.0),
+            200.0, 
+            15,
+            "Leaderboard",
+            Some(leaderboard_method),
+            font.clone()
+        );
         
 
         BeatmapSelectMenu {
@@ -102,9 +116,11 @@ impl BeatmapSelectMenu {
             mode: mode.clone(),
             sort_method: sort_by,
 
+            score_loader: None,
+
             playmode_dropdown,
             sort_by_dropdown,
-
+            leaderboard_method_dropdown,
 
             mouse_down: None
         }
@@ -174,20 +190,11 @@ impl BeatmapSelectMenu {
     pub fn load_scores(&mut self) {
         // if nothing is selected, leave
         if let Some(map) = &BEATMAP_MANAGER.read().current_beatmap {
+            self.score_loader = Some(SCORE_HELPER.read().get_scores(&map.beatmap_hash, &map.check_mode_override(self.mode.clone())));
 
             // clear lists
             self.leaderboard_scroll.clear();
             self.current_scores.clear();
-
-            // load scores
-            let mut scores = get_scores(&map.beatmap_hash, map.check_mode_override(self.mode.clone()));
-            scores.sort_by(|a, b| b.score.cmp(&a.score));
-
-            // add scores to list
-            for s in scores.iter() {
-                self.current_scores.insert(s.username.clone(), Arc::new(Mutex::new(s.clone())));
-                self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned())));
-            }
         }
     }
 
@@ -233,8 +240,9 @@ impl BeatmapSelectMenu {
 
     fn interactables(&mut self) -> Vec<&mut dyn ScrollableItem> {
         vec![
-            &mut self.playmode_dropdown,
+            &mut self.leaderboard_method_dropdown,
             &mut self.sort_by_dropdown,
+            &mut self.playmode_dropdown,
             &mut self.search_text,
         ]
     }
@@ -263,6 +271,7 @@ impl BeatmapSelectMenu {
             self.set_selected_mode(new_mode, Some(game))
         }
 
+        // check sort by dropdown
         let mut map_refresh = false;
         if let Some(sort_by) = &self.sort_by_dropdown.value {
             if sort_by != &self.sort_method {
@@ -272,6 +281,18 @@ impl BeatmapSelectMenu {
         }
         if map_refresh {
             self.refresh_maps(&mut BEATMAP_MANAGER.write())
+        }
+
+        // check score dropdown
+        let mut score_refresh = false;
+        if let Some(leaderboard_method) = &self.leaderboard_method_dropdown.value {
+            if &SCORE_HELPER.read().current_method != leaderboard_method {
+                SCORE_HELPER.write().current_method = *leaderboard_method;
+                score_refresh = true;
+            }
+        }
+        if score_refresh {
+            self.load_scores()
         }
 
         
@@ -351,6 +372,24 @@ impl Menu<Game> for BeatmapSelectMenu {
             }
         }
 
+        // check load score 
+        if let Some(helper) = self.score_loader.clone() {
+            let helper = helper.read();
+            
+            if helper.done {
+                self.score_loader = None;
+
+                // load scores
+                let mut scores = helper.scores.clone();
+                scores.sort_by(|a, b| b.score.cmp(&a.score));
+
+                // add scores to list
+                for s in scores.iter() {
+                    self.current_scores.insert(s.username.clone(), Arc::new(Mutex::new(s.clone())));
+                    self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned())));
+                }
+            }
+        }
     
         #[cfg(feature="bass_audio")]
         match Audio::get_song() {
