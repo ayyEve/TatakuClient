@@ -65,6 +65,15 @@ impl BeatmapSelectMenu {
             Some(PlayModeDropdown::Mode(mode.clone())),
             font.clone()
         );
+        
+
+        // // update diffs
+        // // TODO: this shouldnt lock for too long, but theres probably a better place to put it
+        // let mode_clone = mode.clone();
+        // tokio::spawn(async {
+        //     BEATMAP_MANAGER.write().update_diffs(mode_clone, &ModManager::get());
+        // });
+        
 
         BeatmapSelectMenu {
             no_maps_notif_sent: false,
@@ -82,7 +91,7 @@ impl BeatmapSelectMenu {
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
             search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
 
-            mode,
+            mode: mode.clone(),
             sort_method: sort_by,
 
             playmode_dropdown,
@@ -90,7 +99,7 @@ impl BeatmapSelectMenu {
         }
     }
 
-    fn set_selected_mode(&mut self, new_mode: PlayMode, game: &mut Game) {
+    fn set_selected_mode(&mut self, new_mode: PlayMode, game: Option<&mut Game>) {
         // update values
         self.mode = new_mode.clone();
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
@@ -101,7 +110,9 @@ impl BeatmapSelectMenu {
         
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
-        self.on_key_press(Key::Calculator, game, KeyModifiers::default());
+        if let Some(game) = game {
+            self.on_key_press(Key::Calculator, game, KeyModifiers::default());
+        }
     }
 
     pub fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
@@ -485,8 +496,8 @@ impl Menu<Game> for BeatmapSelectMenu {
                 new_mode = Some(selected_mode.clone())
             }
         }
-        if let Some(new_mode) = new_mode{
-            self.set_selected_mode(new_mode, game)
+        if let Some(new_mode) = new_mode {
+            self.set_selected_mode(new_mode, Some(game))
         }
 
         let mut map_refresh = false;
@@ -619,7 +630,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             };
 
             if let Some(new_mode) = new_mode {
-                self.set_selected_mode(new_mode.clone(), game);
+                self.set_selected_mode(new_mode.clone(), Some(game));
                 NotificationManager::add_text_notification(&format!("Mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
                 self.mode = new_mode;
                 self.load_scores();
@@ -662,7 +673,7 @@ impl Menu<Game> for BeatmapSelectMenu {
                 ModManager::get().speed = speed;
 
                 // force diff recalc
-                self.set_selected_mode(self.mode.clone(), game);
+                self.set_selected_mode(self.mode.clone(), Some(game));
 
                 NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE);
             }
@@ -758,10 +769,18 @@ struct BeatmapsetItem {
 }
 impl BeatmapsetItem {
     fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
-        let mods = ModManager::get();
-
         // ensure diff is calced for all maps
-        beatmaps.iter_mut().for_each(|b|{b.get_diff(playmode.clone(), &mods);});
+        let maps_clone = beatmaps.clone();
+        let playmode2 = playmode.clone();
+        // tokio::spawn(async move {
+        let mods = ModManager::get();
+        maps_clone.iter().for_each(|b| {
+            if let None = get_diff(&b.beatmap_hash, &playmode2, &mods) {
+                let diff = calc_diff(b, playmode2.clone(), &mods).unwrap_or_default();
+                insert_diff(&b.beatmap_hash, &playmode2, &mods, diff);
+            }
+        });
+        // });
         
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 

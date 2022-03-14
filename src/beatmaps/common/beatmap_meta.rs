@@ -68,26 +68,6 @@ impl BeatmapMeta {
         }
     }
 
-    pub fn get_diff(&mut self, mode_override: PlayMode, mods: &ModManager) -> f32 {
-        if self.diff == -1.0 {
-
-            self.diff = calc_diff(self, mode_override, mods).unwrap_or_default()
-            
-            // if let Ok(mode) = taiko::TaikoGame::new(&b) {
-            //     use crate::gameplay::modes::taiko::diff_calc::DiffCalc;
-            //     let mut calc = taiko::diff_calc::TaikoDifficultyCalculator::new(&mode).unwrap();
-                
-            //     self.diff = calc.calc().unwrap_or_default();
-            // } else {
-            //     self.diff = 0.0;
-            // }
-
-            // test calc
-        }
-        
-        self.diff
-    }
-
     pub fn do_checks(&mut self) {
         if self.ar < 0.0 {self.ar = self.od}
     }
@@ -113,10 +93,15 @@ impl BeatmapMeta {
         // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}",secs)}
-        let diff = get_diff(&self.beatmap_hash, &mode_override, mods).unwrap_or_default(); //self.get_diff(mode_override, mods);
+        // let diff = self.get_diff(mode_override, mods);
+        let diff = match get_diff(&self.beatmap_hash, &mode_override, mods) {
+            None => "...".to_owned(),
+
+            Some(ok) => format!("{:.2}", ok)
+        };
 
         let mut txt = format!(
-            "od: {:.2}{} hp: {:.2}{}, dur: {}:{}", 
+            "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 
             self.od, symb,
             self.hp, symb,
             self.mins(mods.speed), secs
@@ -126,16 +111,16 @@ impl BeatmapMeta {
         if self.bpm_min != 0.0 || self.bpm_max != 0.0 {
             // one bpm
             if self.bpm_min == self.bpm_max {
-                txt += &format!(" bpm: {:.2}", self.bpm_min * mods.speed);
+                txt += &format!(" BPM: {:.2}", self.bpm_min * mods.speed);
             } else { // multi bpm
                 // i think i had it backwards when setting, just make sure its the right way :/
                 let min = self.bpm_min.min(self.bpm_max);
                 let max = self.bpm_max.max(self.bpm_min);
-                txt += &format!(" bpm: {:.2}-{:.2}", min * mods.speed, max * mods.speed);
+                txt += &format!(" BPM: {:.2}-{:.2}", min * mods.speed, max * mods.speed);
             }
         }
 
-        txt += &format!(", diff: {:.2}", diff);
+        txt += &format!(", Diff: {}", diff);
 
         txt
     }

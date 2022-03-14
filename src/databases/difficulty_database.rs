@@ -1,9 +1,65 @@
 use crate::prelude::*;
-// temporarily a hashmap 
 
+const DIFFS_FILE:&'static str = "./diffs.json";
+const TIMER:u64 = 1000;
+
+async fn save(data: HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>) {
+    match serde_json::to_string(&data) {
+        Ok(serialized) => {
+            match tokio::fs::write(DIFFS_FILE, serialized).await {
+                Ok(_) => println!("[diffs] saved."),
+                Err(e) => println!("error saving diffs: {}", e)
+            }
+        }
+        Err(e) => println!("error serializing: {}", e)
+    }
+}
+fn save_loop() {
+    println!("starting loop ======================================");
+    tokio::spawn(async {
+        loop {
+            tokio::time::sleep(Duration::from_millis(TIMER)).await;
+
+            if let Some(data) = read() {
+                let current_data = DIFFICULTY_CALC_CACHE.read().clone();
+                if data != current_data {
+                    save(current_data).await
+                }
+            } else {
+                let current_data = DIFFICULTY_CALC_CACHE.read().clone();
+                save(current_data).await
+            }
+        }
+    });
+}
+
+fn read() -> Option<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>> {
+    if io::exists(DIFFS_FILE) {
+        if let Ok(data) = std::fs::read(DIFFS_FILE) {
+            if let Ok(data) = serde_json::from_slice(data.as_slice()) {
+                Some(data)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+// temporarily a hashmap 
 lazy_static::lazy_static! {
     /// mode, mods, map_hash = diff
-    pub static ref DIFFICULTY_CALC_CACHE: Arc<RwLock<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>>> = Arc::new(RwLock::new(HashMap::new()));
+    pub static ref DIFFICULTY_CALC_CACHE: Arc<RwLock<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>>> = {
+        save_loop();
+        if let Some(data) = read() {
+            Arc::new(RwLock::new(data))
+        } else {
+            Arc::new(RwLock::new(HashMap::new()))
+        }
+    };
 }
 
 pub fn insert_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager, diff: f32) {

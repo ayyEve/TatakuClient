@@ -308,9 +308,6 @@ impl BeatmapManager {
         // it will cause a momentary lagspike, 
         // but shouldnt lock everything until all diff calcs are complete
         let mut maps = self.beatmaps.clone();
-        for i in self.beatmaps.iter_mut() {
-            i.diff = 0.0;
-        }
         let mods = mods.clone();
 
         tokio::spawn(async move {
@@ -326,15 +323,6 @@ impl BeatmapManager {
                     insert_diff(hash, &playmode, &mods, diff);
                     diff
                 };
-
-                // if let Some(b) = BEATMAP_MANAGER.write().beatmaps_by_hash.get_mut(&i.beatmap_hash){
-                //     b.diff = i.diff;
-                // }
-                // if let Some(current_beatmap) = &mut BEATMAP_MANAGER.write().current_beatmap {
-                //     if i.beatmap_hash == current_beatmap.beatmap_hash {
-                //         current_beatmap.diff = i.diff
-                //     }
-                // }
             }
             
             BEATMAP_MANAGER.write().beatmaps = maps;
