@@ -15,9 +15,10 @@ const LEADERBOARD_PADDING: f64 = 100.0;
 const LEADERBOARD_POS: Vector2 = Vector2::new(10.0, LEADERBOARD_PADDING);
 const LEADERBOARD_ITEM_SIZE: Vector2 = Vector2::new(200.0, 50.0);
 
+const RECT_ROUND:Shape = Shape::Round(5.0, 10);
+
 
 pub struct BeatmapSelectMenu {
-    
     current_scores: HashMap<String, Arc<Mutex<Score>>>,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
@@ -90,9 +91,15 @@ impl BeatmapSelectMenu {
     }
 
     fn set_selected_mode(&mut self, new_mode: PlayMode, game: &mut Game) {
+        // update values
         self.mode = new_mode.clone();
+        self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
         get_settings_mut!().last_played_mode = new_mode.clone();
+
+        // recalc diffs
         BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &ModManager::get());
+        
+        // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
         self.on_key_press(Key::Calculator, game, KeyModifiers::default());
     }
@@ -122,16 +129,16 @@ impl BeatmapSelectMenu {
             ($property:tt, String) => {
                 full_list.sort_by(|a, b| a.beatmaps[0].$property.to_lowercase().cmp(&b.beatmaps[0].$property.to_lowercase()))
             };
-            ($property:ident, Integer) => {
+            ($property:ident, Float) => {
                 full_list.sort_by(|a, b| a.beatmaps[0].$property.partial_cmp(&b.beatmaps[0].$property).unwrap())
             }
         }
 
         match self.sort_method {
-            SortBy::Artist => sort!(artist, String),
             SortBy::Title => sort!(title, String),
+            SortBy::Artist => sort!(artist, String),
             SortBy::Creator => sort!(creator, String),
-            SortBy::Difficulty => sort!(diff, Integer),
+            SortBy::Difficulty => sort!(diff, Float),
         }
 
         // sort by artist
@@ -474,8 +481,6 @@ impl Menu<Game> for BeatmapSelectMenu {
         // check if selected mode changed
         let mut new_mode = None;
         if let Some(PlayModeDropdown::Mode(selected_mode)) = &self.playmode_dropdown.value {
-            println!("playmode: {}", selected_mode);
-
             if selected_mode != &self.mode {
                 new_mode = Some(selected_mode.clone())
             }
@@ -487,6 +492,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         let mut map_refresh = false;
         if let Some(sort_by) = &self.sort_by_dropdown.value {
             if sort_by != &self.sort_method {
+                self.sort_method = sort_by.clone();
                 map_refresh = true;
             }
         }
@@ -532,6 +538,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
 
         // if we got here, make sure a map is selected
+        // TODO: can we do this a better way? probably not since individually each item wont know if it should deselect or not
         if let Some(i) = selected_index {
             if let Some(item) = self.beatmap_scroll.items.get_mut(i) {
                 item.set_selected(true);
@@ -891,7 +898,7 @@ impl ScrollableItem for BeatmapsetItem {
             } else {
                 None
             }
-        )));
+        ).shape(RECT_ROUND)));
 
         // line 1
         list.push(Box::new(Text::new(
@@ -938,7 +945,8 @@ impl ScrollableItem for BeatmapsetItem {
                     } else {
                         Some(Border::new(Color::BLACK, 1.0))
                     }
-                )));
+                ).shape(RECT_ROUND)));
+
                 // version text
                 list.push(Box::new(Text::new(
                     Color::WHITE,
@@ -953,7 +961,7 @@ impl ScrollableItem for BeatmapsetItem {
                 list.push(Box::new(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0 + 15.0),
+                    pos + Vector2::new(5.0, 5.0 + 20.0),
                     12,
                     meta.diff_string(self.playmode.clone(), &ModManager::get()),
                     font.clone()
@@ -1037,8 +1045,8 @@ impl ScrollableItem for LeaderboardItem {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ayyeve_piston_ui::prelude::Dropdown)]
 pub enum SortBy {
-    Artist,
     Title,
+    Artist,
     Creator,
     Difficulty,
 }
@@ -1055,10 +1063,11 @@ impl Dropdownable for PlayModeDropdown {
 
     fn display_text(&self) -> String {
         let Self::Mode(s) = self;
-        s.clone()
+        gamemode_display_name(s.clone()).to_owned()
     }
 
     fn from_string(s:String) -> Self {
+        println!("str: {}", s);
         Self::Mode(s)
     }
 }
