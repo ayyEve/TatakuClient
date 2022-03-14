@@ -17,6 +17,9 @@ const LEADERBOARD_ITEM_SIZE: Vector2 = Vector2::new(200.0, 50.0);
 
 const RECT_ROUND:Shape = Shape::Round(5.0, 10);
 
+const DRAG_THRESHOLD:f64 = 50.0;
+const DRAG_FACTOR:f64 = 10.0;
+
 
 pub struct BeatmapSelectMenu {
     current_scores: HashMap<String, Arc<Mutex<Score>>>,
@@ -40,6 +43,11 @@ pub struct BeatmapSelectMenu {
 
     sort_by_dropdown: Dropdown<SortBy>,
     playmode_dropdown: Dropdown<PlayModeDropdown>,
+
+    /// drag_start, confirmed_drag, last_checked, mods_when_clicked
+    /// drag_start is where the original click occurred
+    /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
+    mouse_down: Option<(Vector2, bool, Vector2, KeyModifiers)>
 }
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
@@ -96,6 +104,9 @@ impl BeatmapSelectMenu {
 
             playmode_dropdown,
             sort_by_dropdown,
+
+
+            mouse_down: None
         }
     }
 
@@ -226,6 +237,92 @@ impl BeatmapSelectMenu {
             &mut self.sort_by_dropdown,
             &mut self.search_text,
         ]
+    }
+
+    fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+        if self.back_button.on_click(pos, button, mods) {
+            let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(menu));
+            return;
+        }
+
+        for i in self.interactables() {
+            if i.on_click(pos, button, mods) {
+                break;
+            }
+        }
+
+        // check if selected mode changed
+        let mut new_mode = None;
+        if let Some(PlayModeDropdown::Mode(selected_mode)) = &self.playmode_dropdown.value {
+            if selected_mode != &self.mode {
+                new_mode = Some(selected_mode.clone())
+            }
+        }
+        if let Some(new_mode) = new_mode {
+            self.set_selected_mode(new_mode, Some(game))
+        }
+
+        let mut map_refresh = false;
+        if let Some(sort_by) = &self.sort_by_dropdown.value {
+            if sort_by != &self.sort_method {
+                self.sort_method = sort_by.clone();
+                map_refresh = true;
+            }
+        }
+        if map_refresh {
+            self.refresh_maps(&mut BEATMAP_MANAGER.write())
+        }
+
+        
+        // check if leaderboard item was clicked
+        if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
+            // score display
+            if let Some(score) = self.current_scores.get(&score_tag) {
+                let score = score.lock().clone();
+
+                if let Some(selected) = &BEATMAP_MANAGER.read().current_beatmap {
+                    let menu = ScoreMenu::new(&score, selected.clone());
+                    game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                }
+            }
+            return;
+        }
+
+
+        // find the previously selected item
+        let mut selected_index = None;
+        for (i, item) in self.beatmap_scroll.items.iter().enumerate() {
+            if item.get_selected() {
+                selected_index = Some(i);
+                break;
+            }
+        }
+
+        // check if beatmap item was clicked
+        if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods) {
+            if button == MouseButton::Right {
+                // clicked hash is the target
+                let dialog = BeatmapDialog::new(clicked_hash.clone());
+                game.add_dialog(Box::new(dialog));
+            }
+
+            self.select_map(game, clicked_hash, button == MouseButton::Left);
+            return;
+        }
+
+        // if we got here, make sure a map is selected
+        // TODO: can we do this a better way? probably not since individually each item wont know if it should deselect or not
+        if let Some(i) = selected_index {
+            if let Some(item) = self.beatmap_scroll.items.get_mut(i) {
+                item.set_selected(true);
+            }
+            self.beatmap_scroll.refresh_layout();
+        }
+        
+        for i in self.interactables() {
+            i.on_click_release(pos, button) 
+        }
     }
 }
 impl Menu<Game> for BeatmapSelectMenu {
@@ -477,103 +574,62 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods: ayyeve_piston_ui::menu::KeyModifiers, game:&mut Game) {
-        if self.back_button.on_click(pos, button, mods) {
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
+        // search text relies on this event, so if it consumed the event, ignore drag
+        if self.search_text.on_click(pos, button, mods) {
+            // note: we shouldnt need to store mods, as search text in this instance doesnt care about it
             return;
         }
 
-        for i in self.interactables() {
-            if i.on_click(pos, button, mods) {
-                break;
-            }
-        }
+        self.mouse_down = Some((pos, false, pos, mods));
+    }
+    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, game:&mut Game) {
+        let mut was_hold = false;
+        let mut mods = None;
 
-        // check if selected mode changed
-        let mut new_mode = None;
-        if let Some(PlayModeDropdown::Mode(selected_mode)) = &self.playmode_dropdown.value {
-            if selected_mode != &self.mode {
-                new_mode = Some(selected_mode.clone())
-            }
-        }
-        if let Some(new_mode) = new_mode {
-            self.set_selected_mode(new_mode, Some(game))
-        }
-
-        let mut map_refresh = false;
-        if let Some(sort_by) = &self.sort_by_dropdown.value {
-            if sort_by != &self.sort_method {
-                self.sort_method = sort_by.clone();
-                map_refresh = true;
-            }
-        }
-        if map_refresh {
-            self.refresh_maps(&mut BEATMAP_MANAGER.write())
-        }
-
-
-        // check if leaderboard item was clicked
-        if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
-            // score display
-            if let Some(score) = self.current_scores.get(&score_tag) {
-                let score = score.lock().clone();
-
-                if let Some(selected) = &BEATMAP_MANAGER.read().current_beatmap {
-                    let menu = ScoreMenu::new(&score, selected.clone());
-                    game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
-                }
-            }
-            return;
-        }
-
-
-        // find the previously selected item
-        let mut selected_index = None;
-        for (i, item) in self.beatmap_scroll.items.iter().enumerate() {
-            if item.get_selected() {
-                selected_index = Some(i);
-                break;
-            }
-        }
-
-        // check if beatmap item was clicked
-        if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods) {
-            if button == MouseButton::Right {
-                // clicked hash is the target
-                let dialog = BeatmapDialog::new(clicked_hash.clone());
-                game.add_dialog(Box::new(dialog));
-            }
-
-            self.select_map(game, clicked_hash, button == MouseButton::Left);
-            return;
-        }
-
-        // if we got here, make sure a map is selected
-        // TODO: can we do this a better way? probably not since individually each item wont know if it should deselect or not
-        if let Some(i) = selected_index {
-            if let Some(item) = self.beatmap_scroll.items.get_mut(i) {
-                item.set_selected(true);
-            }
-            self.beatmap_scroll.refresh_layout();
+        // if mouse_down is none, it means we got here from the special condition where
+        // the search input absorbed the on_click.
+        // therefor, perform the on_release only for the search input
+        if self.mouse_down.is_none() {
+            self.search_text.on_click_release(pos, button);
+            return
         }
         
-        // else {
-        //     //TODO: hmm
-        //     self.selected = None;
-        //     self.beatmap_scroll.refresh_layout();
-        //     self.leaderboard_scroll.clear();
-        // }
 
-        // self.beatmap_scroll.refresh_layout();
-    }
-    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _game:&mut Game) {
-        for i in self.interactables() {
-            i.on_click_release(pos, button) 
+        if let Some((_, was_drag, _, click_mods)) = self.mouse_down {
+            if was_drag {
+                mods = Some(click_mods);
+                was_hold = true;
+            }
         }
+        self.mouse_down = None;
+
+
+        // perform actual on_click
+        // this is here because on_click is now only used for dragging
+        let mods = mods.unwrap_or_default();
+        if !was_hold {
+            self.actual_on_click(pos, button, mods, game)
+        }
+
     }
     
-    fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+    fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
+        let mut scroll_pos = 0.0;
+        if let Some((drag_pos, confirmed_drag, last_checked, _)) = &mut self.mouse_down {
+            if *confirmed_drag || (pos.y - drag_pos.y).abs() >= DRAG_THRESHOLD  {
+                let dist = (pos.y - last_checked.y) / DRAG_FACTOR;
+                *confirmed_drag |= true;
+                scroll_pos = dist;
+            }
+
+            *last_checked = pos;
+        }
+        // drag acts like scroll
+        if scroll_pos != 0.0 {
+            self.on_scroll(scroll_pos, game)
+        }
+
         for i in self.interactables() {
             i.on_mouse_move(pos) 
         }

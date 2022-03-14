@@ -233,6 +233,7 @@ impl ScrollableItem for MusicBox {
             if rect.contains(self.mouse_pos) {
                 rect.border.as_mut().unwrap().color = Color::BLUE;
             }
+            rect.border.as_mut().unwrap().color.a = 0.8;
 
             // add rect
             list.push(Box::new(rect));
