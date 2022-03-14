@@ -1,14 +1,15 @@
 use std::fs::{DirEntry, read_dir};
 use rand::Rng;
 
+use crate::databases::{insert_diff, get_diff};
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER: Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
+    pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
 
-    pub static ref DIFFICULTIES: Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
+    pub static ref DIFFICULTIES:Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
 pub struct BeatmapManager {
@@ -303,26 +304,46 @@ impl BeatmapManager {
     
     // changers
     pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
+        // this will be what we access and perform diff cals on
+        // it will cause a momentary lagspike, 
+        // but shouldnt lock everything until all diff calcs are complete
+        let mut maps = self.beatmaps.clone();
         for i in self.beatmaps.iter_mut() {
-            i.diff = -1.0;
-            i.get_diff(playmode.clone(), mods);
+            i.diff = 0.0;
         }
-        for i in self.beatmaps.iter() {
-            if let Some(b) = self.beatmaps_by_hash.get_mut(&i.beatmap_hash){
-                b.diff = i.diff;
+        let mods = mods.clone();
+
+        tokio::spawn(async move {
+            let playmode = playmode;
+
+            // perform calc
+            for i in maps.iter_mut() {
+                let hash = &i.beatmap_hash;
+                i.diff = if let Some(diff) = get_diff(hash, &playmode, &mods) {
+                    diff
+                } else {
+                    let diff = calc_diff(i, playmode.clone(), &mods).unwrap_or_default();
+                    insert_diff(hash, &playmode, &mods, diff);
+                    diff
+                };
+
+                // if let Some(b) = BEATMAP_MANAGER.write().beatmaps_by_hash.get_mut(&i.beatmap_hash){
+                //     b.diff = i.diff;
+                // }
+                // if let Some(current_beatmap) = &mut BEATMAP_MANAGER.write().current_beatmap {
+                //     if i.beatmap_hash == current_beatmap.beatmap_hash {
+                //         current_beatmap.diff = i.diff
+                //     }
+                // }
             }
-            if let Some(current_beatmap) = &mut self.current_beatmap {
-                if i.beatmap_hash == current_beatmap.beatmap_hash {
-                    current_beatmap.diff = i.diff
-                }
-            }
-        }
+            
+            BEATMAP_MANAGER.write().beatmaps = maps;
+        });
     }
 }
 
 
 fn insert_metadata(map: &BeatmapMeta) -> String {
-
     let mut bpm_min = map.bpm_min;
     let mut bpm_max = map.bpm_max;
     if !bpm_min.is_normal() {

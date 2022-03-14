@@ -2,10 +2,11 @@ use crate::prelude::*;
 // temporarily a hashmap 
 
 lazy_static::lazy_static! {
-    pub static ref DIFFICULTY_CALC_CACHE: Arc<RwLock<HashMap<PlayMode, HashMap<String, f64>>>> = Arc::new(RwLock::new(HashMap::new()));
+    /// mode, mods, map_hash = diff
+    pub static ref DIFFICULTY_CALC_CACHE: Arc<RwLock<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
-pub fn insert_diff(playmode: &PlayMode, mods: &ModManager, diff: f64) {
+pub fn insert_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager, diff: f32) {
     let mut lock = DIFFICULTY_CALC_CACHE.write();
     if !lock.contains_key(playmode) {
         lock.insert(playmode.clone(), HashMap::new());
@@ -13,16 +14,26 @@ pub fn insert_diff(playmode: &PlayMode, mods: &ModManager, diff: f64) {
 
     let mods_key = serde_json::to_string(mods).unwrap();
     let thing = lock.get_mut(playmode).unwrap();
-    thing.insert(mods_key.clone(), diff);
+    if !thing.contains_key(map_hash) {
+        thing.insert(map_hash.clone(), HashMap::new());
+    }
+
+    let thing2 = thing.get_mut(map_hash).unwrap();
+    thing2.insert(mods_key.clone(), diff);
 }
 
-pub fn get_diff(playmode: &PlayMode, mods: &ModManager) -> f64 {
+pub fn get_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager) -> Option<f32> {
     let lock = DIFFICULTY_CALC_CACHE.read();
     if !lock.contains_key(playmode) {
-        return 0.0;
+        return None;
     }
 
     let mods_key = serde_json::to_string(mods).unwrap();
     let thing = lock.get(playmode).unwrap();
-    *thing.get(&mods_key).unwrap_or(&0.0)
+    if !thing.contains_key(map_hash) {
+        return None;
+    }
+    
+    let thing2 = thing.get(map_hash).unwrap();
+    thing2.get(&mods_key).and_then(|d|Some(*d))
 }

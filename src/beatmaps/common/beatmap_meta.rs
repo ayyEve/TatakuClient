@@ -113,7 +113,7 @@ impl BeatmapMeta {
         // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}",secs)}
-        let diff = self.get_diff(mode_override, mods);
+        let diff = get_diff(&self.beatmap_hash, &mode_override, mods).unwrap_or_default(); //self.get_diff(mode_override, mods);
 
         let mut txt = format!(
             "od: {:.2}{} hp: {:.2}{}, dur: {}:{}", 

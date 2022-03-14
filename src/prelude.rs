@@ -76,6 +76,9 @@ pub use crate::beatmaps::Beatmap;
 pub use crate::beatmaps::common::*;
 pub use crate::beatmaps::osu::hitobject_defs::*;
 
+// database imports
+pub use crate::databases::*;
+
 // online imports
 pub use crate::send_packet;
 pub use crate::create_packet;
