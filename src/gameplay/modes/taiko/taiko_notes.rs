@@ -57,7 +57,7 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>
 }
 impl TaikoNote {
-    pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
+    pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
@@ -75,7 +75,7 @@ impl TaikoNote {
             missed: false,
             pos: Vector2::zero(),
             alpha_mult: 1.0,
-            image: HitCircleImageHelper::new(&settings, time as f64, hit_type, finisher),
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64, hit_type, finisher)},
             settings,
             bounce_factor
         }
@@ -199,10 +199,10 @@ pub struct TaikoSlider {
     end_image: Option<Image>,
 }
 impl TaikoSlider {
-    pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>) -> Self {
+    pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
         let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
 
-        let mut middle_image = SKIN_MANAGER.write().get_texture("taiko-roll-middle", true);
+        let mut middle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-middle", true)};
         if let Some(image) = &mut middle_image {
             image.depth = time as f64 + 1.0;
             image.origin.x = 0.0;
@@ -210,7 +210,7 @@ impl TaikoSlider {
             if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
         }
 
-        let mut end_image = SKIN_MANAGER.write().get_texture("taiko-roll-end", true);
+        let mut end_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-end", true)};
         if let Some(image) = &mut end_image {
             image.depth = time as f64;
             image.origin.x = 0.0;
@@ -405,8 +405,8 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>) -> Self {
-        let mut spinner_image = SKIN_MANAGER.write().get_texture("spinner-warning", true);
+    pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+        let mut spinner_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("spinner-warning", true)};
 
         if let Some(image) = &mut spinner_image {
             image.depth = time as f64;

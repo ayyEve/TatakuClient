@@ -47,7 +47,7 @@ impl GameMode for UTypingGame {
     fn playmode(&self) -> PlayMode {"utyping".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
-    fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
+    fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings();
@@ -80,7 +80,7 @@ impl GameMode for UTypingGame {
                         }
                     }
 
-                    s.notes.push(UTypingNote::new(time, note.text.clone(), cutoff_time, settings.clone()));
+                    s.notes.push(UTypingNote::new(time, note.text.clone(), cutoff_time, settings.clone(), diff_calc_only));
                 }
 
 

@@ -95,7 +95,7 @@ pub struct StandardNote {
     combo_image: Option<SkinnedNumber>,
 }
 impl StandardNote {
-    pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
+    pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -116,7 +116,7 @@ impl StandardNote {
         ));
 
         
-        let mut combo_image = SkinnedNumber::new(
+        let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?
             combo_text.depth, 
             combo_text.current_pos, 
@@ -124,7 +124,7 @@ impl StandardNote {
             "default",
             None,
             0
-        ).ok();
+        ).ok()};
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
                 pos - Vector2::one() * radius / 2.0,
@@ -146,7 +146,7 @@ impl StandardNote {
 
             map_time: 0.0,
             mouse_pos: Vector2::zero(),
-            circle_image: HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color),
+            circle_image: if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color)},
 
             time_preempt,
             hitwindow_miss: 0.0,
@@ -427,7 +427,7 @@ pub struct StandardSlider {
     hitwindow_miss: f32
 }
 impl StandardSlider {
-    pub fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>) -> Self {
+    pub fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -449,10 +449,10 @@ impl StandardSlider {
             Vector2::one() * radius,
         ));
 
-        let start_circle_image = HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color);
-        let end_circle_image = SKIN_MANAGER.write().get_texture("sliderendcircle", true);
+        let start_circle_image = if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color)};
+        let end_circle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("sliderendcircle", true)};
 
-        let mut combo_image = SkinnedNumber::new(
+        let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?
             combo_text.depth, 
             combo_text.current_pos, 
@@ -460,7 +460,7 @@ impl StandardSlider {
             "default",
             None,
             0
-        ).ok();
+        ).ok()};
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
                 pos - Vector2::one() * radius / 2.0,
@@ -469,7 +469,7 @@ impl StandardSlider {
         }
 
         
-        let slider_reverse_image = SKIN_MANAGER.write().get_texture("reversearrow", true);
+        let slider_reverse_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("reversearrow", true)};
 
         let mut slider = Self {
             def,
@@ -1323,7 +1323,7 @@ pub struct StandardSpinner {
     alpha_mult: f32,
 }
 impl StandardSpinner {
-    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>) -> Self {
+    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, diff_calc_only: bool) -> Self {
         let time = def.time;
         let end_time = def.end_time;
         Self {

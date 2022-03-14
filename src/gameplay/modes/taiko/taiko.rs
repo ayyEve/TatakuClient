@@ -59,7 +59,7 @@ impl GameMode for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
-    fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
+    fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings();
@@ -67,37 +67,40 @@ impl GameMode for TaikoGame {
 
 
         let mut hit_cache = HashMap::new();
-        for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
-            hit_cache.insert(i, -999.9);
-        }
-
-
         let mut left_kat_image = None;
         let mut left_don_image = None;
         let mut right_don_image = None;
         let mut right_kat_image = None;
 
-        if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
-            don.depth = 1.0;
-            don.origin.x = don.tex_size().x;
-            don.current_pos = settings.hit_position;
+        if !diff_calc_only {
+            for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
+                hit_cache.insert(i, -999.9);
+            }
 
-            left_don_image = Some(don.clone());
-            left_don_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
 
-            right_don_image = Some(don.clone());
-            right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
-        }
-        if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
-            kat.depth = 1.0;
-            kat.origin.x = 0.0;
-            kat.current_pos = settings.hit_position;
-            
-            left_kat_image = Some(kat.clone());
-            left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+            if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
+                don.depth = 1.0;
+                don.origin.x = don.tex_size().x;
+                don.current_pos = settings.hit_position;
 
-            right_kat_image = Some(kat.clone());
-            right_kat_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+                left_don_image = Some(don.clone());
+                left_don_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+
+                right_don_image = Some(don.clone());
+                right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+            }
+            if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
+                kat.depth = 1.0;
+                kat.origin.x = 0.0;
+                kat.current_pos = settings.hit_position;
+                
+                left_kat_image = Some(kat.clone());
+                left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+
+                right_kat_image = Some(kat.clone());
+                right_kat_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+            }
+
         }
 
 
@@ -133,7 +136,8 @@ impl GameMode for TaikoGame {
                         note.time,
                         hit_type,
                         finisher,
-                        settings.clone()
+                        settings.clone(),
+                        diff_calc_only,
                     ));
                     s.notes.push(note);
                 }
@@ -181,7 +185,8 @@ impl GameMode for TaikoGame {
                                 j,
                                 sound_type.0,
                                 sound_type.1,
-                                settings.clone()
+                                settings.clone(),
+                                diff_calc_only,
                             ));
                             s.notes.push(note);
 
@@ -191,7 +196,13 @@ impl GameMode for TaikoGame {
                             if !(j < end_time + skip_period / 8.0) {break}
                         }
                     } else {
-                        let slider = Box::new(TaikoSlider::new(time, end_time, finisher, settings.clone()));
+                        let slider = Box::new(TaikoSlider::new(
+                            time, 
+                            end_time, 
+                            finisher, 
+                            settings.clone(),
+                            diff_calc_only,
+                        ));
                         s.notes.push(slider);
                     }
                 }
@@ -202,7 +213,13 @@ impl GameMode for TaikoGame {
                     let diff_map = map_difficulty(beatmap.metadata.od, 3.0, 5.0, 7.5);
                     let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
 
-                    let spinner = Box::new(TaikoSpinner::new(*time, *end_time, hits_required, settings.clone()));
+                    let spinner = Box::new(TaikoSpinner::new(
+                        *time, 
+                        *end_time, 
+                        hits_required, 
+                        settings.clone(),
+                        diff_calc_only,
+                    ));
                     s.notes.push(spinner);
                 }
 
@@ -243,7 +260,8 @@ impl GameMode for TaikoGame {
                         note.time,
                         hit_type,
                         false,
-                        settings.clone()
+                        settings.clone(),
+                        diff_calc_only,
                     ));
                     s.notes.push(note);
                 }

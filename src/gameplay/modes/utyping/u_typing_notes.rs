@@ -156,7 +156,7 @@ pub struct UTypingNote {
     image: Option<HitCircleImageHelper>
 }
 impl UTypingNote {
-    pub fn new(time:f32, text: String, cutoff_time: f32, settings:Arc<TaikoSettings>) -> Self {
+    pub fn new(time:f32, text: String, cutoff_time: f32, settings:Arc<TaikoSettings>, diff_calc_only:bool) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
@@ -179,7 +179,7 @@ impl UTypingNote {
             missed: false,
 
             pos: Vector2::zero(),
-            image: HitCircleImageHelper::new(&settings, time as f64),
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64)},
             settings,
             bounce_factor,
             cutoff_time,

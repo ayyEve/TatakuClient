@@ -154,7 +154,7 @@ impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
 
     fn end_time(&self) -> f32 {self.end_time}
-    fn new(map:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
+    fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
@@ -279,7 +279,8 @@ impl GameMode for StandardGame {
                             combo_num as u16,
                             scaling_helper.clone(),
                             depth,
-                            std_settings.clone()
+                            std_settings.clone(),
+                            diff_calc_only,
                         )));
                     }
                     if let Some(slider) = slider {
@@ -292,7 +293,7 @@ impl GameMode for StandardGame {
                                 hitsound: slider.hitsound,
                                 hitsamples: slider.hitsamples.clone(),
                                 new_combo: slider.new_combo,
-                                color_skip: slider.color_skip
+                                color_skip: slider.color_skip,
                             };
         
                             let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
@@ -304,7 +305,8 @@ impl GameMode for StandardGame {
                                 combo_num as u16,
                                 scaling_helper.clone(),
                                 depth,
-                                std_settings.clone()
+                                std_settings.clone(),
+                                diff_calc_only,
                             )));
                         } else {
                             let slider_depth = SLIDER_DEPTH.start + (slider.time as f64 / end_time) * SLIDER_DEPTH.end;
@@ -320,7 +322,8 @@ impl GameMode for StandardGame {
                                 scaling_helper.clone(),
                                 slider_depth,
                                 depth,
-                                std_settings.clone()
+                                std_settings.clone(),
+                                diff_calc_only,
                             )))
                         }
                         
@@ -328,7 +331,8 @@ impl GameMode for StandardGame {
                     if let Some(spinner) = spinner {
                         s.notes.push(Box::new(StandardSpinner::new(
                             spinner.clone(),
-                            scaling_helper.clone()
+                            scaling_helper.clone(),
+                            diff_calc_only,
                         )))
                     }
                     

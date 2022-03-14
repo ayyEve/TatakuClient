@@ -91,7 +91,7 @@ impl GameMode for ManiaGame {
     fn playmode(&self) -> PlayMode {"mania".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
-    fn new(beatmap:&Beatmap) -> Result<Self, crate::errors::TatakuError> {
+    fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
 
         let settings = get_settings!().mania_settings.clone();

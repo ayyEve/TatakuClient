@@ -115,7 +115,7 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
     fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         
         let g = Beatmap::from_metadata(g)?;
-        let g = StandardGame::new(&g)?;
+        let g = StandardGame::new(&g, true)?;
 
         let mut notes = Vec::new();
         for n in g.notes.iter() {

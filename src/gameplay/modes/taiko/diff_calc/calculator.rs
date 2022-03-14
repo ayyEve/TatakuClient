@@ -151,7 +151,7 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
     fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
 
         let g = Beatmap::from_metadata(g)?;
-        let g = TaikoGame::new(&g)?;
+        let g = TaikoGame::new(&g, true)?;
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter() {
@@ -372,7 +372,7 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
     let s = beatmap.get_beatmap_meta().version_string();
     println!("\n\n\n--- trying map: {}", s);
     // let mut benchmark = BenchmarkHelper::new("calc");
-    if let Ok(mode) = TaikoGame::new(&beatmap) {
+    if let Ok(mode) = TaikoGame::new(&beatmap, true) {
         // test calc
         let mut calc = TaikoDifficultyCalculator::new(&beatmap.get_beatmap_meta())?;
         calc.version_string = s;

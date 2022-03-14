@@ -7,10 +7,10 @@ mod utyping;
 pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let gamemode:Box<dyn GameMode> = match &*beatmap.playmode(playmode) {
-        "mania" => Box::new(mania::Game::new(&beatmap)?),
-        "osu" => Box::new(osu::Game::new(&beatmap)?),
-        "taiko" => Box::new(taiko::Game::new(&beatmap)?),
-        "utyping" => Box::new(utyping::Game::new(&beatmap)?),
+        "mania" => Box::new(mania::Game::new(&beatmap, false)?),
+        "osu" => Box::new(osu::Game::new(&beatmap, false)?),
+        "taiko" => Box::new(taiko::Game::new(&beatmap, false)?),
+        "utyping" => Box::new(utyping::Game::new(&beatmap, false)?),
         _ => return Err(TatakuError::GameMode(GameModeError::UnknownGameMode))
     };
 
