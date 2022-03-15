@@ -152,8 +152,8 @@ impl StandardGame {
 
 impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
-
     fn end_time(&self) -> f32 {self.end_time}
+
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
@@ -161,7 +161,12 @@ impl GameMode for StandardGame {
         let settings = get_settings!().standard_settings.clone();
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, "osu".to_owned()));
 
-        let combo_colors:Vec<Color> = settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect();
+        let skin_combo_colors = &SKIN_MANAGER.read().current_skin_config().combo_colors;
+        let combo_colors = if skin_combo_colors.len() > 0 {
+            skin_combo_colors.clone()
+        } else {
+            settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect()
+        };
 
         match map {
             Beatmap::Osu(beatmap) => {
