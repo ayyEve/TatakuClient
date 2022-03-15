@@ -1129,7 +1129,7 @@ impl ScrollableItem for LeaderboardItem {
             self.pos + pos_offset,
             LEADERBOARD_ITEM_SIZE,
             if self.hover {Some(Border::new(Color::RED, 1.0))} else {None}
-        )));
+        ).shape(RECT_ROUND)));
 
         // score text
         list.push(Box::new(Text::new(
