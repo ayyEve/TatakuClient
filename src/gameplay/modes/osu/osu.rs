@@ -162,7 +162,7 @@ impl GameMode for StandardGame {
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, "osu".to_owned()));
 
         let skin_combo_colors = &SKIN_MANAGER.read().current_skin_config().combo_colors;
-        let combo_colors = if skin_combo_colors.len() > 0 {
+        let mut combo_colors = if skin_combo_colors.len() > 0 {
             skin_combo_colors.clone()
         } else {
             settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect()
@@ -171,6 +171,11 @@ impl GameMode for StandardGame {
         match map {
             Beatmap::Osu(beatmap) => {
                 let std_settings = Arc::new(settings.clone());
+
+                if std_settings.use_beatmap_combo_colors && beatmap.combo_colors.len() > 0 {
+                    combo_colors = beatmap.combo_colors.clone();
+                }
+
                 let mut s = Self {
                     notes: Vec::new(),
                     mouse_pos:Vector2::zero(),

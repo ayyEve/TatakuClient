@@ -12,6 +12,8 @@ pub struct OsuBeatmap {
     pub sliders: Vec<SliderDef>,
     pub spinners: Vec<SpinnerDef>,
     pub holds: Vec<HoldDef>,
+
+    pub combo_colors: Vec<Color>,
 }
 impl OsuBeatmap {
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
@@ -42,6 +44,7 @@ impl OsuBeatmap {
             spinners: Vec::new(),
             holds: Vec::new(),
             timing_points: Vec::new(),
+            combo_colors: Vec::new(),
         };
 
         for line_maybe in lines {
@@ -256,7 +259,23 @@ impl OsuBeatmap {
                         }
                     }
 
-                    BeatmapSection::Colors => {},
+                    BeatmapSection::Colors => {
+                        // Combo[n] : r,g,b
+                        // SliderTrackOverride : r,g,b
+                        // SliderBorder : r,g,b
+                        let mut split = line.split(":");
+                        let key = split.next().unwrap().trim();
+                        let mut val_split = split.next().unwrap().trim().split(",");
+                        let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let c = |a| {a as f32 / 255.0};
+                        let color = Color::new(c(r), c(g), c(b), 1.0);
+                        
+                        if key.starts_with("Combo") {
+                            beatmap.combo_colors.push(color);
+                        }
+                    },
                     BeatmapSection::Editor => {},
                 }
             }

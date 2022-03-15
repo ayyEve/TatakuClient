@@ -27,6 +27,8 @@ pub struct StandardSettings {
     pub ripple_scale: f64,
     pub slider_tick_ripples: bool,
     pub approach_combo_color: bool,
+
+    pub use_beatmap_combo_colors: bool,
 }
 impl StandardSettings {
     pub fn get_playfield(&self) -> (f64, Vector2) {
@@ -63,6 +65,7 @@ impl Default for StandardSettings {
             approach_combo_color: true,
 
             indicator_draw_duration: 300.0,
+            use_beatmap_combo_colors: true,
         }
     }
 }
