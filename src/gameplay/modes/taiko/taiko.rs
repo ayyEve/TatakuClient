@@ -427,8 +427,7 @@ impl GameMode for TaikoGame {
 
         // if theres no more notes to hit, show score screen
         if self.note_index >= self.notes.len() {
-
-            if manager.time() >= self.notes.last().unwrap().time() + 1000.0 {
+            if manager.time() >= self.notes.last().unwrap().end_time(self.hitwindow_miss) + 1000.0 {
                 manager.completed = true;
             }
 
