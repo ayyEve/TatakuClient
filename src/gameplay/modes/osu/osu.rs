@@ -796,19 +796,14 @@ impl GameMode for StandardGame {
                 let window_size = Settings::window_size();
                 let playfield_size = self.scaling_helper.playfield_scaled_with_cs_border.size;
 
-                let window_center = window_size / 2.0;
+                // what the offset should be if playfield is centered
+                let center_offset = (window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (window_size - playfield_size) / 2.0;
 
-                let new_playfield_pos = (window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 + change;
-                let playfield_center = new_playfield_pos + playfield_size / 2.0;
-
-                // what the offset shuold be if playfield is centered
-                let center_offset = (window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (window_center - playfield_size/2.0);
-
-                let snap = settings.playfield_snap;
-                if (window_center.x - (playfield_center.x - snap/2.0)).abs() < snap {
+                let snap_threshold = settings.playfield_snap;
+                if (center_offset.x - change.x).abs() < snap_threshold {
                     change.x = center_offset.x;
                 }
-                if (window_center.y - (playfield_center.y - snap/2.0)).abs() < snap {
+                if (center_offset.y - change.y).abs() < snap_threshold {
                     change.y = center_offset.y;
                 }
 

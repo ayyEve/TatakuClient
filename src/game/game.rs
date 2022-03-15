@@ -29,7 +29,7 @@ pub struct Game {
     // fps
     fps_display: FpsDisplay,
     update_display: FpsDisplay,
-    input_update_display: FpsDisplay,
+    // input_update_display: FpsDisplay,
 
     // transition
     transition: Option<GameState>,
@@ -110,7 +110,7 @@ impl Game {
             // fps
             fps_display: FpsDisplay::new("fps", 0),
             update_display: FpsDisplay::new("updates/s", 1),
-            input_update_display: FpsDisplay::new("inputs/s", 2),
+            // input_update_display: FpsDisplay::new("inputs/s", 2),
 
             // transition
             transition: None,
@@ -203,7 +203,7 @@ impl Game {
             self.input_manager.handle_events(e.clone(), &mut self.window);
             if let Some(args) = e.update_args() {self.update(args.dt*1000.0)}
             if let Some(args) = e.render_args() {self.render(args)}
-            if let Some(Button::Keyboard(_)) = e.press_args() {self.input_update_display.increment()}
+            // if let Some(Button::Keyboard(_)) = e.press_args() {self.input_update_display.increment()}
 
 
             if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
@@ -708,7 +708,7 @@ impl Game {
         // draw fps's
         self.fps_display.draw(&mut self.render_queue);
         self.update_display.draw(&mut self.render_queue);
-        self.input_update_display.draw(&mut self.render_queue);
+        // self.input_update_display.draw(&mut self.render_queue);
 
         // draw the notification manager
         NOTIFICATION_MANAGER.lock().draw(&mut self.render_queue);

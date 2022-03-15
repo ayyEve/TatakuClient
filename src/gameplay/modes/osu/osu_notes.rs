@@ -317,6 +317,21 @@ impl StandardHitObject for StandardNote {
             Vector2::one() * self.radius,
         ));
 
+        
+        if let Some(image) = &mut self.circle_image {
+            image.playfield_changed(&self.scaling_helper)
+        }
+        
+        if let Some(image) = &mut self.combo_image {
+            image.center_text(Rectangle::bounds_only(
+                self.pos - Vector2::one() * self.radius / 2.0,
+                Vector2::one() * self.radius,
+            ));
+           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+           image.current_pos   = image.initial_pos;
+           image.current_scale = image.initial_scale;
+        }
+
         self.combo_text = Some(combo_text);
     }
 
@@ -1222,6 +1237,28 @@ impl StandardHitObject for StandardSlider {
             Vector2::one() * self.radius,
         ));
 
+        if let Some(image) = &mut self.start_circle_image {
+            image.playfield_changed(&self.scaling_helper)
+        }
+        if let Some(image) = &mut self.end_circle_image {
+           image.initial_pos   = self.scaling_helper.scale_coords(self.visual_end_pos);
+           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+           image.current_pos   = image.initial_pos;
+           image.current_scale = image.initial_scale;
+        }
+
+        
+        
+        if let Some(image) = &mut self.combo_image {
+            image.center_text(Rectangle::bounds_only(
+                self.pos - Vector2::one() * self.radius / 2.0,
+                Vector2::one() * self.radius,
+            ));
+           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+           image.current_pos   = image.initial_pos;
+           image.current_scale = image.initial_scale;
+        }
+
         self.combo_text = Some(combo_text);
         self.make_dots();
     }
@@ -1641,6 +1678,7 @@ impl Default for SliderPath {
 
 #[derive(Clone)]
 struct HitCircleImageHelper {
+    pos: Vector2,
     circle: Image,
     overlay: Image,
 }
@@ -1675,7 +1713,21 @@ impl HitCircleImageHelper {
         Some(Self {
             circle: circle.unwrap(),
             overlay: overlay.unwrap(),
+            pos: scaling_helper.descale_coords(pos)
         })
+    }
+
+    
+    fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
+        self.overlay.initial_pos = new_scale.scale_coords(self.pos);
+        self.overlay.initial_scale = Vector2::one() * new_scale.scaled_cs;
+        self.overlay.current_pos = self.overlay.initial_pos;
+        self.overlay.current_scale = self.overlay.initial_scale;
+
+        self.circle.initial_pos   = self.overlay.initial_pos;
+        self.circle.initial_scale = self.overlay.initial_scale;
+        self.circle.current_pos   = self.overlay.initial_pos;
+        self.circle.current_scale = self.overlay.initial_scale;
     }
 
     fn set_alpha(&mut self, alpha: f32) {

@@ -468,8 +468,8 @@ impl GameMode for ManiaGame {
                         manager.hitbar_timings.push((time, time - note_time));
                         manager.health.give_life();
                         
-                        // play sound
-                        play_sound!(sound);
+                        // // play sound
+                        // play_sound!(sound);
 
                         self.next_note(col);
                     } else if diff < self.hitwindow_100 {
@@ -491,8 +491,6 @@ impl GameMode for ManiaGame {
                             manager.fail()
                         }
 
-                        // Audio::play_preloaded(sound);
-                        //TODO: play miss sound
                         //TODO: indicate this was a miss
                         self.next_note(col);
                     }
