@@ -606,10 +606,10 @@ impl HitCircleImageHelper {
         })
     }
 
-    fn set_alpha(&mut self, alpha: f32) {
-        self.circle.current_color.a = alpha;
-        self.overlay.current_color.a = alpha;
-    }
+    // fn set_alpha(&mut self, alpha: f32) {
+    //     self.circle.current_color.a = alpha;
+    //     self.overlay.current_color.a = alpha;
+    // }
 
     fn set_pos(&mut self, pos: Vector2) {
         self.circle.current_pos  = pos;

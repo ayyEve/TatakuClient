@@ -34,6 +34,7 @@ pub fn read_lines<P: AsRef<Path>>(filename: P) -> io::Result<Lines<BufReader<Fil
     let file = File::open(filename)?;
     Ok(BufReader::new(file).lines())
 }
+#[allow(unused)]
 pub fn read_lines_resolved<P: AsRef<Path>>(filename: P) -> io::Result<impl Iterator<Item = String>> {
     let file = File::open(filename)?;
     let lines = BufReader::new(file).lines().filter_map(|f|f.ok());

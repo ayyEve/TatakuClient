@@ -114,6 +114,7 @@ pub const AVAILABLE_PLAYMODES: &[&'static str] = &[{mode_list}];
 }
 
 
+#[allow(unused)]
 #[derive(Clone, Debug, Deserialize, Default)]
 struct GameModeInfo {
     // internal stuff

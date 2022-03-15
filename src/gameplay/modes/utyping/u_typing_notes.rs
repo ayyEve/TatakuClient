@@ -131,6 +131,7 @@ fn get_things_for_text(s: &String) -> Vec<char> {
 
 // note
 #[derive(Clone)]
+#[allow(unused)]
 pub struct UTypingNote {
     pos: Vector2,
     time: f32, // ms
@@ -265,6 +266,7 @@ impl HitObject for UTypingNote {
 }
 
 // utyping hitobject stuff
+#[allow(unused)]
 impl UTypingNote {
     pub fn get_points(&mut self, time: f32, c: char, hit_windows:Vec<f32>) -> ScoreHit {
         // check already hit
@@ -323,7 +325,7 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    fn new(settings: &Arc<TaikoSettings>, depth: f64) -> Option<Self> {
+    fn new(_settings: &Arc<TaikoSettings>, depth: f64) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 

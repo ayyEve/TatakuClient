@@ -8,7 +8,7 @@ pub struct KeyCounter {
     keys: HashMap<KeyPress, KeyInfo>,
     key_order: Vec<KeyPress>,
 
-    background_image: Option<Image>,
+    // background_image: Option<Image>,
     button_image: Option<Image>
 }
 impl KeyCounter {
@@ -21,13 +21,13 @@ impl KeyCounter {
             keys.insert(key, KeyInfo::new(label));
         }
 
-        let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", true);
-        if let Some(image) = &mut background_image {
-            image.current_rotation = 90f64.to_radians();
-            image.origin = Vector2::new(image.size().x, 0.0);
-            // image.current_pos = pos - Vector2::new(image.size().x, 0.0);
-            image.depth = -100.0;
-        }
+        // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", true);
+        // if let Some(image) = &mut background_image {
+        //     image.current_rotation = 90f64.to_radians();
+        //     image.origin = Vector2::new(image.size().x, 0.0);
+        //     // image.current_pos = pos - Vector2::new(image.size().x, 0.0);
+        //     image.depth = -100.0;
+        // }
 
         let mut button_image= SKIN_MANAGER.write().get_texture("inputoverlay-key", true);
         if let Some(image) = &mut button_image {
@@ -38,7 +38,7 @@ impl KeyCounter {
             keys,
             key_order,
             pos,
-            background_image,
+            // background_image,
             button_image,
         }
     }

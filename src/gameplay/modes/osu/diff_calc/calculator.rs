@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use super::super::osu::*;
-use super::super::osu_notes::*;
 
 
 const BUCKET_LENGTH:f32 = 500.0;
@@ -152,8 +151,6 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
 
             diff.push(combined);
         }
-        
-        let count = diff.len() as f32;
 
         let mut difficulty = 0.0;
         let mut weight = 1.0;

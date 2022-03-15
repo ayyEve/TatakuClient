@@ -90,7 +90,7 @@ struct ModButton {
 }
 impl ModButton {
     fn new(pos: Vector2, mod_names: Vec<String>) -> Self {
-        let mut mod_images: Vec<Option<Image>> = mod_names.iter().map(|m|SKIN_MANAGER.write().get_texture(format!("selection-mod-{}", m), true)).collect();
+        let mod_images: Vec<Option<Image>> = mod_names.iter().map(|m|SKIN_MANAGER.write().get_texture(format!("selection-mod-{}", m), true)).collect();
 
         Self {
             size: Vector2::new(100.0, 100.0),

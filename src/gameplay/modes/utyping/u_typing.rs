@@ -348,7 +348,7 @@ impl GameMode for UTypingGame {
     }
 
 
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    fn key_down(&mut self, _key:piston::Key, manager:&mut IngameManager) {
         // dont accept key input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -373,7 +373,7 @@ impl GameMode for UTypingGame {
 
     }
 
-    fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    fn mouse_down(&mut self, _btn:piston::MouseButton, manager:&mut IngameManager) {
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying || self.game_settings.ignore_mouse_buttons {

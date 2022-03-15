@@ -1368,7 +1368,7 @@ pub struct StandardSpinner {
     alpha_mult: f32,
 }
 impl StandardSpinner {
-    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, diff_calc_only: bool) -> Self {
+    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, _diff_calc_only: bool) -> Self {
         let time = def.time;
         let end_time = def.end_time;
         Self {
