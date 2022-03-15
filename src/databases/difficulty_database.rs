@@ -53,7 +53,7 @@ fn read() -> Option<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>> {
 lazy_static::lazy_static! {
     /// mode, mods, map_hash = diff
     pub static ref DIFFICULTY_CALC_CACHE: Arc<RwLock<HashMap<PlayMode, HashMap<String, HashMap<String, f32>>>>> = {
-        // save_loop();
+        save_loop();
         if let Some(data) = read() {
             Arc::new(RwLock::new(data))
         } else {
