@@ -139,8 +139,6 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
     }
 
     fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
-        return Ok(0.0);
-
         let aim = self.calc_aim(mods)?;
         let note_density = self.calc_density(mods)?;
 
