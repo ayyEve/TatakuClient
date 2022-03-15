@@ -1,7 +1,5 @@
 
 use crate::prelude::*;
-use crate::databases::get_scores;
-
 
 // constants
 const INFO_BAR_HEIGHT: f64 = 60.0;

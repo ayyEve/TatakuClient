@@ -197,24 +197,24 @@ impl Menu<Game> for MainMenu {
         let depth = 0.0;
         let window_size = Settings::window_size();
 
-        // draw welcome text
-        let mut welcome_text = Text::new(
-            Color::BLACK,
-            depth-1.0,
-            pos_offset,
-            40,
-            "Welcome to Tataku!".to_owned(),
-            get_font()
-        );
-        welcome_text.center_text(Rectangle::bounds_only(Vector2::new(0.0, 30.0), Vector2::new(window_size.x , 50.0)));
+        // // draw welcome text
+        // let mut welcome_text = Text::new(
+        //     Color::BLACK,
+        //     depth-1.0,
+        //     pos_offset,
+        //     40,
+        //     "Welcome to Tataku!".to_owned(),
+        //     get_font()
+        // );
+        // welcome_text.center_text(Rectangle::bounds_only(Vector2::new(0.0, 30.0), Vector2::new(window_size.x , 50.0)));
         
-        const TEXT_PAD:f64 = 5.0;
-        list.push(visibility_bg(
-            welcome_text.initial_pos - Vector2::new(0.0, TEXT_PAD), 
-            Vector2::new(welcome_text.measure_text().x , 50.0),
-            depth+10.0
-        ));
-        list.push(Box::new(welcome_text));
+        // const TEXT_PAD:f64 = 5.0;
+        // list.push(visibility_bg(
+        //     welcome_text.initial_pos - Vector2::new(0.0, TEXT_PAD), 
+        //     Vector2::new(welcome_text.measure_text().x , 50.0),
+        //     depth+10.0
+        // ));
+        // list.push(Box::new(welcome_text));
 
         // draw interactables
         for i in self.interactables(true) {
