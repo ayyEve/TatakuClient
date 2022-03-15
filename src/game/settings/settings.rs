@@ -50,6 +50,7 @@ pub struct Settings {
     pub catch_settings: CatchSettings,
     pub mania_settings: ManiaSettings,
     pub background_game_settings: BackgroundGameSettings,
+    pub common_game_settings: CommonGameplaySettings,
     pub last_played_mode: PlayMode,
 
     // window settings
@@ -71,8 +72,6 @@ pub struct Settings {
 
 
     // misc keybinds
-    pub key_offset_up: Key,
-    pub key_offset_down: Key,
     pub key_user_panel: Key,
 
     // other misc
@@ -167,11 +166,12 @@ impl Default for Settings {
             osu_password: String::new(),
 
             // mode settings
-            standard_settings: StandardSettings{..Default::default()},
-            taiko_settings: TaikoSettings {..Default::default()},
-            catch_settings: CatchSettings {..Default::default()},
-            mania_settings: ManiaSettings {..Default::default()},
-            background_game_settings: BackgroundGameSettings {..Default::default()},
+            standard_settings: StandardSettings::default(),
+            taiko_settings: TaikoSettings::default(),
+            catch_settings: CatchSettings::default(),
+            mania_settings: ManiaSettings::default(),
+            background_game_settings: BackgroundGameSettings::default(),
+            common_game_settings: CommonGameplaySettings::default(),
             pause_on_focus_lost: true,
             last_played_mode: "osu".to_owned(),
 
@@ -189,8 +189,6 @@ impl Default for Settings {
             
 
             // keys
-            key_offset_up: Key::Equals,
-            key_offset_down: Key::Minus,
             key_user_panel: Key::F8,
             
 

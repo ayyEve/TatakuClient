@@ -30,6 +30,7 @@ pub struct IngameManager {
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
 
+
     pub health: HealthHelper,
 
     pub score: Score,
@@ -84,6 +85,7 @@ pub struct IngameManager {
     spectator_cache: Vec<(u32, String)>,
 
     pub background_game_settings: BackgroundGameSettings,
+    pub common_game_settings: Arc<CommonGameplaySettings>,
 
 
     // spectator variables
@@ -111,6 +113,7 @@ impl IngameManager {
         let font = get_font();
         let hitsound_cache = HashMap::new();
         let current_mods = Arc::new(ModManager::get().clone());
+        let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.speed;
@@ -148,6 +151,7 @@ impl IngameManager {
             score_draw_start_pos: gamemode.score_draw_start_pos(),
 
             background_game_settings: settings.background_game_settings.clone(),
+            common_game_settings,
 
             gamemode,
             score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).ok(),
@@ -734,7 +738,6 @@ impl IngameManager {
         if let Some(score) = &mut self.score_image {
             score.number = self.score.score as f64;
             score.current_pos = Vector2::new(window_size.x - score.measure_text().x, 0.0);
-
             list.push(Box::new(score.clone()));
         } else {
             // score bg
@@ -795,15 +798,15 @@ impl IngameManager {
         // duration bar
         // duration remaining
         list.push(Box::new(Rectangle::new(
-            Color::new(0.4, 0.4, 0.4, 0.5),
+            self.common_game_settings.duration_color,
             1.0,
             Vector2::new(0.0, window_size.y - (DURATION_HEIGHT + 3.0)),
             Vector2::new(window_size.x, DURATION_HEIGHT),
-            Some(Border::new(Color::BLACK, 1.8))
+            Some(Border::new(self.common_game_settings.duration_border_color, 1.8))
         )));
         // fill
         list.push(Box::new(Rectangle::new(
-            [0.4,0.4,0.4,1.0].into(),
+            self.common_game_settings.duration_color_full,
             2.0,
             Vector2::new(0.0, window_size.y - (DURATION_HEIGHT + 3.0)),
             Vector2::new(window_size.x * (time/self.end_time) as f64, DURATION_HEIGHT),
@@ -811,19 +814,23 @@ impl IngameManager {
         )));
 
         // health bar
+        let percent = self.health.get_ratio() as f64;
+        let len = self.common_game_settings.healthbar_colors.len();
+        let index = ((len as f64 * percent) as usize).min(len - 1);
+        // bg
         list.push(Box::new(Rectangle::new(
-            Color::new(0.4, 0.4, 0.4, 0.5),
+            self.common_game_settings.healthbar_bg_color,
             1.0,
             Vector2::new(0.0, 0.0),
             Vector2::new(window_size.x / 2.0, DURATION_HEIGHT),
-            Some(Border::new(Color::BLACK, 1.8))
+            Some(Border::new(self.common_game_settings.healthbar_border_color, 1.8))
         )));
         // fill
         list.push(Box::new(Rectangle::new(
-            Color::LIME,
+            self.common_game_settings.healthbar_colors[index],
             2.0,
             Vector2::new(0.0, 0.0),
-            Vector2::new((window_size.x / 2.0) * self.health.get_ratio() as f64, DURATION_HEIGHT),
+            Vector2::new((window_size.x / 2.0) * percent, DURATION_HEIGHT),
             None
         )));
 
@@ -939,19 +946,17 @@ impl IngameManager {
 
         // check for offset changing keys
         {
-            let settings = get_settings!();
             if mods.shift {
                 let mut t = 0.0;
-                if key == settings.key_offset_up {t = 5.0}
-                if key == settings.key_offset_down {t = -5.0}
-                drop(settings);
+                if key == self.common_game_settings.key_offset_up {t = 5.0}
+                if key == self.common_game_settings.key_offset_down {t = -5.0}
 
                 if t != 0.0 {
                     self.increment_global_offset(t);
                 }
             } else {
-                if key == settings.key_offset_up {self.increment_offset(5.0)}
-                if key == settings.key_offset_down {self.increment_offset(-5.0)}
+                if key == self.common_game_settings.key_offset_up {self.increment_offset(5.0)}
+                if key == self.common_game_settings.key_offset_down {self.increment_offset(-5.0)}
             }
         }
 
@@ -1071,6 +1076,8 @@ impl Default for IngameManager {
             spectator_cache: Default::default(),
             last_spectator_score_sync: 0.0,
             on_start: Box::new(|_|{}),
+
+            common_game_settings: Default::default(),
 
             combo_image: None,
             score_image: None,
