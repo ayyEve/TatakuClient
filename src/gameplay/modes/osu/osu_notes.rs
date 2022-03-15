@@ -5,7 +5,7 @@ const SLIDER_DOT_RADIUS:f64 = 8.0;
 
 pub const NOTE_BORDER_SIZE:f64 = 2.0;
 pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
-const HITWINDOW_CIRCLE_RADIUS:f64 = CIRCLE_RADIUS_BASE * 2.0;
+const APPROACH_CIRCLE_MULT:f64 = 4.0;
 const PREEMPT_MIN:f32 = 450.0;
 
 // temp var for testing alternate slider rendering
@@ -1528,16 +1528,16 @@ impl StandardHitObject for StandardSpinner {
 }
 
 
-fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scale:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
+fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scaled_cs:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
     // let instant = Instant::now();
 
     if let Some(mut tex) = SKIN_MANAGER.write().get_texture("approachcircle", true) {
         tex.depth = depth - 100.0;
-        let scale = 1.0 + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale) / radius;
+        let scale = 1.0 + (time_diff as f64 / time_preempt as f64) * (APPROACH_CIRCLE_MULT - 1.0);
 
         tex.initial_pos = pos;
         tex.initial_color = color.alpha(alpha);
-        tex.initial_scale = Vector2::one() * scale;
+        tex.initial_scale = Vector2::one() * scale * scaled_cs;
 
         tex.current_pos = tex.initial_pos;
         tex.current_color = tex.initial_color;
@@ -1552,8 +1552,8 @@ fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, dep
             Color::TRANSPARENT_WHITE,
             depth - 100.0,
             pos,
-            radius + (time_diff as f64 / time_preempt as f64) * (HITWINDOW_CIRCLE_RADIUS * scale),
-            Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scale))
+            radius + (time_diff as f64 / time_preempt as f64) * (APPROACH_CIRCLE_MULT * CIRCLE_RADIUS_BASE * scaled_cs),
+            Some(Border::new(color.alpha(alpha), NOTE_BORDER_SIZE * scaled_cs))
         ))
     }
 }

@@ -40,6 +40,8 @@ pub struct ScalingHelper {
     /// border size scaled
     pub border_scaled: f64,
 
+    pub scaled_circle_size: Vector2,
+
     // /// scaled playfield
     // playfield_scaled: Rectangle,
     /// scaled playfield
@@ -106,6 +108,7 @@ impl ScalingHelper {
             scaled_pos_offset,
             scaled_cs,
             border_scaled,
+            scaled_circle_size: circle_size,
 
             // playfield_scaled,
             playfield_scaled_with_cs_border
