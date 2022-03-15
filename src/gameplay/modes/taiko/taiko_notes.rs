@@ -262,7 +262,7 @@ impl HitObject for TaikoSlider {
         if let Some(image) = &self.middle_image {
             let mut image = image.clone();
             image.current_pos = self.pos + Vector2::y_only(self.radius);
-            image.current_scale = Vector2::new(self.end_x - self.pos.x, 1.0);
+            image.current_scale.x = self.end_x - self.pos.x;
             list.push(Box::new(image));
         } else {
             // middle
