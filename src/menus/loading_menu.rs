@@ -95,7 +95,6 @@ impl LoadingMenu {
                     bpm_min: r.get("bpm_min").unwrap_or(0.0),
                     bpm_max: r.get("bpm_max").unwrap_or(0.0),
 
-                    // TODO: store this
                     diff: -1.0
                 };
 
@@ -104,7 +103,6 @@ impl LoadingMenu {
                 .unwrap()
                 .filter_map(|m|m.ok())
                 .collect::<Vec<BeatmapMeta>>();
-
             
             status.lock().loading_count = rows.len();
             // load from db
@@ -157,11 +155,13 @@ impl Menu<Game> for LoadingMenu {
         // since this is just loading, we dont care about performance here
         let state = self.status.lock();
 
+        let text_color = Color::WHITE;
+
         let mut text:Text;
         match &state.error {
             Some(error) => {
                 text = Text::new(
-                    Color::BLACK,
+                    text_color,
                     -100.0,
                     Vector2::zero(),
                     32,
@@ -172,7 +172,7 @@ impl Menu<Game> for LoadingMenu {
             None => match state.stage {
                 LoadingStage::None => {
                     text = Text::new(
-                        Color::BLACK,
+                        text_color,
                         -100.0,
                         Vector2::zero(),
                         32,
@@ -182,7 +182,7 @@ impl Menu<Game> for LoadingMenu {
                 },
                 LoadingStage::Done => {
                     text = Text::new(
-                        Color::BLACK,
+                        text_color,
                         -100.0,
                         Vector2::zero(),
                         32,
@@ -192,7 +192,7 @@ impl Menu<Game> for LoadingMenu {
                 }
                 LoadingStage::Database => {
                     text = Text::new(
-                        Color::BLACK,
+                        text_color,
                         -100.0,
                         Vector2::zero(),
                         32,
@@ -202,7 +202,7 @@ impl Menu<Game> for LoadingMenu {
                 }
                 LoadingStage::Audio => {
                     text = Text::new(
-                        Color::BLACK,
+                        text_color,
                         -100.0,
                         Vector2::zero(),
                         32,
@@ -212,7 +212,7 @@ impl Menu<Game> for LoadingMenu {
                 }
                 LoadingStage::Beatmaps => {
                     text = Text::new(
-                        Color::BLACK,
+                        text_color,
                         -100.0,
                         Vector2::zero(),
                         32,
