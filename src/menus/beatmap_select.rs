@@ -49,7 +49,7 @@ pub struct BeatmapSelectMenu {
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
     /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
-    mouse_down: Option<(Vector2, bool, Vector2, KeyModifiers)>
+    mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>
 }
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
@@ -618,7 +618,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             return;
         }
 
-        self.mouse_down = Some((pos, false, pos, mods));
+        self.mouse_down = Some((pos, false, button, pos, mods));
     }
     fn on_click_release(&mut self, pos:Vector2, button:MouseButton, game:&mut Game) {
         let mut was_hold = false;
@@ -633,9 +633,9 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
 
 
-        if let Some((_, was_drag, _, click_mods)) = self.mouse_down {
+        if let Some((_, was_drag, button, _, click_mods)) = self.mouse_down {
             if was_drag {
-                mods = Some(click_mods);
+                mods = Some((click_mods, button));
                 was_hold = true;
             }
         }
@@ -644,7 +644,7 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         // perform actual on_click
         // this is here because on_click is now only used for dragging
-        let mods = mods.unwrap_or_default();
+        let (mods, button) = mods.unwrap_or((KeyModifiers::default(), MouseButton::Left));
         if !was_hold {
             self.actual_on_click(pos, button, mods, game)
         }
@@ -653,11 +653,21 @@ impl Menu<Game> for BeatmapSelectMenu {
     
     fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
         let mut scroll_pos = 0.0;
-        if let Some((drag_pos, confirmed_drag, last_checked, _)) = &mut self.mouse_down {
+        if let Some((drag_pos, confirmed_drag, button_pressed, last_checked, _)) = &mut self.mouse_down {
             if *confirmed_drag || (pos.y - drag_pos.y).abs() >= DRAG_THRESHOLD  {
-                let dist = (pos.y - last_checked.y) / DRAG_FACTOR;
                 *confirmed_drag |= true;
-                scroll_pos = dist;
+
+                if *button_pressed == MouseButton::Right {
+                    let offset_pos = self.beatmap_scroll.get_pos();
+                    let comp_size = self.beatmap_scroll.size();
+                    let y_percent = ((pos.y - offset_pos.y) / comp_size.y).clamp(0.0, 1.0);
+
+                    let items_height = self.beatmap_scroll.get_elements_height();
+                    self.beatmap_scroll.scroll_pos = -items_height * y_percent;
+                } else {
+                    let dist = (pos.y - last_checked.y) / DRAG_FACTOR;
+                    scroll_pos = dist;
+                }
             }
 
             *last_checked = pos;
