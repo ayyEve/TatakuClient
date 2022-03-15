@@ -92,7 +92,13 @@ fn add_new_entries(db: &Connection) {
     for (col, t) in SCORE_ENTRIES {
         match db.execute(&format!("ALTER TABLE scores ADD {} {};", col, t), []) {
             Ok(_) => println!("Column added to scores db: {}", col),
-            Err(e) => println!("Error adding column to scores db: {}", e),
+            Err(e) => {
+                let e = format!("{}", e);
+                // only log error if its not a duplicate column name
+                if !e.contains("duplicate column name") {
+                    println!("Error adding column to scores db: {}", e)
+                }
+            },
         }
     }
     
