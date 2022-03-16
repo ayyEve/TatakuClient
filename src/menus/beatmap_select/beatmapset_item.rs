@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
 
-const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(550.0, 50.0);
+const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
 const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
 const BEATMAP_ITEM_PADDING:f64 = 5.0;
-const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(450.0, 50.0);
+const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
 
 
 pub struct BeatmapsetItem {
@@ -170,14 +170,30 @@ impl ScrollableItem for BeatmapsetItem {
         ).shape(Shape::Round(5.0, 10))));
 
         // line 1
-        list.push(Box::new(Text::new(
+        let title_line = Text::new(
             Color::WHITE,
             parent_depth + 4.0,
             self.pos + pos_offset + Vector2::new(5.0, 5.0),
             15,
             format!("{} // {} - {}", meta.creator, meta.artist, meta.title),
             font.clone()
-        )));
+        );
+
+        // let mut colors = Vec::new();
+        // // creator color
+        // colors.extend(meta.creator.chars().map(|_|Color::RED));
+        // // spacer
+        // for _ in 0..4 {colors.push(Color::WHITE)}
+        // // artist
+        // colors.extend(meta.artist.chars().map(|_|Color::WHITE));
+        // // spacer
+        // for _ in 0..3 {colors.push(Color::WHITE)}
+        // // title
+        // colors.extend(meta.title.chars().map(|_|Color::WHITE));
+
+        // title_line.set_text_colors(colors);
+
+        list.push(Box::new(title_line));
 
 
         // if selected, draw map items

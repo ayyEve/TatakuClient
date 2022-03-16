@@ -16,10 +16,10 @@ pub struct Text {
 
     pub origin: Vector2,
 
-    pub color: Color,
     pub depth: f64,
     pub font_size: u32,
     pub text: String,
+    pub text_colors: Vec<Color>,
     pub fonts: Vec<Font>,
 
     context: Option<Context>,
@@ -51,35 +51,26 @@ impl Text {
             current_rotation,
 
             origin,
-            color,
             depth,
             font_size,
             text,
             fonts,
+            text_colors: Vec::new(),
             context: None,
         }
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        // let mut text_size = Vector2::zero();
-        // let mut font = self.font.lock();
-
-        // // let block_char = '█';
-        // // let character = font.character(self.font_size, block_char).unwrap();
-
-        // for _ch in self.text.chars() {
-        //     let character = font.character(self.font_size, _ch).unwrap();
-        //     text_size.x += character.advance_width();
-        //     // text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();
-        // }
-        
-        // text_size
         measure_text(&self.fonts, self.font_size, &self.text, self.current_scale) 
     }
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
         self.initial_pos = rect.pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
         self.current_pos = self.initial_pos;
+    }
+
+    pub fn set_text_colors(&mut self, colors: Vec<Color>) {
+        self.text_colors = colors
     }
 }
 impl Renderable for Text {
@@ -105,9 +96,17 @@ impl Renderable for Text {
             // apply origin
             .trans(-self.origin.x, -self.origin.y + self.measure_text().y)
         ;
+
+
+        let text;
+        if self.text_colors.len() > 0 {
+            text = self.text.chars().enumerate().map(|(i, c)| (c, self.text_colors[i % self.text_colors.len()].alpha(self.current_color.a))).collect::<Vec<(char, Color)>>();
+        } else {
+            text = self.text.chars().map(|c| (c, self.current_color)).collect::<Vec<(char, Color)>>();
+        }
         
         ayyeve_piston_ui::render::draw_text(
-            &(&self.text, self.color), 
+            &text, 
             (self.font_size as f64 * self.current_scale.y) as u32, 
             false, 
             &self.fonts, 
@@ -115,15 +114,6 @@ impl Renderable for Text {
             transform, 
             g
         ).unwrap();
-
-        // graphics::text(
-        //     self.color.into(),
-        //     self.font_size * self.current_scale.y as u32,
-        //     self.text.as_str(),
-        //     &mut *self.font.lock(),
-        //     transform,
-        //     g
-        // ).unwrap();
     }
 }
 
@@ -219,7 +209,6 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
         text_size.x += character.advance_width();
         text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();
     }
-    if text == "1000" {println!("9")};
     
     text_size
 }

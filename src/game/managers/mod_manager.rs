@@ -29,4 +29,14 @@ impl ModManager {
 }
 
 // instance
-impl ModManager {}
+impl ModManager {
+    pub fn mods_string(&self) -> String {
+        let mut list = Vec::new();
+        
+        if self.nofail {list.push("NF".to_owned())}
+        if self.autoplay {list.push("AT".to_owned())}
+        if self.speed != 1.0 {list.push(format!("({:.2}x)", self.speed))}
+
+        list.join(" ")
+    }
+}

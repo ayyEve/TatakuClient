@@ -15,12 +15,20 @@ pub struct LeaderboardItem {
     tag: String,
 
     score: Score,
-    font: Arc<Mutex<opengl_graphics::GlyphCache<'static>>>
+    font: Arc<Mutex<opengl_graphics::GlyphCache<'static>>>,
+
+    score_mods: ModManager
 }
 impl LeaderboardItem {
     pub fn new(score:Score) -> LeaderboardItem {
         let tag = score.username.clone();
         let font = get_font();
+
+        let mods = if let Some(mods) = &score.mods_string {
+            serde_json::from_str(mods).unwrap_or(ModManager::new())
+        } else {
+            ModManager::new()
+        };
 
         LeaderboardItem {
             pos: Vector2::zero(),
@@ -29,7 +37,8 @@ impl LeaderboardItem {
             tag,
             hover: false,
             selected: false,
-            font
+            font,
+            score_mods: mods
         }
     }
 }
@@ -62,7 +71,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING + Vector2::new(0.0, PADDING.y + 15.0),
             12,
-            format!("{}x, {:.2}%", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
+            format!("{}x, {:.2}%, {}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods.mods_string()),
             self.font.clone()
         )));
     }

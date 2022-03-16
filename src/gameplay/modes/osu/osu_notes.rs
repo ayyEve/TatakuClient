@@ -236,7 +236,7 @@ impl HitObject for StandardNote {
             combo.current_color.a = alpha;
             list.push(Box::new(combo.clone()));
         } else {
-            self.combo_text.as_mut().unwrap().color.a = alpha;
+            self.combo_text.as_mut().unwrap().current_color.a = alpha;
             list.push(self.combo_text.clone().unwrap());
         }
 
@@ -884,7 +884,7 @@ impl HitObject for StandardSlider {
                 combo.current_color.a = alpha;
                 list.push(Box::new(combo.clone()));
             } else {
-                self.combo_text.as_mut().unwrap().color.a = alpha;
+                self.combo_text.as_mut().unwrap().current_color.a = alpha;
                 list.push(self.combo_text.clone().unwrap());
             }
         } else if self.map_time < self.curve.end_time {
