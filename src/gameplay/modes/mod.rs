@@ -39,13 +39,13 @@ pub fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) 
     }
 }
 
-pub fn gamemode_display_name(mode: PlayMode) -> &'static str {
-    match &*mode {
+pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {
+    match &**mode {
         "mania" => "Mania",
         "osu" => "Osu",
         "taiko" => "Taiko",
         "utyping" => "uTyping",
-        _ => ""
+        _ => "Unknown"
     }
 }
 pub const AVAILABLE_PLAYMODES: &[&'static str] = &[

@@ -705,7 +705,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
         if key == F5 {
             if mods.ctrl {
-                NotificationManager::add_text_notification("doing a full refresh", 5000.0, Color::RED);
+                NotificationManager::add_text_notification("Doing a full refresh", 5000.0, Color::RED);
                 BEATMAP_MANAGER.write().full_refresh();
             } else {
                 self.refresh_maps(&mut BEATMAP_MANAGER.write());
@@ -725,7 +725,8 @@ impl Menu<Game> for BeatmapSelectMenu {
 
             if let Some(new_mode) = new_mode {
                 self.set_selected_mode(new_mode.clone(), Some(game));
-                NotificationManager::add_text_notification(&format!("Mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
+                let display = gamemode_display_name(&new_mode);
+                NotificationManager::add_text_notification(&format!("Mode changed to {}", display), 1000.0, Color::BLUE);
                 self.mode = new_mode;
                 self.load_scores();
             }

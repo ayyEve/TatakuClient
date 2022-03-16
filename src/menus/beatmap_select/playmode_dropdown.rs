@@ -12,7 +12,7 @@ impl Dropdownable for PlayModeDropdown {
 
     fn display_text(&self) -> String {
         let Self::Mode(s) = self;
-        gamemode_display_name(s.clone()).to_owned()
+        gamemode_display_name(&s).to_owned()
     }
 
     fn from_string(s:String) -> Self {

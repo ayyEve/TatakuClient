@@ -222,7 +222,7 @@ impl ScrollableItem for BeatmapsetItem {
                     parent_depth + 4.0,
                     pos + Vector2::new(5.0, 5.0),
                     12,
-                    format!("{} - {}", gamemode_display_name(meta.mode.clone()), meta.version),
+                    format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     font.clone()
                 )));
 
