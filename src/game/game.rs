@@ -367,7 +367,7 @@ impl Game {
         match &mut current_state {
             GameState::Ingame(manager) => {
                 // pause button, or focus lost, only if not replaying
-                if (manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings_clone.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause {
+                if !manager.failed && ((manager.can_pause() && (matches!(window_focus_changed, Some(false)) && settings_clone.pause_on_focus_lost)) || keys_down.contains(&Key::Escape) || controller_pause) {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
                     let menu = PauseMenu::new(manager2, false);

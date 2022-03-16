@@ -921,7 +921,6 @@ impl IngameManager {
 // input handlers
 impl IngameManager {
     pub fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
-
         if (self.replaying || self.current_mods.autoplay) && !self.menu_background {
             // check replay-only keys
             if key == piston::Key::Escape {
@@ -1002,6 +1001,7 @@ impl IngameManager {
         gamemode.mouse_scroll(delta, self);
         self.gamemode = gamemode;
     }
+
 
     pub fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
         if self.failed {return}
