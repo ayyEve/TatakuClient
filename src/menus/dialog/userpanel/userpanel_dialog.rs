@@ -109,7 +109,7 @@ impl Dialog<Game> for UserPanel {
         }
 
         // update users from online manager
-        if let Ok(om) = ONLINE_MANAGER.try_lock() {
+        if let Ok(om) = ONLINE_MANAGER.try_read() {
             for (_, user) in &om.users {
                 if let Ok(u) = user.try_lock() {
                     if !self.users.contains_key(&u.user_id) {

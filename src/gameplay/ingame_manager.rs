@@ -542,7 +542,7 @@ impl IngameManager {
         }
 
         // update our spectator list if we can
-        if let Ok(manager) = ONLINE_MANAGER.try_lock() {
+        if let Ok(manager) = ONLINE_MANAGER.try_read() {
             self.spectator_cache = manager.spectator_list.clone()
         }
 

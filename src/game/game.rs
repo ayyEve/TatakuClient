@@ -628,7 +628,7 @@ impl Game {
         NOTIFICATION_MANAGER.lock().update();
 
 
-        if let Ok(manager) = &mut ONLINE_MANAGER.try_lock() {
+        if let Ok(manager) = &mut ONLINE_MANAGER.try_write() {
             manager.do_game_things(self);
         }
         

@@ -109,7 +109,7 @@ impl Dialog<Game> for Chat {
             if let Some(channel) = self.selected_channel.clone() {
                 let clone = ONLINE_MANAGER.clone();
                 tokio::spawn(async move {
-                    let man = clone.lock().await;
+                    let man = clone.read().await;
                     send_packet!(man.writer, create_packet!(PacketId::Client_SendMessage {
                         channel: channel.get_name(),
                         message: send_text
@@ -242,7 +242,7 @@ impl Dialog<Game> for Chat {
     }
 
     fn update(&mut self, _g:&mut Game) {
-        if let Ok(mut online_manager) = ONLINE_MANAGER.try_lock() {
+        if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
             let mut scroll_pending = false;
 
             if let Some(selected_channel) = &self.selected_channel {

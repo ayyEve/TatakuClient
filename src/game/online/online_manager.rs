@@ -15,7 +15,7 @@ const EXTRA_ONLINE_LOGGING:bool = true;
 // how many frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
-type ThreadSafeSelf = Arc<Mutex<OnlineManager>>;
+type ThreadSafeSelf = Arc<tokio::sync::RwLock<OnlineManager>>;
 
 #[macro_export]
 macro_rules! create_packet {
@@ -49,8 +49,7 @@ macro_rules! send_packet {
 
 
 lazy_static::lazy_static! {
-    ///TODO: somehow change this to a RwLock. it should prioritize reads, as reads will almost always be syncronous
-    pub static ref ONLINE_MANAGER:ThreadSafeSelf = Arc::new(Mutex::new(OnlineManager::new()));
+    pub static ref ONLINE_MANAGER:ThreadSafeSelf = Arc::new(tokio::sync::RwLock::new(OnlineManager::new()));
 }
 
 ///
@@ -118,13 +117,13 @@ impl OnlineManager {
         // initialize the connection
         match connect_async(url).await {
             Ok((ws_stream, _)) => {
-                s.lock().await.connected = true;
+                s.write().await.connected = true;
                 let (writer, mut reader) = ws_stream.split();
                 let writer = Arc::new(Mutex::new(writer));
 
                 // send login
                 {
-                    let mut s = s.lock().await;
+                    let mut s = s.write().await;
                     s.writer = Some(writer);
                     let settings = get_settings!().clone();
 
@@ -145,7 +144,7 @@ impl OnlineManager {
                             }
                         },
                         Ok(Message::Ping(_)) => {
-                            if let Some(writer) = s.lock().await.writer.as_mut() {
+                            if let Some(writer) = &s.read().await.writer {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
                             }
                         }
@@ -153,16 +152,19 @@ impl OnlineManager {
 
                         Err(oof) => {
                             println!("[Online] oof: {}", oof);
-                            s.lock().await.connected = false;
-                            s.lock().await.writer = None;
-                            // reconnect?
+
+                            let mut s = s.write().await;
+                            s.connected = false;
+                            s.writer = None;
+
+                            // reconnect handled by caller
                             break;
                         }
                     }
                 }
             }
             Err(oof) => {
-                s.lock().await.connected = false;
+                s.write().await.connected = false;
                 println!("[Online] could not accept connection: {}", oof);
             }
         }
@@ -178,7 +180,7 @@ impl OnlineManager {
 
             match packet {
                 // ===== ping/pong =====
-                PacketId::Ping => {send_packet!(s.lock().await.writer, create_packet!(Pong));},
+                PacketId::Ping => {send_packet!(s.read().await.writer, create_packet!(Pong));},
                 PacketId::Pong => {/* println!("[Online] got pong from server"); */},
 
                 // login
@@ -198,7 +200,7 @@ impl OnlineManager {
                         },
                         LoginStatus::Ok => {
                             println!("[Login] success, got user_id: {}", user_id);
-                            s.lock().await.user_id = user_id;
+                            s.write().await.user_id = user_id;
                             NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN);
 
                             ping_handler()
@@ -227,12 +229,12 @@ impl OnlineManager {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {}, game: {})", username, user_id, game)};
                     let mut user = OnlineUser::new(user_id, username);
                     user.game = game;
-                    s.lock().await.users.insert(user_id, Arc::new(Mutex::new(user)));
+                    s.write().await.users.insert(user_id, Arc::new(Mutex::new(user)));
                 }
                 PacketId::Server_UserLeft {user_id} => {
                     if EXTRA_ONLINE_LOGGING {println!("[Online] user id {} left", user_id)};
 
-                    let mut lock = s.lock().await;
+                    let mut lock = s.write().await;
                     // remove from online users
                     lock.users.remove(&user_id);
 
@@ -247,7 +249,7 @@ impl OnlineManager {
                 PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
                     // println!("[Online] got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
                     
-                    if let Some(e) = s.lock().await.users.get_mut(&user_id) {
+                    if let Some(e) = s.read().await.users.get(&user_id) {
                         let mut a = e.lock().await;
                         a.action = Some(action);
                         a.action_text = Some(action_text);
@@ -268,7 +270,7 @@ impl OnlineManager {
                         ChatChannel::User {username: channel}
                     };
 
-                    let mut lock = s.lock().await;
+                    let mut lock = s.write().await;
                     let sender = lock.find_user_by_id(sender_id).unwrap_or_default().lock().await.username.clone();
                     let chat_messages = &mut lock.chat_messages;
                     // if the list doesnt include the channel, add it
@@ -291,28 +293,28 @@ impl OnlineManager {
                 // ===== spectator =====
                 PacketId::Server_SpectatorFrames { frames } => {
                     // println!("[Online] got {} spectator frames from the server", frames.len());
-                    let mut lock = s.lock().await;
+                    let mut lock = s.write().await;
                     lock.buffered_spectator_frames.extend(frames);
                 }
                 // spec join/leave
                 PacketId::Server_SpectatorJoined { user_id, username }=> {
-                    s.lock().await.spectator_list.push((user_id, username.clone()));
+                    s.write().await.spectator_list.push((user_id, username.clone()));
                     NotificationManager::add_text_notification(&format!("{} is now spectating", username), 2000.0, Color::GREEN);
                 }
                 PacketId::Server_SpectatorLeft { user_id } => {
-                    let user = if let Some(u) = s.lock().await.find_user_by_id(user_id) {
+                    let user = if let Some(u) = s.write().await.find_user_by_id(user_id) {
                         u.lock().await.username.clone()
                     } else {
                         "A user".to_owned()
                     };
-                    s.lock().await.spectator_list.remove_item((user_id, user.clone()));
+                    s.write().await.spectator_list.remove_item((user_id, user.clone()));
                     
                     NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
                 }
                 PacketId::Server_SpectateResult {result, host_id} => {
                     println!("[Online] Got spec result {:?}", result);
                     match result {
-                        SpectateResult::Ok => s.lock().await.spectate_pending = host_id,
+                        SpectateResult::Ok => s.write().await.spectate_pending = host_id,
                         SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
                         SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED),
                         SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED),
@@ -322,7 +324,7 @@ impl OnlineManager {
 
                 // spec info request
                 PacketId::Server_SpectatorPlayingRequest {user_id} => {
-                    s.lock().await.spectate_info_pending.push(user_id);
+                    s.write().await.spectate_info_pending.push(user_id);
                     println!("[Online] Got playing request");
                 }
 
@@ -345,7 +347,7 @@ impl OnlineManager {
     pub fn set_action(action:UserAction, action_text:String, mode: PlayMode) {
         let c = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let mut s = c.lock().await;
+            let mut s = c.write().await;
             send_packet!(s.writer, create_packet!(Client_StatusUpdate {action, action_text: action_text.clone(), mode}));
             if action == UserAction::Leaving {
                 send_packet!(s.writer, create_packet!(Client_LogOut));
@@ -429,7 +431,7 @@ impl OnlineManager {
     pub fn send_spec_frames(frames:SpectatorFrames, force_send: bool) {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let mut lock = s.lock().await;
+            let mut lock = s.write().await;
             // if we arent speccing, exit
             // hopefully resolves a bug
             // if !lock.spectating {return}
@@ -456,7 +458,7 @@ impl OnlineManager {
     pub fn start_spectating(host_id: u32) {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let s = s.lock().await;
+            let s = s.read().await;
             send_packet!(s.writer, create_packet!(Client_Spectate {host_id:host_id}));
         });
     }
@@ -464,7 +466,7 @@ impl OnlineManager {
     pub fn stop_spectating() {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let mut s = s.lock().await;
+            let mut s = s.write().await;
             s.buffered_spectator_frames.clear();
             if !s.spectating {return}
             s.spectating = false;
@@ -490,7 +492,7 @@ fn ping_handler() {
         loop {
             tokio::time::sleep(duration).await;
             if LOG_PINGS {println!("[Ping] sending ping")};
-            send_packet!(ONLINE_MANAGER.lock().await.writer, ping.clone());
+            send_packet!(ONLINE_MANAGER.read().await.writer, ping.clone());
         }
     });
 }

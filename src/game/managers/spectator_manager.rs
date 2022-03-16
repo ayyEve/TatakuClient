@@ -40,7 +40,7 @@ impl SpectatorManager {
 
     pub fn update(&mut self, game: &mut Game) {
         // (try to) read pending data from the online manager
-        match ONLINE_MANAGER.try_lock() {
+        match ONLINE_MANAGER.try_write() {
             Ok(mut online_manager) => self.frames.extend(online_manager.get_pending_spec_frames()),
             Err(e) => println!("[SpectatorManager::update] failed to lock online manager, {}", e),
         }
@@ -106,7 +106,7 @@ impl SpectatorManager {
                     let self_id;
                     // cant do .blocking_lock() because it spawns a runtime?
                     loop {
-                        match ONLINE_MANAGER.try_lock() {
+                        match ONLINE_MANAGER.try_read() {
                             Ok(m) => {
                                 self_id = m.user_id;
                                 break;
