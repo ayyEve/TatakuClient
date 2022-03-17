@@ -56,6 +56,7 @@ impl QuaverBeatmap {
 }
 impl TatakuBeatmap for QuaverBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
+    fn playmode(&self, _incoming:PlayMode) -> PlayMode {"mania".to_owned()}
 
     fn get_timing_points(&self) -> Vec<crate::beatmaps::common::TimingPoint> {
         self.timing_points
@@ -124,10 +125,6 @@ impl TatakuBeatmap for QuaverBeatmap {
         meta.duration = end_time - start_time;
 
         meta
-    }
-
-    fn playmode(&self, _incoming:PlayMode) -> PlayMode {
-        "mania".to_owned()
     }
 
     fn slider_velocity_at(&self, time:f32) -> f32 {

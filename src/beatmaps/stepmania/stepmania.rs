@@ -54,12 +54,19 @@ impl StepmaniaBeatmap {
         let mut maps = Vec::new();
         let parent = path.as_ref().parent().unwrap();
 
+
+        // ssc support because they changed how per-chart info is added
+        let mut chart_type = None;
+        let mut description = None;
+        let mut difficulty = None;
+        let mut meter = None;
+        let mut groove_radar_values = None;
+        
         let mut lines = read_lines_resolved(&path)?;
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();
             if line.len() == 0 {continue}
-            println!("line: {}", line);
 
             if line.starts_with("#") {
                 let mut split = line.trim_end_matches(";").split(":");
@@ -93,26 +100,55 @@ impl StepmaniaBeatmap {
                     }
 
 
+                    // ssc chart things
+                    "#NOTEDATA" => {
+                        // something probably
+                        // use this to init other info for now
+                        chart_type = Some(String::new());
+                        description = Some(String::new());
+                        difficulty = Some(String::new());
+                        meter = Some(String::new());
+                        groove_radar_values = Some(String::new());
+                    }
+                    "#STEPSTYPE" => chart_type = Some(value.to_owned()),
+                    "#DIFFICULTY" => difficulty = Some(value.to_owned()),
+                    "#METER" => meter = Some(value.to_owned()),
+                    "#RADARVALUES" => groove_radar_values = Some(value.to_owned()),
+
                     "#NOTES" => {
                         // read chart into lines, ensures split is correct
-                        let mut chart_info = String::new();
+                        let mut chart_info = value.to_owned();
                         while let Some(line) = lines.next() {
                             chart_info += &line;
                             if line.ends_with(";") {break}
                         }
+
+                        // remove final semicolon
+                        chart_info = chart_info.trim_end_matches(";").to_owned();
+
                         // println!("lines: {}", chart_info);
                         let mut chart_split = chart_info.split(":");
 
                         let mut chart = StepmaniaChart::default();
 
-                        // first entries are meta
-                        chart.chart_type = chart_split.next().unwrap().to_owned();
-                        chart.description = chart_split.next().unwrap().to_owned();
-                        chart.difficulty = chart_split.next().unwrap().to_owned();
-                        chart.meter = chart_split.next().unwrap().parse().unwrap_or_default();
-                        chart.groove_radar_values = chart_split.next().unwrap().split(",").map(|r|r.parse().unwrap_or_default()).collect();
+                        let is_ssc = path.as_ref().extension().unwrap() == "ssc";
+                        macro_rules! get {
+                            ($name: ident) => {
+                                if is_ssc {
+                                    std::mem::take(&mut $name).unwrap_or_default()
+                                } else {
+                                    chart_split.next().unwrap().to_owned()
+                                }
+                            }
+                        }
 
-
+                        // first entries are meta (if sm, otherwise meta was already loaded)
+                        chart.chart_type          = get!(chart_type);
+                        chart.description         = get!(description);
+                        chart.difficulty          = get!(difficulty);
+                        chart.diff_value               = get!(meter).parse().unwrap_or_default();
+                        chart.groove_radar_values = get!(groove_radar_values).split(",").map(|r|r.parse().unwrap_or_default()).collect();
+                        
                         let note_data = chart_split.next().unwrap();
                         let bars = note_data.split(",");
 
@@ -122,13 +158,13 @@ impl StepmaniaBeatmap {
                         for (i, (time, _)) in beat_lengths.iter_mut().enumerate() {
                             // time is actually the beat number
                             // need to convert it to ms
-                            *time = beat_lens_clone.get(i).unwrap_or(&(0.0, map.audio_offset)).1 * *time;
+                            *time = beat_lens_clone.get(i).unwrap_or(&(0.0, -map.audio_offset * 1000.0)).1 * *time;
                         }
                         map.beat_lengths = beat_lengths.clone();
                         let mut beat_length_index = 0;
 
-                        let mut current_time = map.audio_offset;
-                        let mut columns:[Vec<(f32, StepmaniaTempNoteType)>;4] = [
+                        let mut current_time = -map.audio_offset * 1000.0;
+                        let mut columns:[Vec<(f32, StepmaniaTempNoteType)>; 4] = [
                             Vec::new(),
                             Vec::new(),
                             Vec::new(),
@@ -139,7 +175,7 @@ impl StepmaniaBeatmap {
                         for bar in bars {
                             let notes:Vec<StepmaniaTempNoteType> = bar.chars().map(|c|StepmaniaTempNoteType::from(c)).collect();
 
-                            let note_snapping = (notes.len() / 4) as f32;
+                            let note_snapping = notes.len() as f32 / 16.0;
                             let mut time_step = beat_lengths[beat_length_index].1 / note_snapping;
                             
                             for i in (0..notes.len()).step_by(4) {
@@ -161,7 +197,6 @@ impl StepmaniaBeatmap {
                         }
 
                         // turn the column types into actual note types
-
                         for (num, col) in columns.iter().enumerate() {
                             let mut last_hold_start = None;
 
@@ -218,10 +253,10 @@ impl StepmaniaBeatmap {
                             }
                         }
 
-
                         let mut map = map.clone();
                         map.chart_info = chart;
                         map.hash = md5(chart_info);
+
                         maps.push(map);
                     }
 
@@ -252,7 +287,7 @@ impl StepmaniaBeatmap {
 impl TatakuBeatmap for StepmaniaBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
     fn playmode(&self, _incoming:PlayMode) -> PlayMode {"mania".to_owned()}
-    fn slider_velocity_at(&self, _time:Frequency) -> Frequency {1.0}
+    fn slider_velocity_at(&self, _time:Frequency) -> Frequency {400.0}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.beat_lengths.iter().map(|&(time, beat_length)| {
@@ -275,7 +310,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
             beatmap_hash: self.hash.clone(),
             beatmap_type: BeatmapType::Stepmania,
             beatmap_version: 0,
-            mode: "mania".to_owned(),
+            mode: self.playmode(String::new()),
             artist: self.artist.clone(),
             title: self.title.clone(),
             artist_unicode: self.artist_translated.as_ref().unwrap_or(&self.artist).clone(),
@@ -361,7 +396,7 @@ pub struct StepmaniaChart {
     /// usually difficulty name
     pub description: String,
     pub difficulty: String,
-    pub meter: u32, 
+    pub diff_value: u32, 
     pub groove_radar_values: Vec<u32>,
     pub notes: Vec<StepmaniaNote>,
 }

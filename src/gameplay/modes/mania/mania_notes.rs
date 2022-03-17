@@ -32,7 +32,7 @@ pub struct ManiaNote {
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaNote {
-    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mut mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
         Self {
             time, 
             speed: 1.0,
@@ -63,7 +63,6 @@ impl HitObject for ManiaNote {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         if self.hit {return}
-
         
         let mut drew_image = false;
         if let Some(settings) = &self.mania_skin_settings {

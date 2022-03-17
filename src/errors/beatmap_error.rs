@@ -4,5 +4,6 @@
 pub enum BeatmapError {
     InvalidFile,
     UnsupportedMode,
+    UnsupportedBeatmap,
     NoTimingPoints,
 }

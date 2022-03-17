@@ -344,8 +344,83 @@ impl GameMode for ManiaGame {
         
                 Ok(s)
             },
+            Beatmap::Stepmania(beatmap) => {
+                // stepmania maps are always 4k
+                let column_count = 4;
+                for i in all_mania_skin_settings.iter() {
+                    if i.keys == column_count {
+                        mania_skin_settings = Some(Arc::new(i.clone()));
+                    }
+                }
+
+                let mut s = Self {
+                    columns: Vec::new(),
+                    column_indices:Vec::new(),
+                    column_states: Vec::new(),
+        
+                    timing_bars: Vec::new(),
+                    timing_point_index: 0,
+                    end_time: 0.0,
+        
+                    hitwindow_100: 0.0,
+                    hitwindow_300: 0.0,
+                    hitwindow_miss: 0.0,
+
+                    sv_mult: 1.0,
+                    column_count,
+
+                    auto_helper,
+                    playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
+                    mania_skin_settings
+                };
+                
+                // init defaults for the columns
+                for _col in 0..s.column_count {
+                    s.columns.push(Vec::new());
+                    s.column_indices.push(0);
+                    s.column_states.push(false);
+                }
+
+                // add notes
+                for note in beatmap.chart_info.notes.iter() {
+                    let column = note.column;
+                    let time = note.start;
+                    let x = s.col_pos(column);
+
+                    if let Some(end_time) = note.end {
+                        s.columns[column as usize].push(Box::new(ManiaHold::new(
+                            time,
+                            end_time,
+                            column,
+                            get_color(time),
+                            x,
+                            s.playfield.clone(),
+                            s.mania_skin_settings.clone(),
+                        )));
+                    } else {
+                        s.columns[column as usize].push(Box::new(ManiaNote::new(
+                            time,
+                            column,
+                            get_color(time),
+                            x,
+                            s.playfield.clone(),
+                            s.mania_skin_settings.clone(),
+                        )));
+                    }
+                }
+        
+                // get end time
+                for col in s.columns.iter_mut() {
+                    col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
+                    if let Some(last_note) = col.iter().last() {
+                        s.end_time = s.end_time.max(last_note.time());
+                    }
+                }
+                
+                Ok(s)
+            }
             
-            _ => Err(crate::errors::BeatmapError::UnsupportedMode.into()),
+            _ => Err(BeatmapError::UnsupportedBeatmap.into()),
         }
     }
 
