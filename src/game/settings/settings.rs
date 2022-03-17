@@ -77,7 +77,9 @@ pub struct Settings {
     // other misc
     pub last_git_hash: String,
     pub server_url: String,
-    pub current_skin: String
+    pub current_skin: String,
+
+    pub external_games_folders: Vec<String>
 }
 impl Settings {
     fn load() -> Settings {
@@ -197,6 +199,8 @@ impl Default for Settings {
 
             server_url: "wss://taikors.ayyeve.xyz".to_owned(),
             current_skin: "default".to_owned(),
+
+            external_games_folders: Vec::new()
         }
     }
 }

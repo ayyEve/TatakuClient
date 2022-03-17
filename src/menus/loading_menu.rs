@@ -54,13 +54,19 @@ impl LoadingMenu {
         status.lock().loading_count = 0;
         status.lock().loading_done = 0;
 
+        let mut dirs_to_check = get_settings!().external_games_folders.clone();
+        dirs_to_check.push(SONGS_DIR.to_owned());
+
+
         let mut folders = Vec::new();
-        read_dir(SONGS_DIR)
-            .unwrap()
-            .for_each(|f| {
-                let f = f.unwrap().path();
-                folders.push(f.to_str().unwrap().to_owned());
-            });
+        for dir in dirs_to_check {
+            read_dir(dir)
+                .unwrap()
+                .for_each(|f| {
+                    let f = f.unwrap().path();
+                    folders.push(f.to_str().unwrap().to_owned());
+                });
+        }
 
 
         {
