@@ -18,6 +18,12 @@ pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
 pub const SKIN_FOLDER:&str = "skins";
 
+const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.xyz/tataku";
+#[inline]
+fn download_url<T:AsRef<str>>(file:T) -> String {
+    format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
+}
+
 // https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
 
@@ -62,14 +68,14 @@ async fn main() {
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        check_file(file, &format!("https://cdn.ayyeve.xyz/tataku/{}", file)).await;
+        check_file(file, &download_url(file)).await;
     }
 
     // hitsounds
     for sample_set in ["normal", "soft", "drum"] {
         for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
             let file = &format!("resources/audio/{}-{}.wav", sample_set, hitsound);
-            check_file(file, &format!("https://cdn.ayyeve.xyz/tataku/{}", file)).await;
+            check_file(file, &download_url(file)).await;
         }
     }
 
@@ -83,7 +89,7 @@ async fn main() {
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
         // no songs, download some
         for id in FIRST_MAPS {
-            check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &format!("https://cdn.ayyeve.xyz/tataku/maps/{}.osz", id)).await;
+            check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &download_url(format!("/maps/{}.osz", id))).await;
         }
     }
 
@@ -132,7 +138,7 @@ async fn check_bass() {
         }
 
         // download it from the web
-        check_file(&library_path, &format!("https://cdn.ayyeve.xyz/taiko-rs/bass/{}", filename)).await;
+        check_file(&library_path, &download_url(format!("/lib/bass/{}", filename))).await;
     } else {
         println!("error getting current executable dir, assuming things are good...")
     }

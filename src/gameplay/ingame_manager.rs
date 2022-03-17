@@ -30,11 +30,9 @@ pub struct IngameManager {
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
 
-
-    pub health: HealthHelper,
-
     pub score: Score,
     pub replay: Replay,
+    pub health: HealthHelper,
 
     pub score_list: Vec<Score>,
     score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
@@ -103,6 +101,7 @@ pub struct IngameManager {
     score_image: Option<SkinnedNumber>,
     acc_image: Option<SkinnedNumber>,
 }
+
 impl IngameManager {
     pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
         let playmode = gamemode.playmode();
