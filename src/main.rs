@@ -55,6 +55,13 @@ const FIRST_MAPS: &[u32] = &[
 #[tokio::main]
 async fn main() {
     let mut main_benchmark = BenchmarkHelper::new("main");
+
+    if exists("./game") {
+        if let Err(e) = std::env::set_current_dir("./game") {
+            println!("error changing current dir: {}", e);
+        }
+    }
+
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
