@@ -70,6 +70,8 @@ impl Game {
             let window_ptr = window.window.get_win32_window();
             #[cfg(target_os = "linux")]
             let window_ptr = window.window.get_x11_window();
+            #[cfg(target_os = "macos")]
+            let window_ptr = window.window.get_cocoa_window();
 
             // initialize bass
             bass_rs::Bass::init_default_with_ptr(window_ptr).expect("Error initializing bass")
