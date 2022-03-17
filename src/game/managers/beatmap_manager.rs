@@ -112,7 +112,12 @@ impl BeatmapManager {
             let file = file.unwrap().path();
             let file = file.to_str().unwrap();
 
-            if file.ends_with(".osu") || file.ends_with(".qua") || file.ends_with(".adofai") || file.ends_with("info.txt") {
+            if file.ends_with(".osu") 
+            || file.ends_with(".qua") 
+            || file.ends_with(".adofai") 
+            || file.ends_with(".ssc") 
+            || file.ends_with(".sm") 
+            || file.ends_with("info.txt") {
                 // check file paths first
                 for i in self.beatmaps.iter() {
                     if i.file_path == file {
@@ -128,20 +133,21 @@ impl BeatmapManager {
                     }
                 }
 
-                match Beatmap::load(file.to_owned()) {
-                    Ok(map) => {
-                        let map = map.get_beatmap_meta();
-                        self.add_beatmap(&map);
+                match Beatmap::load_multiple(file.to_owned()) {
+                    Ok(maps) => {
+                        for map in maps {
+                            let map = map.get_beatmap_meta();
+                            self.add_beatmap(&map);
 
-
-                        // if it got here, it shouldnt be in the database
-                        // so we should add it
-                        {
-                            let lock = crate::databases::DATABASE.lock();
-                            let statement = insert_metadata(&map);
-                            let res = lock.prepare(&statement).expect(&statement).execute([]);
-                            if let Err(e) = res {
-                                println!("error inserting metadata: {}", e);
+                            // if it got here, it shouldnt be in the database
+                            // so we should add it
+                            {
+                                let lock = crate::databases::DATABASE.lock();
+                                let statement = insert_metadata(&map);
+                                let res = lock.prepare(&statement).expect(&statement).execute([]);
+                                if let Err(e) = res {
+                                    println!("error inserting metadata: {}", e);
+                                }
                             }
                         }
                     }
@@ -340,12 +346,13 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
     if !bpm_max.is_normal() {
         bpm_max = 99999999.0;
     }
+    let beatmap_type:u8 = map.beatmap_type.into();
 
     format!(
         "INSERT INTO beatmaps (
             beatmap_path, beatmap_hash,
 
-            playmode, beatmap_version,
+            playmode, beatmap_version, beatmap_type,
             artist, artist_unicode,
             title, title_unicode,
             creator, version,
@@ -358,7 +365,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
             slider_multiplier, slider_tick_rate,
             bpm_min, bpm_max
         ) VALUES (
-            \"{}\", \"{}\",
+            \"{}\", \"{}\", {},
 
             \"{}\", {}, 
             \"{}\", \"{}\",
@@ -373,7 +380,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
             {}, {},
             {}, {}
         )",
-        map.file_path, map.beatmap_hash, 
+        map.file_path, map.beatmap_hash, beatmap_type,
 
         map.mode, map.beatmap_version,
         map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),

@@ -1,10 +1,12 @@
 mod timing_point;
-mod tataku_beatmap;
 mod beatmap_meta;
+mod beatmap_type;
+mod tataku_beatmap;
 
 pub use timing_point::*;
-pub use tataku_beatmap::*;
 pub use beatmap_meta::*;
+pub use beatmap_type::*;
+pub use tataku_beatmap::*;
 
 
 

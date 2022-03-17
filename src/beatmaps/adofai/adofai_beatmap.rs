@@ -138,6 +138,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         crate::beatmaps::common::BeatmapMeta {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
+            beatmap_type: BeatmapType::Adofai,
             beatmap_version: 10,
             mode: "adofai".to_owned(),
             artist: self.settings.artist.clone(),

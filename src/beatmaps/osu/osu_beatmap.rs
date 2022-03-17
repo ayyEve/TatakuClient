@@ -37,7 +37,7 @@ impl OsuBeatmap {
         let lines = crate::read_lines(file_path.clone()).expect("Beatmap file not found");
         let mut current_area = BeatmapSection::Version;
         let mut beatmap = Self {
-            metadata: BeatmapMeta::new(file_path.clone(), hash.clone()),
+            metadata: BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu),
             hash,
             notes: Vec::new(),
             sliders: Vec::new(),

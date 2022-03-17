@@ -201,6 +201,7 @@ impl TatakuBeatmap for UTypingBeatmap {
         BeatmapMeta { 
             file_path: self.file_path.clone(), 
             beatmap_hash: self.hash.clone(), 
+            beatmap_type: BeatmapType::UTyping,
             beatmap_version: 0, 
             mode: "utyping".to_owned(), 
             artist: self.artist.clone(), 

@@ -72,6 +72,7 @@ impl LoadingMenu {
                 let meta = BeatmapMeta {
                     file_path: r.get("beatmap_path")?,
                     beatmap_hash: r.get("beatmap_hash")?,
+                    beatmap_type: r.get::<&str, u8>("beatmap_type").unwrap_or_default().into(),
                     beatmap_version: r.get("beatmap_version")?,
                     mode: r.get("playmode")?,
                     artist: r.get("artist")?,

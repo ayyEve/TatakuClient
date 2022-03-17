@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub struct BeatmapMeta {
     pub file_path: String,
     pub beatmap_hash: String,
+    pub beatmap_type: BeatmapType,
 
     pub beatmap_version: u8,
     pub mode: String,
@@ -36,12 +37,13 @@ pub struct BeatmapMeta {
     pub diff: f32
 }
 impl BeatmapMeta {
-    pub fn new(file_path:String, beatmap_hash:String) -> BeatmapMeta {
+    pub fn new(file_path:String, beatmap_hash:String, beatmap_type:BeatmapType) -> BeatmapMeta {
         let unknown = "Unknown".to_owned();
 
         BeatmapMeta {
             file_path,
             beatmap_hash,
+            beatmap_type,
             beatmap_version: 0,
             mode: "osu".to_owned(),
             artist: unknown.clone(),

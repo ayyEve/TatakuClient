@@ -85,6 +85,7 @@ const SCORE_ENTRIES: &[(&str, &str)] = &[
 const BEATMAP_ENTRIES: &[(&str, &str)] = &[
     ("bpm_min", "INTEGER"),
     ("bpm_max", "INTEGER"),
+    ("beatmap_type", "INTEGER"),
 ];
 
 fn add_new_entries(db: &Connection) {

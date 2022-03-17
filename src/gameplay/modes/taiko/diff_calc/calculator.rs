@@ -364,7 +364,8 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
     // let map =  "D:/Games/osu!/Songs/646325 Diabarha - Uranoid/Diabarha - Uranoid (Dargin) [Futsuu].osu";
 
     // load map
-    let beatmap = Beatmap::load(path)?;
+    let fake_maps = Beatmap::load_multiple(path)?;
+    let beatmap = fake_maps.first().unwrap();
     // if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
 
     let mods = ModManager::new();

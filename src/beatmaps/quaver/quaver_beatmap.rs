@@ -82,6 +82,7 @@ impl TatakuBeatmap for QuaverBeatmap {
         let mut meta = crate::beatmaps::common::BeatmapMeta { 
             file_path: self.path.clone(), 
             beatmap_hash: self.hash.clone(), 
+            beatmap_type: BeatmapType::Quaver,
             beatmap_version: 0, 
             mode: "mania".to_owned(), 
             artist: self.artist.clone(), 
