@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
                 username TEXT,
                 map_hash TEXT,
                 score_hash TEXT,
-                playmode INTEGER,
+                playmode TEXT,
                 score INTEGER,
                 combo INTEGER,
                 max_combo INTEGER,
@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
                 beatmap_path TEXT,
                 beatmap_hash TEXT,
 
-                playmode INTEGER,
+                playmode TEXT,
                 beatmap_version INTEGER,
                 artist TEXT,
                 title TEXT,

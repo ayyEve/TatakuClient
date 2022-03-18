@@ -357,9 +357,9 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
 
     format!(
         "INSERT INTO beatmaps (
-            beatmap_path, beatmap_hash,
+            beatmap_path, beatmap_hash, beatmap_type,
 
-            playmode, beatmap_version, beatmap_type,
+            playmode, beatmap_version,
             artist, artist_unicode,
             title, title_unicode,
             creator, version,
@@ -374,7 +374,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
         ) VALUES (
             \"{}\", \"{}\", {},
 
-            \"{}\", {}, 
+            \"{}\", {},
             \"{}\", \"{}\",
             \"{}\", \"{}\",
             \"{}\", \"{}\",
@@ -389,7 +389,7 @@ fn insert_metadata(map: &BeatmapMeta) -> String {
         )",
         map.file_path, map.beatmap_hash, beatmap_type,
 
-        map.mode, map.beatmap_version,
+        map.mode, map.beatmap_version, 
         map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
         map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
         map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),

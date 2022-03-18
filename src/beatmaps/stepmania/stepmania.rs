@@ -47,7 +47,6 @@ pub struct StepmaniaBeatmap {
 
 impl StepmaniaBeatmap {
     pub fn load_multiple<P:AsRef<Path>>(path:P) -> TatakuResult<Vec<Self>> {
-        println!("thing");
         let mut map = Self::default();
         map.file_path = path.as_ref().to_string_lossy().to_string();
 

@@ -73,12 +73,12 @@ impl LoadingMenu {
             let mut db = crate::databases::DATABASE.lock();
             let t = db.transaction().unwrap();
             let mut s = t.prepare("SELECT * FROM beatmaps").unwrap();
-
+            
             let rows = s.query_map([], |r| {
                 let meta = BeatmapMeta {
                     file_path: r.get("beatmap_path")?,
                     beatmap_hash: r.get("beatmap_hash")?,
-                    beatmap_type: r.get::<&str, u8>("beatmap_type").unwrap_or_default().into(),
+                    beatmap_type: r.get::<&str, u8>("beatmap_type")?.into(),
                     beatmap_version: r.get("beatmap_version")?,
                     mode: r.get("playmode")?,
                     artist: r.get("artist")?,
@@ -108,8 +108,15 @@ impl LoadingMenu {
                 Ok(meta)
             })
                 .unwrap()
-                .filter_map(|m|m.ok())
+                .filter_map(|m|{
+                    if let Err(e) = &m {
+                        println!("DB Err: {}", e);
+                    }
+                    m.ok()
+                })
                 .collect::<Vec<BeatmapMeta>>();
+                
+            println!("loading {} from the db", rows.len());
             
             status.lock().loading_count = rows.len();
             // load from db
