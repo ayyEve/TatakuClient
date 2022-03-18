@@ -20,16 +20,16 @@ pub struct BeatmapsetItem {
 impl BeatmapsetItem {
     pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
         // ensure diff is calced for all maps
-        let maps_clone = beatmaps.clone();
-        let playmode2 = playmode.clone();
+        // let maps_clone = beatmaps.clone();
+        // let playmode2 = playmode.clone();
         // tokio::spawn(async move {
-        let mods = ModManager::get();
-        maps_clone.iter().for_each(|b| {
-            if let None = get_diff(&b.beatmap_hash, &playmode2, &mods) {
-                let diff = calc_diff(b, playmode2.clone(), &mods).unwrap_or_default();
-                insert_diff(&b.beatmap_hash, &playmode2, &mods, diff);
-            }
-        });
+        //     let mods = ModManager::get();
+        //     maps_clone.iter().for_each(|b| {
+        //         if let None = get_diff(&b.beatmap_hash, &playmode2, &mods) {
+        //             let diff = calc_diff(b, playmode2.clone(), &mods).unwrap_or_default();
+        //             insert_diff(&b.beatmap_hash, &playmode2, &mods, diff);
+        //         }
+        //     });
         // });
         
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
