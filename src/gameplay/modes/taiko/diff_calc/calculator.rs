@@ -149,9 +149,9 @@ const WRITE_DEBUG_FILES:bool = false;
 
 impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
     fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
-
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true)?;
+        if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
         for n in g.notes.iter() {
@@ -199,7 +199,7 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         const PERCENT: f32 = 0.99;
 
         // Sort by descending
-        diff.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        diff.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         for x in diff {
             //println!("hi: {} * {}%", x, weight);

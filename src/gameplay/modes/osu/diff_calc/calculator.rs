@@ -114,6 +114,7 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
     fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = StandardGame::new(&g, true)?;
+        if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
 
         let mut notes = Vec::new();
         for n in g.notes.iter() {
@@ -126,11 +127,13 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
             });
         }
 
+
         notes.sort_by(|a, b| {
             let a = a.time;
             let b = b.time;
             a.partial_cmp(&b).unwrap()
         });
+
 
         Ok(Self {
             notes
@@ -158,7 +161,7 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
         const PERCENT: f32 = 0.99;
 
         // Sort by descending
-        diff.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        diff.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         for x in diff {
             //println!("hi: {} * {}%", x, weight);
