@@ -81,9 +81,11 @@ pub fn calc_acc(score: &Score) -> f64 {{
 }}
 
 pub fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) -> TatakuResult<f32> {{
-    match &*map.check_mode_override(mode_override) {{{diff_calc_lines}
+    Ok(match &*map.check_mode_override(mode_override) {{{diff_calc_lines}
         _ => Ok(0.0)
-    }}
+    }}?
+    // if the number is nan,infinity, etc, replace it with 0.0
+    .normal_or(0.0))
 }}
 
 pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {{
