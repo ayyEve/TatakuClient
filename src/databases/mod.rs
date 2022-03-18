@@ -1,12 +1,14 @@
 use crate::prelude::*;
 use rusqlite::Connection;
 
-mod difficulty_database;
-pub use difficulty_database::*;
-
 mod score_database;
 mod beatmap_preferences;
+mod difficulty_database;
+
 pub use score_database::*;
+pub use beatmap_preferences::*;
+pub use difficulty_database::*;
+
 
 
 lazy_static::lazy_static! {

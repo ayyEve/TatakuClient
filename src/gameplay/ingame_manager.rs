@@ -29,6 +29,7 @@ pub struct IngameManager {
     pub metadata: BeatmapMeta,
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
+    pub beatmap_preferences: BeatmapPreferences,
 
     pub score: Score,
     pub replay: Replay,
@@ -118,6 +119,7 @@ impl IngameManager {
         score.speed = current_mods.speed;
 
         let health = HealthHelper::new(Some(metadata.hp));
+        let beatmap_preferences = get_beatmap_prefs(&metadata.beatmap_hash);
 
         let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
         Self {
@@ -141,8 +143,9 @@ impl IngameManager {
             lead_in_time: LEAD_IN_TIME,
             end_time: gamemode.end_time(),
 
-            offset: CenteredTextHelper::new("Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
+            offset: CenteredTextHelper::new("Offset", beatmap_preferences.audio_offset, OFFSET_DRAW_TIME, -20.0, font.clone()),
             global_offset: CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
+            beatmap_preferences,
         
             font,
             combo_text_bounds: gamemode.combo_bounds(),
@@ -254,6 +257,10 @@ impl IngameManager {
         let time = self.time();
         let new_val = self.offset.value + delta;
         self.offset.set_value(new_val, time);
+
+        // update the beatmap offset
+        self.beatmap_preferences.audio_offset = new_val;
+        save_beatmap_prefs(&self.beatmap.hash(), self.beatmap_preferences.clone());
     }
     /// locks settings
     pub fn increment_global_offset(&mut self, delta:f32) {
@@ -1084,6 +1091,7 @@ impl Default for IngameManager {
             score_list: Vec::new(),
             score_loader: None,
             score_draw_start_pos: Vector2::zero(),
+            beatmap_preferences: Default::default(),
         }
     }
 }

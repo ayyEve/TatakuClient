@@ -1,12 +1,20 @@
-use crate::prelude::*;
+/**
+ * This is used to store map and mode preferences. 
+ * this should probably be improved, but i wanted to add it quickly
+ */
 
+use crate::prelude::*;
 
 const MAP_PREFS_FILE:&'static str = "map_prefs.json";
 const MAP_MODE_PREFS_FILE:&'static str = "map_mode_prefs.json";
 const TIMER:u64 = 1000;
 
 lazy_static::lazy_static! {
-    static ref BEATMAP_PREFERENCES: Arc<RwLock<HashMap<String, BeatmapPreferences>>> = Arc::new(RwLock::new(read_map_prefs().unwrap_or_default()));
+    static ref BEATMAP_PREFERENCES: Arc<RwLock<HashMap<String, BeatmapPreferences>>> = {
+        let a = Arc::new(RwLock::new(read_map_prefs().unwrap_or_default()));
+        save_loop();
+        a
+    };
     static ref BEATMAP_MODE_PREFERENCES: Arc<RwLock<HashMap<String, HashMap<PlayMode, BeatmapPlaymodePreferences>>>> = Arc::new(RwLock::new(read_map_mode_prefs().unwrap_or_default()));
 }
 
@@ -124,4 +132,20 @@ pub fn get_beatmap_mode_prefs(map_hash:&String, playmode:&PlayMode) -> BeatmapPl
         };
     
     mode_prefs
+}
+
+pub fn save_beatmap_prefs(map_hash:&String, prefs: BeatmapPreferences) {
+    BEATMAP_PREFERENCES.write().insert(map_hash.clone(), prefs);
+}
+pub fn save_beatmap_playmode_prefs(map_hash:&String, playmode: &PlayMode, prefs: BeatmapPlaymodePreferences) {
+    let mut lock = BEATMAP_MODE_PREFERENCES.write();
+    if !lock.contains_key(map_hash) {
+        lock.insert(map_hash.clone(), HashMap::new());
+    }
+
+    if let Some(modes) = lock.get_mut(map_hash) {
+        modes.insert(playmode.clone(), prefs);
+    } else {
+        panic!("what")
+    }
 }
