@@ -27,7 +27,9 @@ pub struct BeatmapManager {
     new_maps: Vec<BeatmapMeta>,
 
     /// helpful when a map is deleted
-    pub(crate) force_beatmap_list_refresh: bool
+    pub(crate) force_beatmap_list_refresh: bool,
+
+    
 }
 impl BeatmapManager {
     pub fn new() -> Self {

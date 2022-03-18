@@ -5,6 +5,7 @@ mod difficulty_database;
 pub use difficulty_database::*;
 
 mod score_database;
+mod beatmap_preferences;
 pub use score_database::*;
 
 
