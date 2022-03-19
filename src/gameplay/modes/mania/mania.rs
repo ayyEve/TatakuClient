@@ -337,10 +337,10 @@ impl GameMode for ManiaGame {
                 for col in s.columns.iter_mut() {
                     col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
                     if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.time());
+                        s.end_time = s.end_time.max(last_note.end_time(0.0));
                     }
                 }
-                
+                s.end_time += 1000.0;
         
                 Ok(s)
             },
@@ -413,9 +413,10 @@ impl GameMode for ManiaGame {
                 for col in s.columns.iter_mut() {
                     col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
                     if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.time());
+                        s.end_time = s.end_time.max(last_note.end_time(0.0));
                     }
                 }
+                s.end_time += 1000.0;
                 
                 Ok(s)
             }
