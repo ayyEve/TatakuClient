@@ -201,7 +201,6 @@ impl HitObject for StandardNote {
             shape.items.find(|di|di.visible()).is_some()
         });
     }
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
 
     fn draw(&mut self, _args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>) {
         // draw shapes
@@ -778,7 +777,6 @@ impl HitObject for StandardSlider {
     fn note_type(&self) -> NoteType {NoteType::Slider}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.curve.end_time}
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
 
     fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
@@ -1396,7 +1394,6 @@ impl HitObject for StandardSpinner {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.end_time}
     fn note_type(&self) -> NoteType {NoteType::Spinner}
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
 
     fn update(&mut self, beatmap_time: f32) {
 

@@ -15,10 +15,11 @@ const MUSIC_BOX_PADDING:Vector2 = Vector2::new(5.0, 5.0);
 const CONTROL_BUTTON_SIZE:u32 = 30;
 const CONTROL_BUTTON_MARGIN_WHEN_NONE:f64 = 15.0;
 /// x margin between buttons
-const CONTROL_BUTTON_X_MARGIN:f64 = 5.0;
+const CONTROL_BUTTON_X_MARGIN:f64 = 10.0;
 
-const CONTROL_BUTTON_PADDING:Vector2 = Vector2::new(5.0, 5.0);
-const Y_BOTTOM_PADDING:f64 = 5.0;
+const CONTROL_BUTTON_PADDING:Vector2 = Vector2::new(15.0, 15.0);
+const Y_BOTTOM_PADDING:f64 = 0.0;
+const X_PADDING:f64 = 0.0;
 
 const SKIP_AMOUNT:f64 = 500.0; // half a second?
 
@@ -40,12 +41,12 @@ impl MusicBox {
         // this is a big mess
 
         let mut size = Vector2::zero();
-        let mut pos = Vector2::new(0.0, Settings::window_size().y);
+        let mut pos = Vector2::new(X_PADDING, Settings::window_size().y);
 
         // setup buttons
         let mut texts = Vec::new();
         let mut actions = Vec::new();
-        let mut btn_pos = pos + CONTROL_BUTTON_PADDING.x; // add initial left-side pad
+        let mut btn_pos = pos + Vector2::x_only(CONTROL_BUTTON_PADDING.x); // add initial left-side pad
         let font_awesome = get_font_awesome();
         for button in CONTROL_BUTTONS {
             if let Some(c) = button {
@@ -74,13 +75,12 @@ impl MusicBox {
             MUSIC_BOX_PADDING * 2.0 // add padding
             + size // button sizes
             + Vector2::y_only(CONTROL_BUTTON_PADDING.y * 2.0) // control button border padding
-            + Vector2::y_only(Y_BOTTOM_PADDING)// 10 bottom padding for now
-            ; 
+            ;
 
         // update text's y pos
-        pos.y -= size.y;
+        pos.y -= size.y + Y_BOTTOM_PADDING; // bottom padding;
         for i in texts.iter_mut() {
-            i.current_pos.y = pos.y + MUSIC_BOX_PADDING.y;
+            i.current_pos.y = pos.y + MUSIC_BOX_PADDING.y + CONTROL_BUTTON_PADDING.y;
         }
 
         Self {
@@ -204,14 +204,15 @@ impl ScrollableItem for MusicBox {
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
         let draw_pos = self.pos + pos_offset;
 
-        // draw bg
-        list.push(Box::new(Rectangle::new(
-            Color::LIGHT_BLUE.alpha(0.8),
-            parent_depth,
-            draw_pos,
-            self.size,
-            Some(Border::new(Color::LIGHT_BLUE, 2.0))
-        ).shape(Shape::Round(5.0, 10))));
+        // // draw bg
+        // list.push(Box::new(Rectangle::new(
+        //     Color::HOT_PINK.alpha(0.1),
+        //     parent_depth,
+        //     draw_pos,
+        //     self.size,
+        //     None, // Some(Border::new(Color::LIGHT_BLUE, 2.0))
+        // ).shape(Shape::Round(5.0, 10))));
+
 
         // draw buttons
         for text in self.texts.iter() {
@@ -223,17 +224,17 @@ impl ScrollableItem for MusicBox {
             
             // make bounding box
             let mut rect = Rectangle::new(
-                Color::TRANSPARENT_WHITE,
+                Color::new(1.0, 1.0, 1.0, 0.1),
                 parent_depth,
                 text.current_pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
-                Some(Border::new(Color::BLACK, 1.2))
+                None, //Some(Border::new(Color::BLACK, 1.2))
             ).shape(Shape::Round(5.0, 10));
 
             if rect.contains(self.mouse_pos) {
-                rect.border.as_mut().unwrap().color = Color::BLUE;
+                rect.current_color.a = 0.2;
             }
-            rect.border.as_mut().unwrap().color.a = 0.8;
+            // rect.border.as_mut().unwrap().color.a = 0.8;
 
             // add rect
             list.push(Box::new(rect));

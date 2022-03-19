@@ -645,28 +645,36 @@ impl Game {
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
         // draw background image here
-        if let Some(img) = self.background_image.as_ref() {
-            // dim
+        if let Some(img) = &self.background_image {
             self.render_queue.push(Box::new(img.clone()));
-            // println!("{} > {}", img.get_depth(), f64::MAX - 1.0);
         }
-        let mut color = Color::BLACK;
-        color.a = settings.background_dim;
-        self.render_queue.push(Box::new(Rectangle::new(
-            color,
-            f64::MAX - 1.0,
-            Vector2::zero(),
-            Settings::window_size(),
-            None
-        )));
+
+        // should we draw the background dim?
+        // if not, the other thing will handle it
+        let mut draw_bg_dim = true;
 
         // mode
         match &mut self.current_state {
             GameState::Ingame(manager) => manager.draw(args, &mut self.render_queue),
-            GameState::InMenu(menu) => self.render_queue.extend(menu.lock().draw(args)),
+            GameState::InMenu(menu) => {
+                let mut lock = menu.lock();
+                self.render_queue.extend(lock.draw(args));
+                if lock.get_name() == "main_menu" {
+                    draw_bg_dim = false;
+                }
+            },
             GameState::Spectating(manager) => manager.draw(args, &mut self.render_queue),
-    
             _ => {}
+        }
+
+        if draw_bg_dim {
+            self.render_queue.push(Box::new(Rectangle::new(
+                Color::BLACK.alpha(settings.background_dim),
+                f64::MAX - 1.0,
+                Vector2::zero(),
+                Settings::window_size(),
+                None
+            )));
         }
 
         // transition

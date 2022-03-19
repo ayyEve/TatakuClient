@@ -135,6 +135,8 @@ impl MainMenu {
     }
 }
 impl Menu<Game> for MainMenu {
+    fn get_name(&self) -> &str {"main_menu"}
+
     fn on_change(&mut self, _into:bool) {
         self.visualization.reset();
 
@@ -229,6 +231,15 @@ impl Menu<Game> for MainMenu {
         if let Some(manager) = self.background_game.as_mut() {
             manager.draw(args, &mut list);
         }
+        
+        // draw dim
+        list.push(Box::new(Rectangle::new(
+            Color::BLACK.alpha(0.5),
+            depth + 11.0,
+            Vector2::zero(),
+            Settings::window_size(),
+            None
+        )));
 
         list
     }

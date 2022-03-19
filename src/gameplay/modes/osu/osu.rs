@@ -1000,9 +1000,9 @@ impl GameMode for StandardGame {
 
     
     fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
-        for note in self.notes.iter_mut() {
-            note.set_alpha(settings.opacity)
-        }
+        // for note in self.notes.iter_mut() {
+        //     note.set_alpha(settings.opacity)
+        // }
     }
 }
 

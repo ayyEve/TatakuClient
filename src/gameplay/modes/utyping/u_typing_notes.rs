@@ -208,7 +208,6 @@ impl UTypingNote {
 }
 impl HitObject for UTypingNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
-    fn set_alpha(&mut self, _alpha: f32) {}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {
         self.time + hw_miss

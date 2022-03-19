@@ -1,3 +1,12 @@
+/**
+ * depths:
+ *  notes: 0..1000
+ *  hit area: 1001
+ *  playfield: 1002
+ *  hit indicators: -1
+ *  spinners: -5
+ */
+
 use super::*;
 use crate::prelude::*;
 
@@ -85,7 +94,7 @@ impl GameMode for TaikoGame {
 
 
             if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
-                don.depth = 1.0;
+                don.depth = -1.0;
                 don.origin.x = don.tex_size().x;
                 don.current_pos = settings.hit_position;
 
@@ -96,7 +105,7 @@ impl GameMode for TaikoGame {
                 right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
             }
             if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
-                kat.depth = 1.0;
+                kat.depth = -1.0;
                 kat.origin.x = 0.0;
                 kat.current_pos = settings.hit_position;
                 
@@ -461,7 +470,7 @@ impl GameMode for TaikoGame {
         for (hit_type, hit_time) in self.hit_cache.iter() {
             if time - hit_time > lifetime_time {continue}
             let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
-
+            let depth = -1.0;
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
@@ -472,7 +481,7 @@ impl GameMode for TaikoGame {
                         list.push(Box::new(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            1.0,
+                            depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
                         )));
@@ -487,7 +496,7 @@ impl GameMode for TaikoGame {
                         list.push(Box::new(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            1.0,
+                            depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
                         )));
@@ -502,7 +511,7 @@ impl GameMode for TaikoGame {
                         list.push(Box::new(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            1.0,
+                            depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
                         )));
@@ -517,7 +526,7 @@ impl GameMode for TaikoGame {
                         list.push(Box::new(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            1.0,
+                            depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
                         )));
@@ -532,7 +541,7 @@ impl GameMode for TaikoGame {
         // draw the hit area
         list.push(Box::new(Circle::new(
             Color::BLACK,
-            f64::MAX,
+            1001.0,
             self.taiko_settings.hit_position,
             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
             None
@@ -753,9 +762,9 @@ impl GameMode for TaikoGame {
     }
 
     fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
-        for note in self.notes.iter_mut() {
-            note.set_alpha(settings.opacity)
-        }
+        // for note in self.notes.iter_mut() {
+        //     note.set_alpha(settings.opacity)
+        // }
     }
 }
 

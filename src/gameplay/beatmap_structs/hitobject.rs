@@ -14,7 +14,4 @@ pub trait HitObject: Send {
 
     /// set this object back to defaults
     fn reset(&mut self);
-
-
-    fn set_alpha(&mut self, alpha: f32);
 }

@@ -874,11 +874,11 @@ impl GameMode for ManiaGame {
 
     
     fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
-        for c in self.columns.iter_mut() {
-            for note in c.iter_mut() {
-                note.set_alpha(settings.opacity)
-            }
-        }
+        // for c in self.columns.iter_mut() {
+        //     for note in c.iter_mut() {
+        //         note.set_alpha(settings.opacity)
+        //     }
+        // }
     }
 }
 

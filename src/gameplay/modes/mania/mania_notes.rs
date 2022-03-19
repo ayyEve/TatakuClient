@@ -55,7 +55,6 @@ impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
 
     fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time);
@@ -169,7 +168,6 @@ impl HitObject for ManiaHold {
     fn note_type(&self) -> NoteType {NoteType::Hold}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
 
     fn update(&mut self, beatmap_time: f32) {
         // self.pos.x = HIT_POSITION.x + (self.time as f64 - beatmap_time as f64) * self.speed;

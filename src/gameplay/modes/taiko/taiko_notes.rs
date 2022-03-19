@@ -8,6 +8,14 @@ const NOTE_BORDER_SIZE:f64 = 2.0;
 
 const GRAVITY_SCALING:f32 = 400.0;
 
+const NOTE_DEPTH_RANGE:std::ops::Range<f64> = 0.0..1000.0;
+
+#[inline]
+fn get_depth(time: f32) -> f64 {
+    NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time as f64)
+}
+
+
 pub trait TaikoHitObject: HitObject {
     fn is_kat(&self) -> bool {false}// needed for diff calc and autoplay
 
@@ -42,6 +50,7 @@ pub trait TaikoHitObject: HitObject {
 pub struct TaikoNote {
     pos: Vector2,
     time: f32, // ms
+    depth: f64,
     hit_time: f32,
     hit_type: HitType,
     finisher: bool,
@@ -49,7 +58,6 @@ pub struct TaikoNote {
     missed: bool,
     speed: f32,
 
-    alpha_mult: f32,
     settings: Arc<TaikoSettings>,
 
     bounce_factor: f32,
@@ -65,17 +73,19 @@ impl TaikoNote {
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
         let bounce_factor = 1.6;
 
+        let depth = get_depth(time);
+
         Self {
             time, 
             hit_time: 0.0,
+            depth,
             hit_type, 
             finisher,
             speed: 0.0,
             hit: false,
             missed: false,
             pos: Vector2::zero(),
-            alpha_mult: 1.0,
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64, hit_type, finisher)},
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth, hit_type, finisher)},
             settings,
             bounce_factor
         }
@@ -89,7 +99,6 @@ impl TaikoNote {
     }
 }
 impl HitObject for TaikoNote {
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
@@ -113,11 +122,11 @@ impl HitObject for TaikoNote {
             image.draw(list);
         } else {
             list.push(Box::new(Circle::new(
-                self.get_color().alpha(self.alpha_mult),
-                self.time as f64,
+                self.get_color(),
+                self.depth,
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
-                Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE))
+                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             )));
         }
     }
@@ -191,8 +200,8 @@ pub struct TaikoSlider {
     radius: f64,
     //TODO: figure out how to pre-calc this
     end_x: f64,
-    
-    alpha_mult: f32,
+
+    depth: f64,
     settings: Arc<TaikoSettings>,
 
     middle_image:Option<Image>,
@@ -202,9 +211,11 @@ impl TaikoSlider {
     pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
         let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
 
+        let depth = get_depth(time);
+
         let mut middle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-middle", true)};
         if let Some(image) = &mut middle_image {
-            image.depth = time as f64 + 1.0;
+            image.depth = depth;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
             if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
@@ -212,7 +223,7 @@ impl TaikoSlider {
 
         let mut end_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-end", true)};
         if let Some(image) = &mut end_image {
-            image.depth = time as f64;
+            image.depth = depth;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
             if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
@@ -225,12 +236,11 @@ impl TaikoSlider {
             finisher,
             radius,
             speed: 0.0,
+            depth,
 
             pos: Vector2::new(0.0,settings.hit_position.y - radius),
             end_x: 0.0,
             hit_dots: Vec::new(),
-            
-            alpha_mult: 1.0,
             settings,
 
             middle_image,
@@ -239,7 +249,6 @@ impl TaikoSlider {
     }
 }
 impl HitObject for TaikoSlider {
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
     fn note_type(&self) -> NoteType {NoteType::Slider}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.end_time}
@@ -256,9 +265,10 @@ impl HitObject for TaikoSlider {
     fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
 
-        let color = Color::YELLOW.alpha(self.alpha_mult);
-        let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
+        let color = Color::YELLOW;
+        let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
 
+        // middle segment
         if let Some(image) = &self.middle_image {
             let mut image = image.clone();
             image.current_pos = self.pos + Vector2::y_only(self.radius);
@@ -268,15 +278,15 @@ impl HitObject for TaikoSlider {
             // middle
             list.push(Box::new(Rectangle::new(
                 color,
-                self.time as f64 + 1.0,
+                self.depth,
                 self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
                 border.clone()
             )));
         }
 
+        // start + end circles
         if let Some(image) = &self.end_image {
-
             // start
             let mut start = image.clone();
             start.current_pos = self.pos + Vector2::new(0.0, self.radius);
@@ -292,7 +302,7 @@ impl HitObject for TaikoSlider {
             // start circle
             list.push(Box::new(Circle::new(
                 color,
-                self.time as f64,
+                self.depth,
                 self.pos + Vector2::new(0.0, self.radius),
                 self.radius,
                 border.clone()
@@ -301,7 +311,7 @@ impl HitObject for TaikoSlider {
             // end circle
             list.push(Box::new(Circle::new(
                 color,
-                self.time as f64,
+                self.depth,
                 Vector2::new(self.end_x, self.pos.y + self.radius),
                 self.radius,
                 border.clone()
@@ -396,7 +406,7 @@ pub struct TaikoSpinner {
     end_time: f32, // ms
     speed: f32,
 
-    alpha_mult: f32,
+    depth: f64,
     settings: Arc<TaikoSettings>,
 
     spinner_image: Option<Image>,
@@ -408,8 +418,11 @@ impl TaikoSpinner {
     pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
         let mut spinner_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("spinner-warning", true)};
 
+        
+        let depth = get_depth(time);
+
         if let Some(image) = &mut spinner_image {
-            image.depth = time as f64;
+            image.depth = depth;
         }
 
         let don_color = settings.don_color;
@@ -420,13 +433,13 @@ impl TaikoSpinner {
             end_time,
             speed: 0.0,
             hits_required,
+            depth,
 
             hit_count: 0,
             last_hit: HitType::Don,
             complete: false,
             pos: Vector2::zero(),
 
-            alpha_mult: 1.0,
             settings,
             
             spinner_image,
@@ -436,7 +449,6 @@ impl TaikoSpinner {
     }
 }
 impl HitObject for TaikoSpinner {
-    fn set_alpha(&mut self, alpha: f32) {self.alpha_mult = alpha}
     fn note_type(&self) -> NoteType {NoteType::Spinner}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {
@@ -459,7 +471,7 @@ impl HitObject for TaikoSpinner {
             // bg circle
             list.push(Box::new(Circle::new(
                 Color::YELLOW,
-                -10.0,
+                -5.0,
                 spinner_position,
                 SPINNER_RADIUS,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
@@ -468,7 +480,7 @@ impl HitObject for TaikoSpinner {
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
             list.push(Box::new(Circle::new(
                 Color::WHITE,
-                -11.0,
+                -5.0,
                 spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64),
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
@@ -485,7 +497,7 @@ impl HitObject for TaikoSpinner {
                 list.push(Box::new(HalfCircle::new(
                     self.don_color,
                     self.pos,
-                    self.time as f64,
+                    self.depth,
                     self.settings.note_radius,
                     true
                 )));
@@ -493,7 +505,7 @@ impl HitObject for TaikoSpinner {
                 list.push(Box::new(HalfCircle::new(
                     self.kat_color,
                     self.pos,
-                    self.time as f64,
+                    self.depth,
                     self.settings.note_radius,
                     false
                 )));

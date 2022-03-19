@@ -502,10 +502,10 @@ impl GameMode for UTypingGame {
         )
     }
 
-    fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
-        for note in self.notes.iter_mut() {
-            note.set_alpha(settings.opacity)
-        }
+    fn apply_auto(&mut self, _settings: &BackgroundGameSettings) {
+        // for note in self.notes.iter_mut() {
+        //     note.set_alpha(settings.opacity)
+        // }
     }
 
     fn on_text(&mut self, text: &String, _mods: &KeyModifiers, manager: &mut IngameManager) {
