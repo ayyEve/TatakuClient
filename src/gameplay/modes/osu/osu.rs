@@ -599,14 +599,6 @@ impl GameMode for StandardGame {
             }
         }
 
-        unsafe {
-            let mut size = std::mem::size_of_val(&manager.score);
-            for i in manager.score.hit_timings.iter() {
-                size += std::mem::size_of_val(i)
-            }
-            println!("size: {}", size);
-        }
-
     }
     fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
 
