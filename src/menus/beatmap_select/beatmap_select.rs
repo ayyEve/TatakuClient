@@ -608,9 +608,12 @@ impl Menu<Game> for BeatmapSelectMenu {
 
     fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
         // search text relies on this event, so if it consumed the event, ignore drag
-        if self.search_text.on_click(pos, button, mods) {
-            // note: we shouldnt need to store mods, as search text in this instance doesnt care about it
-            return;
+        self.search_text.check_hover(pos);
+        if self.search_text.get_hover() {
+            if self.search_text.on_click(pos, button, mods) {
+                // note: we shouldnt need to store mods, as search text in this instance doesnt care about it
+                return;
+            }
         }
 
         self.mouse_down = Some((pos, false, button, pos, mods));
