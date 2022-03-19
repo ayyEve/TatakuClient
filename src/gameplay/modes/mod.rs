@@ -30,13 +30,15 @@ pub fn calc_acc(score: &Score) -> f64 {
 }
 
 pub fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) -> TatakuResult<f32> {
-    match &*map.check_mode_override(mode_override) {
+    Ok(match &*map.check_mode_override(mode_override) {
         "mania" => mania::DiffCalc::new(map)?.calc(mods),
         "osu" => osu::DiffCalc::new(map)?.calc(mods),
         "taiko" => taiko::DiffCalc::new(map)?.calc(mods),
         "utyping" => utyping::DiffCalc::new(map)?.calc(mods),
         _ => Ok(0.0)
-    }
+    }?
+    // if the number is nan,infinity, etc, replace it with 0.0
+    .normal_or(0.0))
 }
 
 pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {

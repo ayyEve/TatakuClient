@@ -61,7 +61,7 @@ pub struct StandardGame {
     stack_leniency: f32,
 
     /// cached settings, saves on locking
-    settings: StandardSettings,
+    game_settings: Arc<StandardSettings>,
 
     /// autoplay helper
     auto_helper: StandardAutoHelper,
@@ -155,6 +155,7 @@ impl GameMode for StandardGame {
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
+        println!("[gjfdkljl;kfdsj;lkgfdsj;lkgdfsj;k] making new StandardGame");
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
@@ -170,7 +171,7 @@ impl GameMode for StandardGame {
 
         match map {
             Beatmap::Osu(beatmap) => {
-                let std_settings = Arc::new(settings.clone());
+                let std_settings = Arc::new(settings);
 
                 if std_settings.use_beatmap_combo_colors && beatmap.combo_colors.len() > 0 {
                     combo_colors = beatmap.combo_colors.clone();
@@ -208,7 +209,7 @@ impl GameMode for StandardGame {
                     },
                     use_controller_cursor: false,
         
-                    settings,
+                    game_settings: std_settings.clone(),
                     auto_helper: StandardAutoHelper::new(),
                     new_combos: Vec::new(),
                     stack_leniency
@@ -396,7 +397,7 @@ impl GameMode for StandardGame {
                 
                 
                 let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
-                if !is_300 || (is_300 && self.settings.show_300s) {
+                if !is_300 || (is_300 && self.game_settings.show_300s) {
                     self.draw_points.push((time, note.point_draw_pos(time), pts.clone()));
                 }
 
@@ -534,7 +535,7 @@ impl GameMode for StandardGame {
                         let pts = note.get_points(false, time, (-1.0, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
                         
                         let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
-                        if !is_300 || (is_300 && self.settings.show_300s) {
+                        if !is_300 || (is_300 && self.game_settings.show_300s) {
                             self.draw_points.push((time, note.point_draw_pos(time), pts));
                         }
                         
@@ -584,7 +585,7 @@ impl GameMode for StandardGame {
         }
         
         // remove old draw points
-        let indicator_draw_duration = self.settings.indicator_draw_duration;
+        let indicator_draw_duration = self.game_settings.indicator_draw_duration;
         self.draw_points.retain(|a| time < a.0 + indicator_draw_duration);
 
 
@@ -598,6 +599,14 @@ impl GameMode for StandardGame {
             }
         }
 
+        unsafe {
+            let mut size = std::mem::size_of_val(&manager.score);
+            for i in manager.score.hit_timings.iter() {
+                size += std::mem::size_of_val(i)
+            }
+            println!("size: {}", size);
+        }
+
     }
     fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
 
@@ -606,7 +615,7 @@ impl GameMode for StandardGame {
             let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
 
             if self.move_playfield.is_some() {
-                let line_size = self.settings.playfield_movelines_thickness;
+                let line_size = self.game_settings.playfield_movelines_thickness;
                 // draw x and y center lines
                 let px_line = Line::new(
                     playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
@@ -681,7 +690,7 @@ impl GameMode for StandardGame {
                 ScoreHit::None | ScoreHit::Other(_, _) => continue,
             }
             
-            let alpha = (1.0 - (time - (p_time + (self.settings.indicator_draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
+            let alpha = (1.0 - (time - (p_time + (self.game_settings.indicator_draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
             list.push(Box::new(Circle::new(
                 color.alpha(alpha),
                 -99_999.9,
@@ -697,7 +706,7 @@ impl GameMode for StandardGame {
         }
 
         // draw follow points
-        if self.settings.draw_follow_points {
+        if self.game_settings.draw_follow_points {
             for i in 0..self.notes.len() - 1 {
                 if !self.new_combos.contains(&(i + 1)) {
                     let n1 = &self.notes[i];
@@ -764,10 +773,10 @@ impl GameMode for StandardGame {
         }
 
         let time = manager.time();
-        if key == self.settings.left_key {
+        if key == self.game_settings.left_key {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager);
         }
-        if key == self.settings.right_key {
+        if key == self.game_settings.right_key {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
         }
     }
@@ -784,10 +793,10 @@ impl GameMode for StandardGame {
         }
 
         let time = manager.time();
-        if key == self.settings.left_key {
+        if key == self.game_settings.left_key {
             self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager);
         }
-        if key == self.settings.right_key {
+        if key == self.game_settings.right_key {
             self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager);
         }
     }
@@ -836,7 +845,7 @@ impl GameMode for StandardGame {
         self.handle_replay_frame(ReplayFrame::MousePos(pos.x as f32, pos.y as f32), time, manager);
     }
     fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
-        if self.settings.ignore_mouse_buttons {return}
+        if self.game_settings.ignore_mouse_buttons {return}
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
@@ -852,7 +861,7 @@ impl GameMode for StandardGame {
         }
     }
     fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
-        if self.settings.ignore_mouse_buttons {return}
+        if self.game_settings.ignore_mouse_buttons {return}
 
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
@@ -1006,7 +1015,11 @@ impl GameMode for StandardGame {
 }
 
 
-
+impl Drop for StandardGame {
+    fn drop(&mut self) {
+        println!("dropping std")
+    }
+}
 struct StandardAutoHelper {
     // point_trail_angle: Vector2,
     point_trail_start_time: f32,
