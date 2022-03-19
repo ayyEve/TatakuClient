@@ -95,9 +95,7 @@ impl ScoreHelper {
                                 } else {
                                     // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
                                     if let Some(id) = osu::fetch_beatmap_id(&key, &map_hash).await {
-                                        println!("got id");
                                         let url = format!("https://osu.ppy.sh/api/get_scores?k={key}&b={id}&m={mode}");
-                                        println!("using url {url}");
 
                                         if let Ok(res) = reqwest::get(url).await {
                                             if let Ok(bytes) = res.bytes().await {
@@ -105,17 +103,13 @@ impl ScoreHelper {
                                                 online_scores = osu::scores_from_api_response(bytes, &playmode);
                                             }
                                         }
-                                    } else {
-                                        println!("no id")
                                     }
                                 }
                             },
                             BeatmapType::Quaver => {
                                 // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
                                 if let Some(id) = quaver::fetch_beatmap_id(&map_hash).await {
-                                    println!("got id");
                                     let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
-                                    println!("using url {url}");
 
                                     if let Ok(res) = reqwest::get(url).await {
                                         if let Ok(bytes) = res.bytes().await {
@@ -123,8 +117,6 @@ impl ScoreHelper {
                                             online_scores = quaver::scores_from_api_response(bytes);
                                         }
                                     }
-                                } else {
-                                    println!("no id")
                                 }
                             },
 
@@ -146,7 +138,6 @@ impl ScoreHelper {
 
                     let mut thing = scores_clone.write();
                     thing.scores = online_scores;
-                    println!("writing {} scores", thing.scores.len());
                     thing.done = true;
                 });
                 
