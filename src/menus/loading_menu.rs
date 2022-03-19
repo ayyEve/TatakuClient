@@ -109,9 +109,7 @@ impl LoadingMenu {
             })
                 .unwrap()
                 .filter_map(|m|{
-                    if let Err(e) = &m {
-                        println!("DB Err: {}", e);
-                    }
+                    if let Err(e) = &m {println!("DB Err: {}", e)}
                     m.ok()
                 })
                 .collect::<Vec<BeatmapMeta>>();
@@ -128,8 +126,8 @@ impl LoadingMenu {
                     continue
                 }
 
-                status.lock().loading_done += 1;
                 lock.add_beatmap(&meta);
+                status.lock().loading_done += 1;
             }
         }
         

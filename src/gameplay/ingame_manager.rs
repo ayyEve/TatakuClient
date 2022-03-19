@@ -509,6 +509,13 @@ impl IngameManager {
         // update gamemode
         gamemode.update(self, time);
 
+
+        if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
+            println!("[InGame] Song over, saying map is complete");
+            self.completed = true;
+        }
+
+
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
         if self.failed {
