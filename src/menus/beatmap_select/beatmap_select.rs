@@ -141,7 +141,12 @@ impl BeatmapSelectMenu {
 
         for mut maps in sets {
             if !filter_text.is_empty() {
-                maps.retain(|bm|bm.filter(&filter_text));
+                let filters = filter_text.split(" ");
+
+                for filter in filters {
+                    maps.retain(|bm|bm.filter(&filter));
+                }
+
                 if maps.len() == 0 {continue}
             }
 

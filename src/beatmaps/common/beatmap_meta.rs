@@ -128,6 +128,48 @@ impl BeatmapMeta {
     }
 
     pub fn filter(&self, filter_str: &str) -> bool {
+        const COMPS:&[&str] = &[">=","<=",">", "<", "="];
+        let mut comp = None;
+        for c in COMPS {
+            if filter_str.contains(c) {
+                comp = Some(*c);
+                break;
+            }
+        }
+
+        if let Some(comp) = comp {
+            let mut split = filter_str.split(comp);
+            let key = split.next().unwrap();
+            let val = split.next().unwrap_or_default();
+
+            macro_rules! do_comp {
+                ($check:expr) => {{
+                    let val = val.parse().unwrap_or_default();
+                    match comp {
+                        ">=" => $check >= val,
+                        "<=" => $check <= val,
+                        ">" => $check > val,
+                        "<" => $check < val,
+                        "=" => $check == val,
+                        // anything else is wrong,
+                        _ => false,
+                    }
+                }}
+            }
+            return match key {
+                // numbers
+                "bpm" => do_comp!(self.bpm_min),
+                "diff"|"stars" => do_comp!(self.diff),
+
+                // strings
+                "game" => format!("{:?}", self.beatmap_type).to_lowercase() == val.to_lowercase(),
+                "mode"|"playmode" => self.mode.to_lowercase() == val.to_lowercase(),
+                
+                // pain
+                _ => true,
+            }
+        }
+
         self.artist.to_ascii_lowercase().contains(filter_str) 
         || self.artist_unicode.to_ascii_lowercase().contains(filter_str) 
         || self.title.to_ascii_lowercase().contains(filter_str) 
