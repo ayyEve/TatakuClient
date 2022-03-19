@@ -39,11 +39,11 @@ pub struct QuaverBeatmap {
     path: String,
 }
 impl QuaverBeatmap {
-    pub fn load(path: String) -> Self {
-        let lines = std::fs::read_to_string(&path).unwrap();
-        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).unwrap();
+    pub fn load(path: String) -> TatakuResult<Self> {
+        let lines = std::fs::read_to_string(&path)?;
+        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|_|BeatmapError::InvalidFile)?;
 
-        s.hash = get_file_hash(&path).unwrap();
+        s.hash = get_file_hash(&path)?;
         s.path = path.clone();
 
         let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();
@@ -51,7 +51,7 @@ impl QuaverBeatmap {
         s.background_file = format!("{}/{}", parent_dir, s.background_file);
         // println!("bg: {}", s.background_file);
 
-        s
+        Ok(s)
     }
 }
 impl TatakuBeatmap for QuaverBeatmap {

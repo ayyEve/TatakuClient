@@ -35,7 +35,7 @@ impl Beatmap {
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(vec![Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned())?)]),
-            "qua" => Ok(vec![Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned()))]),
+            "qua" => Ok(vec![Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?)]),
             "adofai" => Ok(vec![Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))]),
             "txt" => Ok(vec![Beatmap::UTyping(UTypingBeatmap::load(path)?)]),
             "ssc" | "sm" => Ok(StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(b)).collect()),
@@ -49,7 +49,7 @@ impl Beatmap {
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned())?)),
-            "qua" => Ok(Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned()))),
+            "qua" => Ok(Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?)),
             "adofai" => Ok(Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))),
             "txt" => Ok(Beatmap::UTyping(UTypingBeatmap::load(path.to_str().unwrap().to_owned())?)),
             "ssc" | "sm" => Ok(Beatmap::Stepmania(StepmaniaBeatmap::load_single(path, meta)?)),

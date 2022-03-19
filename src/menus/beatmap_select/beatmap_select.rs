@@ -200,7 +200,9 @@ impl BeatmapSelectMenu {
         // play it
         if let Some(current) = &lock.current_beatmap {
             if current.beatmap_hash == map && can_start {
-                self.play_map(game, current);
+                let current = current.clone();
+                drop(lock);
+                self.play_map(game, &current);
                 self.map_changing = (true, false, 0);
                 return;
             }

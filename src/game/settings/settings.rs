@@ -43,6 +43,7 @@ pub struct Settings {
     // osu login (for direct)
     pub osu_username: String,
     pub osu_password: String,
+    pub osu_api_key: String,
     
     // game settings
     pub standard_settings: StandardSettings,
@@ -166,6 +167,7 @@ impl Default for Settings {
             // osu
             osu_username: String::new(),
             osu_password: String::new(),
+            osu_api_key: String::new(),
 
             // mode settings
             standard_settings: StandardSettings::default(),
