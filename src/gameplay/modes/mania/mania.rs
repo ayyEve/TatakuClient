@@ -30,6 +30,7 @@ pub fn calc_acc(score: &Score) -> f64 {
 }
 
 pub struct ManiaGame {
+    map_meta: BeatmapMeta,
     // lists
     columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     timing_bars: Vec<TimingBar>,
@@ -52,6 +53,7 @@ pub struct ManiaGame {
     playfield: Arc<ManiaPlayfieldSettings>,
 
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+    map_preferences: BeatmapPlaymodePreferences,
 }
 impl ManiaGame {
     /// get the x_pos for `col`
@@ -100,6 +102,7 @@ impl GameMode for ManiaGame {
 
         let all_mania_skin_settings = &SKIN_MANAGER.read().current_skin_config().mania_settings;
         let mut mania_skin_settings = None;
+        let map_preferences = get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned());
 
         const DEFAULT_SNAP: Color = Color::SILVER;
 
@@ -173,6 +176,7 @@ impl GameMode for ManiaGame {
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
+                    map_meta: metadata.clone(),
                     columns: Vec::new(),
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
@@ -184,12 +188,13 @@ impl GameMode for ManiaGame {
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: 1.0,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count: beatmap.metadata.cs as u8,
 
                     auto_helper,
                     playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
-                    mania_skin_settings
+                    mania_skin_settings,
+                    map_preferences,
                 };
 
                 for i in all_mania_skin_settings.iter() {
@@ -278,6 +283,7 @@ impl GameMode for ManiaGame {
                 }
 
                 let mut s = Self {
+                    map_meta: metadata.clone(),
                     columns: Vec::new(),
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
@@ -295,7 +301,8 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
-                    mania_skin_settings
+                    mania_skin_settings,
+                    map_preferences
                 };
                 
                 // init defaults for the columns
@@ -354,6 +361,7 @@ impl GameMode for ManiaGame {
                 }
 
                 let mut s = Self {
+                    map_meta: metadata.clone(),
                     columns: Vec::new(),
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
@@ -371,7 +379,8 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
-                    mania_skin_settings
+                    mania_skin_settings,
+                    map_preferences,
                 };
                 
                 // init defaults for the columns
@@ -582,16 +591,15 @@ impl GameMode for ManiaGame {
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
 
         // check sv change keys
-        if key == Key::F4 {
-            self.sv_mult += SV_CHANGE_DELTA;
+        if key == Key::F4 || key == Key::F3 {
+            if key == Key::F4 {
+                self.sv_mult += SV_CHANGE_DELTA;
+            } else {
+                self.sv_mult -= SV_CHANGE_DELTA;
+            }
+            self.map_preferences.scroll_speed = self.sv_mult;
+            save_beatmap_playmode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), self.map_preferences.clone());
             
-            let time = manager.time();
-            self.set_sv(manager.beatmap.slider_velocity_at(time));
-            return;
-        }
-        if key == Key::F3 {
-            self.sv_mult -= SV_CHANGE_DELTA;
-
             let time = manager.time();
             self.set_sv(manager.beatmap.slider_velocity_at(time));
             return;
@@ -873,7 +881,7 @@ impl GameMode for ManiaGame {
     }
 
     
-    fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
+    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
         // for c in self.columns.iter_mut() {
         //     for note in c.iter_mut() {
         //         note.set_alpha(settings.opacity)
