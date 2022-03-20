@@ -12,7 +12,6 @@ const BAR_DEPTH:f64 = -90.0;
 
 // sv things (TODO!: rework sv to not suck)
 const SV_FACTOR:f32 = 700.0; // bc sv is bonked, divide it by this amount
-const SV_CHANGE_DELTA:f32 = 0.1; // how much to change the sv by when a sv change key is pressed
 
 
 /// calculate the mania acc for `score`
@@ -52,6 +51,7 @@ pub struct ManiaGame {
     auto_helper: ManiaAutoHelper,
     playfield: Arc<ManiaPlayfieldSettings>,
 
+    game_settings: Arc<ManiaSettings>,
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
     map_preferences: BeatmapPlaymodePreferences,
 }
@@ -96,14 +96,14 @@ impl GameMode for ManiaGame {
     fn new(beatmap:&Beatmap, _diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = get_settings!().mania_settings.clone();
-        let playfields = &settings.playfield_settings.clone();
+        let game_settings = get_settings!().mania_settings.clone();
+        let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
 
         let all_mania_skin_settings = &SKIN_MANAGER.read().current_skin_config().mania_settings;
         let mut mania_skin_settings = None;
         let map_preferences = get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned());
-
+        
         const DEFAULT_SNAP: Color = Color::SILVER;
 
         const SNAP_COLORS:&[(f32, Color)] = &[
@@ -195,6 +195,7 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
+                    game_settings: Arc::new(game_settings)
                 };
 
                 for i in all_mania_skin_settings.iter() {
@@ -302,7 +303,8 @@ impl GameMode for ManiaGame {
                     auto_helper,
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
                     mania_skin_settings,
-                    map_preferences
+                    map_preferences,
+                    game_settings: Arc::new(game_settings)
                 };
                 
                 // init defaults for the columns
@@ -381,6 +383,7 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
+                    game_settings: Arc::new(game_settings)
                 };
                 
                 // init defaults for the columns
@@ -593,9 +596,9 @@ impl GameMode for ManiaGame {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
-                self.sv_mult += SV_CHANGE_DELTA;
+                self.sv_mult += self.game_settings.sv_change_delta;
             } else {
-                self.sv_mult -= SV_CHANGE_DELTA;
+                self.sv_mult -= self.game_settings.sv_change_delta;
             }
             self.map_preferences.scroll_speed = self.sv_mult;
             save_beatmap_playmode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), self.map_preferences.clone());
@@ -628,8 +631,6 @@ impl GameMode for ManiaGame {
         self.handle_replay_frame(ReplayFrame::Press(game_key), time, manager);
     }
     fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
-
-        
         // dont accept key input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;

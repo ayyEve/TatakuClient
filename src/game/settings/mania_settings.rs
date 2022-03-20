@@ -15,6 +15,9 @@ pub struct ManiaSettings {
     /// col_count [col_num, 0 based]
     /// ie for 4k, key 2: mania_keys\[3]\[1]
     pub keys: Vec<Vec<Key>>,
+
+    /// how much to change the sv by when a sv change key is pressed
+    pub sv_change_delta:f32
 }
 impl Default for ManiaSettings {
     fn default() -> Self {
@@ -48,6 +51,7 @@ impl Default for ManiaSettings {
             // sv
             static_sv: false,
             sv_multiplier: 1.0,
+            sv_change_delta: 0.3
         }
     }
 }

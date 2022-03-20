@@ -105,10 +105,17 @@ pub struct BeatmapPreferences {
     // pub storyboard: bool,
 }
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct BeatmapPlaymodePreferences {
     pub scroll_speed: f32,
+}
+impl Default for BeatmapPlaymodePreferences {
+    fn default() -> Self {
+        Self { 
+            scroll_speed: 1.0,
+        }
+    }
 }
 
 pub fn get_beatmap_prefs(map_hash:&String) -> BeatmapPreferences {
