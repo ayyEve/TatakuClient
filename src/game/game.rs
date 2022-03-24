@@ -807,6 +807,26 @@ impl Game {
 
         if let Some(bg) = self.background_image.as_mut() {
             bg.origin = Vector2::zero();
+            
+            // resize to maintain aspect ratio
+            let window_size = Settings::window_size();
+            let image_size = bg.tex_size();
+            let ratio = image_size.y / image_size.x;
+            if image_size.x > image_size.y {
+                // use width as base
+                bg.set_size(Vector2::new(
+                    window_size.x,
+                    window_size.x * ratio,
+                ));
+            } else {
+                // use height as base
+                bg.set_size(Vector2::new(
+                    window_size.y * ratio,
+                    window_size.y,
+                ));
+            }
+            bg.initial_pos = (window_size - bg.size()) / 2.0;
+            bg.current_pos = bg.initial_pos;
         }
         
 
