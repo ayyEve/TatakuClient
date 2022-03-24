@@ -242,8 +242,7 @@ impl BeatmapManager {
         let mut set_map = HashMap::new();
 
         for beatmap in self.beatmaps.iter() {
-            let m = beatmap.clone();
-            let key = format!("{}-{}[{}]", m.artist, m.title, m.creator); // good enough for now
+            let key = format!("{}-{}[{}]", beatmap.artist, beatmap.title, beatmap.creator); // good enough for now
             if !set_map.contains_key(&key) {set_map.insert(key.clone(), Vec::new());}
             set_map.get_mut(&key).unwrap().push(beatmap.clone());
         }
@@ -264,7 +263,7 @@ impl BeatmapManager {
         if self.beatmaps.len() > 0 {
             let ind = rand::thread_rng().gen_range(0..self.beatmaps.len());
             let map = self.beatmaps[ind].clone();
-            Some(map.clone())
+            Some(map)
         } else {
             None
         }

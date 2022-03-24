@@ -7,7 +7,6 @@ pub struct BeatmapMeta {
     pub beatmap_hash: String,
     pub beatmap_type: BeatmapType,
 
-    pub beatmap_version: u8,
     pub mode: String,
     pub artist: String,
     pub title: String,
@@ -25,14 +24,15 @@ pub struct BeatmapMeta {
     pub od: f32,
     pub cs: f32,
     pub ar: f32,
-    // pub sr: f64,
+    pub bpm_min: f32,
+    pub bpm_max: f32,
 
+    // remove these at some point
+    pub beatmap_version: u8,
     pub slider_multiplier: f32,
     pub slider_tick_rate: f32,
     pub stack_leniency: f32,
 
-    pub bpm_min: f32,
-    pub bpm_max: f32,
 
     pub diff: f32
 }

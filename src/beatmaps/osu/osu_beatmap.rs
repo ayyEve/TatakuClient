@@ -291,9 +291,6 @@ impl OsuBeatmap {
                 bpm_max = i.beat_length;
             }
         }
-        // 60,000 / BPM = bl
-        // bpm/60,000 = 1/bl
-        // bpm = bl * 60,000
         beatmap.metadata.bpm_min = 60_000.0 / bpm_min;
         beatmap.metadata.bpm_max = 60_000.0 / bpm_max;
 
