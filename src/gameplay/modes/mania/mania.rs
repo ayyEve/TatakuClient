@@ -297,7 +297,7 @@ impl GameMode for ManiaGame {
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: 1.0,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
@@ -376,7 +376,7 @@ impl GameMode for ManiaGame {
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: 1.0,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
@@ -838,19 +838,20 @@ impl GameMode for ManiaGame {
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
-        let y_needed = 0.0;
-        let mut time = manager.time();
+        // make sure we havent hit a note yet
+        for &c in self.column_indices.iter() {if c > 0 {return}}
 
-        loop {
-            let mut found = false;
-            for col in self.columns.iter_mut() {
-                for note in col.iter_mut() {
-                    if note.y_at(time) <= y_needed {found = true; break}
-                }
+        // find the earliest time that a note would be at the y needed
+        let y_needed = if self.playfield.upside_down {Settings::window_size().y as f32} else {0.0};
+        let mut time = self.end_time;
+        for col in self.columns.iter() {
+            for note in col.iter() {
+                time = time.min(note.time_at(y_needed))
             }
-            if found {break}
-            time += 1.0;
         }
+
+        if time < 0.0 {return}
+        if manager.time() >= time {return}
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
@@ -859,7 +860,6 @@ impl GameMode for ManiaGame {
             }
         }
 
-        if time < 0.0 {return}
         #[cfg(feature="bass_audio")]
         manager.song.set_position(time as f64).unwrap();
         #[cfg(feature="neb_audio")]

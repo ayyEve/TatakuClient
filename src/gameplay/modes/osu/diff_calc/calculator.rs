@@ -127,13 +127,11 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
             });
         }
 
-
         notes.sort_by(|a, b| {
             let a = a.time;
             let b = b.time;
             a.partial_cmp(&b).unwrap()
         });
-
 
         Ok(Self {
             notes

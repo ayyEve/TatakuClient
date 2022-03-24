@@ -6,6 +6,9 @@ pub use std::collections::HashMap;
 pub use std::collections::HashSet;
 pub use std::time::{Duration, Instant};
 
+// rayon imports
+pub use rayon::prelude::*;
+
 // piston imports
 pub use piston::Key;
 pub use piston::RenderArgs;

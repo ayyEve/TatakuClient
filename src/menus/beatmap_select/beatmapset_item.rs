@@ -15,23 +15,18 @@ pub struct BeatmapsetItem {
     pub beatmaps: Vec<BeatmapMeta>,
     selected_index: usize,
     mouse_pos: Vector2,
-    playmode: String
+    playmode: String,
+
+    diff_calc_helper: CalcNotifyHelper
 }
 impl BeatmapsetItem {
     pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
-        // ensure diff is calced for all maps
-        // let maps_clone = beatmaps.clone();
-        // let playmode2 = playmode.clone();
-        // tokio::spawn(async move {
-        //     let mods = ModManager::get();
-        //     maps_clone.iter().for_each(|b| {
-        //         if let None = get_diff(&b.beatmap_hash, &playmode2, &mods) {
-        //             let diff = calc_diff(b, playmode2.clone(), &mods).unwrap_or_default();
-        //             insert_diff(&b.beatmap_hash, &playmode2, &mods, diff);
-        //         }
-        //     });
-        // });
-        
+
+        // this should be fine here because the diffs map should be populated
+        let mods = ModManager::get().clone();
+        for i in beatmaps.iter_mut() {
+            i.diff = get_diff(&i.beatmap_hash, &playmode, &mods).unwrap_or(0.0);
+        }
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
@@ -46,7 +41,28 @@ impl BeatmapsetItem {
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
-            playmode
+            playmode,
+            diff_calc_helper: CalcNotifyHelper::new(),
+        }
+    }
+
+    pub fn recalc(&mut self) {
+        let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
+
+        // get the diff values from the beatmap manager
+        let mods = ModManager::get().clone();
+        for i in self.beatmaps.iter_mut() {
+            i.diff = get_diff(&i.beatmap_hash, &self.playmode, &mods).unwrap_or(0.0);
+        }
+
+        self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
+
+        // reselect the proper index
+        for (i, map) in self.beatmaps.iter().enumerate() {
+            if map.beatmap_hash == previous_selected {
+                self.selected_index = i;
+                break
+            }
         }
     }
 
@@ -105,26 +121,11 @@ impl ScrollableItem for BeatmapsetItem {
     }
 
     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
-        // press this key if you want to recalculate things
-        if key == Key::Calculator {
-            let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
-
-            // get the diff values from the beatmap manager
-            for i in self.beatmaps.iter_mut() {
-                i.diff = BEATMAP_MANAGER.read().get_by_hash(&i.beatmap_hash).unwrap().diff;
-            }
-            self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
-
-            // reselect the proper index
-            for (i, map) in self.beatmaps.iter().enumerate() {
-                if map.beatmap_hash == previous_selected {
-                    self.selected_index = i;
-                    break
-                }
-            }
-
-            return false;
-        }
+        // // press this key if you want to recalculate things
+        // if key == Key::Calculator {
+        //     self.recalc();
+        //     return false;
+        // }
 
         if !self.selected {return false}
 
@@ -254,6 +255,12 @@ impl ScrollableItem for BeatmapsetItem {
 
                 pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
             }
+        }
+    }
+
+    fn update(&mut self) {
+        if self.diff_calc_helper.check() {
+            self.recalc();
         }
     }
 

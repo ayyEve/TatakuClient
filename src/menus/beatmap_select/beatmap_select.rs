@@ -343,6 +343,8 @@ impl Menu<Game> for BeatmapSelectMenu {
     fn update(&mut self, game:&mut Game) {
         self.search_text.set_selected(true); // always have it selected
         let old_text = self.search_text.get_text();
+        self.beatmap_scroll.update();
+        self.leaderboard_scroll.update();
 
         for i in self.interactables() {
             i.update();

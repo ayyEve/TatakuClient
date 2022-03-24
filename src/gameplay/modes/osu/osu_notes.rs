@@ -338,7 +338,6 @@ impl StandardHitObject for StandardNote {
     fn pos_at(&self, _time: f32) -> Vector2 {
         self.pos
     }
-
 }
 
 

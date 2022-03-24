@@ -155,7 +155,7 @@ impl GameMode for StandardGame {
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
-        println!("[gjfdkljl;kfdsj;lkgfdsj;lkgdfsj;k] making new StandardGame");
+        // println!("[gjfdkljl;kfdsj;lkgfdsj;lkgdfsj;k] making new StandardGame");
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let stack_leniency = metadata.stack_leniency;
@@ -214,7 +214,7 @@ impl GameMode for StandardGame {
                     new_combos: Vec::new(),
                     stack_leniency
                 };
-        
+                
                 // join notes and sliders into a single array
                 // needed because of combo counts
                 let mut all_items = Vec::new();
@@ -1007,11 +1007,11 @@ impl GameMode for StandardGame {
 }
 
 
-impl Drop for StandardGame {
-    fn drop(&mut self) {
-        println!("dropping std")
-    }
-}
+// impl Drop for StandardGame {
+//     fn drop(&mut self) {
+//         println!("dropping std")
+//     }
+// }
 struct StandardAutoHelper {
     // point_trail_angle: Vector2,
     point_trail_start_time: f32,

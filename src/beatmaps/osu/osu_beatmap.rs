@@ -34,7 +34,6 @@ impl OsuBeatmap {
             HitObjects,
         }
 
-        let lines = crate::read_lines(file_path.clone()).expect("Beatmap file not found");
         let mut current_area = BeatmapSection::Version;
         let mut beatmap = Self {
             metadata: BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu),
@@ -47,243 +46,241 @@ impl OsuBeatmap {
             combo_colors: Vec::new(),
         };
 
-        for line_maybe in lines {
-            if let Ok(line) = line_maybe {
-                // ignore empty lines
-                if line.len() < 2 {continue}
+        for line in read_lines_resolved(&file_path)? {
+            // ignore empty lines
+            if line.len() < 2 {continue}
 
-                // check for section change
-                if line.starts_with("[") {
-                    // this one isnt really necessary
-                    if line == "[General]" {current_area = BeatmapSection::General}
-                    if line == "[Editor]" {current_area = BeatmapSection::Editor}
-                    if line == "[Metadata]" {current_area = BeatmapSection::Metadata}
-                    if line == "[Difficulty]" {current_area = BeatmapSection::Difficulty}
-                    if line == "[Events]" {current_area = BeatmapSection::Events}
-                    if line == "[Colours]" {current_area = BeatmapSection::Colors}
-                    if line == "[TimingPoints]" {current_area = BeatmapSection::TimingPoints}
-                    if line == "[HitObjects]" {
-                        // sort timing points before moving onto hitobjects
-                        beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+            // check for section change
+            if line.starts_with("[") {
+                // this one isnt really necessary
+                if line == "[General]" {current_area = BeatmapSection::General}
+                if line == "[Editor]" {current_area = BeatmapSection::Editor}
+                if line == "[Metadata]" {current_area = BeatmapSection::Metadata}
+                if line == "[Difficulty]" {current_area = BeatmapSection::Difficulty}
+                if line == "[Events]" {current_area = BeatmapSection::Events}
+                if line == "[Colours]" {current_area = BeatmapSection::Colors}
+                if line == "[TimingPoints]" {current_area = BeatmapSection::TimingPoints}
+                if line == "[HitObjects]" {
+                    // sort timing points before moving onto hitobjects
+                    beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
 
-                        current_area = BeatmapSection::HitObjects; 
+                    current_area = BeatmapSection::HitObjects; 
+                }
+                continue;
+            }
+
+            // not a change in area, check line
+            match current_area {
+                BeatmapSection::Version => {
+                    match line.split("v").last().unwrap().trim().parse::<u8>() {
+                        Ok(v) => beatmap.metadata.beatmap_version = v,
+                        Err(e) => println!("error parsing beatmap version: {}", e),
                     }
-                    continue;
+                }
+                BeatmapSection::General => {
+                    let mut split = line.split(":");
+                    let key = split.next().unwrap().trim();
+                    let val = split.next().unwrap().trim();
+
+                    if key == "AudioFilename" {beatmap.metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
+                    if key == "PreviewTime" {beatmap.metadata.audio_preview = val.parse().unwrap_or(0.0)}
+                    if key == "StackLeniency" {beatmap.metadata.stack_leniency = val.parse().unwrap_or(0.0)}
+                    if key == "Mode" {
+                        let m = val.parse::<u8>().unwrap();
+                        beatmap.metadata.mode = playmode_from_u8(m);
+                    }
+                }
+                BeatmapSection::Metadata => {
+                    let mut split = line.split(":");
+                    let key = split.next().unwrap().trim();
+                    let val = split.next().unwrap_or("").trim();
+                    
+                    if key == "Title" {beatmap.metadata.title = val.to_owned()}
+                    if key == "TitleUnicode" {beatmap.metadata.title_unicode = val.to_owned()}
+                    if key == "Artist" {beatmap.metadata.artist = val.to_owned()}
+                    if key == "ArtistUnicode" {beatmap.metadata.artist_unicode = val.to_owned()}
+                    if key == "Creator" {beatmap.metadata.creator = val.to_owned()}
+                    if key == "Version" {beatmap.metadata.version = val.to_owned()}
+                }
+                BeatmapSection::Difficulty => {
+                    let mut split = line.split(":");
+                    let key = split.next().unwrap().trim();
+                    let val = split.next().unwrap().trim().parse::<f32>().unwrap();
+
+                    if key == "HPDrainRate" {beatmap.metadata.hp = val}
+                    if key == "CircleSize" {beatmap.metadata.cs = val}
+                    if key == "OverallDifficulty" {beatmap.metadata.od = val}
+                    if key == "ApproachRate" {beatmap.metadata.ar = val}
+                    if key == "SliderMultiplier" {beatmap.metadata.slider_multiplier = val}
+                    if key == "SliderTickRate" {beatmap.metadata.slider_tick_rate = val}
+                }
+                BeatmapSection::Events => {
+                    let mut split = line.split(',');
+                    // eventType,startTime,eventParams
+                    // 0,0,filename,xOffset,yOffset
+                    let event_type = split.next().unwrap();
+
+                    if event_type == "0" && split.next().unwrap() == "0" {
+                        let filename = split.next().unwrap().to_owned();
+                        let filename = filename.trim_matches('"');
+                        beatmap.metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
+                    
+                    }
+                }
+                BeatmapSection::TimingPoints => {
+                    beatmap.timing_points.push(OsuTimingPoint::from_str(&line));
+                }
+                BeatmapSection::HitObjects => {
+                    let mut split = line.split(",");
+                    if split.clone().count() < 2 {continue} // skip empty lines
+
+                    let x = split.next().unwrap().parse::<f64>().unwrap();
+                    let y = split.next().unwrap().parse::<f64>().unwrap();
+                    let time = split.next().unwrap().parse::<f32>().unwrap();
+                    let read_type = split.next().unwrap().parse::<u64>().unwrap_or(0); // see below
+
+                    let hitsound_raw = split.next().unwrap();
+                    let hitsound = hitsound_raw.parse::<i8>();
+                    if let Err(e) = &hitsound {
+                        println!("error parsing hitsound: {} (line: {})", e, line)
+                    }
+                    
+                    let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
+
+                    // read type:
+                    // abcdefgh
+                    // a = note
+                    // b = slider
+                    // c = new combo
+                    // d, e, f = combo color skip count
+                    // g = spinner
+                    // h = mania hold
+                    let new_combo = (read_type & 4) > 0;
+                    let color_skip = 
+                            if (read_type & 16) > 0 {1} else {0} 
+                        + if (read_type & 32) > 0 {2} else {0} 
+                        + if (read_type & 64) > 0 {4} else {0};
+
+                    if (read_type & 2) > 0 { // slider
+                        let curve_raw = split.next().unwrap();
+                        let mut curve = curve_raw.split('|');
+                        let slides = split.next().unwrap().parse::<u64>().unwrap();
+                        let length = split.next().unwrap().parse::<f32>().unwrap();
+                        let edge_sounds = split
+                            .next()
+                            .unwrap_or("0")
+                            .split("|")
+                            .map(|s|s.parse::<u8>().unwrap_or(0)).collect();
+                        let edge_sets = split
+                            .next()
+                            .unwrap_or("0:0")
+                            .split("|")
+                            .map(|s| {
+                                let mut s2 = s.split(':');
+                                [
+                                    s2.next().unwrap_or("0").parse::<u8>().unwrap_or(0),
+                                    s2.next().unwrap_or("0").parse::<u8>().unwrap_or(0),
+                                ]
+                            })
+                            .collect();
+
+
+                        let curve_type = match &*curve.next().unwrap() {
+                            "B" => CurveType::Bézier,
+                            "P" => CurveType::Perfect,
+                            "C" => CurveType::Catmull,
+                            "L" => CurveType::Linear,
+                            _ => CurveType::Linear
+                        };
+
+                        let mut curve_points = Vec::new();
+                        while let Some(pair) = curve.next() {
+                            let mut s = pair.split(':');
+                            curve_points.push(Vector2::new(
+                                s.next().unwrap().parse().unwrap(),
+                                s.next().unwrap().parse().unwrap()
+                            ))
+                        }
+
+                        beatmap.sliders.push(SliderDef {
+                            raw: line.clone(),
+                            pos: Vector2::new(x, y),
+                            time,
+                            curve_type,
+                            curve_points,
+                            slides,
+                            length,
+                            hitsound,
+                            hitsamples: HitSamples::from_str(split.next()),
+                            edge_sounds,
+                            edge_sets,
+                            new_combo,
+                            color_skip
+                        });
+
+                    } else if (read_type & 8) > 0 { // spinner
+                        // x,y,time,type,hitSound,...
+                        // endTime,hitSample
+                        let end_time = split.next().unwrap().parse::<f32>().unwrap();
+
+                        beatmap.spinners.push(SpinnerDef {
+                            pos: Vector2::new(x, y),
+                            time,
+                            end_time,
+                            hitsound,
+                            hitsamples: HitSamples::from_str(split.next()),
+                            new_combo,
+                            color_skip
+                        });
+                        // let diff_map = map_difficulty_range(beatmap.metadata.od as f64, 3.0, 5.0, 7.5);
+                        // let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
+                        // let spinner = Spinner::new(time, end_time, sv, hits_required);
+                        // beatmap.notes.lock().push(Box::new(spinner));
+                    } else if (read_type & 2u64.pow(7)) > 0 { // mania hold
+                        let end_time = split.next().unwrap().split(":").next().unwrap().parse::<f32>().unwrap();
+                        beatmap.holds.push(HoldDef {
+                            pos: Vector2::new(x, y),
+                            time,
+                            end_time,
+                            hitsound,
+                            hitsamples: HitSamples::from_str(split.next()),
+                        });
+                    } else { // note
+                        beatmap.notes.push(NoteDef {
+                            pos: Vector2::new(x, y),
+                            time,
+                            hitsound,
+                            hitsamples: HitSamples::from_str(split.next()),
+                            new_combo,
+                            color_skip
+                        });
+                    }
                 }
 
-                // not a change in area, check line
-                match current_area {
-                    BeatmapSection::Version => {
-                        match line.split("v").last().unwrap().trim().parse::<u8>() {
-                            Ok(v) => beatmap.metadata.beatmap_version = v,
-                            Err(e) => println!("error parsing beatmap version: {}", e),
-                        }
+                BeatmapSection::Colors => {
+                    // Combo[n] : r,g,b
+                    // SliderTrackOverride : r,g,b
+                    // SliderBorder : r,g,b
+                    let mut split = line.split(":");
+                    let key = split.next().unwrap().trim();
+                    let mut val_split = split.next().unwrap().trim().split(",");
+                    let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                    let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                    let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                    let c = |a| {a as f32 / 255.0};
+                    let color = Color::new(c(r), c(g), c(b), 1.0);
+                    
+                    if key.starts_with("Combo") {
+                        beatmap.combo_colors.push(color);
                     }
-                    BeatmapSection::General => {
-                        let mut split = line.split(":");
-                        let key = split.next().unwrap().trim();
-                        let val = split.next().unwrap().trim();
-
-                        if key == "AudioFilename" {beatmap.metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
-                        if key == "PreviewTime" {beatmap.metadata.audio_preview = val.parse().unwrap_or(0.0)}
-                        if key == "StackLeniency" {beatmap.metadata.stack_leniency = val.parse().unwrap_or(0.0)}
-                        if key == "Mode" {
-                            let m = val.parse::<u8>().unwrap();
-                            beatmap.metadata.mode = playmode_from_u8(m);
-                        }
-                    }
-                    BeatmapSection::Metadata => {
-                        let mut split = line.split(":");
-                        let key = split.next().unwrap().trim();
-                        let val = split.next().unwrap_or("").trim();
-                        
-                        if key == "Title" {beatmap.metadata.title = val.to_owned()}
-                        if key == "TitleUnicode" {beatmap.metadata.title_unicode = val.to_owned()}
-                        if key == "Artist" {beatmap.metadata.artist = val.to_owned()}
-                        if key == "ArtistUnicode" {beatmap.metadata.artist_unicode = val.to_owned()}
-                        if key == "Creator" {beatmap.metadata.creator = val.to_owned()}
-                        if key == "Version" {beatmap.metadata.version = val.to_owned()}
-                    }
-                    BeatmapSection::Difficulty => {
-                        let mut split = line.split(":");
-                        let key = split.next().unwrap().trim();
-                        let val = split.next().unwrap().trim().parse::<f32>().unwrap();
-
-                        if key == "HPDrainRate" {beatmap.metadata.hp = val}
-                        if key == "CircleSize" {beatmap.metadata.cs = val}
-                        if key == "OverallDifficulty" {beatmap.metadata.od = val}
-                        if key == "ApproachRate" {beatmap.metadata.ar = val}
-                        if key == "SliderMultiplier" {beatmap.metadata.slider_multiplier = val}
-                        if key == "SliderTickRate" {beatmap.metadata.slider_tick_rate = val}
-                    }
-                    BeatmapSection::Events => {
-                        let mut split = line.split(',');
-                        // eventType,startTime,eventParams
-                        // 0,0,filename,xOffset,yOffset
-                        let event_type = split.next().unwrap();
-
-                        if event_type == "0" && split.next().unwrap() == "0" {
-                            let filename = split.next().unwrap().to_owned();
-                            let filename = filename.trim_matches('"');
-                            beatmap.metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
-                        
-                        }
-                    }
-                    BeatmapSection::TimingPoints => {
-                        beatmap.timing_points.push(OsuTimingPoint::from_str(&line));
-                    }
-                    BeatmapSection::HitObjects => {
-                        let mut split = line.split(",");
-                        if split.clone().count() < 2 {continue} // skip empty lines
-
-                        let x = split.next().unwrap().parse::<f64>().unwrap();
-                        let y = split.next().unwrap().parse::<f64>().unwrap();
-                        let time = split.next().unwrap().parse::<f32>().unwrap();
-                        let read_type = split.next().unwrap().parse::<u64>().unwrap_or(0); // see below
-
-                        let hitsound_raw = split.next().unwrap();
-                        let hitsound = hitsound_raw.parse::<i8>();
-                        if let Err(e) = &hitsound {
-                            println!("error parsing hitsound: {} (line: {})", e, line)
-                        }
-                        
-                        let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
-
-                        // read type:
-                        // abcdefgh
-                        // a = note
-                        // b = slider
-                        // c = new combo
-                        // d, e, f = combo color skip count
-                        // g = spinner
-                        // h = mania hold
-                        let new_combo = (read_type & 4) > 0;
-                        let color_skip = 
-                              if (read_type & 16) > 0 {1} else {0} 
-                            + if (read_type & 32) > 0 {2} else {0} 
-                            + if (read_type & 64) > 0 {4} else {0};
-
-                        if (read_type & 2) > 0 { // slider
-                            let curve_raw = split.next().unwrap();
-                            let mut curve = curve_raw.split('|');
-                            let slides = split.next().unwrap().parse::<u64>().unwrap();
-                            let length = split.next().unwrap().parse::<f32>().unwrap();
-                            let edge_sounds = split
-                                .next()
-                                .unwrap_or("0")
-                                .split("|")
-                                .map(|s|s.parse::<u8>().unwrap_or(0)).collect();
-                            let edge_sets = split
-                                .next()
-                                .unwrap_or("0:0")
-                                .split("|")
-                                .map(|s| {
-                                    let mut s2 = s.split(':');
-                                    [
-                                        s2.next().unwrap_or("0").parse::<u8>().unwrap_or(0),
-                                        s2.next().unwrap_or("0").parse::<u8>().unwrap_or(0),
-                                    ]
-                                })
-                                .collect();
-
-
-                            let curve_type = match &*curve.next().unwrap() {
-                                "B" => CurveType::Bézier,
-                                "P" => CurveType::Perfect,
-                                "C" => CurveType::Catmull,
-                                "L" => CurveType::Linear,
-                                _ => CurveType::Linear
-                            };
-
-                            let mut curve_points = Vec::new();
-                            while let Some(pair) = curve.next() {
-                                let mut s = pair.split(':');
-                                curve_points.push(Vector2::new(
-                                    s.next().unwrap().parse().unwrap(),
-                                    s.next().unwrap().parse().unwrap()
-                                ))
-                            }
-
-                            beatmap.sliders.push(SliderDef {
-                                raw: line.clone(),
-                                pos: Vector2::new(x, y),
-                                time,
-                                curve_type,
-                                curve_points,
-                                slides,
-                                length,
-                                hitsound,
-                                hitsamples: HitSamples::from_str(split.next()),
-                                edge_sounds,
-                                edge_sets,
-                                new_combo,
-                                color_skip
-                            });
-
-                        } else if (read_type & 8) > 0 { // spinner
-                            // x,y,time,type,hitSound,...
-                            // endTime,hitSample
-                            let end_time = split.next().unwrap().parse::<f32>().unwrap();
-
-                            beatmap.spinners.push(SpinnerDef {
-                                pos: Vector2::new(x, y),
-                                time,
-                                end_time,
-                                hitsound,
-                                hitsamples: HitSamples::from_str(split.next()),
-                                new_combo,
-                                color_skip
-                            });
-                            // let diff_map = map_difficulty_range(beatmap.metadata.od as f64, 3.0, 5.0, 7.5);
-                            // let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
-                            // let spinner = Spinner::new(time, end_time, sv, hits_required);
-                            // beatmap.notes.lock().push(Box::new(spinner));
-                        } else if (read_type & 2u64.pow(7)) > 0 { // mania hold
-                            let end_time = split.next().unwrap().split(":").next().unwrap().parse::<f32>().unwrap();
-                            beatmap.holds.push(HoldDef {
-                                pos: Vector2::new(x, y),
-                                time,
-                                end_time,
-                                hitsound,
-                                hitsamples: HitSamples::from_str(split.next()),
-                            });
-                        } else { // note
-                            beatmap.notes.push(NoteDef {
-                                pos: Vector2::new(x, y),
-                                time,
-                                hitsound,
-                                hitsamples: HitSamples::from_str(split.next()),
-                                new_combo,
-                                color_skip
-                            });
-                        }
-                    }
-
-                    BeatmapSection::Colors => {
-                        // Combo[n] : r,g,b
-                        // SliderTrackOverride : r,g,b
-                        // SliderBorder : r,g,b
-                        let mut split = line.split(":");
-                        let key = split.next().unwrap().trim();
-                        let mut val_split = split.next().unwrap().trim().split(",");
-                        let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                        let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                        let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                        let c = |a| {a as f32 / 255.0};
-                        let color = Color::new(c(r), c(g), c(b), 1.0);
-                        
-                        if key.starts_with("Combo") {
-                            beatmap.combo_colors.push(color);
-                        }
-                    },
-                    BeatmapSection::Editor => {},
-                }
+                },
+                BeatmapSection::Editor => {},
             }
         }
 
         // metadata bpm
         let mut bpm_min = 9999999999.9;
-        let mut bpm_max  = 0.0;
+        let mut bpm_max = 0.0;
         for i in beatmap.timing_points.iter() {
             if i.is_inherited() {continue}
 

@@ -10,6 +10,7 @@ pub trait ManiaHitObject: HitObject {
     fn was_hit(&self) -> bool {false}
 
     fn y_at(&self, time:f32) -> f64;
+    fn time_at(&self, y: f32) -> f32;
     fn set_sv(&mut self, sv:f32);
 }
 
@@ -49,7 +50,6 @@ impl ManiaNote {
             mania_skin_settings
         }
     }
-
 }
 impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
@@ -114,6 +114,12 @@ impl ManiaHitObject for ManiaNote {
         let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
         self.playfield.hit_y() - ((self.time - time) * speed) as f64
     }
+
+    fn time_at(&self, y:f32) -> f32 {
+        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
+        self.time + (y - self.playfield.hit_y() as f32) / speed 
+    }
+
 
     fn set_sv(&mut self, sv:f32) {
         self.speed = sv;
@@ -364,6 +370,11 @@ impl ManiaHitObject for ManiaHold {
     fn y_at(&self, time:f32) -> f64 {
         let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
         self.playfield.hit_y() - ((self.time - time) * speed) as f64
+    }
+
+    fn time_at(&self, y:f32) -> f32 {
+        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
+        self.time + (y - self.playfield.hit_y() as f32) / speed 
     }
 
     fn set_sv(&mut self, sv:f32) {

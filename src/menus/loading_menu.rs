@@ -135,11 +135,13 @@ impl LoadingMenu {
         BEATMAP_MANAGER.write().initialized = true; // these are new maps
         status.lock().loading_count += folders.len();
 
-        for f in folders {
+        folders.par_iter().for_each(|f| {
             BEATMAP_MANAGER.write().check_folder(f);
             status.lock().loading_done += 1;
-        }
+        });
 
+
+        println!("loaded {} beatmaps", BEATMAP_MANAGER.read().beatmaps.len())
     }
 
 }

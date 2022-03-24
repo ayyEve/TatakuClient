@@ -1,9 +1,11 @@
 use std::fs::{DirEntry, read_dir};
 use rand::Rng;
 
+
 use crate::databases::{insert_diff, get_diff};
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
+
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
@@ -11,6 +13,8 @@ lazy_static::lazy_static! {
 
     pub static ref DIFFICULTIES:Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 }
+
+static mut CALC_HELPER:InnerCalcNotifyHelper = InnerCalcNotifyHelper::new();
 
 pub struct BeatmapManager {
     pub initialized: bool,
@@ -28,8 +32,6 @@ pub struct BeatmapManager {
 
     /// helpful when a map is deleted
     pub(crate) force_beatmap_list_refresh: bool,
-
-    
 }
 impl BeatmapManager {
     pub fn new() -> Self {
@@ -64,7 +66,7 @@ impl BeatmapManager {
                     folders.push(f.to_str().unwrap().to_owned());
                 });
 
-            for f in folders {BEATMAP_MANAGER.write().check_folder(f)}
+            for f in folders {BEATMAP_MANAGER.write().check_folder(&f)}
         }
 
     }
@@ -107,13 +109,19 @@ impl BeatmapManager {
                 });
         }
 
-        for f in folders {self.check_folder(f)}
+        for f in folders {self.check_folder(&f)}
     }
 
     // adders
-    pub fn check_folder(&mut self, dir:String) {
-        if !Path::new(&dir).is_dir() {return}
+    pub fn check_folder(&mut self, dir:&String) {
+        if !Path::new(dir).is_dir() {return}
         let dir_files = read_dir(dir).unwrap();
+
+        // cache of existing paths
+        let mut existing_paths = HashSet::new();
+        for i in self.beatmaps.iter() {
+            existing_paths.insert(i.file_path.clone());
+        }
 
         for file in dir_files {
             let file = file.unwrap().path();
@@ -126,10 +134,8 @@ impl BeatmapManager {
             || file.ends_with(".sm") 
             || file.ends_with("info.txt") {
                 // check file paths first
-                for i in self.beatmaps.iter() {
-                    if i.file_path == file {
-                        continue;
-                    }
+                if existing_paths.contains(file) {
+                    continue
                 }
 
                 match get_file_hash(file) {
@@ -168,10 +174,10 @@ impl BeatmapManager {
 
     pub fn add_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // check if we already have this map
-        let new_hash = beatmap.beatmap_hash.clone();
-        if self.beatmaps_by_hash.contains_key(&new_hash) {return println!("map already added")}
+        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {return println!("map already added")}
 
         // dont have it, add it
+        let new_hash = beatmap.beatmap_hash.clone();
         if self.initialized {self.new_maps.push(beatmap.clone())}
         self.beatmaps_by_hash.insert(new_hash, beatmap.clone());
         self.beatmaps.push(beatmap.clone());
@@ -323,11 +329,20 @@ impl BeatmapManager {
         let mut maps = self.beatmaps.clone();
         let mods = mods.clone();
 
+        // let things know a diff calc is being performed 
+        let current_counter;
+        unsafe {
+            current_counter = CALC_HELPER.calc_counter.load(SeqCst) + 1;
+            CALC_HELPER.calc_counter.store(current_counter, SeqCst);
+            CALC_HELPER.calc_complete.store(false, SeqCst);
+        }
+        println!("doing diff calc # {}", current_counter);
+
         tokio::spawn(async move {
             let playmode = playmode;
 
             // perform calc
-            for i in maps.iter_mut() {
+            maps.par_iter_mut().for_each(|i| {
                 let hash = &i.beatmap_hash;
                 i.diff = if let Some(diff) = get_diff(hash, &playmode, &mods) {
                     diff
@@ -336,9 +351,21 @@ impl BeatmapManager {
                     insert_diff(hash, &playmode, &mods, diff);
                     diff
                 };
-            }
+            });
             
             BEATMAP_MANAGER.write().beatmaps = maps;
+
+            // let things know the calc is done
+            unsafe {
+                // only say we're done the calc if the calc counter has not changed
+                // ie, another diff calc has not started yet
+                if current_counter == CALC_HELPER.calc_counter.load(SeqCst) {
+                    CALC_HELPER.calc_complete.store(true, SeqCst);
+                }
+            }
+            
+
+            println!("diff calc {current_counter} complete");
         });
     }
 }
@@ -504,5 +531,50 @@ pub fn extract_all() {
         //     println!("waiting for downloads {} of {}", *completed.lock(), len);
         //     std::thread::sleep(Duration::from_millis(500));
         // }
+    }
+}
+
+
+struct InnerCalcNotifyHelper {
+    calc_counter:  AtomicU64,
+    calc_complete: AtomicBool,
+}
+impl InnerCalcNotifyHelper {
+    const fn new() -> Self {
+        Self {
+            calc_counter:  AtomicU64::new(0),
+            calc_complete: AtomicBool::new(false),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CalcNotifyHelper {
+    last_checked_calc_counter: u64,
+}
+impl CalcNotifyHelper {
+    pub fn new() -> Self {
+        let last_checked_calc_counter = unsafe {
+            CALC_HELPER.calc_counter.load(SeqCst)
+        };
+
+        Self {
+            last_checked_calc_counter,
+        }
+    }
+    pub fn check(&mut self) -> bool {
+        let (calc_counter, calc_complete) = unsafe {
+            (
+                CALC_HELPER.calc_counter.load(SeqCst),
+                CALC_HELPER.calc_complete.load(SeqCst),
+            )
+        };
+
+        if calc_counter > self.last_checked_calc_counter && calc_complete {
+            self.last_checked_calc_counter = calc_counter;
+            true
+        } else {
+            false
+        }
     }
 }
