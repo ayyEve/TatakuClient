@@ -17,11 +17,11 @@ pub struct BeatmapsetItem {
     mouse_pos: Vector2,
     playmode: String,
 
-    diff_calc_helper: CalcNotifyHelper
+    diff_calc_helper: MultiBomb<()>,
+    // diff_calc_helper: CalcNotifyHelper
 }
 impl BeatmapsetItem {
-    pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode) -> BeatmapsetItem {
-
+    pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>) -> BeatmapsetItem {
         // this should be fine here because the diffs map should be populated
         let mods = ModManager::get().clone();
         for i in beatmaps.iter_mut() {
@@ -30,7 +30,7 @@ impl BeatmapsetItem {
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
-
+        
         BeatmapsetItem {
             beatmaps: beatmaps.clone(), 
             pos: Vector2::new(x, 0.0),
@@ -42,7 +42,8 @@ impl BeatmapsetItem {
             selected_index: 0,
             mouse_pos: Vector2::zero(),
             playmode,
-            diff_calc_helper: CalcNotifyHelper::new(),
+            diff_calc_helper,
+            // diff_calc_helper: CalcNotifyHelper::new(),
         }
     }
 
@@ -259,9 +260,14 @@ impl ScrollableItem for BeatmapsetItem {
     }
 
     fn update(&mut self) {
-        if self.diff_calc_helper.check() {
+        if self.diff_calc_helper.exploded().is_some() {
+            // drain the queue
+            while let Some(_) = self.diff_calc_helper.exploded() {}
             self.recalc();
         }
+        // if self.diff_calc_helper.check() {
+        //     self.recalc();
+        // }
     }
 
     fn on_text(&mut self, playmode:String) {

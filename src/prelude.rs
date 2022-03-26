@@ -9,6 +9,9 @@ pub use std::time::{Duration, Instant};
 // rayon imports
 pub use rayon::prelude::*;
 
+// bomb imports
+pub use bombs::*;
+
 // piston imports
 pub use piston::Key;
 pub use piston::RenderArgs;

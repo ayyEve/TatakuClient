@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
     pub static ref DIFFICULTIES:Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
-static mut CALC_HELPER:InnerCalcNotifyHelper = InnerCalcNotifyHelper::new();
+// static mut CALC_HELPER:InnerCalcNotifyHelper = InnerCalcNotifyHelper::new();
 
 pub struct BeatmapManager {
     pub initialized: bool,
@@ -32,9 +32,13 @@ pub struct BeatmapManager {
 
     /// helpful when a map is deleted
     pub(crate) force_beatmap_list_refresh: bool,
+
+    pub on_diffcalc_complete: (MultiFuse<()>, MultiBomb<()>),
 }
 impl BeatmapManager {
     pub fn new() -> Self {
+        let on_diffcalc_complete = MultiBomb::new();
+
         Self {
             initialized: false,
 
@@ -47,6 +51,8 @@ impl BeatmapManager {
             new_maps: Vec::new(),
 
             force_beatmap_list_refresh: false,
+
+            on_diffcalc_complete
         }
     }
 
@@ -329,13 +335,13 @@ impl BeatmapManager {
         let mods = mods.clone();
 
         // let things know a diff calc is being performed 
-        let current_counter;
-        unsafe {
-            current_counter = CALC_HELPER.calc_counter.load(SeqCst) + 1;
-            CALC_HELPER.calc_counter.store(current_counter, SeqCst);
-            CALC_HELPER.calc_complete.store(false, SeqCst);
-        }
-        println!("doing diff calc # {}", current_counter);
+        // let current_counter;
+        // unsafe {
+        //     current_counter = CALC_HELPER.calc_counter.load(SeqCst) + 1;
+        //     CALC_HELPER.calc_counter.store(current_counter, SeqCst);
+        //     CALC_HELPER.calc_complete.store(false, SeqCst);
+        // }
+        // println!("doing diff calc # {}", current_counter);
 
         tokio::spawn(async move {
             let playmode = playmode;
@@ -352,24 +358,28 @@ impl BeatmapManager {
                 };
             });
             
-            BEATMAP_MANAGER.write().beatmaps = maps;
-
-            // let things know the calc is done
-            unsafe {
-                // only say we're done the calc if the calc counter has not changed
-                // ie, another diff calc has not started yet
-                if current_counter == CALC_HELPER.calc_counter.load(SeqCst) {
-                    CALC_HELPER.calc_complete.store(true, SeqCst);
-                }
+            {
+                let mut lock = BEATMAP_MANAGER.write();
+                lock.beatmaps = maps;
+                lock.on_diffcalc_complete.0.ignite(());
             }
-            
 
-            println!("diff calc {current_counter} complete");
+            // // let things know the calc is done
+            // unsafe {
+            //     // only say we're done the calc if the calc counter has not changed
+            //     // ie, another diff calc has not started yet
+            //     if current_counter == CALC_HELPER.calc_counter.load(SeqCst) {
+            //         CALC_HELPER.calc_complete.store(true, SeqCst);
+            //     }
+            // }
+            
+            // println!("diff calc {current_counter} complete");
         });
     }
 }
 
 
+// TODO: move this to database
 fn insert_metadata(map: &BeatmapMeta) -> String {
     let mut bpm_min = map.bpm_min;
     let mut bpm_max = map.bpm_max;
@@ -547,33 +557,33 @@ impl InnerCalcNotifyHelper {
     }
 }
 
-#[derive(Clone)]
-pub struct CalcNotifyHelper {
-    last_checked_calc_counter: u64,
-}
-impl CalcNotifyHelper {
-    pub fn new() -> Self {
-        let last_checked_calc_counter = unsafe {
-            CALC_HELPER.calc_counter.load(SeqCst)
-        };
+// #[derive(Clone)]
+// pub struct CalcNotifyHelper {
+//     last_checked_calc_counter: u64,
+// }
+// impl CalcNotifyHelper {
+//     pub fn new() -> Self {
+//         let last_checked_calc_counter = unsafe {
+//             CALC_HELPER.calc_counter.load(SeqCst)
+//         };
 
-        Self {
-            last_checked_calc_counter,
-        }
-    }
-    pub fn check(&mut self) -> bool {
-        let (calc_counter, calc_complete) = unsafe {
-            (
-                CALC_HELPER.calc_counter.load(SeqCst),
-                CALC_HELPER.calc_complete.load(SeqCst),
-            )
-        };
+//         Self {
+//             last_checked_calc_counter,
+//         }
+//     }
+//     pub fn check(&mut self) -> bool {
+//         let (calc_counter, calc_complete) = unsafe {
+//             (
+//                 CALC_HELPER.calc_counter.load(SeqCst),
+//                 CALC_HELPER.calc_complete.load(SeqCst),
+//             )
+//         };
 
-        if calc_counter > self.last_checked_calc_counter && calc_complete {
-            self.last_checked_calc_counter = calc_counter;
-            true
-        } else {
-            false
-        }
-    }
-}
+//         if calc_counter > self.last_checked_calc_counter && calc_complete {
+//             self.last_checked_calc_counter = calc_counter;
+//             true
+//         } else {
+//             false
+//         }
+//     }
+// }

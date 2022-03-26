@@ -136,8 +136,10 @@ impl BeatmapSelectMenu {
         // used to select the current map in the list
         let current_hash = if let Some(map) = &beatmap_manager.current_beatmap {map.beatmap_hash.clone()} else {String::new()};
 
+        //TODO: allow grouping by not just map set
         let sets = beatmap_manager.all_by_sets();
         let mut full_list = Vec::new();
+        let diff_calc_helper = beatmap_manager.on_diffcalc_complete.1.clone();
 
         for mut maps in sets {
             if !filter_text.is_empty() {
@@ -150,7 +152,7 @@ impl BeatmapSelectMenu {
                 if maps.len() == 0 {continue}
             }
 
-            let mut i = BeatmapsetItem::new(maps, self.mode.clone());
+            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone());
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
