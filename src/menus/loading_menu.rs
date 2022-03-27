@@ -145,7 +145,7 @@ impl LoadingMenu {
         let folders:Vec<String> = folders.into_iter().filter(|f|!existing_paths.contains(f)).collect();
 
         {
-            let mut  lock = status.lock();
+            let mut lock = status.lock();
             lock.loading_done = 0;
             lock.loading_count = folders.len();
             lock.custom_message = "Checking folders...".to_owned();

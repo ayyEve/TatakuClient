@@ -50,7 +50,9 @@ impl JudgementIndicator for BasicJudgementIndicator {
         let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
         
         if let Some(img) = &self.image {
-            list.push(Box::new(img.clone()));
+            let mut img = img.clone();
+            img.current_color.a = alpha;
+            list.push(Box::new(img));
         } else {
             list.push(Box::new(Circle::new(
                 self.color.alpha(alpha),

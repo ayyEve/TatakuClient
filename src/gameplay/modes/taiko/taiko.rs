@@ -28,6 +28,11 @@ const SV_FACTOR:f32 = 700.0;
 /// how long should the drum buttons last for?
 const DRUM_LIFETIME_TIME:f32 = 100.0;
 
+// note texture size. this is required because peppy does dumb stuff with his textures
+pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
+pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
+pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
+
 /// calculate the taiko acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
     // let x50 = score.x50 as f64;
@@ -64,6 +69,8 @@ pub struct TaikoGame {
     left_don_image: Option<Image>,
     right_don_image: Option<Image>,
     right_kat_image: Option<Image>,
+
+    judgement_helper: JudgmentImageHelper,
 }
 impl TaikoGame {
     pub fn next_note(&mut self) {self.note_index += 1}
@@ -97,32 +104,50 @@ impl GameMode for TaikoGame {
                 hit_cache.insert(i, -999.9);
             }
 
-
             if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
                 don.depth = -1.0;
                 don.origin.x = don.tex_size().x;
                 don.current_pos = settings.hit_position;
+                
+                let radius = settings.note_radius * settings.hit_area_radius_mult;
+                let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
                 left_don_image = Some(don.clone());
-                left_don_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+                left_don_image.as_mut().unwrap().current_scale = scale;
 
                 right_don_image = Some(don.clone());
-                right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+                right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
             }
             if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
                 kat.depth = -1.0;
                 kat.origin.x = 0.0;
                 kat.current_pos = settings.hit_position;
                 
+                let radius = settings.note_radius * settings.hit_area_radius_mult;
+                let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+                
                 left_kat_image = Some(kat.clone());
-                left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * settings.hit_area_radius_mult;
+                left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
 
                 right_kat_image = Some(kat.clone());
-                right_kat_image.as_mut().unwrap().current_scale = Vector2::one() * settings.hit_area_radius_mult;
+                right_kat_image.as_mut().unwrap().current_scale = scale;
             }
 
         }
 
+
+        let judgement_helper = {
+            let mut skin = SKIN_MANAGER.write();
+            JudgmentImageHelper::new(
+                skin.get_texture("taiko-hit0", true),
+                None, // 50 doesnt exist
+                skin.get_texture("taiko-hit100", true),
+                skin.get_texture("taiko-hit300", true),
+                skin.get_texture("taiko-hit100k", true),
+                skin.get_texture("taiko-hit300g", true),
+            )
+        };
+        
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
@@ -145,6 +170,7 @@ impl GameMode for TaikoGame {
                     left_don_image,
                     right_don_image,
                     right_kat_image,
+                    judgement_helper,
                 };
 
                 // add notes
@@ -270,6 +296,7 @@ impl GameMode for TaikoGame {
                     left_don_image,
                     right_don_image,
                     right_kat_image,
+                    judgement_helper,
                 };
 
                 // add notes
@@ -344,12 +371,12 @@ impl GameMode for TaikoGame {
                 ScoreHit::Miss | ScoreHit::X50 => {return},
                 ScoreHit::X100 | ScoreHit::Xkatu => {
                     manager.score.add_pts(100, true);
-                    add_hit_indicator(time, &ScoreHit::X100, true, &self.taiko_settings, manager);
+                    add_hit_indicator(time, &ScoreHit::X100, true, &self.taiko_settings, &self.judgement_helper, manager);
                     return;
                 },
                 ScoreHit::X300 | ScoreHit::Xgeki => {
                     manager.score.add_pts(300, true);
-                    add_hit_indicator(time, &ScoreHit::X300, true, &self.taiko_settings, manager);
+                    add_hit_indicator(time, &ScoreHit::X300, true, &self.taiko_settings, &self.judgement_helper, manager);
                     return;
                 },
                 ScoreHit::Other(points, _) => {
@@ -375,7 +402,7 @@ impl GameMode for TaikoGame {
                 }
 
                 // indicate this was a miss
-                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, manager);
+                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, &self.judgement_helper, manager);
                 
                 // next note
                 self.next_note();
@@ -391,7 +418,7 @@ impl GameMode for TaikoGame {
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
                 //TODO: indicate this was a bad hit
 
-                add_hit_indicator(time, &ScoreHit::X100, false, &self.taiko_settings, manager);
+                add_hit_indicator(time, &ScoreHit::X100, false, &self.taiko_settings, &self.judgement_helper, manager);
                 
                 // next note
                 self.next_note();
@@ -403,7 +430,7 @@ impl GameMode for TaikoGame {
                 
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
 
-                add_hit_indicator(time, &ScoreHit::X300, false, &self.taiko_settings, manager);
+                add_hit_indicator(time, &ScoreHit::X300, false, &self.taiko_settings, &self.judgement_helper, manager);
                 
                 // next note
                 self.next_note();
@@ -468,7 +495,7 @@ impl GameMode for TaikoGame {
                 let s = &mut manager.score;
                 s.xmiss += 1;
                 s.combo = 0;
-                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, manager);
+                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, &self.judgement_helper, manager);
                 
                 manager.health.take_damage();
                 if manager.health.is_dead() {
@@ -787,13 +814,33 @@ impl GameMode for TaikoGame {
 }
 
 
-fn add_hit_indicator(time: f32, hit_value: &ScoreHit, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, manager: &mut IngameManager) {
-    let (color, image) = match hit_value {
-        ScoreHit::Miss => (Color::RED, None),
-        ScoreHit::X100 | ScoreHit::Xkatu => (Color::LIME, None),
-        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+fn add_hit_indicator(time: f32, mut hit_value: &ScoreHit, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
+    let color = match hit_value {
+        ScoreHit::Miss => Color::RED,
+        ScoreHit::X100 | ScoreHit::Xkatu => Color::LIME,
+        ScoreHit::X300 | ScoreHit::Xgeki => Color::new(0.0, 0.7647, 1.0, 1.0),
         ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
     };
+
+    // if finisher, upgrade to geki or katu
+    if finisher_hit {
+        if let &ScoreHit::X100 = hit_value {
+            hit_value = &ScoreHit::Xkatu;
+        } else if let &ScoreHit::X300 = hit_value {
+            hit_value = &ScoreHit::Xgeki;
+        }
+    }
+
+    let mut image = judgment_helper.get_from_scorehit(&hit_value);
+    if let Some(image) = &mut image {
+        image.current_pos = game_settings.hit_position;
+        image.depth = -2.0;
+
+        let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
+        let scale = Vector2::one() * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
+        image.initial_scale = scale;
+        image.current_scale = scale;
+    }
 
     manager.add_judgement_indicator(BasicJudgementIndicator::new(
         game_settings.hit_position, 

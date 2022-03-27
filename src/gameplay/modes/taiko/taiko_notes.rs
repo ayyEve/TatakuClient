@@ -1,5 +1,8 @@
 use crate::prelude::*;
-use super::BAR_COLOR;
+use super::{
+    BAR_COLOR,
+    TAIKO_NOTE_TEX_SIZE
+};
 
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 const SPINNER_RADIUS:f64 = 200.0;
@@ -9,6 +12,7 @@ const NOTE_BORDER_SIZE:f64 = 2.0;
 const GRAVITY_SCALING:f32 = 400.0;
 
 const NOTE_DEPTH_RANGE:std::ops::Range<f64> = 0.0..1000.0;
+
 
 #[inline]
 fn get_depth(time: f32) -> f64 {
@@ -210,7 +214,6 @@ pub struct TaikoSlider {
 impl TaikoSlider {
     pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
         let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
-
         let depth = get_depth(time);
 
         let mut middle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-middle", true)};
@@ -218,7 +221,11 @@ impl TaikoSlider {
             image.depth = depth;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
-            if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
+
+            let radius = settings.note_radius * if finisher {settings.big_note_multiplier} else {1.0};
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.initial_scale = scale;
+            image.current_scale = scale;
         }
 
         let mut end_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-end", true)};
@@ -226,7 +233,11 @@ impl TaikoSlider {
             image.depth = depth;
             image.origin.x = 0.0;
             image.current_color = Color::YELLOW;
-            if finisher {image.current_scale = Vector2::one() * settings.big_note_multiplier}
+
+            let radius = settings.note_radius * if finisher {settings.big_note_multiplier} else {1.0};
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.initial_scale = scale;
+            image.current_scale = scale;
         }
 
 
@@ -356,6 +367,8 @@ struct SliderDot {
     pos: Vector2,
     pub done: bool,
     settings: Arc<TaikoSettings>,
+
+    bounce_factor: f32
 }
 impl SliderDot {
     pub fn new(time:f32, speed:f32, settings:Arc<TaikoSettings>) -> SliderDot {
@@ -364,14 +377,17 @@ impl SliderDot {
             speed,
             pos: Vector2::zero(),
             done: false,
-            settings
+            settings,
+            bounce_factor: 1.6
         }
     }
     pub fn update(&mut self, beatmap_time:f32) {
-        let y = -((beatmap_time - self.time)*20.0).ln()*20.0 + 1.0;
+        let delta_time = beatmap_time - self.time;
+        let y = GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor);
+
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
         
-        if !self.done && self.pos.x - SLIDER_DOT_RADIUS <= 0.0 {
+        if !self.done && (self.pos.x - SLIDER_DOT_RADIUS <= 0.0 || self.pos.y - SLIDER_DOT_RADIUS > Settings::window_size().y) {
             self.done = true;
         }
     }
@@ -570,27 +586,29 @@ struct HitCircleImageHelper {
 }
 impl HitCircleImageHelper {
     fn new(settings: &Arc<TaikoSettings>, depth: f64, hit_type: HitType, finisher: bool) -> Option<Self> {
-
         let color = match hit_type {
             HitType::Don => settings.don_color,
             HitType::Kat => settings.kat_color,
         };
 
-        let scale;
+
+        let radius;
         let hitcircle = if finisher {
-            scale = settings.big_note_multiplier;
+            radius = settings.note_radius * settings.big_note_multiplier;
             "taikobigcircle"
         } else {
-            scale = 1.0;
+            radius = settings.note_radius;
             "taikohitcircle"
         };
 
 
         let mut circle = SKIN_MANAGER.write().get_texture(hitcircle, true);
         if let Some(circle) = &mut circle {
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+
             circle.depth = depth;
             circle.initial_pos = Vector2::zero();
-            circle.initial_scale = Vector2::one() * scale;
+            circle.initial_scale = scale;
             circle.initial_color = color;
             
             circle.current_pos = circle.initial_pos;
@@ -600,9 +618,11 @@ impl HitCircleImageHelper {
 
         let mut overlay = SKIN_MANAGER.write().get_texture(hitcircle.to_owned() + "overlay", true);
         if let Some(overlay) = &mut overlay {
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+
             overlay.depth = depth - 0.0000001;
             overlay.initial_pos = Vector2::zero();
-            overlay.initial_scale = Vector2::one() * scale;
+            overlay.initial_scale = scale;
             overlay.initial_color = color;
             
             overlay.current_pos = overlay.initial_pos;
