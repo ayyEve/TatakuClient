@@ -74,6 +74,9 @@ pub struct IngameManager {
     pub hitbar_timings: Vec<(f32, f32)>,
     score_draw_start_pos: Vector2,
 
+    /// list of hit indicators to draw
+    hit_indicators: Vec<Box<dyn HitIndicator>>,
+
     // draw helpers
     pub font: Font,
     combo_text_bounds: Rectangle,
@@ -440,137 +443,7 @@ impl IngameManager {
         self.failed_time = self.time();
     }
 
-
-    pub fn update(&mut self) {
-        // check lead-in time
-        if self.lead_in_time > 0.0 {
-            let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
-            self.lead_in_timer = Instant::now();
-            self.lead_in_time -= elapsed * self.game_speed();
-
-            if self.lead_in_time <= 0.0 {
-
-                #[cfg(feature="bass_audio")] {
-                    self.song.set_position(-self.lead_in_time as f64).unwrap();
-                    self.song.set_volume(get_settings!().get_music_vol()).unwrap();
-                    self.song.set_rate(self.game_speed()).unwrap();
-                    self.song.play(true).unwrap();
-                }
-                
-                #[cfg(feature="neb_audio")] {
-                    let song = self.song.upgrade().unwrap();
-                    song.set_position(-self.lead_in_time);
-                    song.set_volume(get_settings!().get_music_vol());
-                    song.set_playback_speed(self.game_speed() as f64);
-                    song.play();
-                }
-
-                self.lead_in_time = 0.0;
-            }
-        }
-        let time = self.time();
-
-        // check timing point
-        let timing_points = &self.timing_points;
-        if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
-            self.timing_point_index += 1;
-        }
-
-        // check if scores have been loaded
-        if let Some(loader) = self.score_loader.clone() {
-            let loader = loader.read();
-            if loader.done {
-                self.score_list = loader.scores.clone();
-                self.score_loader = None;
-            }
-        }
-
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-
-        // read inputs from replay if replaying
-        if self.replaying && !self.current_mods.autoplay {
-
-            // read any frames that need to be read
-            loop {
-                if self.replay_frame as usize >= self.replay.frames.len() {break}
-                
-                let (frame_time, frame) = self.replay.frames[self.replay_frame as usize];
-                if frame_time > time {break}
-
-                gamemode.handle_replay_frame(frame, frame_time, self);
-                
-                self.replay_frame += 1;
-            }
-        }
-
-        // update hit timings bar
-        self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
-
-        // update gamemode
-        gamemode.update(self, time);
-
-
-        if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
-            println!("[InGame] Song over, saying map is complete");
-            self.completed = true;
-        }
-
-
-        // do fail things
-        // TODO: handle edge cases, like replays, spec, autoplay, etc
-        if self.failed {
-            let new_rate = f64::lerp(self.game_speed() as f64, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
-
-            if new_rate <= 0.05 {
-                #[cfg(feature="bass_audio")]
-                self.song.pause().unwrap();
-            
-                #[cfg(feature="neb_audio")]
-                if let Some(song) = self.song.upgrade() {
-                    song.pause()
-                }
-
-                self.completed = true;
-                // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
-                println!("show fail menu");
-            } else {
-                #[cfg(feature="bass_audio")]
-                self.song.set_rate(new_rate).unwrap();
-
-                #[cfg(feature="neb_audio")]
-                if let Some(song) = self.song.upgrade() {
-                    song.set_playback_speed(new_rate as f64)
-                }
-            }
-
-            // put it back
-            self.gamemode = gamemode;
-            return;
-        }
-
-        // send map completed packets
-        if self.completed {
-            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.clone()}));
-            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
-        }
-
-        // update our spectator list if we can
-        if let Ok(manager) = ONLINE_MANAGER.try_read() {
-            self.spectator_cache = manager.spectator_list.clone()
-        }
-
-        // if its time to send another score sync packet
-        if self.last_spectator_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
-            self.last_spectator_score_sync = time;
-            
-            // create and send the packet
-            self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.clone()}))
-        }
-
-        // put it back
-        self.gamemode = gamemode;
-    }
-
+    // interactions with game mode
 
     pub fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
         let timing_point = self.beatmap.control_point_at(note_time);
@@ -716,6 +589,147 @@ impl IngameManager {
         // reset combo to 0
         self.score.combo = 0;
     }
+
+
+    pub fn add_hit_indicator<HI:HitIndicator+'static>(&mut self, mut indicator: HI) {
+        indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration);
+        self.hit_indicators.push(Box::new(indicator))
+    }
+
+
+    pub fn update(&mut self) {
+        // check lead-in time
+        if self.lead_in_time > 0.0 {
+            let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
+            self.lead_in_timer = Instant::now();
+            self.lead_in_time -= elapsed * self.game_speed();
+
+            if self.lead_in_time <= 0.0 {
+
+                #[cfg(feature="bass_audio")] {
+                    self.song.set_position(-self.lead_in_time as f64).unwrap();
+                    self.song.set_volume(get_settings!().get_music_vol()).unwrap();
+                    self.song.set_rate(self.game_speed()).unwrap();
+                    self.song.play(true).unwrap();
+                }
+                
+                #[cfg(feature="neb_audio")] {
+                    let song = self.song.upgrade().unwrap();
+                    song.set_position(-self.lead_in_time);
+                    song.set_volume(get_settings!().get_music_vol());
+                    song.set_playback_speed(self.game_speed() as f64);
+                    song.play();
+                }
+
+                self.lead_in_time = 0.0;
+            }
+        }
+        let time = self.time();
+
+        // check timing point
+        let timing_points = &self.timing_points;
+        if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
+            self.timing_point_index += 1;
+        }
+
+        // check if scores have been loaded
+        if let Some(loader) = self.score_loader.clone() {
+            let loader = loader.read();
+            if loader.done {
+                self.score_list = loader.scores.clone();
+                self.score_loader = None;
+            }
+        }
+
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+
+        // read inputs from replay if replaying
+        if self.replaying && !self.current_mods.autoplay {
+
+            // read any frames that need to be read
+            loop {
+                if self.replay_frame as usize >= self.replay.frames.len() {break}
+                
+                let (frame_time, frame) = self.replay.frames[self.replay_frame as usize];
+                if frame_time > time {break}
+
+                gamemode.handle_replay_frame(frame, frame_time, self);
+                
+                self.replay_frame += 1;
+            }
+        }
+
+        // update hit timings bar
+        self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
+        
+        // update hit indicators
+        self.hit_indicators.retain(|a| a.should_keep(time));
+
+        // update gamemode
+        gamemode.update(self, time);
+
+
+        if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
+            println!("[InGame] Song over, saying map is complete");
+            self.completed = true;
+        }
+
+
+        // do fail things
+        // TODO: handle edge cases, like replays, spec, autoplay, etc
+        if self.failed {
+            let new_rate = f64::lerp(self.game_speed() as f64, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
+
+            if new_rate <= 0.05 {
+                #[cfg(feature="bass_audio")]
+                self.song.pause().unwrap();
+            
+                #[cfg(feature="neb_audio")]
+                if let Some(song) = self.song.upgrade() {
+                    song.pause()
+                }
+
+                self.completed = true;
+                // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
+                println!("show fail menu");
+            } else {
+                #[cfg(feature="bass_audio")]
+                self.song.set_rate(new_rate).unwrap();
+
+                #[cfg(feature="neb_audio")]
+                if let Some(song) = self.song.upgrade() {
+                    song.set_playback_speed(new_rate as f64)
+                }
+            }
+
+            // put it back
+            self.gamemode = gamemode;
+            return;
+        }
+
+        // send map completed packets
+        if self.completed {
+            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.clone()}));
+            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
+        }
+
+        // update our spectator list if we can
+        if let Ok(manager) = ONLINE_MANAGER.try_read() {
+            self.spectator_cache = manager.spectator_list.clone()
+        }
+
+        // if its time to send another score sync packet
+        if self.last_spectator_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
+            self.last_spectator_score_sync = time;
+            
+            // create and send the packet
+            self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.clone()}))
+        }
+
+        // put it back
+        self.gamemode = gamemode;
+    }
+
 
     // draw
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
@@ -902,6 +916,11 @@ impl IngameManager {
             )));
         }
 
+        
+        // draw hit indicators
+        for indicator in self.hit_indicators.iter_mut() {
+            indicator.draw(time, list);
+        }
 
         // draw spectators
         if self.spectator_cache.len() > 0 {
@@ -1061,6 +1080,7 @@ impl Default for IngameManager {
             font: get_font(),
             combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
             timing_bar_things: (Vec::new(), (0.0, Color::WHITE)),
+            hit_indicators: Vec::new(),
 
             failed: false,
             failed_time: 0.0,

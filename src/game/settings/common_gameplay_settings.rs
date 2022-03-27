@@ -1,11 +1,12 @@
 use crate::prelude::*;
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CommonGameplaySettings {
     pub key_offset_up: Key,
     pub key_offset_down: Key,
 
-    // duration settings
+    // duration bar settings
     /// color of duration to go (bg)
     pub duration_color_hex: String, 
     #[serde(skip)]
@@ -34,6 +35,12 @@ pub struct CommonGameplaySettings {
     pub healthbar_border_color_hex: String,
     #[serde(skip)]
     pub healthbar_border_color: Color,
+
+
+
+    // hit indicators
+    /// how long should a hit indicator be drawn for?
+    pub hit_indicator_draw_duration: f32,
 }
 impl CommonGameplaySettings {
     /// init colors etc
@@ -58,7 +65,7 @@ impl Default for CommonGameplaySettings {
             key_offset_up: Key::Equals,
             key_offset_down: Key::Minus,
 
-            // duration
+            // duration bar
             duration_color_hex: "#66666680".to_owned(),
             duration_color_full_hex: "#666F".to_owned(),
             duration_border_color_hex: "#000".to_owned(),
@@ -75,6 +82,9 @@ impl Default for CommonGameplaySettings {
             healthbar_colors: vec![Color::WHITE],
             healthbar_bg_color: Color::WHITE,
             healthbar_border_color: Color::WHITE,
+
+            // hit indicators
+            hit_indicator_draw_duration: 300.0,
         }
     }
 }

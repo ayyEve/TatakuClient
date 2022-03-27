@@ -133,7 +133,23 @@ impl LoadingMenu {
         
         // look through the songs folder to make sure everything is already added
         BEATMAP_MANAGER.write().initialized = true; // these are new maps
-        status.lock().loading_count += folders.len();
+
+        // get existing dirs
+        let mut existing_paths = HashSet::new();
+        for i in BEATMAP_MANAGER.read().beatmaps.iter() {
+            if let Some(parent) = Path::new(&i.file_path).parent() {
+                existing_paths.insert(parent.to_string_lossy().to_string());
+            }
+        }
+        // filter out folders that already exist
+        let folders:Vec<String> = folders.into_iter().filter(|f|!existing_paths.contains(f)).collect();
+
+        {
+            let mut  lock = status.lock();
+            lock.loading_done = 0;
+            lock.loading_count = folders.len();
+            lock.custom_message = "Checking folders...".to_owned();
+        }
 
         folders.par_iter().for_each(|f| {
             BEATMAP_MANAGER.write().check_folder(f);
@@ -230,7 +246,11 @@ impl Menu<Game> for LoadingMenu {
                         -100.0,
                         Vector2::zero(),
                         32,
-                        format!("Loading Beatmaps ({}/{})", state.loading_done, state.loading_count),
+                        format!("{} ({}/{})", 
+                            if state.custom_message.is_empty() {"Loading Beatmaps"} else {&state.custom_message},
+                            state.loading_done, 
+                            state.loading_count
+                        ),
                         font
                     )
                 }
@@ -250,7 +270,8 @@ struct LoadingStatus {
     error: Option<String>,
 
     loading_count: usize, // items in the list
-    loading_done: usize // items done loading in the list
+    loading_done: usize, // items done loading in the list
+    custom_message: String
 }
 impl LoadingStatus {
     pub fn new() -> Self {
@@ -259,6 +280,7 @@ impl LoadingStatus {
             loading_count: 0,
             loading_done: 0,
             stage: LoadingStage::None,
+            custom_message: String::new()
         }
     }
 }

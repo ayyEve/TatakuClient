@@ -20,7 +20,6 @@ pub struct StandardSettings {
     pub draw_follow_points: bool,
     pub combo_colors: Vec<String>,
     pub show_300s: bool,
-    pub indicator_draw_duration: f32,
 
     // special effects
     pub hit_ripples: bool,
@@ -64,7 +63,6 @@ impl Default for StandardSettings {
             slider_tick_ripples: true,
             approach_combo_color: true,
 
-            indicator_draw_duration: 300.0,
             use_beatmap_combo_colors: true,
         }
     }
