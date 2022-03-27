@@ -17,7 +17,13 @@ pub struct ManiaSettings {
     pub keys: Vec<Vec<Key>>,
 
     /// how much to change the sv by when a sv change key is pressed
-    pub sv_change_delta:f32
+    pub sv_change_delta: f32,
+
+    pub judgements_per_column: bool,
+    
+    /// how far from the hit position should hit indicators be?
+    pub judgement_indicator_offset: f64,
+
 }
 impl Default for ManiaSettings {
     fn default() -> Self {
@@ -51,7 +57,12 @@ impl Default for ManiaSettings {
             // sv
             static_sv: false,
             sv_multiplier: 1.0,
-            sv_change_delta: 0.3
+            sv_change_delta: 0.3,
+
+
+            // other
+            judgements_per_column: false,
+            judgement_indicator_offset: 200.0
         }
     }
 }
@@ -63,6 +74,7 @@ pub struct ManiaPlayfieldSettings {
     pub name: String,
 
     /// y pos of the hit area
+    /// 
     /// if not upside-down, y is window_height - this
     pub hit_pos: f64,
 
@@ -83,7 +95,6 @@ pub struct ManiaPlayfieldSettings {
 
     /// do the notes scroll up?
     pub upside_down: bool,
-    // note types: square, circle, arrow?
 }
 impl ManiaPlayfieldSettings {
     pub fn new(name: &str) -> Self{

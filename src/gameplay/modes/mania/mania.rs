@@ -52,6 +52,7 @@ pub struct ManiaGame {
     playfield: Arc<ManiaPlayfieldSettings>,
 
     game_settings: Arc<ManiaSettings>,
+
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
     map_preferences: BeatmapPlaymodePreferences,
 }
@@ -175,6 +176,8 @@ impl GameMode for ManiaGame {
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
+                let column_count = beatmap.metadata.cs as u8;
+
                 let mut s = Self {
                     map_meta: metadata.clone(),
                     columns: Vec::new(),
@@ -189,7 +192,7 @@ impl GameMode for ManiaGame {
                     hitwindow_miss: 0.0,
 
                     sv_mult: map_preferences.scroll_speed,
-                    column_count: beatmap.metadata.cs as u8,
+                    column_count,
 
                     auto_helper,
                     playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
@@ -269,9 +272,10 @@ impl GameMode for ManiaGame {
                 for col in s.columns.iter_mut() {
                     col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
                     if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.time());
+                        s.end_time = s.end_time.max(last_note.end_time(0.0));
                     }
                 }
+                s.end_time += 1000.0;
 
                 Ok(s)
             },
@@ -487,6 +491,7 @@ impl GameMode for ManiaGame {
                     manager.score.hit300(time, note_time);
                     manager.hitbar_timings.push((time, time - note_time));
                     manager.health.give_life();
+                    add_hit_indicator(time, col, &ScoreHit::X300, self.column_count, &self.game_settings, manager);
 
                     play_sound!(sound);
                     if note.note_type() != NoteType::Hold {
@@ -499,7 +504,7 @@ impl GameMode for ManiaGame {
                     manager.hitbar_timings.push((time, time - note_time));
                     manager.health.give_life();
                     play_sound!(sound);
-                    //TODO: indicate this was a bad hit
+                    add_hit_indicator(time, col, &ScoreHit::X100, self.column_count, &self.game_settings, manager);
 
                     if note.note_type() != NoteType::Hold {
                         self.next_note(col);
@@ -519,7 +524,8 @@ impl GameMode for ManiaGame {
                         self.next_note(col);
                     }
                     play_sound!(sound);
-                    //TODO: indicate this was a miss
+
+                    add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
                 } else { // way too early, ignore
                     // play sound
                     play_sound!(sound);
@@ -543,8 +549,7 @@ impl GameMode for ManiaGame {
                 if self.column_indices[col] >= self.columns[col].len() {return}
 
                 let note = &mut self.columns[col][self.column_indices[col]];
-                if time < note.time() - self.hitwindow_miss 
-                || time > note.end_time(self.hitwindow_miss) {return}
+                if time < note.time() - self.hitwindow_miss || time > note.end_time(self.hitwindow_miss) {return}
                 note.release(time);
 
                 if note.note_type() == NoteType::Hold {
@@ -559,16 +564,17 @@ impl GameMode for ManiaGame {
                         // // play sound
                         // play_sound!(sound);
 
+                        add_hit_indicator(time, col, &ScoreHit::X300, self.column_count, &self.game_settings, manager);
                         self.next_note(col);
                     } else if diff < self.hitwindow_100 {
                         manager.score.hit100(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
                         manager.health.give_life();
-                        //TODO: indicate this was a bad hit
 
                         // play sound
-                        play_sound!(sound);
+                        // play_sound!(sound);
 
+                        add_hit_indicator(time, col, &ScoreHit::X100, self.column_count, &self.game_settings, manager);
                         self.next_note(col);
                     } else if diff < self.hitwindow_miss { // too early, miss
                         manager.score.hit_miss(time, note_time);
@@ -579,7 +585,7 @@ impl GameMode for ManiaGame {
                             manager.fail()
                         }
 
-                        //TODO: indicate this was a miss
+                        add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
                         self.next_note(col);
                     }
                 }
@@ -757,6 +763,7 @@ impl GameMode for ManiaGame {
                     manager.fail()
                 }
                 
+                add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
                 self.next_note(col);
             }
         }
@@ -891,6 +898,41 @@ impl GameMode for ManiaGame {
     }
 }
 
+
+fn add_hit_indicator(time: f32, column: usize, hit_value: &ScoreHit, column_count: u8, game_settings: &Arc<ManiaSettings>, manager: &mut IngameManager) {
+    let (color, image) = match hit_value {
+        ScoreHit::Miss => (Color::RED, None),
+        ScoreHit::X100 | ScoreHit::Xkatu => (Color::LIME, None),
+        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+        ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
+    };
+
+    let playfield = &game_settings.playfield_settings[column_count as usize - 1];
+    let window_size = Settings::window_size();
+    
+    let total_width =column_count as f64 * playfield.column_width;
+    let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
+
+    let pos = Vector2::new(
+        x_offset + playfield.x_offset + if game_settings.judgements_per_column {
+            (playfield.column_width + playfield.column_spacing) * column as f64 + playfield.column_width / 2.0
+        } else {
+           ((playfield.column_width + playfield.column_spacing) * column_count as f64) / 2.0
+        },
+
+        if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {window_size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
+    );
+
+
+    manager.add_judgement_indicator(BasicJudgementIndicator::new(
+        pos, 
+        time,
+        -2.0,
+        playfield.column_width / 2.0 * (2.0 / 3.0),
+        color,
+        image
+    ))
+}
 
 
 // timing bar struct
