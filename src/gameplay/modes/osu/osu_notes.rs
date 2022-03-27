@@ -18,8 +18,9 @@ pub trait StandardHitObject: HitObject {
     /// does this object count as a miss if it is not hit?
     fn causes_miss(&self) -> bool; //TODO: might change this to return an enum of "no", "yes". "yes_combo_only" 
     fn get_points(&mut self, is_press:bool, time:f32, hit_windows:(f32,f32,f32,f32)) -> ScoreHit;
+
     /// return negative for combo break
-    fn pending_combo(&mut self) -> i8 {0}
+    fn pending_combo(&mut self) -> Vec<i8> {Vec::new()}
 
     fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
 
@@ -362,7 +363,7 @@ pub struct StandardSlider {
     hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
-    pending_combo: i8,
+    pending_combo: Vec<i8>,
 
     /// start time
     time: f32,
@@ -509,7 +510,7 @@ impl StandardSlider {
 
             time, 
             hit_dots: Vec::new(),
-            pending_combo: 0,
+            pending_combo: Vec::new(),
             sound_index: 0,
             slides_complete: 0,
             moving_forward: true,
@@ -794,8 +795,19 @@ impl HitObject for StandardSlider {
 
         if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {return}
 
+        // check if the start of the slider was missed.
+        // if it was, perform a miss
+        if let ScoreHit::None = self.start_judgment {
+            if beatmap_time >= self.time + self.hitwindow_miss {
+                self.start_judgment = ScoreHit::Miss;
+                self.pending_combo.insert(0, -1);
+            }
+        }
+
         // find out if a slide has been completed
         let pos = (beatmap_time - self.time) / (self.curve.length() / self.def.slides as f32);
+
+
 
         let current_moving_forwards = pos % 2.0 <= 1.0;
         if current_moving_forwards != self.moving_forward {
@@ -811,7 +823,7 @@ impl HitObject for StandardSlider {
             // check cursor
             if self.sliding_ok {
                 // increment pending combo
-                self.pending_combo += 1;
+                self.pending_combo.push(1);
                 self.sound_queue.push((
                     beatmap_time,
                     self.get_hitsound(),
@@ -820,7 +832,7 @@ impl HitObject for StandardSlider {
                 self.add_ripple(beatmap_time, self.slider_ball_pos, false);
             } else {
                 // set it to negative, we broke combo
-                self.pending_combo = -1;
+                self.pending_combo.push(-1);
             }
         }
 
@@ -1076,7 +1088,7 @@ impl HitObject for StandardSlider {
         self.start_checked = false;
         self.end_checked = false;
         
-        self.pending_combo = 0;
+        self.pending_combo.clear();
         self.sound_index = 0;
         self.slides_complete = 0;
         self.moving_forward = true;
@@ -1209,7 +1221,7 @@ impl StandardHitObject for StandardSlider {
     fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {
         std::mem::take(&mut self.sound_queue)
     }
-    fn pending_combo(&mut self) -> i8 {
+    fn pending_combo(&mut self) -> Vec<i8> {
         std::mem::take(&mut self.pending_combo)
     }
 

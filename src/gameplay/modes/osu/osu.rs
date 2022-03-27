@@ -496,14 +496,15 @@ impl GameMode for StandardGame {
                 manager.play_note_sound(time, hitsound, samples);
             }
 
-            let add_combo = note.pending_combo();
-            if add_combo < 0 {
-                manager.combo_break();
-                manager.health.take_damage();
-            } else if add_combo > 0 {
-                for _ in 0..add_combo {
-                    manager.score.hit300(0.0, 0.0);
-                    manager.health.give_life();
+            for add_combo in note.pending_combo() {
+                if add_combo < 0 {
+                    manager.combo_break();
+                    manager.health.take_damage();
+                } else if add_combo > 0 {
+                    for _ in 0..add_combo {
+                        manager.score.hit300(0.0, 0.0);
+                        manager.health.give_life();
+                    }
                 }
             }
 
