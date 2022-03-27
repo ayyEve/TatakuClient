@@ -3,14 +3,6 @@ use std::ops::Range;
 use crate::prelude::*;
 use super::osu_notes::*;
 
-// use crate::gameplay::{DURATION_HEIGHT, GameMode, IngameManager};
-// use crate::beatmaps::common::{NoteType, TaikoRsBeatmap, map_difficulty};
-// use taiko_rs_common::types::{KeyPress, ReplayFrame, ScoreHit, PlayMode};
-// use crate::helpers::{curve::get_curve, key_counter::KeyCounter, math::Lerp};
-
-
-// const POINTS_DRAW_DURATION:f32 = 500.0;
-const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
@@ -42,7 +34,7 @@ pub struct StandardGame {
     hitwindow_miss: f32,
     end_time: f32,
 
-    draw_points: Vec<(f32, Vector2, ScoreHit)>,
+    // draw_points: Vec<(f32, Vector2, ScoreHit)>,
     mouse_pos: Vector2,
     window_mouse_pos: Vector2,
 
@@ -148,6 +140,7 @@ impl StandardGame {
         let extended_start_index = self.notes.len() - 1;
 
     }
+
 }
 
 impl GameMode for StandardGame {
@@ -190,7 +183,6 @@ impl GameMode for StandardGame {
                     hitwindow_100: 0.0,
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
-                    draw_points: Vec::new(),
         
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
@@ -398,7 +390,7 @@ impl GameMode for StandardGame {
                 
                 let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
                 if !is_300 || (is_300 && self.game_settings.show_300s) {
-                    self.draw_points.push((time, note.point_draw_pos(time), pts.clone()));
+                    add_hit_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
                 }
 
                 match &pts {
@@ -524,8 +516,8 @@ impl GameMode for StandardGame {
                         println!("note missed: {}-{}", time, end_time);
                         manager.combo_break();
                         manager.score.hit_miss(time, end_time);
-                        self.draw_points.push((time, note.point_draw_pos(time), ScoreHit::Miss));
-                        
+                        add_hit_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
+
                         manager.health.take_damage();
                         if manager.health.is_dead() {
                             manager.fail()
@@ -539,7 +531,7 @@ impl GameMode for StandardGame {
                         
                         let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
                         if !is_300 || (is_300 && self.game_settings.show_300s) {
-                            self.draw_points.push((time, note.point_draw_pos(time), pts));
+                            add_hit_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
                         }
                         
                         match pts {
@@ -586,11 +578,6 @@ impl GameMode for StandardGame {
                 note.miss(); 
             }
         }
-        
-        // remove old draw points
-        let indicator_draw_duration = self.game_settings.indicator_draw_duration;
-        self.draw_points.retain(|a| time < a.0 + indicator_draw_duration);
-
 
         // handle note releases
         // required because autoplay frames are checked after the frame is processed
@@ -673,34 +660,13 @@ impl GameMode for StandardGame {
             )))
         }
 
-        // draw hit indicators
-        let time = manager.time();
-        for (p_time, pos, pts) in self.draw_points.iter() {
-            let color;
-            match pts {
-                ScoreHit::Miss => color = Color::RED,
-                ScoreHit::X50  => color = Color::YELLOW,
-                ScoreHit::X100 | ScoreHit::Xkatu => color = Color::GREEN,
-                ScoreHit::X300 | ScoreHit::Xgeki => color = Color::new(0.0, 0.7647, 1.0, 1.0),
-                ScoreHit::None | ScoreHit::Other(_, _) => continue,
-            }
-            
-            let alpha = (1.0 - (time - (p_time + (self.game_settings.indicator_draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
-            list.push(Box::new(Circle::new(
-                color.alpha(alpha),
-                -99_999.9,
-                *pos,
-                CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs * (1.0/3.0),
-                None
-            )))
-        }
-
         // draw notes
         for note in self.notes.iter_mut() {
             note.draw(args, list);
         }
 
         // draw follow points
+        let time = manager.time();
         if self.game_settings.draw_follow_points {
             for i in 0..self.notes.len() - 1 {
                 if !self.new_combos.contains(&(i + 1)) {
@@ -751,7 +717,6 @@ impl GameMode for StandardGame {
                 }
             }
         }
-
     }
 
     
@@ -968,7 +933,6 @@ impl GameMode for StandardGame {
             note.set_hitwindow_miss(hwm);
         }
 
-        self.draw_points.clear();
         self.key_counter.reset();
     }
 
@@ -1002,11 +966,32 @@ impl GameMode for StandardGame {
     }
 
     
-    fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
+    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
         // for note in self.notes.iter_mut() {
         //     note.set_alpha(settings.opacity)
         // }
     }
+}
+
+
+
+fn add_hit_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
+    let (color, image) = match hit_value {
+        ScoreHit::Miss => (Color::RED, None),
+        ScoreHit::X50  => (Color::YELLOW, None),
+        ScoreHit::X100 | ScoreHit::Xkatu => (Color::GREEN, None),
+        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+        ScoreHit::None | ScoreHit::Other(_, _) => return,
+    };
+
+    manager.add_hit_indicator(BasicHitIndicator::new(
+        pos, 
+        time,
+        -99999.99, // TODO: do this properly
+        CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
+        color,
+        image
+    ))
 }
 
 
