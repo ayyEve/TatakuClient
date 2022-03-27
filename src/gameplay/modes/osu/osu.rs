@@ -390,7 +390,7 @@ impl GameMode for StandardGame {
                 
                 let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
                 if !is_300 || (is_300 && self.game_settings.show_300s) {
-                    add_hit_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
+                    add_judgement_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
                 }
 
                 match &pts {
@@ -516,7 +516,7 @@ impl GameMode for StandardGame {
                         println!("note missed: {}-{}", time, end_time);
                         manager.combo_break();
                         manager.score.hit_miss(time, end_time);
-                        add_hit_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
+                        add_judgement_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
 
                         manager.health.take_damage();
                         if manager.health.is_dead() {
@@ -531,7 +531,7 @@ impl GameMode for StandardGame {
                         
                         let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
                         if !is_300 || (is_300 && self.game_settings.show_300s) {
-                            add_hit_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
+                            add_judgement_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
                         }
                         
                         match pts {
@@ -975,7 +975,7 @@ impl GameMode for StandardGame {
 
 
 
-fn add_hit_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
+fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
     let (color, image) = match hit_value {
         ScoreHit::Miss => (Color::RED, None),
         ScoreHit::X50  => (Color::YELLOW, None),
@@ -984,7 +984,7 @@ fn add_hit_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_help
         ScoreHit::None | ScoreHit::Other(_, _) => return,
     };
 
-    manager.add_hit_indicator(BasicHitIndicator::new(
+    manager.add_judgement_indicator(BasicJudgementIndicator::new(
         pos, 
         time,
         -99999.99, // TODO: do this properly

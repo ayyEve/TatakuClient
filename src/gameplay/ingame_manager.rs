@@ -74,8 +74,8 @@ pub struct IngameManager {
     pub hitbar_timings: Vec<(f32, f32)>,
     score_draw_start_pos: Vector2,
 
-    /// list of hit indicators to draw
-    hit_indicators: Vec<Box<dyn HitIndicator>>,
+    /// list of judgement indicators to draw
+    judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     // draw helpers
     pub font: Font,
@@ -591,9 +591,9 @@ impl IngameManager {
     }
 
 
-    pub fn add_hit_indicator<HI:HitIndicator+'static>(&mut self, mut indicator: HI) {
+    pub fn add_judgement_indicator<HI:JudgementIndicator+'static>(&mut self, mut indicator: HI) {
         indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration);
-        self.hit_indicators.push(Box::new(indicator))
+        self.judgement_indicators.push(Box::new(indicator))
     }
 
 
@@ -662,8 +662,8 @@ impl IngameManager {
         // update hit timings bar
         self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
         
-        // update hit indicators
-        self.hit_indicators.retain(|a| a.should_keep(time));
+        // update judgement indicators
+        self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
         gamemode.update(self, time);
@@ -917,8 +917,8 @@ impl IngameManager {
         }
 
         
-        // draw hit indicators
-        for indicator in self.hit_indicators.iter_mut() {
+        // draw judgement indicators
+        for indicator in self.judgement_indicators.iter_mut() {
             indicator.draw(time, list);
         }
 
@@ -1080,7 +1080,7 @@ impl Default for IngameManager {
             font: get_font(),
             combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
             timing_bar_things: (Vec::new(), (0.0, Color::WHITE)),
-            hit_indicators: Vec::new(),
+            judgement_indicators: Vec::new(),
 
             failed: false,
             failed_time: 0.0,

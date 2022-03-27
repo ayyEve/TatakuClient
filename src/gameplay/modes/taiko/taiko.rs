@@ -1,9 +1,14 @@
 /**
+ * Taiko game mode
+ * Author: ayyEve
+ * 
+ * 
  * depths:
  *  notes: 0..1000
  *  hit area: 1001
  *  playfield: 1002
  *  hit indicators: -1
+ *  judgement indicators: -2
  *  spinners: -5
  */
 
@@ -339,10 +344,12 @@ impl GameMode for TaikoGame {
                 ScoreHit::Miss | ScoreHit::X50 => {return},
                 ScoreHit::X100 | ScoreHit::Xkatu => {
                     manager.score.add_pts(100, true);
+                    add_hit_indicator(time, &ScoreHit::X100, true, &self.taiko_settings, manager);
                     return;
                 },
                 ScoreHit::X300 | ScoreHit::Xgeki => {
                     manager.score.add_pts(300, true);
+                    add_hit_indicator(time, &ScoreHit::X300, true, &self.taiko_settings, manager);
                     return;
                 },
                 ScoreHit::Other(points, _) => {
@@ -367,8 +374,11 @@ impl GameMode for TaikoGame {
                     manager.fail()
                 }
 
+                // indicate this was a miss
+                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, manager);
+                
+                // next note
                 self.next_note();
-                //TODO: indicate this was a miss
             }
             ScoreHit::X100 | ScoreHit::Xkatu => {
                 manager.score.hit100(time, note_time);
@@ -381,6 +391,9 @@ impl GameMode for TaikoGame {
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
                 //TODO: indicate this was a bad hit
 
+                add_hit_indicator(time, &ScoreHit::X100, false, &self.taiko_settings, manager);
+                
+                // next note
                 self.next_note();
             }
             ScoreHit::X300 | ScoreHit::Xgeki => {
@@ -389,6 +402,10 @@ impl GameMode for TaikoGame {
                 manager.health.give_extra_life();
                 
                 if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
+
+                add_hit_indicator(time, &ScoreHit::X300, false, &self.taiko_settings, manager);
+                
+                // next note
                 self.next_note();
             }
             ScoreHit::Other(score, consume) => { // used by sliders and spinners
@@ -451,11 +468,13 @@ impl GameMode for TaikoGame {
                 let s = &mut manager.score;
                 s.xmiss += 1;
                 s.combo = 0;
+                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, manager);
                 
                 manager.health.take_damage();
                 if manager.health.is_dead() {
                     manager.fail()
                 }
+
             }
             self.next_note();
         }
@@ -713,7 +732,6 @@ impl GameMode for TaikoGame {
     }
 
 
-
     fn skip_intro(&mut self, manager: &mut IngameManager) {
         if self.note_index > 0 {return}
 
@@ -761,11 +779,30 @@ impl GameMode for TaikoGame {
         )
     }
 
-    fn apply_auto(&mut self, settings: &crate::game::BackgroundGameSettings) {
+    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
         // for note in self.notes.iter_mut() {
         //     note.set_alpha(settings.opacity)
         // }
     }
+}
+
+
+fn add_hit_indicator(time: f32, hit_value: &ScoreHit, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, manager: &mut IngameManager) {
+    let (color, image) = match hit_value {
+        ScoreHit::Miss => (Color::RED, None),
+        ScoreHit::X100 | ScoreHit::Xkatu => (Color::LIME, None),
+        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+        ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
+    };
+
+    manager.add_judgement_indicator(BasicJudgementIndicator::new(
+        game_settings.hit_position, 
+        time,
+        -2.0,
+        game_settings.note_radius * 0.5 * if finisher_hit {game_settings.big_note_multiplier} else {1.0},
+        color,
+        image
+    ))
 }
 
 

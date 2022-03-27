@@ -1,17 +1,15 @@
 use crate::prelude::*;
 
-
 const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 
-pub trait HitIndicator {
+pub trait JudgementIndicator {
     fn should_keep(&self, map_time: f32) -> bool;
     fn set_draw_duration(&mut self, duration: f32);
     fn draw(&mut self, map_time: f32, list: &mut Vec<Box<dyn Renderable>>);
 }
 
 
-
-pub struct BasicHitIndicator {
+pub struct BasicJudgementIndicator {
     pub pos: Vector2,
     pub time: f32,
     pub depth: f64,
@@ -23,8 +21,9 @@ pub struct BasicHitIndicator {
 
     draw_duration: f32
 }
-impl BasicHitIndicator {
-    /// if image is some, it assumes the values (pos, depth, size) are already set
+impl BasicJudgementIndicator {
+    /// pos, depth, radius and color are only if image is none.
+    /// if image is some, it assumes the values (pos, depth, size, etc) are already set
     pub fn new(pos: Vector2, time: f32, depth: f64, radius: f64, color: Color, image: Option<Image>) -> Self {
         Self {
             pos,
@@ -38,7 +37,7 @@ impl BasicHitIndicator {
     }
 }
 
-impl HitIndicator for BasicHitIndicator {
+impl JudgementIndicator for BasicJudgementIndicator {
     fn set_draw_duration(&mut self, duration: f32) {
         self.draw_duration = duration
     }
