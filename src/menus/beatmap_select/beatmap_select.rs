@@ -66,8 +66,6 @@ impl BeatmapSelectMenu {
             font.clone()
         );
         
-
-
         
         let leaderboard_method = SCORE_HELPER.read().current_method;
         let leaderboard_method_dropdown = Dropdown::new(
@@ -152,7 +150,9 @@ impl BeatmapSelectMenu {
                 if maps.len() == 0 {continue}
             }
 
-            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone());
+            let meta = &maps[0];
+            let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
+            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone(), display_text);
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }

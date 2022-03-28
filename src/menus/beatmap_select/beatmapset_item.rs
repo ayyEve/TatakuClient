@@ -21,10 +21,12 @@ pub struct BeatmapsetItem {
     diff_calc_helper: MultiBomb<()>,
     // diff_calc_helper: CalcNotifyHelper
 
-    diff_calc_bombs: Vec<Bomb<(String, f32)>>
+    diff_calc_bombs: Vec<Bomb<(String, f32)>>,
+
+    display_text: String,
 }
 impl BeatmapsetItem {
-    pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>) -> BeatmapsetItem {
+    pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
         // this should be fine here because the diffs map should be populated
         let mods = ModManager::get().clone();
         for i in beatmaps.iter_mut() {
@@ -39,8 +41,7 @@ impl BeatmapsetItem {
             pos: Vector2::new(x, 0.0),
             hover: false,
             selected: false,
-            // pending_play: false,
-            // tag,
+            display_text,
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
@@ -48,7 +49,7 @@ impl BeatmapsetItem {
 
             diff_calc_helper,
             diff_calc_start_helper,
-            diff_calc_bombs: Vec::new()
+            diff_calc_bombs: Vec::new(),
         }
     }
 
@@ -153,7 +154,6 @@ impl ScrollableItem for BeatmapsetItem {
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let font = get_font();
-        let meta = &self.beatmaps[0];
 
         // draw rectangle
         list.push(Box::new(Rectangle::new(
@@ -176,7 +176,7 @@ impl ScrollableItem for BeatmapsetItem {
             parent_depth + 4.0,
             self.pos + pos_offset + Vector2::new(5.0, 5.0),
             15,
-            format!("{} // {} - {}", meta.creator, meta.artist, meta.title),
+            self.display_text.clone(), //format!("{} // {} - {}", meta.creator, meta.artist, meta.title),
             font.clone()
         );
 
