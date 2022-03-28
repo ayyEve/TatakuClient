@@ -4,6 +4,13 @@ mod osu;
 mod taiko;
 mod utyping;
 
+pub const AVAILABLE_PLAYMODES: &[&'static str] = &[
+        "mania",
+        "osu",
+        "taiko",
+        "utyping",
+];
+
 pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let gamemode:Box<dyn GameMode> = match &*beatmap.playmode(playmode) {
@@ -50,13 +57,17 @@ pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {
         _ => "Unknown"
     }
 }
-pub const AVAILABLE_PLAYMODES: &[&'static str] = &[
-        "mania",
-        "osu",
-        "taiko",
-        "utyping",
-];
 
+pub fn get_score_hit_string(mode: &PlayMode, score_hit: &ScoreHit) -> String {
+    match &**mode {
+        "mania" => mania::Game::score_hit_string(score_hit),
+        "osu" => osu::Game::score_hit_string(score_hit),
+        "taiko" => taiko::Game::score_hit_string(score_hit),
+        "utyping" => utyping::Game::score_hit_string(score_hit),
+
+        _ => String::new()
+    }
+}
 
 // pub fn get_editor(playmode: &Playmode, beatmap: &Beatmap) -> TatakuResult<Box<dyn Menu>> {} // todo
 

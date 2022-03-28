@@ -971,6 +971,21 @@ impl GameMode for StandardGame {
         //     note.set_alpha(settings.opacity)
         // }
     }
+
+
+    fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
+        match hit {
+            ScoreHit::Miss  => "Miss".to_owned(),
+            ScoreHit::X50   => "x50".to_owned(),
+            ScoreHit::X100  => "x100".to_owned(),
+            ScoreHit::X300  => "x300".to_owned(),
+            ScoreHit::Xgeki => "Geki".to_owned(),
+            ScoreHit::Xkatu => "Katu".to_owned(),
+
+            ScoreHit::None  => String::new(),
+            ScoreHit::Other(_, _) => String::new(),
+        }
+    }
 }
 
 
