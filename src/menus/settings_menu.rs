@@ -22,6 +22,9 @@ impl SettingsMenu {
         let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET), Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0), true);
         let mut finalize_list:Vec<Arc<dyn OnFinalize>> = Vec::new();
 
+        // i really need to setup a proc macro for this instead
+        // this is stupid
+
         let mut tag_counter = 0;
 
         let mut make_tag = || {
@@ -140,6 +143,7 @@ impl SettingsMenu {
                 // create and add text item
                 let mut item = add_item!($text, $item_type, &settings.$setting.$setting2);
                 item.set_tag(tag.as_str());
+                $mod_fn(&mut item);
                 scroll_area.add_item(Box::new(item));
 
                 // idk how to do this better 
@@ -167,24 +171,58 @@ impl SettingsMenu {
         add_item!("Username", TextInput, osu_username, String, OsuUsername, |_|{});
         add_item!("Password", TextInput, osu_password, String, OsuPassword, |_|{});
 
-        // taiko keys
-        add_item!("Key bindings", MenuSection);
+        // bg
+        add_item!("Background", MenuSection);
+        add_item!("Background Dim", Slider, background_dim, f32, BackgroundDim, |thing:&mut Slider| {
+            thing.range = 0.0..1.0;
+        });
+
+        
+        // osu settings
+        add_item!("Osu Settings", MenuSection);
+        add_item!("Key 1", KeyButton, standard_settings, left_key, Key, OsuKey1, |_|{});
+        add_item!("Key 2", KeyButton, standard_settings, right_key, Key, OsuKey2, |_|{});
+        add_item!("Ignore Mouse Buttons", Checkbox, standard_settings, ignore_mouse_buttons, bool, OsuIgnoreMouseButtons, |_|{});
+        add_item!("Follow Points", Checkbox, standard_settings, draw_follow_points, bool, OsuDrawFollowPoints, |_|{});
+        add_item!("Display 300s", Checkbox, standard_settings, show_300s, bool, OsuShow300s, |_|{});
+        add_item!("Hit Ripples", Checkbox, standard_settings, hit_ripples, bool, OsuHitRipples, |_|{});
+        add_item!("Slider Tick Ripples", Checkbox, standard_settings, slider_tick_ripples, bool, OsuSliderTickRipples, |_|{});
+        add_item!("Ripple Scale", Slider, standard_settings, ripple_scale, f64, OsuRippleScale, |slider:&mut Slider| {
+            slider.range = 0.1..5.0;
+        });
+        add_item!("Beatmap Combo Colors", Checkbox, standard_settings, use_beatmap_combo_colors, bool, OsuBeatmapComboColors, |_|{});
+
+
+        // taiko settings
+        add_item!("Taiko Settings", MenuSection);
         add_item!("Left Kat", KeyButton, taiko_settings, left_kat, Key, TaikoLeftKat, |_|{});
         add_item!("Left Don", KeyButton, taiko_settings, left_don, Key, TaikoLeftDon, |_|{});
         add_item!("Right Don", KeyButton, taiko_settings, right_don, Key, TaikoRightDon, |_|{});
         add_item!("Right Kat", KeyButton, taiko_settings, right_kat, Key, TaikoRightKat, |_|{});
+        add_item!("Ignore Mouse Buttons", Checkbox, taiko_settings, ignore_mouse_buttons, bool, TaikoIgnoreMouseButtons, |_|{});
 
-        // sv
         add_item!("No Sv Changes", Checkbox, taiko_settings, static_sv, bool, TaikoSvChange, |_|{});
         add_item!("Slider Multiplier", Slider, taiko_settings, sv_multiplier, f32, TaikoSliderMultiplier, |thing:&mut Slider| {
-            // thing.range = Some(0.1..2.0);
+            thing.range = 0.1..2.0;
         });
 
-        // bg
-        add_item!("Background", MenuSection);
-        add_item!("Background Dim", Slider, background_dim, f32, BackgroundDim, |_thing:&mut Slider| {
-            // thing.range = Some(0.0..1.0);
+        add_item!("Don Color", TextInput, taiko_settings, don_color_hex, String, TaikoDonColor, |_|{});
+        add_item!("Kat Color", TextInput, taiko_settings, kat_color_hex, String, TaikoKatColor, |_|{});
+        add_item!("Note Radius", Slider, taiko_settings, note_radius, f64, TaikoNoteRadius, |slider:&mut Slider| {
+            slider.range = 1.0..100.0;
         });
+        add_item!("Big Note Size Multiplier", Slider, taiko_settings, big_note_multiplier, f64, TaikoBigNoteMultiplier, |slider:&mut Slider| {
+            slider.range = 1.0..5.0;
+        });
+
+        add_item!("Hit Area Radius Multiplier", Slider, taiko_settings, hit_area_radius_mult, f64, TaikoHitAreaMult, |slider:&mut Slider| {
+            slider.range = 1.0..5.0;
+        });
+        add_item!("Playfield Height Padding", Slider, taiko_settings, playfield_height_padding, f64, TaikoPlayfieldHeightPadding, |slider:&mut Slider| {
+            slider.range = 0.0..50.0;
+        });
+
+
 
         // done button
         let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done", font.clone());
@@ -249,7 +287,7 @@ impl Menu<Game> for SettingsMenu {
         }
     }
 
-    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, g:&mut Game) {
+    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _g:&mut Game) {
         self.scroll_area.on_click_release(pos, button);
     }
 
