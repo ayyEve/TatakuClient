@@ -49,6 +49,9 @@ impl SettingsMenu {
             (Slider, f64, $val:expr) => {
                 *$val
             };
+            (Dropdown, T, $val:expr) => {
+                $val
+            }
         }
         macro_rules! convert_settings_value {
             // ($setting:expr, $t:tt) => {}
@@ -68,7 +71,7 @@ impl SettingsMenu {
 
             ($setting:expr, $t:tt) => {
                 $setting
-            }
+            };
         }
 
         macro_rules! convert_settings_type {
@@ -94,6 +97,9 @@ impl SettingsMenu {
             ($text:expr, Slider, $setting:expr) => {
                 Slider::new(p, Vector2::new(400.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, f64), None, None, font.clone())
             };
+            ($text:expr, Dropdown, $dropdown_type:tt, $dropdown_value:ident, $setting:expr) => {
+                Dropdown::new(p, 400.0, 20, $text.clone(), Some($dropdown_type::$dropdown_value($setting.clone())), font.clone())
+            };
             
 
             // menu section
@@ -107,6 +113,37 @@ impl SettingsMenu {
             };
 
             // input item
+            // this one is special for dropdowns
+            ($text:expr, Dropdown, $dropdown_type:tt, $dropdown_value:ident, $setting:ident, $struct_name:ident, $mod_fn:expr) => {
+                // create a tag
+                let tag = make_tag();
+
+                // create and add text item
+                let mut item:Dropdown<$dropdown_type> = add_item!($text, Dropdown, $dropdown_type, $dropdown_value, &settings.$setting);
+                item.set_tag(tag.as_str());
+                $mod_fn(&mut item);
+                scroll_area.add_item(Box::new(item));
+
+                // idk how to do this better 
+                struct $struct_name {
+                    tag: String
+                }
+                impl OnFinalize for $struct_name {
+                    fn on_finalize(&self, menu: &SettingsMenu, settings: &mut Settings) {
+                        let val = menu.scroll_area.get_tagged(self.tag.clone());
+                        let val = val.first().expect("error getting tagged");
+                        let val = val.get_value();
+                        let val = val.downcast_ref::<Option<$dropdown_type>>()
+                            .expect(&format!("error downcasting for {} ({})", self.tag, $text));
+                        
+                        if let Some($dropdown_type::$dropdown_value(val)) = val {
+                            settings.$setting = val.to_owned(); 
+                        }
+                    }
+                }
+
+                finalize_list.push(Arc::new($struct_name{tag:tag.to_owned()}))
+            };
             // ($text:expr, $item_type:tt, $setting:ident, $setting_type:tt, $struct_name:ident, $($setting2:ident)?, $(setting3:ident)?) => {
             ($text:expr, $item_type:tt, $setting:ident, $setting_type:tt, $struct_name:ident, $mod_fn:expr) => {
                 // create a tag
@@ -166,15 +203,42 @@ impl SettingsMenu {
             }
         }
 
+        // tataku login
+        add_item!("Tataku Login", MenuSection);
+        add_item!("Server Url", TextInput, server_url, String, TatakuServerUrl, |_|{});
+        add_item!("Username", TextInput, username, String, TatakuUsername, |_|{});
+        add_item!("Password", TextInput, password, String, TatakuPassword, |_|{});
+
         // osu login
         add_item!("osu! Login", MenuSection);
         add_item!("Username", TextInput, osu_username, String, OsuUsername, |_|{});
         add_item!("Password", TextInput, osu_password, String, OsuPassword, |_|{});
+        add_item!("Api Key", TextInput, osu_api_key, String, OsuApiKey, |_|{});
 
-        // bg
-        add_item!("Background", MenuSection);
+        // window items
+        // todo
+
+        // gameplay settings
+        add_item!("Gameplay Settings", MenuSection);
+        add_item!("Pause on focus loss", Checkbox, pause_on_focus_lost, bool, PauseOnFocusLost, |_|{});
         add_item!("Background Dim", Slider, background_dim, f32, BackgroundDim, |thing:&mut Slider| {
             thing.range = 0.0..1.0;
+        });
+        add_item!("Global Offset", Slider, global_offset, f32, GlobalOffset, |thing:&mut Slider| {
+            thing.range = -100.0..100.0;
+        });
+        add_item!("Skin", Dropdown, SkinDropdownable, Skin, current_skin, CurrentSkin, |_|{});
+
+        
+        // cursor
+        add_item!("Cursor Settings", MenuSection);
+        add_item!("Cursor Color", TextInput, cursor_color, String, CursorColor, |_|{});
+        add_item!("Cursor Scale", Slider, cursor_scale, f64, CursorScale, |thing:&mut Slider| {
+            thing.range = 0.1..20.0;
+        });
+        add_item!("Cursor Border Color", TextInput, cursor_border_color, String, CursorBorderColor, |_|{});
+        add_item!("Cursor Border Size", Slider, cursor_border, f32, CursorBorderSize, |thing:&mut Slider| {
+            thing.range = 0.1..5.0;
         });
 
         

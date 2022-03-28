@@ -3,7 +3,7 @@ use crate::prelude::*;
 // TODO: change this to skin meta
 lazy_static::lazy_static! {
     static ref SKINS:Vec<String> = {
-        let mut list = Vec::new();
+        let mut list = vec!["None".to_owned()];
         for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
             list.push(f.unwrap().file_name().to_string_lossy().to_string())
         }
@@ -18,14 +18,14 @@ pub struct SkinSelect {
 }
 impl SkinSelect {
     pub fn new() -> Self {
-        let current_skin = SKIN_MANAGER.read().current_skin().clone();
+        let current_skin = get_settings!().current_skin.clone();
         Self {
             dropdown: Dropdown::new(
                 Vector2::new(300.0, 200.0),
                 500.0,
                 20,
                 "Skin",
-                Some(SkinDropdownable::Skin("default".to_owned())),
+                Some(SkinDropdownable::Skin(current_skin.clone())),
                 get_font()
             ),
             current_skin,
@@ -121,7 +121,7 @@ pub struct SkinChangeHelper {
 }
 impl SkinChangeHelper {
     pub fn new() -> Self {
-        let current_skin = SKIN_MANAGER.read().current_skin().clone();
+        let current_skin = get_settings!().current_skin.clone();
         Self {
             current_skin,
         }
@@ -129,8 +129,8 @@ impl SkinChangeHelper {
     pub fn check(&mut self) -> bool {
         let mut changed = false;
 
-        let skin_manager = SKIN_MANAGER.read();
-        let current_skin = skin_manager.current_skin();
+        // let skin_manager = SKIN_MANAGER.read();
+        let current_skin = &get_settings!().current_skin;
         if &self.current_skin != current_skin {
             changed = true;
             self.current_skin = current_skin.clone();

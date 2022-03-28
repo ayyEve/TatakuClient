@@ -200,7 +200,7 @@ impl Default for Settings {
             last_git_hash: String::new(),
 
             server_url: "wss://taikors.ayyeve.xyz".to_owned(),
-            current_skin: "default".to_owned(),
+            current_skin: "None".to_owned(),
 
             external_games_folders: Vec::new()
         }

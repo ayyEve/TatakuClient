@@ -16,7 +16,7 @@ fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
 }
 
 pub struct SkinHelper {
-    current_skin: String,
+    // current_skin: String,
     current_skin_config: Arc<SkinSettings>,
 
     texture_cache: HashMap<String, Option<Image>>,
@@ -29,7 +29,7 @@ impl SkinHelper {
         let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
         
         Self {
-            current_skin,
+            // current_skin,
             current_skin_config,
             texture_cache: HashMap::new(),
             // audio_cache: HashMap::new(),
@@ -40,13 +40,13 @@ impl SkinHelper {
         self.current_skin_config.clone()
     }
 
-    pub fn current_skin(&self) -> &String {
-        &self.current_skin
-    }
+    // pub fn current_skin(&self) -> &String {
+    //     &self.current_skin
+    // }
 
     pub fn change_skin(&mut self, new_skin:String) {
         get_settings_mut!().current_skin = new_skin.clone();
-        self.current_skin = new_skin.clone();
+        // self.current_skin = new_skin.clone();
         self.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
         self.texture_cache.clear();
 
@@ -66,11 +66,10 @@ impl SkinHelper {
             return None
         }
 
-
         let name = name.as_ref().to_owned();
 
         if !self.texture_cache.contains_key(&name) {
-            let mut maybe_img = load_image(get_tex_path(&name, &self.current_skin), grayscale);
+            let mut maybe_img = load_image(get_tex_path(&name, &get_settings!().current_skin), grayscale);
 
             if maybe_img.is_none() && allow_default {
                 println!("[Skin] Skin missing tex {}", name);
