@@ -163,12 +163,6 @@ impl Game {
         self.menus.insert("beatmap", beatmap_menu.clone());
         menu_init_benchmark.log("beatmap menu created", true);
 
-        // setup settings menu
-        let settings_menu = Arc::new(Mutex::new(SettingsMenu::new()));
-        self.menus.insert("settings", settings_menu.clone());
-        menu_init_benchmark.log("settings menu created", true);
-
-
         // check git updates
         self.add_dialog(Box::new(ChangelogDialog::new()));
 

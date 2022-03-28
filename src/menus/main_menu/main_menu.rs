@@ -278,7 +278,7 @@ impl Menu<Game> for MainMenu {
 
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
-            let menu = game.menus.get("settings").unwrap().clone();
+            let menu = Arc::new(Mutex::new(SettingsMenu::new()));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
@@ -411,7 +411,7 @@ impl ControllerInputMenu<Game> for MainMenu {
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 2 => {
-                    let menu = game.menus.get("settings").unwrap().clone();
+                    let menu = Arc::new(Mutex::new(SettingsMenu::new()));
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 3 => game.queue_state_change(GameState::Closing),

@@ -39,7 +39,7 @@ piston = "0.53.0"
 lyon_tessellation = "0.17"
 
 pistoncore-glfw_window = { version = "0.74" }
-ayyeve-piston-ui = {git = "https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui"}  #{ version = "0.3.8", registry = "tataku" }
+ayyeve-piston-ui = {git = "https://gitlab.ayyeve.xyz/ayyEve/ayyeve-piston-ui"}  #{ version = "0.3.9", registry = "tataku" }
 piston2d-graphics = { version = "0.41.0", registry = "tataku" }
 piston2d-opengl_graphics = { version = "0.79.1", registry = "tataku" }
 

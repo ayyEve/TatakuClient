@@ -249,6 +249,10 @@ impl Menu<Game> for SettingsMenu {
         }
     }
 
+    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, g:&mut Game) {
+        self.scroll_area.on_click_release(pos, button);
+    }
+
     fn update(&mut self, _game: &mut Game) {self.scroll_area.update()}
     fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {self.scroll_area.on_mouse_move(pos)}
     fn on_scroll(&mut self, delta:f64, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
