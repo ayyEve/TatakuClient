@@ -64,7 +64,9 @@ pub struct Database {
     connection: Arc<Mutex<Connection>>,
 }
 impl Database {
-    pub fn get<'a>() -> MutexGuard<'a, Connection> {DATABASE.connection.lock()}
+    pub fn get<'a>() -> MutexGuard<'a, Connection> {
+        DATABASE.connection.lock()
+    }
 
     fn new() -> Arc<Self> {
         let connection = Connection::open("tataku.db").unwrap();

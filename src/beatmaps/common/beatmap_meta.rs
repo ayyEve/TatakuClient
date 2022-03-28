@@ -79,18 +79,13 @@ impl BeatmapMeta {
     }
 
     /// get the difficulty string (od, hp, sr, bpm, len)
-    pub fn diff_string(&mut self, mode_override: PlayMode, mods: &ModManager) -> String {
+    pub fn diff_string(&mut self, mods: &ModManager) -> String {
         let symb = if mods.speed > 1.0 {"+"} else if mods.speed < 1.0 {"-"} else {""};
 
         // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
-        if secs.len() == 1 {secs = format!("0{}",secs)}
-        // let diff = self.get_diff(mode_override, mods);
-        let diff = match Database::get_diff(&self.beatmap_hash, &mode_override, mods) {
-            None => "...".to_owned(),
-
-            Some(ok) => format!("{:.2}", ok)
-        };
+        if secs.len() == 1 {secs = format!("0{}", secs)}
+        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
 
         let mut txt = format!(
             "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 

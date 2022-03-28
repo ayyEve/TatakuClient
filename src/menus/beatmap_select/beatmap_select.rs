@@ -36,7 +36,10 @@ pub struct BeatmapSelectMenu {
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
     /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
-    mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>
+    mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>,
+
+
+    diff_calc_start_helper: (MultiFuse<()>, MultiBomb<()>),
 }
 impl BeatmapSelectMenu {
     pub fn new() -> BeatmapSelectMenu {
@@ -64,12 +67,7 @@ impl BeatmapSelectMenu {
         );
         
 
-        // // update diffs
-        // // TODO: this shouldnt lock for too long, but theres probably a better place to put it
-        // let mode_clone = mode.clone();
-        // tokio::spawn(async {
-        //     BEATMAP_MANAGER.write().update_diffs(mode_clone, &ModManager::get());
-        // });
+
         
         let leaderboard_method = SCORE_HELPER.read().current_method;
         let leaderboard_method_dropdown = Dropdown::new(
@@ -108,7 +106,8 @@ impl BeatmapSelectMenu {
             sort_by_dropdown,
             leaderboard_method_dropdown,
 
-            mouse_down: None
+            mouse_down: None,
+            diff_calc_start_helper: MultiBomb::new()
         }
     }
 
@@ -121,6 +120,7 @@ impl BeatmapSelectMenu {
         // recalc diffs
         let mod_manager = ModManager::get().clone();
         BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &mod_manager);
+        self.diff_calc_start_helper.0.ignite(());
         
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
@@ -152,7 +152,7 @@ impl BeatmapSelectMenu {
                 if maps.len() == 0 {continue}
             }
 
-            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone());
+            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone());
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
@@ -178,6 +178,12 @@ impl BeatmapSelectMenu {
         for i in full_list {self.beatmap_scroll.add_item(i)}
 
         self.beatmap_scroll.scroll_to_selection();
+
+        // update diffs
+        let mode_clone = self.mode.clone();
+        tokio::spawn(async {
+            BEATMAP_MANAGER.write().update_diffs(mode_clone, &ModManager::get());
+        });
     }
 
     pub fn load_scores(&mut self) {

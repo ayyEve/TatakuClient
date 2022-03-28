@@ -318,26 +318,32 @@ impl BeatmapManager {
         tokio::spawn(async move {
             let playmode = playmode;
 
+            let existing = Database::get_all_diffs(&playmode, &mods);
+
             // perform calc
-            maps.par_iter_mut().for_each(|i| {
+            // println!("[Diff Calc] starting");
+            maps.iter_mut().for_each(|i| {
                 let hash = &i.beatmap_hash;
-                i.diff = if let Some(diff) = Database::get_diff(hash, &playmode, &mods) {
-                    diff
+                i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
+                    *diff
                 } else {
                     calc_diff(i, playmode.clone(), &mods).unwrap_or_default()
                 };
             });
 
             // insert diffs
-            maps.par_iter().for_each(|map| {
-                Database::insert_diff(&map.beatmap_hash, &playmode, &mods, map.diff);
-            });
+            Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff)));
+            // maps.iter().for_each(|map| {
+            //     Database::insert_diff(&map.beatmap_hash, &playmode, &mods, map.diff);
+            // });
             
             {
                 let mut lock = BEATMAP_MANAGER.write();
                 lock.beatmaps = maps;
                 lock.on_diffcalc_complete.0.ignite(());
             }
+
+            // println!("[Diff Calc] complete");
         });
     }
 }

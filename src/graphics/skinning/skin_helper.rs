@@ -62,9 +62,8 @@ impl SkinHelper {
     
 
     pub fn get_texture_grayscale<N: AsRef<str>>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
-        if format!("{:?}", std::thread::current().id()) != "ThreadId(1)" {
-            return None
-        }
+        // since opengl stuff needs to be done on the main thread, return none if we arent on it
+        if !on_main_thread() { return None }
 
         let name = name.as_ref().to_owned();
 
