@@ -304,6 +304,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "chrono"
+version = "0.4.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
+dependencies = [
+ "libc",
+ "num-integer",
+ "num-traits",
+ "time",
+ "winapi",
+]
+
+[[package]]
 name = "clang-sys"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2440,6 +2453,7 @@ dependencies = [
  "glfw",
  "image",
  "lazy_static",
+ "log",
  "lyon_tessellation",
  "md5",
  "parking_lot 0.12.0",
@@ -2459,6 +2473,7 @@ dependencies = [
  "sha2",
  "symphonia",
  "tataku-common",
+ "tataku-logging",
  "tokio",
  "tokio-tungstenite",
  "uuid",
@@ -2472,6 +2487,18 @@ source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#04e4faa9edf88d61fe9
 dependencies = [
  "serde",
  "tataku-proc-macros",
+]
+
+[[package]]
+name = "tataku-logging"
+version = "0.1.0"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-logging#9b79205b80fdbc63af204cec6e764e2b42da7430"
+dependencies = [
+ "bombs",
+ "chrono",
+ "log",
+ "once_cell",
+ "parking_lot 0.12.0",
 ]
 
 [[package]]

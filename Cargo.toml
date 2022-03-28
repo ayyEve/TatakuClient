@@ -72,6 +72,10 @@ md5 = "0.7.0"
 rand = "0.8.4"
 encoding_rs = "0.8"
 
+# logging
+tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }
+log = "0.4.16"
+
 # battery_level = { git = "https://gitlab.ayyeve.xyz/ayyEve/battery-level-rs" }
 
 

@@ -1,6 +1,9 @@
 // #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
+#[macro_use]
+extern crate log;
+
 // include files
 mod game;
 mod menus;
@@ -54,14 +57,16 @@ const FIRST_MAPS: &[u32] = &[
 // main fn
 #[tokio::main]
 async fn main() {
+    tataku_logging::init("logs/").unwrap();
+
     let mut main_benchmark = BenchmarkHelper::new("main");
 
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
-            println!("error changing current dir: {}", e);
+            error!("error changing current dir: {}", e);
         }
     }
-
+    
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
