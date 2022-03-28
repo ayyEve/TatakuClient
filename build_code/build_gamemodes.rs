@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, fs::DirEntry};
 
 use serde::Deserialize;
 
@@ -8,7 +8,16 @@ pub fn build_gamemodes() {
     let gamemode_path = cd.as_path().join("src/gameplay/modes/");
 
     eprintln!("dir: {:?}", gamemode_path);
-    let files = std::fs::read_dir(&gamemode_path).unwrap();
+
+    // sort dirs to ensure same order every time
+    // resolves building for no reason (thanks fs)
+    let mut files:Vec<DirEntry> = std::fs::read_dir(&gamemode_path)
+        .unwrap()
+        .filter_map(|file|file.ok())
+        .collect();
+    files.sort_by(|p1, p2| {
+        p1.file_name().cmp(&p2.file_name())
+    });
 
     let mut mods = vec![];
     let mut build_gamemode_lines = vec![String::new()];
@@ -17,8 +26,7 @@ pub fn build_gamemodes() {
     let mut display_lines = vec![String::new()];
     let mut mode_list = Vec::new();
 
-    for i in files {
-        let f = i.unwrap();
+    for f in files {
         if !f.path().is_dir() {continue}
 
         let mode_folder = f.file_name().to_string_lossy().to_string();

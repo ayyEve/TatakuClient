@@ -324,10 +324,13 @@ impl BeatmapManager {
                 i.diff = if let Some(diff) = Database::get_diff(hash, &playmode, &mods) {
                     diff
                 } else {
-                    let diff = calc_diff(i, playmode.clone(), &mods).unwrap_or_default();
-                    Database::insert_diff(hash, &playmode, &mods, diff);
-                    diff
+                    calc_diff(i, playmode.clone(), &mods).unwrap_or_default()
                 };
+            });
+
+            // insert diffs
+            maps.par_iter().for_each(|map| {
+                Database::insert_diff(&map.beatmap_hash, &playmode, &mods, map.diff);
             });
             
             {
@@ -335,7 +338,6 @@ impl BeatmapManager {
                 lock.beatmaps = maps;
                 lock.on_diffcalc_complete.0.ignite(());
             }
-
         });
     }
 }

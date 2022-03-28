@@ -730,7 +730,6 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
 
-
     // draw
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();

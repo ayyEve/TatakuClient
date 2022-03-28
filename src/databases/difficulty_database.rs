@@ -30,7 +30,7 @@ impl Database {
 
         // error is entry already exists
         if let Err(_) = s.execute([]) {
-            println!("updating diff: {diff}");
+            // println!("updating diff: {diff}");
             let sql = format!(
                 "UPDATE difficulties SET diff={} WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'", 
                 diff,
