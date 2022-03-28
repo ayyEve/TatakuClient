@@ -139,7 +139,6 @@ impl TatakuBeatmap for AdofaiBeatmap {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
             beatmap_type: BeatmapType::Adofai,
-            beatmap_version: 10,
             mode: "adofai".to_owned(),
             artist: self.settings.artist.clone(),
             title: self.settings.song.clone(),
@@ -155,9 +154,6 @@ impl TatakuBeatmap for AdofaiBeatmap {
             od: 0.0,
             cs: 0.0,
             ar: 0.0,
-            slider_multiplier: 1.0,
-            slider_tick_rate: 1.0,
-            stack_leniency: 0.0,
             bpm_min: 0.0,
             bpm_max: 0.0,
             

@@ -40,8 +40,14 @@ pub struct Curve {
 #[allow(dead_code)]
 impl Curve {
     fn new(slider: SliderDef, path: Vec<CurveSegment>, beatmap: &Beatmap) -> Self {
+        let mut slider_multiplier = 1.0;
+        if let Beatmap::Osu(map) = beatmap {
+            slider_multiplier = map.slider_multiplier;
+        }
+
+
         let l = slider.length * 1.4 * slider.slides as f32;
-        let v2 = 100.0 * beatmap.get_beatmap_meta().slider_multiplier * 1.4;
+        let v2 = 100.0 * slider_multiplier * 1.4;
         // let l = slider.length * slider.slides as f32;
         // let v2 = 100.0 * beatmap.metadata.slider_multiplier;
         let bl = beatmap.beat_length_at(slider.time, true);
@@ -158,6 +164,14 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
     let metadata = beatmap.get_beatmap_meta();
 
+    let mut beatmap_version = 10;
+    let mut slider_tick_rate = 1.0;
+    if let Beatmap::Osu(map) = beatmap {
+        beatmap_version = map.beatmap_version;
+        slider_tick_rate = map.slider_tick_rate;
+    }
+
+
     match slider.curve_type {
         CurveType::Catmull => {
             for j in 0..points.len() {
@@ -177,18 +191,18 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
             let mut last_index = 0;
             let mut i = 0;
             while i < points.len() {
-                if metadata.beatmap_version > 6 {
+                if beatmap_version > 6 {
                     let multipart_segment = (i as i32) < points.len() as i32 - 2 && points[i] == points[i + 1];
 
                     if multipart_segment || i == points.len() - 1 {
                         let this_segment = points[last_index..i+1].to_vec();
 
-                        if metadata.beatmap_version > 8 {
+                        if beatmap_version > 8 {
                             if this_segment.len() == 2 {
                                 // this segment is a line
                                 path.push(CurveSegment::Linear {p1: this_segment[0], p2:this_segment[1]});
                             } else {
-                                let curve = create_bezier(this_segment, metadata.beatmap_version < 10);
+                                let curve = create_bezier(this_segment, beatmap_version < 10);
                                 path.push(CurveSegment::Bezier {curve});
                             }
                         } else {
@@ -305,7 +319,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
     if path_count < 1 {return curve}
 
-    let ms_between_ticks = beatmap.beat_length_at(curve.slider.time, false) / metadata.slider_tick_rate;
+    let ms_between_ticks = beatmap.beat_length_at(curve.slider.time, false) / slider_tick_rate;
     let mut t = curve.slider.time + ms_between_ticks;
     while t < curve.end_time {
         curve.score_times.push(t);

@@ -84,7 +84,6 @@ impl TatakuBeatmap for QuaverBeatmap {
             file_path: self.path.clone(), 
             beatmap_hash: self.hash.clone(), 
             beatmap_type: BeatmapType::Quaver,
-            beatmap_version: 0, 
             mode: "mania".to_owned(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
@@ -100,9 +99,6 @@ impl TatakuBeatmap for QuaverBeatmap {
             od: 0.0, 
             cs, 
             ar: 0.0, 
-            slider_multiplier: 1.0, 
-            slider_tick_rate: 1.0,
-            stack_leniency: 0.0,
 
             bpm_min,
             bpm_max,

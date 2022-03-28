@@ -193,14 +193,14 @@ impl GameMode for TaikoGame {
                     let finisher = (slider.hitsound & 4) > 0;
 
                     let l = (length * 1.4) * slides as f32;
-                    let v2 = 100.0 * (beatmap.metadata.slider_multiplier * 1.4);
+                    let v2 = 100.0 * (beatmap.slider_multiplier * 1.4);
                     let bl = beatmap.beat_length_at(time, true);
                     let end_time = time + (l / v2 * bl);
                     
                     // convert vars
                     let v = beatmap.slider_velocity_at(time);
-                    let bl = beatmap.beat_length_at(time, beatmap.metadata.beatmap_version < 8);
-                    let skip_period = (bl / beatmap.metadata.slider_tick_rate).min((end_time - time) / slides as f32);
+                    let bl = beatmap.beat_length_at(time, beatmap.beatmap_version < 8);
+                    let skip_period = (bl / beatmap.slider_tick_rate).min((end_time - time) / slides as f32);
 
                     if skip_period > 0.0 && beatmap.metadata.mode != "taiko" && l / v * 1000.0 < 2.0 * bl {
                         let mut i = 0;

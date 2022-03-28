@@ -38,7 +38,7 @@ impl Database {
             "INSERT INTO beatmaps (
                 beatmap_path, beatmap_hash, beatmap_type,
     
-                playmode, beatmap_version,
+                playmode, 
                 artist, artist_unicode,
                 title, title_unicode,
                 creator, version,
@@ -48,12 +48,11 @@ impl Database {
                 
                 hp, od, cs, ar,
                 
-                slider_multiplier, slider_tick_rate,
                 bpm_min, bpm_max
             ) VALUES (
                 \"{}\", \"{}\", {},
     
-                \"{}\", {},
+                \"{}\",
                 \"{}\", \"{}\",
                 \"{}\", \"{}\",
                 \"{}\", \"{}\",
@@ -63,12 +62,11 @@ impl Database {
     
                 {}, {}, {}, {},
     
-                {}, {},
                 {}, {}
             )",
             map.file_path, map.beatmap_hash, beatmap_type,
     
-            map.mode, map.beatmap_version, 
+            map.mode,
             map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
             map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
             map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),
@@ -78,7 +76,6 @@ impl Database {
     
             map.hp, map.od, map.cs, map.ar,
     
-            map.slider_multiplier, map.slider_tick_rate,
             bpm_min, bpm_max
         );
 
@@ -95,7 +92,6 @@ fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
         file_path: r.get("beatmap_path")?,
         beatmap_hash: r.get("beatmap_hash")?,
         beatmap_type: r.get::<&str, u8>("beatmap_type")?.into(),
-        beatmap_version: r.get("beatmap_version")?,
         mode: r.get("playmode")?,
         artist: r.get("artist")?,
         title: r.get("title")?,
@@ -115,11 +111,6 @@ fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
         bpm_min: r.get("bpm_min").unwrap_or(0.0),
         bpm_max: r.get("bpm_max").unwrap_or(0.0),
 
-
-        // remove these
-        slider_multiplier: r.get("slider_multiplier")?,
-        slider_tick_rate: r.get("slider_tick_rate")?,
-        stack_leniency: r.get("stack_leniency").unwrap_or(0.0),
         diff: -1.0
     })
 }

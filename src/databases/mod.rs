@@ -97,7 +97,6 @@ impl Database {
                 beatmap_hash TEXT PRIMARY KEY,
 
                 playmode TEXT,
-                beatmap_version INTEGER,
                 artist TEXT,
                 title TEXT,
                 artist_unicode TEXT,
@@ -114,10 +113,7 @@ impl Database {
                 hp REAL,
                 od REAL,
                 cs REAL,
-                ar REAL,
-                
-                slider_multiplier REAL,
-                slider_tick_rate REAL
+                ar REAL
             )", [])
         .expect("error creating db table");
 

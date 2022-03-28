@@ -151,7 +151,6 @@ impl GameMode for StandardGame {
         // println!("[gjfdkljl;kfdsj;lkgfdsj;lkgdfsj;k] making new StandardGame");
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
-        let stack_leniency = metadata.stack_leniency;
         let settings = get_settings!().standard_settings.clone();
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, "osu".to_owned()));
 
@@ -164,6 +163,7 @@ impl GameMode for StandardGame {
 
         match map {
             Beatmap::Osu(beatmap) => {
+                let stack_leniency = beatmap.stack_leniency;
                 let std_settings = Arc::new(settings);
 
                 if std_settings.use_beatmap_combo_colors && beatmap.combo_colors.len() > 0 {

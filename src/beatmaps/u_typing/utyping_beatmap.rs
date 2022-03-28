@@ -202,7 +202,6 @@ impl TatakuBeatmap for UTypingBeatmap {
             file_path: self.file_path.clone(), 
             beatmap_hash: self.hash.clone(), 
             beatmap_type: BeatmapType::UTyping,
-            beatmap_version: 0, 
             mode: "utyping".to_owned(), 
             artist: self.artist.clone(), 
             title: self.title.clone(), 
@@ -218,9 +217,6 @@ impl TatakuBeatmap for UTypingBeatmap {
             od: 0.0, 
             cs: 0.0, 
             ar: 0.0, 
-            slider_multiplier: 0.0, 
-            slider_tick_rate: 0.0, 
-            stack_leniency: 0.0, 
             bpm_min: bpm, 
             bpm_max: bpm, 
             diff: -1.0

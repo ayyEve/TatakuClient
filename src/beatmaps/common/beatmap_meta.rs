@@ -28,12 +28,6 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 
     // remove these at some point
-    pub beatmap_version: u8,
-    pub slider_multiplier: f32,
-    pub slider_tick_rate: f32,
-    pub stack_leniency: f32,
-
-
     pub diff: f32
 }
 impl BeatmapMeta {
@@ -44,7 +38,6 @@ impl BeatmapMeta {
             file_path,
             beatmap_hash,
             beatmap_type,
-            beatmap_version: 0,
             mode: "osu".to_owned(),
             artist: unknown.clone(),
             title: unknown.clone(),
@@ -59,9 +52,6 @@ impl BeatmapMeta {
             od: -1.0,
             ar: -1.0,
             cs: -1.0,
-            slider_multiplier: 1.4,
-            slider_tick_rate: 1.0,
-            stack_leniency: 1.0,
 
             duration: 0.0,
             bpm_min: 0.0,

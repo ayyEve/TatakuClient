@@ -14,6 +14,12 @@ pub struct OsuBeatmap {
     pub holds: Vec<HoldDef>,
 
     pub combo_colors: Vec<Color>,
+
+    // other metadata 
+    pub beatmap_version: u8,
+    pub slider_multiplier: f32,
+    pub slider_tick_rate: f32,
+    pub stack_leniency: f32,
 }
 impl OsuBeatmap {
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
@@ -44,6 +50,11 @@ impl OsuBeatmap {
             holds: Vec::new(),
             timing_points: Vec::new(),
             combo_colors: Vec::new(),
+
+            beatmap_version: 0,
+            slider_multiplier: 1.4,
+            slider_tick_rate: 1.0,
+            stack_leniency: 1.0,
         };
 
         for line in read_lines_resolved(&file_path)? {
@@ -73,7 +84,7 @@ impl OsuBeatmap {
             match current_area {
                 BeatmapSection::Version => {
                     match line.split("v").last().unwrap().trim().parse::<u8>() {
-                        Ok(v) => beatmap.metadata.beatmap_version = v,
+                        Ok(v) => beatmap.beatmap_version = v,
                         Err(e) => println!("error parsing beatmap version: {}", e),
                     }
                 }
@@ -84,7 +95,7 @@ impl OsuBeatmap {
 
                     if key == "AudioFilename" {beatmap.metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
                     if key == "PreviewTime" {beatmap.metadata.audio_preview = val.parse().unwrap_or(0.0)}
-                    if key == "StackLeniency" {beatmap.metadata.stack_leniency = val.parse().unwrap_or(0.0)}
+                    if key == "StackLeniency" {beatmap.stack_leniency = val.parse().unwrap_or(0.0)}
                     if key == "Mode" {
                         let m = val.parse::<u8>().unwrap();
                         beatmap.metadata.mode = playmode_from_u8(m);
@@ -111,8 +122,8 @@ impl OsuBeatmap {
                     if key == "CircleSize" {beatmap.metadata.cs = val}
                     if key == "OverallDifficulty" {beatmap.metadata.od = val}
                     if key == "ApproachRate" {beatmap.metadata.ar = val}
-                    if key == "SliderMultiplier" {beatmap.metadata.slider_multiplier = val}
-                    if key == "SliderTickRate" {beatmap.metadata.slider_tick_rate = val}
+                    if key == "SliderMultiplier" {beatmap.slider_multiplier = val}
+                    if key == "SliderTickRate" {beatmap.slider_tick_rate = val}
                 }
                 BeatmapSection::Events => {
                     let mut split = line.split(',');
@@ -392,7 +403,7 @@ impl TatakuBeatmap for OsuBeatmap {
     }
     fn slider_velocity_at(&self, time:f32) -> f32 {
         let bl = self.beat_length_at(time, true);
-        100.0 * (self.metadata.slider_multiplier * 1.4) * if bl > 0.0 {1000.0 / bl} else {1.0}
+        100.0 * (self.slider_multiplier * 1.4) * if bl > 0.0 {1000.0 / bl} else {1.0}
     }
     fn control_point_at(&self, time:f32) -> TimingPoint {
         // panic as this should be dealt with earlier in the code
