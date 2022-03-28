@@ -90,12 +90,14 @@ impl Settings {
                 Err(e) => {
                     // println!("error reading settings.json, loading defaults");
                     NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
+                    backup_settings();
                     Settings::default()
                 }
             }
             Err(e) => {
                 // println!("error reading settings.json, loading defaults");
                 NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
+                backup_settings();
                 Settings::default()
             }
         };
@@ -203,6 +205,27 @@ impl Default for Settings {
             current_skin: "None".to_owned(),
 
             external_games_folders: Vec::new()
+        }
+    }
+}
+
+// make a backup of the setting before they're overwritten (when the file fails to load)
+fn backup_settings() {
+    if exists(SETTINGS_FILE) {
+        let mut counter = 0;
+        while exists(format!("{SETTINGS_FILE}.bak_{counter}")) {
+            counter += 1;
+        }
+        let file = format!("{SETTINGS_FILE}.bak_{counter}");
+
+        if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
+            NotificationManager::add_error_notification("Error backing up settings.json", e)
+        } else {
+            NotificationManager::add_text_notification(
+                &format!("Backup saved as {file}"),
+                5000.0,
+                Color::YELLOW
+            );
         }
     }
 }
