@@ -81,7 +81,7 @@ impl AdofaiBeatmap {
             let beat = current_beatlength * ((3.0 + diff) % 2.0);
             current_time += beat;
 
-            // println!("{:?}: {} -> {}, {} -> {} = {}/{}/{} ", current_direction, last_char, char, prev_len, note_len, diff, (1.0 + diff) % 2.0, beat);
+            // debug!("{:?}: {} -> {}, {} -> {} = {}/{}/{} ", current_direction, last_char, char, prev_len, note_len, diff, (1.0 + diff) % 2.0, beat);
 
             if *char == '!' {
                 continue;
@@ -234,7 +234,7 @@ fn char2beat(c:char) -> f32 {
         'J' => 1.875, // 15/8
 
         _ => {
-            println!("unknown char '{}'", &c);
+            warn!("unknown char '{}'", &c);
             0.0
         }
     }

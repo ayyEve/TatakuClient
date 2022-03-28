@@ -202,7 +202,6 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         diff.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         for x in diff {
-            //println!("hi: {} * {}%", x, weight);
             difficulty += x * weight;
             weight *= PERCENT;
         }
@@ -371,7 +370,7 @@ fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
     let mods = ModManager::new();
 
     let s = beatmap.get_beatmap_meta().version_string();
-    println!("\n\n\n--- trying map: {}", s);
+    trace!("\n\n\n--- trying map: {}", s);
     // let mut benchmark = BenchmarkHelper::new("calc");
     if let Ok(mode) = TaikoGame::new(&beatmap, true) {
         // test calc

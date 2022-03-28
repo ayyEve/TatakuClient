@@ -13,7 +13,7 @@ impl DirectApi for QuaverDirect {
     fn supported_modes(&self) -> Vec<PlayMode> {vec!["mania".to_owned()]}
 
     fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
-        println!("[QuaverDirect] searching");
+        trace!("[QuaverDirect] searching");
 
 
 

@@ -131,7 +131,7 @@ impl ControllerInputMenu<Game> for PauseMenu {
             changed = true;
         }
 
-        println!("changed:{}, index: {}", changed, self.selected_index);
+        trace!("changed:{}, index: {}", changed, self.selected_index);
 
         if changed {
             let mut continue_index = 0;

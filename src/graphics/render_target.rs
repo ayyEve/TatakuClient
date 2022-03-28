@@ -39,7 +39,7 @@ impl RenderTarget {
             gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, id);
             id
         };
-        println!("got framebuffer id: {}", framebuffer_id);
+        trace!("got framebuffer id: {}", framebuffer_id);
 
         // Generate a Texture
         let texture_id = unsafe {
@@ -65,7 +65,7 @@ impl RenderTarget {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
             id
         };
-        println!("got tex id: {}", texture_id);
+        trace!("got tex id: {}", texture_id);
 
         //Generate the Depth buffer
         let depth_renderbuffer_id = unsafe {
@@ -84,7 +84,7 @@ impl RenderTarget {
 
             id
         };
-        println!("got depth_renderbuffer_id: {}", depth_renderbuffer_id);
+        trace!("got depth_renderbuffer_id: {}", depth_renderbuffer_id);
 
         //Check if FrameBuffer created successfully
         unsafe {
@@ -115,9 +115,9 @@ impl RenderTarget {
     }
 
     pub fn bind(&mut self) {
-        println!("binding");
+        trace!("binding");
         CURRENT_BOUND.store(self.framebuffer_id, Ordering::SeqCst);
-        println!("{}", self.framebuffer_id);
+        trace!("{}", self.framebuffer_id);
 
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.framebuffer_id);
@@ -127,7 +127,7 @@ impl RenderTarget {
     }
 
     pub fn unbind(&mut self) {
-        println!("unbinding");
+        trace!("unbinding");
         CURRENT_BOUND.store(0, Ordering::SeqCst);
 
         unsafe {

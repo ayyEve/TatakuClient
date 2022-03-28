@@ -36,7 +36,7 @@ pub trait Visualization {
             // get the audio being fed to the sound card
             let data = crate::game::audio::CURRENT_DATA.clone();
             let mut data = data.lock().clone();
-            // println!("{}", audio_data.len());
+            // trace!("{}", audio_data.len());
 
             let len = data.len();
             let size;

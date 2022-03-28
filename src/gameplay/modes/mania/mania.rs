@@ -173,9 +173,9 @@ impl GameMode for ManiaGame {
                 }
             }
             
-            // println!("threshold: {}", threshold);
-            // println!("snap: {} - {:.1}", snap,  1.0 / snap);
-            // println!("lowestdiff: {:.5} {:.5}", closest_snap.0, closest_snap.1);
+            // debug!("threshold: {}", threshold);
+            // debug!("snap: {} - {:.1}", snap,  1.0 / snap);
+            // debug!("lowestdiff: {:.5} {:.5}", closest_snap.0, closest_snap.1);
 
             DEFAULT_SNAP
         };
@@ -724,7 +724,7 @@ impl GameMode for ManiaGame {
                 if time >= self.end_time || time.is_nan() {break}
             }
 
-            println!("created {} timing bars", self.timing_bars.len());
+            debug!("created {} timing bars", self.timing_bars.len());
         }
 
         let sv = beatmap.slider_velocity_at(0.0);

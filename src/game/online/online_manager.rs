@@ -33,9 +33,9 @@ macro_rules! send_packet {
             match writer.lock().await.send(tokio_tungstenite::tungstenite::protocol::Message::Binary($data)).await {
                 Ok(_) => true,
                 Err(e) => {
-                    println!("[Writer] Error sending data ({}:{}): {}", file!(), line!(), e);
+                    error!("[Writer] Error sending data ({}:{}): {}", file!(), line!(), e);
                     if let Err(e) = writer.lock().await.close().await {
-                        println!("[Writer] error closing connection: {}", e);
+                        error!("[Writer] error closing connection: {}", e);
                     }
                     false
                 }
@@ -140,7 +140,7 @@ impl OnlineManager {
                     match message {
                         Ok(Message::Binary(data)) => {
                             if let Err(e) = OnlineManager::handle_packet(data).await {
-                                println!("Error with packet: {}", e);
+                                error!("Error with packet: {}", e);
                             }
                         },
                         Ok(Message::Ping(_)) => {
@@ -148,10 +148,10 @@ impl OnlineManager {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
                             }
                         }
-                        Ok(message) => if EXTRA_ONLINE_LOGGING {println!("[Online] got something else: {:?}", message)},
+                        Ok(message) => if EXTRA_ONLINE_LOGGING {warn!("[Online] got something else: {:?}", message)},
 
                         Err(oof) => {
-                            println!("[Online] oof: {}", oof);
+                            error!("[Online] oof: {}", oof);
 
                             let mut s = s.write().await;
                             s.connected = false;
@@ -165,7 +165,7 @@ impl OnlineManager {
             }
             Err(oof) => {
                 s.write().await.connected = false;
-                println!("[Online] could not accept connection: {}", oof);
+                warn!("[Online] could not accept connection: {}", oof);
             }
         }
     }
@@ -176,30 +176,30 @@ impl OnlineManager {
 
         while reader.can_read() {
             let packet:PacketId = reader.read()?;
-            if EXTRA_ONLINE_LOGGING {println!("[Online] got packet {:?}", packet)};
+            if EXTRA_ONLINE_LOGGING {debug!("[Online] got packet {:?}", packet)};
 
             match packet {
                 // ===== ping/pong =====
                 PacketId::Ping => {send_packet!(s.read().await.writer, create_packet!(Pong));},
-                PacketId::Pong => {/* println!("[Online] got pong from server"); */},
+                PacketId::Pong => {/* trace!("[Online] got pong from server"); */},
 
                 // login
                 PacketId::Server_LoginResponse { status, user_id } => {
                     match status {
                         LoginStatus::UnknownError => {
-                            println!("[Login] Unknown Error");
+                            trace!("[Login] Unknown Error");
                             NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED);
                         },
                         LoginStatus::BadPassword => {
-                            println!("[Login] auth failed");
+                            trace!("[Login] auth failed");
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
                         },
                         LoginStatus::NoUser => {
-                            println!("[Login] user not found");
+                            trace!("[Login] user not found");
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
                         },
                         LoginStatus::Ok => {
-                            println!("[Login] success, got user_id: {}", user_id);
+                            trace!("[Login] success, got user_id: {}", user_id);
                             s.write().await.user_id = user_id;
                             NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN);
 
@@ -220,19 +220,19 @@ impl OnlineManager {
                 }
                 // server error
                 PacketId::Server_Error { code, error } => {
-                    println!("[Online] got server error {:?}: '{}'", code, error)
+                    warn!("[Online] got server error {:?}: '{}'", code, error)
                 }
 
 
                 // ===== user updates =====
                 PacketId::Server_UserJoined { user_id, username, game } => {
-                    if EXTRA_ONLINE_LOGGING {println!("[Online] user {} joined (id: {}, game: {})", username, user_id, game)};
+                    if EXTRA_ONLINE_LOGGING {debug!("[Online] user {} joined (id: {}, game: {})", username, user_id, game)};
                     let mut user = OnlineUser::new(user_id, username);
                     user.game = game;
                     s.write().await.users.insert(user_id, Arc::new(Mutex::new(user)));
                 }
                 PacketId::Server_UserLeft {user_id} => {
-                    if EXTRA_ONLINE_LOGGING {println!("[Online] user id {} left", user_id)};
+                    if EXTRA_ONLINE_LOGGING {debug!("[Online] user id {} left", user_id)};
 
                     let mut lock = s.write().await;
                     // remove from online users
@@ -247,7 +247,7 @@ impl OnlineManager {
                     }
                 }
                 PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
-                    // println!("[Online] got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
+                    // debug!("[Online] got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
                     
                     if let Some(e) = s.read().await.users.get(&user_id) {
                         let mut a = e.lock().await;
@@ -262,7 +262,7 @@ impl OnlineManager {
 
                 // ===== chat =====
                 PacketId::Server_SendMessage {sender_id, message, channel}=> {
-                    if EXTRA_ONLINE_LOGGING {println!("[Online] got message: `{}` from user id `{}` in channel `{}`", message, sender_id, channel)};
+                    if EXTRA_ONLINE_LOGGING {debug!("[Online] got message: `{}` from user id `{}` in channel `{}`", message, sender_id, channel)};
 
                     let channel = if channel.starts_with("#") {
                         ChatChannel::Channel {name: channel.trim_start_matches("#").to_owned()}
@@ -292,7 +292,7 @@ impl OnlineManager {
                 
                 // ===== spectator =====
                 PacketId::Server_SpectatorFrames { frames } => {
-                    // println!("[Online] got {} spectator frames from the server", frames.len());
+                    // debug!("[Online] got {} spectator frames from the server", frames.len());
                     let mut lock = s.write().await;
                     lock.buffered_spectator_frames.extend(frames);
                 }
@@ -312,7 +312,7 @@ impl OnlineManager {
                     NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
                 }
                 PacketId::Server_SpectateResult {result, host_id} => {
-                    println!("[Online] Got spec result {:?}", result);
+                    trace!("[Online] Got spec result {:?}", result);
                     match result {
                         SpectateResult::Ok => s.write().await.spectate_pending = host_id,
                         SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
@@ -325,17 +325,17 @@ impl OnlineManager {
                 // spec info request
                 PacketId::Server_SpectatorPlayingRequest {user_id} => {
                     s.write().await.spectate_info_pending.push(user_id);
-                    println!("[Online] Got playing request");
+                    trace!("[Online] Got playing request");
                 }
 
                 // other packets
                 PacketId::Unknown => {
-                    println!("[Online] Got unknown packet, dropping remaining packets");
+                    warn!("[Online] Got unknown packet, dropping remaining packets");
                     break;
                 }
 
                 p => {
-                    println!("[Online] Got unhandled packet: {:?}, dropping remaining packets", p);
+                    warn!("[Online] Got unhandled packet: {:?}, dropping remaining packets", p);
                     break;
                 }
             }
@@ -363,7 +363,7 @@ impl OnlineManager {
     // do things which require a reference to game
     pub fn do_game_things(&mut self, game: &mut Game) { 
         if self.spectate_pending > 0 {
-            println!("[Online] speccing {}", self.spectate_pending);
+            trace!("[Online] speccing {}", self.spectate_pending);
             self.buffered_spectator_frames.clear();
             self.spectating = true;
             self.spectate_pending = 0;
@@ -376,7 +376,7 @@ impl OnlineManager {
             match &mut game.current_state {
                 GameState::Ingame(manager) => {
                     for user_id in self.spectate_info_pending.iter() {
-                        println!("[Online] sending playing request");
+                        trace!("[Online] sending playing request");
                         let packet = SpectatorFrameData::PlayingResponse {
                             user_id: *user_id,
                             beatmap_hash: manager.beatmap.hash(),
@@ -389,7 +389,7 @@ impl OnlineManager {
                         tokio::spawn(async move {
                             let frames = vec![(0.0, packet)];
                             send_packet!(clone, create_packet!(Client_SpectatorFrames {frames}));
-                            println!("[Online] playing request sent");
+                            trace!("[Online] playing request sent");
                         });
                     }
                     
@@ -441,13 +441,13 @@ impl OnlineManager {
 
             if force_send || times_up || lock.buffered_spectator_frames.len() >= SPECTATOR_BUFFER_FLUSH_SIZE {
                 let frames = std::mem::take(&mut lock.buffered_spectator_frames);
-                // if force_send {println!("[Online] sending spec buffer (force)")} else if times_up {println!("[Online] sending spec buffer (time)")} else {println!("[Online] sending spec buffer (len)")}
+                // if force_send {trace!("[Online] sending spec buffer (force)")} else if times_up {trace!("[Online] sending spec buffer (time)")} else {trace!("[Online] sending spec buffer (len)")}
 
                 // for i in frames.iter() {
-                //     println!("writing spec packet")
+                //     trace!("writing spec packet")
                 // }
                 
-                // println!("[Online] sending {} spec packets", frames.len());
+                // debug!("[Online] sending {} spec packets", frames.len());
                 send_packet!(lock.writer, create_packet!(Client_SpectatorFrames {frames}));
                 lock.last_spectator_frame = Instant::now();
             }
@@ -470,7 +470,7 @@ impl OnlineManager {
             s.buffered_spectator_frames.clear();
             if !s.spectating {return}
             s.spectating = false;
-            println!("[Online] stop speccing");
+            trace!("[Online] stop speccing");
             
             send_packet!(s.writer, create_packet!(Client_LeaveSpectator));
         });
@@ -491,7 +491,7 @@ fn ping_handler() {
 
         loop {
             tokio::time::sleep(duration).await;
-            if LOG_PINGS {println!("[Ping] sending ping")};
+            if LOG_PINGS {trace!("[Ping] sending ping")};
             send_packet!(ONLINE_MANAGER.read().await.writer, ping.clone());
         }
     });
@@ -521,7 +521,7 @@ mod tests {
                 // let thing = Arc::new(tokio::sync::Mutex::new(thing));
 
                 super::OnlineManager::start().await;
-                println!("online thread {} stopped", i);
+                trace!("online thread {} stopped", i);
             });
         }
     }

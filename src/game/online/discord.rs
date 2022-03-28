@@ -46,19 +46,19 @@ impl Discord {
             .build();
         #[cfg(feature="discord")]
         if let Err(e) = self.rustcord.update_presence(presence) {
-            println!("Error updating discord presence: {}", e);
+            debug!("Error updating discord presence: {}", e);
         }
     }
 }
 
 impl EventHandlers for Discord {
     fn ready(user: User) {
-        println!("[Discord] Connected as {}#{}", user.username, user.discriminator);
+        debug!("[Discord] Connected as {}#{}", user.username, user.discriminator);
     }
     fn errored(code: i32, message: &str) {
-        println!("[Discord] Error: {} (code {})", message, code);
+        debug!("[Discord] Error: {} (code {})", message, code);
     }
     fn disconnected(code: i32, message: &str) {
-        println!("[Discord] Disconnected: {} (code {})", message, code);
+        debug!("[Discord] Disconnected: {} (code {})", message, code);
     }
 }

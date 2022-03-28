@@ -203,7 +203,7 @@ impl Game {
 
 
             if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
-                println!("got file: {:?}", d);
+                debug!("got file: {:?}", d);
                 let path = d.as_path();
                 let filename = d.file_name();
 
@@ -212,7 +212,7 @@ impl Game {
                     match *&ext {
                         "osz" | "qp" => {
                             if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
-                                println!("Error copying file: {}", e);
+                                error!("Error copying file: {}", e);
                                 NotificationManager::add_error_notification(
                                     "Error copying file", 
                                     e
@@ -236,7 +236,7 @@ impl Game {
                     }
                 }
             }
-            // e.resize(|args| println!("Resized '{}, {}'", args.window_size[0], args.window_size[1]));
+            // e.resize(|args| debug!("Resized '{}, {}'", args.window_size[0], args.window_size[1]));
         }
     }
 
@@ -273,7 +273,7 @@ impl Game {
         let settings_clone = get_settings!().clone();
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
-        //     println!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
+        //     debug!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
         // }
         if !self.cursor_manager.replay_mode {
             self.cursor_manager.set_cursor_pos(mouse_pos);
@@ -324,7 +324,7 @@ impl Game {
             // if let Some(chat) = Chat::new() {
             //     self.add_dialog(Box::new(chat));
             // }
-            // println!("Show user list: {}", self.show_user_list);
+            // trace!("Show user list: {}", self.show_user_list);
         }
 
 
@@ -399,10 +399,10 @@ impl Game {
                     // update, then check if complete
                     manager.update();
                     if manager.completed {
-                        println!("beatmap complete");
+                        trace!("beatmap complete");
 
                         if manager.failed {
-                            println!("player failed");
+                            trace!("player failed");
                             let manager2 = std::mem::take(manager);
                             self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true)))));
                             
@@ -414,7 +414,7 @@ impl Game {
                                 // save score
                                 Database::save_score(&score);
                                 match save_replay(&replay, &score) {
-                                    Ok(_)=> println!("replay saved ok"),
+                                    Ok(_)=> trace!("replay saved ok"),
                                     Err(e) => NotificationManager::add_error_notification("error saving replay", e),
                                 }
 
@@ -422,7 +422,7 @@ impl Game {
                                 #[cfg(feature = "online_scores")] {
                                     self.threading.spawn(async move {
                                         //TODO: do this async
-                                        println!("submitting score");
+                                        trace!("submitting score");
                                         let mut writer = SerializationWriter::new();
                                         writer.write(score.clone());
                                         writer.write(replay.clone());
@@ -436,9 +436,9 @@ impl Game {
                                         match res {
                                             Ok(_isgood) => {
                                                 //TODO: do something with the response?
-                                                println!("score submitted successfully");
+                                                trace!("score submitted successfully");
                                             },
-                                            Err(e) => println!("error submitting score: {}", e),
+                                            Err(e) => error!("error submitting score: {}", e),
                                         }
                                     });
                                 }
@@ -629,7 +629,7 @@ impl Game {
         }
         
         // if timer.elapsed().as_secs_f32() * 1000.0 > 1.0 {
-        //     println!("update took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
+        //     debug!("update took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
         // }
     }
 
@@ -736,7 +736,7 @@ impl Game {
         //     let mut drawstate_changed = false;
         //     let c = if let Some(ic) = i.get_context() {
         //         drawstate_changed = true;
-        //         // println!("ic: {:?}", ic);
+        //         // debug!("ic: {:?}", ic);
         //         self.graphics.draw_end();
         //         self.graphics.draw_begin(args.viewport());
         //         self.graphics.use_draw_state(&ic.draw_state);
@@ -771,7 +771,7 @@ impl Game {
 
 
         // if timer.elapsed().as_secs_f32() * 1000.0 > 1.0 {
-        //     println!("render took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
+        //     debug!("render took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
         // }
     }
 
@@ -852,7 +852,7 @@ impl Game {
         // // match opengl_graphics::Texture::from_path(beatmap.image_filename.clone(), &settings) {
         // //     Ok(tex) => self.background_image = Some(Image::new(Vector2::zero(), f64::MAX, tex, window_size())),
         // //     Err(e) => {
-        // //         println!("Error loading beatmap texture: {}", e);
+        // //         error!("Error loading beatmap texture: {}", e);
         // //         self.background_image = None; //TODO!: use a known good background image
         // //     },
         // // }

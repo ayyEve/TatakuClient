@@ -138,21 +138,21 @@ async fn check_bass() {
 
         // check if already exists
         if library_path.exists() {return}
-        println!("{:?} not found, attempting to find or download", library_path);
+        info!("{:?} not found, attempting to find or download", library_path);
         
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
         if exists(format!("/usr/lib/{}", filename)) {
             match std::fs::copy(filename, &library_path) {
-                Ok(_) => return println!("Found in /usr/lib"),
-                Err(e) => println!("Found in /usr/lib, but couldnt copy: {}", e)
+                Ok(_) => return info!("Found in /usr/lib"),
+                Err(e) => warn!("Found in /usr/lib, but couldnt copy: {}", e)
             }
         }
 
         // download it from the web
         check_file(&library_path, &download_url(format!("/lib/bass/{}", filename))).await;
     } else {
-        println!("error getting current executable dir, assuming things are good...")
+        warn!("error getting current executable dir, assuming things are good...")
     }
 }
 

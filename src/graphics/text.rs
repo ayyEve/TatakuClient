@@ -204,7 +204,7 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
         }
         let character = character.unwrap();
 
-        // println!("invalid: {}", character.is_invalid);
+        // trace!("invalid: {}", character.is_invalid);
 
         text_size.x += character.advance_width();
         text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();

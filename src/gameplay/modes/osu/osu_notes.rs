@@ -218,7 +218,7 @@ impl HitObject for StandardNote {
         // if after time, fade out
         if self.map_time >= self.time {
             alpha = ((self.time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
-            // println!("fading out: {}", alpha)
+            // debug!("fading out: {}", alpha)
         }
 
         alpha *= self.alpha_mult;
@@ -815,7 +815,7 @@ impl HitObject for StandardSlider {
             self.moving_forward = current_moving_forwards;
             self.slides_complete += 1;
             #[cfg(feature="debug_sliders")]
-            println!("slide complete: {}", self.slides_complete);
+            debug!("slide complete: {}", self.slides_complete);
 
             // increment index
             self.sound_index += 1;
@@ -850,7 +850,7 @@ impl HitObject for StandardSlider {
         for dot in dots.iter_mut() {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding) {
                 if was_hit {
-                    println!("[Dots] dot hit");
+                    trace!("[Dots] dot hit");
                     self.add_ripple(beatmap_time, dot.pos, true);
                     self.sound_queue.push((
                         beatmap_time,
@@ -858,7 +858,7 @@ impl HitObject for StandardSlider {
                         hitsamples.clone()
                     ));
                 } else {
-                    println!("[Dots] dot missed");
+                    trace!("[Dots] dot missed");
                     self.dots_missed += 1
                 }
             }
@@ -1112,7 +1112,7 @@ impl StandardHitObject for StandardSlider {
         samples
     }
     fn get_hitsound(&self) -> u8 {
-        // println!("{}: getting hitsound at index {}/{}", self.time, self.sound_index, self.def.edge_sounds.len() - 1);
+        // trace!("{}: getting hitsound at index {}/{}", self.time, self.sound_index, self.def.edge_sounds.len() - 1);
         self.def.edge_sounds[self.sound_index.min(self.def.edge_sounds.len() - 1)]
     }
     fn causes_miss(&self) -> bool {false}
@@ -1133,9 +1133,9 @@ impl StandardHitObject for StandardSlider {
             // let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
 
             // #[cfg(feature="debug_sliders")] {
-            //     println!("checking end window (held to end)");
-            //     if distance > self.radius * 2.0 {println!("slider end miss (out of radius)")}
-            //     if !self.holding {println!("slider end miss (not held)")}
+            //     trace!("checking end window (held to end)");
+            //     if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
+            //     if !self.holding {trace!("slider end miss (not held)")}
             // }
             
 
@@ -1160,8 +1160,8 @@ impl StandardHitObject for StandardSlider {
             let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
 
             #[cfg(feature="debug_sliders")] {
-                println!("checking start window");
-                if distance > self.radius * 2.0 {println!("slider end miss (out of radius)")}
+                trace!("checking start window");
+                if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
             }
 
             // if already hit, or this is a release, return None
@@ -1197,7 +1197,7 @@ impl StandardHitObject for StandardSlider {
         if time > self.curve.end_time - h_miss && time < self.curve.end_time + h_miss {
             // within ending time frame
             #[cfg(feature="debug_sliders")]
-            println!("checking end window");
+            trace!("checking end window");
 
             // make sure the cursor is in the radius
             let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
@@ -1418,14 +1418,14 @@ impl HitObject for StandardSpinner {
             }
             if diff > PI {diff -= 2.0 * PI}
             else if diff < -PI {diff += 2.0 * PI}
-            // println!("diff: {:.2}", diff / PI);
+            // debug!("diff: {:.2}", diff / PI);
             
             // self.rotation_velocity = f64::lerp(-diff, self.rotation_velocity, 0.005 * (beatmap_time - self.last_update) as f64);
             self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
             self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
-            // println!("vel: {}", self.rotation_velocity);
+            // debug!("vel: {}", self.rotation_velocity);
 
-            // println!("rotation: {}, diff: {}", self.rotation, diff);
+            // debug!("rotation: {}, diff: {}", self.rotation, diff);
         }
 
         self.last_rotation_val = mouse_angle;
@@ -1520,7 +1520,7 @@ impl StandardHitObject for StandardSpinner {
     } 
 
     fn pos_at(&self, time: f32) -> Vector2 {
-        // println!("time: {}, {}, {}", time, self.time, self.end_time);
+        // debug!("time: {}, {}, {}", time, self.time, self.end_time);
 
         if time < self.time || time >= self.end_time {
             
@@ -1552,7 +1552,7 @@ fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, dep
         tex.current_scale = tex.initial_scale;
 
         // let time = instant.elapsed();
-        // println!("took:{}", time.as_secs_f32() * 1000.0);
+        // debug!("took:{}", time.as_secs_f32() * 1000.0);
 
         Box::new(tex)
     } else {

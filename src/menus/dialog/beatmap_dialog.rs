@@ -66,7 +66,7 @@ impl Dialog<Game> for BeatmapDialog {
     }
     fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         if self.delete_map.on_click(*pos, *button, *mods) {
-            println!("delete map {}", self.target_map);
+            trace!("delete map {}", self.target_map);
 
             BEATMAP_MANAGER.write().delete_beatmap(self.target_map.clone(), game);
             self.should_close = true;

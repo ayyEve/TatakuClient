@@ -446,7 +446,7 @@ impl GameMode for UTypingGame {
                 if time >= self.end_time || time.is_nan() {break}
             }
 
-            println!("created {} timing bars", self.timing_bars.len());
+            trace!("created {} timing bars", self.timing_bars.len());
         }
         
         // reset hitcache times
@@ -591,7 +591,7 @@ impl TimingBar {
 //         let catching_up = time - self.last_update > 20.0;
 //         self.last_update = time;
 
-//         if catching_up {println!("catching up")}
+//         if catching_up {trace!("catching up")}
 
 //         for i in 0..notes.len() {
 //             let note = &mut notes[i];

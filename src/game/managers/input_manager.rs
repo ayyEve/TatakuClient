@@ -113,7 +113,7 @@ impl InputManager {
 
             // window.joystick_deadzone = 0.01;
             let name = window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-            println!("New controller: {}", name);
+            debug!("New controller: {}", name);
             self.controller_names.insert(id, Arc::new(name));
         }
 
@@ -155,13 +155,13 @@ impl InputManager {
                 }
 
                 (Button::Controller(cb), ButtonState::Press) => {
-                    // println!("press: c: {}, b: {}", cb.id, cb.button);
+                    // debug!("press: c: {}, b: {}", cb.id, cb.button);
                     self.verify_controller_index_exists(cb.id, window);
                     self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
                     self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
                 (Button::Controller(cb), ButtonState::Release) => {
-                    // println!("release: c: {}, b: {}", cb.id, cb.button);
+                    // debug!("release: c: {}, b: {}", cb.id, cb.button);
                     self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
                     self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
                 }
@@ -170,7 +170,7 @@ impl InputManager {
         }
 
         if let Some(axis) = e.controller_axis_args() {
-            // println!("got controller axis: {:?}", axis);
+            // debug!("got controller axis: {:?}", axis);
             let id = axis.axis;
             let value = axis.position;
             let controller_id = axis.id;
@@ -207,7 +207,7 @@ impl InputManager {
         e.mouse_scroll(|d| {self.scroll_delta += d[1]});
         if let Some(e) = e.text_args() {self.text_cache += &e}
         if let Some(has_focus) = e.focus_args() {self.window_change_focus = Some(has_focus)}
-        // e.text(|text| println!("Typed '{}'", text));
+        // e.text(|text| debug!("Typed '{}'", text));
     }
 
     /// is the key currently down (not up)

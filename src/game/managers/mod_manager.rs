@@ -24,9 +24,6 @@ impl ModManager {
     }
     
     pub fn get<'a>() -> MutexGuard<'a, Self> {
-        if MOD_MANAGER.is_locked() {
-            println!("MOD MANAGER LOCKED");
-        }
         MOD_MANAGER.lock()
     }
 }

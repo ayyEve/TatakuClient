@@ -14,7 +14,7 @@ pub fn check_folder(dir:&str) {
 pub async fn check_file<P:AsRef<Path>>(path:P, download_url:&str) {
     let path = path.as_ref();
     if !path.exists() {
-        println!("Check failed for '{:?}', downloading from '{}'", path, download_url);
+        info!("Check failed for '{:?}', downloading from '{}'", path, download_url);
         
         let bytes = reqwest::get(download_url)
             .await
@@ -87,7 +87,7 @@ pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
         }
         Err(e) => {
             NotificationManager::add_error_notification(&format!("Error loading wallpaper: {}", path.as_ref()), e);
-            // println!("Error loading image {}: {}", path.as_ref(), e);
+            // error!("Error loading image {}: {}", path.as_ref(), e);
             None
         }
     }

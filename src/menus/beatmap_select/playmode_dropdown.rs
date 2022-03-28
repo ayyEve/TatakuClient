@@ -16,7 +16,6 @@ impl Dropdownable for PlayModeDropdown {
     }
 
     fn from_string(s:String) -> Self {
-        println!("str: {}", s);
         Self::Mode(s)
     }
 }

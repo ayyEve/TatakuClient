@@ -44,8 +44,8 @@ impl Sound {
                 let track = reader.default_track().unwrap();
                 let track_id = track.id;
 
-                // println!("Sample Rate Track: {:?}", track.codec_params.sample_format);
-                // println!("Codec Type: {}", track.codec_params.codec);
+                // debug!("Sample Rate Track: {:?}", track.codec_params.sample_format);
+                // debug!("Codec Type: {}", track.codec_params.codec);
 
                 let mut decoder = symphonia::default::get_codecs().make(&track.codec_params, &Default::default()).expect("Failed to get codecs and produce decoder.");
 
@@ -58,7 +58,7 @@ impl Sound {
 
                     match decoder.decode(&packet) {
                         Ok(AudioBufferRef::F32(f)) => {
-                            if sample_rate == 0 { sample_rate = f.spec().rate; println!("sample rate f32: {}", sample_rate)}
+                            if sample_rate == 0 { sample_rate = f.spec().rate; debug!("sample rate f32: {}", sample_rate)}
                             if channels == 0 { 
                                 channels = f.spec().channels.count();
 
@@ -74,7 +74,7 @@ impl Sound {
                         }
 
                         Ok(AudioBufferRef::S32(f)) => {
-                            if sample_rate == 0 { sample_rate = f.spec().rate; println!("sample rate s32: {}", sample_rate)}
+                            if sample_rate == 0 { sample_rate = f.spec().rate; debug!("sample rate s32: {}", sample_rate)}
                             if channels == 0 {
                                 channels = f.spec().channels.count();
 
@@ -90,7 +90,7 @@ impl Sound {
                         }
 
                         Err(e) => {
-                            println!("Error when decoding sound: {:?}", e);
+                            error!("Error when decoding sound: {:?}", e);
                         }
                     }
                 }

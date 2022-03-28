@@ -670,12 +670,12 @@ impl GameMode for TaikoGame {
             }
 
         } else {
-            println!("[Taiko::Controller] Controller with no setup");
+            trace!("[Taiko::Controller] Controller with no setup");
 
             // TODO: if this is slow, we should store controller configs separately
             // but i dont think this will be an issue, as its unlikely to happen in the first place,
             // and if there is lag, the user is likely to retry the man anyways
-            println!("[Taiko::Controller] Setting up new controller");
+            trace!("[Taiko::Controller] Setting up new controller");
             let mut new_settings = self.taiko_settings.as_ref().clone();
             new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
 
@@ -751,7 +751,7 @@ impl GameMode for TaikoGame {
                 if time >= self.end_time || time.is_nan() {break}
             }
 
-            println!("created {} timing bars", self.timing_bars.len());
+            trace!("created {} timing bars", self.timing_bars.len());
         }
         
         // reset hitcache times
@@ -926,7 +926,7 @@ impl TaikoAutoHelper {
         let catching_up = time - self.last_update > 20.0;
         self.last_update = time;
 
-        if catching_up {println!("catching up")}
+        if catching_up {trace!("catching up")}
 
         for i in 0..notes.len() {
             let note = &mut notes[i];

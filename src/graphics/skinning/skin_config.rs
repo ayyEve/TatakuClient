@@ -58,7 +58,7 @@ impl SkinSettings {
 
         // return defaults if skin does not exist
         if !exists(&path) {
-            println!("[Skin] skin.ini missing, using defaults");
+            trace!("[Skin] skin.ini missing, using defaults");
             return Ok(s)
         }
 
@@ -86,7 +86,7 @@ impl SkinSettings {
                         s.mania_settings.push(ms);
                     },
 
-                    _ => println!("unknown skin section '{}'", line)
+                    _ => warn!("unknown skin section '{}'", line)
                 }
                 continue;
             }

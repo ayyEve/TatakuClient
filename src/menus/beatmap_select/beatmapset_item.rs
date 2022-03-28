@@ -54,7 +54,7 @@ impl BeatmapsetItem {
     }
 
     pub fn recalc(&mut self) {
-        // println!("doing recalc");
+        // trace!("doing recalc");
 
         // get the diff values from the beatmap manager
         let mods = ModManager::get().clone();

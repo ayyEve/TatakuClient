@@ -37,7 +37,7 @@ impl VolumeControl {
             0 => settings.master_vol = (settings.master_vol + delta).clamp(0.0, 1.0),
             1 => settings.effect_vol = (settings.effect_vol + delta).clamp(0.0, 1.0),
             2 => settings.music_vol = (settings.music_vol + delta).clamp(0.0, 1.0),
-            _ => println!("lock.vol_selected_index out of bounds somehow")
+            _ => error!("lock.vol_selected_index out of bounds somehow")
         }
 
         
@@ -161,7 +161,7 @@ impl VolumeControl {
                 0 => master_text.current_color = Color::RED,
                 1 => effect_text.current_color = Color::RED,
                 2 => music_text.current_color = Color::RED,
-                _ => println!("self.vol_selected_index out of bounds somehow")
+                _ => error!("self.vol_selected_index out of bounds somehow")
             }
 
             let a:[Box<dyn Renderable>; 10] = [

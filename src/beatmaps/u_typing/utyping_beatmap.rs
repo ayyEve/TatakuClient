@@ -167,7 +167,7 @@ impl UTypingBeatmap {
         // get the map's beat length
         let list = map.events.iter().filter_map(|e|if e.event_type == UTypingEventType::BeatlineBar {Some(e)} else {None}).collect::<Vec<&UTypingEvent>>();
         if list.len() < 2 {
-            println!("[uTyping] Map does not have enough bar lines?");
+            warn!("[uTyping] Map does not have enough bar lines?");
             return Err(TatakuError::Beatmap(BeatmapError::InvalidFile));
         }
         map.beat_length = list[1].time - list[0].time;

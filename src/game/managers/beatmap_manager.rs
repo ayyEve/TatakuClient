@@ -135,7 +135,7 @@ impl BeatmapManager {
                 match get_file_hash(file) {
                     Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) {continue},
                     Err(e) => {
-                        println!("error getting hash for file {}: {}", file, e);
+                        error!("error getting hash for file {}: {}", file, e);
                         continue;
                     }
                 }
@@ -152,7 +152,7 @@ impl BeatmapManager {
                         }
                     }
                     Err(e) => {
-                        println!("error loading beatmap: {}", e);
+                        error!("error loading beatmap '{}': {}", file, e);
                     }
                 }
             }
@@ -161,7 +161,7 @@ impl BeatmapManager {
 
     pub fn add_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // check if we already have this map
-        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {return println!("map already added")}
+        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {return debug!("map already added")}
 
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash.clone();
@@ -211,7 +211,7 @@ impl BeatmapManager {
         }
         #[cfg(feature="bass_audio")]
         if let Err(e) = Audio::play_song(audio_filename, false, time) {
-            println!("Error playing song: {:?}", e);
+            error!("Error playing song: {:?}", e);
             NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED);
             // Audio::stop_song();
         }
@@ -321,7 +321,7 @@ impl BeatmapManager {
             let existing = Database::get_all_diffs(&playmode, &mods);
 
             // perform calc
-            // println!("[Diff Calc] starting");
+            // trace!("[Diff Calc] starting");
             maps.iter_mut().for_each(|i| {
                 let hash = &i.beatmap_hash;
                 i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
@@ -343,7 +343,7 @@ impl BeatmapManager {
                 lock.on_diffcalc_complete.0.ignite(());
             }
 
-            // println!("[Diff Calc] complete");
+            // trace!("[Diff Calc] complete");
         });
     }
 }
@@ -357,27 +357,27 @@ pub fn extract_all() {
 
         let files:Vec<std::io::Result<DirEntry>> = files.collect();
         // let len = files.len();
-        println!("[extract] files: {:?}", files);
+        trace!("[extract] files: {:?}", files);
 
         for file in files {
-            println!("[extract] looping file {:?}", file);
+            trace!("[extract] looping file {:?}", file);
             // let completed = completed.clone();
 
             match file {
                 Ok(filename) => {
-                    println!("[extract] file ok");
+                    trace!("[extract] file ok");
                     // tokio::spawn(async move {
-                        println!("[extract] reading file {:?}", filename);
+                        trace!("[extract] reading file {:?}", filename);
 
                         let mut error_counter = 0;
                         // unzip file into ./Songs
                         while let Err(e) = std::fs::File::open(filename.path().to_str().unwrap()) {
-                            println!("[extract] error opening osz file: {}", e);
+                            error!("[extract] error opening osz file: {}", e);
                             error_counter += 1;
 
                             // if we've waited 5 seconds and its still broken
                             if error_counter > 5 {
-                                println!("[extract] 5 errors opening osz file: {}", e);
+                                error!("[extract] 5 errors opening osz file: {}", e);
                                 return;
                             }
 
@@ -388,7 +388,7 @@ pub fn extract_all() {
                         let mut archive = match zip::ZipArchive::new(file) {
                             Ok(a) => a,
                             Err(e) => {
-                                println!("[extract] Error extracting zip archive: {}", e);
+                                error!("[extract] Error extracting zip archive: {}", e);
                                 NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED);
                                 continue;
                             }
@@ -407,10 +407,10 @@ pub fn extract_all() {
                             outpath = Path::new(z);
 
                             if (&*file.name()).ends_with('/') {
-                                println!("[extract] File {} extracted to \"{}\"", i, outpath.display());
+                                debug!("[extract] File {} extracted to \"{}\"", i, outpath.display());
                                 std::fs::create_dir_all(&outpath).unwrap();
                             } else {
-                                println!("[extract] File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
+                                debug!("[extract] File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
                                 if let Some(p) = outpath.parent() {
                                     if !p.exists() {std::fs::create_dir_all(&p).unwrap()}
                                 }
@@ -429,22 +429,22 @@ pub fn extract_all() {
                     
                         match std::fs::remove_file(filename.path().to_str().unwrap()) {
                             Ok(_) => {},
-                            Err(e) => println!("[extract] Error deleting file: {}", e),
+                            Err(e) => error!("[extract] Error deleting file: {}", e),
                         }
                         
-                        println!("[extract] Done");
+                        trace!("[extract] Done");
                         // *completed.lock() += 1;
                     // });
                 }
                 Err(e) => {
-                    println!("error with file: {}", e);
+                    error!("error with file: {}", e);
                 }
             }
         }
     
         
         // while *completed.lock() < len {
-        //     println!("waiting for downloads {} of {}", *completed.lock(), len);
+        //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
         //     std::thread::sleep(Duration::from_millis(500));
         // }
     }

@@ -80,7 +80,7 @@ impl ScoreMenu {
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
                 }
             },
-            Err(e) => println!("error loading replay: {}", e),
+            Err(e) => error!("error loading replay: {}", e),
         }
     }
 }

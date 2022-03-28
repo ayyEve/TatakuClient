@@ -166,7 +166,7 @@ impl ScrollableItemGettersSetters for MainMenuButton {
     fn set_selected(&mut self, mut selected:bool) {
         if !self.visible {selected = false}
         self.selected = selected;
-        println!("setting selected: {}", selected);
+        trace!("setting selected: {}", selected);
 
         if selected {
             let transform2 = Transformation::new(

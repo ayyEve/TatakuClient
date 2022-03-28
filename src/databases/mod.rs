@@ -38,12 +38,12 @@ fn add_new_entries(db: &Connection) {
     // score entries
     for (col, t) in SCORE_ENTRIES {
         match db.execute(&format!("ALTER TABLE scores ADD {} {};", col, t), []) {
-            Ok(_) => println!("Column added to scores db: {}", col),
+            Ok(_) => debug!("Column added to scores db: {}", col),
             Err(e) => {
                 let e = format!("{}", e);
                 // only log error if its not a duplicate column name
                 if !e.contains("duplicate column name") {
-                    println!("Error adding column to scores db: {}", e)
+                    error!("Error adding column to scores db: {}", e)
                 }
             },
         }
@@ -52,8 +52,8 @@ fn add_new_entries(db: &Connection) {
     // beatmap entries
     for (col, t) in BEATMAP_ENTRIES {
         match db.execute(&format!("ALTER TABLE beatmaps ADD {} {};", col, t), []) {
-            Ok(_) => println!("Column added to beatmaps db: {}", col),
-            Err(e) => println!("Error adding column to beatmaps db: {}", e),
+            Ok(_) => debug!("Column added to beatmaps db: {}", col),
+            Err(e) => error!("Error adding column to beatmaps db: {}", e),
         }
     }
 }

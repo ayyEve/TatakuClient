@@ -158,7 +158,6 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
         diff.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         for x in diff {
-            //println!("hi: {} * {}%", x, weight);
             difficulty += x * weight;
             weight *= PERCENT;
         }

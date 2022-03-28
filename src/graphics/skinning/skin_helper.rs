@@ -54,8 +54,8 @@ impl SkinHelper {
     }
 
     pub fn get_texture<N: AsRef<str>>(&mut self, name:N, allow_default:bool) -> Option<Image> {
-        // println!("thread: {:?}", std::thread::current().id());
-        // println!("[Skin] getting tex: '{}'", name.as_ref());
+        // trace!("thread: {:?}", std::thread::current().id());
+        // trace!("[Skin] getting tex: '{}'", name.as_ref());
         self.get_texture_grayscale(name, allow_default, false)
     }
 
@@ -71,7 +71,7 @@ impl SkinHelper {
             let mut maybe_img = load_image(get_tex_path(&name, &get_settings!().current_skin), grayscale);
 
             if maybe_img.is_none() && allow_default {
-                println!("[Skin] Skin missing tex {}", name);
+                info!("[Skin] Skin missing tex {}", name);
                 maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale);
             }
 

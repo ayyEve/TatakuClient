@@ -85,7 +85,7 @@ impl OsuBeatmap {
                 BeatmapSection::Version => {
                     match line.split("v").last().unwrap().trim().parse::<u8>() {
                         Ok(v) => beatmap.beatmap_version = v,
-                        Err(e) => println!("error parsing beatmap version: {}", e),
+                        Err(e) => warn!("error parsing beatmap version: {}", e),
                     }
                 }
                 BeatmapSection::General => {
@@ -153,7 +153,7 @@ impl OsuBeatmap {
                     let hitsound_raw = split.next().unwrap();
                     let hitsound = hitsound_raw.parse::<i8>();
                     if let Err(e) = &hitsound {
-                        println!("error parsing hitsound: {} (line: {})", e, line)
+                        warn!("error parsing hitsound: {} (line: {})", e, line)
                     }
                     
                     let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
@@ -450,7 +450,7 @@ pub struct OsuTimingPoint {
 impl OsuTimingPoint {
     pub fn from_str(str:&str) -> Self {
         // time,beatLength,meter,sampleSet,sampleIndex,volume,uninherited,effects
-        // println!("{}", str.clone());
+        // debug!("{}", str.clone());
         let mut split = str.split(',');
         let time = split.next().unwrap_or("0").parse::<f32>().unwrap_or(0.0);
         let beat_length = split.next().unwrap_or("0").parse::<f32>().unwrap_or(0.0);

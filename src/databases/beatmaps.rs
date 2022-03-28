@@ -8,7 +8,7 @@ impl Database {
         
         s.query_map([], row_into_metadata).unwrap()
             .filter_map(|m|{
-                if let Err(e) = &m {println!("DB Err: {}", e)}
+                if let Err(e) = &m {error!("DB Err: {}", e)}
                 m.ok()
             })
             .collect::<Vec<BeatmapMeta>>()
@@ -19,7 +19,7 @@ impl Database {
         let statement = format!("DELETE FROM beatmaps");
         let res = db.prepare(&statement).expect(&statement).execute([]);
         if let Err(e) = res {
-            println!("error deleting beatmap meta from db: {}", e);
+            error!("error deleting beatmap meta from db: {}", e);
         }
     }
 
@@ -82,7 +82,7 @@ impl Database {
         let db = Self::get();
         let res = db.prepare(&query).expect(&query).execute([]);
         if let Err(e) = res {
-            println!("error inserting metadata: {}", e);
+            error!("error inserting metadata: {}", e);
         }
     }
 }

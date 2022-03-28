@@ -98,13 +98,13 @@ impl DirectMenu {
 
     fn do_preview_audio(&mut self, item: DirectDownloadItem) {
         if let Some(url) = item.audio_preview() {
-            println!("[Direct] preview audio");
+            trace!("[Direct] preview audio");
             let req = reqwest::blocking::get(url.clone());
             if let Ok(thing) = req {
                 let data = match thing.bytes() {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        println!("[Direct] Error converting mp3 preview to bytes: {}", e);
+                        warn!("[Direct] Error converting mp3 preview to bytes: {}", e);
                         NotificationManager::add_text_notification("[Direct] Error loading preview audio", 1000.0, Color::RED);
                         return;
                     }
@@ -136,7 +136,7 @@ impl DirectMenu {
                 Audio::play_song_raw(url, data2);
                 
             } else if let Err(oof) = req {
-                println!("[Direct] error with preview: {}", oof);
+                warn!("[Direct] error with preview: {}", oof);
             }
         }
     }
@@ -353,7 +353,7 @@ impl ControllerInputMenu<Game> for DirectMenu {
 
 /// perform a download on another thread
 pub(crate) fn perform_download(url:String, path:String) {
-    println!("[Direct] downloading '{}' to '{}'", url, path);
+    debug!("[Direct] downloading '{}' to '{}'", url, path);
     std::thread::spawn(move || {
         let file_bytes = reqwest::blocking::get(url)
             .expect("error with request")

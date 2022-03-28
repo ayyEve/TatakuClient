@@ -47,7 +47,7 @@ impl AudioQueue {
 impl AudioQueue {
     pub(super) fn set_delay(&mut self, delay: f32) {
         if self.delay != delay {
-            //println!("Delay changed {}ms -> {}ms", self.delay, delay);
+            //debug!("Delay changed {}ms -> {}ms", self.delay, delay);
 
             self.delay = delay;
             self.delay_changed.store(true, Ordering::SeqCst);

@@ -39,7 +39,7 @@ impl SkinSelect {
             if let Some(SkinDropdownable::Skin(s)) = *s {
                 if s == self.current_skin {return}
 
-                println!("skin changing to {}", s);
+                trace!("skin changing to {}", s);
                 self.current_skin = s.clone();
                 SKIN_MANAGER.write().change_skin(s);
             }

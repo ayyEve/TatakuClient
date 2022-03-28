@@ -27,13 +27,13 @@ impl Database {
         let db = Self::get();
         let mut s = db.prepare(&delete_query).unwrap();
         if let Err(e) = s.execute([]) {
-            println!("[Database] Error deleting from difficulties table: {e}")
+            error!("[Database] Error deleting from difficulties table: {e}")
         }
 
         // insert new vals
         let mut s = db.prepare(&insert_query).unwrap();
         if let Err(e) = s.execute([]) {
-            println!("[Database] Error inserting into difficulties table: {e}")
+            error!("[Database] Error inserting into difficulties table: {e}")
         }
 
     }
@@ -62,7 +62,7 @@ impl Database {
 
         // error is entry already exists
         if let Err(_) = s.execute([]) {
-            // println!("updating diff: {diff}");
+            // trance!("updating diff: {diff}");
             let sql = format!(
                 "UPDATE difficulties SET diff={} WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'", 
                 diff,
@@ -73,7 +73,7 @@ impl Database {
             let mut s = db.prepare(&sql).unwrap();
 
             if let Err(e) = s.execute([]) {
-                println!("[Database] Error inserting/updateing difficulties table: {e}")
+                error!("[Database] Error inserting/updateing difficulties table: {e}")
             }
         }
     }

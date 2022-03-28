@@ -41,7 +41,7 @@ pub fn fft(buf: &mut [f32], size: FFT) -> Vec<(f32, f32)> {
     let mut res = vec![];
 
     if len > buf.len() {
-        println!("len > buf.len");
+        trace!("len > buf.len");
         return res;
     }
 
@@ -75,7 +75,7 @@ pub fn fft(buf: &mut [f32], size: FFT) -> Vec<(f32, f32)> {
         .iter()
         .map(|c| c.norm())
         .collect();
-//    println!("fft: {:?}", &complex_buf[0..len]);
+//    debug!("fft: {:?}", &complex_buf[0..len]);
 
 
     for (i, amp) in amplitudes.iter().enumerate() {
@@ -84,10 +84,10 @@ pub fn fft(buf: &mut [f32], size: FFT) -> Vec<(f32, f32)> {
             // no freqency images above nyquist...
             continue;
         }
-//        println!("{:6.0} {}", freq, *amp);
+//        debug!("{:6.0} {}", freq, *amp);
         res.push((freq.round(), *amp));
     }
 
-    // println!("fft -> len: {}, complex: {}, amplitudes: {}, res: {}", len, complex_buf.len(), amplitudes.len(), res.len());
+    // debug!("fft -> len: {}, complex: {}, amplitudes: {}, res: {}", len, complex_buf.len(), amplitudes.len(), res.len());
     res
 }

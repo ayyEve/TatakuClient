@@ -148,7 +148,6 @@ impl GameMode for StandardGame {
     fn end_time(&self) -> f32 {self.end_time}
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
-        // println!("[gjfdkljl;kfdsj;lkgfdsj;lkgdfsj;k] making new StandardGame");
         let metadata = map.get_beatmap_meta();
         let ar = metadata.ar;
         let settings = get_settings!().standard_settings.clone();
@@ -513,7 +512,7 @@ impl GameMode for StandardGame {
                 // check if we missed the current note
                 match note.note_type() {
                     NoteType::Note if end_time < time => {
-                        println!("note missed: {}-{}", time, end_time);
+                        trace!("note missed: {}-{}", time, end_time);
                         manager.combo_break();
                         manager.score.hit_miss(time, end_time);
                         add_judgement_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
@@ -997,7 +996,7 @@ fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scalin
 
 // impl Drop for StandardGame {
 //     fn drop(&mut self) {
-//         println!("dropping std")
+//         trace!("dropping std")
 //     }
 // }
 struct StandardAutoHelper {

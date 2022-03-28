@@ -124,7 +124,7 @@ impl GameMode for CatchGame {
                     // // if unified_sound_addition {
                     // //     sound_types.push((HitType::Don, false));
                     // // }
-                    // // println!("{:?}", points);
+                    // // debug!("{:?}", points);
 
 
                     let mut counter = 0;
@@ -585,7 +585,7 @@ impl CatchAutoHelper {
                 //     frames.push(ReplayFrame::Release(KeyPress::Right));
                 // }
                 catcher.pos.x = pos - catcher.width / 2.0;
-                println!("new pos: {}, index: {}", catcher.pos.x, i);
+                debug!("new pos: {}, index: {}", catcher.pos.x, i);
                 return;
                 
                 // frames.push(ReplayFrame::MousePos(

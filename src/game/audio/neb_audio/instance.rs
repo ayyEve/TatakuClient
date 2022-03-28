@@ -44,7 +44,7 @@ impl AudioInstance {
         let next_frame = temp_iter.take(sound.channels).cloned().collect();
         let handle = Arc::new(AudioHandle::new());
 
-        // println!("took {:2}ms to interleave", now.elapsed().as_secs_f32() * 1000.0);
+        // debug!("took {:2}ms to interleave", now.elapsed().as_secs_f32() * 1000.0);
 
         Self {
             sound,

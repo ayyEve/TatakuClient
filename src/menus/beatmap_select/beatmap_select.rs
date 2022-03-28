@@ -228,7 +228,7 @@ impl BeatmapSelectMenu {
                 lock.set_current_beatmap(game, &clicked, true, true);
             }
             None => {
-                println!("no map?");
+                trace!("no map?");
                 // map was deleted?
                 return
             }
@@ -443,14 +443,14 @@ impl Menu<Game> for BeatmapSelectMenu {
                 (true, false, n) => {
                     // give it up to 1s before assuming its already loaded
                     if Audio::get_song().is_none() || n > 1000 {
-                        // println!("song loading");
+                        // trace!("song loading");
                         self.map_changing = (true, true, 0);
                     }
                 }
                 // we know its changing, and the previous song has ended
                 (true, true, _) => {
                     if Audio::get_song().is_some() {
-                        // println!("song loaded");
+                        // trace!("song loaded");
                         self.map_changing = (false, false, 0);
                     }
                 }
@@ -458,7 +458,7 @@ impl Menu<Game> for BeatmapSelectMenu {
                 // the song hasnt ended and we arent changing
                 (false, false, _) | (false, true, _) => {
                     if Audio::get_song().is_none() {
-                        // println!("song done");
+                        // trace!("song done");
                         self.map_changing = (true, false, 0);
                         tokio::spawn(async move {
                             let lock = BEATMAP_MANAGER.lock();
@@ -490,14 +490,14 @@ impl Menu<Game> for BeatmapSelectMenu {
         //     (true, false, n) => {
         //         // give it up to 1s before assuming its already loaded
         //         if song_done || n > 1000 {
-        //             // println!("song loading");
+        //             // trace!("song loading");
         //             self.map_changing = (true, true, 0);
         //         }
         //     }
         //     // we know its changing, and the previous song has ended
         //     (true, true, _) => {
         //         if !song_done {
-        //             // println!("song loaded");
+        //             // trace!("song loaded");
         //             self.map_changing = (false, false, 0);
         //         }
         //     }
@@ -505,7 +505,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         //     // the song hasnt ended and we arent changing
         //     (false, false, _) | (false, true, _) => {
         //         if song_done {
-        //             // println!("song done");
+        //             // trace!("song done");
         //             self.map_changing = (true, false, 0);
         //             tokio::spawn(async move {
         //                 let lock = BEATMAP_MANAGER.lock();

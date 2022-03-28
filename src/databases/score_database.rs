@@ -36,7 +36,7 @@ impl Database {
             // .filter_map(|m|m.ok())
             .filter_map(|m| {
                 if let Err(e) = &m {
-                    println!("score error: {}", e);
+                    error!("score error: {}", e);
                 }
                 m.ok()
             })
@@ -45,7 +45,7 @@ impl Database {
 
 
     pub fn save_score(s:&Score) {
-        println!("saving score");
+        trace!("saving score");
         let db = Self::get();
         let sql = format!(
             "INSERT INTO scores (
@@ -97,7 +97,7 @@ pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
 
-    println!("[Replay] loading replay: {}", fullpath);
+    trace!("[Replay] loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)
 }

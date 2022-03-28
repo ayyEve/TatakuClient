@@ -225,7 +225,7 @@ mod osu {
     
     pub async fn fetch_beatmap_id(api_key: &String, map_hash: &String) -> Option<String> {
         let url = format!("https://osu.ppy.sh/api/get_beatmaps?k={api_key}&h={map_hash}");
-        println!("osu beatmap id lookup");
+        trace!("osu beatmap id lookup");
         let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?.to_vec();
         let maps: Vec<OsuApiBeatmap> = serde_json::from_slice(bytes.as_slice()).ok()?;
         if let Some(map) = maps.first() {

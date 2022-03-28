@@ -6,7 +6,7 @@ pub struct BenchmarkHelper {
 }
 impl BenchmarkHelper {
     pub fn new(name:&str) -> Self{
-        println!("{} benchmarker created", name);
+        info!("{} benchmarker created", name);
         Self {
             timer:Instant::now(),
             name: name.to_owned()
@@ -19,7 +19,7 @@ impl BenchmarkHelper {
     }
 
     pub fn log(&mut self, msg:&str, reset_timer:bool) {
-        println!("[{}]: {} >> {}", self.name, self.get_elapsed(), msg);
+        info!("[{}]: {} >> {}", self.name, self.get_elapsed(), msg);
         if reset_timer {self.timer = Instant::now()}
     }
 }

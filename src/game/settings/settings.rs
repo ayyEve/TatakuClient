@@ -88,14 +88,14 @@ impl Settings {
             Ok(b) => match serde_json::from_str(&b) {
                 Ok(settings) => settings,
                 Err(e) => {
-                    // println!("error reading settings.json, loading defaults");
+                    // warn!("error reading settings.json, loading defaults");
                     NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
                     backup_settings();
                     Settings::default()
                 }
             }
             Err(e) => {
-                // println!("error reading settings.json, loading defaults");
+                // warn!("error reading settings.json, loading defaults");
                 NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
                 backup_settings();
                 Settings::default()
@@ -111,10 +111,10 @@ impl Settings {
         s
     }
     pub fn save(&self) {
-        println!("Saving settings");
+        trace!("Saving settings");
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(SETTINGS_FILE, str) {
-            Ok(_) => println!("settings saved successfully"),
+            Ok(_) => trace!("settings saved successfully"),
             Err(e) => NotificationManager::add_error_notification("Error saving settings", e),
         }
     }

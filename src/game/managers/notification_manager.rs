@@ -37,14 +37,14 @@ impl NotificationManager { // static
     pub fn add_text_notification(text: &str, duration: f32, color: Color) {
         let notif = Notification::new(text.to_owned(), color, duration, NotificationOnClick::None);
 
-        println!("adding text notif");
+        trace!("adding text notif");
         Self::add_notification(notif);
     }
     pub fn add_error_notification<E: Into<TatakuError>>(msg:&str, error:E) {
         let error:TatakuError = error.into();
         let text = format!("{}:\n{}", msg, error);
         
-        // println!("{}", text);
+        // debug!("{}", text);
         Self::add_text_notification(
             &text, 
             5_000.0, 
@@ -62,7 +62,7 @@ impl NotificationManager { // non-static
 
     pub fn update(&mut self) {
         for notif in std::mem::take(&mut self.pending_notifs) {
-            // println!("adding notif");
+            // trace!("adding notif");
             let new = ProcessedNotif::new(notif);
 
             // move all the other notifs up
@@ -103,10 +103,10 @@ impl NotificationManager { // non-static
                 match &n.notification.onclick {
                     NotificationOnClick::None => {}
                     NotificationOnClick::Url(url) => {
-                        println!("open url {}", url);
+                        debug!("open url {}", url);
                     }
                     NotificationOnClick::Menu(menu_name) => {
-                        println!("goto menu {}", menu_name);
+                        debug!("goto menu {}", menu_name);
                     }
                 }
                 n.remove = true;

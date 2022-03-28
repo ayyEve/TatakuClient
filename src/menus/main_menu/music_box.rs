@@ -187,7 +187,7 @@ impl ScrollableItem for MusicBox {
                     Some(&FontAwesome::Backward_Step) => self.skip_behind(),
                     Some(&FontAwesome::Forward_Step) => self.skip_ahead(),
 
-                    _ => println!("unknown action"),
+                    _ => warn!("unknown action"),
                 }
             }
         }

@@ -70,7 +70,7 @@ impl Transformable for Circle {
         match transform.trans_type {
             TransformType::Position { .. } => {
                 let val:Vector2 = val.into();
-                // println!("val: {:?}", val);
+                // trace!("val: {:?}", val);
                 self.current_pos = self.initial_pos + val;
             },
             TransformType::Scale { .. } => {

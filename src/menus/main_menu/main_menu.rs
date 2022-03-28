@@ -57,7 +57,7 @@ impl MainMenu {
     }
 
     fn setup_manager(&mut self, called_by: &str) {
-        println!("setup manager called by {}", called_by);
+        trace!("setup manager called by {}", called_by);
 
         let settings = &get_settings!().background_game_settings;
         if !settings.enabled {return}
@@ -65,7 +65,7 @@ impl MainMenu {
         let lock = BEATMAP_MANAGER.read();
         let map = match &lock.current_beatmap {
             Some(map) => map,
-            None => return println!("manager no map")
+            None => return trace!("manager no map")
         };
 
         match manager_from_playmode(settings.mode.clone(), &map) {
@@ -76,7 +76,7 @@ impl MainMenu {
                 });
                 manager.menu_background = true;
                 manager.start();
-                println!("manager started");
+                trace!("manager started");
 
                 self.background_game = Some(manager);
                 self.visualization.song_changed(&mut self.background_game);
@@ -86,7 +86,7 @@ impl MainMenu {
                 NotificationManager::add_error_notification("Error loading beatmap", e);
             }
         }
-        println!("manager setup");
+        trace!("manager setup");
     }
 
     fn show_menu(&mut self) {
@@ -119,7 +119,7 @@ impl MainMenu {
         if manager.next_beatmap(game) {
             true
         } else {
-            println!("no next");
+            trace!("no next");
             false
         }
     }
@@ -129,7 +129,7 @@ impl MainMenu {
         if manager.previous_beatmap(game) {
             true
         } else {
-            println!("no prev");
+            trace!("no prev");
             false
         }
     }
@@ -179,7 +179,7 @@ impl Menu<Game> for MainMenu {
         }
 
         if song_done {
-            println!("song done");
+            trace!("song done");
             let map = BEATMAP_MANAGER.read().random_beatmap();
 
             // it should?

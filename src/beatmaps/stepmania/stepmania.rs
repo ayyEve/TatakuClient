@@ -125,7 +125,7 @@ impl StepmaniaBeatmap {
                         // remove final semicolon
                         chart_info = chart_info.trim_end_matches(";").to_owned();
 
-                        // println!("lines: {}", chart_info);
+                        // debug!("lines: {}", chart_info);
                         let mut chart_split = chart_info.split(":");
 
                         let mut chart = StepmaniaChart::default();

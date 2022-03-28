@@ -18,7 +18,7 @@ impl DirectApi for OsuDirect {
     }
 
     fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
-        println!("[OsuDirect] searching");
+        trace!("[OsuDirect] searching");
         let settings = get_settings!();
 
 
@@ -46,7 +46,7 @@ impl DirectApi for OsuDirect {
 
         let mut lines = body.split('\n');
         let count = lines.next().unwrap_or("0").parse::<i32>().unwrap_or(0);
-        println!("[OsuDirect] got {} items", count);
+        trace!("[OsuDirect] got {} items", count);
 
         // parse items into list, and return list
         let mut items = Vec::new();
@@ -74,7 +74,7 @@ pub struct OsuDirectDownloadable {
 }
 impl OsuDirectDownloadable {
     pub fn from_str(str:&str) -> Self {
-        // println!("reading {}", str);
+        // trace!("reading {}", str);
         let mut split = str.split('|');
 
         // 867737.osz|The Quick Brown Fox|The Big Black|Mismagius|1|9.37143|2021-06-25T02:25:11+00:00|867737|820065|||0||Easy ★1.9@0,Normal ★2.5@0,Advanced ★3.2@0,Hard ★3.6@0,Insane ★4.8@0,Extra ★5.6@0,Extreme ★6.6@0,Remastered Extreme ★6.9@0,Riddle me this riddle me that... ★7.5@0

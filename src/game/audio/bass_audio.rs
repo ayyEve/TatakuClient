@@ -17,7 +17,7 @@ lazy_static::lazy_static!(
 
         for sound in SOUND_LIST.iter() {
             let sound_name = Path::new(sound).file_stem().unwrap().to_str().unwrap();
-            println!("loading audio file {}", sound_name);
+            trace!("loading audio file {}", sound_name);
 
             match Audio::load(sound) {
                 Ok(sound) => sounds.insert(sound_name.to_owned(), sound),
@@ -38,21 +38,21 @@ pub struct Audio {
 }
 impl Audio {
     pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TatakuResult<StreamChannel> {
-        println!("[audio] // play_song - playing {}", path.as_ref());
+        trace!("play_song - playing {}", path.as_ref());
         // check if we're already playing, if restarting is allowed
         let string_path = path.as_ref().to_owned();
 
         // check if file exists
         {
             if !exists(&string_path) {
-                println!("audio file does not exist! {}", string_path);
+                error!("audio file does not exist! {}", string_path);
                 return TatakuResult::Err(TatakuError::Audio(AudioError::FileDoesntExist))
             }
         }
 
         if let Some((c_path, audio)) = CURRENT_SONG.lock().clone() {
             if c_path != string_path {
-                println!("[audio] // play_song - pre-stopping old song");
+                trace!("play_song - pre-stopping old song");
                 audio.stop().unwrap();
             }
         }
@@ -68,7 +68,7 @@ impl Audio {
 
         // // if the pending song is no longer us
         // if *PLAY_PENDING.lock() != id {
-        //     println!("[audio] // play_song - pending song changed, leaving");
+        //     trace!("play_song - pending song changed, leaving");
         //     return Err(AudioError::DifferentSong.into())
         // }
 
@@ -76,17 +76,17 @@ impl Audio {
             Some((c_path, audio)) => { // audio set
                 if string_path == c_path { // same file as what we want to play
                     if restart {
-                        println!("[audio] // play_song - same song, restarting"); 
+                        trace!("play_song - same song, restarting"); 
                         audio.set_position(position as f64).unwrap();
                     }
-                    println!("[audio] // play_song - same song, exiting");
+                    trace!("play_song - same song, exiting");
                     return Ok(audio);
                 } else { // different audio
-                    println!("[audio] // play_song - stopping old song");
+                    trace!("play_song - stopping old song");
                     audio.stop().unwrap();
                 }
             }
-            None => println!("[audio] // play_song - no audio"), // no audio set
+            None => trace!("play_song - no audio"), // no audio set
         }
 
         let sound = Audio::load_song(path.as_ref())?;
@@ -94,14 +94,14 @@ impl Audio {
         // double check the song is stopped when we get here
         if let Some((_, song)) = CURRENT_SONG.lock().clone() {
             if let Ok(PlaybackState::Playing) = song.get_playback_state() {
-                println!("double stopping song: {}", Arc::strong_count(&song.channel.handle));
+                trace!("double stopping song: {}", Arc::strong_count(&song.channel.handle));
                 song.stop().unwrap();
             }
         }
 
         sound.play(true).expect("Error playing music");
         if let Err(e) = sound.set_position(position as f64) {
-            println!("error setting position: {:?}", e);
+            warn!("error setting position: {:?}", e);
         }
         sound.set_volume(get_settings!().get_music_vol()).unwrap();
 
@@ -122,7 +122,7 @@ impl Audio {
     }
     
     pub fn stop_song() {
-        println!("stopping song");
+        trace!("stopping song");
         if let Some(audio) = Audio::get_song() {
             audio.stop().unwrap();
         }

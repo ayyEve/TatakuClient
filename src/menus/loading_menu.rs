@@ -71,7 +71,7 @@ impl LoadingMenu {
 
         {
             let existing_maps = Database::get_all_beatmaps();
-            println!("loading {} from the db", existing_maps.len());
+            trace!("loading {} from the db", existing_maps.len());
             
             status.lock().loading_count = existing_maps.len();
             // load from db
@@ -79,7 +79,7 @@ impl LoadingMenu {
             for meta in existing_maps {
                 // verify the map exists
                 if !std::path::Path::new(&meta.file_path).exists() {
-                    // println!("beatmap exists in db but not in songs folder: {}", meta.file_path);
+                    // trace!("beatmap exists in db but not in songs folder: {}", meta.file_path);
                     continue
                 }
 
@@ -114,7 +114,7 @@ impl LoadingMenu {
         });
 
 
-        println!("loaded {} beatmaps", BEATMAP_MANAGER.read().beatmaps.len())
+        debug!("loaded {} beatmaps", BEATMAP_MANAGER.read().beatmaps.len())
     }
 
 }

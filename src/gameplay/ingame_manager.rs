@@ -197,7 +197,7 @@ impl IngameManager {
                         s.current_time()
                     }
                     None => {
-                        println!("song doesnt exist at Beatmap.time()!!");
+                        warn!("song doesnt exist at Beatmap.time()!!");
                         self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
                         self.song.upgrade().unwrap().pause();
                         0.0
@@ -205,7 +205,7 @@ impl IngameManager {
                 }
             },
             (None, None) => {
-                println!("song doesnt exist at Beatmap.time()!!");
+                warn!("song doesnt exist at Beatmap.time()!!");
                 self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
                 self.song.upgrade().unwrap().pause();
                 0.0
@@ -482,13 +482,13 @@ impl IngameManager {
         if let Some(name) = note_hitsamples.filename {
             if name.len() > 0 {
                 #[cfg(feature="debug_hitsounds")]
-                println!("got custom sound: {}", name);
+                debug!("got custom sound: {}", name);
                 if exists(format!("resources/audio/{}", name)) {
                     play_normal = (note_hitsound & 1) > 0;
                     play_list.push((name, 0))
                 } else {
                     #[cfg(feature="debug_hitsounds")]
-                    println!("doesnt exist");
+                    warn!("doesnt exist");
                 }
             }
         }
@@ -538,13 +538,13 @@ impl IngameManager {
         // Default osu! resources, with the index removed
         // When filename is given, no addition sounds will be played, and this file in the beatmap directory is played instead.
 
-        // println!("{}, {} | {}", timing_point.volume, note_hitsamples.volume, );
+        // debug!("{}, {} | {}", timing_point.volume, note_hitsamples.volume, );
 
 
         for (sound_file, _index) in play_list.iter() {
             if !self.hitsound_cache.contains_key(sound_file) {
                 #[cfg(feature="debug_hitsounds")]
-                println!("not cached");
+                trace!("not cached");
 
                 #[cfg(feature="bass_audio")]
                 let sound = Audio::load(format!("resources/audio/{}", sound_file));
@@ -552,7 +552,7 @@ impl IngameManager {
                 let sound = crate::game::Sound::load(format!("resources/audio/{}", sound_file));
 
                 if let Err(e) = &sound {
-                    println!("error loading: {:?}", e);
+                    error!("error loading: {:?}", e);
                 }
                 
                 self.hitsound_cache.insert(sound_file.clone(), sound.ok());
@@ -670,7 +670,7 @@ impl IngameManager {
 
 
         if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
-            println!("[InGame] Song over, saying map is complete");
+            trace!("[InGame] Song over, saying map is complete");
             self.completed = true;
         }
 
@@ -691,7 +691,7 @@ impl IngameManager {
 
                 self.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
-                println!("show fail menu");
+                trace!("show fail menu");
             } else {
                 #[cfg(feature="bass_audio")]
                 self.song.set_rate(new_rate).unwrap();

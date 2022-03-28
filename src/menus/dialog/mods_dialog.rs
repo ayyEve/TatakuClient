@@ -105,13 +105,13 @@ impl ModButton {
     fn apply_mod(&self, manager: &mut ModManager) {
         for (i, name) in self.mod_names.iter().enumerate() {
             let use_val = i+1 == self.selected_mod && self.selected_mod > 0;
-            println!("set: {}, name:{}", use_val, name);
+            trace!("set: {}, name:{}", use_val, name);
             
             match &**name {
                 "nofail" => manager.nofail = use_val,
                 "autoplay" => manager.autoplay = use_val,
                 
-                other => println!("unknown mod name: {}", other)
+                other => warn!("unknown mod name: {}", other)
             }
         }
 

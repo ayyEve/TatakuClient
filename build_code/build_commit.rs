@@ -62,7 +62,7 @@ pub fn build_commit() {
         ""
         // if TEST {"test-"} else {""}
     );
-    println!("dir: {:?}, path: {}", dir, commit_file);
+    // println!("dir: {:?}, path: {}", dir, commit_file);
 
     // build the query url
     let url = format!("{}/projects/{}/repository/commits?ref_name={}", url, id, branch);

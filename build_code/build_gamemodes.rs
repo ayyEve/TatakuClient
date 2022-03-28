@@ -7,7 +7,7 @@ pub fn build_gamemodes() {
     let cd = std::env::current_dir().unwrap();
     let gamemode_path = cd.as_path().join("src/gameplay/modes/");
 
-    eprintln!("dir: {:?}", gamemode_path);
+    // eprintln!("dir: {:?}", gamemode_path);
 
     // sort dirs to ensure same order every time
     // resolves building for no reason (thanks fs)
@@ -30,7 +30,7 @@ pub fn build_gamemodes() {
         if !f.path().is_dir() {continue}
 
         let mode_folder = f.file_name().to_string_lossy().to_string();
-        eprintln!("adding gamemode {:?}", mode_folder);
+        // eprintln!("adding gamemode {:?}", mode_folder);
 
         let mut config = GameModeInfo::default();
         let config_path = f.path().join(Path::new("./config.json"));

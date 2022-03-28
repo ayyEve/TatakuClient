@@ -33,12 +33,12 @@ lazy_static::lazy_static!(
 
         for sound in SOUND_LIST.iter() {
             let sound_name = Path::new(sound).file_stem().unwrap().to_str().unwrap();
-            println!("loading audio file {}", sound_name);
+            trace!("loading audio file {}", sound_name);
 
             match Sound::load(sound) {
                 Ok(sound) => {sounds.insert(sound_name.to_owned(), sound);},
                 Err(e) => {
-                    println!("error loading sound: {}", e);
+                    error!("error loading sound: {}", e);
                 }
             }
         }
@@ -65,7 +65,7 @@ impl Audio {
             thing.channels() == 2 && thing.sample_format() == SampleFormat::F32
         }).expect("No supported config?");
 
-        // println!("Range Rate: {}-{}Hz", supported_config_range.min_sample_rate().0, supported_config_range.max_sample_rate().0);
+        // debug!("Range Rate: {}-{}Hz", supported_config_range.min_sample_rate().0, supported_config_range.max_sample_rate().0);
 
         let buff_range = supported_config_range.buffer_size().clone();
         let supported_config = supported_config_range.with_max_sample_rate();
@@ -74,16 +74,16 @@ impl Audio {
         let config = if let cpal::SupportedBufferSize::Range{min, max} = buff_range {
             let mut config = supported_config.config();
             config.buffer_size = cpal::BufferSize::Fixed(8192.clamp(min, max));
-            println!("setting buffer size to {}", min);
+            trace!("setting buffer size to {}", min);
             config
         } else {
-            println!("unknown buffer size, praying to jesus");
+            trace!("unknown buffer size, praying to jesus");
             let config = supported_config.config();
             // config.buffer_size = cpal::BufferSize::Fixed(8192);
             config
         };
 
-        // println!("Sample Rate Stream: {}", sample_rate);
+        // trace!("Sample Rate Stream: {}", sample_rate);
         let (controller, mut queue) = AudioQueue::new();
 
         std::thread::spawn(move || {
@@ -98,7 +98,7 @@ impl Audio {
                     let delay = match timestamp.playback.duration_since(&timestamp.callback) {
                         Some(d) => d.as_secs_f32() * 1000.0,
                         None => {
-                            // println!("uh oh, none delay");
+                            // trace!("uh oh, none delay");
                             0.0
                         }
                     };
@@ -116,7 +116,7 @@ impl Audio {
                         // }
                     }
 
-                    // println!("len: {}", current_data.len());
+                    // trace!("len: {}", current_data.len());
                     // current_data.resize(8192, 0.0);
                     // {
                     //     let mut current_data = CURRENT_DATA.lock();
@@ -126,7 +126,7 @@ impl Audio {
                     queue.set_delay(delay + instant.elapsed().as_secs_f32() * 1000.0);
                 },
                 move |err| {
-                    println!("wat: {:?}", err);
+                    trace!("wat: {:?}", err);
                 }
             )
             .expect("Failed to build output stream.");
@@ -151,14 +151,14 @@ impl Audio {
 
 
     pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> Weak<AudioHandle> {
-        println!("[audio] // play_song - playing song");
+        trace!("[audio] // play_song - playing song");
         // check if we;re already playing, if restarting is allowed
         let string_path = path.as_ref().to_owned();
 
         if let Some((c_path, audio)) = CURRENT_SONG.lock().clone() {
             if c_path != string_path {
                 if let Some(audio) = audio.upgrade() {
-                    println!("[audio] // play_song - pre-stopping old song");
+                    trace!("[audio] // play_song - pre-stopping old song");
                     audio.stop();
                 }
             }
@@ -180,7 +180,7 @@ impl Audio {
 
         // if the pending song is no longer us, return a fake pointer
         if *PLAY_PENDING.lock() != id {
-            println!("[audio] // play_song - pending song changed, leaving");
+            trace!("[audio] // play_song - pending song changed, leaving");
             return Weak::new()
         }
 
@@ -190,20 +190,20 @@ impl Audio {
                     Some(audio2) => { // exists and is playing
                         if string_path == c_path { // same file as what we want to play
                             if restart {
-                                println!("[audio] // play_song - same song, restarting"); 
+                                trace!("[audio] // play_song - same song, restarting"); 
                                 audio2.set_position(position);
                             }
-                            println!("[audio] // play_song - same song, exiting");
+                            trace!("[audio] // play_song - same song, exiting");
                             return audio;
                         } else { // different audio
-                            println!("[audio] // play_song - stopping old song");
+                            trace!("[audio] // play_song - stopping old song");
                             audio2.stop();
                         }
                     }
-                    None => println!("[audio] // play_song - upgrade failed"), // audio stopped
+                    None => trace!("[audio] // play_song - upgrade failed"), // audio stopped
                 }
             }
-            None => println!("[audio] // play_song - no audio"), // no audio set
+            None => trace!("[audio] // play_song - no audio"), // no audio set
         }
 
         let sound = Self::play_sound(sound);
@@ -231,7 +231,7 @@ impl Audio {
     }
     
     pub fn stop_song() {
-        println!("stopping song");
+        trace!("stopping song");
         if let Some(audio) = Audio::get_song() {
             audio.stop();
         }
