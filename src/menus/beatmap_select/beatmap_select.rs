@@ -756,7 +756,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         if mods.ctrl {
             let mut speed = ModManager::get().speed;
             let prev_speed = speed;
-            const SPEED_DIFF:f32 = 0.1;
+            const SPEED_DIFF:f32 = 0.05;
 
             match key {
                 Equals => speed += SPEED_DIFF, // map speed up
