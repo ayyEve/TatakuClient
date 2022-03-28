@@ -1,3 +1,9 @@
+/**
+ * Mania game mode
+ * Authored by ayyEve
+ * 
+ */
+
 use crate::prelude::*;
 use super::mania_notes::*;
 

@@ -229,6 +229,15 @@ impl BeatmapSelectMenu {
         }
         drop(lock);
 
+
+        // set any time mods
+        if let Some(song) = Audio::get_song() {
+            #[cfg(feature="bass_audio")]
+            song.set_rate(ModManager::get().speed).unwrap();
+            #[cfg(feature="neb_audio")]
+            song.set_playback_speed(ModManager::get().speed as f64);
+        }
+
         self.beatmap_scroll.refresh_layout();
         self.load_scores();
     }
@@ -398,9 +407,8 @@ impl Menu<Game> for BeatmapSelectMenu {
 
                         let lock = BEATMAP_MANAGER.read();
                         let map = lock.current_beatmap.as_ref().unwrap();
-                        if let Err(e) = song.set_position(map.audio_preview as f64) {
-                            println!("error setting position: {:?}", e);
-                        }
+                        let _ = song.set_position(map.audio_preview as f64);
+                        song.set_rate(ModManager::get().speed).unwrap();
                         song.play(false).unwrap();
                     },
                 }
@@ -411,7 +419,8 @@ impl Menu<Game> for BeatmapSelectMenu {
                 let lock = BEATMAP_MANAGER.read();
                 match &lock.current_beatmap {
                     Some(map) => {
-                        Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).unwrap();
+                        let audio = Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).unwrap();
+                        audio.set_rate(ModManager::get().speed).unwrap();
                     }
                     None => if !self.no_maps_notif_sent {
                         NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN);
@@ -591,14 +600,11 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         // play song if it exists
         if let Some(song) = Audio::get_song() {
-            // reset any time mods
-
+            // set any time mods
             #[cfg(feature="bass_audio")]
-            song.set_rate(1.0).unwrap();
+            song.set_rate(ModManager::get().speed).unwrap();
             #[cfg(feature="neb_audio")]
-            song.set_playback_speed(1.0);
-            // // play
-            // song.play(true).unwrap();
+            song.set_playback_speed(ModManager::get().speed as f64);
         }
 
         // load maps
@@ -780,6 +786,14 @@ impl Menu<Game> for BeatmapSelectMenu {
             speed = speed.clamp(SPEED_DIFF, 10.0);
             if speed != prev_speed {
                 ModManager::get().speed = speed;
+
+                // update audio speed
+                if let Some(song) = Audio::get_song() {
+                    #[cfg(feature="bass_audio")]
+                    song.set_rate(speed).unwrap();
+                    #[cfg(feature="neb_audio")]
+                    song.set_playback_speed(speed as f64);
+                }
 
                 // force diff recalc
                 self.set_selected_mode(self.mode.clone(), Some(game));
