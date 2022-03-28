@@ -286,6 +286,16 @@ impl SettingsMenu {
             slider.range = 0.0..50.0;
         });
 
+        
+        // mania settings
+        add_item!("Mania Settings", MenuSection);
+        add_item!("Judgements Per Column", Checkbox, mania_settings, judgements_per_column, bool, ManiaColumnJudgements, |_|{});
+        add_item!("Judgement Offset", Slider, mania_settings, judgement_indicator_offset, f64, ManiaJudgementOffset, |slider:&mut Slider| {
+            slider.range = 0.0..500.0;
+        });
+        add_item!("SV Change Delta", Slider, mania_settings, sv_change_delta, f32, ManiaSvDelta, |slider:&mut Slider| {
+            slider.range = 0.1..10.0;
+        });
 
 
         // done button
