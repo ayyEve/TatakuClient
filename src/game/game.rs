@@ -3,7 +3,7 @@ use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{Window, input::*, event_loop::*, window::WindowSettings};
 
 use crate::prelude::*;
-use crate::databases::{save_replay, save_score};
+use crate::databases::save_replay;
 
 
 /// background color
@@ -418,7 +418,7 @@ impl Game {
 
                             if manager.should_save_score() {
                                 // save score
-                                save_score(&score);
+                                Database::save_score(&score);
                                 match save_replay(&replay, &score) {
                                     Ok(_)=> println!("replay saved ok"),
                                     Err(e) => NotificationManager::add_error_notification("error saving replay", e),

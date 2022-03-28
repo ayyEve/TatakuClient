@@ -31,7 +31,7 @@ impl ScoreHelper {
                 let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
                 let scores_clone = scores.clone();
                 tokio::spawn(async move {
-                    let mut local_scores = get_scores(&map_hash, playmode);
+                    let mut local_scores = Database::get_scores(&map_hash, playmode);
 
                     if method.filter_by_mods() {
                         let mods = ModManager::get().clone();

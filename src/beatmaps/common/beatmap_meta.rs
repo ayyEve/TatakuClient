@@ -96,7 +96,7 @@ impl BeatmapMeta {
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}",secs)}
         // let diff = self.get_diff(mode_override, mods);
-        let diff = match get_diff(&self.beatmap_hash, &mode_override, mods) {
+        let diff = match Database::get_diff(&self.beatmap_hash, &mode_override, mods) {
             None => "...".to_owned(),
 
             Some(ok) => format!("{:.2}", ok)

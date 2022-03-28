@@ -122,7 +122,7 @@ impl IngameManager {
         score.speed = current_mods.speed;
 
         let health = HealthHelper::new(Some(metadata.hp));
-        let beatmap_preferences = get_beatmap_prefs(&metadata.beatmap_hash);
+        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash);
 
         let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
         Self {
@@ -263,7 +263,7 @@ impl IngameManager {
 
         // update the beatmap offset
         self.beatmap_preferences.audio_offset = new_val;
-        save_beatmap_prefs(&self.beatmap.hash(), self.beatmap_preferences.clone());
+        Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
     }
     /// locks settings
     pub fn increment_global_offset(&mut self, delta:f32) {

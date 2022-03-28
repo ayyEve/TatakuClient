@@ -109,7 +109,7 @@ impl GameMode for ManiaGame {
 
         let all_mania_skin_settings = &SKIN_MANAGER.read().current_skin_config().mania_settings;
         let mut mania_skin_settings = None;
-        let map_preferences = get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned());
+        let map_preferences = Database::get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned());
         
         const DEFAULT_SNAP: Color = Color::SILVER;
 
@@ -613,7 +613,7 @@ impl GameMode for ManiaGame {
                 self.sv_mult -= self.game_settings.sv_change_delta;
             }
             self.map_preferences.scroll_speed = self.sv_mult;
-            save_beatmap_playmode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), self.map_preferences.clone());
+            Database::save_beatmap_mode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
             
             let time = manager.time();
             self.set_sv(manager.beatmap.slider_velocity_at(time));

@@ -37,7 +37,7 @@ impl LoadingMenu {
     // loaders
     async fn load_database(status: Arc<Mutex<LoadingStatus>>) {
         status.lock().stage = LoadingStage::Database;
-        let _ = crate::databases::DATABASE.lock();
+        // let _ = crate::databases::DATABASE.lock();
     }
 
     async fn load_audio(status: Arc<Mutex<LoadingStatus>>) {
@@ -70,56 +70,13 @@ impl LoadingMenu {
 
 
         {
-            let mut db = crate::databases::DATABASE.lock();
-            let t = db.transaction().unwrap();
-            let mut s = t.prepare("SELECT * FROM beatmaps").unwrap();
+            let existing_maps = Database::get_all_beatmaps();
+            println!("loading {} from the db", existing_maps.len());
             
-            let rows = s.query_map([], |r| {
-                let meta = BeatmapMeta {
-                    file_path: r.get("beatmap_path")?,
-                    beatmap_hash: r.get("beatmap_hash")?,
-                    beatmap_type: r.get::<&str, u8>("beatmap_type")?.into(),
-                    beatmap_version: r.get("beatmap_version")?,
-                    mode: r.get("playmode")?,
-                    artist: r.get("artist")?,
-                    title: r.get("title")?,
-                    artist_unicode: r.get("artist_unicode")?,
-                    title_unicode: r.get("title_unicode")?,
-                    creator: r.get("creator")?,
-                    version: r.get("version")?,
-                    audio_filename: r.get("audio_filename")?,
-                    image_filename: r.get("image_filename")?,
-                    audio_preview: r.get("audio_preview")?,
-                    hp: r.get("hp")?,
-                    od: r.get("od")?,
-                    ar: r.get("ar")?,
-                    cs: r.get("cs")?,
-                    slider_multiplier: r.get("slider_multiplier")?,
-                    slider_tick_rate: r.get("slider_tick_rate")?,
-                    stack_leniency: r.get("stack_leniency").unwrap_or(0.0),
-        
-                    duration: r.get("duration")?,
-                    bpm_min: r.get("bpm_min").unwrap_or(0.0),
-                    bpm_max: r.get("bpm_max").unwrap_or(0.0),
-
-                    diff: -1.0
-                };
-
-                Ok(meta)
-            })
-                .unwrap()
-                .filter_map(|m|{
-                    if let Err(e) = &m {println!("DB Err: {}", e)}
-                    m.ok()
-                })
-                .collect::<Vec<BeatmapMeta>>();
-                
-            println!("loading {} from the db", rows.len());
-            
-            status.lock().loading_count = rows.len();
+            status.lock().loading_count = existing_maps.len();
             // load from db
             let mut lock = BEATMAP_MANAGER.write();
-            for meta in rows {
+            for meta in existing_maps {
                 // verify the map exists
                 if !std::path::Path::new(&meta.file_path).exists() {
                     // println!("beatmap exists in db but not in songs folder: {}", meta.file_path);

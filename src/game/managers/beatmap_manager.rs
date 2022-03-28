@@ -2,7 +2,6 @@ use std::fs::{DirEntry, read_dir};
 use rand::Rng;
 
 
-use crate::databases::{insert_diff, get_diff};
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
@@ -10,11 +9,7 @@ use crate::{DOWNLOADS_DIR, SONGS_DIR};
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
     pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
-
-    pub static ref DIFFICULTIES:Arc<RwLock<HashMap<String, f64>>> = Arc::new(RwLock::new(HashMap::new()));
 }
-
-// static mut CALC_HELPER:InnerCalcNotifyHelper = InnerCalcNotifyHelper::new();
 
 pub struct BeatmapManager {
     pub initialized: bool,
@@ -91,14 +86,7 @@ impl BeatmapManager {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
 
-        {
-            let lock = crate::databases::DATABASE.lock();
-            let statement = format!("DELETE FROM beatmaps");
-            let res = lock.prepare(&statement).expect(&statement).execute([]);
-            if let Err(e) = res {
-                println!("error deleting beatmap meta from db: {}", e);
-            }
-        }
+        Database::clear_all_maps();
 
 
         let mut dirs_to_check = get_settings!().external_games_folders.clone();
@@ -160,14 +148,7 @@ impl BeatmapManager {
 
                             // if it got here, it shouldnt be in the database
                             // so we should add it
-                            {
-                                let lock = crate::databases::DATABASE.lock();
-                                let statement = insert_metadata(&map);
-                                let res = lock.prepare(&statement).expect(&statement).execute([]);
-                                if let Err(e) = res {
-                                    println!("error inserting metadata: {}", e);
-                                }
-                            }
+                            Database::insert_beatmap(&map);
                         }
                     }
                     Err(e) => {
@@ -334,26 +315,17 @@ impl BeatmapManager {
         let mut maps = self.beatmaps.clone();
         let mods = mods.clone();
 
-        // let things know a diff calc is being performed 
-        // let current_counter;
-        // unsafe {
-        //     current_counter = CALC_HELPER.calc_counter.load(SeqCst) + 1;
-        //     CALC_HELPER.calc_counter.store(current_counter, SeqCst);
-        //     CALC_HELPER.calc_complete.store(false, SeqCst);
-        // }
-        // println!("doing diff calc # {}", current_counter);
-
         tokio::spawn(async move {
             let playmode = playmode;
 
             // perform calc
             maps.par_iter_mut().for_each(|i| {
                 let hash = &i.beatmap_hash;
-                i.diff = if let Some(diff) = get_diff(hash, &playmode, &mods) {
+                i.diff = if let Some(diff) = Database::get_diff(hash, &playmode, &mods) {
                     diff
                 } else {
                     let diff = calc_diff(i, playmode.clone(), &mods).unwrap_or_default();
-                    insert_diff(hash, &playmode, &mods, diff);
+                    Database::insert_diff(hash, &playmode, &mods, diff);
                     diff
                 };
             });
@@ -364,82 +336,9 @@ impl BeatmapManager {
                 lock.on_diffcalc_complete.0.ignite(());
             }
 
-            // // let things know the calc is done
-            // unsafe {
-            //     // only say we're done the calc if the calc counter has not changed
-            //     // ie, another diff calc has not started yet
-            //     if current_counter == CALC_HELPER.calc_counter.load(SeqCst) {
-            //         CALC_HELPER.calc_complete.store(true, SeqCst);
-            //     }
-            // }
-            
-            // println!("diff calc {current_counter} complete");
         });
     }
 }
-
-
-// TODO: move this to database
-fn insert_metadata(map: &BeatmapMeta) -> String {
-    let mut bpm_min = map.bpm_min;
-    let mut bpm_max = map.bpm_max;
-    if !bpm_min.is_normal() {
-        bpm_min = 0.0;
-    }
-    if !bpm_max.is_normal() {
-        bpm_max = 99999999.0;
-    }
-    let beatmap_type:u8 = map.beatmap_type.into();
-
-    format!(
-        "INSERT INTO beatmaps (
-            beatmap_path, beatmap_hash, beatmap_type,
-
-            playmode, beatmap_version,
-            artist, artist_unicode,
-            title, title_unicode,
-            creator, version,
-
-            audio_filename, image_filename,
-            audio_preview, duration,
-            
-            hp, od, cs, ar,
-            
-            slider_multiplier, slider_tick_rate,
-            bpm_min, bpm_max
-        ) VALUES (
-            \"{}\", \"{}\", {},
-
-            \"{}\", {},
-            \"{}\", \"{}\",
-            \"{}\", \"{}\",
-            \"{}\", \"{}\",
-
-            \"{}\", \"{}\",
-            {}, {},
-
-            {}, {}, {}, {},
-
-            {}, {},
-            {}, {}
-        )",
-        map.file_path, map.beatmap_hash, beatmap_type,
-
-        map.mode, map.beatmap_version, 
-        map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
-        map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
-        map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),
-        
-        map.audio_filename, map.image_filename,
-        map.audio_preview, map.duration,
-
-        map.hp, map.od, map.cs, map.ar,
-
-        map.slider_multiplier, map.slider_tick_rate,
-        bpm_min, bpm_max
-    )
-}
-
 
 
 pub fn extract_all() {
@@ -542,48 +441,3 @@ pub fn extract_all() {
         // }
     }
 }
-
-
-struct InnerCalcNotifyHelper {
-    calc_counter:  AtomicU64,
-    calc_complete: AtomicBool,
-}
-impl InnerCalcNotifyHelper {
-    const fn new() -> Self {
-        Self {
-            calc_counter:  AtomicU64::new(0),
-            calc_complete: AtomicBool::new(false),
-        }
-    }
-}
-
-// #[derive(Clone)]
-// pub struct CalcNotifyHelper {
-//     last_checked_calc_counter: u64,
-// }
-// impl CalcNotifyHelper {
-//     pub fn new() -> Self {
-//         let last_checked_calc_counter = unsafe {
-//             CALC_HELPER.calc_counter.load(SeqCst)
-//         };
-
-//         Self {
-//             last_checked_calc_counter,
-//         }
-//     }
-//     pub fn check(&mut self) -> bool {
-//         let (calc_counter, calc_complete) = unsafe {
-//             (
-//                 CALC_HELPER.calc_counter.load(SeqCst),
-//                 CALC_HELPER.calc_complete.load(SeqCst),
-//             )
-//         };
-
-//         if calc_counter > self.last_checked_calc_counter && calc_complete {
-//             self.last_checked_calc_counter = calc_counter;
-//             true
-//         } else {
-//             false
-//         }
-//     }
-// }

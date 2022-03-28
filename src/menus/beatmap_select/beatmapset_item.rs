@@ -25,7 +25,7 @@ impl BeatmapsetItem {
         // this should be fine here because the diffs map should be populated
         let mods = ModManager::get().clone();
         for i in beatmaps.iter_mut() {
-            i.diff = get_diff(&i.beatmap_hash, &playmode, &mods).unwrap_or(0.0);
+            i.diff = Database::get_diff(&i.beatmap_hash, &playmode, &mods).unwrap_or(0.0);
         }
         beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
 
@@ -43,7 +43,6 @@ impl BeatmapsetItem {
             mouse_pos: Vector2::zero(),
             playmode,
             diff_calc_helper,
-            // diff_calc_helper: CalcNotifyHelper::new(),
         }
     }
 
@@ -53,7 +52,7 @@ impl BeatmapsetItem {
         // get the diff values from the beatmap manager
         let mods = ModManager::get().clone();
         for i in self.beatmaps.iter_mut() {
-            i.diff = get_diff(&i.beatmap_hash, &self.playmode, &mods).unwrap_or(0.0);
+            i.diff = Database::get_diff(&i.beatmap_hash, &self.playmode, &mods).unwrap_or(0.0);
         }
 
         self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
