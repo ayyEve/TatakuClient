@@ -3,7 +3,6 @@ mod text;
 mod font;
 mod image;
 mod circle;
-mod border;
 mod prelude;
 mod skinning;
 mod rectangle;
@@ -18,7 +17,6 @@ pub use line::*;
 pub use font::*;
 pub use text::*;
 pub use circle::*;
-pub use border::*;
 pub use prelude::*;
 pub use skinning::*;
 pub use rectangle::*;
@@ -29,3 +27,6 @@ pub use render_target::*;
 pub use visualization::*;
 pub use skinned_number::*;
 pub use transform_group::*;
+
+// use the piston ui border
+pub use ayyeve_piston_ui::render::Border;

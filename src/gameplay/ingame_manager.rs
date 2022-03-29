@@ -31,11 +31,11 @@ pub struct IngameManager {
     pub current_mods: Arc<ModManager>,
     pub beatmap_preferences: BeatmapPreferences,
 
-    pub score: Score,
+    pub score: IngameScore,
     pub replay: Replay,
     pub health: HealthHelper,
 
-    pub score_list: Vec<Score>,
+    pub score_list: Vec<IngameScore>,
     score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
 
     pub started: bool,
@@ -43,6 +43,14 @@ pub struct IngameManager {
     pub replaying: bool,
     pub failed: bool,
     pub failed_time: f32,
+
+    /// should the manager be paused?
+    pub should_pause: bool,
+
+    /// is a pause pending?
+    /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause
+    pause_pending: bool,
+
     /// is this playing in the background of the main menu?
     pub menu_background: bool,
     pub end_time: f32,
@@ -104,6 +112,8 @@ pub struct IngameManager {
     combo_image: Option<SkinnedNumber>,
     score_image: Option<SkinnedNumber>,
     acc_image: Option<SkinnedNumber>,
+
+    pub events: Vec<InGameEvent>
 }
 
 impl IngameManager {
@@ -133,7 +143,7 @@ impl IngameManager {
             health,
 
             lead_in_timer: Instant::now(),
-            score,
+            score: IngameScore::new(score, true, false),
 
             replay: Replay::new(),
             beatmap,
@@ -170,110 +180,6 @@ impl IngameManager {
         }
     }
 
-    fn all_scores(&self) -> Vec<&Score> {
-        let mut list = Vec::new();
-        for score in self.score_list.iter() {
-            list.push(score)
-        }
-
-        list.push(&self.score);
-
-        // sort by points
-        list.sort_by(|a,b| b.score.cmp(&a.score));
-
-        list
-    }
-
-    pub fn time(&mut self) -> f32 {
-        #[cfg(feature="bass_audio")]
-        let t = self.song.get_position().unwrap() as f32;
-
-        #[cfg(feature="neb_audio")]
-        let t = match (self.song.upgrade(), Audio::get_song_raw()) {
-            (None, Some((_, song))) => {
-                match song.upgrade() {
-                    Some(s) => {
-                        self.song = song;
-                        s.current_time()
-                    }
-                    None => {
-                        warn!("song doesnt exist at Beatmap.time()!!");
-                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
-                        self.song.upgrade().unwrap().pause();
-                        0.0
-                    }
-                }
-            },
-            (None, None) => {
-                warn!("song doesnt exist at Beatmap.time()!!");
-                self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
-                self.song.upgrade().unwrap().pause();
-                0.0
-            }
-            (Some(song), _) => song.current_time(),
-        };
-
-        t - (self.lead_in_time + self.offset.value + self.global_offset.value)
-    }
-
-    pub fn should_save_score(&self) -> bool {
-        let should = !(self.replaying || self.current_mods.autoplay);
-        should
-    }
-
-    // is this game pausable
-    pub fn can_pause(&mut self) -> bool {
-        !(self.current_mods.autoplay || self.replaying || self.failed)
-    }
-
-    #[inline]
-    pub fn game_speed(&self) -> f32 {
-        if self.menu_background {
-            1.0 // TODO: 
-        } else if self.replaying {
-            // if we're replaying, make sure we're using the score's speed
-            self.replay.speed
-        } else {
-            self.current_mods.speed
-        }
-    }
-
-
-    pub fn current_timing_point(&self) -> TimingPoint {
-        self.timing_points[self.timing_point_index]
-    }
-    pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
-        let mut tp = &self.timing_points[0];
-
-        for i in self.timing_points.iter() {
-            if i.is_inherited() && !allow_inherited {continue}
-            if i.time <= time {
-                tp = i
-            }
-        }
-
-        tp
-    }
-
-
-    pub fn increment_offset(&mut self, delta:f32) {
-        let time = self.time();
-        let new_val = self.offset.value + delta;
-        self.offset.set_value(new_val, time);
-
-        // update the beatmap offset
-        self.beatmap_preferences.audio_offset = new_val;
-        Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
-    }
-    /// locks settings
-    pub fn increment_global_offset(&mut self, delta:f32) {
-        let mut settings = get_settings_mut!();
-        settings.global_offset += delta;
-
-        let time = self.time();
-        self.global_offset.set_value(settings.global_offset, time);
-    }
-
     pub fn apply_mods(&mut self, mods: ModManager) {
         if self.started {
             NotificationManager::add_text_notification("Error applying mods to IngameManager\nmap already started", 2000.0, Color::RED);
@@ -285,184 +191,6 @@ impl IngameManager {
         }
     }
 
-    // TODO: implement this properly, gamemode will probably have to handle some things too
-    pub fn jump_to_time(&mut self, time: f32, skip_intro: bool) {
-        #[cfg(feature="bass_audio")]
-        self.song.set_position(time as f64).unwrap();
-
-        #[cfg(feature="neb_audio")]
-        if let Some(song) = self.song.upgrade() {
-            song.set_position(time)
-        }
-
-        if skip_intro {
-            self.lead_in_time = 0.0;
-        }
-    }
-
-    // can be from either paused or new
-    pub fn start(&mut self) {
-        if !self.gamemode.show_cursor() {
-            if !self.menu_background {
-                CursorManager::set_visible(false)
-            }
-        } else if self.replaying || self.current_mods.autoplay {
-            CursorManager::show_system_cursor(true)
-        }
-
-        if !self.started {
-            self.reset();
-
-            if !self.replaying {
-                self.outgoing_spectator_frame((0.0, SpectatorFrameData::Play {
-                    beatmap_hash: self.beatmap.hash(),
-                    mode: self.gamemode.playmode(),
-                    mods: serde_json::to_string(&(*self.current_mods)).unwrap()
-                }));
-            }
-
-            if self.menu_background {
-                // dont reset the song, and dont do lead in
-                self.lead_in_time = 0.0;
-            } else {
-                #[cfg(feature="bass_audio")] {
-                    self.song.set_position(0.0).unwrap();
-                    self.song.pause().unwrap();
-                    if self.replaying {
-                        self.song.set_rate(self.replay.speed).unwrap();
-                    }
-                }
-
-                #[cfg(feature="neb_audio")]
-                match self.song.upgrade() {
-                    Some(song) => {
-                        song.set_position(0.0);
-                        if self.replaying {
-                            song.set_playback_speed(self.replay.speed as f64)
-                        }
-                    }
-                    None => {
-                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
-                        self.song.upgrade().unwrap().pause();
-                    }
-                }
-                
-                self.lead_in_timer = Instant::now();
-                self.lead_in_time = LEAD_IN_TIME;
-            }
-
-            // volume is set when the song is actually started (when lead_in_time is <= 0)
-            self.started = true;
-
-            // run the startup code
-            let mut on_start:Box<dyn FnOnce(&mut Self)> = Box::new(|_|{});
-            std::mem::swap(&mut self.on_start, &mut on_start);
-            on_start(self);
-
-        } else if self.lead_in_time <= 0.0 {
-            // if this is the menu, dont do anything
-            if self.menu_background {return}
-            
-            let frame = SpectatorFrameData::UnPause;
-            let time = self.time();
-            self.outgoing_spectator_frame((time, frame));
-
-            #[cfg(feature="bass_audio")]
-            self.song.play(false).unwrap();
-
-            // // needed because if paused for a while it can crash
-            #[cfg(feature="neb_audio")]
-            match self.song.upgrade() {
-                Some(song) => song.play(),
-                None => self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0),
-            }
-        }
-    }
-    pub fn pause(&mut self) {
-
-        // make sure the cursor is visible
-        CursorManager::set_visible(true);
-        CursorManager::show_system_cursor(false);
-
-        #[cfg(feature="bass_audio")]
-        let _ = self.song.pause();
-        #[cfg(feature="neb_audio")]
-        self.song.upgrade().unwrap().pause();
-
-        // is there anything else we need to do?
-
-        // might mess with lead-in but meh
-
-        let time = self.time();
-        self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
-    }
-    pub fn reset(&mut self) {
-        let settings = get_settings!();
-        
-        self.gamemode.reset(&self.beatmap);
-        self.health.reset();
-
-        if self.menu_background {
-            self.background_game_settings = settings.background_game_settings.clone();
-            self.gamemode.apply_auto(&self.background_game_settings)
-        } else {
-            // reset song
-            #[cfg(feature="bass_audio")] {
-                self.song.set_rate(self.game_speed()).unwrap();
-                self.song.set_position(0.0).unwrap();
-                let _ = self.song.pause();
-            }
-            
-            #[cfg(feature="neb_audio")] 
-            match self.song.upgrade() {
-                Some(song) => {
-                    song.set_position(0.0);
-                    song.pause();
-                    song.set_playback_speed(self.game_speed() as f64);
-                }
-                None => {
-                    while let None = self.song.upgrade() {
-                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
-                    }
-                    let song = self.song.upgrade().unwrap();
-                    song.set_playback_speed(self.game_speed() as f64);
-                    song.pause();
-                }
-            }
-        }
-
-        self.completed = false;
-        self.started = false;
-        self.failed = false;
-        self.lead_in_time = LEAD_IN_TIME;
-        self.lead_in_timer = Instant::now();
-        self.score = Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode());
-        self.replay_frame = 0;
-        self.timing_point_index = 0;
-
-        self.combo_text_bounds = self.gamemode.combo_bounds();
-        self.timing_bar_things = self.gamemode.timing_bar_things();
-        self.hitbar_timings = Vec::new();
-        
-        if !self.replaying {
-            // only reset the replay if we arent replaying
-            self.replay = Replay::new();
-            self.score.speed = self.current_mods.speed;
-        }
-    }
-    pub fn fail(&mut self) {
-        if self.failed || self.current_mods.nofail || self.current_mods.autoplay || self.menu_background {return}
-        self.failed = true;
-        self.failed_time = self.time();
-    }
-
-    pub fn on_complete(&mut self) {
-
-        // make sure the cursor is visible
-        CursorManager::set_visible(true);
-        CursorManager::show_system_cursor(false);
-
-    }
     // interactions with game mode
 
     pub fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
@@ -596,21 +324,6 @@ impl IngameManager {
         }
     }
 
-    pub fn combo_break(&mut self) {
-        if self.score.combo >= 20 && !self.menu_background {
-            // play hitsound
-
-            #[cfg(feature="bass_audio")]
-            Audio::play_preloaded("combobreak").unwrap();
-            #[cfg(feature="neb_audio")]
-            Audio::play_preloaded("combobreak");
-        }
-
-        // reset combo to 0
-        self.score.combo = 0;
-    }
-
-
     pub fn add_judgement_indicator<HI:JudgementIndicator+'static>(&mut self, mut indicator: HI) {
         indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration);
         self.judgement_indicators.push(Box::new(indicator))
@@ -656,7 +369,7 @@ impl IngameManager {
         if let Some(loader) = self.score_loader.clone() {
             let loader = loader.read();
             if loader.done {
-                self.score_list = loader.scores.clone();
+                self.score_list = loader.scores.iter().map(|s|IngameScore::new(s.clone(), false, s.username == self.score.username)).collect();
                 self.score_loader = None;
             }
         }
@@ -750,7 +463,6 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
 
-    // draw
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();
         let font = self.font.clone();
@@ -773,7 +485,11 @@ impl IngameManager {
         // draw scores
         let mut base_pos = self.score_draw_start_pos;
         for score in self.all_scores() {
-            let mut l = LeaderboardItem::new(score.clone());
+            let mut l = LeaderboardItem::new(score.score.clone());
+
+            if score.is_current {l.set_hover(true)}
+            else if score.is_previous {l.set_selected(true)}
+
             l.set_pos(base_pos);
             l.draw(args, Vector2::zero(), 0.0, list);
             base_pos += Vector2::y_only(l.size().y + 5.0);
@@ -782,7 +498,7 @@ impl IngameManager {
 
         // gamemode things
         if let Some(score) = &mut self.score_image {
-            score.number = self.score.score as f64;
+            score.number = self.score.score.score as f64;
             score.current_pos = Vector2::new(window_size.x - score.measure_text().x, 0.0);
             list.push(Box::new(score.clone()));
         } else {
@@ -798,7 +514,7 @@ impl IngameManager {
                 0.0,
                 Vector2::new(window_size.x - 200.0, 10.0),
                 30,
-                crate::format_number(self.score.score),
+                crate::format_number(self.score.score.score),
                 font.clone()
             )));
         }
@@ -969,7 +685,293 @@ impl IngameManager {
     }
 }
 
-// input handlers
+// getters, setters, properties
+impl IngameManager {
+    fn all_scores(&self) -> Vec<&IngameScore> {
+        let mut list = Vec::new();
+        for score in self.score_list.iter() {
+            list.push(score)
+        }
+
+        list.push(&self.score);
+
+        // sort by points
+        list.sort_by(|a,b| b.score.score.cmp(&a.score.score));
+
+        list
+    }
+
+    pub fn time(&mut self) -> f32 {
+        #[cfg(feature="bass_audio")]
+        let t = self.song.get_position().unwrap() as f32;
+
+        #[cfg(feature="neb_audio")]
+        let t = match (self.song.upgrade(), Audio::get_song_raw()) {
+            (None, Some((_, song))) => {
+                match song.upgrade() {
+                    Some(s) => {
+                        self.song = song;
+                        s.current_time()
+                    }
+                    None => {
+                        warn!("song doesnt exist at Beatmap.time()!!");
+                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
+                        self.song.upgrade().unwrap().pause();
+                        0.0
+                    }
+                }
+            },
+            (None, None) => {
+                warn!("song doesnt exist at Beatmap.time()!!");
+                self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
+                self.song.upgrade().unwrap().pause();
+                0.0
+            }
+            (Some(song), _) => song.current_time(),
+        };
+
+        t - (self.lead_in_time + self.offset.value + self.global_offset.value)
+    }
+
+    pub fn should_save_score(&self) -> bool {
+        let should = !(self.replaying || self.current_mods.autoplay);
+        should
+    }
+
+    // is this game pausable
+    pub fn can_pause(&mut self) -> bool {
+        self.should_pause || !(self.current_mods.autoplay || self.replaying || self.failed)
+    }
+
+    #[inline]
+    pub fn game_speed(&self) -> f32 {
+        if self.menu_background {
+            1.0 // TODO: 
+        } else if self.replaying {
+            // if we're replaying, make sure we're using the score's speed
+            self.replay.speed
+        } else {
+            self.current_mods.speed
+        }
+    }
+
+
+    pub fn current_timing_point(&self) -> TimingPoint {
+        self.timing_points[self.timing_point_index]
+    }
+    pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
+        let mut tp = &self.timing_points[0];
+
+        for i in self.timing_points.iter() {
+            if i.is_inherited() && !allow_inherited {continue}
+            if i.time <= time {
+                tp = i
+            }
+        }
+
+        tp
+    }
+
+
+}
+
+// Events and States
+impl IngameManager {
+
+    // can be from either paused or new
+    pub fn start(&mut self) {
+        if !self.gamemode.show_cursor() {
+            if !self.menu_background {
+                CursorManager::set_visible(false)
+            }
+        } else if self.replaying || self.current_mods.autoplay {
+            CursorManager::show_system_cursor(true)
+        }
+
+        if !self.started {
+            self.reset();
+
+            if !self.replaying {
+                self.outgoing_spectator_frame((0.0, SpectatorFrameData::Play {
+                    beatmap_hash: self.beatmap.hash(),
+                    mode: self.gamemode.playmode(),
+                    mods: serde_json::to_string(&(*self.current_mods)).unwrap()
+                }));
+            }
+
+            if self.menu_background {
+                // dont reset the song, and dont do lead in
+                self.lead_in_time = 0.0;
+            } else {
+                #[cfg(feature="bass_audio")] {
+                    self.song.set_position(0.0).unwrap();
+                    self.song.pause().unwrap();
+                    if self.replaying {
+                        self.song.set_rate(self.replay.speed).unwrap();
+                    }
+                }
+
+                #[cfg(feature="neb_audio")]
+                match self.song.upgrade() {
+                    Some(song) => {
+                        song.set_position(0.0);
+                        if self.replaying {
+                            song.set_playback_speed(self.replay.speed as f64)
+                        }
+                    }
+                    None => {
+                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
+                        self.song.upgrade().unwrap().pause();
+                    }
+                }
+                
+                self.lead_in_timer = Instant::now();
+                self.lead_in_time = LEAD_IN_TIME;
+            }
+
+            // volume is set when the song is actually started (when lead_in_time is <= 0)
+            self.started = true;
+
+            // run the startup code
+            let mut on_start:Box<dyn FnOnce(&mut Self)> = Box::new(|_|{});
+            std::mem::swap(&mut self.on_start, &mut on_start);
+            on_start(self);
+
+        } else if self.lead_in_time <= 0.0 {
+            // if this is the menu, dont do anything
+            if self.menu_background {return}
+            
+            let frame = SpectatorFrameData::UnPause;
+            let time = self.time();
+            self.outgoing_spectator_frame((time, frame));
+
+            #[cfg(feature="bass_audio")]
+            self.song.play(false).unwrap();
+
+            // // needed because if paused for a while it can crash
+            #[cfg(feature="neb_audio")]
+            match self.song.upgrade() {
+                Some(song) => song.play(),
+                None => self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0),
+            }
+        }
+    }
+    pub fn pause(&mut self) {
+
+        // make sure the cursor is visible
+        CursorManager::set_visible(true);
+        CursorManager::show_system_cursor(false);
+
+        #[cfg(feature="bass_audio")]
+        let _ = self.song.pause();
+        #[cfg(feature="neb_audio")]
+        self.song.upgrade().unwrap().pause();
+
+        // is there anything else we need to do?
+
+        // might mess with lead-in but meh
+
+        let time = self.time();
+        self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
+    }
+    pub fn reset(&mut self) {
+        let settings = get_settings!();
+        
+        self.gamemode.reset(&self.beatmap);
+        self.health.reset();
+
+        if self.menu_background {
+            self.background_game_settings = settings.background_game_settings.clone();
+            self.gamemode.apply_auto(&self.background_game_settings)
+        } else {
+            // reset song
+            #[cfg(feature="bass_audio")] {
+                self.song.set_rate(self.game_speed()).unwrap();
+                self.song.set_position(0.0).unwrap();
+                let _ = self.song.pause();
+            }
+            
+            #[cfg(feature="neb_audio")] 
+            match self.song.upgrade() {
+                Some(song) => {
+                    song.set_position(0.0);
+                    song.pause();
+                    song.set_playback_speed(self.game_speed() as f64);
+                }
+                None => {
+                    while let None = self.song.upgrade() {
+                        self.song = Audio::play_song(self.metadata.audio_filename.clone(), true, 0.0);
+                    }
+                    let song = self.song.upgrade().unwrap();
+                    song.set_playback_speed(self.game_speed() as f64);
+                    song.pause();
+                }
+            }
+        }
+
+        self.completed = false;
+        self.started = false;
+        self.failed = false;
+        self.lead_in_time = LEAD_IN_TIME;
+        self.lead_in_timer = Instant::now();
+        self.score = IngameScore::new(Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode()), true, false);
+        self.replay_frame = 0;
+        self.timing_point_index = 0;
+
+        self.combo_text_bounds = self.gamemode.combo_bounds();
+        self.timing_bar_things = self.gamemode.timing_bar_things();
+        self.hitbar_timings = Vec::new();
+        
+        if !self.replaying {
+            // only reset the replay if we arent replaying
+            self.replay = Replay::new();
+            self.score.speed = self.current_mods.speed;
+        }
+    }
+    pub fn fail(&mut self) {
+        if self.failed || self.current_mods.nofail || self.current_mods.autoplay || self.menu_background {return}
+        self.failed = true;
+        self.failed_time = self.time();
+    }
+
+    pub fn combo_break(&mut self) {
+        // reset combo to 0
+        self.score.combo = 0;
+        
+        // play hitsound
+        if self.score.combo >= 20 && !self.menu_background {
+            #[cfg(feature="bass_audio")]
+            Audio::play_preloaded("combobreak").unwrap();
+            #[cfg(feature="neb_audio")]
+            Audio::play_preloaded("combobreak");
+        }
+    }
+
+    // TODO: implement this properly, gamemode will probably have to handle some things too
+    pub fn jump_to_time(&mut self, time: f32, skip_intro: bool) {
+        #[cfg(feature="bass_audio")]
+        self.song.set_position(time as f64).unwrap();
+
+        #[cfg(feature="neb_audio")]
+        if let Some(song) = self.song.upgrade() {
+            song.set_position(time)
+        }
+
+        if skip_intro {
+            self.lead_in_time = 0.0;
+        }
+    }
+
+    pub fn on_complete(&mut self) {
+        // make sure the cursor is visible
+        CursorManager::set_visible(true);
+        CursorManager::show_system_cursor(false);
+
+    }
+    
+}
+
+// Input Handlers
 impl IngameManager {
     pub fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
         if (self.replaying || self.current_mods.autoplay) && !self.menu_background {
@@ -986,6 +988,10 @@ impl IngameManager {
             self.failed_time = -1000.0;
         }
         if self.failed {return}
+
+        if key == Key::Escape && self.can_pause() {
+            self.should_pause = true;
+        }
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
 
@@ -1072,9 +1078,42 @@ impl IngameManager {
         gamemode.controller_axis(c, axis_data, self);
         self.gamemode = gamemode;
     }
+
+    pub fn window_focus_lost(&mut self, got_focus: bool) {
+        if got_focus {
+            self.pause_pending = false
+        } else {
+            if self.can_pause() {
+                // if self.in_break() {self.pause_pending = true} else {self.should_pause = true}
+            }
+        }
+    }
 }
 
-// spectator stuff
+// other misc stuff that isnt touched often and i just wanted it out of the way
+impl IngameManager {
+    
+    pub fn increment_offset(&mut self, delta:f32) {
+        let time = self.time();
+        let new_val = self.offset.value + delta;
+        self.offset.set_value(new_val, time);
+
+        // update the beatmap offset
+        self.beatmap_preferences.audio_offset = new_val;
+        Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
+    }
+    /// locks settings
+    pub fn increment_global_offset(&mut self, delta:f32) {
+        let mut settings = get_settings_mut!();
+        settings.global_offset += delta;
+
+        let time = self.time();
+        self.global_offset.set_value(settings.global_offset, time);
+    }
+
+}
+
+// Spectator Stuff
 impl IngameManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
         if self.menu_background || self.replaying {return}
@@ -1108,7 +1147,7 @@ impl Default for IngameManager {
             metadata: Default::default(),
             gamemode: Default::default(),
             current_mods: Default::default(),
-            score: Default::default(),
+            score: IngameScore::new(Default::default(), true, false),
             replay: Default::default(),
             started: Default::default(),
             completed: Default::default(),
@@ -1138,6 +1177,9 @@ impl Default for IngameManager {
             score_loader: None,
             score_draw_start_pos: Vector2::zero(),
             beatmap_preferences: Default::default(),
+            should_pause: false,
+            pause_pending: false,
+            events: Vec::new()
         }
     }
 }
@@ -1233,4 +1275,10 @@ lazy_static::lazy_static! {
 #[cfg(feature="bass_audio")]
 fn create_empty_stream() -> StreamChannel {
     EMPTY_STREAM.clone()
+}
+
+
+
+pub enum InGameEvent {
+    Break {start: f32, end: f32}
 }

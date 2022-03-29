@@ -26,17 +26,10 @@ pub struct BeatmapsetItem {
     display_text: String,
 }
 impl BeatmapsetItem {
-    pub fn new(mut beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
-        // this should be fine here because the diffs map should be populated
-        let mods = ModManager::get().clone();
-        for i in beatmaps.iter_mut() {
-            i.diff = Database::get_diff(&i.beatmap_hash, &playmode, &mods).unwrap_or(0.0);
-        }
-        beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
-
+    pub fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
         
-        BeatmapsetItem {
+        let mut i = BeatmapsetItem {
             beatmaps: beatmaps.clone(), 
             pos: Vector2::new(x, 0.0),
             hover: false,
@@ -50,7 +43,9 @@ impl BeatmapsetItem {
             diff_calc_helper,
             diff_calc_start_helper,
             diff_calc_bombs: Vec::new(),
-        }
+        };
+        i.recalc();
+        i
     }
 
     pub fn recalc(&mut self) {

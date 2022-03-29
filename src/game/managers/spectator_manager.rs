@@ -159,7 +159,7 @@ impl SpectatorManager {
                     let manager_time = manager.time();
                     self.buffered_score_frames.retain(|(time, score)| {
                         if manager_time <= *time {
-                            manager.score = score.to_owned();
+                            manager.score = IngameScore::new(score.clone(), true, false);
                             false
                         } else {
                             true
@@ -178,7 +178,7 @@ impl SpectatorManager {
 
                         // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
                         if self.buffered_score_frames.len() > 0 {
-                            manager.score = self.buffered_score_frames.last().unwrap().clone().1;
+                            manager.score = IngameScore::new(self.buffered_score_frames.last().unwrap().clone().1, true, false);
                         }
                         let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone());
                         score_menu.dont_do_menu = true;

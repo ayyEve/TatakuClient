@@ -438,7 +438,8 @@ impl GameMode for TaikoGame {
                 self.next_note();
             }
             ScoreHit::Other(score, consume) => { // used by sliders and spinners
-                manager.score.score += score as u64;
+                // lol
+                manager.score.score.score += score as u64;
                 if consume {self.next_note()}
             }
         }

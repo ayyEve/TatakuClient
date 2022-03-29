@@ -176,7 +176,7 @@ impl GameMode for UTypingGame {
                     break;
                 }
                 ScoreHit::Other(score, _consume) => {
-                    manager.score.score += score as u64;
+                    manager.score.score.score += score as u64;
                     // if consume {self.next_note()}
                     break;
                 }

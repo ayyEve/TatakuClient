@@ -52,7 +52,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 5.0,
             self.pos + pos_offset,
             LEADERBOARD_ITEM_SIZE,
-            if self.hover {Some(Border::new(Color::RED, 1.0))} else {None}
+            self.get_border_none(1.0)
         ).shape(Shape::Round(5.0, 10))));
 
         // score text
