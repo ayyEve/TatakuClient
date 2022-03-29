@@ -5,7 +5,7 @@
  * ie, a gamemode might want to hide the cursor, however it does not have direct access to the cursor field in game
  */
 use crate::prelude::*;
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::sync::mpsc::{SyncSender, Receiver, channel, sync_channel};
 
 const TRAIL_CREATE_TIMER:f64 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
@@ -16,9 +16,8 @@ const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
 const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
 
 
-lazy_static::lazy_static! {
-    static ref CURSOR_EVENT_QUEUE:Arc<OnceCell<Sender<CursorEvent>>> = Arc::new(OnceCell::const_new());
-}
+static CURSOR_EVENT_QUEUE:OnceCell<SyncSender<CursorEvent>> = OnceCell::const_new();
+
 
 
 pub struct CursorManager {
@@ -74,7 +73,7 @@ impl CursorManager {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
         };
 
-        let (sender, event_receiver) = channel();
+        let (sender, event_receiver) = sync_channel(1000);
         if let Ok(_) = CURSOR_EVENT_QUEUE.set(sender) {
             info!("cursor event queue set");
         } else {
@@ -264,3 +263,4 @@ pub enum CursorEvent {
     ShowSystemCursor(bool),
     SetVisible(bool),
 }
+
