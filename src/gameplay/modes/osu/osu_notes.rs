@@ -850,7 +850,6 @@ impl HitObject for StandardSlider {
         for dot in dots.iter_mut() {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding) {
                 if was_hit {
-                    trace!("[Dots] dot hit");
                     self.add_ripple(beatmap_time, dot.pos, true);
                     self.sound_queue.push((
                         beatmap_time,
@@ -858,7 +857,6 @@ impl HitObject for StandardSlider {
                         hitsamples.clone()
                     ));
                 } else {
-                    trace!("[Dots] dot missed");
                     self.dots_missed += 1
                 }
             }

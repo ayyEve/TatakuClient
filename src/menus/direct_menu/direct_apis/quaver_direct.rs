@@ -13,9 +13,7 @@ impl DirectApi for QuaverDirect {
     fn supported_modes(&self) -> Vec<PlayMode> {vec!["mania".to_owned()]}
 
     fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
-        trace!("[QuaverDirect] searching");
-
-
+        trace!("Searching");
 
         let mut params = Vec::new();
         macro_rules! check_val {
@@ -43,12 +41,12 @@ impl DirectApi for QuaverDirect {
         );
 
         let body = reqwest::blocking::get(url)
-            .expect("[QuaverDirect] error with request")
+            .expect("Error with request")
             .text()
-            .expect("[QuaverDirect] error converting to text");
+            .expect("Error converting to text");
 
 
-        let deserialized:QuaverMapsetRequest = serde_json::from_str(&body).expect("[QuaverDirect] Error deserializing response");
+        let deserialized:QuaverMapsetRequest = serde_json::from_str(&body).expect("Error deserializing response");
 
         let mut items = Vec::new();
         for i in deserialized.mapsets {

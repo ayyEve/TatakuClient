@@ -27,13 +27,13 @@ impl Database {
         let db = Self::get();
         let mut s = db.prepare(&delete_query).unwrap();
         if let Err(e) = s.execute([]) {
-            error!("[Database] Error deleting from difficulties table: {e}")
+            error!("Error deleting from difficulties table: {e}")
         }
 
         // insert new vals
         let mut s = db.prepare(&insert_query).unwrap();
         if let Err(e) = s.execute([]) {
-            error!("[Database] Error inserting into difficulties table: {e}")
+            error!("Error inserting into difficulties table: {e}")
         }
 
     }
@@ -73,7 +73,7 @@ impl Database {
             let mut s = db.prepare(&sql).unwrap();
 
             if let Err(e) = s.execute([]) {
-                error!("[Database] Error inserting/updateing difficulties table: {e}")
+                error!("Error inserting/updateing difficulties table: {e}")
             }
         }
     }

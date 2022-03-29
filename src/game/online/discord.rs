@@ -27,7 +27,7 @@ impl Discord {
                 Ok(Self {rustcord})
             }
             Err(e) => {
-                Err(TatakuError::String(format!("[Discord] Error starting Discord: {}", e)))
+                Err(TatakuError::String(format!("Error starting Discord: {}", e)))
             }
         }
     
@@ -53,12 +53,12 @@ impl Discord {
 
 impl EventHandlers for Discord {
     fn ready(user: User) {
-        debug!("[Discord] Connected as {}#{}", user.username, user.discriminator);
+        debug!("Connected as {}#{}", user.username, user.discriminator);
     }
     fn errored(code: i32, message: &str) {
-        debug!("[Discord] Error: {} (code {})", message, code);
+        debug!("Error: {} (code {})", message, code);
     }
     fn disconnected(code: i32, message: &str) {
-        debug!("[Discord] Disconnected: {} (code {})", message, code);
+        debug!("Disconnected: {} (code {})", message, code);
     }
 }

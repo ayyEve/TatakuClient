@@ -42,7 +42,7 @@ impl SpectatorManager {
         // (try to) read pending data from the online manager
         match ONLINE_MANAGER.try_write() {
             Ok(mut online_manager) => self.frames.extend(online_manager.get_pending_spec_frames()),
-            Err(e) => warn!("[SpectatorManager::update] failed to lock online manager, {}", e),
+            Err(e) => warn!("Failed to lock online manager, {}", e),
         }
 
         if let Some(menu) = &self.score_menu {
@@ -55,21 +55,21 @@ impl SpectatorManager {
         for (time, frame) in std::mem::take(&mut self.frames) {
             self.good_until = self.good_until.max(time as f32);
 
-            debug!("[Spec] packet: {:?}", frame);
+            trace!("Packet: {:?}", frame);
             match frame {
                 SpectatorFrameData::Play { beatmap_hash, mode, mods } => {
                     self.start_game(game, beatmap_hash, mode, mods, 0.0)
                 }
 
                 SpectatorFrameData::Pause => {
-                    trace!("[Spec] pause");
+                    trace!("Pause");
                     self.state = SpectatorState::Paused;
                     if let Some(manager) = self.game_manager.as_mut() {
                         manager.pause();
                     }
                 }
                 SpectatorFrameData::UnPause => {
-                    trace!("[Spec] unpause");
+                    trace!("Unpause");
                     self.state = SpectatorState::Watching;
                     if let Some(manager) = self.game_manager.as_mut() {
                         manager.start();
@@ -86,7 +86,7 @@ impl SpectatorManager {
                 }
                 SpectatorFrameData::ScoreSync { score } => {
                     // received score update
-                    trace!("[Spec] got score update");
+                    trace!("Got score update");
                     self.buffered_score_frames.push((time as f32, score));
                     // we should buffer these, and check the time. 
                     // if the time is at the score time, we should update our score, 
@@ -94,7 +94,7 @@ impl SpectatorManager {
                 }
 
                 SpectatorFrameData::ChangingMap => {
-                    trace!("[Spec] host changing maps");
+                    trace!("Host changing maps");
                     self.state = SpectatorState::MapChanging;
 
                     if let Some(manager) = self.game_manager.as_mut() {
@@ -144,10 +144,10 @@ impl SpectatorManager {
 
                     if self.good_until >= buffer_duration {
                         self.state = SpectatorState::Watching;
-                        trace!("[Spec] no longer buffering");
+                        trace!("No longer buffering");
                         manager.start();
                     } else {
-                        // trace!("[Spec] buffering");
+                        // trace!("Buffering");
                     }
                 }
             }
@@ -169,7 +169,7 @@ impl SpectatorManager {
                     let buffer_duration = (manager.time() + SPECTATOR_BUFFER_OK_DURATION * 2.0).clamp(0.0, self.map_length);
                     if self.good_until < buffer_duration {
                         self.state = SpectatorState::Buffering;
-                        trace!("[Spec] starting buffer");
+                        trace!("Starting buffer");
                         manager.pause();
                     }
 
@@ -197,7 +197,7 @@ impl SpectatorManager {
         self.map_length = 0.0;
         self.buffered_score_frames.clear();
         // user started playing a map
-        trace!("[Spec] Host started playing map");
+        trace!("Host started playing map");
 
         let mods:ModManager = serde_json::from_str(&mods).unwrap();
         // find the map
@@ -217,7 +217,7 @@ impl SpectatorManager {
                         m.apply_mods(mods);
                         m.replaying = true;
                         m.on_start = Box::new(move |manager| {
-                            trace!("[Spec] jumping to time {}", current_time);
+                            trace!("Jumping to time {}", current_time);
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                         });
                         m.start();

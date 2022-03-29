@@ -18,7 +18,7 @@ impl DirectApi for OsuDirect {
     }
 
     fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
-        trace!("[OsuDirect] searching");
+        trace!("Searching");
         let settings = get_settings!();
 
 
@@ -46,14 +46,16 @@ impl DirectApi for OsuDirect {
 
         let mut lines = body.split('\n');
         let count = lines.next().unwrap_or("0").parse::<i32>().unwrap_or(0);
-        trace!("[OsuDirect] got {} items", count);
+        trace!("Got {} items", count);
 
         // parse items into list, and return list
         let mut items = Vec::new();
         for line in lines {
             if line.len() < 5 {continue}
-            // why does this work
-            items.push(Arc::new(OsuDirectDownloadable::from_str(line)) as Arc<dyn DirectDownloadable>)
+            if let Some(dl) = OsuDirectDownloadable::from_str(line) {
+                // why does this work
+                items.push(Arc::new(dl) as Arc<dyn DirectDownloadable>)
+            }
         }
 
         items
@@ -73,23 +75,33 @@ pub struct OsuDirectDownloadable {
     downloading: Arc<AtomicBool>
 }
 impl OsuDirectDownloadable {
-    pub fn from_str(str:&str) -> Self {
+    pub fn from_str(str:&str) -> Option<Self> {
         // trace!("reading {}", str);
         let mut split = str.split('|');
 
         // 867737.osz|The Quick Brown Fox|The Big Black|Mismagius|1|9.37143|2021-06-25T02:25:11+00:00|867737|820065|||0||Easy ★1.9@0,Normal ★2.5@0,Advanced ★3.2@0,Hard ★3.6@0,Insane ★4.8@0,Extra ★5.6@0,Extreme ★6.6@0,Remastered Extreme ★6.9@0,Riddle me this riddle me that... ★7.5@0
         // filename, artist, title, creator, ranking_status, rating, last_update, beatmapset_id, thread_id, video, storyboard, filesize, filesize_novideo||filesize, difficulty_names
 
-        let filename = split.next().expect("[OsuDirect] err:filename").to_owned();
-        let artist = split.next().expect("[OsuDirect] err:artist").to_owned();
-        let title = split.next().expect("[OsuDirect] err:title").to_owned();
-        let creator = split.next().expect("[OsuDirect] err:creator").to_owned();
-        let _ranking_status = split.next();
-        let _rating = split.next();
-        let _last_update = split.next();
-        let set_id = split.next().expect("set_id").to_owned();
+        macro_rules! next {
+            () => {
+                if let Some(v) = split.next() {
+                    v.to_owned()
+                } else {
+                    return None
+                }
+            }
+        }
 
-        Self {
+        let filename = next!();
+        let artist = next!();
+        let title = next!();
+        let creator = next!();
+        let _ranking_status = next!();
+        let _rating = next!();
+        let _last_update = next!();
+        let set_id = next!();
+
+        Some(Self {
             set_id,
             filename,
             artist,
@@ -97,7 +109,7 @@ impl OsuDirectDownloadable {
             creator,
 
             downloading: Arc::new(AtomicBool::new(false))
-        }
+        })
     }
 }
 impl DirectDownloadable for OsuDirectDownloadable {

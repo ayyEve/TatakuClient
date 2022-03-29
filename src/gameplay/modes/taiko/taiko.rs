@@ -670,12 +670,12 @@ impl GameMode for TaikoGame {
             }
 
         } else {
-            trace!("[Taiko::Controller] Controller with no setup");
+            trace!("Controller with no setup");
 
             // TODO: if this is slow, we should store controller configs separately
             // but i dont think this will be an issue, as its unlikely to happen in the first place,
             // and if there is lag, the user is likely to retry the man anyways
-            trace!("[Taiko::Controller] Setting up new controller");
+            trace!("Setting up new controller");
             let mut new_settings = self.taiko_settings.as_ref().clone();
             new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
 

@@ -670,7 +670,7 @@ impl IngameManager {
 
 
         if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
-            trace!("[InGame] Song over, saying map is complete");
+            trace!("Song over, saying map is complete");
             self.completed = true;
         }
 

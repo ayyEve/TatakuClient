@@ -151,14 +151,14 @@ impl Audio {
 
 
     pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> Weak<AudioHandle> {
-        trace!("[audio] // play_song - playing song");
+        trace!("Playing song");
         // check if we;re already playing, if restarting is allowed
         let string_path = path.as_ref().to_owned();
 
         if let Some((c_path, audio)) = CURRENT_SONG.lock().clone() {
             if c_path != string_path {
                 if let Some(audio) = audio.upgrade() {
-                    trace!("[audio] // play_song - pre-stopping old song");
+                    trace!("Pre-stopping old song");
                     audio.stop();
                 }
             }
@@ -180,7 +180,7 @@ impl Audio {
 
         // if the pending song is no longer us, return a fake pointer
         if *PLAY_PENDING.lock() != id {
-            trace!("[audio] // play_song - pending song changed, leaving");
+            trace!("Pending song changed, leaving");
             return Weak::new()
         }
 
@@ -190,20 +190,20 @@ impl Audio {
                     Some(audio2) => { // exists and is playing
                         if string_path == c_path { // same file as what we want to play
                             if restart {
-                                trace!("[audio] // play_song - same song, restarting"); 
+                                trace!("Same song, restarting"); 
                                 audio2.set_position(position);
                             }
-                            trace!("[audio] // play_song - same song, exiting");
+                            trace!("Same song, exiting");
                             return audio;
                         } else { // different audio
-                            trace!("[audio] // play_song - stopping old song");
+                            trace!("Stopping old song");
                             audio2.stop();
                         }
                     }
-                    None => trace!("[audio] // play_song - upgrade failed"), // audio stopped
+                    None => trace!("Upgrade failed"), // audio stopped
                 }
             }
-            None => trace!("[audio] // play_song - no audio"), // no audio set
+            None => trace!("No audio"), // no audio set
         }
 
         let sound = Self::play_sound(sound);
@@ -231,7 +231,7 @@ impl Audio {
     }
     
     pub fn stop_song() {
-        trace!("stopping song");
+        trace!("Stopping song");
         if let Some(audio) = Audio::get_song() {
             audio.stop();
         }
@@ -278,6 +278,6 @@ impl Audio {
             upgraded.set_volume(get_settings!().get_effect_vol());
             upgraded.play();
             handle
-        }).expect("audio was not preloaded")
+        }).expect("Audio was not preloaded")
     }
 }

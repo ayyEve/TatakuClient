@@ -58,7 +58,7 @@ impl SkinSettings {
 
         // return defaults if skin does not exist
         if !exists(&path) {
-            trace!("[Skin] skin.ini missing, using defaults");
+            trace!("skin.ini missing, using defaults");
             return Ok(s)
         }
 

@@ -321,7 +321,7 @@ impl BeatmapManager {
             let existing = Database::get_all_diffs(&playmode, &mods);
 
             // perform calc
-            // trace!("[Diff Calc] starting");
+            // trace!("Starting Diff Calc");
             maps.iter_mut().for_each(|i| {
                 let hash = &i.beatmap_hash;
                 i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
@@ -343,7 +343,7 @@ impl BeatmapManager {
                 lock.on_diffcalc_complete.0.ignite(());
             }
 
-            // trace!("[Diff Calc] complete");
+            // trace!("Diff calc Done");
         });
     }
 }
@@ -357,27 +357,27 @@ pub fn extract_all() {
 
         let files:Vec<std::io::Result<DirEntry>> = files.collect();
         // let len = files.len();
-        trace!("[extract] files: {:?}", files);
+        trace!("Files: {:?}", files);
 
         for file in files {
-            trace!("[extract] looping file {:?}", file);
+            trace!("Looping file {:?}", file);
             // let completed = completed.clone();
 
             match file {
                 Ok(filename) => {
-                    trace!("[extract] file ok");
+                    trace!("File ok");
                     // tokio::spawn(async move {
-                        trace!("[extract] reading file {:?}", filename);
+                        trace!("Reading file {:?}", filename);
 
                         let mut error_counter = 0;
                         // unzip file into ./Songs
                         while let Err(e) = std::fs::File::open(filename.path().to_str().unwrap()) {
-                            error!("[extract] error opening osz file: {}", e);
+                            error!("Error opening osz file: {}", e);
                             error_counter += 1;
 
                             // if we've waited 5 seconds and its still broken
                             if error_counter > 5 {
-                                error!("[extract] 5 errors opening osz file: {}", e);
+                                error!("5 errors opening osz file: {}", e);
                                 return;
                             }
 
@@ -388,7 +388,7 @@ pub fn extract_all() {
                         let mut archive = match zip::ZipArchive::new(file) {
                             Ok(a) => a,
                             Err(e) => {
-                                error!("[extract] Error extracting zip archive: {}", e);
+                                error!("Error extracting zip archive: {}", e);
                                 NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED);
                                 continue;
                             }
@@ -407,10 +407,10 @@ pub fn extract_all() {
                             outpath = Path::new(z);
 
                             if (&*file.name()).ends_with('/') {
-                                debug!("[extract] File {} extracted to \"{}\"", i, outpath.display());
+                                debug!("File {} extracted to \"{}\"", i, outpath.display());
                                 std::fs::create_dir_all(&outpath).unwrap();
                             } else {
-                                debug!("[extract] File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
+                                debug!("File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
                                 if let Some(p) = outpath.parent() {
                                     if !p.exists() {std::fs::create_dir_all(&p).unwrap()}
                                 }
@@ -429,15 +429,15 @@ pub fn extract_all() {
                     
                         match std::fs::remove_file(filename.path().to_str().unwrap()) {
                             Ok(_) => {},
-                            Err(e) => error!("[extract] Error deleting file: {}", e),
+                            Err(e) => error!("Error deleting file: {}", e),
                         }
                         
-                        trace!("[extract] Done");
+                        trace!("Done");
                         // *completed.lock() += 1;
                     // });
                 }
                 Err(e) => {
-                    error!("error with file: {}", e);
+                    error!("Error with file: {}", e);
                 }
             }
         }

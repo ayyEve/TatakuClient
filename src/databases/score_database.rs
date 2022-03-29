@@ -97,7 +97,7 @@ pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
 
-    trace!("[Replay] loading replay: {}", fullpath);
+    trace!("Loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)
 }

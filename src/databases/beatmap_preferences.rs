@@ -73,7 +73,7 @@ impl Database {
             let mut s = db.prepare(&query).unwrap();
             let res = s.execute([]);
             if let Err(e) = res {
-                error!("[Database] error updating beatmap_preferences: {e}")
+                error!("Error updating beatmap_preferences: {e}")
             }
         }
     }
@@ -105,7 +105,7 @@ impl Database {
             let mut s = db.prepare(&query).unwrap();
             let res = s.execute([]);
             if let Err(e) = res {
-                error!("[Database] error updating beatmap_mode_preferences: {e}")
+                error!("Error updating beatmap_mode_preferences: {e}")
             }
         }
     }
