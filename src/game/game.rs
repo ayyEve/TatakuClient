@@ -1,3 +1,5 @@
+use std::ops::RangeBounds;
+
 use glfw_window::GlfwWindow as AppWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{Window, input::*, event_loop::*, window::WindowSettings};
@@ -275,13 +277,6 @@ impl Game {
         //     self.register_timings = self.input_manager.get_register_delay();
         //     debug!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
         // }
-        if !self.cursor_manager.replay_mode {
-            self.cursor_manager.set_cursor_pos(mouse_pos);
-        } else if self.cursor_manager.replay_mode_changed {
-            self.cursor_manager.replay_mode_changed = false;
-            use glfw::CursorMode::{Normal, Hidden};
-            self.window.window.set_cursor_mode(if self.cursor_manager.replay_mode {Normal} else {Hidden});
-        }
 
         if mouse_down.len() > 0 {
             // check notifs
@@ -356,7 +351,18 @@ impl Game {
 
         
         // update cursor
-        self.cursor_manager.update(elapsed as f64);
+        if mouse_moved {CursorManager::set_pos(mouse_pos, true)}
+        if mouse_down.contains(&MouseButton::Left) {
+            CursorManager::left_pressed(true)
+        } else if mouse_up.contains(&MouseButton::Left) {
+            CursorManager::left_pressed(false)
+        }
+        if mouse_down.contains(&MouseButton::Right) {
+            CursorManager::right_pressed(true)
+        } else if mouse_up.contains(&MouseButton::Right) {
+            CursorManager::right_pressed(false)
+        }
+        self.cursor_manager.update(elapsed as f64, &mut self.window);
 
 
         // run update on current state

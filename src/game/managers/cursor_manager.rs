@@ -1,4 +1,11 @@
+/**
+ * Cursor Manager
+ * 
+ * this uses an mpsc channel because it may be inaccessible to things that need access
+ * ie, a gamemode might want to hide the cursor, however it does not have direct access to the cursor field in game
+ */
 use crate::prelude::*;
+use std::sync::mpsc::{Sender, Receiver, channel};
 
 const TRAIL_CREATE_TIMER:f64 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
@@ -8,26 +15,20 @@ const TRAIL_CREATE_TIMER_IF_MIDDLE:f64 = 0.1;
 const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
 const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
 
+
+lazy_static::lazy_static! {
+    static ref CURSOR_EVENT_QUEUE:Arc<OnceCell<Sender<CursorEvent>>> = Arc::new(OnceCell::const_new());
+}
+
+
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
 
-    /// should the cursor be visible?
-    pub visible: bool,
 
     pub color: Color,
     pub border_color: Color,
 
-    /// should the mouse not follow the user's cursor.
-    /// actually used inside game, not here
-    pub replay_mode: bool,
-
-    /// did the replay mode value change?
-    /// needed so we know whether to show/hide the window cursor
-    pub replay_mode_changed: bool,
-
-    pub left_pressed: bool,
-    pub right_pressed: bool,
 
     pub cursor_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
@@ -35,10 +36,21 @@ pub struct CursorManager {
     last_trail_time: f64,
     skin_change_helper: SkinChangeHelper,
 
-
     trail_create_timer: f64,
     trail_fadeout_timer_start: f64,
     trail_fadeout_timer_duration: f64,
+
+    event_receiver: Receiver<CursorEvent>,
+
+    // event vals
+
+    /// should the cursor be visible?
+    visible: bool,
+
+    left_pressed: bool,
+    right_pressed: bool,
+
+    show_system_cursor: bool
 }
 
 impl CursorManager {
@@ -62,18 +74,20 @@ impl CursorManager {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
         };
 
+        let (sender, event_receiver) = channel();
+        if let Ok(_) = CURSOR_EVENT_QUEUE.set(sender) {
+            info!("cursor event queue set");
+        } else {
+            error!("hjkjugtfgu")
+        }
+
         Self {
             pos: Vector2::zero(),
-            visible: true,
-            replay_mode: false,
-            replay_mode_changed: false,
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
             
             skin_change_helper: SkinChangeHelper::new(),
 
-            left_pressed: false,
-            right_pressed: false,
 
             trail_images: Vec::new(),
             cursor_image,
@@ -83,6 +97,13 @@ impl CursorManager {
             trail_create_timer, 
             trail_fadeout_timer_start,
             trail_fadeout_timer_duration,
+
+            event_receiver,
+
+            left_pressed: false,
+            right_pressed: false,
+            visible: true,
+            show_system_cursor: false,
         }
     }
 
@@ -110,21 +131,30 @@ impl CursorManager {
         }
     }
 
-    /// set replay mode.
-    /// really just a helper
-    #[allow(unused)]
-    pub fn set_replay_mode(&mut self, val:bool) {
-        if val != self.replay_mode {
-            self.replay_mode = val;
-            self.replay_mode_changed = true;
+    pub fn update(&mut self, game_time: f64, window: &mut glfw_window::GlfwWindow) {
+
+        // work through the event queue
+        while let Ok(event) = self.event_receiver.try_recv() {
+            match event {
+                CursorEvent::SetLeftDown(down) => self.left_pressed = down,
+                CursorEvent::SetRightDown(down) => self.right_pressed = down,
+                CursorEvent::SetVisible(show) => self.visible = show,
+
+                CursorEvent::SetPos(pos, is_game) => {
+                    if !is_game || (is_game && !self.show_system_cursor) {
+                        self.pos = pos
+                    }
+                }
+                CursorEvent::ShowSystemCursor(show) => {
+                    use glfw::CursorMode::{Normal, Hidden};
+                    window.window.set_cursor_mode(if show {Normal} else {Hidden});
+
+                    self.show_system_cursor = show;
+                }
+            }
         }
-    }
 
-    pub fn set_cursor_pos(&mut self, pos:Vector2) {
-        self.pos = pos;
-    }
 
-    pub fn update(&mut self, game_time: f64) {
         if self.skin_change_helper.check() {
             self.reload_skin();
         }
@@ -157,6 +187,7 @@ impl CursorManager {
             i.items[0].visible()
         });
     }
+
 
     pub fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
         if !self.visible {return}
@@ -195,4 +226,41 @@ impl CursorManager {
         }
 
     }
+}
+
+impl CursorManager {
+    fn add_event(event: CursorEvent) {
+        if let Some(q) = CURSOR_EVENT_QUEUE.get() {
+            q.send(event).expect("cursor channel dead?");
+        } else {
+            error!("hgbyvtfbgymjiinhbgvtfrbgy")
+        }
+    }
+
+    pub fn set_pos(pos: Vector2, is_game: bool) {
+        Self::add_event(CursorEvent::SetPos(pos, is_game));
+    }
+
+    pub fn left_pressed(pressed: bool) {
+        Self::add_event(CursorEvent::SetLeftDown(pressed));
+    }
+    pub fn right_pressed(pressed: bool) {
+        Self::add_event(CursorEvent::SetRightDown(pressed));
+    }
+
+    pub fn set_visible(visible: bool) {
+        Self::add_event(CursorEvent::SetVisible(visible));
+    }
+    pub fn show_system_cursor(show: bool) {
+        Self::add_event(CursorEvent::ShowSystemCursor(show));
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum CursorEvent {
+    SetLeftDown(bool), 
+    SetRightDown(bool),
+    SetPos(Vector2, bool),
+    ShowSystemCursor(bool),
+    SetVisible(bool),
 }
