@@ -1126,6 +1126,8 @@ impl Default for IngameManager {
 
 pub trait GameMode {
     fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self: Sized;
+    fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized;
+    
     fn playmode(&self) -> PlayMode;
 
     fn end_time(&self) -> f32;
@@ -1188,6 +1190,8 @@ impl GameMode for NoMode {
     fn apply_auto(&mut self, _: &BackgroundGameSettings) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     fn reset(&mut self, _:&Beatmap) {}
+
+    fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized {String::new()}
 }
 
 // struct HitsoundManager {

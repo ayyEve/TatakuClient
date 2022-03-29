@@ -25,6 +25,7 @@ pub fn build_gamemodes() {
     let mut diff_calc_lines = vec![String::new()];
     let mut display_lines = vec![String::new()];
     let mut mode_list = Vec::new();
+    let mut score_string_list = Vec::new();
 
     for f in files {
         if !f.path().is_dir() {continue}
@@ -59,6 +60,7 @@ pub fn build_gamemodes() {
         diff_calc_lines.push(     format!("        \"{internal_name}\" => {mode_folder}::DiffCalc::new(map)?.calc(mods),"));
         display_lines.push(       format!("        \"{internal_name}\" => \"{display_name}\","));
         mode_list.push(           format!("        \"{internal_name}\","));
+        score_string_list.push(   format!("        \"{internal_name}\" => {mode_folder}::Game::score_hit_string(score_hit),"))
     }
 
     let mods = mods.join("\n");
@@ -67,9 +69,12 @@ pub fn build_gamemodes() {
     let diff_calc_lines = diff_calc_lines.join("\n");
     let display_lines = display_lines.join("\n");
     let mode_list = format!("\n{}\n", mode_list.join("\n"));
+    let score_string_list = format!("\n{}\n", score_string_list.join("\n"));
 
     let output_file = format!(r#"use crate::prelude::*;
 {mods}
+
+pub const AVAILABLE_PLAYMODES: &[&'static str] = &[{mode_list}];
 
 pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {{
     let beatmap = Beatmap::from_metadata(beatmap)?;
@@ -101,8 +106,12 @@ pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {{
         _ => "Unknown"
     }}
 }}
-pub const AVAILABLE_PLAYMODES: &[&'static str] = &[{mode_list}];
 
+pub fn get_score_hit_string(mode: &PlayMode, score_hit: &ScoreHit) -> String {{
+    match &**mode {{{score_string_list}
+        _ => String::new()
+    }}
+}}
 
 // pub fn get_editor(playmode: &Playmode, beatmap: &Beatmap) -> TatakuResult<Box<dyn Menu>> {{}} // todo
 

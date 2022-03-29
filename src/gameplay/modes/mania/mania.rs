@@ -902,6 +902,20 @@ impl GameMode for ManiaGame {
         //     }
         // }
     }
+
+    fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
+        match hit {
+            ScoreHit::Miss  => "Miss".to_owned(),
+            ScoreHit::X50   => "Okay".to_owned(),
+            ScoreHit::X100  => "Good".to_owned(),
+            ScoreHit::Xkatu => "Great".to_owned(),
+            ScoreHit::X300  => "Perfect".to_owned(),
+            ScoreHit::Xgeki => "Marvelous".to_owned(),
+            
+            ScoreHit::None  => String::new(),
+            ScoreHit::Other(_, _) => String::new(),
+        }
+    }
 }
 
 

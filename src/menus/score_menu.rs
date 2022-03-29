@@ -17,6 +17,8 @@ pub struct ScoreMenu {
     // cached
     hit_error: HitError,
 
+    hit_counts: Vec<(String, u32)>,
+
 
     pub dont_do_menu: bool,
     pub should_close: bool,
@@ -38,6 +40,23 @@ impl ScoreMenu {
             50.0,
             font.clone()
         );
+        let playmode = &score.playmode;
+
+        // map hit types to a display string
+        let mut hit_counts = Vec::new();
+        for (hit_type, count) in [
+            (ScoreHit::Miss, score.xmiss),
+            (ScoreHit::X50, score.x50),
+            (ScoreHit::X100, score.x100),
+            (ScoreHit::Xkatu, score.xkatu),
+            (ScoreHit::X300, score.x300),
+            (ScoreHit::Xgeki, score.xgeki),
+        ] {
+            let txt = get_score_hit_string(playmode, &hit_type);
+            if txt.is_empty() {continue}
+
+            hit_counts.push((txt, count as u32));
+        }
 
         ScoreMenu {
             score: score.clone(),
@@ -51,6 +70,7 @@ impl ScoreMenu {
             should_close: false,
 
             selected_index: 99,
+            hit_counts
         }
     }
 
@@ -104,67 +124,42 @@ impl Menu<Game> for ScoreMenu {
             font.clone()
         )));
 
-        // counts
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 140.0),
-            30,
-            format!("x300: {}", format_number(self.score.x300)),
-            font.clone()
-        )));
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 170.0),
-            30,
-            format!("x100: {}", format_number(self.score.x100)),
-            font.clone()
-        )));
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 200.0),
-            30,
-            format!("Miss: {}", format_number(self.score.xmiss)),
-            font.clone()
-        )));
+        let mut current_pos = Vector2::new(50.0, 140.0);
+        let size = Vector2::new(0.0, 35.0);
+        for (str, count) in self.hit_counts.iter() {
+            list.push(Box::new(Text::new(
+                Color::BLACK,
+                depth + 1.0,
+                current_pos,
+                30,
+                format!("{str}: {}", format_number(*count)),
+                font.clone()
+            )));
+            current_pos += size;
+        }
 
-        // combo and acc
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 240.0),
-            30,
-            format!("{}x, {:.2}%", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
-            font.clone()
-        )));
-
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 280.0),
-            30,
+        current_pos += size;
+        for str in [
+            format!("Combo: {}x, {:.2}%", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
+            String::new(),
             format!("Mean: {:.2}ms", self.hit_error.mean),
-            font.clone()
-        )));
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 320.0),
-            30,
             format!("Error: {:.2}ms - {:.2}ms avg", self.hit_error.early, self.hit_error.late),
-            font.clone()
-        )));
-        list.push(Box::new(Text::new(
-            Color::BLACK,
-            depth + 1.0,
-            Vector2::new(50.0, 360.0),
-            30,
             format!("Deviance: {:.2}ms", self.hit_error.deviance),
-            font.clone()
-        )));
-        
+        ] {
+            if !str.is_empty() {
+                list.push(Box::new(Text::new(
+                    Color::BLACK,
+                    depth + 1.0,
+                    current_pos,
+                    30,
+                    str,
+                    font.clone()
+                )));
+            }
+            current_pos += size;
+        }
+
+
         // draw buttons
         self.back_button.draw(args, Vector2::zero(), depth, &mut list);
         self.replay_button.draw(args, Vector2::zero(), depth, &mut list);

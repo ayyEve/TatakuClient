@@ -176,7 +176,7 @@ impl ScrollableItem for BeatmapsetItem {
             parent_depth + 4.0,
             self.pos + pos_offset + Vector2::new(5.0, 5.0),
             15,
-            self.display_text.clone(), //format!("{} // {} - {}", meta.creator, meta.artist, meta.title),
+            self.display_text.clone(),
             font.clone()
         );
 
