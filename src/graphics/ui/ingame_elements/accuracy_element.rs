@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-
-
 pub struct AccuracyElement {
     acc_image: Option<SkinnedNumber>,
     acc: f64,
@@ -16,15 +14,34 @@ impl AccuracyElement {
 }
 
 impl InnerUIElement for AccuracyElement {
+    fn get_bounds(&self) -> Rectangle {
+        Rectangle::bounds_only(
+            Vector2::x_only(-200.0),
+            if let Some(i) = &self.acc_image {
+                i.measure_text()
+            } else {
+                Text::new(
+                    Color::BLACK,
+                    0.0,
+                    Vector2::zero(),
+                    30,
+                    format!("{:.2}%", self.acc),
+                    get_font()
+                ).measure_text()
+            }
+        )
+    }
+
     fn update(&mut self, manager: &mut IngameManager) {
         self.acc = calc_acc(&manager.score) * 100.0;
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
         if let Some(acc) = &mut self.acc_image {
+            acc.number = self.acc;
+
             let mut acc = acc.clone();
             acc.current_scale = scale;
-            acc.number = self.acc;
 
             let size = acc.measure_text();
             acc.current_pos = pos_offset - Vector2::x_only(size.x);

@@ -100,7 +100,9 @@ pub struct IngameManager {
     /// mainly a helper for spectator
     pub on_start: Box<dyn FnOnce(&mut Self)>,
 
-    pub events: Vec<InGameEvent>
+    pub events: Vec<InGameEvent>,
+
+    ui_editor: Option<GameUIEditorDialog>
 }
 
 impl IngameManager {
@@ -194,7 +196,7 @@ impl IngameManager {
             HealthBarElement::new(self.common_game_settings.clone())
         ));
 
-        // healthbar
+        // duration bar
         self.ui_elements.push(UIElement::new(
             "durationbar",
             Vector2::new(0.0, window_size.y),
@@ -365,6 +367,23 @@ impl IngameManager {
         ui_elements.iter_mut().for_each(|ui|ui.update(self));
         self.ui_elements = ui_elements;
 
+        
+        let mut ui_editor = std::mem::take(&mut self.ui_editor);
+        let mut should_close = false;
+        if let Some(ui_editor) = &mut ui_editor {
+            ui_editor.update(&mut ());
+            ui_editor.update_elements(self);
+
+            if ui_editor.should_close() {
+                self.ui_elements = std::mem::take(&mut ui_editor.elements);
+                should_close = true
+            }
+        }
+        if !should_close {
+            self.ui_editor = ui_editor;
+        }
+        
+
         // check lead-in time
         if self.lead_in_time > 0.0 {
             let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
@@ -499,12 +518,17 @@ impl IngameManager {
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();
         let font = self.font.clone();
-        let window_size:Vector2 = args.window_size.into();
+        // let window_size:Vector2 = args.window_size.into();
 
         // draw gamemode
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.draw(args, self, list);
         self.gamemode = gamemode;
+
+        
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.draw(&args, &0.0, list);
+        } 
 
 
         // draw center texts
@@ -884,6 +908,16 @@ impl IngameManager {
             self.should_pause = true;
         }
 
+        
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.on_key_press(&key, &mods, &mut ());
+            if key == Key::F9 {
+                ui_editor.should_close = true;
+            }
+        } else if key == Key::F9 {
+            self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
+        }
+
         let mut gamemode = std::mem::take(&mut self.gamemode);
 
         // skip intro
@@ -926,24 +960,42 @@ impl IngameManager {
     
     
     pub fn mouse_move(&mut self, pos:Vector2) {
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.on_mouse_move(&pos, &mut ());
+        }
+
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_move(pos, self);
         self.gamemode = gamemode;
     }
     pub fn mouse_down(&mut self, btn:piston::MouseButton) {
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.on_mouse_down(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ());
+            return
+        }
+
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_down(btn, self);
         self.gamemode = gamemode;
     }
     pub fn mouse_up(&mut self, btn:piston::MouseButton) {
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.on_mouse_up(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ());
+            return
+        }
+
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_up(btn, self);
         self.gamemode = gamemode;
     }
     pub fn mouse_scroll(&mut self, delta:f64) {
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.on_mouse_scroll(&delta, &mut ());
+        } 
+
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_scroll(delta, self);
@@ -1068,6 +1120,7 @@ impl Default for IngameManager {
             pause_pending: false,
             events: Vec::new(),
             ui_elements: Vec::new(),
+            ui_editor: None,
         }
     }
 }

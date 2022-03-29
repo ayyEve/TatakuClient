@@ -65,7 +65,7 @@ impl Text {
     }
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
-        self.initial_pos = rect.pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
+        self.initial_pos = rect.current_pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
         self.current_pos = self.initial_pos;
     }
 

@@ -613,15 +613,15 @@ impl GameMode for StandardGame {
                 let line_size = self.game_settings.playfield_movelines_thickness;
                 // draw x and y center lines
                 let px_line = Line::new(
-                    playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
-                    playfield.pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
+                    playfield.current_pos + Vector2::new(0.0, playfield.size.y/2.0),
+                    playfield.current_pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
                     line_size,
                     -100.0,
                     Color::WHITE
                 );
                 let py_line = Line::new(
-                    playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
-                    playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
+                    playfield.current_pos + Vector2::new(playfield.size.x/2.0, 0.0),
+                    playfield.current_pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
                     line_size, 
                     -100.0,
                     Color::WHITE
@@ -907,12 +907,12 @@ impl GameMode for StandardGame {
                     // -1.0 to 1.0
                     // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.x = playfield.pos.x + f64::lerp(0.0, playfield.size.x, normalized);
+                    new_pos.x = playfield.current_pos.x + f64::lerp(0.0, playfield.size.x, normalized);
                 },
                 Some(ControllerAxis::Left_Y) => {
                     
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.y = playfield.pos.y + f64::lerp(0.0, playfield.size.y, normalized);
+                    new_pos.y = playfield.current_pos.y + f64::lerp(0.0, playfield.size.y, normalized);
                 },
                 _ => {},
             }

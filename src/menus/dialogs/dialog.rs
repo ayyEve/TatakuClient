@@ -28,7 +28,7 @@ pub trait Dialog<G> {
         list.push(Box::new(Rectangle::new(
             color.alpha(0.8),
             depth, 
-            bounds.pos,
+            bounds.current_pos,
             bounds.size,
             Some(Border::new(color, 2.0))
         )))

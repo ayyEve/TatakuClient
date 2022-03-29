@@ -13,6 +13,13 @@ impl HealthBarElement {
     }
 }
 impl InnerUIElement for HealthBarElement {
+    fn get_bounds(&self) -> Rectangle {
+        Rectangle::bounds_only(
+            Vector2::zero(),
+            Vector2::new(Settings::window_size().x / 2.0, DURATION_HEIGHT)
+        )
+    }
+    
     fn update(&mut self, manager: &mut IngameManager) {
         self.health_ratio = manager.health.get_ratio() as f64
     }

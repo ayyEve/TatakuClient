@@ -369,6 +369,6 @@ fn draw_banner(text:&str, list: &mut Vec<Box<dyn Renderable>>) {
     );
     offset_text.center_text(rect);
     // add
-    list.push(visibility_bg(rect.pos, rect.size, BANNER_DEPTH + 10.0));
+    list.push(visibility_bg(rect.current_pos, rect.size, BANNER_DEPTH + 10.0));
     list.push(Box::new(offset_text));
 }

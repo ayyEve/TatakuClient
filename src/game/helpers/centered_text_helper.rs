@@ -54,7 +54,7 @@ impl<V:Display> CenteredTextHelper<V>{
             );
             offset_text.center_text(rect);
             // add
-            list.push(visibility_bg(rect.pos, rect.size, self.depth + 10.0));
+            list.push(visibility_bg(rect.current_pos, rect.size, self.depth + 10.0));
             list.push(Box::new(offset_text));
         }
     }

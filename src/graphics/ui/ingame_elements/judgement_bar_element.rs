@@ -27,6 +27,16 @@ impl JudgementBarElement {
     }
 }
 impl InnerUIElement for JudgementBarElement {
+    fn get_bounds(&self) -> Rectangle {
+        let window_size = Settings::window_size();
+        let items_width = HIT_TIMING_BAR_SIZE.x * (self.timing_bar_things.0.len() + 1) as f64;
+
+        Rectangle::bounds_only(
+            Vector2::new((window_size.x-items_width)/2.0, HIT_TIMING_BAR_POS.y),
+            Vector2::new(items_width, HIT_TIMING_BAR_SIZE.y)
+        )
+    }
+
     fn update(&mut self, manager: &mut IngameManager) {
         self.game_time = manager.time();
         self.hitbar_timings = manager.hitbar_timings.clone()
@@ -44,7 +54,7 @@ impl InnerUIElement for JudgementBarElement {
             *miss_color,
             17.1,
             pos_offset + Vector2::new((window_size.x-HIT_TIMING_BAR_SIZE.x)/2.0, HIT_TIMING_BAR_POS.y),
-            Vector2::new(HIT_TIMING_BAR_SIZE.x, HIT_TIMING_BAR_SIZE.y) * scale,
+            HIT_TIMING_BAR_SIZE * scale,
             None // for now
         )));
         // draw other hit windows
@@ -77,10 +87,8 @@ impl InnerUIElement for JudgementBarElement {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else {1.0};
 
-            let mut c = HIT_TIMING_BAR_COLOR;
-            c.a = alpha as f32;
             list.push(Box::new(Rectangle::new(
-                c,
+                HIT_TIMING_BAR_COLOR.alpha(alpha),
                 10.0,
                 pos_offset + Vector2::new(window_size.x / 2.0 + pos, HIT_TIMING_BAR_POS.y),
                 Vector2::new(2.0, HIT_TIMING_BAR_SIZE.y) * scale,

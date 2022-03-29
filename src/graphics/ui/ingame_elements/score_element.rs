@@ -16,17 +16,31 @@ impl ScoreElement {
 }
 
 impl InnerUIElement for ScoreElement {
+    fn get_bounds(&self) -> Rectangle {
+        let size = if let Some(i) = &self.score_image {
+            i.measure_text()
+        } else {
+            Vector2::new(-200.0, 10.0)
+        };
+
+        Rectangle::bounds_only(
+            Vector2::x_only(-size.x),
+            size
+        )
+    }
+
+
     fn update(&mut self, manager: &mut IngameManager) {
         self.score = manager.score.score.score;
     }
 
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
-
         // score
-        if let Some(score) = &self.score_image {
-            let mut score = score.clone();
+        if let Some(score) = &mut self.score_image {
             score.number = self.score as f64;
-            score.current_pos = pos_offset - Vector2::x_only(score.measure_text().x);
+
+            let mut score = score.clone();
+            score.current_pos = pos_offset + Vector2::x_only(-score.measure_text().x);
             score.current_scale = scale;
             
             list.push(Box::new(score.clone()));

@@ -2,11 +2,13 @@ use crate::prelude::*;
 use rusqlite::Connection;
 
 mod beatmaps;
+mod ui_element_info;
 mod score_database;
 mod beatmap_preferences;
 mod difficulty_database;
 
 pub use beatmaps::*;
+pub use ui_element_info::*;
 pub use score_database::*;
 pub use beatmap_preferences::*;
 pub use difficulty_database::*;
@@ -147,6 +149,17 @@ impl Database {
                 scroll_speed REAL,
 
                 PRIMARY KEY (beatmap_hash, playmode)
+            )", [])
+        .expect("error creating db table");
+
+        // ui element things table
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS ui_elements (
+                name TEXT PRIMARY KEY,
+                pos_x REAL,
+                pos_y REAL,
+                scale_x REAL,
+                scale_y REAL
             )", [])
         .expect("error creating db table");
 

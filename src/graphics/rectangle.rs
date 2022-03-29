@@ -22,7 +22,6 @@ pub struct Rectangle {
 
 
     pub depth: f64,
-    pub pos: Vector2,
     pub size: Vector2,
     pub border: Option<Border>,
 }
@@ -49,7 +48,6 @@ impl Rectangle {
             shape: Shape::Square,
 
             depth,
-            pos,
             size,
             border,
             origin: size / 2.0,
@@ -64,7 +62,7 @@ impl Rectangle {
 
     /// check if this rectangle contains a point
     pub fn contains(&self, p:Vector2) -> bool {
-        p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
+        p.x > self.current_pos.x && p.x < self.current_pos.x + self.size.x && p.y > self.current_pos.y && p.y < self.current_pos.y + self.size.y
     }
 }
 

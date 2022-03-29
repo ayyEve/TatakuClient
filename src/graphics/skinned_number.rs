@@ -152,7 +152,7 @@ impl SkinnedNumber {
 
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
-        self.initial_pos = rect.pos + (rect.size - text_size) / 2.0;
+        self.initial_pos = rect.current_pos + (rect.size - text_size) / 2.0;
         self.current_pos = self.initial_pos;
     }
 }

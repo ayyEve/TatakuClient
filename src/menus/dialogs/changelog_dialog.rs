@@ -87,7 +87,7 @@ impl Dialog<Game> for ChangelogDialog {
         list.push(Box::new(Text::new(
             Color::BLACK,
             depth - 0.00001,
-            Vector2::new(bg_rect.pos.x + ITEM_PADDING.x, ITEM_HEIGHT),
+            Vector2::new(bg_rect.current_pos.x + ITEM_PADDING.x, ITEM_HEIGHT),
             ITEM_HEIGHT as u32,
             format!("Whats new:"),
             font.clone()
@@ -98,7 +98,7 @@ impl Dialog<Game> for ChangelogDialog {
             list.push(Box::new(Text::new(
                 Color::BLACK,
                 depth - 0.00001,
-                Vector2::new(bg_rect.pos.x + ITEM_PADDING.x, y),
+                Vector2::new(bg_rect.current_pos.x + ITEM_PADDING.x, y),
                 ITEM_HEIGHT as u32,
                 text.clone(),
                 font.clone()

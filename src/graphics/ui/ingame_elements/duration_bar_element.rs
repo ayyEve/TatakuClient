@@ -13,6 +13,13 @@ impl DurationBarElement {
     }
 }
 impl InnerUIElement for DurationBarElement {
+    fn get_bounds(&self) -> Rectangle {
+        Rectangle::bounds_only(
+            Vector2::y_only(-(DURATION_HEIGHT + 3.0)),
+            Vector2::new(Settings::window_size().x, DURATION_HEIGHT)
+        )
+    }
+
     fn update(&mut self, manager: &mut IngameManager) {
         self.duration_ratio = (manager.time()/manager.end_time) as f64
     }
@@ -25,7 +32,7 @@ impl InnerUIElement for DurationBarElement {
         list.push(Box::new(Rectangle::new(
             self.common_game_settings.duration_color,
             1.0,
-            pos_offset - Vector2::y_only(DURATION_HEIGHT + 3.0),
+            pos_offset + Vector2::y_only(-(DURATION_HEIGHT + 3.0)),
             Vector2::new(window_size.x, DURATION_HEIGHT) * scale,
             Some(Border::new(self.common_game_settings.duration_border_color, 1.8 * scale.x))
         )));
