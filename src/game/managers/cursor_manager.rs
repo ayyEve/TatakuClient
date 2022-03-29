@@ -5,7 +5,7 @@
  * ie, a gamemode might want to hide the cursor, however it does not have direct access to the cursor field in game
  */
 use crate::prelude::*;
-use std::sync::mpsc::{SyncSender, Receiver, channel, sync_channel};
+use std::sync::mpsc::{SyncSender, Receiver, sync_channel};
 
 const TRAIL_CREATE_TIMER:f64 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
@@ -74,10 +74,8 @@ impl CursorManager {
         };
 
         let (sender, event_receiver) = sync_channel(1000);
-        if let Ok(_) = CURSOR_EVENT_QUEUE.set(sender) {
-            info!("cursor event queue set");
-        } else {
-            error!("hjkjugtfgu")
+        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) {
+            panic!("Cursor event queue already exists");
         }
 
         Self {
@@ -135,20 +133,28 @@ impl CursorManager {
         // work through the event queue
         while let Ok(event) = self.event_receiver.try_recv() {
             match event {
-                CursorEvent::SetLeftDown(down) => self.left_pressed = down,
-                CursorEvent::SetRightDown(down) => self.right_pressed = down,
+                CursorEvent::SetLeftDown(down, is_gamemode) => {
+                    if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
+                        self.left_pressed = down
+                    }
+                },
+                CursorEvent::SetRightDown(down, is_gamemode) => {
+                    if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
+                        self.right_pressed = down
+                    }
+                },
                 CursorEvent::SetVisible(show) => self.visible = show,
 
-                CursorEvent::SetPos(pos, is_game) => {
-                    if !is_game || (is_game && !self.show_system_cursor) {
+                CursorEvent::SetPos(pos, is_gamemode) => {
+                    if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.pos = pos
                     }
                 }
                 CursorEvent::ShowSystemCursor(show) => {
+                    self.show_system_cursor = show;
+
                     use glfw::CursorMode::{Normal, Hidden};
                     window.window.set_cursor_mode(if show {Normal} else {Hidden});
-
-                    self.show_system_cursor = show;
                 }
             }
         }
@@ -205,9 +211,15 @@ impl CursorManager {
             }
         }
         
-        if let Some(cursor) = &mut self.cursor_image {
+        if let Some(cursor) = &self.cursor_image {
+            let mut cursor = cursor.clone();
             cursor.current_pos = self.pos;
             cursor.current_color = self.color;
+            
+            if self.left_pressed || self.right_pressed {
+                cursor.current_scale = Vector2::one() * 1.2;
+            }
+            
             list.push(Box::new(cursor.clone()));
         } else {
             list.push(Box::new(Circle::new(
@@ -229,22 +241,21 @@ impl CursorManager {
 
 impl CursorManager {
     fn add_event(event: CursorEvent) {
+        // should always be okay
         if let Some(q) = CURSOR_EVENT_QUEUE.get() {
             q.send(event).expect("cursor channel dead?");
-        } else {
-            error!("hgbyvtfbgymjiinhbgvtfrbgy")
         }
     }
 
-    pub fn set_pos(pos: Vector2, is_game: bool) {
-        Self::add_event(CursorEvent::SetPos(pos, is_game));
+    pub fn set_pos(pos: Vector2, is_gamemode: bool) {
+        Self::add_event(CursorEvent::SetPos(pos, is_gamemode));
     }
 
-    pub fn left_pressed(pressed: bool) {
-        Self::add_event(CursorEvent::SetLeftDown(pressed));
+    pub fn left_pressed(pressed: bool, is_gamemode: bool) {
+        Self::add_event(CursorEvent::SetLeftDown(pressed, is_gamemode));
     }
-    pub fn right_pressed(pressed: bool) {
-        Self::add_event(CursorEvent::SetRightDown(pressed));
+    pub fn right_pressed(pressed: bool, is_gamemode: bool) {
+        Self::add_event(CursorEvent::SetRightDown(pressed, is_gamemode));
     }
 
     pub fn set_visible(visible: bool) {
@@ -257,8 +268,8 @@ impl CursorManager {
 
 #[derive(Copy, Clone)]
 pub enum CursorEvent {
-    SetLeftDown(bool), 
-    SetRightDown(bool),
+    SetLeftDown(bool, bool), 
+    SetRightDown(bool, bool),
     SetPos(Vector2, bool),
     ShowSystemCursor(bool),
     SetVisible(bool),

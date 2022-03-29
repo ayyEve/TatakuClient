@@ -174,6 +174,8 @@ impl SpectatorManager {
                     }
 
                     if manager.completed || manager.time() >= self.map_length {
+                        manager.on_complete();
+
                         // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
                         if self.buffered_score_frames.len() > 0 {
                             manager.score = self.buffered_score_frames.last().unwrap().clone().1;

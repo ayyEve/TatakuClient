@@ -137,22 +137,30 @@ impl MainMenu {
 impl Menu<Game> for MainMenu {
     fn get_name(&self) -> &str {"main_menu"}
 
-    fn on_change(&mut self, _into:bool) {
-        self.visualization.reset();
+    fn on_change(&mut self, into:bool) {
+        if into {
+            self.visualization.reset();
 
-        // play song if it exists
-        if let Some(song) = Audio::get_song() {
-            // reset any time mods
+            // play song if it exists
+            if let Some(song) = Audio::get_song() {
+                // reset any time mods
 
-            #[cfg(feature="bass_audio")]
-            song.set_rate(1.0).unwrap();
-            #[cfg(feature="neb_audio")]
-            song.set_playback_speed(1.0);
-            // // play
-            // song.play(true).unwrap();
+                #[cfg(feature="bass_audio")]
+                song.set_rate(1.0).unwrap();
+                #[cfg(feature="neb_audio")]
+                song.set_playback_speed(1.0);
+                // // play
+                // song.play(true).unwrap();
+            }
+
+            self.setup_manager("on_change");
+        } else {
+            debug!("leaving main menu");
+            
+            if let Some(manager) = &mut self.background_game {
+                manager.on_complete()
+            }
         }
-
-        self.setup_manager("on_change");
     }
 
     fn update(&mut self, g:&mut Game) {
@@ -197,10 +205,11 @@ impl Menu<Game> for MainMenu {
 
         self.visualization.update(&mut self.background_game);
 
-        if let Some(manager) = self.background_game.as_mut() {
+        if let Some(manager) = &mut self.background_game {
             manager.update();
 
             if manager.completed {
+                manager.on_complete();
                 self.background_game = None;
             }
         }

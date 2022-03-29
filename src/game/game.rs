@@ -1,5 +1,3 @@
-use std::ops::RangeBounds;
-
 use glfw_window::GlfwWindow as AppWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{Window, input::*, event_loop::*, window::WindowSettings};
@@ -351,16 +349,16 @@ impl Game {
 
         
         // update cursor
-        if mouse_moved {CursorManager::set_pos(mouse_pos, true)}
+        if mouse_moved {CursorManager::set_pos(mouse_pos, false)}
         if mouse_down.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(true)
+            CursorManager::left_pressed(true, false)
         } else if mouse_up.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(false)
+            CursorManager::left_pressed(false, false)
         }
         if mouse_down.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(true)
+            CursorManager::right_pressed(true, false)
         } else if mouse_up.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(false)
+            CursorManager::right_pressed(false, false)
         }
         self.cursor_manager.update(elapsed as f64, &mut self.window);
 
@@ -406,6 +404,7 @@ impl Game {
                     manager.update();
                     if manager.completed {
                         trace!("beatmap complete");
+                        manager.on_complete();
 
                         if manager.failed {
                             trace!("player failed");
@@ -561,6 +560,11 @@ impl Game {
                 // if the mode is being changed, clear all shapes, even ones with a lifetime
                 self.clear_render_queue(true);
 
+                // if the old state is a menu, tell it we're changing
+                if let GameState::InMenu(menu) = &current_state {
+                    menu.lock().on_change(false)
+                }
+
                 // let cloned_mode = self.queued_mode.clone();
                 // self.threading.spawn(async move {
                 //     online_manager.lock().await.discord.change_status(cloned_mode);
@@ -589,6 +593,7 @@ impl Game {
                                 }
                             }
                         }
+
 
                         OnlineManager::set_action(UserAction::Idle, String::new(), String::new());
                     },

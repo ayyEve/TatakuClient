@@ -146,6 +146,7 @@ impl StandardGame {
 impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+    fn show_cursor(&self) -> bool {true}
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
@@ -368,6 +369,11 @@ impl GameMode for StandardGame {
                 self.key_counter.key_down(key);
                 self.hold_count += 1;
 
+                match key {
+                    KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(true, true),
+                    KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(true, true),
+                    _ => {}
+                }
 
                 let mut check_notes = Vec::new();
                 let w = self.hitwindow_miss;
@@ -427,6 +433,12 @@ impl GameMode for StandardGame {
             ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
                 self.key_counter.key_up(key);
                 self.hold_count -= 1;
+
+                match key {
+                    KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(false, true),
+                    KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(false, true),
+                    _ => {}
+                }
 
                 let mut check_notes = Vec::new();
                 let w = self.hitwindow_miss;
@@ -650,13 +662,15 @@ impl GameMode for StandardGame {
 
         // if this is a replay, we need to draw the replay curser
         if manager.replaying || manager.current_mods.autoplay || self.use_controller_cursor {
-            list.push(Box::new(Circle::new(
-                Color::RED,
-                -999.9,
-                self.mouse_pos,
-                20.0,
-                None
-            )))
+            CursorManager::set_pos(self.mouse_pos, true)
+            
+            // list.push(Box::new(Circle::new(
+            //     Color::RED,
+            //     -999.9,
+            //     self.mouse_pos,
+            //     20.0,
+            //     None
+            // )))
         }
 
         // draw notes

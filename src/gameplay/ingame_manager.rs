@@ -21,7 +21,7 @@ const HIT_TIMING_FADE:f32 = 300.0;
 const HIT_TIMING_BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
 
 /// ms between spectator score sync packets
-const SPECTATOR_SCORE_SYNC_INTERVAL: f32 = 1000.0;
+const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 
 
 pub struct IngameManager {
@@ -302,6 +302,14 @@ impl IngameManager {
 
     // can be from either paused or new
     pub fn start(&mut self) {
+        if !self.gamemode.show_cursor() {
+            if !self.menu_background {
+                CursorManager::set_visible(false)
+            }
+        } else if self.replaying || self.current_mods.autoplay {
+            CursorManager::show_system_cursor(true)
+        }
+
         if !self.started {
             self.reset();
 
@@ -371,6 +379,11 @@ impl IngameManager {
         }
     }
     pub fn pause(&mut self) {
+
+        // make sure the cursor is visible
+        CursorManager::set_visible(true);
+        CursorManager::show_system_cursor(false);
+
         #[cfg(feature="bass_audio")]
         let _ = self.song.pause();
         #[cfg(feature="neb_audio")]
@@ -443,6 +456,13 @@ impl IngameManager {
         self.failed_time = self.time();
     }
 
+    pub fn on_complete(&mut self) {
+
+        // make sure the cursor is visible
+        CursorManager::set_visible(true);
+        CursorManager::show_system_cursor(false);
+
+    }
     // interactions with game mode
 
     pub fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
@@ -1127,6 +1147,7 @@ impl Default for IngameManager {
 pub trait GameMode {
     fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self: Sized;
     fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized;
+    fn show_cursor(&self) -> bool {false}
     
     fn playmode(&self) -> PlayMode;
 
