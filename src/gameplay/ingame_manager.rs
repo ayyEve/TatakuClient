@@ -11,15 +11,6 @@ const OFFSET_DRAW_TIME:f32 = 2_000.0;
 pub const DURATION_HEIGHT:f64 = 35.0;
 
 
-const HIT_TIMING_BAR_SIZE:Vector2 = Vector2::new(300.0, 30.0);
-const HIT_TIMING_BAR_POS:Vector2 = Vector2::new(200.0 - HIT_TIMING_BAR_SIZE.x / 2.0, -(DURATION_HEIGHT + 3.0 + HIT_TIMING_BAR_SIZE.y + 5.0));
-/// how long should a hit timing line last
-const HIT_TIMING_DURATION:f32 = 1_000.0;
-/// how long to fade out for
-const HIT_TIMING_FADE:f32 = 300.0;
-/// hit timing bar color
-const HIT_TIMING_BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
-
 /// ms between spectator score sync packets
 const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 
@@ -34,6 +25,8 @@ pub struct IngameManager {
     pub score: IngameScore,
     pub replay: Replay,
     pub health: HealthHelper,
+
+    ui_elements: Vec<UIElement>,
 
     pub score_list: Vec<IngameScore>,
     score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
@@ -88,7 +81,6 @@ pub struct IngameManager {
     // draw helpers
     pub font: Font,
     combo_text_bounds: Rectangle,
-    timing_bar_things: (Vec<(f32,Color)>, (f32,Color)),
 
     /// if in replay mode, what replay frame are we at?
     replay_frame: u64,
@@ -107,11 +99,6 @@ pub struct IngameManager {
     /// what should the game do on start?
     /// mainly a helper for spectator
     pub on_start: Box<dyn FnOnce(&mut Self)>,
-
-
-    combo_image: Option<SkinnedNumber>,
-    score_image: Option<SkinnedNumber>,
-    acc_image: Option<SkinnedNumber>,
 
     pub events: Vec<InGameEvent>
 }
@@ -135,6 +122,7 @@ impl IngameManager {
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash);
 
         let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
+
         Self {
             metadata,
             timing_points,
@@ -162,22 +150,63 @@ impl IngameManager {
         
             font,
             combo_text_bounds: gamemode.combo_bounds(),
-            timing_bar_things: gamemode.timing_bar_things(),
             score_draw_start_pos: gamemode.score_draw_start_pos(),
 
             background_game_settings: settings.background_game_settings.clone(),
             common_game_settings,
 
             gamemode,
-            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).ok(),
-            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "combo", Some('x'), 0).ok(),
-            acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::new(0.0, settings.window_size[1]), 0.0, "score", Some('%'), 2).ok(),
-
             score_list: Vec::new(),
             score_loader,
             // initialize defaults for anything else not specified
             ..Self::default()
         }
+    }
+
+    fn init_ui(&mut self) {
+        let window_size = Settings::window_size();
+
+        // score
+        self.ui_elements.push(UIElement::new(
+            "score",
+            Vector2::new(window_size.x, 0.0),
+            ScoreElement::new()
+        ));
+
+        // combo
+        self.ui_elements.push(UIElement::new(
+            "combo",
+            Vector2::new(window_size.x, window_size.y),
+            ComboElement::new(self.combo_text_bounds)
+        ));
+
+        // acc
+        self.ui_elements.push(UIElement::new(
+            "acc",
+            Vector2::new(window_size.x, 40.0),
+            AccuracyElement::new()
+        ));
+
+        // healthbar
+        self.ui_elements.push(UIElement::new(
+            "healthbar",
+            Vector2::zero(),
+            HealthBarElement::new(self.common_game_settings.clone())
+        ));
+
+        // healthbar
+        self.ui_elements.push(UIElement::new(
+            "durationbar",
+            Vector2::new(0.0, window_size.y),
+            DurationBarElement::new(self.common_game_settings.clone())
+        ));
+
+        // judgement bar
+        self.ui_elements.push(UIElement::new(
+            "judgmenetbar",
+            Vector2::new(0.0, window_size.y),
+            JudgementBarElement::new(self.gamemode.timing_bar_things())
+        ));
     }
 
     pub fn apply_mods(&mut self, mods: ModManager) {
@@ -331,6 +360,11 @@ impl IngameManager {
 
 
     pub fn update(&mut self) {
+        // update ui elements
+        let mut ui_elements = std::mem::take(&mut self.ui_elements);
+        ui_elements.iter_mut().for_each(|ui|ui.update(self));
+        self.ui_elements = ui_elements;
+
         // check lead-in time
         if self.lead_in_time > 0.0 {
             let elapsed = self.lead_in_timer.elapsed().as_micros() as f32 / 1000.0;
@@ -400,7 +434,6 @@ impl IngameManager {
 
         // update gamemode
         gamemode.update(self, time);
-
 
         if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
             trace!("Song over, saying map is complete");
@@ -497,158 +530,10 @@ impl IngameManager {
 
 
         // gamemode things
-        if let Some(score) = &mut self.score_image {
-            score.number = self.score.score.score as f64;
-            score.current_pos = Vector2::new(window_size.x - score.measure_text().x, 0.0);
-            list.push(Box::new(score.clone()));
-        } else {
-            // score bg
-            list.push(visibility_bg(
-                Vector2::new(window_size.x - 200.0, 10.0),
-                Vector2::new(180.0, 75.0 - 10.0),
-                1.0
-            ));
-            // score text
-            list.push(Box::new(Text::new(
-                Color::BLACK,
-                0.0,
-                Vector2::new(window_size.x - 200.0, 10.0),
-                30,
-                crate::format_number(self.score.score.score),
-                font.clone()
-            )));
-        }
 
-
-        // acc text
-        if let Some(acc) = &mut self.acc_image {
-            acc.number = calc_acc(&self.score) * 100.0;
-            let size = acc.measure_text();
-            acc.current_pos = Vector2::new(window_size.x - size.x, 40.0);
-            list.push(Box::new(acc.clone()));
-        } else {
-            list.push(Box::new(Text::new(
-                Color::BLACK,
-                0.0,
-                Vector2::new(window_size.x - 200.0, 40.0),
-                30,
-                format!("{:.2}%", calc_acc(&self.score)*100.0),
-                font.clone()
-            )));
-        }
-
-        // combo
-        if let Some(combo) = &mut self.combo_image {
-            combo.number = self.score.combo as f64;
-            combo.center_text(self.combo_text_bounds);
-            list.push(Box::new(combo.clone()));
-        } else {
-            // combo text
-            let mut combo_text = Text::new(
-                Color::WHITE,
-                0.0,
-                Vector2::zero(),
-                30,
-                crate::format_number(self.score.combo),
-                font.clone()
-            );
-            combo_text.center_text(self.combo_text_bounds);
-            list.push(Box::new(combo_text));
-        }
-
-
-        // duration bar
-        // duration remaining
-        list.push(Box::new(Rectangle::new(
-            self.common_game_settings.duration_color,
-            1.0,
-            Vector2::new(0.0, window_size.y - (DURATION_HEIGHT + 3.0)),
-            Vector2::new(window_size.x, DURATION_HEIGHT),
-            Some(Border::new(self.common_game_settings.duration_border_color, 1.8))
-        )));
-        // fill
-        list.push(Box::new(Rectangle::new(
-            self.common_game_settings.duration_color_full,
-            2.0,
-            Vector2::new(0.0, window_size.y - (DURATION_HEIGHT + 3.0)),
-            Vector2::new(window_size.x * (time/self.end_time) as f64, DURATION_HEIGHT),
-            None
-        )));
-
-        // health bar
-        let percent = self.health.get_ratio() as f64;
-        let len = self.common_game_settings.healthbar_colors.len();
-        let index = ((len as f64 * percent) as usize).min(len - 1);
-        // bg
-        list.push(Box::new(Rectangle::new(
-            self.common_game_settings.healthbar_bg_color,
-            1.0,
-            Vector2::new(0.0, 0.0),
-            Vector2::new(window_size.x / 2.0, DURATION_HEIGHT),
-            Some(Border::new(self.common_game_settings.healthbar_border_color, 1.8))
-        )));
-        // fill
-        list.push(Box::new(Rectangle::new(
-            self.common_game_settings.healthbar_colors[index],
-            2.0,
-            Vector2::new(0.0, 0.0),
-            Vector2::new((window_size.x / 2.0) * percent, DURATION_HEIGHT),
-            None
-        )));
-
-
-        // TODO: rework this garbage lmao
-        // draw hit timings bar
-        // draw hit timing colors below the bar
-        let (windows, (miss, miss_color)) = &self.timing_bar_things;
-        // draw miss window first
-        list.push(Box::new(Rectangle::new(
-            *miss_color,
-            17.1,
-            Vector2::new((window_size.x-HIT_TIMING_BAR_SIZE.x)/2.0, window_size.y + HIT_TIMING_BAR_POS.y),
-            Vector2::new(HIT_TIMING_BAR_SIZE.x, HIT_TIMING_BAR_SIZE.y),
-            None // for now
-        )));
-        // draw other hit windows
-        for (window, color) in windows {
-            let width = (window / miss) as f64 * HIT_TIMING_BAR_SIZE.x;
-            list.push(Box::new(Rectangle::new(
-                *color,
-                17.0,
-                Vector2::new((window_size.x - width)/2.0, window_size.y + HIT_TIMING_BAR_POS.y),
-                Vector2::new(width, HIT_TIMING_BAR_SIZE.y),
-                None // for now
-            )));
-        }
-       
-
-        // draw hit timings
-        for (hit_time, diff) in self.hitbar_timings.as_slice() {
-            let hit_time = hit_time.clone();
-            let mut diff = diff.clone();
-            if diff < 0.0 {
-                diff = diff.max(-miss);
-            } else {
-                diff = diff.min(*miss);
-            }
-
-            let pos = (diff / miss) as f64 * (HIT_TIMING_BAR_SIZE.x / 2.0);
-
-            // draw diff line
-            let diff = time - hit_time;
-            let alpha = if diff > HIT_TIMING_DURATION - HIT_TIMING_FADE {
-                1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
-            } else {1.0};
-
-            let mut c = HIT_TIMING_BAR_COLOR;
-            c.a = alpha as f32;
-            list.push(Box::new(Rectangle::new(
-                c,
-                10.0,
-                Vector2::new(window_size.x / 2.0 + pos, window_size.y + HIT_TIMING_BAR_POS.y),
-                Vector2::new(2.0, HIT_TIMING_BAR_SIZE.y),
-                None // for now
-            )));
+        // draw ui elements
+        for i in self.ui_elements.iter_mut() {
+            i.draw(list)
         }
 
         
@@ -788,6 +673,13 @@ impl IngameManager {
             CursorManager::show_system_cursor(true)
         }
 
+        self.pause_pending = false;
+        self.should_pause = false;
+
+        // re init ui because pointers may not be valid anymore
+        self.ui_elements.clear();
+        self.init_ui();
+
         if !self.started {
             self.reset();
 
@@ -919,7 +811,6 @@ impl IngameManager {
         self.timing_point_index = 0;
 
         self.combo_text_bounds = self.gamemode.combo_bounds();
-        self.timing_bar_things = self.gamemode.timing_bar_things();
         self.hitbar_timings = Vec::new();
         
         if !self.replaying {
@@ -1137,7 +1028,6 @@ impl Default for IngameManager {
 
             font: get_font(),
             combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
-            timing_bar_things: (Vec::new(), (0.0, Color::WHITE)),
             judgement_indicators: Vec::new(),
 
             failed: false,
@@ -1170,16 +1060,14 @@ impl Default for IngameManager {
 
             common_game_settings: Default::default(),
 
-            combo_image: None,
-            score_image: None,
-            acc_image: None,
             score_list: Vec::new(),
             score_loader: None,
             score_draw_start_pos: Vector2::zero(),
             beatmap_preferences: Default::default(),
             should_pause: false,
             pause_pending: false,
-            events: Vec::new()
+            events: Vec::new(),
+            ui_elements: Vec::new(),
         }
     }
 }

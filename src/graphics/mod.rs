@@ -1,3 +1,4 @@
+mod ui;
 mod line;
 mod text;
 mod font;
@@ -13,6 +14,7 @@ mod visualization;
 mod skinned_number;
 mod transform_group;
 
+pub use ui::*;
 pub use line::*;
 pub use font::*;
 pub use text::*;
