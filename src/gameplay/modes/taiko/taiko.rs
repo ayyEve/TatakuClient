@@ -135,6 +135,8 @@ impl GameMode for TaikoGame {
 
         }
 
+        
+        let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
 
         let judgement_helper = {
             let mut skin = SKIN_MANAGER.write();
@@ -256,8 +258,8 @@ impl GameMode for TaikoGame {
                     let SpinnerDef {time, end_time, ..} = spinner;
 
                     let length = end_time - time;
-                    let diff_map = map_difficulty(beatmap.metadata.od, 3.0, 5.0, 7.5);
-                    let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; // ((this.Length / 1000.0 * this.MapDifficultyRange(od, 3.0, 5.0, 7.5)) * 1.65).max(1.0)
+                    let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
+                    let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; 
 
                     let spinner = Box::new(TaikoSpinner::new(
                         *time, 

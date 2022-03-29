@@ -64,15 +64,6 @@ impl BeatmapMeta {
         if self.ar < 0.0 {self.ar = self.od}
     }
 
-    fn mins(&self, speed:f32) -> f32 {
-        ((self.duration / speed) / 60000.0).floor() 
-    }
-    fn secs(&self, speed:f32) -> f32 {
-        let mins = self.mins(speed);
-        let remaining_ms = (self.duration / speed) - mins * 60000.0;
-        (remaining_ms / 1000.0).floor()
-    }
-
     /// get the title string with the version
     pub fn version_string(&self) -> String {
         format!("{} - {} [{}]", self.artist, self.title, self.version)  
@@ -82,15 +73,13 @@ impl BeatmapMeta {
     pub fn diff_string(&mut self, mods: &ModManager) -> String {
         let symb = if mods.speed > 1.0 {"+"} else if mods.speed < 1.0 {"-"} else {""};
 
-        // format!("od: {:.2} hp: {:.2}, {:.2}*, {}:{}", self.od, self.hp, self.sr, self.mins, self.secs)
         let mut secs = format!("{}", self.secs(mods.speed));
         if secs.len() == 1 {secs = format!("0{}", secs)}
-        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
 
         let mut txt = format!(
             "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 
-            self.od, symb,
-            self.hp, symb,
+            self.get_od(mods), symb,
+            self.get_hp(mods), symb,
             self.mins(mods.speed), secs
         );
 
@@ -107,6 +96,7 @@ impl BeatmapMeta {
             }
         }
 
+        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
         txt += &format!(", Diff: {}", diff);
 
         txt
@@ -172,6 +162,37 @@ impl BeatmapMeta {
     }
 }
 
+// getter helpers
+impl BeatmapMeta {
+    fn mins(&self, speed:f32) -> f32 {
+        ((self.duration / speed) / 60000.0).floor() 
+    }
+    fn secs(&self, speed:f32) -> f32 {
+        let mins = self.mins(speed);
+        let remaining_ms = (self.duration / speed) - mins * 60000.0;
+        (remaining_ms / 1000.0).floor()
+    }
+
+
+    pub fn get_hp(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_od(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_cs(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_ar(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
+    }
+
+}
+
+#[inline]
+fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    if mods.easy {val * ez_scale} else if mods.hard_rock {val * hr_scale} else {val}
+}
 
 // might use this later idk
 // pub trait IntoSets {

@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 const MODS: &[&[&'static str]] = &[
-    &["nofail"], &["autoplay"]
+    &["easy"], &["hardrock"],
+    &["nofail"], &["autoplay"],
 ];
 
 pub struct ModDialog {
@@ -92,12 +93,20 @@ impl ModButton {
     fn new(pos: Vector2, mod_names: Vec<String>) -> Self {
         let mod_images: Vec<Option<Image>> = mod_names.iter().map(|m|SKIN_MANAGER.write().get_texture(format!("selection-mod-{}", m), true)).collect();
 
+        let mut selected_mod = 0;
+        let mut manager = ModManager::get();
+        for (i, name) in mod_names.iter().enumerate() {
+            if *str_2_modval(name, &mut manager) {
+                selected_mod = i + 1
+            }
+        }
+
         Self {
             size: Vector2::new(100.0, 100.0),
             pos, 
             mod_names,
             mod_images,
-            selected_mod: 0,
+            selected_mod,
             hover: false
         }
     }
@@ -107,14 +116,8 @@ impl ModButton {
             let use_val = i+1 == self.selected_mod && self.selected_mod > 0;
             trace!("set: {}, name:{}", use_val, name);
             
-            match &**name {
-                "nofail" => manager.nofail = use_val,
-                "autoplay" => manager.autoplay = use_val,
-                
-                other => warn!("unknown mod name: {}", other)
-            }
+            *str_2_modval(name, manager) = use_val;
         }
-
     }
 }
 impl ScrollableItem for ModButton {
@@ -172,5 +175,18 @@ impl ScrollableItem for ModButton {
         }
 
         self.hover
+    }
+}
+
+// this is dumb but i dont care
+fn str_2_modval<'a>(name: &String, manager: &'a mut ModManager) -> &'a mut bool {
+    match &**name {
+        "easy" => &mut manager.easy,
+        "hardrock" => &mut manager.hard_rock,
+
+        "nofail" => &mut manager.nofail,
+        "autoplay" => &mut manager.autoplay,
+        
+        other => panic!("Unknown mod name: {}", other)
     }
 }

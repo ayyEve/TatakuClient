@@ -150,9 +150,11 @@ impl GameMode for StandardGame {
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
-        let ar = metadata.ar;
+        let mods = ModManager::get().clone();
+        
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.cs, "osu".to_owned()));
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned()));
+        let ar = metadata.get_ar(&mods);
 
         let skin_combo_colors = &SKIN_MANAGER.read().current_skin_config().combo_colors;
         let mut combo_colors = if skin_combo_colors.len() > 0 {
@@ -186,7 +188,7 @@ impl GameMode for StandardGame {
         
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
-                    cs: beatmap.metadata.cs,
+                    cs: beatmap.metadata.get_cs(&mods),
         
                     key_counter: if diff_calc_only {KeyCounter::default()} else {
                             KeyCounter::new(
@@ -663,14 +665,6 @@ impl GameMode for StandardGame {
         // if this is a replay, we need to draw the replay curser
         if manager.replaying || manager.current_mods.autoplay || self.use_controller_cursor {
             CursorManager::set_pos(self.mouse_pos, true)
-            
-            // list.push(Box::new(Circle::new(
-            //     Color::RED,
-            //     -999.9,
-            //     self.mouse_pos,
-            //     20.0,
-            //     None
-            // )))
         }
 
         // draw notes
@@ -933,7 +927,7 @@ impl GameMode for StandardGame {
     fn reset(&mut self, beatmap:&Beatmap) {
         
         // setup hitwindows
-        let od = beatmap.get_beatmap_meta().od;
+        let od = beatmap.get_beatmap_meta().get_od(& ModManager::get());
         self.hitwindow_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
         self.hitwindow_50   = map_difficulty(od, 200.0, 150.0, 100.0);
         self.hitwindow_100  = map_difficulty(od, 140.0, 100.0, 60.0);

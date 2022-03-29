@@ -8,8 +8,12 @@ lazy_static::lazy_static! {
 #[serde(default)]
 pub struct ModManager {
     pub speed: f32,
-    pub autoplay: bool,
+    
+    pub easy: bool,
+    pub hard_rock: bool,
 
+    pub autoplay: bool,
+    
     pub nofail: bool,
 }
 
@@ -18,8 +22,7 @@ impl ModManager {
     pub fn new() -> Self {
         Self {
             speed: 1.0,
-            autoplay: false,
-            nofail: false,
+            ..Self::default()
         }
     }
     
@@ -33,8 +36,13 @@ impl ModManager {
     pub fn mods_string(&self) -> String {
         let mut list = Vec::new();
         
+
+        if self.easy {list.push("EZ".to_owned())}
+        if self.hard_rock {list.push("HR".to_owned())}
+
         if self.nofail {list.push("NF".to_owned())}
         if self.autoplay {list.push("AT".to_owned())}
+
         if self.speed != 1.0 {list.push(format!("({:.2}x)", self.speed))}
 
         list.join(" ")

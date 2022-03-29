@@ -679,7 +679,7 @@ impl GameMode for ManiaGame {
         
         self.timing_point_index = 0;
 
-        let od = beatmap.get_beatmap_meta().od;
+        let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
         // setup hitwindows
         self.hitwindow_miss = map_difficulty(od, 188.0, 173.0, 158.0);
         self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);

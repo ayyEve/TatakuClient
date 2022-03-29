@@ -1,5 +1,4 @@
-
-mod dialog;
+mod dialogs;
 mod main_menu;
 mod pause_menu;
 mod score_menu;
@@ -9,7 +8,7 @@ mod settings_menu;
 mod beatmap_select;
 
 
-pub use dialog::*;
+pub use dialogs::*;
 pub use main_menu::*;
 pub use pause_menu::*;
 pub use score_menu::*;

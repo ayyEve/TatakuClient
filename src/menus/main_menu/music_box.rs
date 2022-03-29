@@ -202,7 +202,7 @@ impl ScrollableItem for MusicBox {
     // fn update(&mut self) {}
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
-        let draw_pos = self.pos + pos_offset;
+        // let draw_pos = self.pos + pos_offset;
 
         // // draw bg
         // list.push(Box::new(Rectangle::new(
