@@ -786,6 +786,8 @@ impl IngameManager {
         self.gamemode.reset(&self.beatmap);
         self.health.reset();
         self.key_counter.reset();
+        self.hitbar_timings.clear();
+        self.judgement_indicators.clear();
 
         if self.menu_background {
             self.background_game_settings = settings.background_game_settings.clone();
@@ -824,8 +826,6 @@ impl IngameManager {
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode()), true, false);
         self.replay_frame = 0;
         self.timing_point_index = 0;
-
-        self.hitbar_timings = Vec::new();
         
         if !self.replaying {
             // only reset the replay if we arent replaying
