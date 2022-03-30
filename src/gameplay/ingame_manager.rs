@@ -232,6 +232,13 @@ impl IngameManager {
             self.gamemode.score_draw_start_pos(),
             LeaderboardElement::new()
         ));
+
+        // judgement counter
+        self.ui_elements.push(UIElement::new(
+            &get_name("judgement_counter"),
+            Vector2::new(window_size.x, window_size.y * (2.0/3.0)),
+            JudgementCounterElement::new()
+        ));
     }
 
     pub fn apply_mods(&mut self, mods: ModManager) {
