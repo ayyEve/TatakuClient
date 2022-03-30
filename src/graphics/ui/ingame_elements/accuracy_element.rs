@@ -15,20 +15,22 @@ impl AccuracyElement {
 
 impl InnerUIElement for AccuracyElement {
     fn get_bounds(&self) -> Rectangle {
+        let size = if let Some(i) = &self.acc_image {
+            i.measure_text()
+        } else {
+            Text::new(
+                Color::BLACK,
+                0.0,
+                Vector2::zero(),
+                30,
+                format!("{:.2}%", self.acc),
+                get_font()
+            ).measure_text()
+        };
+
         Rectangle::bounds_only(
-            Vector2::x_only(-200.0),
-            if let Some(i) = &self.acc_image {
-                i.measure_text()
-            } else {
-                Text::new(
-                    Color::BLACK,
-                    0.0,
-                    Vector2::zero(),
-                    30,
-                    format!("{:.2}%", self.acc),
-                    get_font()
-                ).measure_text()
-            }
+            Vector2::x_only(-size.x),
+            size
         )
     }
 
