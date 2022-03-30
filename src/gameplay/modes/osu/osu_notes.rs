@@ -1707,11 +1707,11 @@ impl HitCircleImageHelper {
             overlay.depth = depth - 0.0000001;
             overlay.initial_pos = pos;
             overlay.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
-            overlay.initial_color = color;
+            // overlay.initial_color = color;
             
             overlay.current_pos = overlay.initial_pos;
             overlay.current_scale = overlay.initial_scale;
-            overlay.current_color = overlay.initial_color;
+            // overlay.current_color = overlay.initial_color;
         }
 
         if overlay.is_none() || circle.is_none() {return None}
