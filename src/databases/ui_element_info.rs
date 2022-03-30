@@ -36,7 +36,7 @@ impl Database {
     }
 
     pub fn get_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
-        let sql = format!("SELECT pos_x, pos_y, scale_x, scale_y FROM ui_elements WHERE name='{name}'");
+        let sql = format!("SELECT pos_x, pos_y, scale_x, scale_y, visible FROM ui_elements WHERE name='{name}'");
 
         let db = Self::get();
         let mut s = db.prepare(&sql).unwrap();
@@ -48,7 +48,7 @@ impl Database {
                 row.get::<&str, f64>("scale_x")?,
                 row.get::<&str, f64>("scale_y")?,
             ),
-            row.get::<&str, bool>("vivible")?,
+            row.get::<&str, bool>("visible")?,
         )));
 
         if let Ok(mut rows) = res {
