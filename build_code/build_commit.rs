@@ -29,17 +29,11 @@ pub fn build_commit() {
             }
         };
     }
+    let cd = std::env::current_dir().unwrap();
 
     if !TEST {
         if let Err(_) = std::env::var("CI_PROJECT_ID") {
-            let dir = std::env::current_dir().unwrap().to_string_lossy().to_string();
-            let commit_file = format!(
-                "{}/{}/src/{}commits.rs", 
-                dir,
-                if dir.ends_with("tataku-client") {"."} else {"tataku-client"},
-                ""
-                // if TEST {"test-"} else {""}
-            );
+            let commit_file = cd.as_path().join("src/commits.rs");
             std::fs::write(
                 commit_file, 
                 build_commits_file(Vec::new(), String::new())
@@ -56,7 +50,6 @@ pub fn build_commit() {
     let this_commit = env!("CI_COMMIT_SHA", "1bc485e2bc088d837d893cdd22a04dc92dccd95d");
 
 
-    let cd = std::env::current_dir().unwrap();
     let commit_file = cd.as_path().join("src/commits.rs");
     // println!("dir: {:?}, path: {}", dir, commit_file);
 

@@ -88,7 +88,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut ()) -> bool {
+    fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut ()) -> bool {
 
         // TODO: fix scaling
         // if let Some((index, _, _)) = self.mouse_down {
