@@ -99,6 +99,25 @@ impl ManiaGame {
 impl GameMode for ManiaGame {
     fn playmode(&self) -> PlayMode {"mania".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        let mut list = Vec::new();
+        for i in 0..self.column_count {
+            match i {
+                0 => list.push((KeyPress::Mania1, "K1")),
+                1 => list.push((KeyPress::Mania2, "K2")),
+                2 => list.push((KeyPress::Mania3, "K3")),
+                3 => list.push((KeyPress::Mania4, "K4")),
+                4 => list.push((KeyPress::Mania5, "K5")),
+                5 => list.push((KeyPress::Mania6, "K6")),
+                6 => list.push((KeyPress::Mania7, "K7")),
+                7 => list.push((KeyPress::Mania8, "K8")),
+                8 => list.push((KeyPress::Mania9, "K9")),
+                _ => {}
+            }
+        }
+        
+        list
+    }
 
     fn new(beatmap:&Beatmap, _diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
@@ -465,6 +484,7 @@ impl GameMode for ManiaGame {
 
         match frame {
             ReplayFrame::Press(key) => {
+                manager.key_counter.key_down(key);
                 let col:usize = match key {
                     KeyPress::Mania1 => 0,
                     KeyPress::Mania2 => 1,
@@ -539,6 +559,7 @@ impl GameMode for ManiaGame {
             
             }
             ReplayFrame::Release(key) => {
+                manager.key_counter.key_up(key);
                 let col:usize = match key {
                     KeyPress::Mania1 => 0,
                     KeyPress::Mania2 => 1,

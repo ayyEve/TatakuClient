@@ -38,8 +38,6 @@ pub struct StandardGame {
     mouse_pos: Vector2,
     window_mouse_pos: Vector2,
 
-    key_counter: KeyCounter,
-
     /// original, mouse_start
     move_playfield: Option<(Vector2, Vector2)>,
 
@@ -147,6 +145,14 @@ impl GameMode for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
     fn show_cursor(&self) -> bool {true}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        vec![
+            (KeyPress::Left, "L"),
+            (KeyPress::Right, "R"),
+            (KeyPress::LeftMouse, "M1"),
+            (KeyPress::RightMouse, "M2"),
+        ]
+    }
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
@@ -189,18 +195,7 @@ impl GameMode for StandardGame {
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
                     cs: beatmap.metadata.get_cs(&mods),
-        
-                    key_counter: if diff_calc_only {KeyCounter::default()} else {
-                            KeyCounter::new(
-                            vec![
-                                (KeyPress::Left, "L".to_owned()),
-                                (KeyPress::Right, "R".to_owned()),
-                                (KeyPress::LeftMouse, "M1".to_owned()),
-                                (KeyPress::RightMouse, "M2".to_owned()),
-                            ],
-                            Vector2::zero()
-                        )
-                    },
+
                     use_controller_cursor: false,
         
                     game_settings: std_settings.clone(),
@@ -368,7 +363,7 @@ impl GameMode for StandardGame {
 
         match frame {
             ReplayFrame::Press(key) if ALLOWED_PRESSES.contains(&key) => {
-                self.key_counter.key_down(key);
+                manager.key_counter.key_down(key);
                 self.hold_count += 1;
 
                 match key {
@@ -433,7 +428,7 @@ impl GameMode for StandardGame {
             }
             // dont continue if no keys were being held (happens when leaving a menu)
             ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
-                self.key_counter.key_up(key);
+                manager.key_counter.key_up(key);
                 self.hold_count -= 1;
 
                 match key {
@@ -655,10 +650,6 @@ impl GameMode for StandardGame {
                 playfield.border = Some(Border::new(Color::YELLOW, 2.0));
             }
             list.push(Box::new(playfield));
-
-
-            // draw key counter
-            self.key_counter.draw(args, list);
         }
 
 
@@ -728,6 +719,7 @@ impl GameMode for StandardGame {
 
     
     fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+
         if key == piston::Key::LCtrl {
             let old = get_settings!().standard_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
@@ -939,8 +931,6 @@ impl GameMode for StandardGame {
             note.reset();
             note.set_hitwindow_miss(hwm);
         }
-
-        self.key_counter.reset();
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {

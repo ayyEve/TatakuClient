@@ -26,6 +26,8 @@ pub struct IngameManager {
     pub replay: Replay,
     pub health: HealthHelper,
 
+    pub key_counter: KeyCounter,
+
     ui_elements: Vec<UIElement>,
 
     pub score_list: Vec<IngameScore>,
@@ -125,12 +127,15 @@ impl IngameManager {
 
         let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
 
+        let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
+
         Self {
             metadata,
             timing_points,
             hitsound_cache,
             current_mods,
             health,
+            key_counter,
 
             lead_in_timer: Instant::now(),
             score: IngameScore::new(score, true, false),
@@ -167,47 +172,59 @@ impl IngameManager {
 
     fn init_ui(&mut self) {
         let window_size = Settings::window_size();
+        
+        let playmode = self.gamemode.playmode();
+        let get_name = |name| {
+            format!("{playmode}_{name}")
+        };
 
         // score
         self.ui_elements.push(UIElement::new(
-            "score",
+            &get_name("score"),
             Vector2::new(window_size.x, 0.0),
             ScoreElement::new()
         ));
 
         // combo
         self.ui_elements.push(UIElement::new(
-            "combo",
+            &get_name("combo"),
             Vector2::new(window_size.x, window_size.y),
             ComboElement::new(self.combo_text_bounds)
         ));
 
-        // acc
+        // Acc
         self.ui_elements.push(UIElement::new(
-            "acc",
+            &get_name("acc"),
             Vector2::new(window_size.x, 40.0),
             AccuracyElement::new()
         ));
 
-        // healthbar
+        // Healthbar
         self.ui_elements.push(UIElement::new(
-            "healthbar",
+            &get_name("healthbar"),
             Vector2::zero(),
             HealthBarElement::new(self.common_game_settings.clone())
         ));
 
-        // duration bar
+        // Duration Bar
         self.ui_elements.push(UIElement::new(
-            "durationbar",
+            &get_name("durationbar"),
             Vector2::new(0.0, window_size.y),
             DurationBarElement::new(self.common_game_settings.clone())
         ));
 
-        // judgement bar
+        // Judgement Bar
         self.ui_elements.push(UIElement::new(
-            "judgmenetbar",
+            &get_name("judgmenetbar"),
             Vector2::new(0.0, window_size.y),
             JudgementBarElement::new(self.gamemode.timing_bar_things())
+        ));
+
+        // Key Counter
+        self.ui_elements.push(UIElement::new(
+            &get_name("judgmenetbar"),
+            Vector2::new(window_size.x, window_size.y/2.0),
+            KeyCounterElement::new()
         ));
     }
 
@@ -795,6 +812,7 @@ impl IngameManager {
         
         self.gamemode.reset(&self.beatmap);
         self.health.reset();
+        self.key_counter.reset();
 
         if self.menu_background {
             self.background_game_settings = settings.background_game_settings.clone();
@@ -903,6 +921,7 @@ impl IngameManager {
             self.failed_time = -1000.0;
         }
         if self.failed {return}
+        
 
         if key == Key::Escape && self.can_pause() {
             self.should_pause = true;
@@ -947,6 +966,7 @@ impl IngameManager {
     }
     pub fn key_up(&mut self, key:piston::Key) {
         if self.failed {return}
+
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.key_up(key, self);
         self.gamemode = gamemode;
@@ -1121,6 +1141,7 @@ impl Default for IngameManager {
             events: Vec::new(),
             ui_elements: Vec::new(),
             ui_editor: None,
+            key_counter: KeyCounter::default()
         }
     }
 }
@@ -1131,6 +1152,7 @@ pub trait GameMode {
     fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self: Sized;
     fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized;
     fn show_cursor(&self) -> bool {false}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)>;
     
     fn playmode(&self) -> PlayMode;
 
@@ -1170,6 +1192,8 @@ pub trait GameMode {
     fn pause(&mut self, _manager:&mut IngameManager) {}
     fn unpause(&mut self, _manager:&mut IngameManager) {}
     fn reset(&mut self, beatmap:&Beatmap);
+
+
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {
@@ -1185,6 +1209,7 @@ impl GameMode for NoMode {
     fn end_time(&self) -> f32 {0.0}
     fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {(Vec::new(), (0.0, Color::WHITE))}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
 
     fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
     fn update(&mut self, _:&mut IngameManager, _: f32) {}

@@ -46,6 +46,7 @@ impl UTypingGame {
 impl GameMode for UTypingGame {
     fn playmode(&self) -> PlayMode {"utyping".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
 
     fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();

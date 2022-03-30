@@ -85,6 +85,14 @@ impl GameMode for TaikoGame {
             self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0
         )
     }
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        vec![
+            (KeyPress::LeftKat, "LK"),
+            (KeyPress::LeftDon, "LD"),
+            (KeyPress::RightDon, "RD"),
+            (KeyPress::RightKat, "RK"),
+        ]
+    }
 
     fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
@@ -331,8 +339,14 @@ impl GameMode for TaikoGame {
             manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
         }
         let key = match frame {
-            ReplayFrame::Press(k) => k,
-            ReplayFrame::Release(k) => k,
+            ReplayFrame::Press(k) => {
+                manager.key_counter.key_down(k);
+                k
+            },
+            ReplayFrame::Release(k) => {
+                manager.key_counter.key_up(k);
+                k
+            },
             _ => return,
         };
 
