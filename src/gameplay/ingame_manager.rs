@@ -75,7 +75,6 @@ pub struct IngameManager {
 
     /// (map.time, note.time - hit.time)
     pub hitbar_timings: Vec<(f32, f32)>,
-    score_draw_start_pos: Vector2,
 
     /// list of judgement indicators to draw
     judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
@@ -149,8 +148,6 @@ impl IngameManager {
             offset: CenteredTextHelper::new("Offset", beatmap_preferences.audio_offset, OFFSET_DRAW_TIME, -20.0, font.clone()),
             global_offset: CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
             beatmap_preferences,
-        
-            score_draw_start_pos: gamemode.score_draw_start_pos(),
 
             background_game_settings: settings.background_game_settings.clone(),
             common_game_settings,
@@ -231,8 +228,8 @@ impl IngameManager {
 
         // Leaderboard
         self.ui_elements.push(UIElement::new(
-            &get_name("spectators"),
-            Vector2::new(0.0, window_size.y* (2.0/3.0)),
+            &get_name("leaderboard"),
+            self.gamemode.score_draw_start_pos(),
             LeaderboardElement::new()
         ));
     }
@@ -1099,7 +1096,6 @@ impl Default for IngameManager {
 
             score_list: Vec::new(),
             score_loader: None,
-            score_draw_start_pos: Vector2::zero(),
             beatmap_preferences: Default::default(),
             should_pause: false,
             pause_pending: false,
