@@ -50,18 +50,14 @@ pub fn build_commit() {
 
     //TODO: try using git to get some of these
     let id = env!("CI_PROJECT_ID", "77");
-    let dir = env!("CI_PROJECT_DIR", std::env::current_dir().unwrap().to_string_lossy().to_string());
+    // let dir = env!("CI_PROJECT_DIR", std::env::current_dir().unwrap().to_string_lossy().to_string());
     let branch = env!("CI_COMMIT_BRANCH", "main");
     let url = env!("CI_API_V4_URL", "https://gitlab.ayyeve.xyz/api/v4");
     let this_commit = env!("CI_COMMIT_SHA", "1bc485e2bc088d837d893cdd22a04dc92dccd95d");
 
-    let commit_file = format!(
-        "{}/{}/src/{}commits.rs", 
-        dir,
-        if dir.ends_with("tataku-client") {"."} else {"tataku-client"},
-        ""
-        // if TEST {"test-"} else {""}
-    );
+
+    let cd = std::env::current_dir().unwrap();
+    let commit_file = cd.as_path().join("src/commits.rs");
     // println!("dir: {:?}, path: {}", dir, commit_file);
 
     // build the query url
