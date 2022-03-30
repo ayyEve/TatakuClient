@@ -162,6 +162,7 @@ impl GameMode for StandardGame {
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned()));
         let ar = metadata.get_ar(&mods);
 
+        // TODO: beatmap combo colors
         let skin_combo_colors = &SKIN_MANAGER.read().current_skin_config().combo_colors;
         let mut combo_colors = if skin_combo_colors.len() > 0 {
             skin_combo_colors.clone()

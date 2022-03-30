@@ -52,10 +52,10 @@ impl Default for StandardSettings {
             show_300s: true,
 
             combo_colors: vec![
-                "#CC0000".to_owned(),
-                "#CCCC00".to_owned(),
-                "#00CCCC".to_owned(),
-                "#0000CC".to_owned()
+                "#FFC000".to_owned(),
+                "#00CA00".to_owned(),
+                "#127CFF".to_owned(),
+                "#F21839".to_owned()
             ],
 
             hit_ripples: true,
