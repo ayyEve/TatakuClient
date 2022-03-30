@@ -22,40 +22,38 @@ lazy_static::lazy_static! {
 // add new db columns here
 // needed to add new cols to existing dbs
 // this is essentially migrations, but a lazy way to do it lol
-const SCORE_ENTRIES: &[(&str, &str)] = &[
-    ("x50", "INTEGER"),
-    ("katu", "INTEGER"),
-    ("geki", "INTEGER"),
-    ("speed", "INTEGER"),
-    ("version", "INTEGER"),
-    ("mods_string", "TEXT"),
-];
-const BEATMAP_ENTRIES: &[(&str, &str)] = &[
-    ("bpm_min", "INTEGER"),
-    ("bpm_max", "INTEGER"),
-    ("beatmap_type", "INTEGER"),
+const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
+    ("score", &[
+        ("x50", "INTEGER"),
+        ("katu", "INTEGER"),
+        ("geki", "INTEGER"),
+        ("speed", "INTEGER"),
+        ("version", "INTEGER"),
+        ("mods_string", "TEXT"),
+    ]),
+    ("beatmaps", &[
+        ("bpm_min", "INTEGER"),
+        ("bpm_max", "INTEGER"),
+        ("beatmap_type", "INTEGER"),
+    ]),
+    ("ui_elements", &[
+        ("visible", "BOOL")
+    ])
 ];
 
-fn add_new_entries(db: &Connection) {
-    // score entries
-    for (col, t) in SCORE_ENTRIES {
-        match db.execute(&format!("ALTER TABLE scores ADD {} {};", col, t), []) {
-            Ok(_) => debug!("Column added to scores db: {}", col),
-            Err(e) => {
-                let e = format!("{}", e);
-                // only log error if its not a duplicate column name
-                if !e.contains("duplicate column name") {
-                    error!("Error adding column to scores db: {}", e)
-                }
-            },
-        }
-    }
-    
-    // beatmap entries
-    for (col, t) in BEATMAP_ENTRIES {
-        match db.execute(&format!("ALTER TABLE beatmaps ADD {} {};", col, t), []) {
-            Ok(_) => debug!("Column added to beatmaps db: {}", col),
-            Err(e) => error!("Error adding column to beatmaps db: {}", e),
+fn perform_migrations(db: &Connection) {
+    for (table, entries) in MIGRATIONS {
+        for (col, t) in *entries {
+            match db.execute(&format!("ALTER TABLE {table} ADD {col} {t};"), []) {
+                Ok(_) => debug!("Column added to {table} db: {col}"),
+                Err(e) => {
+                    let e = format!("{}", e);
+                    // only log error if its not a duplicate column name
+                    if !e.contains("duplicate column name") {
+                        error!("Error adding column to scores db: {}", e)
+                    }
+                },
+            }
         }
     }
 }
@@ -159,7 +157,8 @@ impl Database {
                 pos_x REAL,
                 pos_y REAL,
                 scale_x REAL,
-                scale_y REAL
+                scale_y REAL,
+                visible BOOL
             )", [])
         .expect("error creating db table");
 
@@ -176,7 +175,7 @@ impl Database {
             )", [])
         .expect("error creating db table");
 
-        add_new_entries(&connection);
+        perform_migrations(&connection);
 
         let connection = Arc::new(Mutex::new(connection));
         Arc::new(Self {connection})

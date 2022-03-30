@@ -74,18 +74,13 @@ impl Dialog<()> for GameUIEditorDialog {
         if let Some((i, _, _)) = self.mouse_down {
             // save pos and scale?
             let ele = &self.elements[i];
-            Database::save_info(ele.pos_offset, ele.scale, &ele.element_name)
+            Database::save_info(ele.pos_offset, ele.scale, ele.visible, &ele.element_name);
         }
 
         self.mouse_down = None;
 
         true
     }
-
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
-        true
-    }
-
 
     fn draw(&mut self, _args:&RenderArgs, _depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         for i in self.elements.iter_mut() {
@@ -107,10 +102,4 @@ impl Dialog<()> for GameUIEditorDialog {
         }
         
     }
-}
-
-
-
-pub enum GameUIEditorEvent {
-    
 }

@@ -1,18 +1,18 @@
 use crate::prelude::*;
 
 impl Database {
-    pub fn save_info(pos: Vector2, scale: Vector2, name: &String) {
+    pub fn save_info(pos: Vector2, scale: Vector2, visible: bool, name: &String) {
         let db = Self::get();
 
         let sql = format!("
         INSERT INTO ui_elements (
-            name,
+            name, visible,
             pos_x, pos_y,
             scale_x, scale_y
         ) VALUES (
-            '{name}',
+            '{name}', {visible}
             {}, {},
-            {}, {}
+            {}, {},
         )",
         pos.x, pos.y,
         scale.x, scale.y);
@@ -23,7 +23,7 @@ impl Database {
         if let Err(_) = s.execute([]) {
             // trance!("updating diff: {diff}");
             let sql = format!(
-                "UPDATE ui_elements SET pos_x={}, pos_y={}, scale_x={}, scale_y={} WHERE name='{name}'", 
+                "UPDATE ui_elements SET pos_x={}, pos_y={}, scale_x={}, scale_y={}, visible={visible} WHERE name='{name}'", 
                 pos.x, pos.y,
                 scale.x, scale.y
             );
@@ -35,7 +35,7 @@ impl Database {
         }
     }
 
-    pub fn get_info(name: &String) -> Option<(Vector2, Vector2)> {
+    pub fn get_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
         let sql = format!("SELECT pos_x, pos_y, scale_x, scale_y FROM ui_elements WHERE name='{name}'");
 
         let db = Self::get();
@@ -47,7 +47,8 @@ impl Database {
             ), Vector2::new(
                 row.get::<&str, f64>("scale_x")?,
                 row.get::<&str, f64>("scale_y")?,
-            )
+            ),
+            row.get::<&str, bool>("vivible")?,
         )));
 
         if let Ok(mut rows) = res {
