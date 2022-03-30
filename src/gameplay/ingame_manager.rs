@@ -80,23 +80,18 @@ pub struct IngameManager {
     /// list of judgement indicators to draw
     judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
-    // draw helpers
-    pub font: Font,
-    combo_text_bounds: Rectangle,
-
     /// if in replay mode, what replay frame are we at?
     replay_frame: u64,
-    spectator_cache: Vec<(u32, String)>,
 
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: Arc<CommonGameplaySettings>,
-
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
 
     /// when was the last score sync packet sent?
     last_spectator_score_sync: f32,
+    pub spectator_cache: Vec<(u32, String)>,
 
     /// what should the game do on start?
     /// mainly a helper for spectator
@@ -155,8 +150,6 @@ impl IngameManager {
             global_offset: CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
             beatmap_preferences,
         
-            font,
-            combo_text_bounds: gamemode.combo_bounds(),
             score_draw_start_pos: gamemode.score_draw_start_pos(),
 
             background_game_settings: settings.background_game_settings.clone(),
@@ -171,6 +164,8 @@ impl IngameManager {
     }
 
     fn init_ui(&mut self) {
+        if self.ui_editor.is_some() {return}
+
         let window_size = Settings::window_size();
         
         let playmode = self.gamemode.playmode();
@@ -189,7 +184,7 @@ impl IngameManager {
         self.ui_elements.push(UIElement::new(
             &get_name("combo"),
             Vector2::new(window_size.x, window_size.y),
-            ComboElement::new(self.combo_text_bounds)
+            ComboElement::new(self.gamemode.combo_bounds())
         ));
 
         // Acc
@@ -215,16 +210,30 @@ impl IngameManager {
 
         // Judgement Bar
         self.ui_elements.push(UIElement::new(
-            &get_name("judgmenetbar"),
+            &get_name("judgementbar"),
             Vector2::new(0.0, window_size.y),
             JudgementBarElement::new(self.gamemode.timing_bar_things())
         ));
 
         // Key Counter
         self.ui_elements.push(UIElement::new(
-            &get_name("judgmenetbar"),
+            &get_name("key_counter"),
             Vector2::new(window_size.x, window_size.y/2.0),
             KeyCounterElement::new()
+        ));
+
+        // Spectators
+        self.ui_elements.push(UIElement::new(
+            &get_name("spectators"),
+            Vector2::new(0.0, window_size.y/3.0),
+            SpectatorsElement::new()
+        ));
+
+        // Leaderboard
+        self.ui_elements.push(UIElement::new(
+            &get_name("spectators"),
+            Vector2::new(0.0, window_size.y* (2.0/3.0)),
+            LeaderboardElement::new()
         ));
     }
 
@@ -511,7 +520,7 @@ impl IngameManager {
 
         // send map completed packets
         if self.completed {
-            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.clone()}));
+            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}));
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
         }
 
@@ -525,7 +534,7 @@ impl IngameManager {
             self.last_spectator_score_sync = time;
             
             // create and send the packet
-            self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.clone()}))
+            self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}))
         }
 
         // put it back
@@ -534,8 +543,6 @@ impl IngameManager {
 
     pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();
-        let font = self.font.clone();
-        // let window_size:Vector2 = args.window_size.into();
 
         // draw gamemode
         let mut gamemode = std::mem::take(&mut self.gamemode);
@@ -556,19 +563,6 @@ impl IngameManager {
         // dont draw score, combo, etc if this is a menu bg
         if self.menu_background {return}
 
-        // draw scores
-        let mut base_pos = self.score_draw_start_pos;
-        for score in self.all_scores() {
-            let mut l = LeaderboardItem::new(score.score.clone());
-
-            if score.is_current {l.set_hover(true)}
-            else if score.is_previous {l.set_selected(true)}
-
-            l.set_pos(base_pos);
-            l.draw(args, Vector2::zero(), 0.0, list);
-            base_pos += Vector2::y_only(l.size().y + 5.0);
-        }
-
 
         // gamemode things
 
@@ -583,37 +577,12 @@ impl IngameManager {
             indicator.draw(time, list);
         }
 
-        // draw spectators
-        if self.spectator_cache.len() > 0 {
-            const DEPTH:f64 = -1000.0;
-
-            const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
-            const PADDING:f64 = 4.0;
-            const POS:Vector2 = Vector2::new(5.0, 30.0);
-
-            list.push(visibility_bg(
-                POS,
-                Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f64),
-                DEPTH
-            ));
-            for (i, (_, username)) in self.spectator_cache.iter().enumerate() {
-                // draw username
-                list.push(Box::new(Text::new(
-                    Color::WHITE, 
-                    DEPTH - 0.001, 
-                    POS + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f64),
-                    30,
-                    username.clone(),
-                    font.clone()
-                )))
-            }
-        }
     }
 }
 
 // getters, setters, properties
 impl IngameManager {
-    fn all_scores(&self) -> Vec<&IngameScore> {
+    pub fn all_scores(&self) -> Vec<&IngameScore> {
         let mut list = Vec::new();
         for score in self.score_list.iter() {
             list.push(score)
@@ -852,7 +821,6 @@ impl IngameManager {
         self.replay_frame = 0;
         self.timing_point_index = 0;
 
-        self.combo_text_bounds = self.gamemode.combo_bounds();
         self.hitbar_timings = Vec::new();
         
         if !self.replaying {
@@ -1097,9 +1065,6 @@ impl Default for IngameManager {
             song: create_empty_stream(),
             #[cfg(feature="neb_audio")]
             song: Weak::new(),
-
-            font: get_font(),
-            combo_text_bounds: Rectangle::bounds_only(Vector2::zero(), Vector2::zero()),
             judgement_indicators: Vec::new(),
 
             failed: false,

@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 
 /// used for ingame_manager leaderboard
+#[derive(Clone)]
 pub struct IngameScore {
     pub score: Score,
     /// is this the current score
