@@ -23,7 +23,7 @@ lazy_static::lazy_static! {
 // needed to add new cols to existing dbs
 // this is essentially migrations, but a lazy way to do it lol
 const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
-    ("score", &[
+    ("scores", &[
         ("x50", "INTEGER"),
         ("katu", "INTEGER"),
         ("geki", "INTEGER"),

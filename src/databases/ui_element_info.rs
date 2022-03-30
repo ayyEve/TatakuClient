@@ -10,9 +10,9 @@ impl Database {
             pos_x, pos_y,
             scale_x, scale_y
         ) VALUES (
-            '{name}', {visible}
+            '{name}', {visible},
             {}, {},
-            {}, {},
+            {}, {}
         )",
         pos.x, pos.y,
         scale.x, scale.y);
