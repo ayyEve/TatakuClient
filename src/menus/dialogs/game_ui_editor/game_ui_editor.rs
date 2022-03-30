@@ -89,9 +89,21 @@ impl Dialog<()> for GameUIEditorDialog {
     }
 
     fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut ()) -> bool {
-        if let Some((index, _, _)) = self.mouse_down {
-            self.elements[index].scale += Vector2::one() * *delta;
-        }
+
+        // TODO: fix scaling
+        // if let Some((index, _, _)) = self.mouse_down {
+        //     let ele = &mut self.elements[index];
+            
+        //     ele.scale += Vector2::one() * *delta;
+            
+        //     if ele.scale.x.abs() < 0.01 {ele.scale.x = 1.0}
+        //     if ele.scale.y.abs() < 0.01 {ele.scale.y = 1.0}
+        // } else if let Some((_, ele)) = self.find_ele_under_mouse() {
+        //     ele.scale += Vector2::one() * *delta;
+            
+        //     if ele.scale.x.abs() < 0.01 {ele.scale.x = 1.0}
+        //     if ele.scale.y.abs() < 0.01 {ele.scale.y = 1.0}
+        // }
 
         true
     }

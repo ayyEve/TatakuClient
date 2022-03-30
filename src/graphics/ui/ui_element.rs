@@ -23,6 +23,9 @@ impl UIElement {
             visible = visible2;
         }
 
+        if scale.x.abs() < 0.01 {scale.x = 1.0}
+        if scale.y.abs() < 0.01 {scale.y = 1.0}
+
         Self {
             default_pos,
             element_name,
