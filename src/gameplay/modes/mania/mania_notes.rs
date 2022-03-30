@@ -19,7 +19,7 @@ pub trait ManiaHitObject: HitObject {
 pub struct ManiaNote {
     pos: Vector2,
     time: f32, // ms
-    column: u8,
+    // column: u8,
     color: Color,
 
     hit_time: f32,
@@ -27,17 +27,32 @@ pub struct ManiaNote {
     missed: bool,
     speed: f32,
 
-    alpha_mult: f32,
     playfield: Arc<ManiaPlayfieldSettings>,
 
-    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+    note_image: Option<Image>
 }
 impl ManiaNote {
-    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mut mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+        
+        let mut note_image = None;
+        if let Some(settings) = &mania_skin_settings {
+            let map = &settings.note_image;
+            
+            if let Some(path) = map.get(&column) {
+                if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                    let mut img = img.clone();
+                    img.current_color = color;
+                    img.origin = Vector2::zero();
+                    img.depth = MANIA_NOTE_DEPTH;
+                    note_image = Some(img);
+                }
+            }
+        }
+        
         Self {
             time, 
             speed: 1.0,
-            column,
+            // column,
             color,
 
             hit_time: 0.0,
@@ -45,9 +60,8 @@ impl ManiaNote {
             missed: false,
             pos: Vector2::new(x, 0.0),
 
-            alpha_mult: 1.0,
             playfield,
-            mania_skin_settings
+            note_image
         }
     }
 }
@@ -63,26 +77,14 @@ impl HitObject for ManiaNote {
         if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         if self.hit {return}
         
-        let mut drew_image = false;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image;
+        
+        if let Some(img) = &self.note_image {
+            let mut img = img.clone();
             
-            if let Some(path) = map.get(&self.column) {
-                if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
-                    let mut img = img.clone();
-                    img.current_color = self.color;
-                    img.origin = Vector2::zero();
-                    img.current_pos = self.pos;
-                    img.current_scale = self.playfield.note_size() / img.tex_size();
-                    img.depth = MANIA_NOTE_DEPTH;
-
-                    list.push(Box::new(img));
-                    drew_image = true;
-                }
-            }
-        }
-
-        if !drew_image {
+            img.current_pos = self.pos;
+            img.current_scale = self.playfield.note_size() / img.tex_size();
+            list.push(Box::new(img));
+        } else {
             list.push(Box::new(Rectangle::new(
                 self.color,
                 MANIA_NOTE_DEPTH,
@@ -132,7 +134,7 @@ pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
-    column: u8,
+    // column: u8,
     color: Color,
 
     /// when the user started holding
@@ -146,27 +148,77 @@ pub struct ManiaHold {
 
     alpha_mult: f32,
     playfield: Arc<ManiaPlayfieldSettings>,
-    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+
+    start_image: Option<Image>,
+    end_image: Option<Image>,
+    middle_image: Option<Image>,
 }
 impl ManiaHold {
     pub fn new(time:f32, end_time:f32, column: u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
 
+        let mut start_image = None;
+        if let Some(settings) = &mania_skin_settings {
+            let map = &settings.note_image_h;
+            
+            if let Some(path) = map.get(&column) {
+                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                    img.current_color = color;
+                    img.origin = Vector2::zero();
+                    img.depth = MANIA_NOTE_DEPTH;
+
+                    start_image = Some(img);
+                }
+            }
+        }
+
+        let mut middle_image = None;
+        if let Some(settings) = &mania_skin_settings {
+            let map = &settings.note_image_l;
+            
+            if let Some(path) = map.get(&column) {
+                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                    img.origin = Vector2::zero();
+                    img.current_color = Color::WHITE;
+                    img.depth = MANIA_NOTE_DEPTH;
+
+                    middle_image = Some(img);
+                }
+            }
+        }
+        
+        let mut end_image = None;
+        if let Some(settings) = &mania_skin_settings {
+            let map = &settings.note_image_t;
+            
+            if let Some(path) = map.get(&column) {
+                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                    img.origin = Vector2::zero();
+                    img.current_color = Color::WHITE;
+                    img.current_scale.y *= -1.0;
+                    img.depth = MANIA_NOTE_DEPTH;
+                    end_image = Some(img)
+                }
+            }
+        }
+
         Self {
             time, 
             end_time,
-            column,
+            // column,
             speed: 1.0,
             holding: false,
             color,
 
-            pos: Vector2::new(x, 0.0),
+            pos: Vector2::x_only(x),
             hold_starts: Vec::new(),
             hold_ends: Vec::new(),
             end_y: 0.0,
 
             alpha_mult: 1.0,
             playfield,
-            mania_skin_settings
+            start_image,
+            end_image,
+            middle_image,
         }
     }
 }
@@ -224,27 +276,13 @@ impl HitObject for ManiaHold {
             if self.end_y < self.playfield.hit_y() {
                 let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
 
-                let mut drew_image = false;
-                if let Some(settings) = &self.mania_skin_settings {
-                    let map = &settings.note_image_l;
+                if let Some(img) = &self.middle_image {
+                    let mut img = img.clone();
                     
-                    if let Some(path) = map.get(&self.column) {
-                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
-
-                            let mut img = img.clone();
-                            img.origin = Vector2::zero();
-                            img.current_color = Color::WHITE;
-                            img.current_pos = Vector2::new(self.pos.x, y);
-                            img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
-                            img.depth = MANIA_NOTE_DEPTH;
-
-                            list.push(Box::new(img));
-                            drew_image = true;
-                        }
-                    }
-                }
-
-                if !drew_image {
+                    img.current_pos = Vector2::new(self.pos.x, y);
+                    img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+                    list.push(Box::new(img));
+                } else {
                     list.push(Box::new(Rectangle::new(
                         color,
                         MANIA_SLIDER_DEPTH,
@@ -257,26 +295,12 @@ impl HitObject for ManiaHold {
 
             // start of hold
             if self.pos.y < self.playfield.hit_y() {
-                let mut drew_image = false;
-                if let Some(settings) = &self.mania_skin_settings {
-                    let map = &settings.note_image_h;
-                    
-                    if let Some(path) = map.get(&self.column) {
-                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
-                            let mut img = img.clone();
-                            img.current_color = color;
-                            img.origin = Vector2::zero();
-                            img.current_pos = self.pos;
-                            img.current_scale = self.playfield.note_size() / img.tex_size();
-                            img.depth = MANIA_NOTE_DEPTH;
-
-                            list.push(Box::new(img));
-                            drew_image = true;
-                        }
-                    }
-                }
-
-                if !drew_image {
+                if let Some(img) = &self.start_image {
+                    let mut img = img.clone();
+                    img.current_pos = self.pos;
+                    img.current_scale = self.playfield.note_size() / img.tex_size();
+                    list.push(Box::new(img));
+                } else {
                     list.push(Box::new(Rectangle::new(
                         color,
                         MANIA_NOTE_DEPTH,
@@ -290,27 +314,12 @@ impl HitObject for ManiaHold {
 
             // end
             if self.end_y < self.playfield.hit_y() {
-                let mut drew_image = false;
-                if let Some(settings) = &self.mania_skin_settings {
-                    let map = &settings.note_image_t;
-                    
-                    if let Some(path) = map.get(&self.column) {
-                        if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
-                            let mut img = img.clone();
-                            img.origin = Vector2::zero();
-                            img.current_color = Color::WHITE;
-                            img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
-                            img.current_scale = self.playfield.note_size() / img.tex_size();
-                            img.current_scale.y *= -1.0;
-                            img.depth = MANIA_NOTE_DEPTH;
-
-                            list.push(Box::new(img));
-                            drew_image = true;
-                        }
-                    }
-                }
-
-                if !drew_image {
+                if let Some(img) = &self.end_image {
+                    let mut img = img.clone();
+                    img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
+                    img.current_scale = self.playfield.note_size() / img.tex_size();
+                    list.push(Box::new(img));
+                } else {
                     list.push(Box::new(Rectangle::new(
                         color,
                         MANIA_NOTE_DEPTH,
@@ -320,9 +329,7 @@ impl HitObject for ManiaHold {
                     )));
                 }
             }
-        
-        
-        
+
         }
 
         // draw hold fragments

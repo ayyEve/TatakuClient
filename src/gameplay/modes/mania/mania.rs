@@ -61,6 +61,9 @@ pub struct ManiaGame {
 
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
     map_preferences: BeatmapPlaymodePreferences,
+
+    key_images_up: HashMap<u8, Image>,
+    key_images_down: HashMap<u8, Image>,
 }
 impl ManiaGame {
     /// get the x_pos for `col`
@@ -93,6 +96,44 @@ impl ManiaGame {
         }
         for bar in self.timing_bars.iter_mut() {
             bar.set_sv(scaled_sv);
+        }
+    }
+
+    
+    fn load_col_images(&mut self) {
+        if let Some(settings) = &self.mania_skin_settings {
+            let up_map = &settings.key_image;
+            let down_map = &settings.key_image_d;
+            let mut skin_manager = SKIN_MANAGER.write();
+
+            for col in 0..self.column_count {
+                let x = self.col_pos(col);
+
+                // up image
+                if let Some(path) = up_map.get(&col) {
+                    if let Some(img) = skin_manager.get_texture(path, true) {
+                        let mut img = img.clone();
+                        img.origin = Vector2::zero();
+                        img.current_scale = self.playfield.note_size() / img.tex_size();
+                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
+
+                        self.key_images_up.insert(col, img);
+                    }
+                }
+
+                // down image
+                if let Some(path) = down_map.get(&col) {
+                    if let Some(img) = skin_manager.get_texture(path, true) {
+                        let mut img = img.clone();
+                        img.origin = Vector2::zero();
+                        img.current_scale = self.playfield.note_size() / img.tex_size();
+                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
+
+                        self.key_images_down.insert(col, img);
+                    }
+                }
+
+            }
         }
     }
 }
@@ -223,7 +264,9 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
-                    game_settings: Arc::new(game_settings)
+                    game_settings: Arc::new(game_settings),
+                    key_images_up:HashMap::new(),
+                    key_images_down:HashMap::new(),
                 };
 
                 for i in all_mania_skin_settings.iter() {
@@ -301,6 +344,7 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+                s.load_col_images();
 
                 Ok(s)
             },
@@ -333,7 +377,10 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
-                    game_settings: Arc::new(game_settings)
+                    game_settings: Arc::new(game_settings),
+                    
+                    key_images_up:HashMap::new(),
+                    key_images_down:HashMap::new(),
                 };
                 
                 // init defaults for the columns
@@ -379,6 +426,7 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+                s.load_col_images();
         
                 Ok(s)
             },
@@ -412,7 +460,10 @@ impl GameMode for ManiaGame {
                     playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
-                    game_settings: Arc::new(game_settings)
+                    game_settings: Arc::new(game_settings),
+                    
+                    key_images_up:HashMap::new(),
+                    key_images_down:HashMap::new(),
                 };
                 
                 // init defaults for the columns
@@ -458,6 +509,7 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+                s.load_col_images();
                 
                 Ok(s)
             }
@@ -819,6 +871,7 @@ impl GameMode for ManiaGame {
             Some(Border::new(if manager.current_timing_point().kiai {Color::YELLOW} else {Color::BLACK}, 1.2))
         )));
 
+
         // draw columns
         for col in 0..self.column_count {
             let x = self.col_pos(col);
@@ -834,25 +887,14 @@ impl GameMode for ManiaGame {
 
 
             // hit area/button state for this col
-            let mut drew_image = false;
-            if let Some(settings) = &self.mania_skin_settings {
-                let map = if self.column_states[col as usize] {&settings.key_image_d} else {&settings.key_image};
-                
-                if let Some(path) = map.get(&col) {
-                    if let Some(img) = SKIN_MANAGER.write().get_texture(path, true) {
-                        let mut img = img.clone();
-                        img.origin = Vector2::zero();
-                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
-                        img.current_scale = self.playfield.note_size() / img.tex_size();
+            let map = if self.column_states[col as usize] {&self.key_images_down} else {&self.key_images_up};
 
-                        list.push(Box::new(img));
-                        drew_image = true;
-                    }
-                }
-            }
+            if let Some(img) = map.get(&col) {
+                let mut img = img.clone();
+                img.current_pos = Vector2::new(x, self.playfield.hit_y());
 
-
-            if !drew_image {
+                list.push(Box::new(img));
+            } else {
                 list.push(Box::new(Rectangle::new(
                     if self.column_states[col as usize] {self.get_color(col)} else {Color::TRANSPARENT_WHITE},
                     HIT_AREA_DEPTH,
