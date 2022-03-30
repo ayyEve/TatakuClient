@@ -52,6 +52,10 @@ impl UIElement {
         base.size *= self.scale;
         base
     }
+
+    pub fn save(&self) {
+        Database::save_info(self.pos_offset, self.scale, self.visible, &self.element_name);
+    }
 }
 
 pub trait InnerUIElement {

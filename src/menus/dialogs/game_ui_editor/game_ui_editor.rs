@@ -78,9 +78,8 @@ impl Dialog<()> for GameUIEditorDialog {
         // let pos = self.mouse_pos;
 
         if let Some((i, _, _)) = self.mouse_down {
-            // save pos and scale?
-            let ele = &self.elements[i];
-            Database::save_info(ele.pos_offset, ele.scale, ele.visible, &ele.element_name);
+            // save pos and scale
+            self.elements[i].save();
         }
 
         self.mouse_down = None;
@@ -114,6 +113,7 @@ impl Dialog<()> for GameUIEditorDialog {
                 if let Some((_, ele)) = self.find_ele_under_mouse() {
                     ele.pos_offset = ele.default_pos;
                     ele.scale = Vector2::one();
+                    ele.save();
                 }
             }
         }
