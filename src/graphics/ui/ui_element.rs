@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub struct UIElement {
+    pub default_pos: Vector2,
     pub element_name: String,
     pub pos_offset: Vector2,
     pub scale: Vector2,
@@ -23,6 +24,7 @@ impl UIElement {
         }
 
         Self {
+            default_pos,
             element_name,
             pos_offset,
             scale,

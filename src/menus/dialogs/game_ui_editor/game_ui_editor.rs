@@ -24,6 +24,17 @@ impl GameUIEditorDialog {
             i.update(manager)
         }
     }
+
+    fn find_ele_under_mouse(&mut self) -> Option<(usize, &mut UIElement)> {
+        for (i, ele) in self.elements.iter_mut().enumerate() {
+            let bounds = ele.get_bounds();
+
+            if bounds.contains(self.mouse_pos) {
+                return Some((i, ele))
+            }
+        }
+        None
+    }
 }
 
 
@@ -55,13 +66,8 @@ impl Dialog<()> for GameUIEditorDialog {
         let pos = self.mouse_pos;
 
         if button == &MouseButton::Left {
-            for (i, ele) in self.elements.iter().enumerate() {
-                let bounds = ele.get_bounds();
-
-                if bounds.contains(pos) {
-                    self.mouse_down = Some((i, ele.pos_offset, pos));
-                    break;
-                }
+            if let Some((i, ele)) = self.find_ele_under_mouse() {
+                self.mouse_down = Some((i, ele.pos_offset, pos));
             }
         }
 
@@ -81,6 +87,28 @@ impl Dialog<()> for GameUIEditorDialog {
 
         true
     }
+
+    fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut ()) -> bool {
+        if let Some((index, _, _)) = self.mouse_down {
+            self.elements[index].scale += Vector2::one() * *delta;
+        }
+
+        true
+    }
+
+    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+        if key == &Key::V {
+            if self.mouse_down.is_none() {
+                if let Some((_, ele)) = self.find_ele_under_mouse() {
+                    ele.pos_offset = ele.default_pos;
+                    ele.scale = Vector2::one();
+                }
+            }
+        }
+
+        true
+    }
+
 
     fn draw(&mut self, _args:&RenderArgs, _depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         for i in self.elements.iter_mut() {

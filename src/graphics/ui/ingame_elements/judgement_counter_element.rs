@@ -10,7 +10,6 @@ pub struct JudgementCounterElement {
 }
 impl JudgementCounterElement {
     pub fn new() -> Self {
-
         let mut button_image= SKIN_MANAGER.write().get_texture("inputoverlay-key", true);
         if let Some(image) = &mut button_image {
             image.depth = -100.1;
