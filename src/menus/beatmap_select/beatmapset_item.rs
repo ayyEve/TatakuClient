@@ -122,10 +122,10 @@ impl ScrollableItem for BeatmapsetItem {
         self.check_hover(pos);
     }
 
-    fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
+    fn on_key_press(&mut self, key:Key, mods:KeyModifiers) -> bool {
         if !self.selected {return false}
 
-        if key == Key::Down {
+        if key == Key::Down && !mods.alt  {
             self.selected_index += 1;
             if self.selected_index >= self.beatmaps.len() {
                 self.selected_index = 0;
@@ -134,7 +134,7 @@ impl ScrollableItem for BeatmapsetItem {
             return true;
         }
 
-        if key == Key::Up {
+        if key == Key::Up && !mods.alt {
             if self.selected_index == 0 {
                 self.selected_index = self.beatmaps.len() - 1;
             } else {

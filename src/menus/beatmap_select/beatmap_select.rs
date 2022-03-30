@@ -710,13 +710,13 @@ impl Menu<Game> for BeatmapSelectMenu {
     fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
 
-        if key == Left {
+        if key == Left && !mods.alt {
             if let Some(hash) = self.beatmap_scroll.select_previous_item() {
                 self.select_map(game, hash, false);
                 self.beatmap_scroll.scroll_to_selection();
             }
         }
-        if key == Right {
+        if key == Right && !mods.alt  {
             if let Some(hash) = self.beatmap_scroll.select_next_item() {
                 self.select_map(game, hash, false);
                 self.beatmap_scroll.scroll_to_selection();

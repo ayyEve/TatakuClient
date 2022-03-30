@@ -222,7 +222,7 @@ impl VolumeControl {
     pub fn on_key_press(&mut self, keys:&mut Vec<Key>, mods:KeyModifiers) -> bool {
         let elapsed = self.elapsed();
 
-        if mods.alt || self.visible() {
+        if mods.alt {
             let mut changed = false;
 
             if keys.contains(&Key::Right) {
