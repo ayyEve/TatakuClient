@@ -928,6 +928,12 @@ impl HitObject for StandardSlider {
             }
 
         } else {
+            let mut color = color.clone();
+            const DARKER:f32 = 2.0/3.0;
+            color.r *= DARKER;
+            color.g *= DARKER;
+            color.b *= DARKER;
+
             for line in self.curve.smooth_lines.iter() {
                 let p1 = self.scaling_helper.scale_coords(line.p1);
                 let p2 = self.scaling_helper.scale_coords(line.p2);
