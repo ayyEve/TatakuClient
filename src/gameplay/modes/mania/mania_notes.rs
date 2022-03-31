@@ -146,7 +146,6 @@ pub struct ManiaHold {
     //TODO: figure out how to pre-calc this
     end_y: f64,
 
-    alpha_mult: f32,
     playfield: Arc<ManiaPlayfieldSettings>,
 
     start_image: Option<Image>,
@@ -214,7 +213,6 @@ impl ManiaHold {
             hold_ends: Vec::new(),
             end_y: 0.0,
 
-            alpha_mult: 1.0,
             playfield,
             start_image,
             end_image,
@@ -266,8 +264,8 @@ impl HitObject for ManiaHold {
         // } 
         let note_size = self.playfield.note_size();
 
-        let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), self.playfield.note_border_width));
-        let color = self.color.alpha(self.alpha_mult); //Color::YELLOW.alpha(self.alpha_mult);
+        let border = Some(Border::new(Color::BLACK, self.playfield.note_border_width));
+        let color = self.color;
 
         if self.playfield.upside_down {
             // start

@@ -9,6 +9,13 @@ impl Database {
         s.query_map([], |r| {
             let _score_hash:String = r.get("score_hash")?;
 
+            let mut mods_string:Option<String> = r.get("mods_string").ok();
+            if let Some(str) = &mods_string {
+                if str.is_empty() {
+                    mods_string = None;
+                }
+            }
+
             let score = Score {
                 version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
                 username: r.get("username")?,
@@ -27,7 +34,7 @@ impl Database {
                 speed: r.get("speed").unwrap_or(1.0),
                 hit_timings: Vec::new(),
                 replay_string: None,
-                mods_string: r.get("mods_string").ok()
+                mods_string
             };
 
             Ok(score)
@@ -98,7 +105,11 @@ pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     
-    info!("Loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)
+}
+
+pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Replay> {
+    info!("Loading replay for score {:?}", score);
+    get_local_replay(score.hash())
 }

@@ -85,7 +85,7 @@ impl ScoreMenu {
     }
 
     fn replay(&mut self, game: &mut Game) {
-        let replay = databases::get_local_replay(self.score.hash());
+        let replay = databases::get_local_replay_for_score(&self.score);
         match replay {
             Ok(replay) => {
                 // game.menus.get("beatmap").unwrap().lock().on_change(false);

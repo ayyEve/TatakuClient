@@ -827,6 +827,7 @@ impl IngameManager {
         self.lead_in_time = LEAD_IN_TIME;
         self.lead_in_timer = Instant::now();
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode()), true, false);
+        self.score.mods_string = Some(self.current_mods.as_json());
         self.replay_frame = 0;
         self.timing_point_index = 0;
         

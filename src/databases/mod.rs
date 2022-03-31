@@ -27,7 +27,8 @@ const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
         ("x50", "INTEGER"),
         ("katu", "INTEGER"),
         ("geki", "INTEGER"),
-        ("speed", "INTEGER"),
+        ("speed", "REAL"),
+        ("accuracy", "REAL"),
         ("version", "INTEGER"),
         ("mods_string", "TEXT"),
     ]),
@@ -90,7 +91,7 @@ impl Database {
                 geki INTEGER,
                 katu INTEGER,
                 xmiss INTEGER,
-                speed INTEGER,
+                speed REAL,
                 version INTEGER
          )", [])
         .expect("error creating db table");

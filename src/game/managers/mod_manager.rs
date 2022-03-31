@@ -33,7 +33,7 @@ impl ModManager {
 
 // instance
 impl ModManager {
-    pub fn mods_string(&self) -> String {
+    pub fn mods_list_string(&self) -> String {
         let mut list = Vec::new();
         
 
@@ -46,5 +46,9 @@ impl ModManager {
         if self.speed != 1.0 {list.push(format!("({:.2}x)", self.speed))}
 
         list.join(" ")
+    }
+
+    pub fn as_json(&self) -> String {
+        serde_json::to_string(self).expect("error converting mods to json string")
     }
 }
