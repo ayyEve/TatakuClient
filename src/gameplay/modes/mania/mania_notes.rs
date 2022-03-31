@@ -238,6 +238,27 @@ impl HitObject for ManiaHold {
             std::mem::swap(&mut self.end_y, &mut self.pos.y)
         }
 
+        let note_size = self.playfield.note_size();
+        let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
+
+        // update start tex
+        if let Some(img) = &mut self.start_image {
+            img.current_pos = self.pos;
+            img.current_scale = self.playfield.note_size() / img.tex_size();
+        }
+
+        // update middle tex
+        if let Some(img) = &mut self.middle_image {
+            img.current_pos = Vector2::new(self.pos.x, y);
+            img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+        }
+
+        // update end tex
+        if let Some(img) = &mut self.end_image {
+            img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
+            img.current_scale = self.playfield.note_size() / img.tex_size();
+        }
+
     }
     fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         // if self.playfield.upside_down {
@@ -277,11 +298,7 @@ impl HitObject for ManiaHold {
                 let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
 
                 if let Some(img) = &self.middle_image {
-                    let mut img = img.clone();
-                    
-                    img.current_pos = Vector2::new(self.pos.x, y);
-                    img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
-                    list.push(Box::new(img));
+                    list.push(Box::new(img.clone()));
                 } else {
                     list.push(Box::new(Rectangle::new(
                         color,
@@ -296,10 +313,7 @@ impl HitObject for ManiaHold {
             // start of hold
             if self.pos.y < self.playfield.hit_y() {
                 if let Some(img) = &self.start_image {
-                    let mut img = img.clone();
-                    img.current_pos = self.pos;
-                    img.current_scale = self.playfield.note_size() / img.tex_size();
-                    list.push(Box::new(img));
+                    list.push(Box::new(img.clone()));
                 } else {
                     list.push(Box::new(Rectangle::new(
                         color,
@@ -315,10 +329,7 @@ impl HitObject for ManiaHold {
             // end
             if self.end_y < self.playfield.hit_y() {
                 if let Some(img) = &self.end_image {
-                    let mut img = img.clone();
-                    img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
-                    img.current_scale = self.playfield.note_size() / img.tex_size();
-                    list.push(Box::new(img));
+                    list.push(Box::new(img.clone()));
                 } else {
                     list.push(Box::new(Rectangle::new(
                         color,

@@ -122,9 +122,8 @@ impl Settings {
     /// relatively slow, if you need a more performant get, use get_mut
     pub fn get<'a>(caller: String) -> RwLockReadGuard<'a, Settings> {
         if SETTINGS.is_locked_exclusive() && on_main_thread() {
-            // panic bc the devs should know when this error occurs, as it completely locks up the app
             let last_caller = LAST_CALLER.lock();
-            panic!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
+            error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
         }
 
         *LAST_CALLER.lock() = caller;
@@ -134,9 +133,8 @@ impl Settings {
     /// more performant, but can double lock if you arent careful
     pub fn get_mut<'a>(caller:String) -> RwLockWriteGuard<'a, Settings> {
         if SETTINGS.is_locked() && on_main_thread() {
-            // panic bc the devs should know when this error occurs, as it completely locks up the app
             let last_caller = LAST_CALLER.lock();
-            panic!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
+            error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
         }
 
         *LAST_CALLER.lock() = caller;

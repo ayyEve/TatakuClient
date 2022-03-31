@@ -711,7 +711,10 @@ impl IngameManager {
             } else {
                 #[cfg(feature="bass_audio")] {
                     self.song.set_position(0.0).unwrap();
-                    self.song.pause().unwrap();
+                    if let Err(e) = self.song.pause() {
+                        warn!("error pausing audio: {:?}", e)
+                    }
+                    
                     if self.replaying {
                         self.song.set_rate(self.replay.speed).unwrap();
                     }

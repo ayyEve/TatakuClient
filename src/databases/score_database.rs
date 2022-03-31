@@ -90,14 +90,15 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<()> {
     let hash = s.hash();
     let actual_hash = format!("{:x}", md5::compute(hash));
     let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
+    info!("Saving replay as {} for score {:?}", filename, s);
     Ok(save_database(&filename, writer)?)
 }
 
 pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
-
-    trace!("Loading replay: {}", fullpath);
+    
+    info!("Loading replay: {}", fullpath);
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)
 }
