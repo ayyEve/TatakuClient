@@ -38,6 +38,9 @@ const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
     ]),
     ("ui_elements", &[
         ("visible", "BOOL")
+    ]),
+    ("beatmap_preferences", &[
+        ("audio_offset", "REAL")
     ])
 ];
 
@@ -134,6 +137,7 @@ impl Database {
         connection.execute(
             "CREATE TABLE IF NOT EXISTS beatmap_preferences (
                 beatmap_hash TEXT PRIMARY KEY,
+                audio_offset REAL,
                 background_video BOOL,
                 storyboard BOOL
             )", [])
