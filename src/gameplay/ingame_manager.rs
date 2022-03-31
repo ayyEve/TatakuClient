@@ -671,7 +671,6 @@ impl IngameManager {
         tp
     }
 
-
 }
 
 // Events and States
@@ -908,9 +907,25 @@ impl IngameManager {
             ui_editor.on_key_press(&key, &mods, &mut ());
             if key == Key::F9 {
                 ui_editor.should_close = true;
+
+                // re-disable cursor
+                CursorManager::show_system_cursor(false);
+                if !self.gamemode.show_cursor() {
+                    CursorManager::set_visible(false)
+                }
             }
         } else if key == Key::F9 {
             self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
+            
+            if self.gamemode.show_cursor() {
+                if self.replaying || self.current_mods.autoplay {
+                    CursorManager::show_system_cursor(true)
+                }
+            } else {
+                if !self.menu_background {
+                    CursorManager::set_visible(true)
+                }
+            }
         }
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
