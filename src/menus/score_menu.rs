@@ -112,14 +112,14 @@ impl Menu<Game> for ScoreMenu {
         let window_size = Settings::window_size();
 
         let depth = 0.0;
-
+        
         // draw beatmap title string
         list.push(Box::new(Text::new(
             Color::BLACK,
             depth + 1.0,
             Vector2::new(10.0, 20.0),
             30,
-            self.beatmap.version_string(),
+            format!("{} ({})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode)),
             font.clone()
         )));
 

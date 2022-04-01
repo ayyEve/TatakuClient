@@ -2,14 +2,16 @@ use crate::prelude::*;
 use rusqlite::Connection;
 
 mod beatmaps;
-mod ui_element_info;
 mod score_database;
+mod ui_element_info;
+mod beatmap_collections;
 mod beatmap_preferences;
 mod difficulty_database;
 
 pub use beatmaps::*;
-pub use ui_element_info::*;
 pub use score_database::*;
+pub use ui_element_info::*;
+pub use beatmap_collections::*;
 pub use beatmap_preferences::*;
 pub use difficulty_database::*;
 
@@ -179,6 +181,9 @@ impl Database {
                 PRIMARY KEY (beatmap_hash, playmode, mods_string, diff_calc_version)
             )", [])
         .expect("error creating db table");
+
+        Database::init_beatmap_collection(&connection);
+
 
         perform_migrations(&connection);
 
