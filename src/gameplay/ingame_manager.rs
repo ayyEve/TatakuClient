@@ -177,13 +177,6 @@ impl IngameManager {
             ScoreElement::new()
         ));
 
-        // combo
-        self.ui_elements.push(UIElement::new(
-            &get_name("combo"),
-            Vector2::new(window_size.x, window_size.y),
-            ComboElement::new(self.gamemode.combo_bounds())
-        ));
-
         // Acc
         self.ui_elements.push(UIElement::new(
             &get_name("acc"),
@@ -226,19 +219,16 @@ impl IngameManager {
             SpectatorsElement::new()
         ));
 
-        // Leaderboard
-        self.ui_elements.push(UIElement::new(
-            &get_name("leaderboard"),
-            self.gamemode.score_draw_start_pos(),
-            LeaderboardElement::new()
-        ));
-
         // judgement counter
         self.ui_elements.push(UIElement::new(
             &get_name("judgement_counter"),
             Vector2::new(window_size.x, window_size.y * (2.0/3.0)),
             JudgementCounterElement::new()
         ));
+
+        // anything in the gamemode itself
+        self.gamemode.get_ui_elements(window_size, &mut self.ui_elements);
+
     }
 
     pub fn apply_mods(&mut self, mods: ModManager) {
@@ -675,7 +665,6 @@ impl IngameManager {
 
 // Events and States
 impl IngameManager {
-
     // can be from either paused or new
     pub fn start(&mut self) {
         if !self.gamemode.show_cursor() {
@@ -1134,81 +1123,6 @@ impl Default for IngameManager {
 }
 
 
-
-pub trait GameMode {
-    fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self: Sized;
-    fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized;
-    fn show_cursor(&self) -> bool {false}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)>;
-    
-    fn playmode(&self) -> PlayMode;
-
-    fn end_time(&self) -> f32;
-    fn combo_bounds(&self) -> Rectangle;
-    fn score_draw_start_pos(&self) -> Vector2 {Vector2::new(0.0, 200.0)}
-    /// f64 is hitwindow, color is color for that window. last is miss hitwindow
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color));
-    /// convert mouse pos to mode's playfield coords
-    // fn scale_mouse_pos(&self, mouse_pos:Vector2) -> Vector2 {mouse_pos}
-
-    fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager);
-
-    fn update(&mut self, manager:&mut IngameManager, time: f32);
-    fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut Vec<Box<dyn Renderable>>);
-
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager);
-    fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager);
-    fn on_text(&mut self, _text: &String, _mods: &KeyModifiers, _manager: &mut IngameManager) {}
-
-    fn mouse_move(&mut self, _pos:Vector2, _manager:&mut IngameManager) {}
-    fn mouse_down(&mut self, _btn:piston::MouseButton, _manager:&mut IngameManager) {}
-    fn mouse_up(&mut self, _btn:piston::MouseButton, _manager:&mut IngameManager) {}
-    fn mouse_scroll(&mut self, _delta:f64, _manager:&mut IngameManager) {}
-
-    fn apply_auto(&mut self, settings: &BackgroundGameSettings);
-
-
-    fn controller_press(&mut self, _c: &Box<dyn Controller>, _btn: u8, _manager:&mut IngameManager) {}
-    fn controller_release(&mut self, _c: &Box<dyn Controller>, _btn: u8, _manager:&mut IngameManager) {}
-    fn controller_hat_press(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
-    fn controller_hat_release(&mut self, _hat: piston::controller::ControllerHat, _manager:&mut IngameManager) {}
-    fn controller_axis(&mut self, _c: &Box<dyn Controller>, _axis_data:HashMap<u8, (bool, f64)>, _manager:&mut IngameManager) {}
-
-
-    fn skip_intro(&mut self, manager: &mut IngameManager);
-    fn pause(&mut self, _manager:&mut IngameManager) {}
-    fn unpause(&mut self, _manager:&mut IngameManager) {}
-    fn reset(&mut self, beatmap:&Beatmap);
-
-
-}
-impl Default for Box<dyn GameMode> {
-    fn default() -> Self {
-        Box::new(NoMode::new(&Default::default(), true).unwrap())
-    }
-}
-
-// needed for std::mem::take/swap
-struct NoMode {}
-impl GameMode for NoMode {
-    fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
-    fn playmode(&self) -> PlayMode {"osu".to_owned()}
-    fn end_time(&self) -> f32 {0.0}
-    fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {(Vec::new(), (0.0, Color::WHITE))}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
-
-    fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
-    fn update(&mut self, _:&mut IngameManager, _: f32) {}
-    fn draw(&mut self, _:RenderArgs, _:&mut IngameManager, _: &mut Vec<Box<dyn Renderable>>) {}
-    fn key_down(&mut self, _:piston::Key, _:&mut IngameManager) {}
-    fn key_up(&mut self, _:piston::Key, _:&mut IngameManager) {}
-    fn apply_auto(&mut self, _: &BackgroundGameSettings) {}
-    fn skip_intro(&mut self, _: &mut IngameManager) {}
-    fn reset(&mut self, _:&Beatmap) {}
-
-    fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized {String::new()}
-}
 
 // struct HitsoundManager {
 //     sounds: HashMap<String, Option<Sound>>,

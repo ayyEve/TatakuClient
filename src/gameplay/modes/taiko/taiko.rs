@@ -77,23 +77,6 @@ impl TaikoGame {
 }
 
 impl GameMode for TaikoGame {
-    fn playmode(&self) -> PlayMode {"taiko".to_owned()}
-    fn end_time(&self) -> f32 {self.end_time}
-    fn score_draw_start_pos(&self) -> Vector2 {
-        Vector2::new(
-            0.0,
-            self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0
-        )
-    }
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        vec![
-            (KeyPress::LeftKat, "LK"),
-            (KeyPress::LeftDon, "LD"),
-            (KeyPress::RightDon, "RD"),
-            (KeyPress::RightKat, "RK"),
-        ]
-    }
-
     fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
@@ -616,100 +599,6 @@ impl GameMode for TaikoGame {
         for tb in self.timing_bars.iter_mut() {tb.draw(args, list)}
     }
 
-
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
-
-        if key == self.taiko_settings.left_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
-        }
-        if key == self.taiko_settings.left_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
-        }
-        if key == self.taiko_settings.right_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
-        }
-        if key == self.taiko_settings.right_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
-        }
-    }
-    fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
-
-    fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
-        
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
-            return;
-        }
-        
-        let time = manager.time();
-        match btn {
-            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
-            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
-            _ => {}
-        }
-    }
-
-
-    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
-            return;
-        }
-
-        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
-            let time = manager.time();
-
-            if c_config.left_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
-            }
-
-            if c_config.left_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
-            }
-
-            if c_config.right_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
-            }
-
-            if c_config.right_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
-            }
-
-            // skip
-            if Some(ControllerButton::Y) == c.map_button(btn) {
-                self.skip_intro(manager);
-            }
-
-        } else {
-            trace!("Controller with no setup");
-
-            // TODO: if this is slow, we should store controller configs separately
-            // but i dont think this will be an issue, as its unlikely to happen in the first place,
-            // and if there is lag, the user is likely to retry the man anyways
-            trace!("Setting up new controller");
-            let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
-
-            // update the global settings
-            {
-                let mut settings = get_settings_mut!();
-                settings.taiko_settings = new_settings.clone();
-                settings.save();
-            }
-            
-            self.taiko_settings = Arc::new(new_settings);
-            // rerun the handler now that the thing is setup
-            self.controller_press(c, btn, manager);
-        }
-    }
-
-
     fn reset(&mut self, beatmap:&Beatmap) {
         for note in self.notes.as_mut_slice() {
             note.reset();
@@ -809,6 +698,195 @@ impl GameMode for TaikoGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
+    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
+        // for note in self.notes.iter_mut() {
+        //     note.set_alpha(settings.opacity)
+        // }
+    }
+
+}
+
+
+impl GameModeInput for TaikoGame {
+
+    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+        // dont accept key input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        let time = manager.time();
+
+        if key == self.taiko_settings.left_kat {
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
+        }
+        if key == self.taiko_settings.left_don {
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
+        }
+        if key == self.taiko_settings.right_don {
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
+        }
+        if key == self.taiko_settings.right_kat {
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
+        }
+    }
+    
+    fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
+
+
+    fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+        
+        // dont accept mouse input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
+            return;
+        }
+        
+        let time = manager.time();
+        match btn {
+            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
+            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
+            _ => {}
+        }
+    }
+
+    fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+        
+        // dont accept mouse input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
+            return;
+        }
+        
+        let time = manager.time();
+        match btn {
+            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager),
+            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager),
+            _ => {}
+        }
+    }
+
+
+    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
+            let time = manager.time();
+
+            if c_config.left_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
+            }
+
+            if c_config.left_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
+            }
+
+            if c_config.right_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
+            }
+
+            if c_config.right_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
+            }
+
+            // skip
+            if Some(ControllerButton::Y) == c.map_button(btn) {
+                self.skip_intro(manager);
+            }
+
+        } else {
+            trace!("Controller with no setup");
+
+            // TODO: if this is slow, we should store controller configs separately
+            // but i dont think this will be an issue, as its unlikely to happen in the first place,
+            // and if there is lag, the user is likely to retry the man anyways
+            trace!("Setting up new controller");
+            let mut new_settings = self.taiko_settings.as_ref().clone();
+            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
+
+            // update the global settings
+            {
+                let mut settings = get_settings_mut!();
+                settings.taiko_settings = new_settings.clone();
+                settings.save();
+            }
+            
+            self.taiko_settings = Arc::new(new_settings);
+            // rerun the handler now that the thing is setup
+            self.controller_press(c, btn, manager);
+        }
+    }
+
+    fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+        // dont accept controller input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
+            let time = manager.time();
+
+            if c_config.left_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager);
+            }
+
+            if c_config.left_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager);
+            }
+
+            if c_config.right_don.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager);
+            }
+
+            if c_config.right_kat.check_button(btn) {
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager);
+            }
+
+            // skip
+            if Some(ControllerButton::Y) == c.map_button(btn) {
+                self.skip_intro(manager);
+            }
+
+        } else {
+            trace!("Controller with no setup");
+
+            // TODO: if this is slow, we should store controller configs separately
+            // but i dont think this will be an issue, as its unlikely to happen in the first place,
+            // and if there is lag, the user is likely to retry the man anyways
+            trace!("Setting up new controller");
+            let mut new_settings = self.taiko_settings.as_ref().clone();
+            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
+
+            // update the global settings
+            {
+                let mut settings = get_settings_mut!();
+                settings.taiko_settings = new_settings.clone();
+                settings.save();
+            }
+            
+            self.taiko_settings = Arc::new(new_settings);
+            // rerun the handler now that the thing is setup
+            self.controller_release(c, btn, manager);
+        }
+    }
+
+}
+
+impl GameModeInfo for TaikoGame {
+    fn playmode(&self) -> PlayMode {"taiko".to_owned()}
+    fn end_time(&self) -> f32 {self.end_time}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        vec![
+            (KeyPress::LeftKat, "LK"),
+            (KeyPress::LeftDon, "LD"),
+            (KeyPress::RightDon, "RD"),
+            (KeyPress::RightKat, "RK"),
+        ]
+    }
+
+
+    
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
         (vec![
             (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
@@ -816,21 +894,9 @@ impl GameMode for TaikoGame {
         ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
     }
 
-    fn combo_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
-            Vector2::new(0.0, self.taiko_settings.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
-            Vector2::new(self.taiko_settings.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
-        )
-    }
-
-    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
-        // for note in self.notes.iter_mut() {
-        //     note.set_alpha(settings.opacity)
-        // }
-    }
 
 
-    
+
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
         match hit {
             ScoreHit::Miss  => "Miss".to_owned(),
@@ -843,6 +909,35 @@ impl GameMode for TaikoGame {
             ScoreHit::None  => String::new(),
             ScoreHit::Other(_, _) => String::new(),
         }
+    }
+
+    
+    fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+
+        let playmode = self.playmode();
+        let get_name = |name| {
+            format!("{playmode}_{name}")
+        };
+
+        let combo_bounds = Rectangle::bounds_only(
+            Vector2::zero(),
+            Vector2::new(self.taiko_settings.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
+        );
+        
+        // combo
+        ui_elements.push(UIElement::new(
+            &get_name("combo".to_owned()),
+            Vector2::new(0.0, self.taiko_settings.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
+            ComboElement::new(combo_bounds)
+        ));
+
+        // Leaderboard
+        ui_elements.push(UIElement::new(
+            &get_name("leaderboard".to_owned()),
+            Vector2::y_only(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
+            LeaderboardElement::new()
+        ));
+        
     }
 }
 

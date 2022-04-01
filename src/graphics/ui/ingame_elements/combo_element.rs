@@ -17,21 +17,7 @@ impl ComboElement {
 
 impl InnerUIElement for ComboElement {
     fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
-            Vector2::zero(),
-            if let Some(i) = &self.combo_image {
-                i.measure_text()
-            } else {
-                Text::new(
-                    Color::BLACK,
-                    0.0,
-                    Vector2::zero(),
-                    30,
-                    crate::format_number(self.combo),
-                    get_font()
-                ).measure_text()
-            }
-        )
+        self.combo_bounds.clone()
     }
 
     fn update(&mut self, manager: &mut IngameManager) {
@@ -40,7 +26,7 @@ impl InnerUIElement for ComboElement {
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
         let mut combo_bounds = self.combo_bounds.clone();
-        combo_bounds.current_pos += pos_offset;
+        combo_bounds.current_pos = pos_offset;
         combo_bounds.size *= scale;
         
         if let Some(combo) = &mut self.combo_image {

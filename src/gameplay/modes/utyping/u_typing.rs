@@ -44,9 +44,6 @@ impl UTypingGame {
 }
 
 impl GameMode for UTypingGame {
-    fn playmode(&self) -> PlayMode {"utyping".to_owned()}
-    fn end_time(&self) -> f32 {self.end_time}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
 
     fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
@@ -349,47 +346,6 @@ impl GameMode for UTypingGame {
     }
 
 
-    fn key_down(&mut self, _key:piston::Key, manager:&mut IngameManager) {
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
-            return;
-        }
-
-        // let time = manager.time();
-
-        // if key == self.taiko_settings.left_kat {
-        //     self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
-        // }
-        // if key == self.taiko_settings.left_don {
-        //     self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
-        // }
-        // if key == self.taiko_settings.right_don {
-        //     self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
-        // }
-        // if key == self.taiko_settings.right_kat {
-        //     self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
-        // }
-    }
-    fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {
-
-    }
-
-    fn mouse_down(&mut self, _btn:piston::MouseButton, manager:&mut IngameManager) {
-        
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying || self.game_settings.ignore_mouse_buttons {
-            return;
-        }
-        
-        // let time = manager.time();
-        // match btn {
-        //     piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
-        //     piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
-        //     _ => {}
-        // }
-    }
-
-
     fn reset(&mut self, beatmap:&Beatmap) {
         for note in self.notes.iter_mut() {
             note.reset();
@@ -489,25 +445,20 @@ impl GameMode for UTypingGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
-        (vec![
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
-        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
-    }
-
-    fn combo_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
-            Vector2::new(0.0, self.game_settings.hit_position.y - self.game_settings.note_radius * self.game_settings.hit_area_radius_mult/2.0),
-            Vector2::new(self.game_settings.hit_position.x - self.game_settings.note_radius, self.game_settings.note_radius * self.game_settings.hit_area_radius_mult)
-        )
-    }
-
     fn apply_auto(&mut self, _settings: &BackgroundGameSettings) {
         // for note in self.notes.iter_mut() {
         //     note.set_alpha(settings.opacity)
         // }
     }
+
+    
+}
+
+impl GameModeInput for UTypingGame {
+
+    fn key_down(&mut self, _key:piston::Key, manager:&mut IngameManager) {}
+    
+    fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
 
     fn on_text(&mut self, text: &String, _mods: &KeyModifiers, manager: &mut IngameManager) {
         let time = manager.time();
@@ -517,7 +468,14 @@ impl GameMode for UTypingGame {
         }
     }
 
+}
+
+impl GameModeInfo for UTypingGame {
     
+    fn playmode(&self) -> PlayMode {"utyping".to_owned()}
+    fn end_time(&self) -> f32 {self.end_time}
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
+
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
         match hit {
             ScoreHit::Miss  => "Miss".to_owned(),
@@ -531,8 +489,24 @@ impl GameMode for UTypingGame {
             ScoreHit::Other(_, _) => String::new(),
         }
     }
-}
 
+    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
+        (vec![
+            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
+            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
+        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
+    }
+    
+
+    // fn combo_bounds(&self) -> Rectangle {
+    //     Rectangle::bounds_only(
+    //         Vector2::new(0.0, self.game_settings.hit_position.y - self.game_settings.note_radius * self.game_settings.hit_area_radius_mult/2.0),
+    //         Vector2::new(self.game_settings.hit_position.x - self.game_settings.note_radius, self.game_settings.note_radius * self.game_settings.hit_area_radius_mult)
+    //     )
+    // }
+
+
+}
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw

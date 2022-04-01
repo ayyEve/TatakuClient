@@ -138,27 +138,6 @@ impl ManiaGame {
     }
 }
 impl GameMode for ManiaGame {
-    fn playmode(&self) -> PlayMode {"mania".to_owned()}
-    fn end_time(&self) -> f32 {self.end_time}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        let mut list = Vec::new();
-        for i in 0..self.column_count {
-            match i {
-                0 => list.push((KeyPress::Mania1, "K1")),
-                1 => list.push((KeyPress::Mania2, "K2")),
-                2 => list.push((KeyPress::Mania3, "K3")),
-                3 => list.push((KeyPress::Mania4, "K4")),
-                4 => list.push((KeyPress::Mania5, "K5")),
-                5 => list.push((KeyPress::Mania6, "K6")),
-                6 => list.push((KeyPress::Mania7, "K7")),
-                7 => list.push((KeyPress::Mania8, "K8")),
-                8 => list.push((KeyPress::Mania9, "K9")),
-                _ => {}
-            }
-        }
-        
-        list
-    }
 
     fn new(beatmap:&Beatmap, _diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
@@ -676,69 +655,6 @@ impl GameMode for ManiaGame {
         }
     }
 
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
-
-        // check sv change keys
-        if key == Key::F4 || key == Key::F3 {
-            if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta;
-            } else {
-                self.sv_mult -= self.game_settings.sv_change_delta;
-            }
-            self.map_preferences.scroll_speed = self.sv_mult;
-            Database::save_beatmap_mode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
-            
-            let time = manager.time();
-            self.set_sv(manager.beatmap.slider_velocity_at(time));
-            return;
-        }
-
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
-            return;
-        }
-
-
-        let settings = get_settings!();
-        let mut game_key = KeyPress::RightDon;
-
-        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
-        if game_key == KeyPress::RightDon {return}
-        let time = manager.time();
-        self.handle_replay_frame(ReplayFrame::Press(game_key), time, manager);
-    }
-    fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
-            return;
-        }
-
-        let settings = get_settings!();
-        let mut game_key = KeyPress::RightDon;
-
-        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
-        let base_key = KeyPress::Mania1 as u8;
-        for col in 0..self.column_count as usize {
-            let k = keys[col];
-            if k == key {
-                game_key = ((col + base_key as usize) as u8).into();
-                break;
-            }
-        }
-        if game_key == KeyPress::RightDon {return}
-        let time = manager.time();
-
-        self.handle_replay_frame(ReplayFrame::Release(game_key), time, manager);
-    }
-
     fn reset(&mut self, beatmap:&Beatmap) {
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
@@ -942,21 +858,6 @@ impl GameMode for ManiaGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    fn combo_bounds(&self) -> Rectangle {
-        let window_size = Settings::window_size();
-        Rectangle::bounds_only(
-            Vector2::new(0.0, window_size.y * (1.0/3.0)),
-            Vector2::new(window_size.x, 30.0)
-        )
-    }
-
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
-        (vec![
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
-        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
-    }
-
     
     fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
         // for c in self.columns.iter_mut() {
@@ -964,6 +865,118 @@ impl GameMode for ManiaGame {
         //         note.set_alpha(settings.opacity)
         //     }
         // }
+    }
+
+}
+
+
+impl GameModeInput for ManiaGame {
+
+    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+        // check sv change keys
+        if key == Key::F4 || key == Key::F3 {
+            if key == Key::F4 {
+                self.sv_mult += self.game_settings.sv_change_delta;
+            } else {
+                self.sv_mult -= self.game_settings.sv_change_delta;
+            }
+            self.map_preferences.scroll_speed = self.sv_mult;
+            Database::save_beatmap_mode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
+            
+            let time = manager.time();
+            self.set_sv(manager.beatmap.slider_velocity_at(time));
+            return;
+        }
+
+        // dont accept key input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+
+        let settings = get_settings!();
+        let mut game_key = KeyPress::RightDon;
+
+        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
+        let base_key = KeyPress::Mania1 as u8;
+        for col in 0..self.column_count as usize {
+            let k = keys[col];
+            if k == key {
+                game_key = ((col + base_key as usize) as u8).into();
+                break;
+            }
+        }
+        if game_key == KeyPress::RightDon {return}
+        let time = manager.time();
+        self.handle_replay_frame(ReplayFrame::Press(game_key), time, manager);
+    }
+    
+    fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
+        // dont accept key input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.autoplay || manager.replaying {
+            return;
+        }
+
+        let settings = get_settings!();
+        let mut game_key = KeyPress::RightDon;
+
+        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
+        let base_key = KeyPress::Mania1 as u8;
+        for col in 0..self.column_count as usize {
+            let k = keys[col];
+            if k == key {
+                game_key = ((col + base_key as usize) as u8).into();
+                break;
+            }
+        }
+        if game_key == KeyPress::RightDon {return}
+        let time = manager.time();
+
+        self.handle_replay_frame(ReplayFrame::Release(game_key), time, manager);
+    }
+
+}
+
+
+impl GameModeInfo for ManiaGame {
+
+    fn playmode(&self) -> PlayMode {"mania".to_owned()}
+
+    fn end_time(&self) -> f32 {self.end_time}
+    
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        let mut list = Vec::new();
+        for i in 0..self.column_count {
+            match i {
+                0 => list.push((KeyPress::Mania1, "K1")),
+                1 => list.push((KeyPress::Mania2, "K2")),
+                2 => list.push((KeyPress::Mania3, "K3")),
+                3 => list.push((KeyPress::Mania4, "K4")),
+                4 => list.push((KeyPress::Mania5, "K5")),
+                5 => list.push((KeyPress::Mania6, "K6")),
+                6 => list.push((KeyPress::Mania7, "K7")),
+                7 => list.push((KeyPress::Mania8, "K8")),
+                8 => list.push((KeyPress::Mania9, "K9")),
+                _ => {}
+            }
+        }
+        
+        list
+    }
+
+    // fn combo_bounds(&self) -> Rectangle {
+    //     let window_size = Settings::window_size();
+    //     Rectangle::bounds_only(
+    //         Vector2::new(0.0, window_size.y * (1.0/3.0)),
+    //         Vector2::new(window_size.x, 30.0)
+    //     )
+    // }
+
+    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
+        (vec![
+            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
+            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
+        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
     }
 
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
@@ -978,6 +991,38 @@ impl GameMode for ManiaGame {
             ScoreHit::None  => String::new(),
             ScoreHit::Other(_, _) => String::new(),
         }
+    }
+
+    fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+
+        let playmode = self.playmode();
+        let get_name = |name| {
+            format!("{playmode}_{name}")
+        };
+
+
+        let start_x = self.col_pos(0);
+        let width = self.col_pos(self.column_count-1) - start_x;
+
+        let combo_bounds = Rectangle::bounds_only(
+            Vector2::zero(),
+            Vector2::new(width, 30.0)
+        );
+        
+        // combo
+        ui_elements.push(UIElement::new(
+            &get_name("combo".to_owned()),
+            Vector2::new(start_x, window_size.y * (1.0/3.0)),
+            ComboElement::new(combo_bounds)
+        ));
+
+        // Leaderboard
+        ui_elements.push(UIElement::new(
+            &get_name("leaderboard".to_owned()),
+            Vector2::y_only(window_size.y / 3.0),
+            LeaderboardElement::new()
+        ));
+        
     }
 }
 

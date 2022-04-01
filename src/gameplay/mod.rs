@@ -1,12 +1,14 @@
 pub mod modes;
 
 // pub mod diff_calc;
-mod beatmap_structs;
+mod game_mode;
 mod ingame_manager;
+mod beatmap_structs;
 mod gameplay_helpers;
 
-pub use beatmap_structs::*;
+pub use game_mode::*;
 pub use ingame_manager::*;
+pub use beatmap_structs::*;
 pub use gameplay_helpers::*;
 
 

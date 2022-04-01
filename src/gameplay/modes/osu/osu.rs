@@ -142,17 +142,6 @@ impl StandardGame {
 }
 
 impl GameMode for StandardGame {
-    fn playmode(&self) -> PlayMode {"osu".to_owned()}
-    fn end_time(&self) -> f32 {self.end_time}
-    fn show_cursor(&self) -> bool {true}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
-        vec![
-            (KeyPress::Left, "L"),
-            (KeyPress::Right, "R"),
-            (KeyPress::LeftMouse, "M1"),
-            (KeyPress::RightMouse, "M2"),
-        ]
-    }
 
     fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
@@ -719,8 +708,48 @@ impl GameMode for StandardGame {
     }
 
     
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    fn reset(&mut self, beatmap:&Beatmap) {
+        
+        // setup hitwindows
+        let od = beatmap.get_beatmap_meta().get_od(& ModManager::get());
+        self.hitwindow_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
+        self.hitwindow_50   = map_difficulty(od, 200.0, 150.0, 100.0);
+        self.hitwindow_100  = map_difficulty(od, 140.0, 100.0, 60.0);
+        self.hitwindow_300  = map_difficulty(od, 80.0, 50.0, 20.0);
 
+        // reset notes
+        let hwm = self.hitwindow_miss;
+        for note in self.notes.iter_mut() {
+            note.reset();
+            note.set_hitwindow_miss(hwm);
+        }
+    }
+
+    fn skip_intro(&mut self, manager: &mut IngameManager) {
+        if self.notes.len() == 0 {return}
+
+        let time = self.notes[0].time() - self.notes[0].get_preempt();
+        if time < manager.time() {return}
+
+        if time < 0.0 {return}
+        #[cfg(feature="bass_audio")]
+        manager.song.set_position(time as f64).unwrap();
+        #[cfg(feature="neb_audio")]
+        manager.song.upgrade().unwrap().set_position(time);
+    }
+
+    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
+        // for note in self.notes.iter_mut() {
+        //     note.set_alpha(settings.opacity)
+        // }
+    }
+
+}
+
+
+impl GameModeInput for StandardGame {
+
+    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
             let old = get_settings!().standard_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
@@ -740,6 +769,7 @@ impl GameMode for StandardGame {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
         }
     }
+    
     fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
             self.move_playfield = None;
@@ -804,6 +834,7 @@ impl GameMode for StandardGame {
         let pos = self.scaling_helper.descale_coords(pos);
         self.handle_replay_frame(ReplayFrame::MousePos(pos.x as f32, pos.y as f32), time, manager);
     }
+    
     fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         if self.game_settings.ignore_mouse_buttons {return}
         
@@ -820,6 +851,7 @@ impl GameMode for StandardGame {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightMouse), time, manager);
         }
     }
+    
     fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         if self.game_settings.ignore_mouse_buttons {return}
 
@@ -849,7 +881,6 @@ impl GameMode for StandardGame {
     }
 
 
-
     fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
@@ -866,6 +897,7 @@ impl GameMode for StandardGame {
             self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
         }
     }
+    
     fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
@@ -882,6 +914,7 @@ impl GameMode for StandardGame {
             self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager);
         }
     }
+    
     fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
@@ -916,35 +949,20 @@ impl GameMode for StandardGame {
         self.handle_replay_frame(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32), time, manager);
     }
 
+}
 
-    fn reset(&mut self, beatmap:&Beatmap) {
-        
-        // setup hitwindows
-        let od = beatmap.get_beatmap_meta().get_od(& ModManager::get());
-        self.hitwindow_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
-        self.hitwindow_50   = map_difficulty(od, 200.0, 150.0, 100.0);
-        self.hitwindow_100  = map_difficulty(od, 140.0, 100.0, 60.0);
-        self.hitwindow_300  = map_difficulty(od, 80.0, 50.0, 20.0);
+impl GameModeInfo for StandardGame {
+    fn playmode(&self) -> PlayMode {"osu".to_owned()}
+    fn end_time(&self) -> f32 {self.end_time}
+    fn show_cursor(&self) -> bool {true}
 
-        // reset notes
-        let hwm = self.hitwindow_miss;
-        for note in self.notes.iter_mut() {
-            note.reset();
-            note.set_hitwindow_miss(hwm);
-        }
-    }
-
-    fn skip_intro(&mut self, manager: &mut IngameManager) {
-        if self.notes.len() == 0 {return}
-
-        let time = self.notes[0].time() - self.notes[0].get_preempt();
-        if time < manager.time() {return}
-
-        if time < 0.0 {return}
-        #[cfg(feature="bass_audio")]
-        manager.song.set_position(time as f64).unwrap();
-        #[cfg(feature="neb_audio")]
-        manager.song.upgrade().unwrap().set_position(time);
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
+        vec![
+            (KeyPress::Left, "L"),
+            (KeyPress::Right, "R"),
+            (KeyPress::LeftMouse, "M1"),
+            (KeyPress::RightMouse, "M2"),
+        ]
     }
 
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
@@ -955,22 +973,36 @@ impl GameMode for StandardGame {
         ], (self.hitwindow_miss, [0.9, 0.05, 0.05, 1.0].into()))
     }
 
-    fn combo_bounds(&self) -> Rectangle {
+    fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+
+        let playmode = self.playmode();
+        let get_name = |name| {
+            format!("{playmode}_{name}")
+        };
+
         let size = Vector2::new(100.0, 30.0);
-        Rectangle::bounds_only(
-            Vector2::new(0.0, Settings::window_size().y - (size.y + DURATION_HEIGHT + 10.0)),
+        let combo_bounds = Rectangle::bounds_only(
+            Vector2::zero(),
             size
-        )
+        );
+        
+        // combo
+        ui_elements.push(UIElement::new(
+            &get_name("combo".to_owned()),
+            Vector2::new(0.0, window_size.y - (size.y + DURATION_HEIGHT + 10.0)),
+            ComboElement::new(combo_bounds)
+        ));
+
+        // Leaderboard
+        ui_elements.push(UIElement::new(
+            &get_name("leaderboard".to_owned()),
+            Vector2::y_only(window_size.y / 3.0),
+            LeaderboardElement::new()
+        ));
+        
     }
 
     
-    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
-        // for note in self.notes.iter_mut() {
-        //     note.set_alpha(settings.opacity)
-        // }
-    }
-
-
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
         match hit {
             ScoreHit::Miss  => "Miss".to_owned(),
@@ -985,8 +1017,6 @@ impl GameMode for StandardGame {
         }
     }
 }
-
-
 
 fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
     let (color, image) = match hit_value {
@@ -1008,11 +1038,6 @@ fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scalin
 }
 
 
-// impl Drop for StandardGame {
-//     fn drop(&mut self) {
-//         trace!("dropping std")
-//     }
-// }
 struct StandardAutoHelper {
     // point_trail_angle: Vector2,
     point_trail_start_time: f32,
