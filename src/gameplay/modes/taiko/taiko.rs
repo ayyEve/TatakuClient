@@ -944,6 +944,8 @@ fn add_hit_indicator(time: f32, mut hit_value: &ScoreHit, finisher_hit: bool, ga
         ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
     };
 
+    let pos = game_settings.hit_position + Vector2::y_only(game_settings.judgement_indicator_offset);
+
     // if finisher, upgrade to geki or katu
     if finisher_hit {
         if let &ScoreHit::X100 = hit_value {
@@ -955,7 +957,7 @@ fn add_hit_indicator(time: f32, mut hit_value: &ScoreHit, finisher_hit: bool, ga
 
     let mut image = judgment_helper.get_from_scorehit(&hit_value);
     if let Some(image) = &mut image {
-        image.current_pos = game_settings.hit_position;
+        image.current_pos = pos;
         image.depth = -2.0;
 
         let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
@@ -965,7 +967,7 @@ fn add_hit_indicator(time: f32, mut hit_value: &ScoreHit, finisher_hit: bool, ga
     }
 
     manager.add_judgement_indicator(BasicJudgementIndicator::new(
-        game_settings.hit_position, 
+        pos, 
         time,
         -2.0,
         game_settings.note_radius * 0.5 * if finisher_hit {game_settings.big_note_multiplier} else {1.0},

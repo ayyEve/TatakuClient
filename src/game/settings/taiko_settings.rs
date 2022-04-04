@@ -39,6 +39,10 @@ pub struct TaikoSettings {
     pub don_color: Color,
     #[serde(skip)]
     pub kat_color: Color,
+
+    
+    /// how far above the hit position should hit indicators be?
+    pub judgement_indicator_offset: f64,
 }
 impl TaikoSettings {
     pub fn init_settings(&mut self) {
@@ -102,6 +106,8 @@ impl Default for TaikoSettings {
         
             don_color: Color::new(1.0, 0.0, 0.0, 1.0),
             kat_color: Color::new(0.0, 0.0, 1.0, 1.0),
+            
+            judgement_indicator_offset: 0.0
         }
     }
 }
