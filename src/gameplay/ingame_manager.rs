@@ -645,8 +645,8 @@ impl IngameManager {
     }
 
 
-    pub fn current_timing_point(&self) -> TimingPoint {
-        self.timing_points[self.timing_point_index]
+    pub fn current_timing_point(&self) -> &TimingPoint {
+        &self.timing_points[self.timing_point_index]
     }
     pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
         let mut tp = &self.timing_points[0];

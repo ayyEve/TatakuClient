@@ -748,20 +748,20 @@ impl GameModeInput for TaikoGame {
         }
     }
 
-    fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    // fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
-            return;
-        }
+    //     // dont accept mouse input when autoplay is enabled, or a replay is being watched
+    //     if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
+    //         return;
+    //     }
         
-        let time = manager.time();
-        match btn {
-            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager),
-            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager),
-            _ => {}
-        }
-    }
+    //     let time = manager.time();
+    //     match btn {
+    //         piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager),
+    //         piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager),
+    //         _ => {}
+    //     }
+    // }
 
 
     fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
@@ -930,6 +930,13 @@ impl GameModeInfo for TaikoGame {
             &get_name("leaderboard".to_owned()),
             Vector2::y_only(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
             LeaderboardElement::new()
+        ));
+
+        // don chan
+        ui_elements.push(UIElement::new(
+            &get_name("don_chan".to_owned()),
+            self.taiko_settings.get_playfield(0.0, false).current_pos,
+            DonChan::new()
         ));
         
     }
