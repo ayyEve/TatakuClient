@@ -56,10 +56,15 @@ impl UIElement {
     pub fn save(&self) {
         Database::save_info(self.pos_offset, self.scale, self.visible, &self.element_name);
     }
+
+    pub fn reset_element(&mut self) {
+        self.inner.reset();
+    }
 }
 
 pub trait InnerUIElement {
     fn update(&mut self, manager: &mut IngameManager);
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>);
     fn get_bounds(&self) -> Rectangle;
+    fn reset(&mut self) {}
 }

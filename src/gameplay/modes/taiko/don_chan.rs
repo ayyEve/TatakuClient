@@ -182,6 +182,17 @@ impl InnerUIElement for DonChan {
             },
         }
     }
+
+    fn reset(&mut self) {
+        self.init = false;
+        self.state = DonChanState::Normal;
+        self.current_timing_point_time = 0.0;
+        self.kiai = false;
+        self.last_combo_milestone = 0;
+        self.last_miss_count = 0;
+        self.last_score = 0;
+        self.combo_anim_last_index = 0;
+    }
 }
 
 fn load_anim(name: &str) -> Option<Animation> {

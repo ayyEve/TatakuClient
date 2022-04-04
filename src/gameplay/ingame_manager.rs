@@ -824,6 +824,10 @@ impl IngameManager {
             self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
         }
+
+        // reset elements
+        self.ui_elements.iter_mut().for_each(|e|e.reset_element());
+
     }
     pub fn fail(&mut self) {
         if self.failed || self.current_mods.nofail || self.current_mods.autoplay || self.menu_background {return}
