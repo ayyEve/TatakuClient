@@ -58,6 +58,8 @@ impl Game {
         let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
             .graphics_api(opengl)
             .resizable(false)
+            // .fullscreen(true) // this doesnt work?
+            // .samples(32) // not sure if this actually works or not
             .build()
             .expect("Error creating window");
         window.window.set_cursor_mode(glfw::CursorMode::Hidden);
