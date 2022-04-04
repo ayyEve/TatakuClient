@@ -6,6 +6,7 @@
  * depths:
  *  notes: 0..1000
  *  hit area: 1001
+ *  timing bars: 1001.5
  *  playfield: 1002
  *  hit indicators: -1
  *  judgement indicators: -2
@@ -89,6 +90,7 @@ impl GameMode for TaikoGame {
         let mut left_don_image = None;
         let mut right_don_image = None;
         let mut right_kat_image = None;
+        let judgement_helper;
 
         if !diff_calc_only {
             for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
@@ -124,24 +126,22 @@ impl GameMode for TaikoGame {
                 right_kat_image.as_mut().unwrap().current_scale = scale;
             }
 
+            judgement_helper = {
+                let mut skin = SKIN_MANAGER.write();
+                JudgmentImageHelper::new(
+                    skin.get_texture("taiko-hit0", true),
+                    None, // 50 doesnt exist
+                    skin.get_texture("taiko-hit100", true),
+                    skin.get_texture("taiko-hit300", true),
+                    skin.get_texture("taiko-hit100k", true),
+                    skin.get_texture("taiko-hit300g", true),
+                )
+            };
+        } else {
+            judgement_helper = JudgmentImageHelper::new(None, None, None, None, None, None);
         }
 
-        
         let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
-
-        let judgement_helper = {
-            let mut skin = SKIN_MANAGER.write();
-            JudgmentImageHelper::new(
-                skin.get_texture("taiko-hit0", true),
-                None, // 50 doesnt exist
-                skin.get_texture("taiko-hit100", true),
-                skin.get_texture("taiko-hit300", true),
-                skin.get_texture("taiko-hit100k", true),
-                skin.get_texture("taiko-hit300g", true),
-            )
-        };
-        
-
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -614,14 +614,13 @@ impl GameMode for TaikoGame {
         
         self.note_index = 0;
 
-        let od = beatmap.get_beatmap_meta().od;
+        let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
         // setup hitwindows
         self.hitwindow_miss = map_difficulty(od, 135.0, 95.0, 70.0);
         self.hitwindow_100 = map_difficulty(od, 120.0, 80.0, 50.0);
         self.hitwindow_300 = map_difficulty(od, 50.0, 35.0, 20.0);
 
         // setup timing bars
-        //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
         if self.timing_bars.len() == 0 {
             let tps = beatmap.get_timing_points();
             // load timing bars
@@ -1014,11 +1013,9 @@ impl TimingBar {
     fn draw(&mut self, args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
 
-        const DEPTH:f64 = f64::MAX-5.0;
-
         list.push(Box::new(Rectangle::new(
             BAR_COLOR,
-            DEPTH,
+            1001.5,
             self.pos,
             self.size,
             None

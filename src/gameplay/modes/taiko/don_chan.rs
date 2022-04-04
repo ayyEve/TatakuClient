@@ -69,7 +69,6 @@ impl DonChan {
 }
 
 
-
 impl InnerUIElement for DonChan {
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
@@ -103,7 +102,7 @@ impl InnerUIElement for DonChan {
             self.kiai = current_tp.kiai
         }
 
-        // TODO: figure out peppy's bullshit for this
+        // TODO: figure out peppy's bullshit for this animation (it might play in reverse after)
         // // check combo milestones
         // let diff = manager.score.combo as i32 - self.last_combo_milestone as i32;
         // if diff >= 25 {
