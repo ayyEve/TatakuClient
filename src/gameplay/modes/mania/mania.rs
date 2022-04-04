@@ -674,10 +674,9 @@ impl GameMode for ManiaGame {
         self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);
         self.hitwindow_300 = map_difficulty(od, 64.0, 49.0, 34.0);
 
-        let window_size = Settings::window_size();
-
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
+        let x = self.col_pos(0);
         if self.timing_bars.len() == 0 {
             let tps = beatmap.get_timing_points();
             // load timing bars
@@ -687,8 +686,7 @@ impl GameMode for ManiaGame {
             let step = beatmap.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
-            let bar_width = self.column_count as f64 * self.playfield.column_width;
-            let x = (window_size.x - bar_width) / 2.0;
+            let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f64 - self.playfield.column_spacing;
 
             loop {
                 // if theres a bpm change, adjust the current time to that of the bpm change
@@ -858,7 +856,6 @@ impl GameMode for ManiaGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    
     fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
         // for c in self.columns.iter_mut() {
         //     for note in c.iter_mut() {
@@ -963,14 +960,6 @@ impl GameModeInfo for ManiaGame {
         
         list
     }
-
-    // fn combo_bounds(&self) -> Rectangle {
-    //     let window_size = Settings::window_size();
-    //     Rectangle::bounds_only(
-    //         Vector2::new(0.0, window_size.y * (1.0/3.0)),
-    //         Vector2::new(window_size.x, 30.0)
-    //     )
-    // }
 
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
         (vec![

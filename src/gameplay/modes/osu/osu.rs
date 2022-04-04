@@ -1002,7 +1002,6 @@ impl GameModeInfo for StandardGame {
         
     }
 
-    
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
         match hit {
             ScoreHit::Miss  => "Miss".to_owned(),

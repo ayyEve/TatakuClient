@@ -451,12 +451,11 @@ impl GameMode for UTypingGame {
         // }
     }
 
-    
 }
 
 impl GameModeInput for UTypingGame {
 
-    fn key_down(&mut self, _key:piston::Key, manager:&mut IngameManager) {}
+    fn key_down(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
     
     fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
 
@@ -471,9 +470,9 @@ impl GameModeInput for UTypingGame {
 }
 
 impl GameModeInfo for UTypingGame {
-    
     fn playmode(&self) -> PlayMode {"utyping".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
 
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
@@ -497,15 +496,6 @@ impl GameModeInfo for UTypingGame {
         ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
     }
     
-
-    // fn combo_bounds(&self) -> Rectangle {
-    //     Rectangle::bounds_only(
-    //         Vector2::new(0.0, self.game_settings.hit_position.y - self.game_settings.note_radius * self.game_settings.hit_area_radius_mult/2.0),
-    //         Vector2::new(self.game_settings.hit_position.x - self.game_settings.note_radius, self.game_settings.note_radius * self.game_settings.hit_area_radius_mult)
-    //     )
-    // }
-
-
 }
 
 // timing bar struct

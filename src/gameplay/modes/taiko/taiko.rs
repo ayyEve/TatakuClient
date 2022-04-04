@@ -664,7 +664,6 @@ impl GameMode for TaikoGame {
         self.hit_cache.iter_mut().for_each(|(_, t)| *t = -999.9);
     }
 
-
     fn skip_intro(&mut self, manager: &mut IngameManager) {
         if self.note_index > 0 {return}
 
@@ -876,6 +875,7 @@ impl GameModeInput for TaikoGame {
 impl GameModeInfo for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![
             (KeyPress::LeftKat, "LK"),
@@ -885,17 +885,12 @@ impl GameModeInfo for TaikoGame {
         ]
     }
 
-
-    
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
         (vec![
             (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
             (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
         ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
     }
-
-
-
 
     fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
         match hit {
@@ -911,7 +906,6 @@ impl GameModeInfo for TaikoGame {
         }
     }
 
-    
     fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
 
         let playmode = self.playmode();
@@ -1155,4 +1149,3 @@ pub enum TaikoHit {
     RightDon,
     RightKat
 }
-
