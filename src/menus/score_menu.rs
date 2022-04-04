@@ -112,20 +112,31 @@ impl Menu<Game> for ScoreMenu {
         let window_size = Settings::window_size();
 
         let depth = 0.0;
-        list.reserve(9);
+        
+        // draw beatmap title string
+        list.push(Box::new(Text::new(
+            Color::BLACK,
+            depth + 1.0,
+            Vector2::new(10.0, 20.0),
+            30,
+            format!("{} ({})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode)),
+            font.clone()
+        )));
+
+        let mut current_pos = Vector2::new(25.0, 80.0);
+        let size = Vector2::new(0.0, 35.0);
 
         // draw score info
         list.push(Box::new(Text::new(
             Color::BLACK,
             depth + 1.0,
-            Vector2::new(50.0, 100.0),
+            current_pos,
             30,
             format!("Score: {}", format_number(self.score.score)),
             font.clone()
         )));
+        current_pos += size;
 
-        let mut current_pos = Vector2::new(50.0, 140.0);
-        let size = Vector2::new(0.0, 35.0);
         for (str, count) in self.hit_counts.iter() {
             list.push(Box::new(Text::new(
                 Color::BLACK,
@@ -138,7 +149,7 @@ impl Menu<Game> for ScoreMenu {
             current_pos += size;
         }
 
-        current_pos += size;
+        current_pos += size / 2.0;
         for str in [
             format!("Combo: {}x, {:.2}%", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
             String::new(),
@@ -155,8 +166,11 @@ impl Menu<Game> for ScoreMenu {
                     str,
                     font.clone()
                 )));
+
+                current_pos += size;
+            } else {
+                current_pos += size / 2.0;
             }
-            current_pos += size;
         }
 
 

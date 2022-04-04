@@ -135,7 +135,7 @@ impl BeatmapSelectMenu {
         let current_hash = if let Some(map) = &beatmap_manager.current_beatmap {map.beatmap_hash.clone()} else {String::new()};
 
         //TODO: allow grouping by not just map set
-        let sets = beatmap_manager.all_by_sets();
+        let sets = beatmap_manager.all_by_sets(GroupBy::Title);
         let mut full_list = Vec::new();
         let diff_calc_helper = beatmap_manager.on_diffcalc_complete.1.clone();
 

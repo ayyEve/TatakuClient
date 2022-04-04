@@ -1,3 +1,4 @@
+use std::fs::DirEntry;
 use std::{fs::File, path::Path};
 use std::io::{self, BufRead, BufReader, Lines};
 
@@ -90,5 +91,108 @@ pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
             // error!("Error loading image {}: {}", path.as_ref(), e);
             None
         }
+    }
+}
+
+
+
+pub fn extract_all() {
+
+    // check for new maps
+    if let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) {
+        // let completed = Arc::new(Mutex::new(0));
+
+        let files:Vec<std::io::Result<DirEntry>> = files.collect();
+        // let len = files.len();
+        trace!("Files: {:?}", files);
+
+        for file in files {
+            trace!("Looping file {:?}", file);
+            // let completed = completed.clone();
+
+            match file {
+                Ok(filename) => {
+                    trace!("File ok");
+                    // tokio::spawn(async move {
+                        trace!("Reading file {:?}", filename);
+
+                        let mut error_counter = 0;
+                        // unzip file into ./Songs
+                        while let Err(e) = std::fs::File::open(filename.path().to_str().unwrap()) {
+                            error!("Error opening osz file: {}", e);
+                            error_counter += 1;
+
+                            // if we've waited 5 seconds and its still broken
+                            if error_counter > 5 {
+                                error!("5 errors opening osz file: {}", e);
+                                return;
+                            }
+
+                            // tokio::time::sleep(Duration::from_millis(1000)).await;
+                        }
+
+                        let file = std::fs::File::open(filename.path().to_str().unwrap()).unwrap();
+                        let mut archive = match zip::ZipArchive::new(file) {
+                            Ok(a) => a,
+                            Err(e) => {
+                                error!("Error extracting zip archive: {}", e);
+                                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED);
+                                continue;
+                            }
+                        };
+                        
+                        for i in 0..archive.len() {
+                            let mut file = archive.by_index(i).unwrap();
+                            let mut outpath = match file.enclosed_name() {
+                                Some(path) => path,
+                                None => continue,
+                            };
+
+                            let x = outpath.to_str().unwrap();
+                            let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(".osz"));
+                            let z = &(y + x);
+                            outpath = Path::new(z);
+
+                            if (&*file.name()).ends_with('/') {
+                                debug!("File {} extracted to \"{}\"", i, outpath.display());
+                                std::fs::create_dir_all(&outpath).unwrap();
+                            } else {
+                                debug!("File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
+                                if let Some(p) = outpath.parent() {
+                                    if !p.exists() {std::fs::create_dir_all(&p).unwrap()}
+                                }
+                                let mut outfile = std::fs::File::create(&outpath).unwrap();
+                                std::io::copy(&mut file, &mut outfile).unwrap();
+                            }
+
+                            // Get and Set permissions
+                            // #[cfg(unix)] {
+                            //     use std::os::unix::fs::PermissionsExt;
+                            //     if let Some(mode) = file.unix_mode() {
+                            //         fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+                            //     }
+                            // }
+                        }
+                    
+                        match std::fs::remove_file(filename.path().to_str().unwrap()) {
+                            Ok(_) => {},
+                            Err(e) => error!("Error deleting file: {}", e),
+                        }
+                        
+                        trace!("Done");
+                        // *completed.lock() += 1;
+                    // });
+                }
+                Err(e) => {
+                    error!("Error with file: {}", e);
+                }
+            }
+        }
+    
+        
+        // while *completed.lock() < len {
+        //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
+        //     std::thread::sleep(Duration::from_millis(500));
+        // }
     }
 }
