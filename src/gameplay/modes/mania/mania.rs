@@ -878,7 +878,12 @@ impl GameModeInput for ManiaGame {
                 self.sv_mult -= self.game_settings.sv_change_delta;
             }
             self.map_preferences.scroll_speed = self.sv_mult;
-            Database::save_beatmap_mode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
+
+            let hash = self.map_meta.beatmap_hash.clone();
+            let prefs = self.map_preferences.clone();
+            tokio::spawn(async move {
+                Database::save_beatmap_mode_prefs(&hash, &"mania".to_owned(), &prefs);
+            });
             
             let time = manager.time();
             self.set_sv(manager.beatmap.slider_velocity_at(time));
