@@ -8,7 +8,7 @@ const NOTIF_DEPTH:f64 = -800_000_000.0;
 // const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 
 /// how many pixels of space should there be between notifications?
-const NOTIF_Y_MARGIN:f64 = 5.0;
+const NOTIF_MARGIN:Vector2 = Vector2::new(5.0, 5.0);
 
 /// how rounded the borders are
 const NOTIF_BORDER_ROUNDING:f64 = 5.0;
@@ -66,7 +66,7 @@ impl NotificationManager { // non-static
             let new = ProcessedNotif::new(notif);
 
             // move all the other notifs up
-            let offset = new.size.y + NOTIF_Y_MARGIN;
+            let offset = new.size.y + NOTIF_MARGIN.y;
             for n in self.processed_notifs.iter_mut() {
                 n.pos.y -= offset;
             }
@@ -165,7 +165,7 @@ impl ProcessedNotif {
         );
 
         let size = text.measure_text() + NOTIF_PADDING * 2.0;
-        let pos = window_size - Vector2::new(size.x, NOTIF_Y_OFFSET + size.y);
+        let pos = window_size - Vector2::new(size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + size.y);
 
         Self {
             pos,

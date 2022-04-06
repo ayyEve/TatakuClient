@@ -60,22 +60,15 @@ impl Database {
         }
     }
     pub fn save_beatmap_prefs(map_hash:&String, prefs: &BeatmapPreferences) {
-        let db = Self::get();
-
         let BeatmapPreferences{ audio_offset, background_video, storyboard } = prefs;
-        let query = format!("INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard) VALUES ('{map_hash}', {audio_offset}, {background_video}, {storyboard})");
-        let mut s = db.prepare(&query).unwrap();
-        let res = s.execute([]);
 
-        // if error, probably exists, update instead
-        if let Err(_) = res {
-            let query = format!("UPDATE beatmap_preferences SET audio_offset={audio_offset}, background_video={background_video}, storyboard={storyboard} WHERE beatmap_hash='{map_hash}'");
-            let mut s = db.prepare(&query).unwrap();
-            let res = s.execute([]);
-            if let Err(e) = res {
-                error!("Error updating beatmap_preferences: {e}")
-            }
-        }
+        Self::add_query(DatabaseQuery::InsertOrUpdate { 
+            sql: format!("INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard) VALUES ('{map_hash}', {audio_offset}, {background_video}, {storyboard})"), 
+            table_name: "beatmap_preferences".to_owned(), 
+            operation: "INSERT".to_owned(), 
+            sql_if_failed: Some(format!("UPDATE beatmap_preferences SET audio_offset={audio_offset}, background_video={background_video}, storyboard={storyboard} WHERE beatmap_hash='{map_hash}'")), 
+            operation_if_failed: Some("UPDATE".to_owned()) 
+        });
     }
 
     pub fn get_beatmap_mode_prefs(map_hash:&String, playmode:&PlayMode) -> BeatmapPlaymodePreferences {
@@ -92,22 +85,15 @@ impl Database {
         }
     }
     pub fn save_beatmap_mode_prefs(map_hash:&String, playmode:&PlayMode, prefs:&BeatmapPlaymodePreferences) {
-        let db = Self::get();
-
         let BeatmapPlaymodePreferences { scroll_speed } = prefs;
-        let query = format!("INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES ('{map_hash}', '{playmode}', {scroll_speed})");
-        let mut s = db.prepare(&query).unwrap();
-        let res = s.execute([]);
 
-        // if error, probably exists, update instead
-        if let Err(_) = res {
-            let query = format!("UPDATE beatmap_mode_preferences SET scroll_speed={scroll_speed} WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");
-            let mut s = db.prepare(&query).unwrap();
-            let res = s.execute([]);
-            if let Err(e) = res {
-                error!("Error updating beatmap_mode_preferences: {e}")
-            }
-        }
+        Self::add_query(DatabaseQuery::InsertOrUpdate { 
+            sql: format!("INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES ('{map_hash}', '{playmode}', {scroll_speed})"), 
+            table_name: "beatmap_mode_preferences".to_owned(), 
+            operation: "INSERT".to_owned(), 
+            sql_if_failed: Some(format!("UPDATE beatmap_mode_preferences SET scroll_speed={scroll_speed} WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'")), 
+            operation_if_failed: Some("UPDATE".to_owned()) 
+        });
     }
 
 }
