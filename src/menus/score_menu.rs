@@ -85,8 +85,7 @@ impl ScoreMenu {
     }
 
     fn replay(&mut self, game: &mut Game) {
-        let replay = databases::get_local_replay_for_score(&self.score);
-        match replay {
+        match databases::get_local_replay_for_score(&self.score) {
             Ok(replay) => {
                 // game.menus.get("beatmap").unwrap().lock().on_change(false);
                 // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
@@ -100,7 +99,7 @@ impl ScoreMenu {
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
                 }
             },
-            Err(e) => error!("error loading replay: {}", e),
+            Err(e) => NotificationManager::add_error_notification("Error loading replay", e),
         }
     }
 }
