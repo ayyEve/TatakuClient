@@ -5,7 +5,7 @@ const NOTIF_WIDTH:f64 = 300.0; // TODO: have this as the max width instead
 const NOTIF_Y_OFFSET:f64 = 100.0; // window_size().y - this
 const NOTIF_TEXT_SIZE:u32 = 15;
 const NOTIF_DEPTH:f64 = -800_000_000.0;
-const NOTIF_TEXT_HEIGHT:f64 = 20.0;
+// const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 
 /// how many pixels of space should there be between notifications?
 const NOTIF_Y_MARGIN:f64 = 5.0;
@@ -14,7 +14,7 @@ const NOTIF_Y_MARGIN:f64 = 5.0;
 const NOTIF_BORDER_ROUNDING:f64 = 5.0;
 
 /// how many pixels of padding should the notif text have?
-const NOTIF_PADDING:Vector2 = Vector2::new(2.0, 2.0);
+const NOTIF_PADDING:Vector2 = Vector2::new(4.0, 4.0);
 
 /// what background color should the notifs have?
 const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
@@ -146,7 +146,7 @@ struct ProcessedNotif {
     pos: Vector2,
     size: Vector2,
     time: Instant,
-    lines: Vec<Text>,
+    text: Text,
     notification: Notification,
     remove: bool
 }
@@ -155,27 +155,23 @@ impl ProcessedNotif {
         let font = get_font();
         let window_size = Settings::window_size();
 
-        let mut lines = Vec::new();
-        let split = notification.text.split('\n').collect::<Vec<&str>>();
-        for i in (0..split.len()).rev() {
-            lines.push(Text::new(
-                Color::WHITE,
-                NOTIF_DEPTH - 0.1,
-                NOTIF_PADDING + Vector2::new(2.0, NOTIF_TEXT_HEIGHT * i as f64),
-                NOTIF_TEXT_SIZE,
-                split[i].to_owned(),
-                font.clone()
-            ))
-        }
+        let text = Text::new(
+            Color::WHITE,
+            NOTIF_DEPTH - 0.1,
+            Vector2::zero(), // set in draw
+            NOTIF_TEXT_SIZE,
+            notification.text.clone(),
+            font.clone()
+        );
 
-        let size = NOTIF_PADDING * 2.0 + Vector2::new(NOTIF_WIDTH, NOTIF_TEXT_HEIGHT * lines.len() as f64);
-        let pos = Vector2::new(window_size.x - NOTIF_WIDTH, window_size.y - (NOTIF_Y_OFFSET + size.y));
+        let size = text.measure_text() + NOTIF_PADDING * 2.0;
+        let pos = window_size - Vector2::new(size.x, NOTIF_Y_OFFSET + size.y);
 
         Self {
             pos,
             size,
             time: Instant::now(),
-            lines,
+            text,
             notification,
             remove: false
         }
@@ -200,18 +196,9 @@ impl ProcessedNotif {
             ))
         ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10))));
 
-        for (i, text) in self.lines.iter().rev().enumerate() {
-            let mut text = text.clone();
-
-            let txt_pos = self.pos + Vector2::new(
-                0.0,
-                NOTIF_TEXT_HEIGHT * i as f64, 
-                // (self.size.y - (text.font_size as f64) * i as f64) / 2.0
-            ) + NOTIF_PADDING;
-            // text.initial_pos = txt_pos;
-            text.current_pos = txt_pos;
-            list.push(Box::new(text));
-        }
+        let mut text = self.text.clone();
+        text.current_pos = self.pos + NOTIF_PADDING;
+        list.push(Box::new(text));
     }
 }
 
@@ -223,5 +210,4 @@ pub enum NotificationOnClick {
     None,
     Url(String),
     Menu(String),
-    
 }

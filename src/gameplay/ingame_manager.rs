@@ -867,7 +867,6 @@ impl IngameManager {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
         CursorManager::show_system_cursor(false);
-
     }
     
 }

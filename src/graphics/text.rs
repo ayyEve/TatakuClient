@@ -37,7 +37,7 @@ impl Text {
         let initial_scale = Vector2::one();
         let current_scale = Vector2::one();
 
-        let text_size = measure_text(&fonts, font_size, &text, Vector2::one());
+        let text_size = measure_text(&fonts, font_size, &text, Vector2::one(), 2.0);
         let origin = text_size / 2.0;
 
         Text {
@@ -61,7 +61,7 @@ impl Text {
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        measure_text(&self.fonts, self.font_size, &self.text, self.current_scale) 
+        measure_text(&self.fonts, self.font_size, &self.text, self.current_scale, 2.0) 
     }
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
@@ -94,7 +94,7 @@ impl Renderable for Text {
             .rot_rad(self.current_rotation)
             
             // apply origin
-            .trans(-self.origin.x, -self.origin.y + self.measure_text().y)
+            .trans(-self.origin.x, -self.origin.y)
         ;
 
 
@@ -105,11 +105,11 @@ impl Renderable for Text {
             text = self.text.chars().map(|c| (c, self.current_color)).collect::<Vec<(char, Color)>>();
         }
         
-        ayyeve_piston_ui::render::draw_text(
+        draw_text(
             &text, 
             (self.font_size as f64 * self.current_scale.y) as u32, 
-            false, 
             &self.fonts, 
+            2.0,
             &c.draw_state, 
             transform, 
             g
@@ -170,19 +170,24 @@ impl Transformable for Text {
 
 
 
-fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector2) -> Vector2 {
+fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector2, line_spacing: f64) -> Vector2 {
     if fonts.len() == 0 {return Vector2::zero()}
 
-    let mut text_size = Vector2::zero();
     let mut fonts = fonts.iter().map(|f|f.lock()).collect::<Vec<_>>();
 
-
-    // let block_char = '█';
-    // let _character = font.character(font_size, block_char).unwrap();
+    let mut max_width:f64 = 0.0;
+    let mut current_width = 0.0;
+    let mut line_count = 1;
 
     for ch in text.chars() {
-        let mut character = None; //font_caches[0].character(font_size, ch)?;
-        
+        if ch == '\n' {
+            max_width = max_width.max(current_width);
+            current_width = 0.0;
+            line_count += 1;
+            continue;
+        }
+
+        let mut character = None;
         for font in fonts.iter_mut() {
             if let Ok(c) = font.character(font_size, ch) {
                 character = Some(c);
@@ -203,12 +208,91 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
             }
         }
         let character = character.unwrap();
-
-        // trace!("invalid: {}", character.is_invalid);
-
-        text_size.x += character.advance_width();
-        text_size.y = text_size.y.max(character.offset[1]); //character.advance_height();
+        current_width += character.advance_width();
     }
-    
-    text_size
+
+    Vector2::new(
+        max_width.max(current_width),
+        (font_size as f64 + line_spacing) * line_count as f64 - line_spacing
+    )
 }
+
+
+pub fn draw_text<C: graphics::CharacterCache, T: ayyeve_piston_ui::prelude::DrawableText, G: graphics::Graphics<Texture = <C as graphics::CharacterCache>::Texture>> (
+    text: &T, 
+    font_size: u32,
+    font_caches: &Vec<Arc<Mutex<C>>>, 
+    line_spacing: f64,
+    draw_state: &graphics::DrawState, 
+    transform: graphics::types::Matrix2d, 
+    g: &mut G
+) -> Result<(), C::Error> {
+    if font_caches.len() == 0 {
+        panic!("no fonts!");
+    }
+
+    let mut x = 0.0;
+    let mut y = font_size as f64;
+    let mut font_caches = font_caches.iter().map(|f|f.lock()).collect::<Vec<_>>();
+
+    for (ch, color) in text.char_colors() {
+        if ch == '\n' {
+            // move the line down
+            y += font_size as f64 + line_spacing;
+
+            // reset x pos
+            x = 0.0;
+            continue;
+        }
+
+        let mut character = None; //font_caches[0].character(font_size, ch)?;
+        for font in font_caches.iter_mut() {
+            if let Ok(c) = font.character(font_size, ch) {
+                character = Some(c);
+                if !character.as_ref().unwrap().is_invalid {
+                    break
+                }
+            } else {
+                panic!("hurr durr")
+            }
+        }
+        
+        if character.as_ref().unwrap().is_invalid {
+            // stop font_caches from being borrowed
+            character = None;
+            // get the error character from the first font
+            if let Ok(c) = font_caches[0].character(font_size, ch) {
+                character = Some(c);
+            }
+        }
+        let character = character.unwrap();
+
+        // create new image with color
+        graphics::Image::new_color(color.into())
+        // snip the glyph from the whole tex
+        .src_rect([
+            character.atlas_offset[0],
+            character.atlas_offset[1],
+            character.atlas_size[0],
+            character.atlas_size[1],
+        ])
+        // draw it
+        .draw(
+            character.texture,
+            draw_state,
+            transform.trans(
+                x + character.left(), 
+                y - character.top()
+            ),
+            g,
+        );
+
+        // advance positions
+        x += character.advance_width();
+        y += character.advance_height();
+    }
+
+    Ok(())
+}
+
+// thhgjfkdshjk
