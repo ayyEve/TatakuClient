@@ -57,7 +57,7 @@ impl InnerUIElement for JudgementCounterElement {
         
         let base_pos = pos_offset - pad;
 
-        for (i, (txt, count) )in self.hit_counts.iter().enumerate() {
+        for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
             let pos = base_pos + Vector2::new(0.0, pad.y * i as f64);
 
             if let Some(btn) = &self.button_image {

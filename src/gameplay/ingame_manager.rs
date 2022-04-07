@@ -205,7 +205,7 @@ impl IngameManager {
         // Judgement Bar
         self.ui_elements.push(UIElement::new(
             &get_name("judgementbar"),
-            Vector2::new(0.0, window_size.y),
+            Vector2::new(window_size.x/2.0, window_size.y),
             JudgementBarElement::new(self.gamemode.timing_bar_things())
         ));
 
@@ -1160,7 +1160,6 @@ lazy_static::lazy_static! {
 fn create_empty_stream() -> StreamChannel {
     EMPTY_STREAM.clone()
 }
-
 
 
 pub enum InGameEvent {

@@ -28,11 +28,10 @@ impl JudgementBarElement {
 }
 impl InnerUIElement for JudgementBarElement {
     fn get_bounds(&self) -> Rectangle {
-        let window_size = Settings::window_size();
-        let items_width = HIT_TIMING_BAR_SIZE.x * (self.timing_bar_things.0.len() + 1) as f64;
+        let items_width = HIT_TIMING_BAR_SIZE.x; // * (self.timing_bar_things.0.len() + 1) as f64;
 
         Rectangle::bounds_only(
-            Vector2::new((window_size.x-items_width)/2.0, HIT_TIMING_BAR_POS.y),
+            Vector2::new(-items_width/2.0, HIT_TIMING_BAR_POS.y),
             Vector2::new(items_width, HIT_TIMING_BAR_SIZE.y)
         )
     }
@@ -43,8 +42,6 @@ impl InnerUIElement for JudgementBarElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
-        let window_size = Settings::window_size();
-
         // TODO: rework this garbage lmao
         // draw hit timings bar
         // draw hit timing colors below the bar
@@ -53,7 +50,7 @@ impl InnerUIElement for JudgementBarElement {
         list.push(Box::new(Rectangle::new(
             *miss_color,
             17.1,
-            pos_offset + Vector2::new((window_size.x-HIT_TIMING_BAR_SIZE.x)/2.0, HIT_TIMING_BAR_POS.y),
+            pos_offset + Vector2::new(-HIT_TIMING_BAR_SIZE.x/2.0, HIT_TIMING_BAR_POS.y),
             HIT_TIMING_BAR_SIZE * scale,
             None // for now
         )));
@@ -63,7 +60,7 @@ impl InnerUIElement for JudgementBarElement {
             list.push(Box::new(Rectangle::new(
                 *color,
                 17.0,
-                pos_offset + Vector2::new((window_size.x - width)/2.0, HIT_TIMING_BAR_POS.y),
+                pos_offset + Vector2::new(-width/2.0, HIT_TIMING_BAR_POS.y),
                 Vector2::new(width, HIT_TIMING_BAR_SIZE.y) * scale,
                 None // for now
             )));
@@ -90,7 +87,7 @@ impl InnerUIElement for JudgementBarElement {
             list.push(Box::new(Rectangle::new(
                 HIT_TIMING_BAR_COLOR.alpha(alpha),
                 10.0,
-                pos_offset + Vector2::new(window_size.x / 2.0 + pos, HIT_TIMING_BAR_POS.y),
+                pos_offset + Vector2::new(pos, HIT_TIMING_BAR_POS.y),
                 Vector2::new(2.0, HIT_TIMING_BAR_SIZE.y) * scale,
                 None // for now
             )));

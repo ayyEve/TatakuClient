@@ -164,7 +164,7 @@ impl OnlineManager {
                 }
             }
             Err(oof) => {
-                s.write().await.connected = false;
+                // s.write().await.connected = false;
                 warn!("Could not accept connection: {}", oof);
             }
         }
