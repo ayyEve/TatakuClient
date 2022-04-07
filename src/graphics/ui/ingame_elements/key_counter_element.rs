@@ -71,6 +71,7 @@ impl InnerUIElement for KeyCounterElement {
         for i in 0..self.counter.key_order.len() {
             let info = &self.counter.keys[&self.counter.key_order[i]];
             let pos = base_pos + Vector2::new(0.0, pad.y * i as f64);
+            let box_width;
 
             if let Some(btn) = &self.button_image {
                 let mut btn = btn.clone();
@@ -80,8 +81,11 @@ impl InnerUIElement for KeyCounterElement {
                     btn.current_scale = Vector2::new(1.1, 1.1) * scale;
                 }
                 
+                box_width = btn.size().x * scale.x;
                 list.push(Box::new(btn));
             } else {
+                box_width = (BOX_SIZE * scale).x;
+
                 // draw bg box
                 list.push(Box::new(Rectangle::new(
                     if info.held {
@@ -102,9 +106,16 @@ impl InnerUIElement for KeyCounterElement {
                 -100.1,
                 pos,
                 (20.0 * scale.x) as u32,
-                if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
+                if info.count == 0 {info.label.clone()} else {format!("{}", info.count + 1000)},
                 font.clone()
             );
+            
+            let text_size = text.measure_text();
+            let max_width = box_width - 10.0; // padding of 10
+            if text_size.x >= max_width {
+                text.font_size = (20.0 * scale.x * max_width / text_size.x) as u32;
+            }
+
             text.center_text(Rectangle::bounds_only(pos, BOX_SIZE));
             list.push(Box::new(text));
         }

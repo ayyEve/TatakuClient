@@ -59,14 +59,18 @@ impl InnerUIElement for JudgementCounterElement {
 
         for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
             let pos = base_pos + Vector2::new(0.0, pad.y * i as f64);
+            let box_width;
 
             if let Some(btn) = &self.button_image {
                 let mut btn = btn.clone();
                 btn.current_pos = pos + pad / 2.0;
                 btn.current_scale = scale;
+                box_width = btn.size().x * scale.x;
                 
                 list.push(Box::new(btn));
             } else {
+                box_width = (BOX_SIZE * scale).x;
+
                 // draw bg box
                 list.push(Box::new(Rectangle::new(
                     Color::new(0.0, 0.0, 0.0, 0.8), // TODO: get a proper color
@@ -86,7 +90,13 @@ impl InnerUIElement for JudgementCounterElement {
                 if count == &0 {txt.clone()} else {format!("{}", count)},
                 font.clone()
             );
+            let text_size = text.measure_text();
+            let max_width = box_width - 10.0; // padding of 10
+            if text_size.x >= max_width {
+                text.font_size = (20.0 * scale.x * max_width / text_size.x) as u32;
+            }
             text.center_text(Rectangle::bounds_only(pos, BOX_SIZE));
+
             list.push(Box::new(text));
         }
     }
