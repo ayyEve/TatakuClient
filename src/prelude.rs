@@ -5,12 +5,18 @@ pub use std::f64::consts::PI;
 pub use std::collections::HashMap;
 pub use std::collections::HashSet;
 pub use std::time::{Duration, Instant};
+pub use std::sync::mpsc::{Sender, SyncSender, Receiver, sync_channel, channel};
 
 // rayon imports
 pub use rayon::prelude::*;
 
 // bomb imports
 pub use bombs::*;
+
+// triple buffer imports
+pub use triple_buffer::TripleBuffer;
+pub use triple_buffer::Input as TripleBufferSender;
+pub use triple_buffer::Output as TripleBufferReceiver;
 
 // piston imports
 pub use piston::Key;
@@ -29,8 +35,8 @@ pub use serde::{Serialize, Deserialize};
 // ui imports
 pub use ayyeve_piston_ui::menu::*;
 pub use ayyeve_piston_ui::menu::menu_elements::*;
-pub use ayyeve_piston_ui::render::{Renderable, Vector2, Color};
-pub use ayyeve_piston_ui::prelude::{ScrollableItemGettersSetters, ScrollableGettersSetters};
+pub use ayyeve_piston_ui::render::{ Renderable, Vector2, Color, FontRender, TextRender };
+pub use ayyeve_piston_ui::prelude::{ ScrollableItemGettersSetters, ScrollableGettersSetters };
 
 // font things
 pub type Font = Arc<Mutex<opengl_graphics::GlyphCache<'static>>>;
@@ -59,6 +65,7 @@ pub use crate::game::audio::fft::*;
 pub use crate::game::*;
 pub use crate::menus::*;
 pub use crate::RetainMut;
+pub use crate::window::*;
 pub use crate::graphics::*;
 pub use crate::game::audio::*;
 pub use crate::game::managers::*;

@@ -10,7 +10,7 @@ pub struct BeatmapSelectMenu {
     current_scores: HashMap<String, Arc<Mutex<Score>>>,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
-    back_button: MenuButton,
+    back_button: MenuButton<Font2, Text>,
     // pending_refresh: bool,
 
     score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
@@ -22,16 +22,16 @@ pub struct BeatmapSelectMenu {
     // mouse_down: bool
 
     /// internal search box
-    search_text: TextInput,
+    search_text: TextInput<Font2, Text>,
     no_maps_notif_sent: bool,
 
     sort_method: SortBy,
     mode: PlayMode,
 
-    sort_by_dropdown: Dropdown<SortBy>,
-    playmode_dropdown: Dropdown<PlayModeDropdown>,
+    sort_by_dropdown: Dropdown<SortBy, Font2, Text>,
+    playmode_dropdown: Dropdown<PlayModeDropdown, Font2, Text>,
 
-    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod>,
+    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod, Font2, Text>,
 
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
@@ -50,7 +50,7 @@ impl BeatmapSelectMenu {
         let sort_by_dropdown = Dropdown::new(
             Vector2::new(0.0, 5.0),
             200.0,
-            15,
+            FontSize::new(15.0).unwrap(),
             "Sort",
             Some(sort_by),
             font.clone()
@@ -60,7 +60,7 @@ impl BeatmapSelectMenu {
         let playmode_dropdown = Dropdown::new(
             Vector2::new(205.0, 5.0),
             200.0,
-            15,
+            FontSize::new(15.0).unwrap(),
             "Mode",
             Some(PlayModeDropdown::Mode(mode.clone())),
             font.clone()
@@ -71,7 +71,7 @@ impl BeatmapSelectMenu {
         let leaderboard_method_dropdown = Dropdown::new(
             Vector2::new(410.0, 5.0),
             200.0, 
-            15,
+            FontSize::new(15.0).unwrap(),
             "Leaderboard",
             Some(leaderboard_method),
             font.clone()
@@ -367,12 +367,14 @@ impl Menu<Game> for BeatmapSelectMenu {
             i.update();
         }
 
-        if old_text != self.search_text.get_text() {
-            self.refresh_maps(&mut BEATMAP_MANAGER.write());
-        }
 
         {
             let mut lock = BEATMAP_MANAGER.write();
+
+            if old_text != self.search_text.get_text() {
+                self.refresh_maps(&mut lock);
+            }
+
             let maps = lock.get_new_maps();
             if maps.len() > 0  {
                 lock.set_current_beatmap(game, &maps[maps.len() - 1], false, true);
@@ -410,11 +412,11 @@ impl Menu<Game> for BeatmapSelectMenu {
                     Ok(PlaybackState::Playing) => {},
                     _ => {
                         // restart the song at the preview point
-
                         let lock = BEATMAP_MANAGER.read();
                         let map = lock.current_beatmap.as_ref().unwrap();
                         let _ = song.set_position(map.audio_preview as f64);
                         song.set_rate(ModManager::get().speed).unwrap();
+                        
                         song.play(false).unwrap();
                     },
                 }
@@ -461,7 +463,7 @@ impl Menu<Game> for BeatmapSelectMenu {
                         // trace!("song done");
                         self.map_changing = (true, false, 0);
                         tokio::spawn(async move {
-                            let lock = BEATMAP_MANAGER.lock();
+                            let lock = BEATMAP_MANAGER.read();
                             let map = lock.current_beatmap.as_ref().unwrap();
                             Audio::play_song(map.audio_filename.clone(), true, map.audio_preview);
                         });
@@ -884,3 +886,4 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
         false
     }
 }
+

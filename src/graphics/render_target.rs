@@ -98,7 +98,7 @@ impl RenderTarget {
         let image = Image::new(
             Vector2::zero(),
             -99999999999999990.0, 
-            Texture::new(texture_id, width as u32, height as u32),
+            Arc::new(Texture::new(texture_id, width as u32, height as u32)),
             Vector2::new(width, height)
         );
 

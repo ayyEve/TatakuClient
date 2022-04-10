@@ -221,7 +221,8 @@ impl GameMode for ManiaGame {
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
-                let column_count = beatmap.metadata.cs as u8;
+                let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
+
 
                 let mut s = Self {
                     map_meta: metadata.clone(),

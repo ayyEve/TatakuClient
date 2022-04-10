@@ -1,21 +1,15 @@
-use glfw_window::GlfwWindow as AppWindow;
-use opengl_graphics::{GlGraphics, OpenGL};
-use piston::{Window, input::*, event_loop::*, window::WindowSettings};
-
 use crate::prelude::*;
 use crate::databases::save_replay;
 
 
-/// background color
-const GFX_CLEAR_COLOR:Color = Color::BLACK;
 /// how long do transitions between gamemodes last?
 const TRANSITION_TIME:u64 = 500;
 
 pub struct Game {
     // engine things
     render_queue: Vec<Box<dyn Renderable>>,
-    pub window: AppWindow,
-    pub graphics: GlGraphics,
+    // pub window: AppWindow,
+    // pub graphics: GlGraphics,
     pub input_manager: InputManager,
     pub volume_controller: VolumeControl,
     
@@ -36,70 +30,26 @@ pub struct Game {
     transition_last: Option<GameState>,
     transition_timer: u64,
 
-    // cursor
-    cursor_manager: CursorManager,
-
     // misc
     pub game_start: Instant,
     pub background_image: Option<Image>,
     // register_timings: (f32,f32,f32),
 
-    #[cfg(feature="bass_audio")]
-    #[allow(dead_code)]
-    /// needed to prevent bass from deinitializing
-    bass: bass_rs::Bass,
+    // #[cfg(feature="bass_audio")]
+    // #[allow(dead_code)]
+    // /// needed to prevent bass from deinitializing
+    // bass: bass_rs::Bass,
+
+    game_event_receiver: MultiBomb<GameEvent>,
+    render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
+
 }
 impl Game {
-    pub fn new() -> Game {
-        let mut game_init_benchmark = BenchmarkHelper::new("Game::new");
-        let window_size = Settings::window_size();
-
-        let opengl = OpenGL::V3_2;
-        let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
-            .graphics_api(opengl)
-            .resizable(false)
-            // .fullscreen(true) // this doesnt work?
-            // .samples(32) // not sure if this actually works or not
-            .build()
-            .expect("Error creating window");
-        window.window.set_cursor_mode(glfw::CursorMode::Hidden);
-        game_init_benchmark.log("window created", true);
-
-
-        #[cfg(feature="bass_audio")] 
-        let bass = {
-            #[cfg(target_os = "windows")]
-            let window_ptr = window.window.get_win32_window();
-            #[cfg(target_os = "linux")]
-            let window_ptr = window.window.get_x11_window();
-            #[cfg(target_os = "macos")]
-            let window_ptr = window.window.get_cocoa_window();
-
-            // initialize bass
-            bass_rs::Bass::init_default_with_ptr(window_ptr).expect("Error initializing bass")
-        };
-
-        // set window icon
-        match image::open("resources/icon-small.png") {
-            Ok(img) => {
-                window.window.set_icon(vec![img.into_rgba8()]);
-                game_init_benchmark.log("window icon set", true);
-            }
-            Err(e) => {
-                game_init_benchmark.log(&format!("error setting window icon: {}", e), true);
-            }
-        }
-
-        let graphics = GlGraphics::new(opengl);
-        game_init_benchmark.log("graphics created", true);
-
+    pub fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>,) -> Game {
         let input_manager = InputManager::new();
-        game_init_benchmark.log("input manager created", true);
 
         let mut g = Game {
             // engine
-            window,
-            graphics,
             input_manager,
             volume_controller:VolumeControl::new(),
             render_queue: Vec::new(),
@@ -122,18 +72,18 @@ impl Game {
             transition_timer: 0,
 
             // cursor
-            cursor_manager: CursorManager::new(),
 
             // misc
             game_start: Instant::now(),
             // register_timings: (0.0,0.0,0.0),
-            #[cfg(feature="bass_audio")] 
-            bass,
+            game_event_receiver,
+            render_queue_sender,
         };
-        game_init_benchmark.log("game created", true);
+        // game_init_benchmark.log("game created", true);
 
+        CursorManager::init();
         g.init();
-        game_init_benchmark.log("game initialized", true);
+        // game_init_benchmark.log("game initialized", true);
 
         g
     }
@@ -187,59 +137,48 @@ impl Game {
         self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(loading_menu))));
     }
     pub fn game_loop(mut self) {
-        let mut events = Events::new(EventSettings::new());
-        // events.set_ups_reset(0);
+        let window_size:[f64;2] = Settings::window_size().into();
 
-        {
-            // input and rendering thread times
-            let settings = get_settings!();
-            events.set_max_fps(settings.fps_target);
-            events.set_ups(settings.update_target);
-        }
+        // let game_event_receiver = game_event_receiver.clone();
 
-        while let Some(e) = events.next(&mut self.window) {
-            self.input_manager.handle_events(e.clone(), &mut self.window);
-            if let Some(args) = e.update_args() {self.update(args.dt*1000.0)}
-            if let Some(args) = e.render_args() {self.render(args)}
-            // if let Some(Button::Keyboard(_)) = e.press_args() {self.input_update_display.increment()}
+        // update loop
+        let mut timer = Instant::now();
 
+        let args = RenderArgs {
+            ext_dt: 0.0,
+            window_size,
+            draw_size: [window_size[0] as u32, window_size[1] as u32],
+        };
 
-            if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
-                debug!("got file: {:?}", d);
-                let path = d.as_path();
-                let filename = d.file_name();
-
-                if let Some(ext) = d.extension() {
-                    let ext = ext.to_str().unwrap();
-                    match *&ext {
-                        "osz" | "qp" => {
-                            if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
-                                error!("Error copying file: {}", e);
-                                NotificationManager::add_error_notification(
-                                    "Error copying file", 
-                                    e
-                                );
-                            } else {
-                                NotificationManager::add_text_notification(
-                                    "Set file added, it will be loaded soon...", 
-                                    2_000.0, 
-                                    Color::BLUE
-                                );
-                            }
-                        }
-
-                        _ => {
-                            NotificationManager::add_text_notification(
-                                &format!("What is this?"), 
-                                3_000.0, 
-                                Color::RED
-                            );
-                        }
-                    }
+        loop {
+            while let Some(e) = self.game_event_receiver.exploded() {
+                match e {
+                    GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
+                    GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
+                    GameEvent::WindowClosed => { self.close_game(); return }
                 }
             }
-            // e.resize(|args| debug!("Resized '{}, {}'", args.window_size[0], args.window_size[1]));
+
+            self.update(0.0);
+
+            if let GameState::Closing = &self.current_state {
+                self.close_game();
+                return;
+            }
+
+            let now = Instant::now();
+            if now.duration_since(timer).as_secs_f64() >= 1.0/144.0 {
+                timer = now;
+                
+                self.render(args);
+            }
+
         }
+
+    }
+
+    pub fn close_game(&mut self) {
+        trace!("stopping game");
     }
 
     fn update(&mut self, _delta:f64) {
@@ -362,7 +301,6 @@ impl Game {
         } else if mouse_up.contains(&MouseButton::Right) {
             CursorManager::right_pressed(false, false)
         }
-        self.cursor_manager.update(elapsed as f64, &mut self.window);
 
 
         // run update on current state
@@ -562,7 +500,12 @@ impl Game {
             GameState::None => self.current_state = current_state,
             GameState::Closing => {
                 get_settings!().save();
-                self.window.set_should_close(true);
+                // self.window.set_should_close(true);
+                self.current_state = GameState::Closing;
+                
+                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::CloseGame) {
+                    panic!("no: {}", e)
+                }
             }
 
             _ => {
@@ -602,7 +545,6 @@ impl Game {
                                 }
                             }
                         }
-
 
                         OnlineManager::set_action(UserAction::Idle, String::new(), String::new());
                     },
@@ -655,7 +597,7 @@ impl Game {
 
     fn render(&mut self, args: RenderArgs) {
         // let timer = Instant::now();
-        let settings = get_settings!(); 
+        let settings = get_settings!();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
         // draw background image here
@@ -741,52 +683,18 @@ impl Game {
         // let mouse_pressed = self.input_manager.mouse_buttons.len() > 0 
         //     || self.input_manager.key_down(settings.standard_settings.left_key)
         //     || self.input_manager.key_down(settings.standard_settings.right_key);
-        self.cursor_manager.draw(&mut self.render_queue);
+        // self.cursor_manager.draw(&mut self.render_queue);
 
         // sort the queue here (so it only needs to be sorted once per frame, instead of every time a shape is added)
         self.render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
-
-        // TODO: use this for snipping
-        // // actually draw everything now
-        // let mut orig_c = self.graphics.draw_begin(args.viewport());
-
-        // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
-        // for i in self.render_queue.iter_mut() {
-        //     let mut drawstate_changed = false;
-        //     let c = if let Some(ic) = i.get_context() {
-        //         drawstate_changed = true;
-        //         // debug!("ic: {:?}", ic);
-        //         self.graphics.draw_end();
-        //         self.graphics.draw_begin(args.viewport());
-        //         self.graphics.use_draw_state(&ic.draw_state);
-        //         ic
-        //     } else {
-        //         orig_c
-        //     };
-            
-        //     // self.graphics.use_draw_state(&c.draw_state);
-        //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
-        //     i.draw(&mut self.graphics, c);
-
-        //     if drawstate_changed {
-        //         self.graphics.draw_end();
-        //         orig_c = self.graphics.draw_begin(args.viewport());
-        //         self.graphics.use_draw_state(&orig_c.draw_state);
-        //     }
-        // }
-        // self.graphics.draw_end();
-
-        // TODO: dont use this for snipping
-        let queue = self.render_queue.as_mut_slice();
-        self.graphics.draw(args.viewport(), |c, g| {
-            graphics::clear(GFX_CLEAR_COLOR.into(), g);
-            for i in queue.as_mut() {
-                i.draw(g, c);
-            }
-        });
+        // toss the items to the window to render
+        let data = std::mem::take(&mut self.render_queue);
+        self.render_queue_sender.write(TatakuRenderEvent::Draw(data));
         
-        self.clear_render_queue(false);
+        
+        // trace!("clearing");
+        // self.clear_render_queue(false);
         self.fps_display.increment();
 
 
@@ -842,40 +750,7 @@ impl Game {
             bg.initial_pos = (window_size - bg.size()) / 2.0;
             bg.current_pos = bg.initial_pos;
         }
-        
-
-
-        // let settings = opengl_graphics::TextureSettings::new();
-        // // helper.log("settings made", true);
-        // let buf: Vec<u8> = match std::fs::read(&beatmap.image_filename) {
-        //     Ok(buf) => buf,
-        //     Err(_) => {
-        //         self.background_image = None;
-        //         return;
-        //     }
-        // };
-
-        // // let buf = file.unwrap();
-        // // helper.log("file read", true);
-
-        // let img = image::load_from_memory(&buf).unwrap();
-        // // helper.log("image created", true);
-        // let img = img.into_rgba8();
-        // // helper.log("format converted", true);
-        
-        // let tex = opengl_graphics::Texture::from_image(&img, &settings);
-        // // helper.log("texture made", true);
-
-        // self.background_image = Some(Image::new(Vector2::zero(), f64::MAX, tex, window_size()));
-        // // helper.log("background set", true);
-
-        // // match opengl_graphics::Texture::from_path(beatmap.image_filename.clone(), &settings) {
-        // //     Ok(tex) => self.background_image = Some(Image::new(Vector2::zero(), f64::MAX, tex, window_size())),
-        // //     Err(e) => {
-        // //         error!("Error loading beatmap texture: {}", e);
-        // //         self.background_image = None; //TODO!: use a known good background image
-        // //     },
-        // // }
+    
     }
 
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
@@ -909,4 +784,13 @@ pub enum SpectatorState {
     Watching, // host playing
     Paused, // host paused
     MapChanging, // host is changing map
+}
+
+
+#[derive(Clone)]
+pub enum GameEvent {
+    WindowClosed,
+    WindowEvent(piston::Event),
+    /// controller event, controller name
+    ControllerEvent(piston::Event, String)
 }

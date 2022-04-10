@@ -4,6 +4,7 @@ mod controllers;
 
 pub mod audio;
 pub mod online;
+pub mod window;
 pub mod helpers;
 pub mod managers;
 

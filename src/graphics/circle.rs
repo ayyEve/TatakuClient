@@ -50,7 +50,7 @@ impl Renderable for Circle {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         graphics::ellipse::Ellipse {
             color: self.current_color.into(),
             border: if self.border.is_some() {Some(self.border.unwrap().into())} else {None},

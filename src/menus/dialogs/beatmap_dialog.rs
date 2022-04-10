@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub struct BeatmapDialog {
     bounds: Rectangle,
     target_map: String,
-    delete_map: MenuButton,
+    delete_map: MenuButton<Font2, Text>,
     should_close: bool
 }
 impl BeatmapDialog {

@@ -40,7 +40,7 @@ TODO:
 - // Code
  - handle peppy direct download moment
  - depth doc (detail what is drawn at what depth range)
-  
+
 maybe todo:
  - profiler
  - read osu replays

@@ -35,7 +35,7 @@ pub struct DirectMenu {
     old_audio: Option<Option<(String, f32)>>,
 
     /// search input
-    search_bar: TextInput,
+    search_bar: TextInput<Font2, Text>,
 
     /// current search api
     current_api: Box<dyn DirectApi>,

@@ -21,7 +21,7 @@ impl VolumeControl {
     }
 
     fn elapsed(&self) -> u64 {self.timer.elapsed().as_millis() as u64}
-    fn visible(&self) -> bool {
+    fn _visible(&self) -> bool {
         let elapsed = self.elapsed();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }

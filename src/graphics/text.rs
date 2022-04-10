@@ -17,15 +17,16 @@ pub struct Text {
     pub origin: Vector2,
 
     pub depth: f64,
-    pub font_size: u32,
+    pub font_size: FontSize,
     pub text: String,
     pub text_colors: Vec<Color>,
-    pub fonts: Vec<Font>,
+    pub fonts: Vec<Font2>,
 
     context: Option<Context>,
 }
 impl Text {
-    pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font) -> Text {
+    pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font2) -> Text {
+        let font_size = FontSize::new(font_size as f32).unwrap();
         let fonts = vec![font, get_fallback_font()];
 
         let initial_pos = pos;
@@ -69,7 +70,7 @@ impl Text {
         self.current_pos = self.initial_pos;
     }
 
-    pub fn set_text_colors(&mut self, colors: Vec<Color>) {
+    pub fn _set_text_colors(&mut self, colors: Vec<Color>) {
         self.text_colors = colors
     }
 }
@@ -78,7 +79,7 @@ impl Renderable for Text {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         // from image
         let pre_rotation = self.current_pos / self.current_scale + self.origin;
 
@@ -105,15 +106,18 @@ impl Renderable for Text {
             text = self.text.chars().map(|c| (c, self.current_color)).collect::<Vec<(char, Color)>>();
         }
         
+        let mut font_size = self.font_size.clone();
+        font_size.0 *= self.current_scale.y as f32;
+
         draw_text(
             &text, 
-            (self.font_size as f64 * self.current_scale.y) as u32, 
+            font_size, 
             &self.fonts, 
             2.0,
             &c.draw_state, 
             transform, 
             g
-        ).unwrap();
+        );
     }
 }
 
@@ -170,10 +174,12 @@ impl Transformable for Text {
 
 
 
-fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector2, line_spacing: f64) -> Vector2 {
+fn measure_text(fonts: &Vec<Font2>, font_size: <Font2 as FontRender>::Size, text: &String, _scale: Vector2, line_spacing: f64) -> Vector2 {
+    // return Vector2::zero();
+
     if fonts.len() == 0 {return Vector2::zero()}
 
-    let mut fonts = fonts.iter().map(|f|f.lock()).collect::<Vec<_>>();
+    // let mut locked_fonts = fonts.iter().map(|f|f.lock()).collect::<Vec<_>>();
 
     let mut max_width:f64 = 0.0;
     let mut current_width = 0.0;
@@ -187,112 +193,137 @@ fn measure_text(fonts: &Vec<Font>, font_size: u32, text: &String, _scale: Vector
             continue;
         }
 
-        let mut character = None;
-        for font in fonts.iter_mut() {
-            if let Ok(c) = font.character(font_size, ch) {
-                character = Some(c);
-                if !character.as_ref().unwrap().is_invalid {
-                    break
-                }
-            } else {
-                panic!("hurr durr")
-            }
-        }
+
+        // let mut character = None;
+        // for i in 0..locked_fonts.len() {
+            
+        //     // if let None = locked_fonts[i].opt_character(font_size, ch) {
+        //     //     drop(locked_fonts.remove(i));
+
+        //     //     let _ = load_font_char(fonts[i].clone(), font_size, ch);
+
+        //     //     // check!(font)
+        //     //     locked_fonts.insert(i, fonts[i].lock());
+        //     // }
+
+            
+        //     if let Some(c) = locked_fonts[i].opt_character(font_size, ch) {
+        //         character = Some(c);
+        //         if !character.as_ref().unwrap().is_invalid {
+        //             break
+        //         }
+        //     } else {
+        //         // info!("char missing ('{ch}', {font_size})")
+        //     }
+        // }
         
-        if character.as_ref().unwrap().is_invalid {
-            // stop fonts from being borrowed
-            character = None;
-            // get the error character from the first font
-            if let Ok(c) = fonts[0].character(font_size, ch) {
-                character = Some(c);
+        // if character.is_none() {continue}
+        // if character.as_ref().unwrap().is_invalid {
+        //     // stop fonts from being borrowed
+        //     character = None;
+        //     // get the error character from the first font
+        //     if let Ok(c) = locked_fonts[0].character(font_size, ch) {
+        //         character = Some(c);
+        //     }
+        // }
+        
+        let mut character = None;
+        for i in fonts {
+            if i.has_character(ch) {
+                character = Some(i.get_character(font_size, ch))
             }
+        };
+        if let Some(c) = character {
+            current_width += c.advance_width;
         }
-        let character = character.unwrap();
-        current_width += character.advance_width();
+
     }
 
     Vector2::new(
         max_width.max(current_width),
-        (font_size as f64 + line_spacing) * line_count as f64 - line_spacing
+        (font_size.0 as f64 + line_spacing) * line_count as f64 - line_spacing
     )
 }
 
 
-pub fn draw_text<C: graphics::CharacterCache, T: ayyeve_piston_ui::prelude::DrawableText, G: graphics::Graphics<Texture = <C as graphics::CharacterCache>::Texture>> (
+pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
     text: &T, 
-    font_size: u32,
-    font_caches: &Vec<Arc<Mutex<C>>>, 
+    font_size: FontSize,
+    font_caches: &Vec<Font2>, 
     line_spacing: f64,
     draw_state: &graphics::DrawState, 
     transform: graphics::types::Matrix2d, 
-    g: &mut G
-) -> Result<(), C::Error> {
+    g: &mut GlGraphics
+) {
+    // return;
+    
     if font_caches.len() == 0 {
         panic!("no fonts!");
     }
 
     let mut x = 0.0;
-    let mut y = font_size as f64;
-    let mut font_caches = font_caches.iter().map(|f|f.lock()).collect::<Vec<_>>();
+    let mut y = font_size.0 as f64;
+    // let mut locked_fonts = font_caches.iter().map(|f|f.lock()).collect::<Vec<_>>();
 
     for (ch, color) in text.char_colors() {
         if ch == '\n' {
             // move the line down
-            y += font_size as f64 + line_spacing;
+            y += font_size.0 as f64 + line_spacing;
 
             // reset x pos
             x = 0.0;
             continue;
         }
 
-        let mut character = None; //font_caches[0].character(font_size, ch)?;
-        for font in font_caches.iter_mut() {
-            if let Ok(c) = font.character(font_size, ch) {
-                character = Some(c);
-                if !character.as_ref().unwrap().is_invalid {
-                    break
-                }
-            } else {
-                panic!("hurr durr")
-            }
-        }
+        // let mut character = None;
+        // for i in 0..locked_fonts.len() {
+            
+        //     // if let None = locked_fonts[i].opt_character(font_size, ch) {
+        //     //     drop(locked_fonts.remove(i));
+
+        //     //     let _ = load_font_char(font_caches[i].clone(), font_size, ch);
+
+        //     //     // check!(font)
+        //     //     locked_fonts.insert(i, font_caches[i].lock());
+        //     // }
+
+            
+        //     if let Some(c) = locked_fonts[i].opt_character(font_size, ch) {
+        //         character = Some(c);
+        //         if !character.as_ref().unwrap().is_invalid {
+        //             break
+        //         }
+        //     } else {
+        //         // info!("char not preloaded: ('{}', {})", ch, font_size)
+        //     }
+        // }
         
-        if character.as_ref().unwrap().is_invalid {
-            // stop font_caches from being borrowed
-            character = None;
-            // get the error character from the first font
-            if let Ok(c) = font_caches[0].character(font_size, ch) {
-                character = Some(c);
+        // if character.is_none() {continue}
+        // if character.as_ref().unwrap().is_invalid {
+        //     // stop fonts from being borrowed
+        //     character = None;
+        //     // get the error character from the first font
+        //     if let Ok(c) = locked_fonts[0].character(font_size, ch) {
+        //         character = Some(c);
+        //     }
+        // }
+        // if character.is_none() {continue}
+
+        // let character = character.unwrap();
+
+        for i in font_caches {
+            if i.has_character(ch) {
+                i.draw_character_image(
+                    font_size.clone(), 
+                    ch, 
+                    [&mut x, &mut y], 
+                    color, 
+                    draw_state, 
+                    transform, 
+                    g
+                );
+                break;
             }
         }
-        let character = character.unwrap();
-
-        // create new image with color
-        graphics::Image::new_color(color.into())
-        // snip the glyph from the whole tex
-        .src_rect([
-            character.atlas_offset[0],
-            character.atlas_offset[1],
-            character.atlas_size[0],
-            character.atlas_size[1],
-        ])
-        // draw it
-        .draw(
-            character.texture,
-            draw_state,
-            transform.trans(
-                x + character.left(), 
-                y - character.top()
-            ),
-            g,
-        );
-
-        // advance positions
-        x += character.advance_width();
-        y += character.advance_height();
     }
-
-    Ok(())
 }
-
-// thhgjfkdshjk

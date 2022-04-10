@@ -118,11 +118,10 @@ impl Animation {
 
 
     pub fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
-        let settings = opengl_graphics::TextureSettings::new();
 
         let mut frames = Vec::new();
         for p in paths {
-            frames.push(Arc::new(Texture::from_path(p, &settings)?));
+            frames.push(load_texture(p)?);
         }
 
         Ok(Self::new(pos, depth, size, frames, delays))
@@ -133,7 +132,7 @@ impl Renderable for Animation {
 
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         let pre_rotation = self.current_pos / self.current_scale;
 
         let transform = c

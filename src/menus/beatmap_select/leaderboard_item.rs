@@ -15,7 +15,7 @@ pub struct LeaderboardItem {
     tag: String,
 
     score: Score,
-    font: Arc<Mutex<opengl_graphics::GlyphCache<'static>>>,
+    font: Font2,
 
     score_mods: ModManager
 }

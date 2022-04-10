@@ -26,7 +26,7 @@ impl Renderable for HalfCircle {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         let start_angle:f64 = if self.left_side {std::f64::consts::PI/2.0} else {std::f64::consts::PI*1.5} as f64;
         
         graphics::circle_arc(

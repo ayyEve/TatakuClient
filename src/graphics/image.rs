@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use super::prelude::*;
-use opengl_graphics::{TextureSettings};
 
 #[derive(Clone)]
 pub struct Image {
@@ -26,7 +25,7 @@ pub struct Image {
     pub current_rotation: f64,
 }
 impl Image {
-    pub fn new(pos:Vector2, depth:f64, tex:Texture, size:Vector2) -> Image {
+    pub fn new(pos:Vector2, depth:f64, tex:Arc<Texture>, size:Vector2) -> Image {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.get_width() as f64, tex.get_height() as f64);
         let scale = size / tex_size;
@@ -57,7 +56,7 @@ impl Image {
             size: tex_size,
             depth,
             origin,
-            tex: Arc::new(tex),
+            tex,
             context: None,
         }
     }
@@ -82,9 +81,10 @@ impl Image {
 
 
     pub fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
-        let settings = TextureSettings::new();
-        let tex = Texture::from_path(path, &settings)?;
-        Ok(Self::new(pos, depth, tex, size))
+        match load_texture(path) {
+            Ok(tex) => Ok(Self::new(pos, depth, tex, size)),
+            Err(e) => return Err(e),
+        }
     }
 }
 impl Renderable for Image {
@@ -92,7 +92,7 @@ impl Renderable for Image {
 
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         let pre_rotation = self.current_pos / self.current_scale;
 
         let transform = c

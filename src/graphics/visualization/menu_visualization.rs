@@ -26,7 +26,7 @@ pub struct MenuVisualization {
 }
 impl MenuVisualization {
     pub fn new() -> Self {
-        let initial_inner_radius  = visualization_initial_radius();
+        let initial_inner_radius = visualization_initial_radius();
         Self {
             rotation: 0.0,
             data: Vec::new(),

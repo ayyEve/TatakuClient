@@ -75,11 +75,13 @@ impl InputManager {
             keys_down: HashSet::new(),
             keys_up:  HashSet::new(),
 
-            controller_axis: HashMap::new(),
+            
             controller_names: HashMap::new(),
             controller_buttons: HashMap::new(),
             controller_down: HashMap::new(),
             controller_up: HashMap::new(),
+            controller_axis: HashMap::new(),
+
 
             text_cache: String::new(),
             window_change_focus: None,
@@ -88,31 +90,10 @@ impl InputManager {
         }
     }
 
-    fn verify_controller_index_exists(&mut self, id: u32, window: &mut glfw_window::GlfwWindow) {
+    
+    fn verify_controller_index_exists(&mut self, id: u32, name:String) {
         if !self.controller_names.contains_key(&id) {
-            use glfw::JoystickId::*;
-            let j_id = match id {
-                0  => Joystick1,
-                1  => Joystick2,
-                2  => Joystick3,
-                3  => Joystick4,
-                4  => Joystick5,
-                5  => Joystick6,
-                6  => Joystick7,
-                7  => Joystick8,
-                8  => Joystick9,
-                9  => Joystick10,
-                10 => Joystick11,
-                11 => Joystick12,
-                12 => Joystick13,
-                13 => Joystick14,
-                14 => Joystick15,
-                15 => Joystick16,
-                _ => panic!("unknown joystick id: {}", id)
-            };
-
             // window.joystick_deadzone = 0.01;
-            let name = window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
             debug!("New controller: {}", name);
             self.controller_names.insert(id, Arc::new(name));
         }
@@ -134,7 +115,8 @@ impl InputManager {
         }
     }
 
-    pub fn handle_events(&mut self, e:Event, window:&mut glfw_window::GlfwWindow) {
+
+    pub fn handle_events(&mut self, e:Event) {
         if let Some(button) = e.button_args() {
             match (button.button, button.state) {
                 (Button::Keyboard(key), ButtonState::Press) => {
@@ -154,48 +136,37 @@ impl InputManager {
                     self.mouse_up.insert((mb, Instant::now()));
                 }
 
-                (Button::Controller(cb), ButtonState::Press) => {
-                    // debug!("press: c: {}, b: {}", cb.id, cb.button);
-                    self.verify_controller_index_exists(cb.id, window);
-                    self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
-                    self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
-                }
-                (Button::Controller(cb), ButtonState::Release) => {
-                    // debug!("release: c: {}, b: {}", cb.id, cb.button);
-                    self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
-                    self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
-                }
                 _ => {}
             }
         }
 
-        if let Some(axis) = e.controller_axis_args() {
-            // debug!("got controller axis: {:?}", axis);
-            let id = axis.axis;
-            let value = axis.position;
-            let controller_id = axis.id;
-            self.verify_controller_index_exists(controller_id, window);
+        // if let Some(axis) = e.controller_axis_args() {
+        //     // debug!("got controller axis: {:?}", axis);
+        //     let id = axis.axis;
+        //     let value = axis.position;
+        //     let controller_id = axis.id;
+        //     self.verify_controller_index_exists(controller_id, window);
 
-            let map = self.controller_axis.get_mut(&controller_id).unwrap();
-            if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
-                map.insert(id, (true, value));
-            }
-        }
+        //     let map = self.controller_axis.get_mut(&controller_id).unwrap();
+        //     if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
+        //         map.insert(id, (true, value));
+        //     }
+        // }
 
         e.mouse_cursor(|[x, y]| {
             let incoming = Vector2::new(x, y);
 
             if self.raw_input {
-                let half_window = Settings::window_size() / 2.0;
-                let diff = incoming - half_window;
-                if diff == Vector2::zero() {return}
-                self.mouse_pos = self.mouse_pos + diff;
-                self.mouse_moved = true;
+                // let half_window = Settings::window_size() / 2.0;
+                // let diff = incoming - half_window;
+                // if diff == Vector2::zero() {return}
+                // self.mouse_pos = self.mouse_pos + diff;
+                // self.mouse_moved = true;
 
-                if !(self.mouse_pos.x < 0.0 || self.mouse_pos.y < 0.0 
-                || self.mouse_pos.x > half_window.x * 2.0 || self.mouse_pos.y > half_window.y * 2.0) {
-                    window.window.set_cursor_pos(half_window.x, half_window.y)
-                }
+                // if !(self.mouse_pos.x < 0.0 || self.mouse_pos.y < 0.0 
+                // || self.mouse_pos.x > half_window.x * 2.0 || self.mouse_pos.y > half_window.y * 2.0) {
+                //     window.window.set_cursor_pos(half_window.x, half_window.y)
+                // }
 
             } else {
                 if incoming == self.mouse_pos {return}
@@ -208,6 +179,38 @@ impl InputManager {
         if let Some(e) = e.text_args() {self.text_cache += &e}
         if let Some(has_focus) = e.focus_args() {self.window_change_focus = Some(has_focus)}
         // e.text(|text| debug!("Typed '{}'", text));
+    }
+
+    pub fn handle_controller_events(&mut self, e:Event, controller_name: String) {
+
+        if let Some(axis) = e.controller_axis_args() {
+            // debug!("got controller axis: {:?}", axis);
+            let id = axis.axis;
+            let value = axis.position;
+            let controller_id = axis.id;
+            self.verify_controller_index_exists(controller_id, controller_name);
+
+            let map = self.controller_axis.get_mut(&controller_id).unwrap();
+            if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
+                map.insert(id, (true, value));
+            }
+        } else if let Some(button) = e.button_args() {
+            match (button.button, button.state) {
+                (Button::Controller(cb), ButtonState::Press) => {
+                    // debug!("press: c: {}, b: {}", cb.id, cb.button);
+                    self.verify_controller_index_exists(cb.id, controller_name);
+                    self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
+                    self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
+                }
+                (Button::Controller(cb), ButtonState::Release) => {
+                    // debug!("release: c: {}, b: {}", cb.id, cb.button);
+                    self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
+                    self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
+                }
+                _ => {}
+            }
+        }
+
     }
 
     /// is the key currently down (not up)

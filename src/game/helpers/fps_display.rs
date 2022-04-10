@@ -49,11 +49,14 @@ impl FpsDisplay {
             self.timer = Instant::now();
             self.count = 0;
 
+
             // frame times
             self.frametime_last = 0.0;
             for i in std::mem::take(&mut self.frametimes) {
                 self.frametime_last = self.frametime_last.max(i)
             }
+            
+            // info!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last);
         }
 
         list.push(Box::new(Text::new(

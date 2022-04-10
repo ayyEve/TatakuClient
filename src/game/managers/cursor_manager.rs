@@ -18,12 +18,12 @@ const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
 
 static CURSOR_EVENT_QUEUE:OnceCell<SyncSender<CursorEvent>> = OnceCell::const_new();
 
+pub static CURSOR_RENDER_QUEUE: OnceCell<Mutex<TripleBufferReceiver<Vec<Box<dyn Renderable>>>>> = OnceCell::const_new();
 
 
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
-
 
     pub color: Color,
     pub border_color: Color,
@@ -49,11 +49,41 @@ pub struct CursorManager {
     left_pressed: bool,
     right_pressed: bool,
 
-    show_system_cursor: bool
+    show_system_cursor: bool,
+
+
+    cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>
 }
 
 impl CursorManager {
-    pub fn new() -> Self {
+    pub fn init() {
+        tokio::spawn(async {
+            let (cursor_render_sender, receiver) = TripleBuffer::default().split();
+            CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
+
+            let mut s = Self::new(cursor_render_sender);
+            let mut timer = Instant::now();
+
+            loop {
+                let now = Instant::now();
+                
+                let diff = now.duration_since(timer).as_secs_f64() * 1000.0;
+
+                s.update(diff);
+
+
+                let mut list = Vec::new();
+                s.draw(&mut list);
+                s.cursor_render_sender.write(list);
+
+                timer = now;
+
+                // tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        });
+    }
+
+    pub fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
         let mut cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
         if let Some(cursor) = &mut cursor_image {
             cursor.depth = -f64::MAX;
@@ -85,7 +115,6 @@ impl CursorManager {
             
             skin_change_helper: SkinChangeHelper::new(),
 
-
             trail_images: Vec::new(),
             cursor_image,
             cursor_trail_image,
@@ -96,6 +125,7 @@ impl CursorManager {
             trail_fadeout_timer_duration,
 
             event_receiver,
+            cursor_render_sender,
 
             left_pressed: false,
             right_pressed: false,
@@ -128,10 +158,10 @@ impl CursorManager {
         }
     }
 
-    pub fn update(&mut self, game_time: f64, window: &mut glfw_window::GlfwWindow) {
+    pub fn update(&mut self, time: f64) {
 
         // work through the event queue
-        while let Ok(event) = self.event_receiver.try_recv() {
+        if let Ok(event) = self.event_receiver.try_recv() {
             match event {
                 CursorEvent::SetLeftDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
@@ -152,9 +182,11 @@ impl CursorManager {
                 }
                 CursorEvent::ShowSystemCursor(show) => {
                     self.show_system_cursor = show;
-
-                    use glfw::CursorMode::{Normal, Hidden};
-                    window.window.set_cursor_mode(if show {Normal} else {Hidden});
+                    if show {
+                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::ShowCursor);
+                    } else {
+                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::HideCursor);
+                    }
                 }
             }
         }
@@ -167,7 +199,7 @@ impl CursorManager {
         // trail stuff
 
         // check if we should add a new trail
-        if self.cursor_trail_image.is_some() && game_time - self.last_trail_time >= self.trail_create_timer {
+        if self.cursor_trail_image.is_some() && time - self.last_trail_time >= self.trail_create_timer {
             if let Some(mut trail) = self.cursor_trail_image.clone() {
                 let mut g = TransformGroup::new();
                 g.transforms.push(Transformation::new(
@@ -175,20 +207,20 @@ impl CursorManager {
                     self.trail_fadeout_timer_duration, 
                     TransformType::Transparency {start: 1.0, end: 0.0}, 
                     TransformEasing::EaseOutSine, 
-                    game_time
+                    time
                 ));
                 trail.current_pos = self.pos;
                 g.items.push(DrawItem::Image(trail));
 
                 self.trail_images.push(g);
-                self.last_trail_time = game_time;
+                self.last_trail_time = time;
             }
 
         }
     
         // update the transforms, removing any that are not visible
         self.trail_images.retain_mut(|i| {
-            i.update(game_time);
+            i.update(time);
             i.items[0].visible()
         });
     }
@@ -243,7 +275,13 @@ impl CursorManager {
     fn add_event(event: CursorEvent) {
         // should always be okay
         if let Some(q) = CURSOR_EVENT_QUEUE.get() {
-            q.send(event).expect("cursor channel dead?");
+            match q.try_send(event) {
+                Ok(_) => {},
+                Err(e) => {
+                    error!("cursor channel error: {}", e)
+                }
+            }
+            // q.send().expect("cursor channel dead?");
         }
     }
 

@@ -93,7 +93,7 @@ impl InnerUIElement for JudgementCounterElement {
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10
             if text_size.x >= max_width {
-                text.font_size = (20.0 * scale.x * max_width / text_size.x) as u32;
+                text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
             }
             text.center_text(Rectangle::bounds_only(pos, BOX_SIZE));
 

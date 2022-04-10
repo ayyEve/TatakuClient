@@ -27,7 +27,7 @@ impl Renderable for Line {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c:Context) {
+    fn draw(&self, g: &mut GlGraphics, c:Context) {
         graphics::Line::new(self.color.into(), self.size).draw([self.p1.x, self.p1.y, self.p2.x, self.p2.y], &DrawState::default(), c.transform, g);
         // graphics::line_from_to(self.color.into(), self.size, self.p1.into(), self.p2.into(), c.transform, g);
     }

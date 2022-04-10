@@ -161,7 +161,7 @@ impl Renderable for SkinnedNumber {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, context: Context) {
+    fn draw(&self, g: &mut GlGraphics, context: Context) {
         // let size = self.measure_text();
 
         // from image

@@ -195,12 +195,6 @@ impl ScrollableItem for MusicBox {
         self.hover
     }
 
-    // fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton) {}
-
-    // fn on_key_press(&mut self, _key:Key, _mods:KeyModifiers) -> bool {false}
-
-    // fn update(&mut self) {}
-
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
         // let draw_pos = self.pos + pos_offset;
 

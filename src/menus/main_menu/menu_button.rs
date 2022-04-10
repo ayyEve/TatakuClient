@@ -16,33 +16,8 @@ pub struct MainMenuButton {
 }
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
-        let font_size: u32 = 15;
         let pos = Vector2::zero();
-        
-        // draw box
-        let r = Rectangle::new(
-            [0.2, 0.2, 0.2, 1.0].into(),
-            1.0,
-            pos,
-            size,
-            Some(Border::new(Color::RED, 0.0))
-        ).shape(Shape::Round(5.0, 10));
-        
-        // draw text
-        let mut txt = Text::new(
-            Color::WHITE,
-            0.0,
-            Vector2::zero(),
-            font_size,
-            text.to_owned(),
-            get_font()
-        );
-        txt.center_text(r);
-
-
-        let mut shapes = TransformGroup::new();
-        shapes.items.push(DrawItem::Rectangle(r));
-        shapes.items.push(DrawItem::Text(txt));
+        let shapes = TransformGroup::new();
 
         MainMenuButton {
             pos, 
@@ -139,7 +114,9 @@ impl MainMenuButton {
 }
 impl ScrollableItemGettersSetters for MainMenuButton {
     fn size(&self) -> Vector2 {self.size}
-    fn get_pos(&self) -> Vector2 {self.shapes.items[0].get_pos()}
+    fn get_pos(&self) -> Vector2 {
+        self.shapes.items.get(0).map(|i|i.get_pos()).unwrap_or_default()
+    }
 
     fn get_hover(&self) -> bool {self.hover}
     fn set_hover(&mut self, mut hover:bool) {
@@ -194,6 +171,35 @@ impl ScrollableItemGettersSetters for MainMenuButton {
 }
 impl ScrollableItem for MainMenuButton {
     fn update(&mut self) {
+        if self.shapes.items.len() == 0 {
+            let font_size: u32 = 15;
+
+            // draw box
+            let r = Rectangle::new(
+                [0.2, 0.2, 0.2, 1.0].into(),
+                1.0,
+                self.pos,
+                self.size,
+                Some(Border::new(Color::RED, 0.0))
+            ).shape(Shape::Round(5.0, 10));
+            
+            // draw text
+            let mut txt = Text::new(
+                Color::WHITE,
+                0.0,
+                Vector2::zero(),
+                font_size,
+                self.text.to_owned(),
+                get_font()
+            );
+            txt.center_text(r);
+
+            
+            self.shapes.items.push(DrawItem::Rectangle(r));
+            self.shapes.items.push(DrawItem::Text(txt));
+        }
+
+
         let time = self.timer.elapsed().as_secs_f64() * 1000.0;
         self.shapes.update(time);
 

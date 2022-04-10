@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
 
 pub struct SkinSelect {
     should_close: bool,
-    dropdown: Dropdown<SkinDropdownable>,
+    dropdown: Dropdown<SkinDropdownable, Font2, Text>,
     current_skin: String
 }
 impl SkinSelect {
@@ -23,7 +23,7 @@ impl SkinSelect {
             dropdown: Dropdown::new(
                 Vector2::new(300.0, 200.0),
                 500.0,
-                20,
+                FontSize::new(20.0).unwrap(),
                 "Skin",
                 Some(SkinDropdownable::Skin(current_skin.clone())),
                 get_font()

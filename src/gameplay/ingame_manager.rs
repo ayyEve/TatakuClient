@@ -478,6 +478,7 @@ impl IngameManager {
         // update gamemode
         gamemode.update(self, time);
 
+        #[cfg(feature="bass_audio")]
         if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
             trace!("Song over, saying map is complete");
             self.completed = true;

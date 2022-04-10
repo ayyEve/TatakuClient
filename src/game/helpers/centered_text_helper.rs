@@ -9,10 +9,10 @@ pub struct CenteredTextHelper<V:Display> {
     pub depth: f64,
     changed_time: f32,
     draw_time: f32,
-    font: Font,
+    font: Font2,
 }
 impl<V:Display> CenteredTextHelper<V>{
-    pub fn new(label:&str, initial_value: V, draw_time: f32, depth: f64, font: Font) -> Self {
+    pub fn new(label:&str, initial_value: V, draw_time: f32, depth: f64, font: Font2) -> Self {
         Self {
             label: label.to_owned(),
             value: initial_value,

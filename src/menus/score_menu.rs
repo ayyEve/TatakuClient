@@ -10,9 +10,9 @@ const MENU_ITEM_COUNT:usize = 2;
 pub struct ScoreMenu {
     score: Score,
     beatmap: BeatmapMeta,
-    back_button: MenuButton,
-    replay_button: MenuButton,
-    graph: Graph,
+    back_button: MenuButton<Font2, Text>,
+    replay_button: MenuButton<Font2, Text>,
+    graph: Graph<Font2, Text>,
 
     // cached
     hit_error: HitError,

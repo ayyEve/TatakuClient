@@ -18,7 +18,7 @@ pub struct Chat {
     // scrollables
     channel_scroll: ScrollableArea,
     message_scroll: ScrollableArea,
-    input: TextInput,
+    input: TextInput<Font2, Text>,
 
     pub selected_channel: Option<ChatChannel>,
 
@@ -436,15 +436,15 @@ struct ChannelScroll {
     tag: String,
 
     channel: ChatChannel,
-    font_size: u32,
-    font: Font,
+    font_size: FontSize,
+    font: Font2,
 }
 impl ChannelScroll {
     fn new(channel: ChatChannel, width: f64, font_size: u32) -> Self {
         Self {
             tag: channel.get_name(),
             channel,
-            font_size,
+            font_size: FontSize::new(font_size as f32).unwrap(),
 
             hover: false,
             selected: false,
@@ -461,7 +461,7 @@ impl ScrollableItem for ChannelScroll {
             if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
             parent_depth,
             self.pos + pos_offset,
-            self.font_size,
+            self.font_size.0 as u32,
             self.channel.get_name(),
             self.font.clone()
         );
@@ -477,14 +477,14 @@ struct MessageScroll {
     hover: bool,
 
     message: ChatMessage,
-    font_size: u32,
-    font: Font,
+    font_size: FontSize,
+    font: Font2,
 }
 impl MessageScroll {
     fn new(message: ChatMessage, width: f64, font_size: u32) -> Self {
         Self {
             message,
-            font_size,
+            font_size: FontSize::new(font_size as f32).unwrap(),
 
             hover: false,
             pos: Vector2::zero(),
@@ -500,7 +500,7 @@ impl ScrollableItem for MessageScroll {
             Color::BLACK,
             parent_depth,
             self.pos + pos_offset,
-            self.font_size,
+            self.font_size.0 as u32,
             self.message.get_formatted_text(),
             self.font.clone()
         );

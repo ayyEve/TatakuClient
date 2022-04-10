@@ -9,7 +9,7 @@ pub type ClickFn = Box<dyn Fn(&mut NormalDialog, &mut Game)>;
 
 pub struct NormalDialog {
     bounds: Rectangle,
-    buttons: Vec<MenuButton>,
+    buttons: Vec<MenuButton<Font2, Text>>,
     actions: HashMap<String, ClickFn>,
     pub should_close: bool
 }

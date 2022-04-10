@@ -7,9 +7,9 @@ const Y_OFFSET:f64 = 10.0;
 pub struct PauseMenu {
     // beatmap: Arc<Mutex<Beatmap>>,
     manager: IngameManager,
-    continue_button: MenuButton,
-    retry_button: MenuButton,
-    exit_button: MenuButton,
+    continue_button: MenuButton<Font2, Text>,
+    retry_button: MenuButton<Font2, Text>,
+    exit_button: MenuButton<Font2, Text>,
     is_fail_menu: bool,
 
     selected_index: i8

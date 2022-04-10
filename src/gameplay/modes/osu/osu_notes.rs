@@ -1657,7 +1657,7 @@ impl SliderPath {
 impl Renderable for SliderPath {
     fn get_depth(&self) -> f64 {self.depth}
 
-    fn draw(&mut self, g: &mut opengl_graphics::GlGraphics, c:graphics::Context) {
+    fn draw(&self, g: &mut opengl_graphics::GlGraphics, c:graphics::Context) {
         for tri in self.geom.iter() {
             graphics::polygon(self.color.into(), tri, c.transform, g);
         }

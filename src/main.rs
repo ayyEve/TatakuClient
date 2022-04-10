@@ -1,6 +1,8 @@
 // #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
+use tokio::runtime::*;
+
 #[macro_use]
 extern crate log;
 
@@ -55,18 +57,73 @@ const FIRST_MAPS: &[u32] = &[
 ];
 
 // main fn
-#[tokio::main]
-async fn main() {
+fn main() {
     tataku_logging::init("logs/").unwrap();
-
-    let mut main_benchmark = BenchmarkHelper::new("main");
 
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
             error!("error changing current dir: {}", e);
         }
     }
+
+    let main_thread = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("error creating main thread");
     
+
+    let multi_thread = Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("error creating multi thread");
+    
+    let ready = Arc::new(AtomicBool::new(false));
+    let ready2 = ready.clone();
+
+
+    // finish setting up
+    main_thread.block_on(async move {
+        setup().await;
+    });
+
+    let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
+    let (game_event_sender, game_event_receiver) = MultiBomb::new();
+
+    // setup window
+    trace!("creating window");
+    let mut window = GameWindow::start(render_queue_receiver, game_event_sender);
+
+    trace!("window ready");
+    ready2.store(true, SeqCst);
+
+    // enter async runtime
+    let _ = multi_thread.enter();
+    multi_thread.spawn(async move {
+        trace!("waiting for window");
+        while !ready.load(SeqCst) {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        // start the game
+        trace!("creating game");
+        let game = Game::new(render_queue_sender, game_event_receiver);
+        trace!("running game");
+        game.game_loop();
+        trace!("game closed");
+    });
+
+    trace!("window running");
+    window.run();
+    trace!("window closed");
+
+    main_thread.shutdown_timeout(Duration::from_millis(500));
+    multi_thread.shutdown_timeout(Duration::from_millis(500));
+
+    info!("byebye!");
+    // loop {}
+}
+
+async fn setup() {
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
@@ -76,7 +133,7 @@ async fn main() {
     check_folder("resources/audio");
     check_folder("resources/fonts");
 
-    main_benchmark.log("Folder check done, downloading files", true);
+    info!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
@@ -90,12 +147,6 @@ async fn main() {
             check_file(file, &download_url(file)).await;
         }
     }
-
-
-    // init fonts
-    get_font();
-    get_fallback_font();
-    get_font_awesome();
     
     // check if songs folder is empty
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
@@ -108,13 +159,7 @@ async fn main() {
     // check bass lib
     check_bass().await;
 
-    main_benchmark.log("File check done", true);
-    
-    let game = Game::new();
-    main_benchmark.log("Game creation complete", true);
-
-    drop(main_benchmark);
-    game.game_loop();
+    info!("File check done");
 }
 
 

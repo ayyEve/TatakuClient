@@ -79,7 +79,7 @@ impl Renderable for Rectangle {
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
-    fn draw(&mut self, g: &mut GlGraphics, c: Context) {
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
         let mut r = graphics::Rectangle::new(self.current_color.into());
         r.shape = self.shape;
 
@@ -154,5 +154,12 @@ impl Transformable for Rectangle {
     
     fn visible(&self) -> bool {
         self.current_scale.x != 0.0 && self.current_scale.y != 0.0
+    }
+}
+
+
+impl From<ayyeve_piston_ui::prelude::Rectangle> for Rectangle {
+    fn from(r: ayyeve_piston_ui::prelude::Rectangle) -> Self {
+        Self::new(r.color, r.depth, r.pos, r.size, r.border)
     }
 }

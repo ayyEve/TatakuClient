@@ -86,25 +86,25 @@ impl SettingsMenu {
 
         macro_rules! add_item {
             ($text:expr, TextInput, $setting:expr) => {
-                TextInput::new(p, Vector2::new(600.0, 50.0), $text.clone(), convert_settings_value!($setting, String), font.clone())
+                TextInput::<Font2, Text>::new(p, Vector2::new(600.0, 50.0), $text.clone(), convert_settings_value!($setting, String), font.clone())
             };
             ($text:expr, KeyButton, $setting:expr) => {
-                KeyButton::new(p, KEYBUTTON_SIZE, convert_settings_value!($setting, Key), $text.clone(), font.clone())
+                KeyButton::<Font2, Text>::new(p, KEYBUTTON_SIZE, convert_settings_value!($setting, Key), $text.clone(), font.clone())
             };
             ($text:expr, Checkbox, $setting:expr) => {
-                Checkbox::new(p, Vector2::new(200.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, bool), font.clone())
+                Checkbox::<Font2, Text>::new(p, Vector2::new(200.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, bool), font.clone())
             };
             ($text:expr, Slider, $setting:expr) => {
-                Slider::new(p, Vector2::new(400.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, f64), None, None, font.clone())
+                Slider::<Font2, Text>::new(p, Vector2::new(400.0, BUTTON_SIZE.y), $text.clone(), convert_settings_value!($setting, f64), None, None, font.clone())
             };
             ($text:expr, Dropdown, $dropdown_type:tt, $dropdown_value:ident, $setting:expr) => {
-                Dropdown::new(p, 400.0, 20, $text.clone(), Some($dropdown_type::$dropdown_value($setting.clone())), font.clone())
+                Dropdown::<$dropdown_type, Font2, Text>::new(p, 400.0, FontSize::new(20.0).unwrap(), $text.clone(), Some($dropdown_type::$dropdown_value($setting.clone())), font.clone())
             };
             
 
             // menu section
             ($text:expr, MenuSection) => {
-                scroll_area.add_item(Box::new(MenuSection::new(
+                scroll_area.add_item(Box::new(MenuSection::<Font2, Text>::new(
                     p - Vector2::new(SECTION_XOFFSET, 0.0), 
                     SECTION_HEIGHT, 
                     $text, 
@@ -119,7 +119,7 @@ impl SettingsMenu {
                 let tag = make_tag();
 
                 // create and add text item
-                let mut item:Dropdown<$dropdown_type> = add_item!($text, Dropdown, $dropdown_type, $dropdown_value, &settings.$setting);
+                let mut item:Dropdown<$dropdown_type, Font2, Text> = add_item!($text, Dropdown, $dropdown_type, $dropdown_value, &settings.$setting);
                 item.set_tag(tag.as_str());
                 $mod_fn(&mut item);
                 scroll_area.add_item(Box::new(item));
@@ -221,10 +221,10 @@ impl SettingsMenu {
         // gameplay settings
         add_item!("Gameplay Settings", MenuSection);
         add_item!("Pause on focus loss", Checkbox, pause_on_focus_lost, bool, PauseOnFocusLost, |_|{});
-        add_item!("Background Dim", Slider, background_dim, f32, BackgroundDim, |thing:&mut Slider| {
+        add_item!("Background Dim", Slider, background_dim, f32, BackgroundDim, |thing:&mut Slider<Font2, Text>| {
             thing.range = 0.0..1.0;
         });
-        add_item!("Global Offset", Slider, global_offset, f32, GlobalOffset, |thing:&mut Slider| {
+        add_item!("Global Offset", Slider, global_offset, f32, GlobalOffset, |thing:&mut Slider<Font2, Text>| {
             thing.range = -100.0..100.0;
         });
         add_item!("Skin", Dropdown, SkinDropdownable, Skin, current_skin, CurrentSkin, |_|{});
@@ -233,11 +233,11 @@ impl SettingsMenu {
         // cursor
         add_item!("Cursor Settings", MenuSection);
         add_item!("Cursor Color", TextInput, cursor_color, String, CursorColor, |_|{});
-        add_item!("Cursor Scale", Slider, cursor_scale, f64, CursorScale, |thing:&mut Slider| {
+        add_item!("Cursor Scale", Slider, cursor_scale, f64, CursorScale, |thing:&mut Slider<Font2, Text>| {
             thing.range = 0.1..20.0;
         });
         add_item!("Cursor Border Color", TextInput, cursor_border_color, String, CursorBorderColor, |_|{});
-        add_item!("Cursor Border Size", Slider, cursor_border, f32, CursorBorderSize, |thing:&mut Slider| {
+        add_item!("Cursor Border Size", Slider, cursor_border, f32, CursorBorderSize, |thing:&mut Slider<Font2, Text>| {
             thing.range = 0.1..5.0;
         });
 
@@ -251,7 +251,7 @@ impl SettingsMenu {
         add_item!("Display 300s", Checkbox, standard_settings, show_300s, bool, OsuShow300s, |_|{});
         add_item!("Hit Ripples", Checkbox, standard_settings, hit_ripples, bool, OsuHitRipples, |_|{});
         add_item!("Slider Tick Ripples", Checkbox, standard_settings, slider_tick_ripples, bool, OsuSliderTickRipples, |_|{});
-        add_item!("Ripple Scale", Slider, standard_settings, ripple_scale, f64, OsuRippleScale, |slider:&mut Slider| {
+        add_item!("Ripple Scale", Slider, standard_settings, ripple_scale, f64, OsuRippleScale, |slider:&mut Slider<Font2, Text>| {
             slider.range = 0.1..5.0;
         });
         add_item!("Beatmap Combo Colors", Checkbox, standard_settings, use_beatmap_combo_colors, bool, OsuBeatmapComboColors, |_|{});
@@ -266,23 +266,23 @@ impl SettingsMenu {
         add_item!("Ignore Mouse Buttons", Checkbox, taiko_settings, ignore_mouse_buttons, bool, TaikoIgnoreMouseButtons, |_|{});
 
         add_item!("No Sv Changes", Checkbox, taiko_settings, static_sv, bool, TaikoSvChange, |_|{});
-        add_item!("Slider Multiplier", Slider, taiko_settings, sv_multiplier, f32, TaikoSliderMultiplier, |thing:&mut Slider| {
+        add_item!("Slider Multiplier", Slider, taiko_settings, sv_multiplier, f32, TaikoSliderMultiplier, |thing:&mut Slider<Font2, Text>| {
             thing.range = 0.1..2.0;
         });
 
         add_item!("Don Color", TextInput, taiko_settings, don_color_hex, String, TaikoDonColor, |_|{});
         add_item!("Kat Color", TextInput, taiko_settings, kat_color_hex, String, TaikoKatColor, |_|{});
-        add_item!("Note Radius", Slider, taiko_settings, note_radius, f64, TaikoNoteRadius, |slider:&mut Slider| {
+        add_item!("Note Radius", Slider, taiko_settings, note_radius, f64, TaikoNoteRadius, |slider:&mut Slider<Font2, Text>| {
             slider.range = 1.0..100.0;
         });
-        add_item!("Big Note Size Multiplier", Slider, taiko_settings, big_note_multiplier, f64, TaikoBigNoteMultiplier, |slider:&mut Slider| {
+        add_item!("Big Note Size Multiplier", Slider, taiko_settings, big_note_multiplier, f64, TaikoBigNoteMultiplier, |slider:&mut Slider<Font2, Text>| {
             slider.range = 1.0..5.0;
         });
 
-        add_item!("Hit Area Radius Multiplier", Slider, taiko_settings, hit_area_radius_mult, f64, TaikoHitAreaMult, |slider:&mut Slider| {
+        add_item!("Hit Area Radius Multiplier", Slider, taiko_settings, hit_area_radius_mult, f64, TaikoHitAreaMult, |slider:&mut Slider<Font2, Text>| {
             slider.range = 1.0..5.0;
         });
-        add_item!("Playfield Height Padding", Slider, taiko_settings, playfield_height_padding, f64, TaikoPlayfieldHeightPadding, |slider:&mut Slider| {
+        add_item!("Playfield Height Padding", Slider, taiko_settings, playfield_height_padding, f64, TaikoPlayfieldHeightPadding, |slider:&mut Slider<Font2, Text>| {
             slider.range = 0.0..50.0;
         });
 
@@ -290,16 +290,16 @@ impl SettingsMenu {
         // mania settings
         add_item!("Mania Settings", MenuSection);
         add_item!("Judgements Per Column", Checkbox, mania_settings, judgements_per_column, bool, ManiaColumnJudgements, |_|{});
-        add_item!("Judgement Offset", Slider, mania_settings, judgement_indicator_offset, f64, ManiaJudgementOffset, |slider:&mut Slider| {
+        add_item!("Judgement Offset", Slider, mania_settings, judgement_indicator_offset, f64, ManiaJudgementOffset, |slider:&mut Slider<Font2, Text>| {
             slider.range = 0.0..500.0;
         });
-        add_item!("SV Change Delta", Slider, mania_settings, sv_change_delta, f32, ManiaSvDelta, |slider:&mut Slider| {
+        add_item!("SV Change Delta", Slider, mania_settings, sv_change_delta, f32, ManiaSvDelta, |slider:&mut Slider<Font2, Text>| {
             slider.range = 0.1..10.0;
         });
 
 
         // done button
-        let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done", font.clone());
+        let mut done_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Done", font.clone());
         done_button.set_tag("done");
         //TODO: make this not part of the scrollable?!?!
         scroll_area.add_item(Box::new(done_button));
