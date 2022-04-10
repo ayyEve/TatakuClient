@@ -106,7 +106,7 @@ impl InnerUIElement for KeyCounterElement {
                 -100.1,
                 pos,
                 (20.0 * scale.x) as u32,
-                if info.count == 0 {info.label.clone()} else {format!("{}", info.count + 1000)},
+                if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
                 font.clone()
             );
             
