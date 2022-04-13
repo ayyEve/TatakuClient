@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait Controller {
+pub trait Controller: Send+Sync {
     fn get_id(&self) -> u32;
     fn get_name(&self) -> Arc<String>;
 

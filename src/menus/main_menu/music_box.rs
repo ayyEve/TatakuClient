@@ -116,40 +116,48 @@ impl MusicBox {
     }
 
 
-    fn pause_or_resume(&self) {
-        #[cfg(feature = "bass_audio")] {
-            if let Some(s) = Audio::get_song() {
-                if let Ok(state) = s.get_playback_state() {
-                    match state {
-                        PlaybackState::Stopped | PlaybackState::Stalled => if let Err(_) = s.play(true) {
-                            self.next()
-                        },
-                        PlaybackState::Playing => s.pause().expect("unable to pause?"),
-                        PlaybackState::Paused | PlaybackState::PausedDevice => s.play(false).expect("unable to play?"),
+    fn pause_or_resume() {
+        tokio::spawn(async {
+            #[cfg(feature = "bass_audio")] {
+                if let Some(s) = Audio::get_song().await {
+                    if let Ok(state) = s.get_playback_state() {
+                        match state {
+                            PlaybackState::Stopped | PlaybackState::Stalled => if let Err(_) = s.play(true) {
+                                // self.next()
+                            },
+                            PlaybackState::Playing => s.pause().expect("unable to pause?"),
+                            PlaybackState::Paused | PlaybackState::PausedDevice => s.play(false).expect("unable to play?"),
+                        }
                     }
                 }
             }
-        }
+        });
     }
-    fn stop(&self) {
-        #[cfg(feature = "bass_audio")]
-        if let Some(s) = Audio::get_song() {
-            let _ = s.stop();
-        }
+    fn stop() {
+        tokio::spawn(async {
+            #[cfg(feature = "bass_audio")]
+            if let Some(s) = Audio::get_song().await {
+                let _ = s.stop();
+            }
+        });
     }
-    fn skip_ahead(&self) {
-        #[cfg(feature = "bass_audio")]
-        if let Some(s) = Audio::get_song() {
-            let current_pos = s.get_position().unwrap_or_default();
-            let _ = s.set_position(current_pos + SKIP_AMOUNT);
-        }
+    fn skip_ahead() {
+        tokio::spawn(async {
+            #[cfg(feature = "bass_audio")]
+            if let Some(s) = Audio::get_song().await {
+                let current_pos = s.get_position().unwrap_or_default();
+                let _ = s.set_position(current_pos + SKIP_AMOUNT);
+            }
+        });
     }
-    fn skip_behind(&self) {
-        #[cfg(feature = "bass_audio")]
-        if let Some(s) = Audio::get_song() {
-            let current_pos = s.get_position().unwrap_or_default();
-            let _ = s.set_position((current_pos - SKIP_AMOUNT).max(0.0));
-        }
+    fn skip_behind() {
+        tokio::spawn(async {
+            #[cfg(feature = "bass_audio")]
+            if let Some(s) = Audio::get_song().await {
+                let current_pos = s.get_position().unwrap_or_default();
+                let _ = s.set_position((current_pos - SKIP_AMOUNT).max(0.0));
+            }
+        });
     }
     fn next(&self) {
         self.next_pending.store(true, SeqCst);
@@ -177,15 +185,15 @@ impl ScrollableItem for MusicBox {
             if rect.contains(pos) {
                 match self.actions.get(i) {
                     Some(&FontAwesome::Play)
-                    | Some(&FontAwesome::Circle_Play) => self.pause_or_resume(),
+                    | Some(&FontAwesome::Circle_Play) => Self::pause_or_resume(),
                     
                     Some(&FontAwesome::Stop)
-                    | Some(&FontAwesome::Circle_Stop) => self.stop(),
+                    | Some(&FontAwesome::Circle_Stop) => Self::stop(),
 
                     Some(&FontAwesome::Backward) => self.previous(),
                     Some(&FontAwesome::Forward) => self.next(),
-                    Some(&FontAwesome::Backward_Step) => self.skip_behind(),
-                    Some(&FontAwesome::Forward_Step) => self.skip_ahead(),
+                    Some(&FontAwesome::Backward_Step) => Self::skip_behind(),
+                    Some(&FontAwesome::Forward_Step) =>  Self::skip_ahead(),
 
                     _ => warn!("unknown action"),
                 }

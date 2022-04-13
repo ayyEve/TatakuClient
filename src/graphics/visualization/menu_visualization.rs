@@ -25,14 +25,14 @@ pub struct MenuVisualization {
     current_timing_point: TimingPoint,
 }
 impl MenuVisualization {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let initial_inner_radius = visualization_initial_radius();
         Self {
             rotation: 0.0,
             data: Vec::new(),
             timer: Instant::now(),
             //TODO!: skins
-            cookie: Image::from_path("./resources/icon.png", Vector2::zero(), 0.0, Vector2::one() * initial_inner_radius).unwrap(),
+            cookie: Image::from_path("./resources/icon.png", Vector2::zero(), 0.0, Vector2::one() * initial_inner_radius).await.unwrap(),
 
             bar_height: 1.0,
             initial_inner_radius,
@@ -81,7 +81,7 @@ impl MenuVisualization {
         }
     }
 
-    pub fn update(&mut self, manager: &mut Option<IngameManager>) {
+    pub async fn update(&mut self, manager: &mut Option<IngameManager>) {
         // update ripples
         if let Some(manager) = manager {
             let time = manager.time();
@@ -94,7 +94,7 @@ impl MenuVisualization {
             }
             
             self.check_ripple(time);
-        } else if let Some(song) = Audio::get_song() {
+        } else if let Some(song) = Audio::get_song().await {
             #[cfg(feature="bass_audio")]
             if let Ok(pos) = song.get_position() {
                 self.check_ripple(pos as f32)
@@ -115,14 +115,15 @@ impl MenuVisualization {
     }
 }
 
+#[async_trait]
 impl Visualization for MenuVisualization {
     fn lerp_factor(&self) -> f32 {10.0} // 15
     fn data(&mut self) -> &mut Vec<FFTEntry> {&mut self.data}
     fn timer(&mut self) -> &mut Instant {&mut self.timer}
 
-    fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let since_last = self.timer.elapsed().as_secs_f64();
-        self.update_data();
+        self.update_data().await;
 
         let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
         let max = self.initial_inner_radius * VISUALIZATION_SIZE_FACTOR;

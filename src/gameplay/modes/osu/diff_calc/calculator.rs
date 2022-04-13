@@ -109,11 +109,11 @@ impl OsuDifficultyCalculator {
         Ok(note_density)
     }
 }
-
+#[async_trait]
 impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
-    fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
+    async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
-        let g = StandardGame::new(&g, true)?;
+        let g = StandardGame::new(&g, true).await?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
 
         let mut notes = Vec::new();
@@ -134,7 +134,7 @@ impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
         let aim = self.calc_aim(mods)?;
         let note_density = self.calc_density(mods)?;
 

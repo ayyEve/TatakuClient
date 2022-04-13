@@ -188,20 +188,20 @@ impl OnlineManager {
                     match status {
                         LoginStatus::UnknownError => {
                             trace!("Unknown Error");
-                            NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED);
+                            NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED).await;
                         },
                         LoginStatus::BadPassword => {
                             trace!("Auth failed");
-                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
+                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
                         },
                         LoginStatus::NoUser => {
                             trace!("User not found");
-                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED);
+                            NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
                         },
                         LoginStatus::Ok => {
                             trace!("Success, got user_id: {}", user_id);
                             s.write().await.user_id = user_id;
-                            NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN);
+                            NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN).await;
 
                             ping_handler()
                         },
@@ -216,7 +216,7 @@ impl OnlineManager {
                         Severity::Error => (Color::RED, 7000.0),
                     };
 
-                    NotificationManager::add_text_notification(&message, duration, color);
+                    NotificationManager::add_text_notification(&message, duration, color).await;
                 }
                 // server error
                 PacketId::Server_Error { code, error } => {
@@ -299,7 +299,7 @@ impl OnlineManager {
                 // spec join/leave
                 PacketId::Server_SpectatorJoined { user_id, username }=> {
                     s.write().await.spectator_list.push((user_id, username.clone()));
-                    NotificationManager::add_text_notification(&format!("{} is now spectating", username), 2000.0, Color::GREEN);
+                    NotificationManager::add_text_notification(&format!("{} is now spectating", username), 2000.0, Color::GREEN).await;
                 }
                 PacketId::Server_SpectatorLeft { user_id } => {
                     let user = if let Some(u) = s.write().await.find_user_by_id(user_id) {
@@ -309,16 +309,16 @@ impl OnlineManager {
                     };
                     s.write().await.spectator_list.remove_item((user_id, user.clone()));
                     
-                    NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN);
+                    NotificationManager::add_text_notification(&format!("{} stopped spectating", user), 2000.0, Color::GREEN).await;
                 }
                 PacketId::Server_SpectateResult {result, host_id} => {
                     trace!("Got spec result {:?}", result);
                     match result {
                         SpectateResult::Ok => s.write().await.spectate_pending = host_id,
-                        SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED),
-                        SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED),
-                        SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED),
-                        SpectateResult::Error_Unknown => NotificationManager::add_text_notification("Unknown error trying to spectate!", 3000.0, Color::RED),
+                        SpectateResult::Error_SpectatingBot => NotificationManager::add_text_notification("You cannot spectate a bot!", 3000.0, Color::RED).await,
+                        SpectateResult::Error_HostOffline => NotificationManager::add_text_notification("Spectate host is offline!", 3000.0, Color::RED).await,
+                        SpectateResult::Error_SpectatingYourself => NotificationManager::add_text_notification("You cannot spectate yourself!", 3000.0, Color::RED).await,
+                        SpectateResult::Error_Unknown => NotificationManager::add_text_notification("Unknown error trying to spectate!", 3000.0, Color::RED).await,
                     }
                 }
 
@@ -361,7 +361,7 @@ impl OnlineManager {
 
 
     // do things which require a reference to game
-    pub fn do_game_things(&mut self, game: &mut Game) { 
+    pub async fn do_game_things(&mut self, game: &mut Game) { 
         if self.spectate_pending > 0 {
             trace!("Speccing {}", self.spectate_pending);
             self.buffered_spectator_frames.clear();
@@ -398,7 +398,7 @@ impl OnlineManager {
 
 
                 GameState::InMenu(menu) => {
-                    match &*menu.lock().get_name() {
+                    match &*menu.lock().await.get_name() {
                         // if in a pause menu, dont clear the list, the user could enter the game again
                         // so we want to wait until they decide if they want to play or quit
                         "pause" => {}

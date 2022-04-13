@@ -26,8 +26,8 @@ impl ModManager {
         }
     }
     
-    pub fn get<'a>() -> MutexGuard<'a, Self> {
-        MOD_MANAGER.lock()
+    pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Self> {
+        MOD_MANAGER.lock().await
     }
 }
 

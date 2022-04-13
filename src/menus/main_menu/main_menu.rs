@@ -25,7 +25,7 @@ pub struct MainMenu {
     music_box: MusicBox,
 }
 impl MainMenu {
-    pub fn new() -> MainMenu {
+    pub async fn new() -> MainMenu {
         let middle = Settings::window_size().x /2.0 - BUTTON_SIZE.x/2.0;
         let mut counter = 1.0;
         
@@ -42,13 +42,15 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
+        let visualization = MenuVisualization::new().await;
+
         MainMenu {
             play_button,
             direct_button,
             settings_button,
             exit_button,
 
-            visualization: MenuVisualization::new(),
+            visualization,
             background_game: None,
             selected_index: 99,
             menu_visible: false,
@@ -56,26 +58,26 @@ impl MainMenu {
         }
     }
 
-    fn setup_manager(&mut self, called_by: &str) {
+    async fn setup_manager(&mut self, called_by: &str) {
         trace!("setup manager called by {}", called_by);
 
-        let settings = &get_settings!().background_game_settings;
+        let settings = get_settings!().background_game_settings.clone();
         if !settings.enabled {return}
 
-        let lock = BEATMAP_MANAGER.read();
+        let lock = BEATMAP_MANAGER.read().await;
         let map = match &lock.current_beatmap {
             Some(map) => map,
             None => return trace!("manager no map")
         };
 
-        match manager_from_playmode(settings.mode.clone(), &map) {
+        match manager_from_playmode(settings.mode.clone(), &map).await {
             Ok(mut manager) => {
                 manager.current_mods = Arc::new(ModManager {
                     autoplay: true,
                     ..Default::default()
                 });
                 manager.menu_background = true;
-                manager.start();
+                manager.start().await;
                 trace!("manager started");
 
                 self.background_game = Some(manager);
@@ -83,7 +85,7 @@ impl MainMenu {
             },
             Err(e) => {
                 self.visualization.song_changed(&mut None);
-                NotificationManager::add_error_notification("Error loading beatmap", e);
+                NotificationManager::add_error_notification("Error loading beatmap", e).await;
             }
         }
         trace!("manager setup");
@@ -113,20 +115,20 @@ impl MainMenu {
         }
     }
 
-    fn next(&mut self, game: &mut Game) -> bool {
-        let mut manager = BEATMAP_MANAGER.write();
+    async fn next(&mut self, game: &mut Game) -> bool {
+        let mut manager = BEATMAP_MANAGER.write().await;
 
-        if manager.next_beatmap(game) {
+        if manager.next_beatmap(game).await {
             true
         } else {
             trace!("no next");
             false
         }
     }
-    fn previous(&mut self, game: &mut Game) -> bool {
-        let mut manager = BEATMAP_MANAGER.write();
+    async fn previous(&mut self, game: &mut Game) -> bool {
+        let mut manager = BEATMAP_MANAGER.write().await;
 
-        if manager.previous_beatmap(game) {
+        if manager.previous_beatmap(game).await {
             true
         } else {
             trace!("no prev");
@@ -134,15 +136,16 @@ impl MainMenu {
         }
     }
 }
-impl Menu<Game> for MainMenu {
+#[async_trait]
+impl AsyncMenu<Game> for MainMenu {
     fn get_name(&self) -> &str {"main_menu"}
 
-    fn on_change(&mut self, into:bool) {
+    async fn on_change(&mut self, into:bool) {
         if into {
             self.visualization.reset();
 
             // play song if it exists
-            if let Some(song) = Audio::get_song() {
+            if let Some(song) = Audio::get_song().await {
                 // reset any time mods
 
                 #[cfg(feature="bass_audio")]
@@ -153,7 +156,7 @@ impl Menu<Game> for MainMenu {
                 // song.play(true).unwrap();
             }
 
-            self.setup_manager("on_change");
+            self.setup_manager("on_change").await;
         } else {
             debug!("leaving main menu");
             
@@ -163,7 +166,7 @@ impl Menu<Game> for MainMenu {
         }
     }
 
-    fn update(&mut self, g:&mut Game) {
+    async fn update(&mut self, g:&mut Game) {
         let mut song_done = false;
 
         // run updates on the interactables
@@ -172,7 +175,7 @@ impl Menu<Game> for MainMenu {
         }
 
         #[cfg(feature = "bass_audio")]
-        match Audio::get_song() {
+        match Audio::get_song().await {
             Some(song) => {
                 match song.get_playback_state() {
                     Ok(PlaybackState::Playing) | Ok(PlaybackState::Paused) => {},
@@ -188,25 +191,25 @@ impl Menu<Game> for MainMenu {
 
         if song_done {
             trace!("song done");
-            let map = BEATMAP_MANAGER.read().random_beatmap();
+            let map = BEATMAP_MANAGER.read().await.random_beatmap();
 
             // it should?
             if let Some(map) = map {
-                BEATMAP_MANAGER.write().set_current_beatmap(g, &map, false, false);
-                self.setup_manager("update song done");
+                BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false, false).await;
+                self.setup_manager("update song done").await;
             }
         }
 
-        let maps = BEATMAP_MANAGER.write().get_new_maps();
+        let maps = BEATMAP_MANAGER.write().await.get_new_maps();
         if maps.len() > 0 {
-            BEATMAP_MANAGER.write().set_current_beatmap(g, &maps[maps.len() - 1], true, false);
-            self.setup_manager("update new map");
+            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &maps[maps.len() - 1], true, false).await;
+            self.setup_manager("update new map").await;
         }
 
-        self.visualization.update(&mut self.background_game);
+        self.visualization.update(&mut self.background_game).await;
 
         if let Some(manager) = &mut self.background_game {
-            manager.update();
+            manager.update().await;
 
             if manager.completed {
                 manager.on_complete();
@@ -215,7 +218,7 @@ impl Menu<Game> for MainMenu {
         }
     }
 
-    fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let pos_offset = Vector2::zero();
         let depth = 0.0;
@@ -247,10 +250,10 @@ impl Menu<Game> for MainMenu {
 
         // visualization
         let mid = window_size / 2.0;
-        self.visualization.draw(args, mid, depth + 10.0, &mut list);
+        self.visualization.draw(args, mid, depth + 10.0, &mut list).await;
 
         if let Some(manager) = self.background_game.as_mut() {
-            manager.draw(args, &mut list);
+            manager.draw(args, &mut list).await;
         }
         
         // draw dim
@@ -265,7 +268,7 @@ impl Menu<Game> for MainMenu {
         list
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.visualization.on_click(pos) {
             self.show_menu();
         }
@@ -280,14 +283,14 @@ impl Menu<Game> for MainMenu {
         // open direct menu
         if self.direct_button.on_click(pos, button, mods) {
             let mode = get_settings!().background_game_settings.mode.clone();
-            let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
+            let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new(DirectMenu::new(mode).await));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
 
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
-            let menu = Arc::new(Mutex::new(SettingsMenu::new()));
+            let menu = Arc::new(tokio::sync::Mutex::new(SettingsMenu::new().await));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
@@ -306,40 +309,40 @@ impl Menu<Game> for MainMenu {
         }
 
         if self.music_box.get_next_pending() {
-            self.next(game);
-            self.setup_manager("on_click next_pending")
+            self.next(game).await;
+            self.setup_manager("on_click next_pending").await
         }
         if self.music_box.get_prev_pending() {
-            self.previous(game);
-            self.setup_manager("on_click prev_pending")
+            self.previous(game).await;
+            self.setup_manager("on_click prev_pending").await
         }
 
     }
 
-    fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
         for i in self.interactables(true) {
             i.on_mouse_move(pos)
         }
     }
 
-    fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
 
         let mut needs_manager_setup = false;
 
         if mods.ctrl && key == Key::N {
-            NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE);
+            NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
         }
 
         // check offset keys
         if let Some(manager) = self.background_game.as_mut() {
-            manager.key_down(key, mods);
+            manager.key_down(key, mods).await;
         }
 
         if !mods.alt {
             match key {
-                Left => needs_manager_setup |= self.previous(game),
-                Right => needs_manager_setup |= self.next(game),
+                Left => needs_manager_setup |= self.previous(game).await,
+                Right => needs_manager_setup |= self.next(game).await,
                 _ => {}
             }
         }
@@ -356,7 +359,7 @@ impl Menu<Game> for MainMenu {
             if let Some(new_mode) = new_mode {
                 let mut settings = get_settings_mut!();
                 if settings.background_game_settings.mode != new_mode {
-                    NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE);
+                    NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE).await;
                     needs_manager_setup = true;
                     settings.background_game_settings.mode = new_mode;
                 }
@@ -364,13 +367,14 @@ impl Menu<Game> for MainMenu {
         }
 
         if needs_manager_setup {
-            self.setup_manager("key press");
+            self.setup_manager("key press").await;
         }
 
     }
 }
+#[async_trait]
 impl ControllerInputMenu<Game> for MainMenu {
-    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
         if !self.menu_visible {
             if let Some(ControllerButton::A) = controller.map_button(button) {
                 self.show_menu();
@@ -416,11 +420,11 @@ impl ControllerInputMenu<Game> for MainMenu {
                 },
                 1 => {
                     let mode = get_settings!().background_game_settings.mode.clone();
-                    let menu:Arc<Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode)));
+                    let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new(DirectMenu::new(mode).await));
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 2 => {
-                    let menu = Arc::new(Mutex::new(SettingsMenu::new()));
+                    let menu = Arc::new(tokio::sync::Mutex::new(SettingsMenu::new().await));
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 3 => game.queue_state_change(GameState::Closing),

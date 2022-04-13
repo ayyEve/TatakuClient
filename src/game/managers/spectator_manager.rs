@@ -38,7 +38,7 @@ impl SpectatorManager {
         }
     }
 
-    pub fn update(&mut self, game: &mut Game) {
+    pub async fn update(&mut self, game: &mut Game) {
         // (try to) read pending data from the online manager
         match ONLINE_MANAGER.try_write() {
             Ok(mut online_manager) => self.frames.extend(online_manager.get_pending_spec_frames()),
@@ -58,7 +58,7 @@ impl SpectatorManager {
             trace!("Packet: {:?}", frame);
             match frame {
                 SpectatorFrameData::Play { beatmap_hash, mode, mods } => {
-                    self.start_game(game, beatmap_hash, mode, mods, 0.0)
+                    self.start_game(game, beatmap_hash, mode, mods, 0.0).await
                 }
 
                 SpectatorFrameData::Pause => {
@@ -72,12 +72,12 @@ impl SpectatorManager {
                     trace!("Unpause");
                     self.state = SpectatorState::Watching;
                     if let Some(manager) = self.game_manager.as_mut() {
-                        manager.start();
+                        manager.start().await;
                     }
                 }
                 SpectatorFrameData::Buffer => {/*nothing to handle here*/},
                 SpectatorFrameData::SpectatingOther { .. } => {
-                    NotificationManager::add_text_notification("Host speccing someone", 2000.0, Color::BLUE);
+                    NotificationManager::add_text_notification("Host speccing someone", 2000.0, Color::BLUE).await;
                 }
                 SpectatorFrameData::ReplayFrame { frame } => {
                     if let Some(manager) = self.game_manager.as_mut() {
@@ -116,7 +116,7 @@ impl SpectatorManager {
                     }
 
                     if user_id == self_id {
-                        self.start_game(game, beatmap_hash, mode, mods, current_time)
+                        self.start_game(game, beatmap_hash, mode, mods, current_time).await
                     }
                 }
                 SpectatorFrameData::Unknown => {
@@ -130,7 +130,7 @@ impl SpectatorManager {
             SpectatorState::None => {
                 // in this case, the user should really be allowed to browse menus etc in the mean time. we might have to meme this
                 if let Some(menu) = self.score_menu.as_mut() {
-                    menu.update(game);
+                    menu.update(game).await;
 
                     if menu.should_close {
                         self.score_menu = None;
@@ -145,7 +145,7 @@ impl SpectatorManager {
                     if self.good_until >= buffer_duration {
                         self.state = SpectatorState::Watching;
                         trace!("No longer buffering");
-                        manager.start();
+                        manager.start().await;
                     } else {
                         // trace!("Buffering");
                     }
@@ -154,7 +154,7 @@ impl SpectatorManager {
             SpectatorState::Watching => {
                 // currently watching someone
                 if let Some(manager) = self.game_manager.as_mut() {
-                    manager.update();
+                    manager.update().await;
 
                     let manager_time = manager.time();
                     self.buffered_score_frames.retain(|(time, score)| {
@@ -194,7 +194,7 @@ impl SpectatorManager {
         }
     }
 
-    fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods:String, current_time:f32) {
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods:String, current_time:f32) {
         self.good_until = 0.0;
         self.map_length = 0.0;
         self.buffered_score_frames.clear();
@@ -203,11 +203,11 @@ impl SpectatorManager {
 
         let mods:ModManager = serde_json::from_str(&mods).unwrap();
         // find the map
-        let mut beatmap_manager = BEATMAP_MANAGER.write();
+        let mut beatmap_manager = BEATMAP_MANAGER.write().await;
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
-                beatmap_manager.set_current_beatmap(game, &map, false, false);
-                match manager_from_playmode(mode, &map) {
+                beatmap_manager.set_current_beatmap(game, &map, false, false).await;
+                match manager_from_playmode(mode, &map).await {
                     Ok(manager) => {
                         // remove score menu
                         self.score_menu = None;
@@ -216,34 +216,34 @@ impl SpectatorManager {
 
                         // need a mutable reference
                         let m = self.game_manager.as_mut().unwrap();
-                        m.apply_mods(mods);
+                        m.apply_mods(mods).await;
                         m.replaying = true;
                         m.on_start = Box::new(move |manager| {
                             trace!("Jumping to time {}", current_time);
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                         });
-                        m.start();
+                        m.start().await;
 
                         self.map_length = m.end_time;
                         self.state = SpectatorState::Watching;
                     }
-                    Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e)
+                    Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
                 }
             }
             
             // user doesnt have beatmap
-            None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED)
+            None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED).await
         }
     }
 
-    pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.draw(args, list)
+            manager.draw(args, list).await
         }
 
         // draw score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            list.extend(menu.draw(args))
+            list.extend(menu.draw(args).await)
         }
         
         // draw spectator banner
@@ -260,43 +260,43 @@ impl SpectatorManager {
         }
     }
 
-    pub fn mouse_scroll(&mut self, delta: f64, game:&mut Game) {
+    pub async fn mouse_scroll(&mut self, delta: f64, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.mouse_scroll(delta)
+            manager.mouse_scroll(delta).await
         }
         
         // update score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.on_scroll(delta, game)
+            menu.on_scroll(delta, game).await
         }
     }
-    pub fn mouse_move(&mut self, pos:Vector2, game:&mut Game) {
+    pub async fn mouse_move(&mut self, pos:Vector2, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.mouse_move(pos)
+            manager.mouse_move(pos).await
         }
         
         // update score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.on_mouse_move(pos, game)
+            menu.on_mouse_move(pos, game).await
         }
     }
-    pub fn mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    pub async fn mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.mouse_down(button);
+            manager.mouse_down(button).await;
         }
 
         // update score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.on_click(pos, button, mods, game)
+            menu.on_click(pos, button, mods, game).await
         }
     }
-    pub fn mouse_up(&mut self, _pos:Vector2, button:MouseButton, _mods:KeyModifiers, _game:&mut Game) {
+    pub async fn mouse_up(&mut self, _pos:Vector2, button:MouseButton, _mods:KeyModifiers, _game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.mouse_up(button)
+            manager.mouse_up(button).await
         }
     }
 
-    pub fn key_down(&mut self, key:piston::Key, mods:KeyModifiers, game:&mut Game) {
+    pub async fn key_down(&mut self, key:piston::Key, mods:KeyModifiers, game:&mut Game) {
         // check if we need to close something
         if key == piston::Key::Escape {
             // if the score menu is open, close it and leave.
@@ -310,7 +310,7 @@ impl SpectatorManager {
             // resume song if paused
 
             #[cfg(feature="bass_audio")]
-            if let Some(song) = Audio::get_song() {
+            if let Some(song) = Audio::get_song().await {
                 if song.get_playback_state() == Ok(PlaybackState::Paused) {
                     let _ = song.play(false);
                 }
@@ -320,22 +320,22 @@ impl SpectatorManager {
 
         // update score menu
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.key_down(key, mods)
+            manager.key_down(key, mods).await
         }
 
         // update score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.on_key_press(key, game, mods);
+            menu.on_key_press(key, game, mods).await;
         }
     }
-    pub fn key_up(&mut self, key:piston::Key, _mods:KeyModifiers, game:&mut Game) {
+    pub async fn key_up(&mut self, key:piston::Key, _mods:KeyModifiers, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.key_up(key)
+            manager.key_up(key).await
         }
 
         // update score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.on_key_release(key, game);
+            menu.on_key_release(key, game).await;
         }
     }
 }

@@ -113,3 +113,23 @@ impl UnwrapNormal for f64 {
         if self.is_normal() {self} else {other}
     }
 }
+
+
+
+#[macro_export]
+macro_rules! async_retain {
+    ($list:ident, $item:ident, $check_fn:expr) => {{
+
+        let mut to_remove = Vec::new();
+        for (n, $item) in $list.iter().enumerate() {
+            if !$check_fn {
+                to_remove.push(n)
+            }
+        }
+
+        for i in to_remove.into_iter().rev() {
+            $list.remove(i);
+        }
+
+    }}
+}

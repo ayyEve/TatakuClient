@@ -37,7 +37,7 @@ pub struct Audio {
     // pub sample_rate: u32,
 }
 impl Audio {
-    pub fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TatakuResult<StreamChannel> {
+    pub async fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TatakuResult<StreamChannel> {
         trace!("play_song - playing {}", path.as_ref());
         // check if we're already playing, if restarting is allowed
         let string_path = path.as_ref().to_owned();
@@ -50,7 +50,7 @@ impl Audio {
             }
         }
 
-        if let Some((c_path, audio)) = CURRENT_SONG.lock().clone() {
+        if let Some((c_path, audio)) = CURRENT_SONG.lock().await.clone() {
             if c_path != string_path {
                 trace!("play_song - pre-stopping old song");
                 audio.stop().unwrap();
@@ -72,7 +72,7 @@ impl Audio {
         //     return Err(AudioError::DifferentSong.into())
         // }
 
-        match CURRENT_SONG.lock().clone() {
+        match CURRENT_SONG.lock().await.clone() {
             Some((c_path, audio)) => { // audio set
                 if string_path == c_path { // same file as what we want to play
                     if restart {
@@ -92,7 +92,7 @@ impl Audio {
         let sound = Audio::load_song(path.as_ref())?;
 
         // double check the song is stopped when we get here
-        if let Some((_, song)) = CURRENT_SONG.lock().clone() {
+        if let Some((_, song)) = CURRENT_SONG.lock().await.clone() {
             if let Ok(PlaybackState::Playing) = song.get_playback_state() {
                 trace!("double stopping song: {}", Arc::strong_count(&song.channel.handle));
                 song.stop().unwrap();
@@ -105,38 +105,38 @@ impl Audio {
         }
         sound.set_volume(get_settings!().get_music_vol()).unwrap();
 
-        *CURRENT_SONG.lock() = Some((string_path, sound.clone()));
+        *CURRENT_SONG.lock().await = Some((string_path, sound.clone()));
         Ok(sound)
     }
     
-    pub fn play_song_raw(key: impl AsRef<str>, bytes: Vec<u8>) -> TatakuResult<StreamChannel> {
+    pub async fn play_song_raw(key: impl AsRef<str>, bytes: Vec<u8>) -> TatakuResult<StreamChannel> {
         // stop current
-        Audio::stop_song();
+        Audio::stop_song().await;
 
-        let sound = Self::load_song_raw(bytes)?;
+        let sound = Audio::load_song_raw(bytes)?;
         sound.play(true).unwrap();
         sound.set_volume(get_settings!().get_music_vol()).unwrap();
         
-        *CURRENT_SONG.lock() = Some((key.as_ref().to_owned(), sound.clone()));
+        *CURRENT_SONG.lock().await = Some((key.as_ref().to_owned(), sound.clone()));
         Ok(sound)
     }
     
-    pub fn stop_song() {
+    pub async fn stop_song() {
         trace!("stopping song");
-        if let Some(audio) = Audio::get_song() {
+        if let Some(audio) = Audio::get_song().await {
             audio.stop().unwrap();
         }
 
-        *CURRENT_SONG.lock() = None;
+        *CURRENT_SONG.lock().await = None;
     }
-    pub fn get_song() -> Option<StreamChannel> {
-        if let Some((_, audio)) = CURRENT_SONG.lock().clone() {
+    pub async fn get_song() -> Option<StreamChannel> {
+        if let Some((_, audio)) = CURRENT_SONG.lock().await.clone() {
             return Some(audio)
         }
         None
     }
-    pub fn get_song_raw() -> Option<(String, StreamChannel)> {
-        CURRENT_SONG.lock().clone()
+    pub async fn get_song_raw() -> Option<(String, StreamChannel)> {
+        CURRENT_SONG.lock().await.clone()
     }
 
 
@@ -154,7 +154,7 @@ impl Audio {
     }
 
 
-    pub fn play_preloaded(name: impl AsRef<str>) -> TatakuResult<Channel> {
+    pub async fn play_preloaded(name: impl AsRef<str>) -> TatakuResult<Channel> {
         match PRELOADED_SOUNDS.get(name.as_ref()).clone() {
             Some(sample) => {
                 let channel = sample.clone().get_channel()?;

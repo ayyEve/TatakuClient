@@ -84,27 +84,29 @@ impl ScoreMenu {
         game.queue_state_change(GameState::InMenu(menu));
     }
 
-    fn replay(&mut self, game: &mut Game) {
+    async fn replay(&mut self, game: &mut Game) {
         match databases::get_local_replay_for_score(&self.score) {
             Ok(replay) => {
                 // game.menus.get("beatmap").unwrap().lock().on_change(false);
                 // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
-                match manager_from_playmode(self.score.playmode.clone(), &self.beatmap) {
+                match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
                     Ok(mut manager) => {
                         manager.replaying = true;
                         manager.replay = replay.clone();
                         manager.replay.speed = self.score.speed;
                         game.queue_state_change(GameState::Ingame(manager));
                     },
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
+                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
                 }
             },
-            Err(e) => NotificationManager::add_error_notification("Error loading replay", e),
+            Err(e) => NotificationManager::add_error_notification("Error loading replay", e).await,
         }
     }
 }
-impl Menu<Game> for ScoreMenu {
-    fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+
+#[async_trait]
+impl AsyncMenu<Game> for ScoreMenu {
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let font = get_font();
 
@@ -191,10 +193,10 @@ impl Menu<Game> for ScoreMenu {
         list
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.replay_button.on_click(pos, button, mods) {
             // self.beatmap.lock().reset();
-            self.replay(game);
+            self.replay(game).await;
             return;
         }
 
@@ -203,21 +205,21 @@ impl Menu<Game> for ScoreMenu {
         }
     }
 
-    fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
         self.replay_button.on_mouse_move(pos);
         self.back_button.on_mouse_move(pos);
         self.graph.on_mouse_move(pos);
     }
 
-    fn on_key_press(&mut self, key:piston::Key, game: &mut Game, _mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:piston::Key, game: &mut Game, _mods:KeyModifiers) {
         if key == piston::Key::Escape {
             self.close(game)
         }
     }
 }
-
+#[async_trait]
 impl ControllerInputMenu<Game> for ScoreMenu {
-    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
 
         let mut changed = false;
         if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
@@ -250,7 +252,7 @@ impl ControllerInputMenu<Game> for ScoreMenu {
             match self.selected_index {
                 0 => {
                     // replay
-                    self.replay(game);
+                    self.replay(game).await;
                 },
                 1 => {
                     // back

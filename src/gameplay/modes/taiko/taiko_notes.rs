@@ -20,7 +20,7 @@ fn get_depth(time: f32) -> f64 {
 }
 
 
-pub trait TaikoHitObject: HitObject {
+pub trait TaikoHitObject: HitObject + Send + Sync {
     fn is_kat(&self) -> bool {false}// needed for diff calc and autoplay
 
     fn get_sv(&self) -> f32;
@@ -69,7 +69,7 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>
 }
 impl TaikoNote {
-    pub fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
@@ -89,7 +89,7 @@ impl TaikoNote {
             hit: false,
             missed: false,
             pos: Vector2::zero(),
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth, hit_type, finisher)},
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth, hit_type, finisher).await},
             settings,
             bounce_factor
         }
@@ -102,11 +102,13 @@ impl TaikoNote {
         }
     }
 }
+
+#[async_trait]
 impl HitObject for TaikoNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         let delta_time = beatmap_time - self.hit_time;
         let y = 
             if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
@@ -119,11 +121,12 @@ impl HitObject for TaikoNote {
             image.set_pos(self.pos)
         }
     }
-    fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return list}
 
         if let Some(image) = &mut self.image {
-            image.draw(list);
+            image.draw(&mut list);
         } else {
             list.push(Box::new(Circle::new(
                 self.get_color(),
@@ -133,9 +136,11 @@ impl HitObject for TaikoNote {
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             )));
         }
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.pos = Vector2::zero();
         self.hit = false;
         self.missed = false;
@@ -212,11 +217,11 @@ pub struct TaikoSlider {
     end_image: Option<Image>,
 }
 impl TaikoSlider {
-    pub fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
         let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
         let depth = get_depth(time);
 
-        let mut middle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-middle", true)};
+        let mut middle_image = if diff_calc_only {None} else {SkinManager::get_texture("taiko-roll-middle", true).await};
         if let Some(image) = &mut middle_image {
             image.depth = depth;
             image.origin.x = 0.0;
@@ -228,7 +233,7 @@ impl TaikoSlider {
             image.current_scale = scale;
         }
 
-        let mut end_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("taiko-roll-end", true)};
+        let mut end_image = if diff_calc_only {None} else {SkinManager::get_texture("taiko-roll-end", true).await};
         if let Some(image) = &mut end_image {
             image.depth = depth;
             image.origin.x = 0.0;
@@ -259,11 +264,13 @@ impl TaikoSlider {
         }
     }
 }
+
+#[async_trait]
 impl HitObject for TaikoSlider {
     fn note_type(&self) -> NoteType {NoteType::Slider}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.end_time}
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         self.pos.x = self.settings.hit_position.x + ((self.time - beatmap_time) * self.speed) as f64;
         self.end_x = self.settings.hit_position.x + ((self.end_time(0.0) - beatmap_time) * self.speed) as f64;
 
@@ -273,8 +280,10 @@ impl HitObject for TaikoSlider {
             dot.update(beatmap_time);
         }
     }
-    fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+
+        if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return list}
 
         let color = Color::YELLOW;
         let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
@@ -333,11 +342,13 @@ impl HitObject for TaikoSlider {
         // draw hit dots
         for dot in self.hit_dots.as_slice() {
             if dot.done {continue}
-            dot.draw(list);
+            dot.draw(&mut list);
         }
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.hit_dots.clear();
         self.pos.x = 0.0;
         self.end_x = 0.0;
@@ -431,8 +442,8 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
-        let mut spinner_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("spinner-warning", true)};
+    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+        let mut spinner_image = if diff_calc_only {None} else {SkinManager::get_texture("spinner-warning", true).await};
 
         
         let depth = get_depth(time);
@@ -464,6 +475,8 @@ impl TaikoSpinner {
         }
     }
 }
+
+#[async_trait]
 impl HitObject for TaikoSpinner {
     fn note_type(&self) -> NoteType {NoteType::Spinner}
     fn time(&self) -> f32 {self.time}
@@ -472,13 +485,15 @@ impl HitObject for TaikoSpinner {
         if self.complete {self.time} else {self.end_time}
     }
 
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, 0.0);
         if beatmap_time > self.end_time {self.complete = true}
     }
-    fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+
         // if done, dont draw anything
-        if self.complete {return}
+        if self.complete {return list}
 
         let spinner_position = Vector2::new(self.settings.hit_position.x + 100.0, self.settings.hit_position.y + 0.0);
 
@@ -527,9 +542,11 @@ impl HitObject for TaikoSpinner {
                 )));
             }
         }
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.pos.x = 0.0;
         self.hit_count = 0;
         self.complete = false;
@@ -585,7 +602,7 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    fn new(settings: &Arc<TaikoSettings>, depth: f64, hit_type: HitType, finisher: bool) -> Option<Self> {
+    async fn new(settings: &Arc<TaikoSettings>, depth: f64, hit_type: HitType, finisher: bool) -> Option<Self> {
         let color = match hit_type {
             HitType::Don => settings.don_color,
             HitType::Kat => settings.kat_color,
@@ -602,7 +619,7 @@ impl HitCircleImageHelper {
         };
 
 
-        let mut circle = SKIN_MANAGER.write().get_texture(hitcircle, true);
+        let mut circle = SkinManager::get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
             let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
@@ -616,7 +633,7 @@ impl HitCircleImageHelper {
             circle.current_color = circle.initial_color;
         }
 
-        let mut overlay = SKIN_MANAGER.write().get_texture(hitcircle.to_owned() + "overlay", true);
+        let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
             let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 

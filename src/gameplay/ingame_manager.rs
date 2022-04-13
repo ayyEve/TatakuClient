@@ -98,7 +98,7 @@ pub struct IngameManager {
 
     /// what should the game do on start?
     /// mainly a helper for spectator
-    pub on_start: Box<dyn FnOnce(&mut Self)>,
+    pub on_start: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 
     pub events: Vec<InGameEvent>,
 
@@ -106,7 +106,7 @@ pub struct IngameManager {
 }
 
 impl IngameManager {
-    pub fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
+    pub async fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
@@ -114,18 +114,21 @@ impl IngameManager {
         let timing_points = beatmap.get_timing_points();
         let font = get_font();
         let hitsound_cache = HashMap::new();
-        let current_mods = Arc::new(ModManager::get().clone());
+        let current_mods = Arc::new(ModManager::get().await.clone());
         let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.speed;
 
         let health = HealthHelper::new(Some(metadata.hp));
-        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash);
+        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
-        let score_loader = Some(SCORE_HELPER.read().get_scores(&metadata.beatmap_hash, &playmode));
+        let score_loader = Some(SCORE_HELPER.read().await.get_scores(&metadata.beatmap_hash, &playmode).await);
 
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
+
+        #[cfg(feature="bass_audio")]
+        let song = Audio::get_song().await.unwrap_or(create_empty_stream()); // temp until we get the audio file path
 
         Self {
             metadata,
@@ -142,7 +145,7 @@ impl IngameManager {
             beatmap,
 
             #[cfg(feature="bass_audio")]
-            song: Audio::get_song().unwrap_or(create_empty_stream()), // temp until we get the audio file path
+            song,
             #[cfg(feature="neb_audio")]
             song: Weak::new(),
 
@@ -164,7 +167,7 @@ impl IngameManager {
         }
     }
 
-    fn init_ui(&mut self) {
+    async fn init_ui(&mut self) {
         if self.ui_editor.is_some() {return}
 
         let window_size = Settings::window_size();
@@ -178,66 +181,65 @@ impl IngameManager {
         self.ui_elements.push(UIElement::new(
             &get_name("score"),
             Vector2::new(window_size.x, 0.0),
-            ScoreElement::new()
-        ));
+            ScoreElement::new().await
+        ).await);
 
         // Acc
         self.ui_elements.push(UIElement::new(
             &get_name("acc"),
             Vector2::new(window_size.x, 40.0),
-            AccuracyElement::new()
-        ));
+            AccuracyElement::new().await
+        ).await);
 
         // Healthbar
         self.ui_elements.push(UIElement::new(
             &get_name("healthbar"),
             Vector2::zero(),
             HealthBarElement::new(self.common_game_settings.clone())
-        ));
+        ).await);
 
         // Duration Bar
         self.ui_elements.push(UIElement::new(
             &get_name("durationbar"),
             Vector2::new(0.0, window_size.y),
             DurationBarElement::new(self.common_game_settings.clone())
-        ));
+        ).await);
 
         // Judgement Bar
         self.ui_elements.push(UIElement::new(
             &get_name("judgementbar"),
             Vector2::new(window_size.x/2.0, window_size.y),
             JudgementBarElement::new(self.gamemode.timing_bar_things())
-        ));
+        ).await);
 
         // Key Counter
         self.ui_elements.push(UIElement::new(
             &get_name("key_counter"),
             Vector2::new(window_size.x, window_size.y/2.0),
-            KeyCounterElement::new()
-        ));
+            KeyCounterElement::new().await
+        ).await);
 
         // Spectators
         self.ui_elements.push(UIElement::new(
             &get_name("spectators"),
             Vector2::new(0.0, window_size.y/3.0),
             SpectatorsElement::new()
-        ));
+        ).await);
 
         // judgement counter
         self.ui_elements.push(UIElement::new(
             &get_name("judgement_counter"),
             Vector2::new(window_size.x, window_size.y * (2.0/3.0)),
-            JudgementCounterElement::new()
-        ));
+            JudgementCounterElement::new().await
+        ).await);
 
         // anything in the gamemode itself
-        self.gamemode.get_ui_elements(window_size, &mut self.ui_elements);
-
+        self.gamemode.get_ui_elements(window_size, &mut self.ui_elements).await;
     }
 
-    pub fn apply_mods(&mut self, mods: ModManager) {
+    pub async fn apply_mods(&mut self, mods: ModManager) {
         if self.started {
-            NotificationManager::add_text_notification("Error applying mods to IngameManager\nmap already started", 2000.0, Color::RED);
+            NotificationManager::add_text_notification("Error applying mods to IngameManager\nmap already started", 2000.0, Color::RED).await;
         } else {
             self.current_mods = Arc::new(mods);
             // update replay speed too
@@ -248,7 +250,7 @@ impl IngameManager {
 
     // interactions with game mode
 
-    pub fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
+    pub async fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
         let timing_point = self.beatmap.control_point_at(note_time);
         
         let mut play_normal = true; //(note_hitsound & 1) > 0; // 0: Normal
@@ -385,7 +387,7 @@ impl IngameManager {
     }
 
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         // update ui elements
         let mut ui_elements = std::mem::take(&mut self.ui_elements);
         ui_elements.iter_mut().for_each(|ui|ui.update(self));
@@ -395,7 +397,7 @@ impl IngameManager {
         let mut ui_editor = std::mem::take(&mut self.ui_editor);
         let mut should_close = false;
         if let Some(ui_editor) = &mut ui_editor {
-            ui_editor.update(&mut ());
+            ui_editor.update(&mut ()).await;
             ui_editor.update_elements(self);
 
             if ui_editor.should_close() {
@@ -444,7 +446,7 @@ impl IngameManager {
 
         // check if scores have been loaded
         if let Some(loader) = self.score_loader.clone() {
-            let loader = loader.read();
+            let loader = loader.read().await;
             if loader.done {
                 self.score_list = loader.scores.iter().map(|s|IngameScore::new(s.clone(), false, s.username == self.score.username)).collect();
                 self.score_loader = None;
@@ -463,7 +465,7 @@ impl IngameManager {
                 let (frame_time, frame) = self.replay.frames[self.replay_frame as usize];
                 if frame_time > time {break}
 
-                gamemode.handle_replay_frame(frame, frame_time, self);
+                gamemode.handle_replay_frame(frame, frame_time, self).await;
                 
                 self.replay_frame += 1;
             }
@@ -476,7 +478,7 @@ impl IngameManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        gamemode.update(self, time);
+        gamemode.update(self, time).await;
 
         #[cfg(feature="bass_audio")]
         if self.song.get_playback_state().unwrap() == PlaybackState::Stopped {
@@ -540,17 +542,17 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
 
-    pub fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         let time = self.time();
 
         // draw gamemode
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.draw(args, self, list);
+        gamemode.draw(args, self, list).await;
         self.gamemode = gamemode;
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.draw(&args, &0.0, list);
+            ui_editor.draw(&args, &0.0, list).await;
         } 
 
 
@@ -671,7 +673,7 @@ impl IngameManager {
 // Events and States
 impl IngameManager {
     // can be from either paused or new
-    pub fn start(&mut self) {
+    pub async fn start(&mut self) {
         if !self.gamemode.show_cursor() {
             if !self.menu_background {
                 CursorManager::set_visible(false)
@@ -685,10 +687,10 @@ impl IngameManager {
 
         // re init ui because pointers may not be valid anymore
         self.ui_elements.clear();
-        self.init_ui();
+        self.init_ui().await;
 
         if !self.started {
-            self.reset();
+            self.reset().await;
 
             if !self.replaying {
                 self.outgoing_spectator_frame((0.0, SpectatorFrameData::Play {
@@ -735,7 +737,7 @@ impl IngameManager {
             self.started = true;
 
             // run the startup code
-            let mut on_start:Box<dyn FnOnce(&mut Self)> = Box::new(|_|{});
+            let mut on_start:Box<dyn FnOnce(&mut Self) + Send + Sync> = Box::new(|_|{});
             std::mem::swap(&mut self.on_start, &mut on_start);
             on_start(self);
 
@@ -776,10 +778,10 @@ impl IngameManager {
         let time = self.time();
         self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
     }
-    pub fn reset(&mut self) {
+    pub async fn reset(&mut self) {
         let settings = get_settings!();
         
-        self.gamemode.reset(&self.beatmap);
+        self.gamemode.reset(&self.beatmap).await;
         self.health.reset();
         self.key_counter.reset();
         self.hitbar_timings.clear();
@@ -840,14 +842,14 @@ impl IngameManager {
         self.failed_time = self.time();
     }
 
-    pub fn combo_break(&mut self) {
+    pub async fn combo_break(&mut self) {
         // reset combo to 0
         self.score.combo = 0;
         
         // play hitsound
         if self.score.combo >= 20 && !self.menu_background {
             #[cfg(feature="bass_audio")]
-            Audio::play_preloaded("combobreak").unwrap();
+            Audio::play_preloaded("combobreak").await.unwrap();
             #[cfg(feature="neb_audio")]
             Audio::play_preloaded("combobreak");
         }
@@ -878,7 +880,7 @@ impl IngameManager {
 
 // Input Handlers
 impl IngameManager {
-    pub fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
+    pub async fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
         if (self.replaying || self.current_mods.autoplay) && !self.menu_background {
             // check replay-only keys
             if key == piston::Key::Escape {
@@ -901,7 +903,7 @@ impl IngameManager {
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_key_press(&key, &mods, &mut ());
+            ui_editor.on_key_press(&key, &mods, &mut ()).await;
             if key == Key::F9 {
                 ui_editor.should_close = true;
 
@@ -948,93 +950,93 @@ impl IngameManager {
                 if key == self.common_game_settings.key_offset_down {t = -5.0}
 
                 if t != 0.0 {
-                    self.increment_global_offset(t);
+                    self.increment_global_offset(t).await;
                 }
             } else {
-                if key == self.common_game_settings.key_offset_up {self.increment_offset(5.0)}
-                if key == self.common_game_settings.key_offset_down {self.increment_offset(-5.0)}
+                if key == self.common_game_settings.key_offset_up {self.increment_offset(5.0).await}
+                if key == self.common_game_settings.key_offset_down {self.increment_offset(-5.0).await}
             }
         }
 
 
-        gamemode.key_down(key, self);
+        gamemode.key_down(key, self).await;
         self.gamemode = gamemode;
     }
-    pub fn key_up(&mut self, key:piston::Key) {
+    pub async fn key_up(&mut self, key:piston::Key) {
         if self.failed {return}
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.key_up(key, self);
+        gamemode.key_up(key, self).await;
         self.gamemode = gamemode;
     }
-    pub fn on_text(&mut self, text:&String, mods: &ayyeve_piston_ui::menu::KeyModifiers) {
+    pub async fn on_text(&mut self, text:&String, mods: &ayyeve_piston_ui::menu::KeyModifiers) {
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.on_text(text, mods, self);
+        gamemode.on_text(text, mods, self).await;
         self.gamemode = gamemode;
     }
     
     
-    pub fn mouse_move(&mut self, pos:Vector2) {
+    pub async fn mouse_move(&mut self, pos:Vector2) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_move(&pos, &mut ());
+            ui_editor.on_mouse_move(&pos, &mut ()).await;
         }
 
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_move(pos, self);
+        gamemode.mouse_move(pos, self).await;
         self.gamemode = gamemode;
     }
-    pub fn mouse_down(&mut self, btn:piston::MouseButton) {
+    pub async fn mouse_down(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_down(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ());
+            ui_editor.on_mouse_down(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_down(btn, self);
+        gamemode.mouse_down(btn, self).await;
         self.gamemode = gamemode;
     }
-    pub fn mouse_up(&mut self, btn:piston::MouseButton) {
+    pub async fn mouse_up(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_up(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ());
+            ui_editor.on_mouse_up(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_up(btn, self);
+        gamemode.mouse_up(btn, self).await;
         self.gamemode = gamemode;
     }
-    pub fn mouse_scroll(&mut self, delta:f64) {
+    pub async fn mouse_scroll(&mut self, delta:f64) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_scroll(&delta, &mut ());
+            ui_editor.on_mouse_scroll(&delta, &mut ()).await;
         } 
 
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_scroll(delta, self);
+        gamemode.mouse_scroll(delta, self).await;
         self.gamemode = gamemode;
     }
 
 
-    pub fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
+    pub async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_press(c, btn, self);
+        gamemode.controller_press(c, btn, self).await;
         self.gamemode = gamemode;
     }
-    pub fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
+    pub async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_release(c, btn, self);
+        gamemode.controller_release(c, btn, self).await;
         self.gamemode = gamemode;
     }
-    pub fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
+    pub async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
         if self.failed {return}
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_axis(c, axis_data, self);
+        gamemode.controller_axis(c, axis_data, self).await;
         self.gamemode = gamemode;
     }
 
@@ -1052,7 +1054,7 @@ impl IngameManager {
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl IngameManager {
     
-    pub fn increment_offset(&mut self, delta:f32) {
+    pub async fn increment_offset(&mut self, delta:f32) {
         let time = self.time();
         let new_val = self.offset.value + delta;
         self.offset.set_value(new_val, time);
@@ -1062,7 +1064,7 @@ impl IngameManager {
         Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
     }
     /// locks settings
-    pub fn increment_global_offset(&mut self, delta:f32) {
+    pub async fn increment_global_offset(&mut self, delta:f32) {
         let mut settings = get_settings_mut!();
         settings.global_offset += delta;
 

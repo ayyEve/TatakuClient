@@ -44,6 +44,8 @@ impl BeatmapDialog {
         }
     }
 }
+
+#[async_trait]
 impl Dialog<Game> for BeatmapDialog {
     fn get_bounds(&self) -> Rectangle {
         self.bounds
@@ -52,7 +54,7 @@ impl Dialog<Game> for BeatmapDialog {
         self.should_close
     }
 
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == &Key::Escape {
             self.should_close = true;
             return true
@@ -61,20 +63,20 @@ impl Dialog<Game> for BeatmapDialog {
         false
     }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
         self.delete_map.on_mouse_move(*pos)
     }
-    fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         if self.delete_map.on_click(*pos, *button, *mods) {
             trace!("delete map {}", self.target_map);
 
-            BEATMAP_MANAGER.write().delete_beatmap(self.target_map.clone(), game);
+            BEATMAP_MANAGER.write().await.delete_beatmap(self.target_map.clone(), game).await;
             self.should_close = true;
         }
         true
     }
 
-    fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         // background and border
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;

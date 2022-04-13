@@ -23,6 +23,7 @@ impl UserPanel {
     }
 }
 
+#[async_trait]
 impl Dialog<Game> for UserPanel {
     fn name(&self) -> &'static str {"UserPanel"}
     fn should_close(&self) -> bool {self.should_close}
@@ -34,8 +35,8 @@ impl Dialog<Game> for UserPanel {
         )
     }
     
-    fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_key_press(key, mods, game);
+    async fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_key_press(key, mods, game).await;
 
         if key == &Key::Escape {
             self.should_close = true;
@@ -43,16 +44,16 @@ impl Dialog<Game> for UserPanel {
         }
         true
     }
-    fn on_key_release(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_key_release(key, mods, game);
+    async fn on_key_release(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_key_release(key, mods, game).await;
         true
     }
-    fn on_text(&mut self, text:&String) -> bool {
-        self.chat.on_text(text)
+    async fn on_text(&mut self, text:&String) -> bool {
+        self.chat.on_text(text).await
     }
 
-    fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_mouse_down(pos, button, mods, game);
+    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_mouse_down(pos, button, mods, game).await;
         for (_, i) in self.users.iter_mut() {
             if i.on_click(*pos, *button, *mods) {
                 let user_id = i.user.user_id;
@@ -70,7 +71,9 @@ impl Dialog<Game> for UserPanel {
 
                 let clone = SET_CURRENT_USER.clone();
                 user_menu_dialog.add_button("Send Message", Box::new(move |dialog, _game| {
-                    *clone.write() = username.clone();
+                    // tokio::spawn(async move {
+                    //     *clone.write().await = username.clone();
+                    // });
                     dialog.should_close = true;
                 }));
 
@@ -83,26 +86,26 @@ impl Dialog<Game> for UserPanel {
         }
         true
     }
-    fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_mouse_up(pos, button, mods, game);
+    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+        self.chat.on_mouse_up(pos, button, mods, game).await;
         true
     }
-    fn on_mouse_scroll(&mut self, delta:&f64, game:&mut Game) -> bool {
-        self.chat.on_mouse_scroll(delta, game)
+    async fn on_mouse_scroll(&mut self, delta:&f64, game:&mut Game) -> bool {
+        self.chat.on_mouse_scroll(delta, game).await
     }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, game:&mut Game) {
-        self.chat.on_mouse_move(pos, game);
+    async fn on_mouse_move(&mut self, pos:&Vector2, game:&mut Game) {
+        self.chat.on_mouse_move(pos, game).await;
 
         for (_, i) in self.users.iter_mut() {
             i.on_mouse_move(*pos)
         }
     }
 
-    fn update(&mut self, game:&mut Game) {
-        self.chat.update(game);
+    async fn update(&mut self, game:&mut Game) {
+        self.chat.update(game).await;
 
-        let mut lock = SET_CURRENT_USER.write();
+        let mut lock = SET_CURRENT_USER.write().await;
         if !lock.is_empty() {
             self.chat.selected_channel = Some(ChatChannel::from_name(lock.clone()));
             *lock = String::new();
@@ -122,8 +125,8 @@ impl Dialog<Game> for UserPanel {
         }
     }
 
-    fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
-        self.chat.draw(args, depth, list);
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+        self.chat.draw(args, depth, list).await;
         //TODO: move the set_pos code to update or smth
         let mut counter = 0;
         

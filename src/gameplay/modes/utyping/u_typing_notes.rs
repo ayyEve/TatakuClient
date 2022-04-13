@@ -157,7 +157,7 @@ pub struct UTypingNote {
     image: Option<HitCircleImageHelper>
 }
 impl UTypingNote {
-    pub fn new(time:f32, text: String, cutoff_time: f32, settings:Arc<TaikoSettings>, diff_calc_only:bool) -> Self {
+    pub async fn new(time:f32, text: String, cutoff_time: f32, settings:Arc<TaikoSettings>, diff_calc_only:bool) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
@@ -180,7 +180,7 @@ impl UTypingNote {
             missed: false,
 
             pos: Vector2::zero(),
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64)},
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64).await},
             settings,
             bounce_factor,
             cutoff_time,
@@ -206,13 +206,15 @@ impl UTypingNote {
     }
 
 }
+
+#[async_trait]
 impl HitObject for UTypingNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {
         self.time + hw_miss
     }
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         let delta_time = beatmap_time - self.hit_time;
         let y = 
             if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
@@ -225,13 +227,15 @@ impl HitObject for UTypingNote {
             image.set_pos(self.pos)
         }
     }
-    fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return}
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+
+        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 {return list}
 
         let size = Vector2::new(self.settings.note_radius, self.settings.note_radius);
 
         if let Some(image) = &mut self.image {
-            image.draw(list);
+            image.draw(&mut list);
         } else {
             list.push(Box::new(Circle::new(
                 Color::TRANSPARENT_WHITE,
@@ -252,10 +256,12 @@ impl HitObject for UTypingNote {
             get_font()
         );
         t.center_text(Rectangle::bounds_only(self.pos - size / 2.0, size));
-        list.push(Box::new(t))
+        list.push(Box::new(t));
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.pos = Vector2::zero();
         self.hit = false;
         self.missed = false;
@@ -324,12 +330,12 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    fn new(_settings: &Arc<TaikoSettings>, depth: f64) -> Option<Self> {
+    async fn new(_settings: &Arc<TaikoSettings>, depth: f64) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
 
-        let mut circle = SKIN_MANAGER.write().get_texture(hitcircle, true);
+        let mut circle = SkinManager::get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
             circle.depth = depth;
             circle.initial_pos = Vector2::zero();
@@ -341,7 +347,7 @@ impl HitCircleImageHelper {
             circle.current_color = circle.initial_color;
         }
 
-        let mut overlay = SKIN_MANAGER.write().get_texture(hitcircle.to_owned() + "overlay", true);
+        let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
             overlay.depth = depth - 0.0000001;
             overlay.initial_pos = Vector2::zero();

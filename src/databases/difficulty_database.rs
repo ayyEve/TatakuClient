@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 
 impl Database {
-    pub fn insert_many_diffs(playmode:&PlayMode, mods:&ModManager, diffs:impl Iterator<Item=(String, f32)>) {
+    pub async fn insert_many_diffs(playmode:&PlayMode, mods:&ModManager, diffs:impl Iterator<Item=(String, f32)>) {
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
         
         let mut insert_query = "INSERT INTO difficulties (beatmap_hash, playmode, mods_string, diff_calc_version, diff) VALUES ".to_owned();
@@ -24,7 +24,7 @@ impl Database {
         let hash_list = hash_list.join(",");
         let delete_query = format!("DELETE FROM difficulties WHERE beatmap_hash IN ({hash_list}) AND playmode='{playmode}' AND mods_string='{mods}'");
 
-        let db = Self::get();
+        let db = Self::get().await;
         let mut s = db.prepare(&delete_query).unwrap();
         if let Err(e) = s.execute([]) {
             error!("Error deleting from difficulties table: {e}")
@@ -38,8 +38,8 @@ impl Database {
 
     }
 
-    pub fn insert_diff(map_hash:&String, playmode:&PlayMode, mods:&ModManager, diff:f32) {
-        let db = Self::get();
+    pub async fn insert_diff(map_hash:&String, playmode:&PlayMode, mods:&ModManager, diff:f32) {
+        let db = Self::get().await;
 
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
@@ -79,8 +79,8 @@ impl Database {
     }
 
 
-    pub fn get_all_diffs(playmode: &PlayMode, mods: &ModManager) -> HashMap<String, f32> {
-        let db = Self::get();
+    pub async fn get_all_diffs(playmode: &PlayMode, mods: &ModManager) -> HashMap<String, f32> {
+        let db = Self::get().await;
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
         let query = format!(
@@ -105,8 +105,8 @@ impl Database {
         map
     }
 
-    pub fn get_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager) -> Option<f32> {
-        let db = Self::get();
+    pub async fn get_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager) -> Option<f32> {
+        let db = Self::get().await;
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
         let query = format!(

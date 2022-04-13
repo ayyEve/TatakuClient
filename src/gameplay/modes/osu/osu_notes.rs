@@ -11,7 +11,7 @@ const PREEMPT_MIN:f32 = 450.0;
 // temp var for testing alternate slider rendering
 const USE_BROKEN_SLIDERS:bool = false;
 
-
+#[async_trait]
 pub trait StandardHitObject: HitObject {
     /// return the window-scaled coords of this object at time
     fn pos_at(&self, time:f32) -> Vector2;
@@ -22,7 +22,7 @@ pub trait StandardHitObject: HitObject {
     /// return negative for combo break
     fn pending_combo(&mut self) -> Vec<i8> {Vec::new()}
 
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
+    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
 
     fn press(&mut self, _time:f32) {}
     fn release(&mut self, _time:f32) {}
@@ -96,7 +96,7 @@ pub struct StandardNote {
     combo_image: Option<SkinnedNumber>,
 }
 impl StandardNote {
-    pub fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -130,7 +130,7 @@ impl StandardNote {
             "default",
             None,
             0
-        ).ok()};
+        ).await.ok()};
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
                 pos - Vector2::one() * radius / 2.0,
@@ -152,7 +152,7 @@ impl StandardNote {
 
             map_time: 0.0,
             mouse_pos: Vector2::zero(),
-            circle_image: if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color)},
+            circle_image: if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color).await},
 
             time_preempt,
             hitwindow_miss: 0.0,
@@ -189,11 +189,12 @@ impl StandardNote {
         }
     }
 }
+#[async_trait]
 impl HitObject for StandardNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
         
         let time = beatmap_time as f64;
@@ -203,14 +204,16 @@ impl HitObject for StandardNote {
         });
     }
 
-    fn draw(&mut self, _args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+
         // draw shapes
         for shape in self.shapes.iter_mut() {
-            shape.draw(list)
+            shape.draw(&mut list)
         }
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {return}
+        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {return list}
 
         // fade im
         let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
@@ -228,7 +231,7 @@ impl HitObject for StandardNote {
 
         // timing circle
         let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
-        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color));
+        list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
 
 
         // combo number
@@ -242,7 +245,7 @@ impl HitObject for StandardNote {
 
         // note
         if let Some(image) = &mut self.circle_image {
-            image.draw(list);
+            image.draw(&mut list);
         } else {
             list.push(Box::new(Circle::new(
                 self.color.alpha(alpha),
@@ -253,15 +256,17 @@ impl HitObject for StandardNote {
             )));
         }
 
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.hit = false;
         self.missed = false;
         
         self.shapes.clear();
     }
 }
+#[async_trait]
 impl StandardHitObject for StandardNote {
     fn miss(&mut self) {self.missed = true}
     fn was_hit(&self) -> bool {self.hit || self.missed}
@@ -299,7 +304,7 @@ impl StandardHitObject for StandardNote {
         }
     }
 
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
         self.scaling_helper = new_scale;
@@ -446,7 +451,7 @@ pub struct StandardSlider {
     hitwindow_miss: f32
 }
 impl StandardSlider {
-    pub fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -471,8 +476,8 @@ impl StandardSlider {
             Some(combo_text)
         };
 
-        let start_circle_image = if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color)};
-        let end_circle_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("sliderendcircle", true)};
+        let start_circle_image = if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color).await};
+        let end_circle_image = if diff_calc_only {None} else {SkinManager::get_texture("sliderendcircle", true).await};
 
         let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?
@@ -482,7 +487,7 @@ impl StandardSlider {
             "default",
             None,
             0
-        ).ok()};
+        ).await.ok()};
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
                 pos - Vector2::one() * radius / 2.0,
@@ -491,7 +496,7 @@ impl StandardSlider {
         }
 
         
-        let slider_reverse_image = if diff_calc_only {None} else {SKIN_MANAGER.write().get_texture("reversearrow", true)};
+        let slider_reverse_image = if diff_calc_only {None} else {SkinManager::get_texture("reversearrow", true).await};
 
         let mut slider = Self {
             def,
@@ -544,12 +549,12 @@ impl StandardSlider {
             slider_reverse_image
         };
     
-        slider.make_dots();
-        slider.make_body();
+        slider.make_dots().await;
+        slider.make_body().await;
         slider
     }
 
-    fn make_body(&mut self) {
+    async fn make_body(&mut self) {
         let mut side1_total = Vec::new();
         let mut side2_total = Vec::new();
 
@@ -673,7 +678,7 @@ impl StandardSlider {
         self.slider_draw = SliderPath::new(full, Color::BLUE, self.slider_depth)
     }
 
-    fn make_dots(&mut self) {
+    async fn make_dots(&mut self) {
         self.hit_dots.clear();
         self.dot_count = 0;
 
@@ -700,7 +705,7 @@ impl StandardSlider {
                 self.circle_depth - 0.000001,
                 self.scaling_helper.scale,
                 slide_counter
-            );
+            ).await;
 
             self.dot_count += 1;
             self.hit_dots.push(dot);
@@ -773,12 +778,13 @@ impl StandardSlider {
         }
     }
 }
+#[async_trait]
 impl HitObject for StandardSlider {
     fn note_type(&self) -> NoteType {NoteType::Slider}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.curve.end_time}
 
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
 
         // update shapes
@@ -864,14 +870,16 @@ impl HitObject for StandardSlider {
         self.hit_dots = dots;
     }
 
-    fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+
         // draw shapes
         for shape in self.shapes.iter_mut() {
-            shape.draw(list)
+            shape.draw(&mut list)
         }
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss {return}
+        if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss {return list}
         
         let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
         if self.map_time >= self.curve.end_time {
@@ -884,7 +892,7 @@ impl HitObject for StandardSlider {
         if self.time > self.map_time {
             // timing circle
             let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
-            list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color));
+            list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
 
             // combo number
             if let Some(combo) = &mut self.combo_image {
@@ -1025,7 +1033,7 @@ impl HitObject for StandardSlider {
         // start pos
         if let Some(start_circle) = &mut self.start_circle_image {
             start_circle.set_alpha(alpha);
-            start_circle.draw(list);
+            start_circle.draw(&mut list);
             
             if start_repeat {
                 if let Some(reverse_arrow) = &self.slider_reverse_image {
@@ -1062,7 +1070,7 @@ impl HitObject for StandardSlider {
 
         for dot in self.hit_dots.iter_mut() {
             if dot.slide_layer == self.slides_complete {
-                dot.draw(list)
+                dot.draw(&mut list)
             }
         }
 
@@ -1081,9 +1089,10 @@ impl HitObject for StandardSlider {
         //     ));
         //     list.push(Box::new(c))
         // }
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.shapes.clear();
         self.sound_queue.clear();
 
@@ -1101,9 +1110,11 @@ impl HitObject for StandardSlider {
         self.dot_count = 0;
         self.start_judgment = ScoreHit::None;
         
-        self.make_dots();
+        self.make_dots().await;
     }
 }
+
+#[async_trait]
 impl StandardHitObject for StandardSlider {
     fn miss(&mut self) {self.end_checked = true}
     fn was_hit(&self) -> bool {self.end_checked}
@@ -1230,7 +1241,7 @@ impl StandardHitObject for StandardSlider {
     }
 
 
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale;
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE *  self.scaling_helper.scaled_cs;
@@ -1273,7 +1284,7 @@ impl StandardHitObject for StandardSlider {
         }
 
         self.combo_text = Some(combo_text);
-        self.make_dots();
+        self.make_dots().await;
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {
@@ -1301,7 +1312,7 @@ struct SliderDot {
     dot_image: Option<Image>
 }
 impl SliderDot {
-    pub fn new(time:f32, pos:Vector2, depth: f64, scale: f64, slide_layer: u64) -> SliderDot {
+    pub async fn new(time:f32, pos:Vector2, depth: f64, scale: f64, slide_layer: u64) -> SliderDot {
 
         SliderDot {
             time,
@@ -1312,7 +1323,7 @@ impl SliderDot {
 
             hit: false,
             checked: false,
-            dot_image: SKIN_MANAGER.write().get_texture("sliderscorepoint", true)
+            dot_image: SkinManager::get_texture("sliderscorepoint", true).await
         }
     }
     /// returns true if the hitsound should play
@@ -1405,13 +1416,13 @@ impl StandardSpinner {
         }
     }
 }
+#[async_trait]
 impl HitObject for StandardSpinner {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,_:f32) -> f32 {self.end_time}
     fn note_type(&self) -> NoteType {NoteType::Spinner}
 
-    fn update(&mut self, beatmap_time: f32) {
-
+    async fn update(&mut self, beatmap_time: f32) {
         let mut diff = 0.0;
         let pos_diff = self.mouse_pos - self.pos;
         let mouse_angle = pos_diff.y.atan2(pos_diff.x);
@@ -1435,8 +1446,9 @@ impl HitObject for StandardSpinner {
         self.last_rotation_val = mouse_angle;
         self.last_update = beatmap_time;
     }
-    fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if !(self.last_update >= self.time && self.last_update <= self.end_time) {return}
+    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+        if !(self.last_update >= self.time && self.last_update <= self.end_time) {return list}
 
         let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
 
@@ -1485,15 +1497,18 @@ impl HitObject for StandardSpinner {
             Vector2::new(self.pos.x * 2.0, 50.0)
         ));
         list.push(Box::new(txt));
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.holding = false;
         self.rotation = 0.0;
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
     }
 }
+#[async_trait]
 impl StandardHitObject for StandardSpinner {
     fn miss(&mut self) {}
     fn was_hit(&self) -> bool {self.last_update >= self.end_time} 
@@ -1518,7 +1533,7 @@ impl StandardHitObject for StandardSpinner {
         self.mouse_pos = pos;
     }
 
-    fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+    async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale;
         self.pos =  self.scaling_helper.window_size / 2.0
     } 
@@ -1540,10 +1555,10 @@ impl StandardHitObject for StandardSpinner {
 }
 
 
-fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scaled_cs:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
+async fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scaled_cs:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
     // let instant = Instant::now();
 
-    if let Some(mut tex) = SKIN_MANAGER.write().get_texture("approachcircle", true) {
+    if let Some(mut tex) = SkinManager::get_texture("approachcircle", true).await {
         tex.depth = depth - 100.0;
         let scale = 1.0 + (time_diff as f64 / time_preempt as f64) * (APPROACH_CIRCLE_MULT - 1.0);
 
@@ -1695,8 +1710,8 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    fn new(pos: Vector2, scaling_helper: &Arc<ScalingHelper>, depth: f64, color: Color) -> Option<Self> {
-        let mut circle = SKIN_MANAGER.write().get_texture("hitcircle", true);
+    async fn new(pos: Vector2, scaling_helper: &Arc<ScalingHelper>, depth: f64, color: Color) -> Option<Self> {
+        let mut circle = SkinManager::get_texture("hitcircle", true).await;
         if let Some(circle) = &mut circle {
             circle.depth = depth;
             circle.initial_pos = pos;
@@ -1708,7 +1723,7 @@ impl HitCircleImageHelper {
             circle.current_color = circle.initial_color;
         }
 
-        let mut overlay = SKIN_MANAGER.write().get_texture("hitcircleoverlay", true);
+        let mut overlay = SkinManager::get_texture("hitcircleoverlay", true).await;
         if let Some(overlay) = &mut overlay {
             overlay.depth = depth - 0.0000001;
             overlay.initial_pos = pos;

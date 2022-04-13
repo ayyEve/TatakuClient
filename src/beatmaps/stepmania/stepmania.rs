@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 #[derive(Default, Clone)]
+#[allow(unused)]
 pub struct StepmaniaBeatmap {
     hash: String,
     file_path: String,

@@ -117,11 +117,11 @@ impl Animation {
     }
 
 
-    pub fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
+    pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
 
         let mut frames = Vec::new();
         for p in paths {
-            frames.push(load_texture(p)?);
+            frames.push(load_texture(p).await?);
         }
 
         Ok(Self::new(pos, depth, size, frames, delays))

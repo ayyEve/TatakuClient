@@ -11,13 +11,13 @@ pub struct UIElement {
 }
 
 impl UIElement {
-    pub fn new<T:'static+InnerUIElement>(name: &str, default_pos: Vector2, inner: T) -> Self {
+    pub async fn new<T:'static+InnerUIElement>(name: &str, default_pos: Vector2, inner: T) -> Self {
         let element_name = name.to_owned();
         let mut pos_offset = default_pos;
         let mut scale = Vector2::one();
         let mut visible = true;
         
-        if let Some((pos, scale2, visible2)) = Database::get_info(&element_name) {
+        if let Some((pos, scale2, visible2)) = Database::get_info(&element_name).await {
             pos_offset = pos;
             scale = scale2;
             visible = visible2;
@@ -53,8 +53,8 @@ impl UIElement {
         base
     }
 
-    pub fn save(&self) {
-        Database::save_info(self.pos_offset, self.scale, self.visible, &self.element_name);
+    pub async fn save(&self) {
+        Database::save_info(self.pos_offset, self.scale, self.visible, &self.element_name).await;
     }
 
     pub fn reset_element(&mut self) {
@@ -62,7 +62,7 @@ impl UIElement {
     }
 }
 
-pub trait InnerUIElement {
+pub trait InnerUIElement: Send + Sync {
     fn update(&mut self, manager: &mut IngameManager);
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>);
     fn get_bounds(&self) -> Rectangle;

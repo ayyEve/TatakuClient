@@ -5,9 +5,9 @@ pub struct AccuracyElement {
     acc: f64,
 }
 impl AccuracyElement {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
-            acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", Some('%'), 2).ok(),
+            acc_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", Some('%'), 2).await.ok(),
             acc: 0.0,
         }
     }

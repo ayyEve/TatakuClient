@@ -2,22 +2,25 @@ use crate::prelude::*;
 
 
 // needed for std::mem::take/swap
+#[derive(Default)]
 pub struct NoMode {}
-impl GameMode for NoMode {
-    fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
-    fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
-    fn update(&mut self, _:&mut IngameManager, _: f32) {}
-    fn draw(&mut self, _:RenderArgs, _:&mut IngameManager, _: &mut Vec<Box<dyn Renderable>>) {}
+#[async_trait]
+impl GameMode for NoMode {
+    async fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
+
+    async fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
+    async fn update(&mut self, _:&mut IngameManager, _: f32) {}
+    async fn draw(&mut self, _:RenderArgs, _:&mut IngameManager, _: &mut Vec<Box<dyn Renderable>>) {}
     fn apply_auto(&mut self, _: &BackgroundGameSettings) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
-    fn reset(&mut self, _:&Beatmap) {}
-
+    async fn reset(&mut self, _:&Beatmap) {}
 }
 
+#[async_trait]
 impl GameModeInput for NoMode {
-    fn key_down(&mut self, _:piston::Key, _:&mut IngameManager) {}
-    fn key_up(&mut self, _:piston::Key, _:&mut IngameManager) {}
+    async fn key_down(&mut self, _:piston::Key, _:&mut IngameManager) {}
+    async fn key_up(&mut self, _:piston::Key, _:&mut IngameManager) {}
 }
 
 impl GameModeInfo for NoMode {

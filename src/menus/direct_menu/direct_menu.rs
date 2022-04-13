@@ -46,7 +46,7 @@ pub struct DirectMenu {
     // _converts: bool,
 }
 impl DirectMenu {
-    pub fn new(mode: PlayMode) -> DirectMenu {
+    pub async fn new(mode: PlayMode) -> DirectMenu {
         let window_size = Settings::window_size();
 
         let mut x = DirectMenu {
@@ -69,10 +69,10 @@ impl DirectMenu {
             // _converts: false
         };
 
-        x.do_search();
+        x.do_search().await;
         x
     }
-    fn do_search(&mut self) {
+    async fn do_search(&mut self) {
 
         // build search params
         let mut search_params = SearchParams::default();
@@ -81,7 +81,7 @@ impl DirectMenu {
         search_params.mode = Some(self.mode.clone());
 
         // perform request
-        let items = self.current_api.do_search(search_params);
+        let items = self.current_api.do_search(search_params).await;
 
         // clear lists
         self.items.clear();
@@ -96,7 +96,7 @@ impl DirectMenu {
 
     }
 
-    fn do_preview_audio(&mut self, item: DirectDownloadItem) {
+    async fn do_preview_audio(&mut self, item: DirectDownloadItem) {
         if let Some(url) = item.audio_preview() {
             trace!("Preview audio");
             let req = reqwest::blocking::get(url.clone());
@@ -105,7 +105,7 @@ impl DirectMenu {
                     Ok(bytes) => bytes,
                     Err(e) => {
                         warn!("Error converting mp3 preview to bytes: {}", e);
-                        NotificationManager::add_text_notification("Error loading preview audio", 1000.0, Color::RED);
+                        NotificationManager::add_text_notification("Error loading preview audio", 1000.0, Color::RED).await;
                         return;
                     }
                 };
@@ -116,7 +116,7 @@ impl DirectMenu {
                 // store last playing audio if needed
                 if self.old_audio.is_none() {
                     #[cfg(feature="bass_audio")]
-                    if let Some((key, a)) = Audio::get_song_raw() {
+                    if let Some((key, a)) = Audio::get_song_raw().await {
                         self.old_audio = Some(Some((key, a.get_position().unwrap() as f32)));
                     }
                     #[cfg(feature="neb_audio")]
@@ -131,7 +131,7 @@ impl DirectMenu {
                 }
 
                 #[cfg(feature="bass_audio")]
-                Audio::play_song_raw(url, data2).unwrap();
+                Audio::play_song_raw(url, data2).await.unwrap();
                 #[cfg(feature="neb_audio")]
                 Audio::play_song_raw(url, data2);
                 
@@ -142,16 +142,16 @@ impl DirectMenu {
     }
 
     /// go back to the main menu
-    fn back(&mut self, game:&mut Game) {
+    async fn back(&mut self, game:&mut Game) {
 
         if let Some(old_audio) = &self.old_audio {
             // stop the song thats playing, because its a preview
-            Audio::stop_song();
+            Audio::stop_song().await;
 
             // restore previous audio
             if let Some((path, pos)) = old_audio.clone() {
                 #[cfg(feature="bass_audio")]
-                Audio::play_song(path, false, pos).unwrap();
+                Audio::play_song(path, false, pos).await.unwrap();
                 
                 #[cfg(feature="neb_audio")]
                 Audio::play_song(path, false, pos);
@@ -162,8 +162,10 @@ impl DirectMenu {
         game.queue_state_change(GameState::InMenu(menu));
     }
 }
-impl Menu<Game> for DirectMenu {
-    fn update(&mut self, _game:&mut Game) {
+
+#[async_trait]
+impl AsyncMenu<Game> for DirectMenu {
+    async fn update(&mut self, _game:&mut Game) {
         // check download statuses
         let dir = std::fs::read_dir(DOWNLOADS_DIR).unwrap();
         let mut files = Vec::new();
@@ -182,13 +184,13 @@ impl Menu<Game> for DirectMenu {
             // take from the queue
             let i = self.queue.remove(0);
             // start the download
-            i.download();
+            i.download().await;
             // add to the downloading
             self.downloading.push(i)
         }
     }
 
-    fn draw(&mut self, args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
+    async fn draw(&mut self, args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
         self.search_bar.draw(args, Vector2::zero(), -90.0, &mut list);
@@ -262,11 +264,11 @@ impl Menu<Game> for DirectMenu {
         list
     }
     
-    fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
+    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
         self.scroll_area.on_scroll(delta);
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
         self.search_bar.on_click(pos, button, mods);
 
         // check if item was clicked
@@ -282,21 +284,21 @@ impl Menu<Game> for DirectMenu {
             }
 
             if let Some(item) = self.items.clone().get(&key) {
-               self.do_preview_audio(item.clone());
+               self.do_preview_audio(item.clone()).await;
             }
             self.selected = Some(key.clone());
         }
     }
 
-    fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
         self.search_bar.on_mouse_move(pos);
         self.scroll_area.on_mouse_move(pos);
     }
 
-    fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
         self.search_bar.on_key_press(key, mods);
-        if key == Escape {return self.back(game)}
+        if key == Escape {return self.back(game).await}
 
 
         if mods.alt {
@@ -310,9 +312,9 @@ impl Menu<Game> for DirectMenu {
 
             if let Some(new_mode) = new_mode {
                 if self.mode != new_mode {
-                    NotificationManager::add_text_notification(&format!("Searching for {} maps", new_mode), 1000.0, Color::BLUE);
+                    NotificationManager::add_text_notification(&format!("Searching for {} maps", new_mode), 1000.0, Color::BLUE).await;
                     self.mode = new_mode;
-                    self.do_search();
+                    self.do_search().await;
                 }
             }
         }
@@ -339,11 +341,11 @@ impl Menu<Game> for DirectMenu {
 
 
         if key == Return {
-            self.do_search();
+            self.do_search().await;
         }
     }
 
-    fn on_text(&mut self, text:String) {
+    async fn on_text(&mut self, text:String) {
         self.search_bar.on_text(text);
     }
 }

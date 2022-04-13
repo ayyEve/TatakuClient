@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use ayyeve_piston_ui::prelude::{ FontRender, TextRender };
+use parking_lot::RwLock;
 
 lazy_static::lazy_static! {
     static ref MAIN_FONT:Font2 = load_font("main.ttf");
@@ -68,8 +69,8 @@ impl FontAwesome {
 #[derive(Clone)]
 pub struct Font2 {
     pub font: Arc<fontdue::Font>,
-    pub textures: Arc<RwLock<HashMap<FontSize, Arc<Texture>>>>,
-    pub characters: Arc<RwLock<HashMap<(FontSize, char), CharData>>>,
+    pub textures: Arc<parking_lot::RwLock<HashMap<FontSize, Arc<Texture>>>>,
+    pub characters: Arc<parking_lot::RwLock<HashMap<(FontSize, char), CharData>>>,
 }
 
 impl Font2 {

@@ -2,8 +2,8 @@ use crate::prelude::*;
 use crate::REPLAYS_DIR;
 
 impl Database {
-    pub fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
-        let db = Self::get();
+    pub async fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
+        let db = Self::get().await;
         let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{}' AND playmode='{}'", hash, playmode)).unwrap();
 
         s.query_map([], |r| {
@@ -51,9 +51,9 @@ impl Database {
     }
 
 
-    pub fn save_score(s:&Score) {
+    pub async fn save_score(s:&Score) {
         trace!("saving score");
-        let db = Self::get();
+        let db = Self::get().await;
         let sql = format!(
             "INSERT INTO scores (
                 map_hash, score_hash,

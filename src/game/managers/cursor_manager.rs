@@ -57,11 +57,11 @@ pub struct CursorManager {
 
 impl CursorManager {
     pub fn init() {
-        tokio::spawn(async {
+        tokio::spawn(async move {
             let (cursor_render_sender, receiver) = TripleBuffer::default().split();
             CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
 
-            let mut s = Self::new(cursor_render_sender);
+            let mut s = Self::new(cursor_render_sender).await;
             let mut timer = Instant::now();
 
             loop {
@@ -69,11 +69,11 @@ impl CursorManager {
                 
                 let diff = now.duration_since(timer).as_secs_f64() * 1000.0;
 
-                s.update(diff);
+                s.update(diff).await;
 
 
                 let mut list = Vec::new();
-                s.draw(&mut list);
+                s.draw(&mut list).await;
                 s.cursor_render_sender.write(list);
 
                 timer = now;
@@ -83,20 +83,20 @@ impl CursorManager {
         });
     }
 
-    pub fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
-        let mut cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
+    pub async fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
+        let mut cursor_image = SkinManager::get_texture("cursor", true).await;
         if let Some(cursor) = &mut cursor_image {
             cursor.depth = -f64::MAX;
         }
 
-        let mut cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
+        let mut cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
         if let Some(trail) = &mut cursor_trail_image {
             trail.depth = (-f64::MAX) + 50.0;
         }
 
-        let settings = get_settings!();
 
-        let has_middle = SKIN_MANAGER.write().get_texture("cursormiddle", false).is_some();
+        let has_middle = SkinManager::get_texture("cursormiddle", false).await;
+        let has_middle = has_middle.is_some();
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
         } else {
@@ -108,12 +108,15 @@ impl CursorManager {
             panic!("Cursor event queue already exists");
         }
 
+        
+        let settings = get_settings!();
+
         Self {
             pos: Vector2::zero(),
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
             
-            skin_change_helper: SkinChangeHelper::new(),
+            skin_change_helper: SkinChangeHelper::new().await,
 
             trail_images: Vec::new(),
             cursor_image,
@@ -135,11 +138,11 @@ impl CursorManager {
     }
 
 
-    pub fn reload_skin(&mut self) {
+    pub async fn reload_skin(&mut self) {
         // TODO: this
-        self.cursor_image = SKIN_MANAGER.write().get_texture("cursor", true);
-        self.cursor_trail_image = SKIN_MANAGER.write().get_texture("cursortrail", true);
-        let has_middle = SKIN_MANAGER.write().get_texture("cursormiddle", false).is_some();
+        self.cursor_image = SkinManager::get_texture("cursor", true).await;
+        self.cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
+        let has_middle = SkinManager::get_texture("cursormiddle", false).await.is_some();
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
         } else {
@@ -158,7 +161,7 @@ impl CursorManager {
         }
     }
 
-    pub fn update(&mut self, time: f64) {
+    pub async fn update(&mut self, time: f64) {
 
         // work through the event queue
         if let Ok(event) = self.event_receiver.try_recv() {
@@ -192,8 +195,8 @@ impl CursorManager {
         }
 
 
-        if self.skin_change_helper.check() {
-            self.reload_skin();
+        if self.skin_change_helper.check().await {
+            self.reload_skin().await;
         }
 
         // trail stuff
@@ -226,7 +229,7 @@ impl CursorManager {
     }
 
 
-    pub fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
         if !self.visible {return}
 
         let mut radius = 5.0;

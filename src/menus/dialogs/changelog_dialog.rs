@@ -15,7 +15,7 @@ pub struct ChangelogDialog {
     should_close: bool
 }
 impl ChangelogDialog {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         // assume the settings hasnt been updated
         let mut settings = get_settings_mut!();
         let last_commit = &settings.last_git_hash;
@@ -61,6 +61,8 @@ impl ChangelogDialog {
         }
     }
 }
+
+#[async_trait]
 impl Dialog<Game> for ChangelogDialog {
     fn get_bounds(&self) -> Rectangle {
         self.bounds
@@ -69,7 +71,7 @@ impl Dialog<Game> for ChangelogDialog {
         self.should_close
     }
 
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == &Key::Escape {
             self.should_close = true;
             return true
@@ -78,7 +80,7 @@ impl Dialog<Game> for ChangelogDialog {
         false
     }
 
-    fn draw(&mut self, _args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         // background and border
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;

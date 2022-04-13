@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 /// not sure "Info" is the right word but whatever
-pub trait GameModeInfo {
+#[async_trait]
+pub trait GameModeInfo: Send + Sync {
     /// playmode for this game mode
     fn playmode(&self) -> PlayMode;
     /// should the cursor be visible (ie, osu yes, taiko/mania no)
@@ -19,7 +20,7 @@ pub trait GameModeInfo {
 
     /// setup any gamemode specific ui elements for this gamemode
     /// ie combo and leaderboard, since the pos is different per-mode
-    fn get_ui_elements(&self, _window_size: Vector2, _ui_elements: &mut Vec<UIElement>) {}
+    async fn get_ui_elements(&self, _window_size: Vector2, _ui_elements: &mut Vec<UIElement>) {}
     
     /// f64 is hitwindow, color is color for that window. last is miss hitwindow
     /// TODO: change this to a Vec<(f32, ScoreHit, Color)>, where the f32 is the hit window and color is the color for that hit window

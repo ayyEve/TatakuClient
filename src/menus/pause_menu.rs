@@ -44,8 +44,8 @@ impl PauseMenu {
         game.queue_state_change(GameState::Ingame(manager));
     }
 
-    fn retry(&mut self, game:&mut Game) {
-        self.manager.reset();
+    async fn retry(&mut self, game:&mut Game) {
+        self.manager.reset().await;
         self.unpause(game);
     }
 
@@ -54,9 +54,11 @@ impl PauseMenu {
         game.queue_state_change(GameState::InMenu(menu));
     }
 }
-impl Menu<Game> for PauseMenu {
+
+#[async_trait]
+impl AsyncMenu<Game> for PauseMenu {
     fn get_name(&self) -> &str {if self.is_fail_menu {"fail"} else {"pause"}}
-    fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let pos_offset = Vector2::zero();
         let depth = 0.0;
@@ -71,7 +73,7 @@ impl Menu<Game> for PauseMenu {
         list
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         // continue map
         if !self.is_fail_menu && self.continue_button.on_click(pos, button, mods) {
             self.unpause(game);
@@ -80,7 +82,7 @@ impl Menu<Game> for PauseMenu {
         
         // retry
         if self.retry_button.on_click(pos, button, mods) {
-            self.retry(game);
+            self.retry(game).await;
             return;
         }
 
@@ -88,13 +90,13 @@ impl Menu<Game> for PauseMenu {
         if self.exit_button.on_click(pos, button, mods) {self.exit(game)}
     }
 
-    fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
         self.continue_button.on_mouse_move(pos);
         self.retry_button.on_mouse_move(pos);
         self.exit_button.on_mouse_move(pos);
     }
 
-    fn on_key_press(&mut self, key:piston::Key, game:&mut Game, _mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, _mods:KeyModifiers) {
         if key == piston::Key::Escape {
             if self.is_fail_menu {
                 self.exit(game);
@@ -104,8 +106,9 @@ impl Menu<Game> for PauseMenu {
         }
     }
 }
+#[async_trait]
 impl ControllerInputMenu<Game> for PauseMenu {
-    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
         let max = if self.is_fail_menu {2} else {3};
 
         let mut changed = false;
@@ -147,7 +150,7 @@ impl ControllerInputMenu<Game> for PauseMenu {
                     self.unpause(game)
                 },
                 (1, false) | (0, true) => { // retry
-                    self.retry(game);
+                    self.retry(game).await;
                 },
                 (2, false) | (1, true) => { // close
                     self.exit(game);

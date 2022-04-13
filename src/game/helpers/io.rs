@@ -54,7 +54,7 @@ pub fn exists<P: AsRef<Path>>(path: P) -> bool {
 
 
 /// load an image file to an image struct
-pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
+pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
     // helper.log("settings made", true);
 
     let buf: Vec<u8> = match std::fs::read(path.as_ref()) {
@@ -82,14 +82,14 @@ pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
                 }
             }
 
-            let tex = load_texture_data(img).ok()?;
+            let tex = load_texture_data(img).await.ok()?;
             info!("got tex");
             let img = Some(Image::new(Vector2::zero(), f64::MAX, tex, Settings::window_size()));
             info!("got img");
             img
         }
         Err(e) => {
-            NotificationManager::add_error_notification(&format!("Error loading wallpaper: {}", path.as_ref()), e);
+            NotificationManager::add_error_notification(&format!("Error loading wallpaper: {}", path.as_ref()), e).await;
             // error!("Error loading image {}: {}", path.as_ref(), e);
             None
         }
@@ -98,7 +98,7 @@ pub fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
 
 
 
-pub fn extract_all() {
+pub async fn extract_all() {
 
     // check for new maps
     if let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) {
@@ -138,7 +138,7 @@ pub fn extract_all() {
                             Ok(a) => a,
                             Err(e) => {
                                 error!("Error extracting zip archive: {}", e);
-                                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED);
+                                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED).await;
                                 continue;
                             }
                         };

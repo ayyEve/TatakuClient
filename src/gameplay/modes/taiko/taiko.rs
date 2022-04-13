@@ -76,9 +76,9 @@ pub struct TaikoGame {
 impl TaikoGame {
     pub fn next_note(&mut self) {self.note_index += 1}
 }
-
+#[async_trait]
 impl GameMode for TaikoGame {
-    fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
+    async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings();
@@ -97,7 +97,7 @@ impl GameMode for TaikoGame {
                 hit_cache.insert(i, -999.9);
             }
 
-            if let Some(don) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-inner", true) {
+            if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
                 don.depth = -1.0;
                 don.origin.x = don.tex_size().x;
                 don.current_pos = settings.hit_position;
@@ -111,7 +111,7 @@ impl GameMode for TaikoGame {
                 right_don_image = Some(don.clone());
                 right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
             }
-            if let Some(kat) = &mut SKIN_MANAGER.write().get_texture("taiko-drum-outer", true) {
+            if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
                 kat.depth = -1.0;
                 kat.origin.x = 0.0;
                 kat.current_pos = settings.hit_position;
@@ -127,21 +127,20 @@ impl GameMode for TaikoGame {
             }
 
             judgement_helper = {
-                let mut skin = SKIN_MANAGER.write();
                 JudgmentImageHelper::new(
-                    skin.get_texture("taiko-hit0", true),
+                    SkinManager::get_texture("taiko-hit0", true).await,
                     None, // 50 doesnt exist
-                    skin.get_texture("taiko-hit100", true),
-                    skin.get_texture("taiko-hit300", true),
-                    skin.get_texture("taiko-hit100k", true),
-                    skin.get_texture("taiko-hit300g", true),
+                    SkinManager::get_texture("taiko-hit100", true).await,
+                    SkinManager::get_texture("taiko-hit300", true).await,
+                    SkinManager::get_texture("taiko-hit100k", true).await,
+                    SkinManager::get_texture("taiko-hit300g", true).await,
                 )
             };
         } else {
             judgement_helper = JudgmentImageHelper::new(None, None, None, None, None, None);
         }
 
-        let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
+        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -177,7 +176,7 @@ impl GameMode for TaikoGame {
                         finisher,
                         settings.clone(),
                         diff_calc_only,
-                    ));
+                    ).await);
                     s.notes.push(note);
                 }
                 for slider in beatmap.sliders.iter() {
@@ -226,7 +225,7 @@ impl GameMode for TaikoGame {
                                 sound_type.1,
                                 settings.clone(),
                                 diff_calc_only,
-                            ));
+                            ).await);
                             s.notes.push(note);
 
                             if !unified_sound_addition {i = (i + 1) % sound_types.len()}
@@ -241,7 +240,7 @@ impl GameMode for TaikoGame {
                             finisher, 
                             settings.clone(),
                             diff_calc_only,
-                        ));
+                        ).await);
                         s.notes.push(slider);
                     }
                 }
@@ -258,7 +257,7 @@ impl GameMode for TaikoGame {
                         hits_required, 
                         settings.clone(),
                         diff_calc_only,
-                    ));
+                    ).await);
                     s.notes.push(spinner);
                 }
 
@@ -302,7 +301,7 @@ impl GameMode for TaikoGame {
                         false,
                         settings.clone(),
                         diff_calc_only,
-                    ));
+                    ).await);
                     s.notes.push(note);
                 }
 
@@ -316,7 +315,7 @@ impl GameMode for TaikoGame {
         }
     }
 
-    fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
         if !manager.replaying {
             manager.replay.frames.push((time, frame.clone()));
             manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
@@ -352,7 +351,7 @@ impl GameMode for TaikoGame {
         // if theres no more notes to hit, return after playing the sound
         if self.note_index >= self.notes.len() {
             #[cfg(feature="bass_audio")]
-            if let Ok(a) = Audio::play_preloaded(sound) {
+            if let Ok(a) = Audio::play_preloaded(sound).await {
                 a.set_volume(hit_volume).unwrap();
             }
             #[cfg(feature="neb_audio")] {
@@ -393,7 +392,7 @@ impl GameMode for TaikoGame {
             ScoreHit::Miss => {
                 manager.score.hit_miss(time, note_time);
                 manager.hitbar_timings.push((time, time - note_time));
-                manager.combo_break();
+                manager.combo_break().await;
 
                 manager.health.take_damage();
                 if manager.health.is_dead() {
@@ -442,7 +441,7 @@ impl GameMode for TaikoGame {
         }
 
         #[cfg(feature="bass_audio")]
-        if let Ok(a) = Audio::play_preloaded(sound) {
+        if let Ok(a) = Audio::play_preloaded(sound).await {
             a.set_volume(hit_volume).unwrap();
         }
         #[cfg(feature="neb_audio")] {
@@ -452,7 +451,7 @@ impl GameMode for TaikoGame {
     }
 
 
-    fn update(&mut self, manager:&mut IngameManager, time: f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) {
 
         // do autoplay things
         if manager.current_mods.autoplay {
@@ -471,12 +470,12 @@ impl GameMode for TaikoGame {
             }
 
             for frame in pending_frames.iter() {
-                self.handle_replay_frame(*frame, time, manager);
+                self.handle_replay_frame(*frame, time, manager).await;
             }
         }
 
         // update notes
-        for note in self.notes.iter_mut() {note.update(time)}
+        for note in self.notes.iter_mut() {note.update(time).await}
 
         // if theres no more notes to hit, show score screen
         if self.note_index >= self.notes.len() {
@@ -509,7 +508,7 @@ impl GameMode for TaikoGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
-    fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         let time = manager.time();
         let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
@@ -594,14 +593,14 @@ impl GameMode for TaikoGame {
         )));
 
         // draw notes
-        for note in self.notes.iter_mut() {note.draw(args, list)}
+        for note in self.notes.iter_mut() {list.extend(note.draw(args).await)}
         // draw timing lines
         for tb in self.timing_bars.iter_mut() {tb.draw(args, list)}
     }
 
-    fn reset(&mut self, beatmap:&Beatmap) {
+    async fn reset(&mut self, beatmap:&Beatmap) {
         for note in self.notes.as_mut_slice() {
-            note.reset();
+            note.reset().await;
 
             // set note svs
             if self.taiko_settings.static_sv {
@@ -614,7 +613,7 @@ impl GameMode for TaikoGame {
         
         self.note_index = 0;
 
-        let od = beatmap.get_beatmap_meta().get_od(&ModManager::get());
+        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
         // setup hitwindows
         self.hitwindow_miss = map_difficulty(od, 135.0, 95.0, 70.0);
         self.hitwindow_100 = map_difficulty(od, 120.0, 80.0, 50.0);
@@ -704,10 +703,10 @@ impl GameMode for TaikoGame {
 
 }
 
-
+#[async_trait]
 impl GameModeInput for TaikoGame {
 
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         // dont accept key input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -716,23 +715,23 @@ impl GameModeInput for TaikoGame {
         let time = manager.time();
 
         if key == self.taiko_settings.left_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await;
         }
         if key == self.taiko_settings.left_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await;
         }
         if key == self.taiko_settings.right_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager).await;
         }
         if key == self.taiko_settings.right_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager).await;
         }
     }
     
-    fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
+    async fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
 
 
-    fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
@@ -741,13 +740,13 @@ impl GameModeInput for TaikoGame {
         
         let time = manager.time();
         match btn {
-            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager),
-            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager),
+            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await,
+            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await,
             _ => {}
         }
     }
 
-    // fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    // async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
     //     // dont accept mouse input when autoplay is enabled, or a replay is being watched
     //     if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
@@ -763,7 +762,7 @@ impl GameModeInput for TaikoGame {
     // }
 
 
-    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -773,19 +772,19 @@ impl GameModeInput for TaikoGame {
             let time = manager.time();
 
             if c_config.left_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager);
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await;
             }
 
             if c_config.left_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager);
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await;
             }
 
             if c_config.right_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager);
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager).await;
             }
 
             if c_config.right_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager);
+                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager).await;
             }
 
             // skip
@@ -807,16 +806,16 @@ impl GameModeInput for TaikoGame {
             {
                 let mut settings = get_settings_mut!();
                 settings.taiko_settings = new_settings.clone();
-                settings.save();
+                settings.save().await;
             }
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
-            self.controller_press(c, btn, manager);
+            self.controller_press(c, btn, manager).await;
         }
     }
 
-    fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -826,19 +825,19 @@ impl GameModeInput for TaikoGame {
             let time = manager.time();
 
             if c_config.left_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager);
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await;
             }
 
             if c_config.left_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager);
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await;
             }
 
             if c_config.right_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager);
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager).await;
             }
 
             if c_config.right_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager);
+                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager).await;
             }
 
             // skip
@@ -860,17 +859,17 @@ impl GameModeInput for TaikoGame {
             {
                 let mut settings = get_settings_mut!();
                 settings.taiko_settings = new_settings.clone();
-                settings.save();
+                settings.save().await;
             }
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
-            self.controller_release(c, btn, manager);
+            self.controller_release(c, btn, manager).await;
         }
     }
 
 }
-
+#[async_trait]
 impl GameModeInfo for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
@@ -905,8 +904,7 @@ impl GameModeInfo for TaikoGame {
         }
     }
 
-    fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
-
+    async fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
         let playmode = self.playmode();
         let get_name = |name| {
             format!("{playmode}_{name}")
@@ -921,23 +919,22 @@ impl GameModeInfo for TaikoGame {
         ui_elements.push(UIElement::new(
             &get_name("combo".to_owned()),
             Vector2::new(0.0, self.taiko_settings.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
-            ComboElement::new(combo_bounds)
-        ));
+            ComboElement::new(combo_bounds).await
+        ).await);
 
         // Leaderboard
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
             Vector2::y_only(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
             LeaderboardElement::new()
-        ));
+        ).await);
 
         // don chan
         ui_elements.push(UIElement::new(
             &get_name("don_chan".to_owned()),
             self.taiko_settings.get_playfield(0.0, false).current_pos,
-            DonChan::new()
-        ));
-        
+            DonChan::new().await
+        ).await);
     }
 }
 

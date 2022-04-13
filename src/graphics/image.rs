@@ -80,8 +80,8 @@ impl Image {
     }
 
 
-    pub fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
-        match load_texture(path) {
+    pub async fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
+        match load_texture(path).await {
             Ok(tex) => Ok(Self::new(pos, depth, tex, size)),
             Err(e) => return Err(e),
         }

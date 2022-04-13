@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
     pub complete: bool,
-    status: Arc<Mutex<LoadingStatus>>
+    status: Arc<Mutex<LoadingStatus>>,
 }
 
 impl LoadingMenu {
@@ -15,7 +15,7 @@ impl LoadingMenu {
             status: Arc::new(Mutex::new(LoadingStatus::new()))
         }
     }
-    pub fn load(&mut self) {
+    pub async fn load(&mut self) {
         let status = self.status.clone();
         
         tokio::spawn(async move {
@@ -30,18 +30,18 @@ impl LoadingMenu {
             // load beatmaps
             Self::load_beatmaps(status.clone()).await;
 
-            status.lock().stage = LoadingStage::Done;
+            status.lock().await.stage = LoadingStage::Done;
         });
     }
 
     // loaders
     async fn load_database(status: Arc<Mutex<LoadingStatus>>) {
-        status.lock().stage = LoadingStage::Database;
+        status.lock().await.stage = LoadingStage::Database;
         // let _ = crate::databases::DATABASE.lock();
     }
 
     async fn load_audio(status: Arc<Mutex<LoadingStatus>>) {
-        status.lock().stage = LoadingStage::Audio;
+        status.lock().await.stage = LoadingStage::Audio;
         // get a value from the hash, will do the lazy_static stuff and populate
         // if let Ok(a) = Audio::play_preloaded("don") {
         //     a.stop();
@@ -49,10 +49,10 @@ impl LoadingMenu {
     }
 
     async fn load_beatmaps(status: Arc<Mutex<LoadingStatus>>) {
-        status.lock().stage = LoadingStage::Beatmaps;
+        status.lock().await.stage = LoadingStage::Beatmaps;
         // set the count and reset the counter
-        status.lock().loading_count = 0;
-        status.lock().loading_done = 0;
+        status.lock().await.loading_count = 0;
+        status.lock().await.loading_done = 0;
 
         let mut dirs_to_check = get_settings!().external_games_folders.clone();
         dirs_to_check.push(SONGS_DIR.to_owned());
@@ -70,12 +70,12 @@ impl LoadingMenu {
 
 
         {
-            let existing_maps = Database::get_all_beatmaps();
+            let existing_maps = Database::get_all_beatmaps().await;
             trace!("loading {} from the db", existing_maps.len());
             
-            status.lock().loading_count = existing_maps.len();
+            status.lock().await.loading_count = existing_maps.len();
             // load from db
-            let mut lock = BEATMAP_MANAGER.write();
+            let mut lock = BEATMAP_MANAGER.write().await;
             for meta in existing_maps {
                 // verify the map exists
                 if !std::path::Path::new(&meta.file_path).exists() {
@@ -84,16 +84,16 @@ impl LoadingMenu {
                 }
 
                 lock.add_beatmap(&meta);
-                status.lock().loading_done += 1;
+                status.lock().await.loading_done += 1;
             }
         }
         
         // look through the songs folder to make sure everything is already added
-        BEATMAP_MANAGER.write().initialized = true; // these are new maps
+        BEATMAP_MANAGER.write().await.initialized = true; // these are new maps
 
         // get existing dirs
         let mut existing_paths = HashSet::new();
-        for i in BEATMAP_MANAGER.read().beatmaps.iter() {
+        for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
             if let Some(parent) = Path::new(&i.file_path).parent() {
                 existing_paths.insert(parent.to_string_lossy().to_string());
             }
@@ -102,45 +102,46 @@ impl LoadingMenu {
         let folders:Vec<String> = folders.into_iter().filter(|f|!existing_paths.contains(f)).collect();
 
         {
-            let mut lock = status.lock();
+            let mut lock = status.lock().await;
             lock.loading_done = 0;
             lock.loading_count = folders.len();
             lock.custom_message = "Checking folders...".to_owned();
         }
 
-        folders.par_iter().for_each(|f| {
-            BEATMAP_MANAGER.write().check_folder(f);
-            status.lock().loading_done += 1;
-        });
+        for f in folders.iter() {
+            BEATMAP_MANAGER.write().await.check_folder(f).await;
+            status.lock().await.loading_done += 1;
+        }
 
 
-        debug!("loaded {} beatmaps", BEATMAP_MANAGER.read().beatmaps.len())
+        debug!("loaded {} beatmaps", BEATMAP_MANAGER.read().await.beatmaps.len())
     }
 
 }
 
-impl Menu<Game> for LoadingMenu {
-    fn update(&mut self, game:&mut Game) {
-        if let LoadingStage::Done = self.status.lock().stage {
+#[async_trait]
+impl AsyncMenu<Game> for LoadingMenu {
+    async fn update(&mut self, game:&mut Game) {
+        if let LoadingStage::Done = self.status.lock().await.stage {
             let menu = game.menus.get("main").unwrap().clone();
             game.queue_state_change(crate::game::GameState::InMenu(menu));
 
             // select a map to load bg and intro audio from (TODO! add our own?)
-            let mut manager = BEATMAP_MANAGER.write();
+            // let mut manager = BEATMAP_MANAGER.write().await;
 
-            if let Some(map) = manager.random_beatmap() {
-                manager.set_current_beatmap(game, &map, false, false);
-            }
+            // if let Some(map) = manager.random_beatmap() {
+            //     manager.set_current_beatmap(game, &map, false, false);
+            // }
             
         }
     }
 
-    fn draw(&mut self, _args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
+    async fn draw(&mut self, _args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let font = get_font();
 
         // since this is just loading, we dont care about performance here
-        let state = self.status.lock();
+        let state = self.status.lock().await;
 
         let text_color = Color::WHITE;
 

@@ -62,13 +62,13 @@ pub struct StandardGame {
     use_controller_cursor: bool
 }
 impl StandardGame {
-    fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned()));
+    async fn playfield_changed(&mut self) {
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned()).await);
         self.scaling_helper = new_scale.clone();
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(new_scale.clone());
+            note.playfield_changed(new_scale.clone()).await;
         }
     }
 
@@ -141,18 +141,19 @@ impl StandardGame {
 
 }
 
+#[async_trait]
 impl GameMode for StandardGame {
 
-    fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
+    async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
-        let mods = ModManager::get().clone();
+        let mods = ModManager::get().await.clone();
         
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned()));
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned()).await);
         let ar = metadata.get_ar(&mods);
 
         // TODO: beatmap combo colors
-        let skin_combo_colors = &SKIN_MANAGER.read().current_skin_config().combo_colors;
+        let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
         let mut combo_colors = if skin_combo_colors.len() > 0 {
             skin_combo_colors.clone()
         } else {
@@ -271,7 +272,7 @@ impl GameMode for StandardGame {
                             depth,
                             std_settings.clone(),
                             diff_calc_only,
-                        )));
+                        ).await));
                     }
                     if let Some(slider) = slider {
                         // invisible note
@@ -296,7 +297,7 @@ impl GameMode for StandardGame {
                                 depth,
                                 std_settings.clone(),
                                 diff_calc_only,
-                            )));
+                            ).await));
                         } else {
                             let slider_depth = SLIDER_DEPTH.start + (slider.time as f64 / end_time) * SLIDER_DEPTH.end;
                             let depth = NOTE_DEPTH.start + (slider.time as f64 / end_time) * NOTE_DEPTH.end;
@@ -313,7 +314,7 @@ impl GameMode for StandardGame {
                                 depth,
                                 std_settings.clone(),
                                 diff_calc_only,
-                            )))
+                            ).await))
                         }
                         
                     }
@@ -338,7 +339,7 @@ impl GameMode for StandardGame {
         }
     }
 
-    fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
         if !manager.replaying {
             manager.replay.frames.push((time, frame.clone()));
             manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
@@ -388,7 +389,7 @@ impl GameMode for StandardGame {
                 match &pts {
                     ScoreHit::None | ScoreHit::Other(_,_) => {}
                     ScoreHit::Miss => {
-                        manager.combo_break();
+                        manager.combo_break().await;
                         manager.score.hit_miss(time, note_time);
                         manager.hitbar_timings.push((time, time - note_time));
 
@@ -401,7 +402,7 @@ impl GameMode for StandardGame {
                     pts => {
                         let hitsound = note.get_hitsound();
                         let hitsamples = note.get_hitsamples().clone();
-                        manager.play_note_sound(note_time, hitsound, hitsamples);
+                        manager.play_note_sound(note_time, hitsound, hitsamples).await;
 
                         match pts {
                             ScoreHit::X50 => manager.score.hit50(time, note_time),
@@ -456,7 +457,7 @@ impl GameMode for StandardGame {
     }
 
 
-    fn update(&mut self, manager:&mut IngameManager, time:f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time:f32) {
 
         // do autoplay things
         if manager.current_mods.autoplay {
@@ -466,7 +467,7 @@ impl GameMode for StandardGame {
 
             // handle presses and mouse movements now, and releases later
             for frame in pending_frames.iter() {
-                self.handle_replay_frame(*frame, time, manager);
+                self.handle_replay_frame(*frame, time, manager).await;
             }
         }
 
@@ -479,16 +480,16 @@ impl GameMode for StandardGame {
 
         // update notes
         for note in self.notes.iter_mut() {
-            note.update(time);
+            note.update(time).await;
 
             // play queued sounds
             for (time, hitsound, samples) in note.get_sound_queue() {
-                manager.play_note_sound(time, hitsound, samples);
+                manager.play_note_sound(time, hitsound, samples).await;
             }
 
             for add_combo in note.pending_combo() {
                 if add_combo < 0 {
-                    manager.combo_break();
+                    manager.combo_break().await;
                     manager.health.take_damage();
                 } else if add_combo > 0 {
                     for _ in 0..add_combo {
@@ -512,7 +513,7 @@ impl GameMode for StandardGame {
                 match note.note_type() {
                     NoteType::Note if end_time < time => {
                         trace!("note missed: {}-{}", time, end_time);
-                        manager.combo_break();
+                        manager.combo_break().await;
                         manager.score.hit_miss(time, end_time);
                         add_judgement_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
 
@@ -535,7 +536,7 @@ impl GameMode for StandardGame {
                         match pts {
                             ScoreHit::Other(_, _) => {}
                             ScoreHit::None | ScoreHit::Miss => {
-                                manager.combo_break();
+                                manager.combo_break().await;
                                 manager.score.hit_miss(time, note_time);
                                 manager.hitbar_timings.push((time, time - note_time));
                                 
@@ -558,7 +559,7 @@ impl GameMode for StandardGame {
                                 // play hitsound
                                 let hitsound = note.get_hitsound();
                                 let hitsamples = note.get_hitsamples().clone();
-                                manager.play_note_sound(note_time, hitsound, hitsamples);
+                                manager.play_note_sound(note_time, hitsound, hitsamples).await;
                                 manager.hitbar_timings.push((time, time - note_time));
 
                                 manager.health.give_life();
@@ -583,12 +584,12 @@ impl GameMode for StandardGame {
         // which makes sense, but we dont want that
         if manager.current_mods.autoplay {
             for frame in self.auto_helper.get_release_queue().iter() {
-                self.handle_replay_frame(*frame, time, manager);
+                self.handle_replay_frame(*frame, time, manager).await;
             }
         }
 
     }
-    fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
 
         // draw the playfield
         if !manager.menu_background {
@@ -650,7 +651,7 @@ impl GameMode for StandardGame {
 
         // draw notes
         for note in self.notes.iter_mut() {
-            note.draw(args, list);
+            list.extend(note.draw(args).await);
         }
 
         // draw follow points
@@ -708,10 +709,10 @@ impl GameMode for StandardGame {
     }
 
     
-    fn reset(&mut self, beatmap:&Beatmap) {
+    async fn reset(&mut self, beatmap:&Beatmap) {
         
         // setup hitwindows
-        let od = beatmap.get_beatmap_meta().get_od(& ModManager::get());
+        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
         self.hitwindow_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
         self.hitwindow_50   = map_difficulty(od, 200.0, 150.0, 100.0);
         self.hitwindow_100  = map_difficulty(od, 140.0, 100.0, 60.0);
@@ -720,7 +721,7 @@ impl GameMode for StandardGame {
         // reset notes
         let hwm = self.hitwindow_miss;
         for note in self.notes.iter_mut() {
-            note.reset();
+            note.reset().await;
             note.set_hitwindow_miss(hwm);
         }
     }
@@ -746,10 +747,10 @@ impl GameMode for StandardGame {
 
 }
 
-
+#[async_trait]
 impl GameModeInput for StandardGame {
 
-    fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
             let old = get_settings!().standard_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
@@ -763,14 +764,14 @@ impl GameModeInput for StandardGame {
 
         let time = manager.time();
         if key == self.game_settings.left_key {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager).await;
         }
         if key == self.game_settings.right_key {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager).await;
         }
     }
     
-    fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
             self.move_playfield = None;
             return;
@@ -784,15 +785,15 @@ impl GameModeInput for StandardGame {
 
         let time = manager.time();
         if key == self.game_settings.left_key {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager).await;
         }
         if key == self.game_settings.right_key {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager).await;
         }
     }
     
 
-    fn mouse_move(&mut self, pos:Vector2, manager:&mut IngameManager) {
+    async fn mouse_move(&mut self, pos:Vector2, manager:&mut IngameManager) {
         self.window_mouse_pos = pos;
         
         if let Some((original, mouse_start)) = self.move_playfield {
@@ -820,7 +821,7 @@ impl GameModeInput for StandardGame {
                 settings.playfield_y_offset = change.y;
             }
 
-            self.playfield_changed();
+            self.playfield_changed().await;
             return;
         }
 
@@ -832,10 +833,10 @@ impl GameModeInput for StandardGame {
         // convert window pos to playfield pos
         let time = manager.time();
         let pos = self.scaling_helper.descale_coords(pos);
-        self.handle_replay_frame(ReplayFrame::MousePos(pos.x as f32, pos.y as f32), time, manager);
+        self.handle_replay_frame(ReplayFrame::MousePos(pos.x as f32, pos.y as f32), time, manager).await;
     }
     
-    fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         if self.game_settings.ignore_mouse_buttons {return}
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
@@ -845,14 +846,14 @@ impl GameModeInput for StandardGame {
 
         let time = manager.time();
         if btn == MouseButton::Left {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftMouse), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftMouse), time, manager).await;
         }
         if btn == MouseButton::Right {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightMouse), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightMouse), time, manager).await;
         }
     }
     
-    fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         if self.game_settings.ignore_mouse_buttons {return}
 
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
@@ -862,26 +863,26 @@ impl GameModeInput for StandardGame {
 
         let time = manager.time();
         if btn == MouseButton::Left {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftMouse), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftMouse), time, manager).await;
         }
         if btn == MouseButton::Right {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightMouse), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightMouse), time, manager).await;
         }
     }
 
-    fn mouse_scroll(&mut self, delta:f64, _manager:&mut IngameManager) {
+    async fn mouse_scroll(&mut self, delta:f64, _manager:&mut IngameManager) {
         if self.move_playfield.is_some() {
             {
                 let settings = &mut get_settings_mut!().standard_settings;
                 settings.playfield_scale += delta / 40.0;
             }
 
-            self.playfield_changed();
+            self.playfield_changed().await;
         }
     }
 
 
-    fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -889,16 +890,16 @@ impl GameModeInput for StandardGame {
 
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
             let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager).await;
         }
 
         if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
             let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager);
+            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager).await;
         }
     }
     
-    fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
+    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -906,16 +907,16 @@ impl GameModeInput for StandardGame {
 
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
             let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager).await;
         }
 
         if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
             let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager);
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager).await;
         }
     }
     
-    fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
+    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.autoplay || manager.replaying {
             return;
@@ -946,11 +947,12 @@ impl GameModeInput for StandardGame {
 
         let time = manager.time();
         let new_pos = scaling_helper.descale_coords(new_pos);
-        self.handle_replay_frame(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32), time, manager);
+        self.handle_replay_frame(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32), time, manager).await;
     }
 
 }
 
+#[async_trait]
 impl GameModeInfo for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
@@ -973,8 +975,7 @@ impl GameModeInfo for StandardGame {
         ], (self.hitwindow_miss, [0.9, 0.05, 0.05, 1.0].into()))
     }
 
-    fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
-
+    async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
         let playmode = self.playmode();
         let get_name = |name| {
             format!("{playmode}_{name}")
@@ -990,15 +991,15 @@ impl GameModeInfo for StandardGame {
         ui_elements.push(UIElement::new(
             &get_name("combo".to_owned()),
             Vector2::new(0.0, window_size.y - (size.y + DURATION_HEIGHT + 10.0)),
-            ComboElement::new(combo_bounds)
-        ));
+            ComboElement::new(combo_bounds).await
+        ).await);
 
         // Leaderboard
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
             Vector2::y_only(window_size.y / 3.0),
             LeaderboardElement::new()
-        ));
+        ).await);
         
     }
 

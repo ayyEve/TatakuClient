@@ -50,7 +50,7 @@ pub struct ScalingHelper {
     playfield_scaled_with_cs_border: Rectangle,
 }
 impl ScalingHelper {
-    pub fn new(cs:f32, mode:PlayMode) -> Self {
+    pub async fn new(cs:f32, mode:PlayMode) -> Self {
         let window_size = Settings::window_size();
 
         let border_size;
@@ -128,8 +128,8 @@ impl ScalingHelper {
 }
 
 
-
+#[async_trait]
 pub trait DiffCalc<G:GameMode> where Self:Sized {
-    fn new(g: &BeatmapMeta) -> TatakuResult<Self>;
-    fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32>;
+    async fn new(g: &BeatmapMeta) -> TatakuResult<Self>;
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32>;
 }

@@ -25,7 +25,7 @@ impl VolumeControl {
         let elapsed = self.elapsed();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }
-    fn change(&mut self, delta:f32) {
+    async fn change(&mut self, delta:f32) {
         let elapsed = self.elapsed();
         let mut settings = get_settings_mut!();
 
@@ -41,7 +41,7 @@ impl VolumeControl {
         }
 
         
-        if let Some(song) = Audio::get_song() {
+        if let Some(song) = Audio::get_song().await {
             #[cfg(feature="bass_audio")]
             song.set_volume(settings.get_music_vol()).unwrap();
             #[cfg(feature="neb_audio")]
@@ -52,7 +52,7 @@ impl VolumeControl {
     }
 
 
-    pub fn draw(&mut self, _args: RenderArgs) -> Vec<Box<dyn Renderable>> {
+    pub async fn draw(&mut self, _args: RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let elapsed = self.elapsed();
 
@@ -210,28 +210,28 @@ impl VolumeControl {
         }
     }
 
-    pub fn on_mouse_wheel(&mut self, delta:f64, mods:KeyModifiers) -> bool {
+    pub async fn on_mouse_wheel(&mut self, delta:f64, mods:KeyModifiers) -> bool {
         if mods.alt {
-            self.change(delta as f32 / 10.0);
+            self.change(delta as f32 / 10.0).await;
             return true
         }
 
         false
     }
 
-    pub fn on_key_press(&mut self, keys:&mut Vec<Key>, mods:KeyModifiers) -> bool {
+    pub async fn on_key_press(&mut self, keys:&mut Vec<Key>, mods:KeyModifiers) -> bool {
         let elapsed = self.elapsed();
 
         if mods.alt {
             let mut changed = false;
 
             if keys.contains(&Key::Right) {
-                self.change(0.1);
+                self.change(0.1).await;
                 changed = true;
             }
             if keys.contains(&Key::Left) {
                 keys.retain(|k|k == &Key::Left);
-                self.change(-0.1);
+                self.change(-0.1).await;
                 changed = true;
             }
 

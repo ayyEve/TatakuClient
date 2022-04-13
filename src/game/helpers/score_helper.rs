@@ -20,7 +20,7 @@ impl ScoreHelper {
         }
     }
 
-    pub fn get_scores(&self, map_hash: &String, playmode: &PlayMode) -> Arc<RwLock<ScoreLoaderHelper>> {
+    pub async fn get_scores(&self, map_hash: &String, playmode: &PlayMode) -> Arc<RwLock<ScoreLoaderHelper>> {
         let map_hash = map_hash.clone();
         let playmode = playmode.clone();
         let method = self.current_method;
@@ -31,14 +31,14 @@ impl ScoreHelper {
                 let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
                 let scores_clone = scores.clone();
                 tokio::spawn(async move {
-                    let mut local_scores = Database::get_scores(&map_hash, playmode);
+                    let mut local_scores = Database::get_scores(&map_hash, playmode).await;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().clone();
+                        let mods = ModManager::get().await.clone();
                         let mods_string = Some(serde_json::to_string(&mods).unwrap());
                         local_scores.retain(|s| s.mods_string == mods_string);
                     }
-                    let mut thing = scores_clone.write();
+                    let mut thing = scores_clone.write().await;
                     thing.scores = local_scores;
                     thing.done = true;
                 });
@@ -59,14 +59,14 @@ impl ScoreHelper {
                 //         online_scores.retain(|s| s.mods_string == mods_string);
                 //     }
 
-                    let mut thing = scores_clone.write();
+                    let mut thing = scores_clone.write().await;
                 //     thing.scores = local_scores;
                     thing.done = true;
                 });
                 
                 //TODO: this
                 
-                scores.write().done = true;
+                scores.write().await.done = true;
                 scores
             },
 
@@ -75,8 +75,9 @@ impl ScoreHelper {
                 let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
                 
                 let scores_clone = scores.clone();
-                let map_by_hash = BEATMAP_MANAGER.read().get_by_hash(&map_hash).clone();
                 tokio::spawn(async move {
+                    let map_by_hash = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash).clone();
+
                     let mut online_scores = Vec::new();
                     if let Some(map) = map_by_hash {
                         match map.beatmap_type {
@@ -91,7 +92,7 @@ impl ScoreHelper {
 
                                 let key = get_settings!().osu_api_key.clone();
                                 if key.is_empty() {
-                                    NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED);
+                                    NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
                                 } else {
                                     // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
                                     if let Some(id) = osu::fetch_beatmap_id(&key, &map_hash).await {
@@ -136,7 +137,7 @@ impl ScoreHelper {
                     //     // online_scores.retain(|s| s.mods_string == mods_string);
                     // }
 
-                    let mut thing = scores_clone.write();
+                    let mut thing = scores_clone.write().await;
                     thing.scores = online_scores;
                     thing.done = true;
                 });

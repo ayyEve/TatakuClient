@@ -2,10 +2,10 @@
 use crate::prelude::*;
 
 const DEFAULT_SKIN:&str = "default";
-
+use tokio::sync::RwLock;
 
 lazy_static::lazy_static! {
-    pub static ref SKIN_MANAGER: RwLock<SkinHelper> = RwLock::new(SkinHelper::new());
+    static ref SKIN_MANAGER: Arc<RwLock<SkinManager>> = Arc::new(RwLock::new(SkinManager::new()));
 }
 
 
@@ -15,7 +15,7 @@ fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
     format!("{}/{}/{}.png", SKIN_FOLDER, skin_name, tex_name)
 }
 
-pub struct SkinHelper {
+pub struct SkinManager {
     // current_skin: String,
     current_skin_config: Arc<SkinSettings>,
 
@@ -23,9 +23,54 @@ pub struct SkinHelper {
     // audio_cache: HashMap<String, Option<Sound>>,
 }
 
-impl SkinHelper {
+// static
+impl SkinManager {
+
+    pub fn init() {
+        let _ = SKIN_MANAGER.read();
+    }
+
+    pub async fn get_texture<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool) -> Option<Image> {
+        Self::get_texture_grayscale(name, allow_default, false).await
+    }
+
+    pub async fn get_texture_grayscale<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
+        let skin_manager = SKIN_MANAGER.read().await;
+        if let Some(t) = skin_manager.texture_cache.get(name.as_ref()) {
+            t.clone()
+        } else {
+            drop(skin_manager);
+
+            let mut skin_manager = SKIN_MANAGER.write().await;
+            skin_manager.load_texture_grayscale(
+                name, 
+                allow_default, 
+                grayscale
+            ).await
+        }
+    }
+
+    
+    pub async fn current_skin_config() -> Arc<SkinSettings> {
+        SKIN_MANAGER.read().await.current_skin_config.clone()
+    }
+
+    pub async fn change_skin(new_skin:String) {
+        let mut s = SKIN_MANAGER.write().await;
+        
+        get_settings_mut!().current_skin = new_skin.clone();
+        // self.current_skin = new_skin.clone();
+        s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
+        s.texture_cache.clear();
+    }
+}
+
+// instance
+impl SkinManager {
     pub fn new() -> Self {
-        let current_skin = get_settings!().current_skin.clone();
+        let settings = SETTINGS.get().unwrap().blocking_read();
+        
+        let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
         
         Self {
@@ -36,43 +81,25 @@ impl SkinHelper {
         }
     }
 
-    pub fn current_skin_config(&self) -> Arc<SkinSettings> {
-        self.current_skin_config.clone()
-    }
-
-    // pub fn current_skin(&self) -> &String {
-    //     &self.current_skin
-    // }
-
-    pub fn change_skin(&mut self, new_skin:String) {
-        get_settings_mut!().current_skin = new_skin.clone();
-        // self.current_skin = new_skin.clone();
-        self.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
-        self.texture_cache.clear();
-
-        // self.audio_cache.clear();
-    }
-
-    pub fn get_texture<N: AsRef<str>>(&mut self, name:N, allow_default:bool) -> Option<Image> {
+    async fn load_texture<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool) -> Option<Image> {
         // trace!("thread: {:?}", std::thread::current().id());
         // trace!("Getting tex: '{}'", name.as_ref());
-        self.get_texture_grayscale(name, allow_default, false)
+        self.load_texture_grayscale(name, allow_default, false).await
     }
 
-    
-
-    pub fn get_texture_grayscale<N: AsRef<str>>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
+    async fn load_texture_grayscale<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
         // since opengl stuff needs to be done on the main thread, return none if we arent on it
         // if !on_main_thread() { return None }
 
         let name = name.as_ref().to_owned();
 
         if !self.texture_cache.contains_key(&name) {
-            let mut maybe_img = load_image(get_tex_path(&name, &get_settings!().current_skin), grayscale);
+            let tex_path = get_tex_path(&name, &get_settings!().current_skin);
+            let mut maybe_img = load_image(tex_path, grayscale).await;
 
             if maybe_img.is_none() && allow_default {
                 info!("Skin missing tex {}", name);
-                maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale);
+                maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale).await;
             }
 
             if let Some(img) = &mut maybe_img {

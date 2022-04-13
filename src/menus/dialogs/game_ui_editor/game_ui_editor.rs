@@ -37,7 +37,7 @@ impl GameUIEditorDialog {
     }
 }
 
-
+#[async_trait]
 impl Dialog<()> for GameUIEditorDialog {
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
@@ -50,7 +50,7 @@ impl Dialog<()> for GameUIEditorDialog {
         self.should_close
     }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut ()) {
+    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut ()) {
         self.mouse_pos = *pos;
 
         if let Some((index, old_pos, mouse_start)) = self.mouse_down {
@@ -62,7 +62,7 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    fn on_mouse_down(&mut self, _pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    async fn on_mouse_down(&mut self, _pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         let pos = self.mouse_pos;
 
         if button == &MouseButton::Left {
@@ -74,12 +74,12 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         // let pos = self.mouse_pos;
 
         if let Some((i, _, _)) = self.mouse_down {
             // save pos and scale
-            self.elements[i].save();
+            self.elements[i].save().await;
         }
 
         self.mouse_down = None;
@@ -87,7 +87,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut ()) -> bool {
+    async fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut ()) -> bool {
 
         // TODO: fix scaling
         // if let Some((index, _, _)) = self.mouse_down {
@@ -107,13 +107,13 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         if key == &Key::V {
             if self.mouse_down.is_none() {
                 if let Some((_, ele)) = self.find_ele_under_mouse() {
                     ele.pos_offset = ele.default_pos;
                     ele.scale = Vector2::one();
-                    ele.save();
+                    ele.save().await;
                 }
             }
         }
@@ -122,7 +122,7 @@ impl Dialog<()> for GameUIEditorDialog {
     }
 
 
-    fn draw(&mut self, _args:&RenderArgs, _depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:&RenderArgs, _depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         for i in self.elements.iter_mut() {
             i.draw(list);
 

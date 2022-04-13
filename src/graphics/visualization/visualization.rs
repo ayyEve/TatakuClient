@@ -11,21 +11,21 @@ pub type FFTEntry = (Frequency, Amplitude);
 #[cfg(feature="bass_audio")]
 const BASS_MULT:f32 = 1_000.0;
 
-
-pub trait Visualization {
+#[async_trait]
+pub trait Visualization: Send + Sync {
     fn should_lerp(&self) -> bool {true}
     fn lerp_factor(&self) -> f32 {20.0}
-    fn draw(&mut self, args:piston::RenderArgs, pos_offset:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>);
-    fn update(&mut self) {}
+    async fn draw(&mut self, args:piston::RenderArgs, pos_offset:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>);
+    async fn update(&mut self) {}
     fn reset(&mut self) {}
 
     fn data(&mut self) -> &mut Vec<FFTEntry>;
     fn timer(&mut self) -> &mut Instant;
-    fn update_data(&mut self) {
+    async fn update_data(&mut self) {
         let mut audio_data;
 
         #[cfg(feature="bass_audio")] {
-            let data = match Audio::get_song() {
+            let data = match Audio::get_song().await {
                 Some(stream) => stream.get_data(bass_rs::prelude::DataType::FFT2048, 1024i32),
                 None => return
             }.unwrap_or(vec![0.0]);

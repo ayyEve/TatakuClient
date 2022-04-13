@@ -147,10 +147,11 @@ impl TaikoDifficultyCalculator {
 
 const WRITE_DEBUG_FILES:bool = false;
 
+#[async_trait]
 impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
-    fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
+    async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
-        let g = TaikoGame::new(&g, true)?;
+        let g = TaikoGame::new(&g, true).await?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
         
         let mut difficulty_hitobjects:Vec<DifficultyHitObject> = Vec::new();
@@ -172,7 +173,7 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
         })
     }
 
-    fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
         let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
 
@@ -324,61 +325,61 @@ enum Thing {
 
 
 
-#[test]
-fn taiko_calc_test() -> TatakuResult<()> {
-    use glfw_window::GlfwWindow;
+// #[test]
+// fn taiko_calc_test() -> TatakuResult<()> {
+//     use glfw_window::GlfwWindow;
 
-    // need to init opengl
-    let _window: GlfwWindow = piston::WindowSettings::new("Tataku!", [10, 10])
-        .graphics_api(opengl_graphics::OpenGL::V3_2)
-        .build()
-        .expect("Error creating window");
+//     // need to init opengl
+//     let _window: GlfwWindow = piston::WindowSettings::new("Tataku!", [10, 10])
+//         .graphics_api(opengl_graphics::OpenGL::V3_2)
+//         .build()
+//         .expect("Error creating window");
 
 
-    // let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs";
-    let path = "D:/Games/osu!/Songs";
+//     // let path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/songs";
+//     let path = "D:/Games/osu!/Songs";
     
 
-    for folder in std::fs::read_dir(path)? {
-        let f = folder?;
-        for map in std::fs::read_dir(f.path())? {
-            let map = map?;
-            if map.file_name().to_str().unwrap().ends_with(".osu") {
-                let _ = try_calc(map.path());
-            }
-        }
-    }
+//     for folder in std::fs::read_dir(path)? {
+//         let f = folder?;
+//         for map in std::fs::read_dir(f.path())? {
+//             let map = map?;
+//             if map.file_name().to_str().unwrap().ends_with(".osu") {
+//                 let _ = try_calc(map.path());
+//             }
+//         }
+//     }
 
-    panic!();
-    Ok(())
-}
+//     panic!();
+//     Ok(())
+// }
 
-#[allow(unused)]
-fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
+// #[allow(unused)]
+// async fn try_calc(path: impl AsRef<Path>) -> TatakuResult<()> {
 
-    // muzu
-    // let map = "D:/Games/osu!/Songs/60452 Reasoner - Coming Home (Ambient Mix)/Reasoner - Coming Home (Ambient Mix) (Blue Dragon) [Taiko Muzukashii].osu";
+//     // muzu
+//     // let map = "D:/Games/osu!/Songs/60452 Reasoner - Coming Home (Ambient Mix)/Reasoner - Coming Home (Ambient Mix) (Blue Dragon) [Taiko Muzukashii].osu";
     
-    // cancer
-    // let map =  "D:/Games/osu!/Songs/646325 Diabarha - Uranoid/Diabarha - Uranoid (Dargin) [Futsuu].osu";
+//     // cancer
+//     // let map =  "D:/Games/osu!/Songs/646325 Diabarha - Uranoid/Diabarha - Uranoid (Dargin) [Futsuu].osu";
 
-    // load map
-    let fake_maps = Beatmap::load_multiple(path)?;
-    let beatmap = fake_maps.first().unwrap();
-    // if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
+//     // load map
+//     let fake_maps = Beatmap::load_multiple(path)?;
+//     let beatmap = fake_maps.first().unwrap();
+//     // if beatmap.playmode(PlayMode::Standard) != PlayMode::Taiko {return Ok(())}
 
-    let mods = ModManager::new();
+//     let mods = ModManager::new();
 
-    let s = beatmap.get_beatmap_meta().version_string();
-    trace!("\n\n\n--- trying map: {}", s);
-    // let mut benchmark = BenchmarkHelper::new("calc");
-    if let Ok(mode) = TaikoGame::new(&beatmap, true) {
-        // test calc
-        let mut calc = TaikoDifficultyCalculator::new(&beatmap.get_beatmap_meta())?;
-        calc.version_string = s;
-        let diff = calc.calc(&mods)?;
-    }
+//     let s = beatmap.get_beatmap_meta().version_string();
+//     trace!("\n\n\n--- trying map: {}", s);
+//     // let mut benchmark = BenchmarkHelper::new("calc");
+//     if let Ok(mode) = TaikoGame::new(&beatmap, true) {
+//         // test calc
+//         let mut calc = TaikoDifficultyCalculator::new(&beatmap.get_beatmap_meta())?;
+//         calc.version_string = s;
+//         let diff = calc.calc(&mods)?;
+//     }
 
 
-    Ok(())
-}
+//     Ok(())
+// }

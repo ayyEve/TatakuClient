@@ -11,7 +11,7 @@ pub struct ModDialog {
     buttons: Vec<ModButton>
 }
 impl ModDialog {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
 
         let mut buttons = Vec::new();
         let mut current_pos = Vector2::new(100.0, 100.0);
@@ -21,7 +21,7 @@ impl ModDialog {
             let b = ModButton::new(
                 current_pos,
                 m.iter().map(|a|a.to_owned().to_owned()).collect()
-            );
+            ).await;
             current_pos += Vector2::x_only(200.0);
             buttons.push(b);
         }
@@ -33,19 +33,20 @@ impl ModDialog {
     }
 }
 
+#[async_trait]
 impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str {"mod_menu"}
     fn should_close(&self) -> bool {self.should_close}
     fn get_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Settings::window_size())}
     
-    fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         self.draw_background(depth + 0.00000001, Color::BLACK, list);
         for b in self.buttons.iter_mut() {
             b.draw(*args, Vector2::zero(), *depth, list)
         }
     }
 
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool{
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool{
         if key == &Key::Escape {
             self.should_close = true;
             return true;
@@ -55,25 +56,25 @@ impl Dialog<Game> for ModDialog {
     }
 
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
         for b in self.buttons.iter_mut() {
             b.on_mouse_move(*pos)
         }
     }
 
-    fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut Game) -> bool {
+    async fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut Game) -> bool {
         
         false
     }
 
-    fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
         for b in self.buttons.iter_mut() {
             b.on_click(*pos, *button, *mods);
         }
         true
     }
 
-    fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {false}
+    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {false}
 }
 
 #[derive(ScrollableGettersSetters)]
@@ -90,11 +91,15 @@ struct ModButton {
     selected_mod: usize,
 }
 impl ModButton {
-    fn new(pos: Vector2, mod_names: Vec<String>) -> Self {
-        let mod_images: Vec<Option<Image>> = mod_names.iter().map(|m|SKIN_MANAGER.write().get_texture(format!("selection-mod-{}", m), true)).collect();
+    async fn new(pos: Vector2, mod_names: Vec<String>) -> Self {
+
+        let mut mod_images = Vec::new();
+        for m in mod_names.iter() {
+            mod_images.push(SkinManager::get_texture(format!("selection-mod-{}", m), true).await)
+        }
 
         let mut selected_mod = 0;
-        let mut manager = ModManager::get();
+        let mut manager = ModManager::get().await;
         for (i, name) in mod_names.iter().enumerate() {
             if *str_2_modval(name, &mut manager) {
                 selected_mod = i + 1
@@ -171,7 +176,7 @@ impl ScrollableItem for ModButton {
     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
         if self.hover {
            self.selected_mod = (self.selected_mod + 1) % (self.mod_names.len() + 1);
-           self.apply_mod(&mut ModManager::get())
+        //    self.apply_mod(&mut *ModManager::get().await)
         }
 
         self.hover

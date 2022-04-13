@@ -5,7 +5,7 @@ use crate::prelude::*;
 const Y_PADDING:f64 = 5.0;
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
-pub type ClickFn = Box<dyn Fn(&mut NormalDialog, &mut Game)>;
+pub type ClickFn = Box<dyn Fn(&mut NormalDialog, &mut Game) + Send + Sync>;
 
 pub struct NormalDialog {
     bounds: Rectangle,
@@ -54,6 +54,8 @@ impl NormalDialog {
         self.actions.insert(text, on_click);
     }
 }
+
+#[async_trait]
 impl Dialog<Game> for NormalDialog {
     fn get_bounds(&self) -> Rectangle {
         self.bounds
@@ -62,7 +64,7 @@ impl Dialog<Game> for NormalDialog {
         self.should_close
     }
 
-    fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == &Key::Escape {
             self.should_close = true;
             return true
@@ -71,12 +73,12 @@ impl Dialog<Game> for NormalDialog {
         false
     }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
         for button in self.buttons.iter_mut() {
             button.on_mouse_move(*pos)
         }
     }
-    fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         let mut buttons = std::mem::take(&mut self.buttons);
         let actions = std::mem::take(&mut self.actions);
 
@@ -95,7 +97,7 @@ impl Dialog<Game> for NormalDialog {
         true
     }
 
-    fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         // background and border
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;

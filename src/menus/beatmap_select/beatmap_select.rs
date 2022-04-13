@@ -42,7 +42,7 @@ pub struct BeatmapSelectMenu {
     diff_calc_start_helper: (MultiFuse<()>, MultiBomb<()>),
 }
 impl BeatmapSelectMenu {
-    pub fn new() -> BeatmapSelectMenu {
+    pub async fn new() -> BeatmapSelectMenu {
         let window_size = Settings::window_size();
         let font = get_font();
 
@@ -67,7 +67,7 @@ impl BeatmapSelectMenu {
         );
         
         
-        let leaderboard_method = SCORE_HELPER.read().current_method;
+        let leaderboard_method = SCORE_HELPER.read().await.current_method;
         let leaderboard_method_dropdown = Dropdown::new(
             Vector2::new(410.0, 5.0),
             200.0, 
@@ -109,25 +109,25 @@ impl BeatmapSelectMenu {
         }
     }
 
-    fn set_selected_mode(&mut self, new_mode: PlayMode, game: Option<&mut Game>) {
+    async fn set_selected_mode(&mut self, new_mode: PlayMode, game: Option<&mut Game>) {
         // update values
         self.mode = new_mode.clone();
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
         get_settings_mut!().last_played_mode = new_mode.clone();
 
         // recalc diffs
-        let mod_manager = ModManager::get().clone();
-        BEATMAP_MANAGER.write().update_diffs(new_mode.clone(), &mod_manager);
+        let mod_manager = ModManager::get().await.clone();
+        BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
         self.diff_calc_start_helper.0.ignite(());
         
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
         if let Some(game) = game {
-            self.on_key_press(Key::Calculator, game, KeyModifiers::default());
+            self.on_key_press(Key::Calculator, game, KeyModifiers::default()).await;
         }
     }
 
-    pub fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
+    pub async fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
         let filter_text = self.search_text.get_text().to_ascii_lowercase();
         self.beatmap_scroll.clear();
 
@@ -152,7 +152,7 @@ impl BeatmapSelectMenu {
 
             let meta = &maps[0];
             let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
-            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone(), display_text);
+            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone(), display_text).await;
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
@@ -182,14 +182,14 @@ impl BeatmapSelectMenu {
         // update diffs
         let mode_clone = self.mode.clone();
         tokio::spawn(async {
-            BEATMAP_MANAGER.write().update_diffs(mode_clone, &ModManager::get());
+            BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
         });
     }
 
-    pub fn load_scores(&mut self) {
+    pub async fn load_scores(&mut self) {
         // if nothing is selected, leave
-        if let Some(map) = &BEATMAP_MANAGER.read().current_beatmap {
-            self.score_loader = Some(SCORE_HELPER.read().get_scores(&map.beatmap_hash, &map.check_mode_override(self.mode.clone())));
+        if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
+            self.score_loader = Some(SCORE_HELPER.read().await.get_scores(&map.beatmap_hash, &map.check_mode_override(self.mode.clone())).await);
 
             // clear lists
             self.leaderboard_scroll.clear();
@@ -197,16 +197,16 @@ impl BeatmapSelectMenu {
         }
     }
 
-    fn play_map(&self, game: &mut Game, map: &BeatmapMeta) {
+    async fn play_map(&self, game: &mut Game, map: &BeatmapMeta) {
         // Audio::stop_song();
-        match manager_from_playmode(self.mode.clone(), map) {
+        match manager_from_playmode(self.mode.clone(), map).await {
             Ok(manager) => game.queue_state_change(GameState::Ingame(manager)),
-            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e)
+            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
     }
 
-    fn select_map(&mut self, game: &mut Game, map: String, can_start: bool) {
-        let mut lock = BEATMAP_MANAGER.write();
+    async fn select_map(&mut self, game: &mut Game, map: String, can_start: bool) {
+        let mut lock = BEATMAP_MANAGER.write().await;
 
         // compare last clicked map hash with the new hash.
         // if the hashes are the same, the same map was clicked twice in a row.
@@ -215,7 +215,7 @@ impl BeatmapSelectMenu {
             if current.beatmap_hash == map && can_start {
                 let current = current.clone();
                 drop(lock);
-                self.play_map(game, &current);
+                self.play_map(game, &current).await;
                 self.map_changing = (true, false, 0);
                 return;
             }
@@ -225,7 +225,7 @@ impl BeatmapSelectMenu {
         self.map_changing = (true, false, 0);
         match lock.get_by_hash(&map) {
             Some(clicked) => {
-                lock.set_current_beatmap(game, &clicked, true, true);
+                lock.set_current_beatmap(game, &clicked, true, true).await;
             }
             None => {
                 trace!("no map?");
@@ -237,15 +237,15 @@ impl BeatmapSelectMenu {
 
 
         // set any time mods
-        if let Some(song) = Audio::get_song() {
+        if let Some(song) = Audio::get_song().await {
             #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().speed).unwrap();
+            song.set_rate(ModManager::get().await.speed).unwrap();
             #[cfg(feature="neb_audio")]
             song.set_playback_speed(ModManager::get().speed as f64);
         }
 
         self.beatmap_scroll.refresh_layout();
-        self.load_scores();
+        self.load_scores().await;
     }
 
     fn interactables(&mut self) -> Vec<&mut dyn ScrollableItem> {
@@ -257,7 +257,7 @@ impl BeatmapSelectMenu {
         ]
     }
 
-    fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    async fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.back_button.on_click(pos, button, mods) {
             let menu = game.menus.get("main").unwrap().clone();
             game.queue_state_change(GameState::InMenu(menu));
@@ -278,7 +278,7 @@ impl BeatmapSelectMenu {
             }
         }
         if let Some(new_mode) = new_mode {
-            self.set_selected_mode(new_mode, Some(game))
+            self.set_selected_mode(new_mode, Some(game)).await;
         }
 
         // check sort by dropdown
@@ -290,19 +290,19 @@ impl BeatmapSelectMenu {
             }
         }
         if map_refresh {
-            self.refresh_maps(&mut BEATMAP_MANAGER.write())
+            self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await
         }
 
         // check score dropdown
         let mut score_refresh = false;
         if let Some(leaderboard_method) = &self.leaderboard_method_dropdown.value {
-            if &SCORE_HELPER.read().current_method != leaderboard_method {
-                SCORE_HELPER.write().current_method = *leaderboard_method;
+            if &SCORE_HELPER.read().await.current_method != leaderboard_method {
+                SCORE_HELPER.write().await.current_method = *leaderboard_method;
                 score_refresh = true;
             }
         }
         if score_refresh {
-            self.load_scores()
+            self.load_scores().await
         }
 
         
@@ -310,11 +310,11 @@ impl BeatmapSelectMenu {
         if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
             // score display
             if let Some(score) = self.current_scores.get(&score_tag) {
-                let score = score.lock().clone();
+                let score = score.lock().await.clone();
 
-                if let Some(selected) = &BEATMAP_MANAGER.read().current_beatmap {
+                if let Some(selected) = &BEATMAP_MANAGER.read().await.current_beatmap {
                     let menu = ScoreMenu::new(&score, selected.clone());
-                    game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                    game.queue_state_change(GameState::InMenu(Arc::new(tokio::sync::Mutex::new(menu))));
                 }
             }
             return;
@@ -338,7 +338,7 @@ impl BeatmapSelectMenu {
                 game.add_dialog(Box::new(dialog));
             }
 
-            self.select_map(game, clicked_hash, button == MouseButton::Left);
+            self.select_map(game, clicked_hash, button == MouseButton::Left).await;
             return;
         }
 
@@ -356,8 +356,9 @@ impl BeatmapSelectMenu {
         }
     }
 }
-impl Menu<Game> for BeatmapSelectMenu {
-    fn update(&mut self, game:&mut Game) {
+#[async_trait]
+impl AsyncMenu<Game> for BeatmapSelectMenu {
+    async fn update(&mut self, game:&mut Game) {
         self.search_text.set_selected(true); // always have it selected
         let old_text = self.search_text.get_text();
         self.beatmap_scroll.update();
@@ -369,26 +370,26 @@ impl Menu<Game> for BeatmapSelectMenu {
 
 
         {
-            let mut lock = BEATMAP_MANAGER.write();
+            let mut lock = BEATMAP_MANAGER.write().await;
 
             if old_text != self.search_text.get_text() {
-                self.refresh_maps(&mut lock);
+                self.refresh_maps(&mut lock).await;
             }
 
             let maps = lock.get_new_maps();
             if maps.len() > 0  {
-                lock.set_current_beatmap(game, &maps[maps.len() - 1], false, true);
-                self.refresh_maps(&mut lock);
+                lock.set_current_beatmap(game, &maps[maps.len() - 1], false, true).await;
+                self.refresh_maps(&mut lock).await;
             }
             if lock.force_beatmap_list_refresh {
                 lock.force_beatmap_list_refresh = false;
-                self.refresh_maps(&mut lock);
+                self.refresh_maps(&mut lock).await;
             }
         }
 
         // check load score 
         if let Some(helper) = self.score_loader.clone() {
-            let helper = helper.read();
+            let helper = helper.read().await;
             
             if helper.done {
                 self.score_loader = None;
@@ -406,16 +407,16 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
     
         #[cfg(feature="bass_audio")]
-        match Audio::get_song() {
+        match Audio::get_song().await {
             Some(song) => {
                 match song.get_playback_state() {
                     Ok(PlaybackState::Playing) => {},
                     _ => {
                         // restart the song at the preview point
-                        let lock = BEATMAP_MANAGER.read();
+                        let lock = BEATMAP_MANAGER.read().await;
                         let map = lock.current_beatmap.as_ref().unwrap();
                         let _ = song.set_position(map.audio_preview as f64);
-                        song.set_rate(ModManager::get().speed).unwrap();
+                        song.set_rate(ModManager::get().await.speed).unwrap();
                         
                         song.play(false).unwrap();
                     },
@@ -424,14 +425,14 @@ impl Menu<Game> for BeatmapSelectMenu {
 
             // no value, set it to something
             _ => {
-                let lock = BEATMAP_MANAGER.read();
+                let lock = BEATMAP_MANAGER.read().await;
                 match &lock.current_beatmap {
                     Some(map) => {
-                        let audio = Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).unwrap();
-                        audio.set_rate(ModManager::get().speed).unwrap();
+                        let audio = Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
+                        audio.set_rate(ModManager::get().await.speed).unwrap();
                     }
                     None => if !self.no_maps_notif_sent {
-                        NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN);
+                        NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN).await;
                         self.no_maps_notif_sent = true;
                     }
                 }
@@ -545,7 +546,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         */
     }
 
-    fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut items: Vec<Box<dyn Renderable>> = Vec::new();
         // let mut counter: usize = 0;
         let depth: f64 = 5.0;
@@ -601,30 +602,30 @@ impl Menu<Game> for BeatmapSelectMenu {
         items
     }
 
-    fn on_change(&mut self, into:bool) {
+    async fn on_change(&mut self, into:bool) {
         if !into {return}
 
         OnlineManager::send_spec_frames(vec![(0.0, SpectatorFrameData::ChangingMap)], true);
 
         // play song if it exists
-        if let Some(song) = Audio::get_song() {
+        if let Some(song) = Audio::get_song().await {
             // set any time mods
             #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().speed).unwrap();
+            song.set_rate(ModManager::get().await.speed).unwrap();
             #[cfg(feature="neb_audio")]
             song.set_playback_speed(ModManager::get().speed as f64);
         }
 
         // load maps
-        self.refresh_maps(&mut BEATMAP_MANAGER.write());
+        self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
         self.beatmap_scroll.refresh_layout();
 
-        if BEATMAP_MANAGER.read().current_beatmap.is_some() {
-            self.load_scores();
+        if BEATMAP_MANAGER.read().await.current_beatmap.is_some() {
+            self.load_scores().await;
         }
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
         // search text relies on this event, so if it consumed the event, ignore drag
         self.search_text.check_hover(pos);
         if self.search_text.get_hover() {
@@ -636,7 +637,7 @@ impl Menu<Game> for BeatmapSelectMenu {
 
         self.mouse_down = Some((pos, false, button, pos, mods));
     }
-    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, game:&mut Game) {
+    async fn on_click_release(&mut self, pos:Vector2, button:MouseButton, game:&mut Game) {
         let mut was_hold = false;
         let mut mods = None;
 
@@ -662,12 +663,12 @@ impl Menu<Game> for BeatmapSelectMenu {
         // this is here because on_click is now only used for dragging
         let (mods, button) = mods.unwrap_or((KeyModifiers::default(), MouseButton::Left));
         if !was_hold {
-            self.actual_on_click(pos, button, mods, game)
+            self.actual_on_click(pos, button, mods, game).await;
         }
 
     }
     
-    fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
         let mut scroll_pos = 0.0;
         if let Some((drag_pos, confirmed_drag, button_pressed, last_checked, _)) = &mut self.mouse_down {
             if *confirmed_drag || (pos.y - drag_pos.y).abs() >= DRAG_THRESHOLD  {
@@ -690,7 +691,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
         // drag acts like scroll
         if scroll_pos != 0.0 {
-            self.on_scroll(scroll_pos, game)
+            self.on_scroll(scroll_pos, game).await
         }
 
         for i in self.interactables() {
@@ -700,7 +701,7 @@ impl Menu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.on_mouse_move(pos);
         self.leaderboard_scroll.on_mouse_move(pos);
     }
-    fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
+    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
         self.beatmap_scroll.on_scroll(delta);
         self.leaderboard_scroll.on_scroll(delta);
 
@@ -709,18 +710,18 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
     }
 
-    fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
 
         if key == Left && !mods.alt {
             if let Some(hash) = self.beatmap_scroll.select_previous_item() {
-                self.select_map(game, hash, false);
+                self.select_map(game, hash, false).await;
                 self.beatmap_scroll.scroll_to_selection();
             }
         }
         if key == Right && !mods.alt  {
             if let Some(hash) = self.beatmap_scroll.select_next_item() {
-                self.select_map(game, hash, false);
+                self.select_map(game, hash, false).await;
                 self.beatmap_scroll.scroll_to_selection();
             }
         }
@@ -733,10 +734,10 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
         if key == F5 {
             if mods.ctrl {
-                NotificationManager::add_text_notification("Doing a full refresh", 5000.0, Color::RED);
-                BEATMAP_MANAGER.write().full_refresh();
+                NotificationManager::add_text_notification("Doing a full refresh", 5000.0, Color::RED).await;
+                BEATMAP_MANAGER.write().await.full_refresh().await;
             } else {
-                self.refresh_maps(&mut BEATMAP_MANAGER.write());
+                self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
             }
             return;
         }
@@ -752,17 +753,17 @@ impl Menu<Game> for BeatmapSelectMenu {
             };
 
             if let Some(new_mode) = new_mode {
-                self.set_selected_mode(new_mode.clone(), Some(game));
+                self.set_selected_mode(new_mode.clone(), Some(game)).await;
                 let display = gamemode_display_name(&new_mode);
-                NotificationManager::add_text_notification(&format!("Mode changed to {}", display), 1000.0, Color::BLUE);
+                NotificationManager::add_text_notification(&format!("Mode changed to {}", display), 1000.0, Color::BLUE).await;
                 self.mode = new_mode;
-                self.load_scores();
+                self.load_scores().await;
             }
         }
 
         // mods and speed
         if mods.ctrl {
-            let mut speed = ModManager::get().speed;
+            let mut speed = ModManager::get().await.speed;
             let prev_speed = speed;
             const SPEED_DIFF:f32 = 0.05;
 
@@ -772,20 +773,20 @@ impl Menu<Game> for BeatmapSelectMenu {
                  
                 // autoplay enable/disable
                 A => {
-                    let mut manager = ModManager::get();
+                    let mut manager = ModManager::get().await;
                     manager.autoplay = !manager.autoplay;
 
                     let state = if manager.autoplay {"on"} else {"off"};
-                    NotificationManager::add_text_notification(&format!("Autoplay {}", state), 2000.0, Color::BLUE);
+                    NotificationManager::add_text_notification(&format!("Autoplay {}", state), 2000.0, Color::BLUE).await;
                 }
 
                 // nofail enable/disable
                 N => {
-                    let mut manager = ModManager::get();
+                    let mut manager = ModManager::get().await;
                     manager.nofail = !manager.nofail;
 
                     let state = if manager.nofail {"on"} else {"off"};
-                    NotificationManager::add_text_notification(&format!("Nofail {}", state), 2000.0, Color::BLUE);
+                    NotificationManager::add_text_notification(&format!("Nofail {}", state), 2000.0, Color::BLUE).await;
                 }
 
                 _ => {}
@@ -793,10 +794,10 @@ impl Menu<Game> for BeatmapSelectMenu {
 
             speed = speed.clamp(SPEED_DIFF, 10.0);
             if speed != prev_speed {
-                ModManager::get().speed = speed;
+                ModManager::get().await.speed = speed;
 
                 // update audio speed
-                if let Some(song) = Audio::get_song() {
+                if let Some(song) = Audio::get_song().await {
                     #[cfg(feature="bass_audio")]
                     song.set_rate(speed).unwrap();
                     #[cfg(feature="neb_audio")]
@@ -804,9 +805,9 @@ impl Menu<Game> for BeatmapSelectMenu {
                 }
 
                 // force diff recalc
-                self.set_selected_mode(self.mode.clone(), Some(game));
+                self.set_selected_mode(self.mode.clone(), Some(game)).await;
 
-                NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE);
+                NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE).await;
             }
         }
 
@@ -815,7 +816,7 @@ impl Menu<Game> for BeatmapSelectMenu {
             if let Some(selected_index) = self.beatmap_scroll.get_selected_index() {
                 if let Some(item) = self.beatmap_scroll.items.get(selected_index) {
                     let hash = item.get_tag();
-                    self.select_map(game, hash, key == Return);
+                    self.select_map(game, hash, key == Return).await;
                 }
             }
         }
@@ -829,42 +830,43 @@ impl Menu<Game> for BeatmapSelectMenu {
         }
 
         if self.search_text.get_text() != old_text {
-            self.refresh_maps(&mut BEATMAP_MANAGER.write());
+            self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
         }
     }
 
-    fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
+    async fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
         for i in self.interactables() {
             i.on_key_release(key);
         }
     }
 
-    fn on_text(&mut self, text:String) {
+    async fn on_text(&mut self, text:String) {
         // DO NOT ACTIVAT FOR BEATMAP ITEMS!!
         // on_text is used to change the playmode lol
         for i in self.interactables() {
             i.on_text(text.clone());
         }
-        self.refresh_maps(&mut BEATMAP_MANAGER.write());
+        self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
     }
 }
+#[async_trait]
 impl ControllerInputMenu<Game> for BeatmapSelectMenu {
-    fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
         if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
-            self.on_key_press(Key::Up, game, KeyModifiers::default())
+            self.on_key_press(Key::Up, game, KeyModifiers::default()).await
         }
         if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
-            self.on_key_press(Key::Down, game, KeyModifiers::default())
+            self.on_key_press(Key::Down, game, KeyModifiers::default()).await
         }
         if let Some(ControllerButton::DPad_Left) = controller.map_button(button) {
-            self.on_key_press(Key::Left, game, KeyModifiers::default())
+            self.on_key_press(Key::Left, game, KeyModifiers::default()).await
         }
         if let Some(ControllerButton::DPad_Right) = controller.map_button(button) {
-            self.on_key_press(Key::Right, game, KeyModifiers::default())
+            self.on_key_press(Key::Right, game, KeyModifiers::default()).await
         }
 
         if let Some(ControllerButton::A) = controller.map_button(button) {
-            self.on_key_press(Key::Return, game, KeyModifiers::default())
+            self.on_key_press(Key::Return, game, KeyModifiers::default()).await
         }
 
         if let Some(ControllerButton::B) = controller.map_button(button) {
@@ -875,7 +877,7 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
         false
     }
 
-    fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f64)>) -> bool {
+    async fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f64)>) -> bool {
         for (axis, (_, val)) in axis_data {
             if Some(ControllerAxis::Right_Y) == controller.map_axis(axis) && val.abs() > 0.1 {
                 self.beatmap_scroll.set_hover(true);

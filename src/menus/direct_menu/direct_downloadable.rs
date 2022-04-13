@@ -1,8 +1,10 @@
+
 /// this item will always be in an arc
 /// so nothing will be directly mutable
-pub trait DirectDownloadable {
+#[async_trait::async_trait]
+pub trait DirectDownloadable: Send + Sync {
     /// perform the download
-    fn download(&self);
+    async fn download(&self);
 
     // get if this item is downloading
     fn is_downloading(&self) -> bool;

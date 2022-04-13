@@ -26,7 +26,7 @@ pub struct BeatmapsetItem {
     display_text: String,
 }
 impl BeatmapsetItem {
-    pub fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
+    pub async fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
         
         let mut i = BeatmapsetItem {
@@ -52,16 +52,15 @@ impl BeatmapsetItem {
         // trace!("doing recalc");
 
         // get the diff values from the beatmap manager
-        let mods = ModManager::get().clone();
         for i in self.beatmaps.iter_mut() {
             let (fuse, bomb) = Bomb::new();
             self.diff_calc_bombs.push(bomb);
 
             let playmode = self.playmode.clone();
             let hash = i.beatmap_hash.clone();
-            let mods = mods.clone();
             tokio::spawn(async move {
-                let diff = Database::get_diff(&hash, &playmode, &mods).unwrap_or(-2.0);
+                let mods = ModManager::get().await.clone();
+                let diff = Database::get_diff(&hash, &playmode, &mods).await.unwrap_or(-2.0);
                 fuse.ignite((hash, diff));
             });
         }
@@ -238,15 +237,15 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
-                // diff text
-                list.push(Box::new(Text::new(
-                    Color::WHITE,
-                    parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0 + 20.0),
-                    12,
-                    meta.diff_string(&ModManager::get()),
-                    font.clone()
-                )));
+                // // diff text
+                // list.push(Box::new(Text::new(
+                //     Color::WHITE,
+                //     parent_depth + 4.0,
+                //     pos + Vector2::new(5.0, 5.0 + 20.0),
+                //     12,
+                //     meta.diff_string(&ModManager::get().await),
+                //     font.clone()
+                // )));
 
                 pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
             }

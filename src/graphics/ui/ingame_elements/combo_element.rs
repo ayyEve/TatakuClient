@@ -6,9 +6,9 @@ pub struct ComboElement {
     combo: u16,
 }
 impl ComboElement {
-    pub fn new(combo_bounds: Rectangle) -> Self {
+    pub async fn new(combo_bounds: Rectangle) -> Self {
         Self {
-            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "combo", Some('x'), 0).ok(),
+            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "combo", Some('x'), 0).await.ok(),
             combo_bounds,
             combo: 0,
         }

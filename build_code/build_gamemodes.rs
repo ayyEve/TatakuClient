@@ -55,9 +55,9 @@ pub fn build_gamemodes() {
 
         // TODO: look for config file
         mods.push(format!("mod {};", mode_folder));
-        build_gamemode_lines.push(format!("        \"{internal_name}\" => Box::new({mode_folder}::Game::new(&beatmap, false)?),"));
+        build_gamemode_lines.push(format!("        \"{internal_name}\" => Box::new({mode_folder}::Game::new(&beatmap, false).await?),"));
         acc_calc_lines.push(      format!("        \"{internal_name}\" => {mode_folder}::calc_acc(score),"));
-        diff_calc_lines.push(     format!("        \"{internal_name}\" => {mode_folder}::DiffCalc::new(map)?.calc(mods),"));
+        diff_calc_lines.push(     format!("        \"{internal_name}\" => {mode_folder}::DiffCalc::new(map).await?.calc(mods).await,"));
         display_lines.push(       format!("        \"{internal_name}\" => \"{display_name}\","));
         mode_list.push(           format!("        \"{internal_name}\","));
         score_string_list.push(   format!("        \"{internal_name}\" => {mode_folder}::Game::score_hit_string(score_hit),"))
@@ -76,13 +76,13 @@ pub fn build_gamemodes() {
 
 pub const AVAILABLE_PLAYMODES: &[&'static str] = &[{mode_list}];
 
-pub fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {{
+pub async fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {{
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let gamemode:Box<dyn GameMode> = match &*beatmap.playmode(playmode) {{{gamemode_lines}
         _ => return Err(TatakuError::GameMode(GameModeError::UnknownGameMode))
     }};
 
-    Ok(IngameManager::new(beatmap, gamemode))
+    Ok(IngameManager::new(beatmap, gamemode).await)
 }}
 
 pub fn calc_acc(score: &Score) -> f64 {{
@@ -93,7 +93,7 @@ pub fn calc_acc(score: &Score) -> f64 {{
     .normal_or(1.0)
 }}
 
-pub fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) -> TatakuResult<f32> {{
+pub async fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) -> TatakuResult<f32> {{
     Ok(match &*map.check_mode_override(mode_override) {{{diff_calc_lines}
         _ => Ok(0.0)
     }}?

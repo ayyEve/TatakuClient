@@ -8,7 +8,7 @@ use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
+    pub static ref BEATMAP_MANAGER:Arc<tokio::sync::RwLock<BeatmapManager>> = Arc::new(tokio::sync::RwLock::new(BeatmapManager::new()));
 }
 
 pub struct BeatmapManager {
@@ -55,9 +55,9 @@ impl BeatmapManager {
     pub fn get_new_maps(&mut self) -> Vec<BeatmapMeta> {
         std::mem::take(&mut self.new_maps)
     }
-    fn check_downloads() {
+    async fn check_downloads() {
         if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
-            extract_all();
+            extract_all().await;
 
             let mut folders = Vec::new();
             read_dir(SONGS_DIR)
@@ -67,7 +67,7 @@ impl BeatmapManager {
                     folders.push(f.to_str().unwrap().to_owned());
                 });
 
-            for f in folders {BEATMAP_MANAGER.write().check_folder(&f)}
+            for f in folders {BEATMAP_MANAGER.write().await.check_folder(&f).await}
         }
 
     }
@@ -75,18 +75,18 @@ impl BeatmapManager {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(DOWNLOAD_CHECK_INTERVAL)).await;
-                BeatmapManager::check_downloads();
+                BeatmapManager::check_downloads().await;
             }
         });
     }
 
     /// clear the cache and db, 
     /// and do a full rescan of the songs folder
-    pub fn full_refresh(&mut self) {
+    pub async fn full_refresh(&mut self) {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
 
-        Database::clear_all_maps();
+        Database::clear_all_maps().await;
 
 
         let mut dirs_to_check = get_settings!().external_games_folders.clone();
@@ -103,11 +103,11 @@ impl BeatmapManager {
                 });
         }
 
-        for f in folders {self.check_folder(&f)}
+        for f in folders {self.check_folder(&f).await}
     }
 
     // adders
-    pub fn check_folder(&mut self, dir:&String) {
+    pub async fn check_folder(&mut self, dir:&String) {
         if !Path::new(dir).is_dir() {return}
         let dir_files = read_dir(dir).unwrap();
 
@@ -148,7 +148,7 @@ impl BeatmapManager {
 
                             // if it got here, it shouldnt be in the database
                             // so we should add it
-                            Database::insert_beatmap(&map);
+                            Database::insert_beatmap(&map).await;
                         }
                     }
                     Err(e) => {
@@ -172,13 +172,13 @@ impl BeatmapManager {
 
 
     // remover
-    pub fn delete_beatmap(&mut self, beatmap:String, game: &mut Game) {
+    pub async fn delete_beatmap(&mut self, beatmap:String, game: &mut Game) {
         // delete beatmap
         self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
         if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
             // delete the file
             if let Err(e) = std::fs::remove_file(old_map.file_path) {
-                NotificationManager::add_error_notification("Error deleting map", e);
+                NotificationManager::add_error_notification("Error deleting map", e).await;
             }
             // TODO: should check if this is the last beatmap in this folder
             // if so, delete the parent dir
@@ -186,11 +186,11 @@ impl BeatmapManager {
 
         self.force_beatmap_list_refresh = true;
         // select next one
-        self.next_beatmap(game);
+        self.next_beatmap(game).await;
     }
 
     // setters
-    pub fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&BeatmapMeta, _do_async:bool, use_preview_time:bool) {
+    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&BeatmapMeta, _do_async:bool, use_preview_time:bool) {
         self.current_beatmap = Some(beatmap.clone());
         if let Some(map) = self.current_beatmap.clone() {
             self.played.push(map.beatmap_hash.clone());
@@ -210,14 +210,14 @@ impl BeatmapManager {
             Audio::play_song(audio_filename, false, time);
         }
         #[cfg(feature="bass_audio")]
-        if let Err(e) = Audio::play_song(audio_filename, false, time) {
+        if let Err(e) = Audio::play_song(audio_filename, false, time).await {
             error!("Error playing song: {:?}", e);
-            NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED);
+            NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
             // Audio::stop_song();
         }
 
         // set bg
-        game.set_background_beatmap(beatmap);
+        game.set_background_beatmap(beatmap).await;
     }
     
 
@@ -263,7 +263,7 @@ impl BeatmapManager {
         }
     }
 
-    pub fn next_beatmap(&mut self, game:&mut Game) -> bool {
+    pub async fn next_beatmap(&mut self, game:&mut Game) -> bool {
         self.play_index += 1;
 
         let next_in_queue = match self.played.get(self.play_index) {
@@ -273,14 +273,14 @@ impl BeatmapManager {
 
         match next_in_queue {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false, false);
+                self.set_current_beatmap(game, &map, false, false).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 true
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(game, &map, false, false);
+                self.set_current_beatmap(game, &map, false, false).await;
                 true
             } else {
                 false
@@ -294,14 +294,14 @@ impl BeatmapManager {
         //     self.random_beatmap()
         // }
     }
-    pub fn previous_beatmap(&mut self, game:&mut Game) -> bool {
+    pub async fn previous_beatmap(&mut self, game:&mut Game) -> bool {
         if self.play_index == 0 {return false}
         self.play_index -= 1;
         
         match self.played.get(self.play_index) {
             Some(hash) => {
                 if let Some(map) = self.get_by_hash(&hash) {
-                    self.set_current_beatmap(game, &map, false, false);
+                    self.set_current_beatmap(game, &map, false, false).await;
                     // since we're playing something already in the queue, dont append it again
                     self.played.pop();
                     true
@@ -325,27 +325,27 @@ impl BeatmapManager {
         tokio::spawn(async move {
             let playmode = playmode;
 
-            let existing = Database::get_all_diffs(&playmode, &mods);
+            let existing = Database::get_all_diffs(&playmode, &mods).await;
 
             // perform calc
             // trace!("Starting Diff Calc");
-            maps.iter_mut().for_each(|i| {
+            for i in maps.iter_mut() {
                 let hash = &i.beatmap_hash;
                 i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
                     *diff
                 } else {
-                    calc_diff(i, playmode.clone(), &mods).unwrap_or_default()
+                    calc_diff(i, playmode.clone(), &mods).await.unwrap_or_default()
                 };
-            });
+            }
 
             // insert diffs
-            Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff)));
+            Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
             // maps.iter().for_each(|map| {
             //     Database::insert_diff(&map.beatmap_hash, &playmode, &mods, map.diff);
             // });
             
             {
-                let mut lock = BEATMAP_MANAGER.write();
+                let mut lock = BEATMAP_MANAGER.write().await;
                 lock.beatmaps = maps;
                 lock.on_diffcalc_complete.0.ignite(());
             }

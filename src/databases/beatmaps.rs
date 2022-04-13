@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 impl Database {
-    pub fn get_all_beatmaps() -> Vec<BeatmapMeta> {
-        let mut db = Self::get();
+    pub async fn get_all_beatmaps() -> Vec<BeatmapMeta> {
+        let mut db = Self::get().await;
         let t = db.transaction().unwrap();
         let mut s = t.prepare("SELECT * FROM beatmaps").unwrap();
         
@@ -14,8 +14,8 @@ impl Database {
             .collect::<Vec<BeatmapMeta>>()
     }
 
-    pub fn clear_all_maps() {
-        let db = Self::get();
+    pub async fn clear_all_maps() {
+        let db = Self::get().await;
         let statement = format!("DELETE FROM beatmaps");
         let res = db.prepare(&statement).expect(&statement).execute([]);
         if let Err(e) = res {
@@ -23,7 +23,7 @@ impl Database {
         }
     }
 
-    pub fn insert_beatmap(map: &BeatmapMeta) {
+    pub async fn insert_beatmap(map: &BeatmapMeta) {
         let mut bpm_min = map.bpm_min;
         let mut bpm_max = map.bpm_max;
         if !bpm_min.is_normal() {
@@ -79,7 +79,7 @@ impl Database {
             bpm_min, bpm_max
         );
 
-        let db = Self::get();
+        let db = Self::get().await;
         let res = db.prepare(&query).expect(&query).execute([]);
         if let Err(e) = res {
             error!("error inserting metadata: {}", e);

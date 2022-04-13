@@ -6,6 +6,8 @@ pub struct OsuDirect {}
 impl OsuDirect {
     pub fn new() -> Self {Self{}}
 }
+
+#[async_trait]
 impl DirectApi for OsuDirect {
     fn api_name(&self) -> &'static str {"Osu"}
     fn supported_modes(&self) -> Vec<PlayMode> {
@@ -17,7 +19,7 @@ impl DirectApi for OsuDirect {
         ]
     }
 
-    fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
+    async fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
         let settings = get_settings!();
 
@@ -112,8 +114,9 @@ impl OsuDirectDownloadable {
         })
     }
 }
+#[async_trait]
 impl DirectDownloadable for OsuDirectDownloadable {
-    fn download(&self) {
+    async fn download(&self) {
         if self.is_downloading() {return}
 
         self.downloading.store(true, SeqCst);

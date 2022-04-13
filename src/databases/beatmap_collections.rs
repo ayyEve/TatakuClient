@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::prelude::*;
 
 
@@ -35,8 +36,8 @@ impl Database {
     }
 
 
-    pub fn get_beatmap_collections() -> Vec<BeatmapCollection> {
-        let db = Self::get();
+    pub async fn get_beatmap_collections() -> Vec<BeatmapCollection> {
+        let db = Self::get().await;
 
         let query = format!("SELECT * FROM beatmap_collections");
         let mut s = db.prepare(&query).unwrap();
@@ -65,8 +66,8 @@ impl Database {
         }
     }
 
-    pub fn insert_into_beatmap_collection(collection_name: String, beatmap_hash: String) {
-        let db = Self::get();
+    pub async fn insert_into_beatmap_collection(collection_name: String, beatmap_hash: String) {
+        let db = Self::get().await;
 
         let query = format!("INSERT INTO beatmap_collections (collection_name, beatmap_hash) VALUES ('{collection_name}', '{beatmap_hash}')");
         let mut s = db.prepare(&query).unwrap();

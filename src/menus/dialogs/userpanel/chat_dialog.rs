@@ -83,6 +83,8 @@ impl Chat {
         self.message_scroll.on_scroll(-f64::MAX);
     }
 }
+
+#[async_trait]
 impl Dialog<Game> for Chat {
     fn get_bounds(&self) -> Rectangle {
         let window_size = Settings::window_size();
@@ -96,7 +98,7 @@ impl Dialog<Game> for Chat {
     }
     fn should_close(&self) -> bool {self.should_close}
 
-    fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == &Key::Escape {
             self.should_close = true;
             return true;
@@ -123,16 +125,16 @@ impl Dialog<Game> for Chat {
 
         true
     }
-    fn on_key_release(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_release(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         self.input.on_key_release(*key);
         true
     }
-    fn on_text(&mut self, text:&String) -> bool {
+    async fn on_text(&mut self, text:&String) -> bool {
         self.input.on_text(text.to_owned());
         true
     }
 
-    fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
         // check if a channel was clicked
         if let Some(channel_name) = self.channel_scroll.on_click_tagged(*pos, *button, *mods) {
 
@@ -174,7 +176,7 @@ impl Dialog<Game> for Chat {
 
         true
     }
-    fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         self.height_resize = false;
         self.width_resize = false;
         self.width_resize_hover = false;
@@ -182,7 +184,7 @@ impl Dialog<Game> for Chat {
         true
     }
 
-    fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
         self.channel_scroll.on_mouse_move(*pos);
         self.message_scroll.on_mouse_move(*pos);
 
@@ -234,14 +236,14 @@ impl Dialog<Game> for Chat {
         }
     }
 
-    fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
+    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
         self.channel_scroll.on_scroll(*delta);
         self.message_scroll.on_scroll(*delta);
 
         true
     }
 
-    fn update(&mut self, _g:&mut Game) {
+    async fn update(&mut self, _g:&mut Game) {
         if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
             let mut scroll_pending = false;
 
@@ -310,7 +312,7 @@ impl Dialog<Game> for Chat {
         self.input.set_selected(true);
     }
 
-    fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         let args = *args;
         let depth = *depth;
         let window_size = Settings::window_size();

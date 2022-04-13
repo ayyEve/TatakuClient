@@ -56,8 +56,8 @@ pub struct Database {
     connection: Arc<Mutex<Connection>>,
 }
 impl Database {
-    pub fn get<'a>() -> MutexGuard<'a, Connection> {
-        DATABASE.connection.lock()
+    pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
+        DATABASE.connection.lock().await
     }
 
     fn new() -> Arc<Self> {
@@ -188,7 +188,7 @@ impl Database {
             while let Some(op) = receiver.recv().await {
                 match op {
                     DatabaseQuery::InsertOrUpdate { sql, table_name, operation, sql_if_failed , operation_if_failed} => {
-                        let db = Self::get();
+                        let db = Self::get().await;
                         let mut s = db.prepare(&sql).unwrap();
                         let res = s.execute([]);
 

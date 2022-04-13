@@ -43,9 +43,9 @@ impl UTypingGame {
     // pub fn next_note(&mut self) {self.note_index += 1}
 }
 
+#[async_trait]
 impl GameMode for UTypingGame {
-
-    fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
+    async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings();
@@ -78,7 +78,7 @@ impl GameMode for UTypingGame {
                         }
                     }
 
-                    s.notes.push(UTypingNote::new(time, note.text.clone(), cutoff_time, settings.clone(), diff_calc_only));
+                    s.notes.push(UTypingNote::new(time, note.text.clone(), cutoff_time, settings.clone(), diff_calc_only).await);
                 }
 
 
@@ -204,7 +204,7 @@ impl GameMode for UTypingGame {
     }
 
 
-    fn update(&mut self, manager:&mut IngameManager, time: f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) {
 
         // do autoplay things
         if manager.current_mods.autoplay {
@@ -228,7 +228,7 @@ impl GameMode for UTypingGame {
         }
 
         // update notes
-        for note in self.notes.iter_mut() {note.update(time)}
+        for note in self.notes.iter_mut() {note.update(time).await}
 
         // if theres no more notes to hit, show score screen
         if let Some(note) = self.notes.last() {
@@ -255,7 +255,7 @@ impl GameMode for UTypingGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
-    fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         // let time = manager.time();
         // let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
@@ -340,13 +340,13 @@ impl GameMode for UTypingGame {
         )));
 
         // draw notes
-        for note in self.notes.iter_mut() {note.draw(args, list)}
+        for note in self.notes.iter_mut() {list.extend(note.draw(args).await)}
         // draw timing lines
         for tb in self.timing_bars.iter_mut() {tb.draw(args, list)}
     }
 
 
-    fn reset(&mut self, beatmap:&Beatmap) {
+    async fn reset(&mut self, beatmap:&Beatmap) {
         for note in self.notes.iter_mut() {
             note.reset();
 

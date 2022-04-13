@@ -32,14 +32,13 @@ pub struct ManiaNote {
     note_image: Option<Image>
 }
 impl ManiaNote {
-    pub fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
-        
+    pub async fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
         let mut note_image = None;
         if let Some(settings) = &mania_skin_settings {
             let map = &settings.note_image;
             
             if let Some(path) = map.get(&column) {
-                if let Some(img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     let mut img = img.clone();
                     img.current_color = color;
                     img.origin = Vector2::zero();
@@ -65,17 +64,19 @@ impl ManiaNote {
         }
     }
 }
+#[async_trait]
 impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
 
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time);
     }
-    fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
-        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
-        if self.hit {return}
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return list}
+        if self.hit {return list}
         
         
         if let Some(img) = &self.note_image {
@@ -93,9 +94,11 @@ impl HitObject for ManiaNote {
                 Some(Border::new(Color::BLACK, self.playfield.note_border_width))
             )));
         }
+
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.pos.y = 0.0;
         self.hit_time = 0.0;
         self.hit = false;
@@ -153,14 +156,13 @@ pub struct ManiaHold {
     middle_image: Option<Image>,
 }
 impl ManiaHold {
-    pub fn new(time:f32, end_time:f32, column: u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
-
+    pub async fn new(time:f32, end_time:f32, column: u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
         let mut start_image = None;
         if let Some(settings) = &mania_skin_settings {
             let map = &settings.note_image_h;
             
             if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.current_color = color;
                     img.origin = Vector2::zero();
                     img.depth = MANIA_NOTE_DEPTH;
@@ -175,7 +177,7 @@ impl ManiaHold {
             let map = &settings.note_image_l;
             
             if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.origin = Vector2::zero();
                     img.current_color = Color::WHITE;
                     img.depth = MANIA_NOTE_DEPTH;
@@ -190,7 +192,7 @@ impl ManiaHold {
             let map = &settings.note_image_t;
             
             if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SKIN_MANAGER.write().get_texture_grayscale(path, true, true) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.origin = Vector2::zero();
                     img.current_color = Color::WHITE;
                     img.current_scale.y *= -1.0;
@@ -220,12 +222,13 @@ impl ManiaHold {
         }
     }
 }
+#[async_trait]
 impl HitObject for ManiaHold {
     fn note_type(&self) -> NoteType {NoteType::Hold}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
 
-    fn update(&mut self, beatmap_time: f32) {
+    async fn update(&mut self, beatmap_time: f32) {
         // self.pos.x = HIT_POSITION.x + (self.time as f64 - beatmap_time as f64) * self.speed;
         let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
         
@@ -258,7 +261,8 @@ impl HitObject for ManiaHold {
         }
 
     }
-    fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -356,9 +360,10 @@ impl HitObject for ManiaHold {
         //     )));
         // }
 
+        list
     }
 
-    fn reset(&mut self) {
+    async fn reset(&mut self) {
         self.pos.y = 0.0;
         self.holding = false;
         self.hold_starts.clear();

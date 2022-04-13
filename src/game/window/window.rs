@@ -1,5 +1,3 @@
-use image::RgbaImage;
-
 use crate::prelude::*;
 use glfw_window::GlfwWindow as AppWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
@@ -9,10 +7,11 @@ use piston::{
     window::WindowSettings,
     RenderEvent
 };
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+
 
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
-pub static TEXTURE_LOAD_QUEUE: OnceCell<SyncSender<(LoadImage, SyncSender<TatakuResult<Arc<Texture>>>)>> = OnceCell::const_new();
 
 pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<RenderSideEvent>> = OnceCell::const_new();
 
@@ -24,7 +23,7 @@ pub struct GameWindow {
     game_event_sender: MultiFuze<GameEvent>,
     render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
     window_event_receiver: Receiver<RenderSideEvent>,
-    texture_load_receiver: Receiver<(LoadImage, SyncSender<TatakuResult<Arc<Texture>>>)>,
+    texture_load_receiver: UnboundedReceiver<(LoadImage, UnboundedSender<TatakuResult<Arc<Texture>>>)>,
     
 
     #[cfg(feature="bass_audio")]
@@ -59,7 +58,7 @@ impl GameWindow {
         info!("done fonts");
 
         
-        let (texture_load_sender, texture_load_receiver) = sync_channel(2_000);
+        let (texture_load_sender, texture_load_receiver) = unbounded_channel();
         TEXTURE_LOAD_QUEUE.set(texture_load_sender).ok().expect("bad");
         info!("done texture load queue");
 
@@ -105,7 +104,7 @@ impl GameWindow {
         }
     }
 
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
         let mut events = Events::new(EventSettings::new());
         events.set_ups_reset(0);
 
@@ -128,7 +127,7 @@ impl GameWindow {
                         ($tex:expr) => {{
                             let tex = Arc::new($tex);
                             image_data.push(tex.clone());
-                            on_done.send(Ok(tex)).expect("uh oh");
+                            on_done.send(Ok(tex)).ok().expect("uh oh");
                         }}
                     }
 
@@ -136,7 +135,7 @@ impl GameWindow {
                         LoadImage::Path(path) => {
                             match Texture::from_path(path, &settings) {
                                 Ok(t) => send_tex!(t),
-                                Err(e) => on_done.send(Err(TatakuError::String(e))).expect("uh oh"),
+                                Err(e) => on_done.send(Err(TatakuError::String(e))).ok().expect("uh oh"),
                             };
                         },
                         LoadImage::Image(data) => {
@@ -156,10 +155,9 @@ impl GameWindow {
                                 // generate glyph data
                                 let (metrics, bitmap) = font.font.rasterize(char, px);
 
-                                let mut data = Vec::new();
                                 // bitmap is a vec of grayscale pixels
                                 // we need to turn that into rgba bytes
-
+                                let mut data = Vec::new();
                                 bitmap.into_iter().for_each(|gray| {
                                     data.push(255); // r
                                     data.push(255); // g
@@ -185,7 +183,7 @@ impl GameWindow {
                                 characters.insert((size, char), char_data);
                             }
 
-                            on_done.send(Err(TatakuError::String(String::new()))).expect("uh oh");
+                            on_done.send(Err(TatakuError::String(String::new()))).ok().expect("uh oh");
                         }
                     }
 
@@ -214,7 +212,7 @@ impl GameWindow {
 
             if let Some(args) = e.render_args() {
                 // info!("window render event");
-                self.render(args);
+                self.render(args).await;
                 continue
             }
 
@@ -235,25 +233,15 @@ impl GameWindow {
                 continue;
             }
 
-            // trace!("sending event");
             self.game_event_sender.ignite(GameEvent::WindowEvent(e));
-
-
-
-            // self.input_manager.handle_events(e.clone(), &mut self.window);
-            // if let Some(args) = e.update_args() {self.update(args.dt*1000.0)}
-            // if let Some(args) = e.render_args() {self.render(args)}
-            // // if let Some(Button::Keyboard(_)) = e.press_args() {self.input_update_display.increment()}
-
-
-
-            // e.resize(|args| debug!("Resized '{}, {}'", args.window_size[0], args.window_size[1]));
         }
 
+
+        image_data.clear();
         self.game_event_sender.ignite(GameEvent::WindowClosed);
     }
     
-    fn render(&mut self, args: RenderArgs) {
+    async fn render(&mut self, args: RenderArgs) {
         if !self.render_event_receiver.updated() {return}
 
         match self.render_event_receiver.read() {
@@ -294,17 +282,18 @@ impl GameWindow {
 
                 // TODO: dont use this for snipping
 
-                self.graphics.draw(args.viewport(), |c, g| {
-                    graphics::clear(GFX_CLEAR_COLOR.into(), g);
-                    for i in data.iter() {
-                        i.draw(g, c);
+                let c = self.graphics.draw_begin(args.viewport());
+                graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+                for i in data.iter() {
+                    i.draw(&mut self.graphics, c);
+                }
+                if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                    for i in q.lock().await.read().iter() {
+                        i.draw(&mut self.graphics, c);
                     }
-                    if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                        q.lock().read().iter().for_each(|i| {
-                            i.draw(g, c);
-                        })
-                    }
-                });
+                }
+                self.graphics.draw_end();
+
             },
         }
     }
@@ -322,49 +311,6 @@ impl Default for TatakuRenderEvent {
 
 
 
-pub fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<Arc<Texture>> {
-    let path = path.as_ref().to_string_lossy().to_string();
-    info!("loading tex {}", path);
-
-    let (sender, receiver) = sync_channel(2);
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Path(path), sender)).expect("no?");
-
-    if let Ok(t) = receiver.recv() {
-        t
-    } else {
-        Err(TatakuError::String("idk".to_owned()))
-    }
-}
-pub fn load_texture_data(data: RgbaImage) -> TatakuResult<Arc<Texture>> {
-    info!("loading tex data");
-    let (sender, receiver) = sync_channel(2);
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Image(data), sender)).expect("no?");
-
-    if let Ok(t) = receiver.recv() {
-        t
-    } else {
-        Err(TatakuError::String("idk".to_owned()))
-    }
-}
-
-pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
-    // info!("loading font char ('{ch}',{size})");
-    let (sender, receiver) = sync_channel(2);
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Font(font, size), sender)).expect("no?");
-
-    if let Ok(t) = receiver.recv() {
-        t.map(|_|())
-    } else {
-        Err(TatakuError::String("idk".to_owned()))
-    }
-}
-
-
-pub enum LoadImage {
-    Path(String),
-    Image(RgbaImage),
-    Font(Font2, FontSize),
-}
 
 pub enum RenderSideEvent {
     ShowCursor,

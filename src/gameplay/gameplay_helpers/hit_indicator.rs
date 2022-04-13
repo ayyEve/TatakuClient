@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 
-pub trait JudgementIndicator {
+pub trait JudgementIndicator: Send + Sync{
     fn should_keep(&self, map_time: f32) -> bool;
     fn set_draw_duration(&mut self, duration: f32);
     fn draw(&mut self, map_time: f32, list: &mut Vec<Box<dyn Renderable>>);

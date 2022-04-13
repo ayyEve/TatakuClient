@@ -2,11 +2,9 @@ use crate::prelude::*;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
-
 lazy_static::lazy_static! {
-    pub static ref SETTINGS: Arc<RwLock<Settings>> = Arc::new(RwLock::new(Settings::load()));
-    pub static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::new_with(Some(get_settings!().window_size.into()));
+    pub static ref SETTINGS: Arc<OnceCell<RwLock<Settings>>> = Arc::new(OnceCell::const_new());
+    static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::const_new();
     pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 }
 
@@ -14,7 +12,7 @@ lazy_static::lazy_static! {
 macro_rules! get_settings {
     () => {{
         let caller = format!("{}:{}:{}", file!(), line!(), column!());
-        Settings::get(caller)
+        Settings::get(caller).await
     }}
 }
 
@@ -22,7 +20,7 @@ macro_rules! get_settings {
 macro_rules! get_settings_mut {
     () => {{
         let caller = format!("{}:{}:{}", file!(), line!(), column!());
-        Settings::get_mut(caller)
+        Settings::get_mut(caller).await
     }}
 }
 
@@ -83,21 +81,21 @@ pub struct Settings {
     pub external_games_folders: Vec<String>
 }
 impl Settings {
-    fn load() -> Settings {
+    pub async fn load() -> Settings {
         let mut s = match std::fs::read_to_string(SETTINGS_FILE) {
             Ok(b) => match serde_json::from_str(&b) {
                 Ok(settings) => settings,
                 Err(e) => {
                     // warn!("error reading settings.json, loading defaults");
-                    NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
-                    backup_settings();
+                    NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
+                    backup_settings().await;
                     Settings::default()
                 }
             }
             Err(e) => {
                 // warn!("error reading settings.json, loading defaults");
-                NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e);
-                backup_settings();
+                NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
+                backup_settings().await;
                 Settings::default()
             }
         };
@@ -105,43 +103,49 @@ impl Settings {
         // check password hashes
         s.check_hashes();
 
+        // set window size const
+        WINDOW_SIZE.set(s.window_size.into()).unwrap();
+        
+        SETTINGS.set(RwLock::new(s.clone())).ok().unwrap();
+
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
-        s.save();
+        s.save().await;
         s
     }
-    pub fn save(&self) {
+    pub async fn save(&self) {
         trace!("Saving settings");
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(SETTINGS_FILE, str) {
             Ok(_) => trace!("settings saved successfully"),
-            Err(e) => NotificationManager::add_error_notification("Error saving settings", e),
+            Err(e) => NotificationManager::add_error_notification("Error saving settings", e).await,
         }
     }
 
-    /// relatively slow, if you need a more performant get, use get_mut
-    pub fn get<'a>(caller: String) -> RwLockReadGuard<'a, Settings> {
-        if SETTINGS.is_locked_exclusive() && on_main_thread() {
-            let last_caller = LAST_CALLER.lock();
-            error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
-        }
+    pub async fn get<'a>(_caller: String) -> tokio::sync::RwLockReadGuard<'a, Settings> {
+        // if let None = SETTINGS.try_read() && on_main_thread() {
+        //     let last_caller = LAST_CALLER.lock();
+        //     error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
+        // }
 
-        *LAST_CALLER.lock() = caller;
-        SETTINGS.read()
+        // *LAST_CALLER.lock() = caller;
+        SETTINGS.get().unwrap().read().await
     }
 
     /// more performant, but can double lock if you arent careful
-    pub fn get_mut<'a>(caller:String) -> RwLockWriteGuard<'a, Settings> {
-        if SETTINGS.is_locked() && on_main_thread() {
-            let last_caller = LAST_CALLER.lock();
-            error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
-        }
+    pub async fn get_mut<'a>(_caller:String) -> tokio::sync::RwLockWriteGuard<'a, Settings> {
+        // if SETTINGS.is_locked() && on_main_thread() {
+        //     let last_caller = LAST_CALLER.lock();
+        //     error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
+        // }
 
-        *LAST_CALLER.lock() = caller;
-        SETTINGS.write()
+        // *LAST_CALLER.lock() = caller;
+        SETTINGS.get().unwrap().write().await
     }
 
-    pub fn window_size() -> Vector2 {*WINDOW_SIZE.get().unwrap()}
+    pub fn window_size() -> Vector2 {
+        *WINDOW_SIZE.get().unwrap()
+    }
 
     pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}
     pub fn get_music_vol(&self) -> f32 {self.music_vol * self.master_vol}
@@ -208,7 +212,7 @@ impl Default for Settings {
 }
 
 // make a backup of the setting before they're overwritten (when the file fails to load)
-fn backup_settings() {
+async fn backup_settings() {
     if exists(SETTINGS_FILE) {
         let mut counter = 0;
         while exists(format!("{SETTINGS_FILE}.bak_{counter}")) {
@@ -217,13 +221,13 @@ fn backup_settings() {
         let file = format!("{SETTINGS_FILE}.bak_{counter}");
 
         if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
-            NotificationManager::add_error_notification("Error backing up settings.json", e)
+            NotificationManager::add_error_notification("Error backing up settings.json", e).await
         } else {
             NotificationManager::add_text_notification(
                 &format!("Backup saved as {file}"),
                 5000.0,
                 Color::YELLOW
-            );
+            ).await;
         }
     }
 }

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 impl Database {
-    pub fn save_info(pos: Vector2, scale: Vector2, visible: bool, name: &String) {
-        let db = Self::get();
+    pub async fn save_info(pos: Vector2, scale: Vector2, visible: bool, name: &String) {
+        let db = Self::get().await;
 
         let sql = format!("
         INSERT INTO ui_elements (
@@ -35,10 +35,10 @@ impl Database {
         }
     }
 
-    pub fn get_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
+    pub async fn get_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
         let sql = format!("SELECT pos_x, pos_y, scale_x, scale_y, visible FROM ui_elements WHERE name='{name}'");
 
-        let db = Self::get();
+        let db = Self::get().await;
         let mut s = db.prepare(&sql).unwrap();
         let res = s.query_map([], |row| Ok((
             Vector2::new(

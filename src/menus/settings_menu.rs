@@ -13,7 +13,7 @@ pub struct SettingsMenu {
     finalize_list: Vec<Arc<dyn OnFinalize>>
 }
 impl SettingsMenu {
-    pub fn new() -> SettingsMenu {
+    pub async fn new() -> SettingsMenu {
         let settings = get_settings!();
         let p = Vector2::new(10.0 + SECTION_XOFFSET, 0.0); // scroll area edits the y
         let window_size = Settings::window_size();
@@ -310,7 +310,7 @@ impl SettingsMenu {
         }
     }
 
-    pub fn finalize(&mut self, game:&mut Game) {
+    pub async fn finalize(&mut self, game:&mut Game) {
         // write settings to settings
         let mut settings = get_settings_mut!();
 
@@ -320,14 +320,16 @@ impl SettingsMenu {
         }
 
         settings.check_hashes();
-        settings.save();
+        settings.save().await;
 
         let menu = game.menus.get("main").unwrap().clone();
         game.queue_state_change(GameState::InMenu(menu));
     }
 }
-impl Menu<Game> for SettingsMenu {
-    fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
+
+#[async_trait]
+impl AsyncMenu<Game> for SettingsMenu {
+    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
         let window_size = Settings::window_size();
@@ -342,16 +344,16 @@ impl Menu<Game> for SettingsMenu {
         list
     }
 
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, mods) {
             match tag.as_str() {
-                "done" => self.finalize(game),
+                "done" => self.finalize(game).await,
                 _ => {}
             }
         }
     }
 
-    fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         self.scroll_area.on_key_press(key, mods);
 
         if key == piston::Key::Escape {
@@ -361,20 +363,20 @@ impl Menu<Game> for SettingsMenu {
         }
     }
 
-    fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _g:&mut Game) {
+    async fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _g:&mut Game) {
         self.scroll_area.on_click_release(pos, button);
     }
 
-    fn update(&mut self, _game: &mut Game) {self.scroll_area.update()}
-    fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {self.scroll_area.on_mouse_move(pos)}
-    fn on_scroll(&mut self, delta:f64, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
-    fn on_text(&mut self, text:String) {self.scroll_area.on_text(text)}
+    async fn update(&mut self, _game: &mut Game) {self.scroll_area.update()}
+    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {self.scroll_area.on_mouse_move(pos)}
+    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
+    async fn on_text(&mut self, text:String) {self.scroll_area.on_text(text)}
 }
 impl ControllerInputMenu<Game> for SettingsMenu {
     
 }
 
 
-trait OnFinalize {
+trait OnFinalize: Send + Sync {
     fn on_finalize(&self, menu: &SettingsMenu, settings: &mut Settings);
 }

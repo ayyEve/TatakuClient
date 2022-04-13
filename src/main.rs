@@ -80,11 +80,13 @@ fn main() {
     let ready = Arc::new(AtomicBool::new(false));
     let ready2 = ready.clone();
 
-
     // finish setting up
     main_thread.block_on(async move {
         setup().await;
     });
+
+    // init skin manager
+    SkinManager::init();
 
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
     let (game_event_sender, game_event_receiver) = MultiBomb::new();
@@ -93,27 +95,28 @@ fn main() {
     trace!("creating window");
     let mut window = GameWindow::start(render_queue_receiver, game_event_sender);
 
-    trace!("window ready");
     ready2.store(true, SeqCst);
 
     // enter async runtime
     let _ = multi_thread.enter();
     multi_thread.spawn(async move {
-        trace!("waiting for window");
         while !ready.load(SeqCst) {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
+        trace!("window ready");
 
         // start the game
         trace!("creating game");
-        let game = Game::new(render_queue_sender, game_event_receiver);
+        let game = Game::new(render_queue_sender, game_event_receiver).await;
         trace!("running game");
-        game.game_loop();
+        game.game_loop().await;
         trace!("game closed");
     });
 
     trace!("window running");
-    window.run();
+    main_thread.block_on(async move {
+        window.run().await;
+    });
     trace!("window closed");
 
     main_thread.shutdown_timeout(Duration::from_millis(500));
@@ -124,6 +127,8 @@ fn main() {
 }
 
 async fn setup() {
+    Settings::load().await;
+
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);

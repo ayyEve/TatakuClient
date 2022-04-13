@@ -7,9 +7,9 @@ pub struct ScoreElement {
     score: u64,
 }
 impl ScoreElement {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
-            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).ok(),
+            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).await.ok(),
             score: 0
         }
     }

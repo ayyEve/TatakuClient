@@ -23,13 +23,13 @@ pub struct DonChan {
     combo_anim_last_index: usize
 }
 impl DonChan {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             state: DonChanState::Normal,
-            normal_anim: load_anim("idle"),
-            combo_anim: load_anim("clear"),
-            kiai_anim: load_anim("kiai"),
-            fail_anim: load_anim("fail"),
+            normal_anim: load_anim("idle").await,
+            combo_anim: load_anim("clear").await,
+            kiai_anim: load_anim("kiai").await,
+            fail_anim: load_anim("fail").await,
 
             kiai: false,
             init: false,
@@ -195,13 +195,11 @@ impl InnerUIElement for DonChan {
     }
 }
 
-fn load_anim(name: &str) -> Option<Animation> {
-    let mut skin_manager = SKIN_MANAGER.write();
-
+async fn load_anim(name: &str) -> Option<Animation> {
     let mut frames = Vec::new();
     let mut current = 0;
 
-    while let Some(tex) = skin_manager.get_texture(format!("pippidon{name}{current}"), true) {
+    while let Some(tex) = SkinManager::get_texture(format!("pippidon{name}{current}"), true).await {
         current += 1;
         frames.push(tex.tex);
     }
