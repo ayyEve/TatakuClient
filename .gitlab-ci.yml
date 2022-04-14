@@ -13,7 +13,7 @@ rust-latest:
     - apt update
     - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
     - cargo build --release --verbose #--features gitlab_build
-    - cargo test --verbose
+    # - cargo test --verbose
   # allow_failure: true
   cache:
     paths:
@@ -28,7 +28,7 @@ rust-nightly:
     - apt update
     - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
     - cargo build --release --verbose #--features gitlab_build
-    - cargo test --verbose
+    # - cargo test --verbose
   allow_failure: true
   cache:
     paths:
