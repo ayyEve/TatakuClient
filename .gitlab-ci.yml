@@ -12,9 +12,9 @@ rust-latest:
   script:
     - apt update
     - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
-    - cargo build --release --bin taiko-rs-client --verbose --features gitlab_build
-    - cargo test --bin taiko-rs-client --verbose
-  allow_failure: true
+    - cargo build --release --verbose #--features gitlab_build
+    - cargo test --verbose
+  # allow_failure: true
   cache:
     paths:
       - target
@@ -27,8 +27,8 @@ rust-nightly:
   script:
     - apt update
     - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
-    - cargo build --release --bin taiko-rs-client --verbose --features gitlab_build
-    - cargo test --bin taiko-rs-client --verbose
+    - cargo build --release --verbose #--features gitlab_build
+    - cargo test --verbose
   allow_failure: true
   cache:
     paths:
