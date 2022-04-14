@@ -43,6 +43,8 @@ impl Database {
 
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
+        let diff_calc_version = 1;
+
         let sql = format!(
             "INSERT INTO difficulties (
                 beatmap_hash, 
@@ -54,7 +56,7 @@ impl Database {
                 '{map_hash}',
                 '{playmode}',
                 '{mods}',
-                {1},
+                {diff_calc_version},
                 {diff}
             )"
         );
