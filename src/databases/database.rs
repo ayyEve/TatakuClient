@@ -63,6 +63,13 @@ impl Database {
         if duration > 0.5 {info!("db lock took {:.4}ms to aquire", duration)};
         a
     }
+    pub async fn get_diffcalc<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
+        let now = Instant::now();
+        let a = DATABASE.connection.lock().await;
+        let duration = now.elapsed().as_secs_f32() * 1000.0;
+        if duration > 0.5 {info!("diffcalc db lock took {:.4}ms to aquire", duration)};
+        a
+    }
 
     fn new() -> Arc<Self> {
         let connection = Connection::open("tataku.db").unwrap();

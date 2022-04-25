@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use super::mania::PositionPoint;
+
 const MANIA_NOTE_DEPTH: f64 = 100.0;
 const MANIA_SLIDER_DEPTH: f64 = 100.1;
 
@@ -9,15 +11,15 @@ pub trait ManiaHitObject: HitObject {
     fn miss(&mut self, time:f32);
     fn was_hit(&self) -> bool {false}
 
-    fn y_at(&self, time:f32) -> f64;
-    fn time_at(&self, y: f32) -> f32;
-    fn set_sv(&mut self, sv:f32);
+    fn set_sv_mult(&mut self, sv: f64);
+    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
 }
 
 // note
 #[derive(Clone)]
 pub struct ManiaNote {
     pos: Vector2,
+    relative_y: f64,
     time: f32, // ms
     // column: u8,
     color: Color,
@@ -25,14 +27,22 @@ pub struct ManiaNote {
     hit_time: f32,
     hit: bool,
     missed: bool,
-    speed: f32,
+    
+    position_function: Arc<Vec<PositionPoint>>,
+    sv_mult: f64,
 
     playfield: Arc<ManiaPlayfieldSettings>,
 
     note_image: Option<Image>
 }
 impl ManiaNote {
-    pub async fn new(time:f32, column:u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+    pub async fn new(
+        time:f32, column:u8, color: Color, x:f64, 
+        
+        sv_mult: f64,
+
+        playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+    ) -> Self {
         let mut note_image = None;
         if let Some(settings) = &mania_skin_settings {
             let map = &settings.note_image;
@@ -47,10 +57,12 @@ impl ManiaNote {
                 }
             }
         }
-        
+
         Self {
-            time, 
-            speed: 1.0,
+            time,
+            position_function: Arc::new(Vec::new()),
+            relative_y: 0.0,
+            sv_mult,
             // column,
             color,
 
@@ -62,6 +74,12 @@ impl ManiaNote {
             playfield,
             note_image
         }
+    }
+
+    fn y_at(&self, time: f32) -> f64 {
+        let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
+
+        self.playfield.hit_y() - (self.relative_y - pos_at(&self.position_function, time)) * speed
     }
 }
 #[async_trait]
@@ -115,19 +133,14 @@ impl ManiaHitObject for ManiaNote {
         self.hit_time = time;
     }
 
-    fn y_at(&self, time:f32) -> f64 {
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-        self.playfield.hit_y() - ((self.time - time) * speed) as f64
+    fn set_sv_mult(&mut self, sv: f64) {
+        self.sv_mult = sv;
     }
 
-    fn time_at(&self, y:f32) -> f32 {
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-        self.time + (y - self.playfield.hit_y() as f32) / speed 
-    }
+    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
+        self.position_function = p;
 
-
-    fn set_sv(&mut self, sv:f32) {
-        self.speed = sv;
+        self.relative_y = pos_at(&self.position_function, self.time);
     }
 }
 
@@ -137,6 +150,9 @@ pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
+
+    start_relative_pos: f64,
+    end_relative_pos: f64,
     // column: u8,
     color: Color,
 
@@ -145,7 +161,8 @@ pub struct ManiaHold {
     hold_ends: Vec<f32>,
     holding: bool,
 
-    speed: f32,
+    position_function: Arc<Vec<PositionPoint>>,
+    sv_mult: f64,
     //TODO: figure out how to pre-calc this
     end_y: f64,
 
@@ -156,7 +173,13 @@ pub struct ManiaHold {
     middle_image: Option<Image>,
 }
 impl ManiaHold {
-    pub async fn new(time:f32, end_time:f32, column: u8, color: Color, x:f64, playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>) -> Self {
+    pub async fn new(
+        time:f32, end_time:f32, column: u8, color: Color, x:f64, 
+        
+        sv_mult: f64,
+        
+        playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+    ) -> Self {
         let mut start_image = None;
         if let Some(settings) = &mania_skin_settings {
             let map = &settings.note_image_h;
@@ -203,10 +226,14 @@ impl ManiaHold {
         }
 
         Self {
+            
             time, 
             end_time,
             // column,
-            speed: 1.0,
+            position_function: Arc::new(Vec::new()),
+            start_relative_pos: 0.0,
+            end_relative_pos: 0.0,
+            sv_mult,
             holding: false,
             color,
 
@@ -221,6 +248,14 @@ impl ManiaHold {
             middle_image,
         }
     }
+
+    fn y_at(&self, beatmap_time: f32) -> (f64, f64) {
+        let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
+
+        let a = |y| self.playfield.hit_y() - (y - pos_at(&self.position_function, beatmap_time)) * speed;
+
+        (a(self.start_relative_pos), a(self.end_relative_pos))
+    }
 }
 #[async_trait]
 impl HitObject for ManiaHold {
@@ -229,11 +264,10 @@ impl HitObject for ManiaHold {
     fn end_time(&self,hw_miss:f32) -> f32 {self.end_time + hw_miss}
 
     async fn update(&mut self, beatmap_time: f32) {
-        // self.pos.x = HIT_POSITION.x + (self.time as f64 - beatmap_time as f64) * self.speed;
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-        
-        self.end_y = self.playfield.hit_y() - ((self.end_time - beatmap_time) * speed) as f64;
-        self.pos.y = self.playfield.hit_y() - ((self.time - beatmap_time) * speed) as f64;
+        let (start, end) = self.y_at(beatmap_time);
+
+        self.pos.y = start;
+        self.end_y = end;
 
         if self.playfield.upside_down {
             std::mem::swap(&mut self.end_y, &mut self.pos.y)
@@ -388,17 +422,34 @@ impl ManiaHitObject for ManiaHold {
     //
     fn miss(&mut self, _time:f32) {}
 
-    fn y_at(&self, time:f32) -> f64 {
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-        self.playfield.hit_y() - ((self.time - time) * speed) as f64
+    fn set_sv_mult(&mut self, sv: f64) {
+        self.sv_mult = sv;
     }
 
-    fn time_at(&self, y:f32) -> f32 {
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-        self.time + (y - self.playfield.hit_y() as f32) / speed 
-    }
+    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
+        self.position_function = p;
 
-    fn set_sv(&mut self, sv:f32) {
-        self.speed = sv;
+        self.start_relative_pos = pos_at(&self.position_function, self.time);
+        self.end_relative_pos = pos_at(&self.position_function, self.end_time);
     }
+}
+
+fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32) -> f64 {
+    trace!("pos_at");
+
+    let (index, b) = position_function.iter().enumerate().find(|(_, p)| time < p.time).unwrap();
+
+    trace!("got next point: {:#?}", b);
+    
+    let a = &position_function[index - 1];
+    
+    trace!("got point: {:#?}", a);
+
+    trace!("time: {}", time);
+
+    let f = f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64);
+
+    trace!("lerp: {}", f);
+
+    f
 }

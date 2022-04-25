@@ -29,7 +29,9 @@ pub struct QuaverBeatmap {
     // pub sound_effects: Vec<?>,
     
     pub timing_points: Vec<QuaverTimingPoint>,
-    // pub slider_velocities: Vec<?>,
+    
+    pub initial_scroll_velocity: f64,
+    pub slider_velocities: Vec<QuaverSliderVelocity>,
     pub hit_objects: Vec<QuaverNote>,
 
     // extra info added later
@@ -41,7 +43,14 @@ pub struct QuaverBeatmap {
 impl QuaverBeatmap {
     pub fn load(path: String) -> TatakuResult<Self> {
         let lines = std::fs::read_to_string(&path)?;
-        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|_|BeatmapError::InvalidFile)?;
+        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
+            error!("asdjlfhjskdfhjdsfhksdfflhksdfhkjsdfhjdf: {:?}", e);
+            BeatmapError::InvalidFile
+        })?;
+
+        for sv in s.slider_velocities.iter_mut().filter(|s| s.multiplier.is_none()) {
+            sv.multiplier = Some(s.initial_scroll_velocity);
+        }
 
         s.hash = get_file_hash(&path)?;
         s.path = path.clone();
@@ -193,4 +202,11 @@ pub struct QuaverNote {
     #[serde(default)]
     pub end_time: Option<f32>
     // key_sounds: Vec<?>
+}
+
+#[derive(Deserialize, Copy, Clone)]
+#[serde(rename_all="PascalCase")]
+pub struct QuaverSliderVelocity {
+    pub start_time: f32,
+    pub multiplier: Option<f64>
 }

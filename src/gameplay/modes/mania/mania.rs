@@ -39,8 +39,10 @@ pub struct ManiaGame {
     // lists
     columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     timing_bars: Vec<TimingBar>,
+
+    position_function: Arc<Vec<PositionPoint>>,
+
     // list indices
-    timing_point_index: usize,
     column_indices: Vec<usize>,
     /// true if held
     column_states: Vec<bool>,
@@ -51,7 +53,7 @@ pub struct ManiaGame {
     hitwindow_miss: f32,
 
     end_time: f32,
-    sv_mult: f32,
+    sv_mult: f64,
     column_count: u8,
 
     auto_helper: ManiaAutoHelper,
@@ -87,18 +89,66 @@ impl ManiaGame {
         (*self.column_indices.get_mut(col).unwrap()) += 1;
     }
 
-    fn set_sv(&mut self, sv:f32) {
-        let scaled_sv = (sv / SV_FACTOR) * self.sv_mult;
+    fn integrate_velocity(&mut self, mut slider_velocities: Vec<SliderVelocity>) {
+        let mut position_function = vec![PositionPoint::default()];
+
+        if slider_velocities.is_empty() {
+            position_function.push(PositionPoint { 
+                time: self.end_time,
+                position: self.end_time as f64,
+            });
+
+            self.position_function = Arc::new(position_function);
+
+            for col in self.columns.iter_mut() {
+                for note in col.iter_mut() {
+                    note.set_position_function(self.position_function.clone());
+                }
+            }
+
+            return;
+        }
+
+        slider_velocities.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+
+        let mut position_function = vec![PositionPoint::default()];
+
+        let final_sv = SliderVelocity {
+            time: self.end_time,
+            slider_velocity: slider_velocities.last().unwrap().slider_velocity,
+        };
+
+        for sv in slider_velocities.into_iter().chain([final_sv]) {
+            let last_pos = position_function.last().unwrap();
+
+            let dt = sv.time - last_pos.time;
+            
+            let dy = sv.slider_velocity * dt as f64;
+
+            let y = last_pos.position;
+
+            position_function.push(PositionPoint {
+                time: sv.time,
+                position: y + dy,
+            });
+        }
+
+        self.position_function = Arc::new(position_function);
+
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
-                note.set_sv(scaled_sv);
+                note.set_position_function(self.position_function.clone());
             }
-        }
-        for bar in self.timing_bars.iter_mut() {
-            bar.set_sv(scaled_sv);
         }
     }
 
+    fn set_sv_mult_notes(&mut self) {
+        for col in self.columns.iter_mut() {
+            for note in col.iter_mut() {
+                note.set_sv_mult(self.sv_mult)
+            }
+        }
+    }
     
     async fn load_col_images(&mut self) {
         if let Some(settings) = &self.mania_skin_settings {
@@ -227,14 +277,16 @@ impl GameMode for ManiaGame {
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
                     timing_bars: Vec::new(),
-                    timing_point_index: 0,
+
+                    position_function: Arc::new(Vec::new()),
+
                     end_time: 0.0,
 
                     hitwindow_100: 0.0,
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
 
                     auto_helper,
@@ -270,6 +322,7 @@ impl GameMode for ManiaGame {
                             column,
                             get_color(note.time),
                             x,
+                            s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                         ).await));
@@ -286,6 +339,7 @@ impl GameMode for ManiaGame {
                         column,
                         get_color(time),
                         x,
+                        s.sv_mult,
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
                     ).await));
@@ -321,6 +375,14 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+
+                s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
+                    time: b.time,
+                    slider_velocity: 100.0 / (-b.beat_length as f64) 
+                }).collect());
+
+                warn!("integrated function: {:#?}", s.position_function);
+
                 s.load_col_images().await;
 
                 Ok(s)
@@ -338,16 +400,17 @@ impl GameMode for ManiaGame {
                     columns: Vec::new(),
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
-        
                     timing_bars: Vec::new(),
-                    timing_point_index: 0,
+
+                    position_function: Arc::new(Vec::new()),
+                    
                     end_time: 0.0,
         
                     hitwindow_100: 0.0,
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
 
                     auto_helper,
@@ -359,7 +422,7 @@ impl GameMode for ManiaGame {
                     key_images_up:HashMap::new(),
                     key_images_down:HashMap::new(),
                 };
-                
+
                 // init defaults for the columns
                 for _col in 0..s.column_count {
                     s.columns.push(Vec::new());
@@ -380,6 +443,7 @@ impl GameMode for ManiaGame {
                             column,
                             get_color(time),
                             x,
+                            s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                         ).await));
@@ -389,6 +453,7 @@ impl GameMode for ManiaGame {
                             column,
                             get_color(time),
                             x,
+                            s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                         ).await));
@@ -403,6 +468,11 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+
+                s.integrate_velocity(beatmap.slider_velocities.iter().map(|&x| x.into()).collect());
+
+                warn!("integrated function: {:#?}", s.position_function);
+
                 s.load_col_images().await;
         
                 Ok(s)
@@ -421,16 +491,17 @@ impl GameMode for ManiaGame {
                     columns: Vec::new(),
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
-        
                     timing_bars: Vec::new(),
-                    timing_point_index: 0,
+
+                    position_function: Arc::new(Vec::new()),
+                    
                     end_time: 0.0,
         
                     hitwindow_100: 0.0,
                     hitwindow_300: 0.0,
                     hitwindow_miss: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed,
+                    sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
 
                     auto_helper,
@@ -442,7 +513,7 @@ impl GameMode for ManiaGame {
                     key_images_up:HashMap::new(),
                     key_images_down:HashMap::new(),
                 };
-                
+
                 // init defaults for the columns
                 for _col in 0..s.column_count {
                     s.columns.push(Vec::new());
@@ -463,6 +534,7 @@ impl GameMode for ManiaGame {
                             column,
                             get_color(time),
                             x,
+                            s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                         ).await));
@@ -472,6 +544,7 @@ impl GameMode for ManiaGame {
                             column,
                             get_color(time),
                             x,
+                            s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
                         ).await));
@@ -486,6 +559,9 @@ impl GameMode for ManiaGame {
                     }
                 }
                 s.end_time += 1000.0;
+
+                s.integrate_velocity(Vec::new());
+
                 s.load_col_images().await;
                 
                 Ok(s)
@@ -663,8 +739,6 @@ impl GameMode for ManiaGame {
             self.column_indices[i] = 0;
             self.column_states[i] = false;
         }
-        
-        self.timing_point_index = 0;
 
         let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
         // setup hitwindows
@@ -711,9 +785,6 @@ impl GameMode for ManiaGame {
 
             debug!("created {} timing bars", self.timing_bars.len());
         }
-
-        let sv = beatmap.slider_velocity_at(0.0);
-        self.set_sv(sv);
     }
 
 
@@ -761,15 +832,6 @@ impl GameMode for ManiaGame {
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
-
-        let timing_points = &manager.timing_points;
-        // check timing point
-        if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
-            self.timing_point_index += 1;
-            // let tp = &timing_points[self.timing_point_index];
-            let sv = manager.beatmap.slider_velocity_at(time);
-            self.set_sv(sv);
-        }
     }
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         let window_size = Settings::window_size();
@@ -829,14 +891,15 @@ impl GameMode for ManiaGame {
         // make sure we havent hit a note yet
         for &c in self.column_indices.iter() {if c > 0 {return}}
 
-        // find the earliest time that a note would be at the y needed
-        let y_needed = if self.playfield.upside_down {Settings::window_size().y as f32} else {0.0};
         let mut time = self.end_time;
         for col in self.columns.iter() {
-            for note in col.iter() {
-                time = time.min(note.time_at(y_needed))
+            if let Some(note) = col.first() {
+                time = time.min(note.time());
             }
         }
+
+        // allow 2 seconds before the first note.
+        time -= 2000.0;
 
         if time < 0.0 {return}
         if manager.time() >= time {return}
@@ -847,6 +910,8 @@ impl GameMode for ManiaGame {
                 manager.lead_in_time = 0.01;
             }
         }
+
+        // todo: update SV
 
         #[cfg(feature="bass_audio")]
         manager.song.set_position(time as f64).unwrap();
@@ -862,6 +927,7 @@ impl GameMode for ManiaGame {
         // }
     }
 
+
 }
 
 
@@ -872,14 +938,14 @@ impl GameModeInput for ManiaGame {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta;
+                self.sv_mult += self.game_settings.sv_change_delta as f64;
             } else {
-                self.sv_mult -= self.game_settings.sv_change_delta;
+                self.sv_mult -= self.game_settings.sv_change_delta as f64;
             }
-            self.map_preferences.scroll_speed = self.sv_mult;
-            
-            let time = manager.time();
-            self.set_sv(manager.beatmap.slider_velocity_at(time));
+            self.map_preferences.scroll_speed = self.sv_mult as f32;
+
+            self.set_sv_mult_notes();
+
             return;
         }
 
@@ -1157,6 +1223,39 @@ impl ManiaAutoHelper {
                 timer.0 = note.end_time(50.0);
                 timer.1 = true;
             }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SliderVelocity {
+    /// Start time of the timing section, in milliseconds from the beginning of the beatmap's audio. The end of the timing section is the next timing point's time (or never, if this is the last timing point).
+    pub time: f32,
+    
+    /// Velocity multiplier
+    pub slider_velocity: f64,
+}
+
+impl From<crate::beatmaps::quaver::QuaverSliderVelocity> for SliderVelocity {
+    fn from(s: crate::beatmaps::quaver::QuaverSliderVelocity) -> Self {
+        Self {
+            time: s.start_time,
+            slider_velocity: s.multiplier.unwrap_or(1.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PositionPoint {
+    pub time: f32,
+    pub position: f64
+}
+
+impl Default for PositionPoint {
+    fn default() -> Self {
+        Self {
+            time: -LEAD_IN_TIME,
+            position: -LEAD_IN_TIME as f64,
         }
     }
 }
