@@ -219,16 +219,13 @@ impl Database {
     }
 
     pub fn add_query(q: DatabaseQuery) {
-        let (fuse, bomb) = Bomb::new();
-
-        tokio::spawn(async move {
-            if let Err(e) = DATABASE_OPERATIONS_QUEUE.get().unwrap().send(q).await {
-                error!("error sending database query! {}", e);
-            }
-            fuse.ignite(());
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                if let Err(e) = DATABASE_OPERATIONS_QUEUE.get().unwrap().send(q).await {
+                    error!("error sending database query! {}", e);
+                }
+            });
         });
-
-        while let None = bomb.exploded() {}
     }
 }
 
