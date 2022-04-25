@@ -38,58 +38,54 @@ impl Database {
 
     }
 
-    pub async fn insert_diff(map_hash:&String, playmode:&PlayMode, mods:&ModManager, diff:f32) {
-        let db = Self::get().await;
+    // pub async fn insert_diff(map_hash:&String, playmode:&PlayMode, mods:&ModManager, diff:f32) {
+    //     let db = Self::get().await;
 
-        let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
+    //     let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
-        let diff_calc_version = 1;
+    //     let diff_calc_version = 1;
 
-        let sql = format!(
-            "INSERT INTO difficulties (
-                beatmap_hash, 
-                playmode,
-                mods_string,
-                diff_calc_version,
-                diff
-            ) VALUES (
-                '{map_hash}',
-                '{playmode}',
-                '{mods}',
-                {diff_calc_version},
-                {diff}
-            )"
-        );
-        let mut s = db.prepare(&sql).unwrap();
+    //     let sql = format!(
+    //         "INSERT INTO difficulties (
+    //             beatmap_hash, 
+    //             playmode,
+    //             mods_string,
+    //             diff_calc_version,
+    //             diff
+    //         ) VALUES (
+    //             '{map_hash}',
+    //             '{playmode}',
+    //             '{mods}',
+    //             {diff_calc_version},
+    //             {diff}
+    //         )"
+    //     );
+    //     let mut s = db.prepare(&sql).unwrap();
 
-        // error is entry already exists
-        if let Err(_) = s.execute([]) {
-            // trance!("updating diff: {diff}");
-            let sql = format!(
-                "UPDATE difficulties SET diff={} WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'", 
-                diff,
-                map_hash,
-                playmode,
-                mods,
-            );
-            let mut s = db.prepare(&sql).unwrap();
+    //     // error is entry already exists
+    //     if let Err(_) = s.execute([]) {
+    //         // trance!("updating diff: {diff}");
+    //         let sql = format!(
+    //             "UPDATE difficulties SET diff={} WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'", 
+    //             diff,
+    //             map_hash,
+    //             playmode,
+    //             mods,
+    //         );
+    //         let mut s = db.prepare(&sql).unwrap();
 
-            if let Err(e) = s.execute([]) {
-                error!("Error inserting/updateing difficulties table: {e}")
-            }
-        }
-    }
+    //         if let Err(e) = s.execute([]) {
+    //             error!("Error inserting/updateing difficulties table: {e}")
+    //         }
+    //     }
+    // }
 
 
     pub async fn get_all_diffs(playmode: &PlayMode, mods: &ModManager) -> HashMap<String, f32> {
         let db = Self::get().await;
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
-        let query = format!(
-            "SELECT beatmap_hash, diff FROM difficulties WHERE playmode='{}' AND mods_string='{}'",
-            playmode,
-            mods
-        );
+        let query = format!("SELECT beatmap_hash, diff FROM difficulties WHERE playmode='{playmode}' AND mods_string='{mods}'");
         let mut s = db.prepare(&query).unwrap();
         let res = s.query_map([], |row| Ok((
             row.get::<&str, String>("beatmap_hash")?,
@@ -107,25 +103,27 @@ impl Database {
         map
     }
 
-    pub async fn get_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager) -> Option<f32> {
-        let db = Self::get().await;
-        let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
+    // pub async fn get_diff(map_hash: &String, playmode: &PlayMode, mods: &ModManager) -> Option<f32> {
+    //     info!("get diff");
+    //     let db = Self::get().await;
+    //     let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
-        let query = format!(
-            "SELECT diff FROM difficulties WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'",
-            map_hash,
-            playmode,
-            mods
-        );
-        let mut s = db.prepare(&query).unwrap();
-        let res = s.query_map([], |row| row.get::<&str, f32>("diff"));
+    //     let query = format!(
+    //         "SELECT diff FROM difficulties WHERE beatmap_hash='{}' AND playmode='{}' AND mods_string='{}'",
+    //         map_hash,
+    //         playmode,
+    //         mods
+    //     );
+    //     let mut s = db.prepare(&query).unwrap();
+    //     let res = s.query_map([], |row| row.get::<&str, f32>("diff"));
 
-        if let Ok(mut rows) = res {
-            rows.find_map(|r|r.ok())
-        } else {
-            None
-        }
-    }
+    //     if let Ok(mut rows) = res {
+    //         rows.find_map(|r|r.ok())
+    //     } else {
+    //         None
+    //     }
+    // }
+
 }
 
 

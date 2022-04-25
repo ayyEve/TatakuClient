@@ -5,22 +5,20 @@ const SETTINGS_FILE:&str = "settings.json";
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Arc<OnceCell<RwLock<Settings>>> = Arc::new(OnceCell::const_new());
     static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::const_new();
-    pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    // pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 }
 
 #[macro_export]
 macro_rules! get_settings {
     () => {{
-        let caller = format!("{}:{}:{}", file!(), line!(), column!());
-        Settings::get(caller).await
+        Settings::get().await
     }}
 }
 
 #[macro_export]
 macro_rules! get_settings_mut {
     () => {{
-        let caller = format!("{}:{}:{}", file!(), line!(), column!());
-        Settings::get_mut(caller).await
+        Settings::get_mut().await
     }}
 }
 
@@ -77,6 +75,7 @@ pub struct Settings {
     pub last_git_hash: String,
     pub server_url: String,
     pub current_skin: String,
+    pub logging_settings: LoggingSettings,
 
     pub external_games_folders: Vec<String>
 }
@@ -122,24 +121,12 @@ impl Settings {
         }
     }
 
-    pub async fn get<'a>(_caller: String) -> tokio::sync::RwLockReadGuard<'a, Settings> {
-        // if let None = SETTINGS.try_read() && on_main_thread() {
-        //     let last_caller = LAST_CALLER.lock();
-        //     error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
-        // }
-
-        // *LAST_CALLER.lock() = caller;
+    pub async fn get<'a>() -> tokio::sync::RwLockReadGuard<'a, Settings> {
         SETTINGS.get().unwrap().read().await
     }
 
     /// more performant, but can double lock if you arent careful
-    pub async fn get_mut<'a>(_caller:String) -> tokio::sync::RwLockWriteGuard<'a, Settings> {
-        // if SETTINGS.is_locked() && on_main_thread() {
-        //     let last_caller = LAST_CALLER.lock();
-        //     error!("Settings Double Locked! Called by {}, locked by {}", caller, last_caller);
-        // }
-
-        // *LAST_CALLER.lock() = caller;
+    pub async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Settings> {
         SETTINGS.get().unwrap().write().await
     }
 
@@ -205,6 +192,7 @@ impl Default for Settings {
 
             server_url: "wss://taikors.ayyeve.xyz".to_owned(),
             current_skin: "None".to_owned(),
+            logging_settings: LoggingSettings::new(),
 
             external_games_folders: Vec::new()
         }

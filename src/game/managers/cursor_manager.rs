@@ -25,8 +25,11 @@ pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
 
+    // cached settings
     pub color: Color,
     pub border_color: Color,
+    cursor_border: f32,
+    cursor_scale: f64,
 
 
     pub cursor_image: Option<Image>,
@@ -62,13 +65,12 @@ impl CursorManager {
             CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
 
             let mut s = Self::new(cursor_render_sender).await;
-            let mut timer = Instant::now();
+            let timer = Instant::now();
 
             loop {
                 let now = Instant::now();
                 
                 let diff = now.duration_since(timer).as_secs_f64() * 1000.0;
-
                 s.update(diff).await;
 
 
@@ -76,9 +78,8 @@ impl CursorManager {
                 s.draw(&mut list).await;
                 s.cursor_render_sender.write(list);
 
-                timer = now;
-
-                // tokio::time::sleep(Duration::from_millis(5)).await;
+                // timer = now;
+                // tokio::time::sleep(Duration::from_millis(1)).await;
             }
         });
     }
@@ -104,9 +105,7 @@ impl CursorManager {
         };
 
         let (sender, event_receiver) = sync_channel(1000);
-        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) {
-            panic!("Cursor event queue already exists");
-        }
+        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) {panic!("Cursor event queue already exists")}
 
         
         let settings = get_settings!();
@@ -115,6 +114,8 @@ impl CursorManager {
             pos: Vector2::zero(),
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
+            cursor_scale: settings.cursor_scale,
+            cursor_border: settings.cursor_border,
             
             skin_change_helper: SkinChangeHelper::new().await,
 
@@ -139,7 +140,6 @@ impl CursorManager {
 
 
     pub async fn reload_skin(&mut self) {
-        // TODO: this
         self.cursor_image = SkinManager::get_texture("cursor", true).await;
         self.cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
         let has_middle = SkinManager::get_texture("cursormiddle", false).await.is_some();
@@ -237,7 +237,7 @@ impl CursorManager {
             radius *= 2.0;
         }
 
-        let settings = get_settings!();
+        // let settings = get_settings!();
 
         if self.cursor_trail_image.is_some() {
             // draw the transforms
@@ -261,11 +261,11 @@ impl CursorManager {
                 self.color,
                 -f64::MAX,
                 self.pos,
-                radius * settings.cursor_scale,
-                if settings.cursor_border > 0.0 {
+                radius * self.cursor_scale,
+                if self.cursor_border > 0.0 {
                     Some(Border::new(
                         self.border_color,
-                        settings.cursor_border as f64
+                        self.cursor_border as f64
                     ))
                 } else {None}
             )));

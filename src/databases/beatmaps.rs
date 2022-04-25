@@ -2,9 +2,8 @@ use crate::prelude::*;
 
 impl Database {
     pub async fn get_all_beatmaps() -> Vec<BeatmapMeta> {
-        let mut db = Self::get().await;
-        let t = db.transaction().unwrap();
-        let mut s = t.prepare("SELECT * FROM beatmaps").unwrap();
+        let db = Self::get().await;
+        let mut s = db.prepare("SELECT * FROM beatmaps").unwrap();
         
         s.query_map([], row_into_metadata).unwrap()
             .filter_map(|m|{

@@ -139,18 +139,20 @@ impl Game {
         self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(loading_menu))));
     }
     pub async fn game_loop(mut self) {
+        let mut update_timer = Instant::now();
+        let mut draw_timer = Instant::now();
+        let mut last_draw_offset = 0.0;
+
         let window_size:[f64;2] = Settings::window_size().into();
-
-        // let game_event_receiver = game_event_receiver.clone();
-
-        // update loop
-        let mut timer = Instant::now();
-
         let args = RenderArgs {
             ext_dt: 0.0,
             window_size,
             draw_size: [window_size[0] as u32, window_size[1] as u32],
         };
+
+        let settings = get_settings!().clone();
+        let render_rate = 1.0 / settings.fps_target as f64;
+        let update_target = 1.0 / settings.update_target as f64;
 
         loop {
             while let Some(e) = self.game_event_receiver.exploded() {
@@ -161,17 +163,24 @@ impl Game {
                 }
             }
 
-            self.update(0.0).await;
+            let update_now = Instant::now();
+            let update_elapsed = update_now.duration_since(update_timer).as_secs_f64();
+            if update_elapsed >= update_target {
+                update_timer = update_now;
+                self.update(update_elapsed).await;
+            }
 
             if let GameState::Closing = &self.current_state {
                 self.close_game();
                 return;
             }
 
+            const RENDER_DAMPENING_FACTOR:f64 = 0.9;
             let now = Instant::now();
-            if now.duration_since(timer).as_secs_f64() >= 1.0/144.0 {
-                timer = now;
-                
+            let elapsed = now.duration_since(draw_timer).as_secs_f64();
+            if elapsed + last_draw_offset >= render_rate {
+                draw_timer = now;
+                last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * RENDER_DAMPENING_FACTOR;
                 self.render(args).await;
             }
 
@@ -209,7 +218,8 @@ impl Game {
         let mut controller_pause = false;
         for (c, b) in controller_down.iter() {
             if Some(crate::prelude::ControllerButton::Start) == c.map_button(*b) {
-                controller_pause = true
+                controller_pause = true;
+                break;
             }
         }
 
@@ -596,9 +606,8 @@ impl Game {
             manager.do_game_things(self).await;
         }
         
-        // if timer.elapsed().as_secs_f32() * 1000.0 > 1.0 {
-        //     debug!("update took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
-        // }
+        // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
+        // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
     }
 
     async fn render(&mut self, args: RenderArgs) {
@@ -703,10 +712,8 @@ impl Game {
         // self.clear_render_queue(false);
         self.fps_display.increment();
 
-
-        // if timer.elapsed().as_secs_f32() * 1000.0 > 1.0 {
-        //     debug!("render took a while: {}", timer.elapsed().as_secs_f32() * 1000.0);
-        // }
+        // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
+        // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
     }
 
     pub fn clear_render_queue(&mut self, _remove_all:bool) {

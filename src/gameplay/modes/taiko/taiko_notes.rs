@@ -108,18 +108,23 @@ impl HitObject for TaikoNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
+
     async fn update(&mut self, beatmap_time: f32) {
+
         let delta_time = beatmap_time - self.hit_time;
         let y = 
             if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
             else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
             else {0.0};
-        
-        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
+
+        let x = (self.time - beatmap_time) * self.speed;
+
+        self.pos = self.settings.hit_position + Vector2::new(x as f64, y as f64);
 
         if let Some(image) = &mut self.image {
             image.set_pos(self.pos)
         }
+        
     }
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();

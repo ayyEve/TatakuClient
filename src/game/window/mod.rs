@@ -1,5 +1,5 @@
 mod window;
-mod render_queue;
+mod texture_load_queue;
 
 pub use window::*;
-pub use render_queue::*;
+pub use texture_load_queue::*;

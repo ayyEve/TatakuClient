@@ -26,8 +26,8 @@ pub struct SkinManager {
 // static
 impl SkinManager {
 
-    pub fn init() {
-        let _ = SKIN_MANAGER.read();
+    pub async fn init() {
+        let _ = SKIN_MANAGER.read().await;
     }
 
     pub async fn get_texture<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool) -> Option<Image> {
@@ -68,7 +68,7 @@ impl SkinManager {
 // instance
 impl SkinManager {
     pub fn new() -> Self {
-        let settings = SETTINGS.get().unwrap().blocking_read();
+        let settings = tokio::task::block_in_place(||SETTINGS.get().unwrap().blocking_read());
         
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
@@ -98,7 +98,7 @@ impl SkinManager {
             let mut maybe_img = load_image(tex_path, grayscale).await;
 
             if maybe_img.is_none() && allow_default {
-                info!("Skin missing tex {}", name);
+                trace!("Skin missing tex {}", name);
                 maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale).await;
             }
 

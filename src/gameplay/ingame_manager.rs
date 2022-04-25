@@ -102,33 +102,42 @@ pub struct IngameManager {
 
     pub events: Vec<InGameEvent>,
 
-    ui_editor: Option<GameUIEditorDialog>
+    ui_editor: Option<GameUIEditorDialog>,
 }
 
 impl IngameManager {
     pub async fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
+        let now = Instant::now();
+        
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
         let settings = get_settings!();
+        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
+
         let timing_points = beatmap.get_timing_points();
-        let font = get_font();
+
         let hitsound_cache = HashMap::new();
         let current_mods = Arc::new(ModManager::get().await.clone());
+
         let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.speed;
 
+
         let health = HealthHelper::new(Some(metadata.hp));
-        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
-
         let score_loader = Some(SCORE_HELPER.read().await.get_scores(&metadata.beatmap_hash, &playmode).await);
-
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
 
         #[cfg(feature="bass_audio")]
         let song = Audio::get_song().await.unwrap_or(create_empty_stream()); // temp until we get the audio file path
+
+        let font = get_font();
+        let offset = CenteredTextHelper::new("Offset", beatmap_preferences.audio_offset, OFFSET_DRAW_TIME, -20.0, font.clone());
+        let global_offset = CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone());
+
+        info!("ingame manager took {:.4} to init", now.elapsed().as_secs_f32() * 1000.0);
 
         Self {
             metadata,
@@ -152,8 +161,8 @@ impl IngameManager {
             lead_in_time: LEAD_IN_TIME,
             end_time: gamemode.end_time(),
 
-            offset: CenteredTextHelper::new("Offset", beatmap_preferences.audio_offset, OFFSET_DRAW_TIME, -20.0, font.clone()),
-            global_offset: CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone()),
+            offset,
+            global_offset,
             beatmap_preferences,
 
             background_game_settings: settings.background_game_settings.clone(),
@@ -453,6 +462,7 @@ impl IngameManager {
             }
         }
 
+        
         let mut gamemode = std::mem::take(&mut self.gamemode);
 
         // read inputs from replay if replaying

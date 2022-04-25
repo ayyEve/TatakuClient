@@ -18,7 +18,7 @@ pub struct BeatmapsetItem {
     playmode: String,
 
     diff_calc_start_helper: MultiBomb<()>,
-    diff_calc_helper: MultiBomb<()>,
+    diff_calc_helper: MultiBomb<DiffCalcInit>,
     // diff_calc_helper: CalcNotifyHelper
 
     diff_calc_bombs: Vec<Bomb<(String, f32)>>,
@@ -26,10 +26,10 @@ pub struct BeatmapsetItem {
     display_text: String,
 }
 impl BeatmapsetItem {
-    pub async fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<()>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
+    pub async fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<DiffCalcInit>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
         
-        let mut i = BeatmapsetItem {
+        BeatmapsetItem {
             beatmaps: beatmaps.clone(), 
             pos: Vector2::new(x, 0.0),
             hover: false,
@@ -43,29 +43,40 @@ impl BeatmapsetItem {
             diff_calc_helper,
             diff_calc_start_helper,
             diff_calc_bombs: Vec::new(),
-        };
-        i.recalc();
-        i
+        }
     }
 
-    pub fn recalc(&mut self) {
-        // trace!("doing recalc");
+    fn recalc_with_vals(&mut self, diffs: &DiffCalcInit) {
+        // warn!("doing recalc with vals");
 
         // get the diff values from the beatmap manager
         for i in self.beatmaps.iter_mut() {
+            let diff = diffs.get(&i.beatmap_hash).unwrap_or(&-2.0);
+            
             let (fuse, bomb) = Bomb::new();
             self.diff_calc_bombs.push(bomb);
-
-            let playmode = self.playmode.clone();
-            let hash = i.beatmap_hash.clone();
-            tokio::spawn(async move {
-                let mods = ModManager::get().await.clone();
-                let diff = Database::get_diff(&hash, &playmode, &mods).await.unwrap_or(-2.0);
-                fuse.ignite((hash, diff));
-            });
+            fuse.ignite((i.beatmap_hash.clone(), *diff));
         }
-
     }
+
+    // pub fn recalc(&mut self) {
+    //     warn!("doing recalc");
+
+    //     // get the diff values from the beatmap manager
+    //     for i in self.beatmaps.iter_mut() {
+    //         let (fuse, bomb) = Bomb::new();
+    //         self.diff_calc_bombs.push(bomb);
+
+    //         let playmode = self.playmode.clone();
+    //         let hash = i.beatmap_hash.clone();
+    //         tokio::spawn(async move {
+    //             let mods = ModManager::get().await.clone();
+    //             let diff = Database::get_diff(&hash, &playmode, &mods).await.unwrap_or(-2.0);
+    //             fuse.ignite((hash, diff));
+    //         });
+    //     }
+
+    // }
 
     /// set the currently selected map
     pub fn check_selected(&mut self, current_hash: &String) -> bool {
@@ -261,28 +272,35 @@ impl ScrollableItem for BeatmapsetItem {
             }
         }
 
-        if self.diff_calc_helper.exploded().is_some() {
+        if let Some(mut diffs) = self.diff_calc_helper.exploded() {
             // drain the queue
-            while let Some(_) = self.diff_calc_helper.exploded() {}
-            self.recalc();
+            while let Some(vals) = self.diff_calc_helper.exploded() {diffs = vals}
+            self.recalc_with_vals(&diffs)
+            // self.recalc();
         }
 
         let mut did_diff_calc = false;
         let mut bombs = std::mem::take(&mut self.diff_calc_bombs);
-        bombs.retain(|bomb| {
-            if let Some((hash, diff)) = bomb.exploded() {
-                for i in self.beatmaps.iter_mut() {
-                    if &i.beatmap_hash == hash {
-                        i.diff = *diff
-                    }
-                }
-                did_diff_calc |= true;
-                false
-            } else {
-                true
+        if bombs.len() > 0 {
+            let mut maps_hash = HashMap::new();
+            for i in self.beatmaps.iter_mut() {
+                maps_hash.insert(i.beatmap_hash.clone(), i);
             }
-        });
-        self.diff_calc_bombs = bombs;
+                
+            bombs.retain(|bomb| {
+                if let Some((hash, diff)) = bomb.exploded() {
+                    if let Some(i) = maps_hash.get_mut(hash) {
+                        i.diff = *diff;
+                        did_diff_calc |= true;
+                    }
+                    false
+                } else {
+                    true
+                }
+            });
+            self.diff_calc_bombs = bombs;
+        }
+
 
         // re-sort
         if did_diff_calc && self.diff_calc_bombs.len() == 0 {

@@ -44,7 +44,7 @@ fn perform_migrations(db: &Connection) {
                     if !e.contains("duplicate column name") {
                         error!("Error adding column to scores db: {}", e)
                     }
-                },
+                }
             }
         }
     }
@@ -57,7 +57,11 @@ pub struct Database {
 }
 impl Database {
     pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
-        DATABASE.connection.lock().await
+        let now = Instant::now();
+        let a = DATABASE.connection.lock().await;
+        let duration = now.elapsed().as_secs_f32() * 1000.0;
+        if duration > 0.5 {info!("db lock took {:.4}ms to aquire", duration)};
+        a
     }
 
     fn new() -> Arc<Self> {
@@ -231,4 +235,5 @@ impl Database {
 
 pub enum DatabaseQuery {
     InsertOrUpdate { sql: String, table_name: String, operation: String, sql_if_failed: Option<String>, operation_if_failed: Option<String> }
+    // Other {sql: String, on_complete: MultiBomb<>}
 }

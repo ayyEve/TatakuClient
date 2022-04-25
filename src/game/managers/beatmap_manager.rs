@@ -5,6 +5,8 @@ use rand::Rng;
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
+pub type DiffCalcInit = Arc<HashMap<String, f32>>;
+
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
@@ -28,7 +30,7 @@ pub struct BeatmapManager {
     /// helpful when a map is deleted
     pub(crate) force_beatmap_list_refresh: bool,
 
-    pub on_diffcalc_complete: (MultiFuse<()>, MultiBomb<()>),
+    pub on_diffcalc_complete: (MultiFuse<DiffCalcInit>, MultiBomb<DiffCalcInit>),
 }
 impl BeatmapManager {
     pub fn new() -> Self {
@@ -325,7 +327,7 @@ impl BeatmapManager {
         tokio::spawn(async move {
             let playmode = playmode;
 
-            let existing = Database::get_all_diffs(&playmode, &mods).await;
+            let mut existing = Database::get_all_diffs(&playmode, &mods).await;
 
             // perform calc
             // trace!("Starting Diff Calc");
@@ -334,20 +336,22 @@ impl BeatmapManager {
                 i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
                     *diff
                 } else {
-                    calc_diff(i, playmode.clone(), &mods).await.unwrap_or_default()
+                    let diff = calc_diff(i, playmode.clone(), &mods).await.unwrap_or_default();
+                    existing.insert(hash.clone(), diff);
+                    diff
                 };
             }
 
             // insert diffs
-            Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
-            // maps.iter().for_each(|map| {
-            //     Database::insert_diff(&map.beatmap_hash, &playmode, &mods, map.diff);
-            // });
+            let maps2 = maps.clone();
+            tokio::spawn(async move {
+                Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
+            });
             
             {
                 let mut lock = BEATMAP_MANAGER.write().await;
-                lock.beatmaps = maps;
-                lock.on_diffcalc_complete.0.ignite(());
+                lock.beatmaps = maps2;
+                lock.on_diffcalc_complete.0.ignite(Arc::new(existing));
             }
 
             // trace!("Diff calc Done");

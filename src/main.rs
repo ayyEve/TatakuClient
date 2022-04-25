@@ -1,8 +1,6 @@
 // #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
-use tokio::runtime::*;
-
 #[macro_use]
 extern crate log;
 
@@ -57,36 +55,24 @@ const FIRST_MAPS: &[u32] = &[
 ];
 
 // main fn
-fn main() {
+#[tokio::main]
+async fn main() {
     tataku_logging::init("logs/").unwrap();
 
+    let main_thread = tokio::task::LocalSet::new();
+
+    // enter game dir
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
             error!("error changing current dir: {}", e);
         }
     }
 
-    let main_thread = Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("error creating main thread");
-    
-
-    let multi_thread = Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("error creating multi thread");
-    
-    let ready = Arc::new(AtomicBool::new(false));
-    let ready2 = ready.clone();
-
     // finish setting up
-    main_thread.block_on(async move {
-        setup().await;
-    });
+    setup().await;
 
     // init skin manager
-    SkinManager::init();
+    SkinManager::init().await;
 
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
     let (game_event_sender, game_event_receiver) = MultiBomb::new();
@@ -95,13 +81,18 @@ fn main() {
     trace!("creating window");
     let mut window = GameWindow::start(render_queue_receiver, game_event_sender);
 
-    ready2.store(true, SeqCst);
+    // texture load loop
+    main_thread.spawn_local(async {
+        info!("starting texture load loop");
+        texture_load_loop().await;
+    });
 
-    // enter async runtime
-    let _ = multi_thread.enter();
-    multi_thread.spawn(async move {
-        while !ready.load(SeqCst) {
-            tokio::time::sleep(Duration::from_millis(100)).await;
+    // start game
+    let game = tokio::spawn(async move {
+        info!("starting wait loop");
+        while !TEXTURE_LOAD_QUEUE.initialized() {
+            tokio::task::yield_now().await;
+            // tokio::time::sleep(Duration::from_millis(100)).await;
         }
         trace!("window ready");
 
@@ -113,17 +104,16 @@ fn main() {
         trace!("game closed");
     });
 
-    trace!("window running");
-    main_thread.block_on(async move {
+    main_thread.spawn_local(async move {
+        trace!("window running");
         window.run().await;
+        trace!("window closed");
     });
-    trace!("window closed");
 
-    main_thread.shutdown_timeout(Duration::from_millis(500));
-    multi_thread.shutdown_timeout(Duration::from_millis(500));
-
+    let _ = tokio::join!(main_thread, game);
+    
+    // game.await.ok().expect("error finishing game?");
     info!("byebye!");
-    // loop {}
 }
 
 async fn setup() {

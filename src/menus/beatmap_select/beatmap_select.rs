@@ -109,7 +109,7 @@ impl BeatmapSelectMenu {
         }
     }
 
-    async fn set_selected_mode(&mut self, new_mode: PlayMode, game: Option<&mut Game>) {
+    async fn set_selected_mode(&mut self, new_mode: PlayMode) {
         // update values
         self.mode = new_mode.clone();
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
@@ -117,14 +117,11 @@ impl BeatmapSelectMenu {
 
         // recalc diffs
         let mod_manager = ModManager::get().await.clone();
-        BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
         self.diff_calc_start_helper.0.ignite(());
-        
+        BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
+
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
-        if let Some(game) = game {
-            self.on_key_press(Key::Calculator, game, KeyModifiers::default()).await;
-        }
     }
 
     pub async fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
@@ -278,7 +275,7 @@ impl BeatmapSelectMenu {
             }
         }
         if let Some(new_mode) = new_mode {
-            self.set_selected_mode(new_mode, Some(game)).await;
+            self.set_selected_mode(new_mode).await;
         }
 
         // check sort by dropdown
@@ -753,7 +750,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             };
 
             if let Some(new_mode) = new_mode {
-                self.set_selected_mode(new_mode.clone(), Some(game)).await;
+                self.set_selected_mode(new_mode.clone()).await;
                 let display = gamemode_display_name(&new_mode);
                 NotificationManager::add_text_notification(&format!("Mode changed to {}", display), 1000.0, Color::BLUE).await;
                 self.mode = new_mode;
@@ -805,7 +802,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 }
 
                 // force diff recalc
-                self.set_selected_mode(self.mode.clone(), Some(game)).await;
+                self.set_selected_mode(self.mode.clone()).await;
 
                 NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE).await;
             }

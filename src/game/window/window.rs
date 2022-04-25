@@ -3,11 +3,9 @@ use glfw_window::GlfwWindow as AppWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
     input::*, 
-    event_loop::*, 
     window::WindowSettings,
-    RenderEvent
+    Window
 };
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 
 /// background color
@@ -23,8 +21,6 @@ pub struct GameWindow {
     game_event_sender: MultiFuze<GameEvent>,
     render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
     window_event_receiver: Receiver<RenderSideEvent>,
-    texture_load_receiver: UnboundedReceiver<(LoadImage, UnboundedSender<TatakuResult<Arc<Texture>>>)>,
-    
 
     #[cfg(feature="bass_audio")]
     #[allow(dead_code)]
@@ -36,7 +32,7 @@ impl GameWindow {
     pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: MultiFuze<GameEvent>) -> Self {
         let window_size = Settings::window_size();
 
-        let opengl = OpenGL::V3_2;
+        let opengl = OpenGL::V3_0;
         let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
             .graphics_api(opengl)
             .resizable(false)
@@ -58,8 +54,6 @@ impl GameWindow {
         info!("done fonts");
 
         
-        let (texture_load_sender, texture_load_receiver) = unbounded_channel();
-        TEXTURE_LOAD_QUEUE.set(texture_load_sender).ok().expect("bad");
         info!("done texture load queue");
 
         let (window_event_sender, window_event_receiver) = sync_channel(10);
@@ -94,7 +88,6 @@ impl GameWindow {
             window,
             graphics,
             render_event_receiver,
-            texture_load_receiver,
             window_event_receiver,
             game_event_sender: gane_event_sender, 
 
@@ -105,149 +98,60 @@ impl GameWindow {
     }
 
     pub async fn run(&mut self) {
-        let mut events = Events::new(EventSettings::new());
-        events.set_ups_reset(0);
+        loop {
+            while let Some(e) = self.window.poll_event() {
 
-        // used to keep textures from dropping off the main thread
-        let mut image_data = Vec::new();
-
-        {
-            // input and rendering thread times
-            let settings = get_settings!();
-            events.set_max_fps(settings.fps_target);
-            events.set_ups(settings.update_target);
-        }
-
-        'render_loop: while let Some(e) = events.next(&mut self.window) {
-            if let Some(_args) = e.update_args() {
-                if let Ok((method, on_done)) = self.texture_load_receiver.try_recv() {
-                    let settings = opengl_graphics::TextureSettings::new();
-
-                    macro_rules! send_tex {
-                        ($tex:expr) => {{
-                            let tex = Arc::new($tex);
-                            image_data.push(tex.clone());
-                            on_done.send(Ok(tex)).ok().expect("uh oh");
-                        }}
-                    }
-
-                    match method {
-                        LoadImage::Path(path) => {
-                            match Texture::from_path(path, &settings) {
-                                Ok(t) => send_tex!(t),
-                                Err(e) => on_done.send(Err(TatakuError::String(e))).ok().expect("uh oh"),
-                            };
-                        },
-                        LoadImage::Image(data) => {
-                            send_tex!(Texture::from_image(&data, &settings))
-                        },
-                        LoadImage::Font(font, size) => {
-                            let px = size.0;
-
-                            // let mut textures = font.textures.write();
-                            let mut characters = font.characters.write();
-
-
-                            for (&char, _codepoint) in font.font.chars() {
-
-                                // TODO: load as one big image per-font
-                                
-                                // generate glyph data
-                                let (metrics, bitmap) = font.font.rasterize(char, px);
-
-                                // bitmap is a vec of grayscale pixels
-                                // we need to turn that into rgba bytes
-                                let mut data = Vec::new();
-                                bitmap.into_iter().for_each(|gray| {
-                                    data.push(255); // r
-                                    data.push(255); // g
-                                    data.push(255); // b
-                                    data.push(gray); // a
-                                });
-
-                                // convert to image
-                                let data = image::RgbaImage::from_vec(metrics.width as u32, metrics.height as u32, data).unwrap();
-
-                                // load in opengl
-                                let texture = Arc::new(Texture::from_image(&data, &settings));
-
-                                // setup data
-                                let char_data = CharData {
-                                    texture,
-                                    pos: Vector2::zero(),
-                                    size: Vector2::new(metrics.width as f64, metrics.height as f64),
-                                    metrics,
-                                };
-
-                                // insert data
-                                characters.insert((size, char), char_data);
-                            }
-
-                            on_done.send(Err(TatakuError::String(String::new()))).ok().expect("uh oh");
-                        }
-                    }
-
-                    info!("done loading tex");
+                if let Some(axis) = e.controller_axis_args() {
+                    let j_id = get_joystick_id(axis.id);
+                    let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
+                    self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
+                    continue
                 }
-
-                // drop textures that only have a reference here (ie, dropped everywhere else)
-                image_data.retain(|i| {
-                    Arc::strong_count(i) > 1
-                });
-
-                // check render-side events
-                if let Ok(event) = self.window_event_receiver.try_recv() {
-                    match event {
-                        RenderSideEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
-                        RenderSideEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
-                        RenderSideEvent::CloseGame => {
-                            self.window.window.set_should_close(true);
-                            break 'render_loop;
-                        },
-                    }
-                }
-
-                continue
-            } //{self.update(args.dt*1000.0)}
-
-            if let Some(args) = e.render_args() {
-                // info!("window render event");
-                self.render(args).await;
-                continue
-            }
-
-            if let Some(axis) = e.controller_axis_args() {
-                let j_id = get_joystick_id(axis.id);
-                let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
-                continue
-            }
-            
-            if let Some(Button::Controller(cb)) = e.button_args().map(|b|b.button) {
-                // debug!("press: c: {}, b: {}", cb.id, cb.button);
-
-                let j_id = get_joystick_id(cb.id);
-                let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
                 
-                continue;
+                if let Some(Button::Controller(cb)) = e.button_args().map(|b|b.button) {
+                    // debug!("press: c: {}, b: {}", cb.id, cb.button);
+
+                    let j_id = get_joystick_id(cb.id);
+                    let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
+                    self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
+                    
+                    continue;
+                }
+
+                self.game_event_sender.ignite(GameEvent::WindowEvent(e));
             }
 
-            self.game_event_sender.ignite(GameEvent::WindowEvent(e));
+            // check render-side events
+            if let Ok(event) = self.window_event_receiver.try_recv() {
+                match event {
+                    RenderSideEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
+                    RenderSideEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
+                    RenderSideEvent::CloseGame => {
+                        self.window.window.set_should_close(true);
+                        self.game_event_sender.ignite(GameEvent::WindowClosed);
+                        return
+                    },
+                }
+            }
+
+            self.render().await;
+
+            tokio::task::yield_now().await;
         }
 
-
-        image_data.clear();
-        self.game_event_sender.ignite(GameEvent::WindowClosed);
     }
     
-    async fn render(&mut self, args: RenderArgs) {
+    async fn render(&mut self) {
         if !self.render_event_receiver.updated() {return}
 
         match self.render_event_receiver.read() {
             TatakuRenderEvent::None => {},
             TatakuRenderEvent::Draw(data) => {
-                // info!("draw");
+                let args = RenderArgs {
+                    ext_dt: 0.0,
+                    window_size: self.window.size().into(),
+                    draw_size: self.window.draw_size().into(),
+                };
 
                 // TODO: use this for snipping
                 // // actually draw everything now
@@ -293,6 +197,7 @@ impl GameWindow {
                     }
                 }
                 self.graphics.draw_end();
+                self.window.swap_buffers();
 
             },
         }
