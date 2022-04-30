@@ -111,21 +111,25 @@ impl ManiaGame {
 
         slider_velocities.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
 
-        let mut position_function = vec![PositionPoint::default()];
-
         let final_sv = SliderVelocity {
             time: self.end_time,
             slider_velocity: slider_velocities.last().unwrap().slider_velocity,
         };
+
+        // todo: use initial velocity of map.
+        // todo: clean this up pls.
+        let mut last_velocity = 1.0;
 
         for sv in slider_velocities.into_iter().chain([final_sv]) {
             let last_pos = position_function.last().unwrap();
 
             let dt = sv.time - last_pos.time;
             
-            let dy = sv.slider_velocity * dt as f64;
+            let dy = last_velocity * dt as f64;
 
             let y = last_pos.position;
+
+            last_velocity = sv.slider_velocity;
 
             position_function.push(PositionPoint {
                 time: sv.time,
@@ -148,6 +152,8 @@ impl ManiaGame {
                 note.set_sv_mult(self.sv_mult)
             }
         }
+
+        // todo: update timing bar as well
     }
     
     async fn load_col_images(&mut self) {
@@ -381,8 +387,6 @@ impl GameMode for ManiaGame {
                     slider_velocity: 100.0 / (-b.beat_length as f64) 
                 }).collect());
 
-                warn!("integrated function: {:#?}", s.position_function);
-
                 s.load_col_images().await;
 
                 Ok(s)
@@ -470,8 +474,6 @@ impl GameMode for ManiaGame {
                 s.end_time += 1000.0;
 
                 s.integrate_velocity(beatmap.slider_velocities.iter().map(|&x| x.into()).collect());
-
-                warn!("integrated function: {:#?}", s.position_function);
 
                 s.load_col_images().await;
         

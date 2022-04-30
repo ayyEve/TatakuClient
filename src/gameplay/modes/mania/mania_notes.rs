@@ -435,21 +435,12 @@ impl ManiaHitObject for ManiaHold {
 }
 
 fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32) -> f64 {
-    trace!("pos_at");
-
-    let (index, b) = position_function.iter().enumerate().find(|(_, p)| time < p.time).unwrap();
-
-    trace!("got next point: {:#?}", b);
+    let (index, b) = position_function.iter().enumerate().find(|(_, p)| time < p.time)
+        .unwrap_or_else(|| {
+            (position_function.len() - 1, position_function.last().unwrap())
+        });
     
     let a = &position_function[index - 1];
-    
-    trace!("got point: {:#?}", a);
 
-    trace!("time: {}", time);
-
-    let f = f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64);
-
-    trace!("lerp: {}", f);
-
-    f
+    f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
 }
