@@ -1,7 +1,7 @@
 /**
  * Mania game mode
  * Authored by ayyEve
- * 
+ * scroll velocity by Nebula
  */
 
 use crate::prelude::*;
@@ -116,8 +116,8 @@ impl ManiaGame {
             slider_velocity: slider_velocities.last().unwrap().slider_velocity,
         };
 
-        // todo: use initial velocity of map.
-        // todo: clean this up pls.
+        // TODO: use initial velocity of map.
+        // TODO: clean this up pls.
         let mut last_velocity = 1.0;
 
         for sv in slider_velocities.into_iter().chain([final_sv]) {
@@ -153,7 +153,7 @@ impl ManiaGame {
             }
         }
 
-        // todo: update timing bar as well
+        // update timing bar as well
         for t in self.timing_bars.iter_mut() {
             t.set_sv(self.sv_mult)
         }
@@ -857,8 +857,6 @@ impl GameMode for ManiaGame {
                 manager.lead_in_time = 0.01;
             }
         }
-
-        // todo: update SV
 
         #[cfg(feature="bass_audio")]
         manager.song.set_position(time as f64).unwrap();
