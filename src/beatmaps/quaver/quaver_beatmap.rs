@@ -1,10 +1,20 @@
 use serde::Deserialize;
 use crate::prelude::*;
 
+
+// default fns for serde
+fn one() -> f64 {1.0}
+fn nan64() -> f64 {f64::NAN}
+fn nan32() -> f32 {f32::NAN}
+fn default_diff_name() -> String {"default diff name".to_owned()}
+
+
 #[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverBeatmap {
     pub audio_file: String,
+    
+    #[serde(default)]
     pub song_preview_time: f32,
     pub background_file: String,
 
@@ -18,10 +28,14 @@ pub struct QuaverBeatmap {
 
     pub title: String,
     pub artist: String,
+    #[serde(default)]
     pub source: String,
+    #[serde(default)]
     pub tags: String,
     pub creator: String,
+    #[serde(default="default_diff_name")]
     pub difficulty_name: String,
+    #[serde(default)]
     pub description: String,
 
     // pub editor_layers: Vec<?>,
@@ -29,7 +43,10 @@ pub struct QuaverBeatmap {
     // pub sound_effects: Vec<?>,
     
     pub timing_points: Vec<QuaverTimingPoint>,
-    // pub slider_velocities: Vec<?>,
+    
+    #[serde(default="one")]
+    pub initial_scroll_velocity: f64,
+    pub slider_velocities: Vec<QuaverSliderVelocity>,
     pub hit_objects: Vec<QuaverNote>,
 
     // extra info added later
@@ -41,7 +58,32 @@ pub struct QuaverBeatmap {
 impl QuaverBeatmap {
     pub fn load(path: String) -> TatakuResult<Self> {
         let lines = std::fs::read_to_string(&path)?;
-        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|_|BeatmapError::InvalidFile)?;
+        let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
+            error!("asdjlfhjskdfhjdsfhksdfflhksdfhkjsdfhjdf: {:?}", e);
+            BeatmapError::InvalidFile
+        })?;
+
+        // fix svs
+        for sv in s.slider_velocities.iter_mut().filter(|s| s.multiplier.is_nan()) {
+            sv.multiplier = s.initial_scroll_velocity;
+        }
+
+        // fix bpms
+        // skip any NaN bpms before a valid point, as we need a valid bpm to base any future bpms off of
+        while s.timing_points.len() > 0 && s.timing_points[0].bpm.is_nan() {s.timing_points.pop();}
+        if s.timing_points.len() == 0 {return Err(BeatmapError::NoTimingPoints.into())}
+
+        let first_bpm = s.timing_points.get(0).unwrap().bpm;
+        for tp in s.timing_points.iter_mut().filter(|t|t.bpm.is_nan()) {
+            tp.bpm = first_bpm;
+        }
+
+        // fix note times
+        let first_timingpoint_time = s.timing_points.get(0).unwrap().start_time;
+        for note in s.hit_objects.iter_mut().filter(|n|n.start_time.is_nan()) {
+            note.start_time = first_timingpoint_time;
+        }
+
 
         s.hash = get_file_hash(&path)?;
         s.path = path.clone();
@@ -170,7 +212,9 @@ impl Into<u8> for QuaverKeys {
 #[derive(Deserialize, Copy, Clone)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverTimingPoint {
+    #[serde(default)]
     pub start_time: f32,
+    #[serde(default="nan32")]
     pub bpm: f32
 }
 impl Into<crate::beatmaps::common::TimingPoint> for QuaverTimingPoint {
@@ -188,9 +232,20 @@ impl Into<crate::beatmaps::common::TimingPoint> for QuaverTimingPoint {
 #[derive(Deserialize)]
 #[serde(rename_all="PascalCase")]
 pub struct QuaverNote {
+    #[serde(default="nan32")]
     pub start_time: f32,
     pub lane: u8,
     #[serde(default)]
     pub end_time: Option<f32>
     // key_sounds: Vec<?>
+}
+
+#[derive(Deserialize, Copy, Clone)]
+#[serde(rename_all="PascalCase")]
+pub struct QuaverSliderVelocity {
+    #[serde(default)]
+    pub start_time: f32,
+    
+    #[serde(default="nan64")]
+    pub multiplier: f64
 }

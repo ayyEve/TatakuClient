@@ -328,6 +328,7 @@ impl BeatmapManager {
             let playmode = playmode;
 
             let mut existing = Database::get_all_diffs(&playmode, &mods).await;
+            let mut to_insert = Vec::new();
 
             // perform calc
             // trace!("Starting Diff Calc");
@@ -338,19 +339,21 @@ impl BeatmapManager {
                 } else {
                     let diff = calc_diff(i, playmode.clone(), &mods).await.unwrap_or_default();
                     existing.insert(hash.clone(), diff);
+                    to_insert.push(i.clone());
                     diff
                 };
             }
 
             // insert diffs
-            let maps2 = maps.clone();
-            tokio::spawn(async move {
-                Database::insert_many_diffs(&playmode, &mods, maps.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
-            });
+            if to_insert.len() > 0 {
+                tokio::spawn(async move {
+                    Database::insert_many_diffs(&playmode, &mods, to_insert.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
+                });
+            }
             
             {
                 let mut lock = BEATMAP_MANAGER.write().await;
-                lock.beatmaps = maps2;
+                lock.beatmaps = maps;
                 lock.on_diffcalc_complete.0.ignite(Arc::new(existing));
             }
 

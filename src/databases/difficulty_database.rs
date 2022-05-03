@@ -24,7 +24,8 @@ impl Database {
         let hash_list = hash_list.join(",");
         let delete_query = format!("DELETE FROM difficulties WHERE beatmap_hash IN ({hash_list}) AND playmode='{playmode}' AND mods_string='{mods}'");
 
-        let db = Self::get().await;
+        info!("insert many");
+        let db = Self::get_diffcalc().await;
         let mut s = db.prepare(&delete_query).unwrap();
         if let Err(e) = s.execute([]) {
             error!("Error deleting from difficulties table: {e}")
@@ -82,10 +83,13 @@ impl Database {
 
 
     pub async fn get_all_diffs(playmode: &PlayMode, mods: &ModManager) -> HashMap<String, f32> {
-        let db = Self::get().await;
         let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
 
         let query = format!("SELECT beatmap_hash, diff FROM difficulties WHERE playmode='{playmode}' AND mods_string='{mods}'");
+
+        
+        info!("retreive many");
+        let db = Self::get_diffcalc().await;
         let mut s = db.prepare(&query).unwrap();
         let res = s.query_map([], |row| Ok((
             row.get::<&str, String>("beatmap_hash")?,

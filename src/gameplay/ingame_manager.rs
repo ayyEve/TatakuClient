@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::beatmaps::osu::hitobject_defs::HitSamples;
 
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
-const LEAD_IN_TIME:f32 = 1000.0;
+pub const LEAD_IN_TIME:f32 = 1000.0;
 /// how long should the offset be drawn for?
 const OFFSET_DRAW_TIME:f32 = 2_000.0;
 /// how tall is the duration bar
