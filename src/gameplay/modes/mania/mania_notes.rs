@@ -29,13 +29,13 @@ pub struct ManiaNote {
     missed: bool,
     
     position_function: Arc<Vec<PositionPoint>>,
+    position_function_index: usize,
+
     sv_mult: f64,
 
     playfield: Arc<ManiaPlayfieldSettings>,
 
     note_image: Option<Image>,
-
-    position_function_index: usize
 }
 impl ManiaNote {
     pub async fn new(
@@ -144,7 +144,7 @@ impl ManiaHitObject for ManiaNote {
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.relative_y = pos_at(&self.position_function, self.time, &mut self.position_function_index);
+        self.relative_y = pos_at(&self.position_function, self.time, &mut 0);
     }
 }
 
@@ -166,6 +166,8 @@ pub struct ManiaHold {
     holding: bool,
 
     position_function: Arc<Vec<PositionPoint>>,
+    position_function_index: usize,
+
     sv_mult: f64,
     //TODO: figure out how to pre-calc this
     end_y: f64,
@@ -176,7 +178,6 @@ pub struct ManiaHold {
     end_image: Option<Image>,
     middle_image: Option<Image>,
 
-    position_function_index: usize
 }
 impl ManiaHold {
     pub async fn new(
@@ -237,6 +238,8 @@ impl ManiaHold {
             end_time,
             // column,
             position_function: Arc::new(Vec::new()),
+            position_function_index: 0,
+
             start_relative_pos: 0.0,
             end_relative_pos: 0.0,
             sv_mult,
@@ -252,7 +255,6 @@ impl ManiaHold {
             start_image,
             end_image,
             middle_image,
-            position_function_index: 0
         }
     }
 
@@ -440,12 +442,12 @@ impl ManiaHitObject for ManiaHold {
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.start_relative_pos = pos_at(&self.position_function, self.time, &mut self.position_function_index);
-        self.end_relative_pos = pos_at(&self.position_function, self.end_time, &mut self.position_function_index);
+        self.start_relative_pos = pos_at(&self.position_function, self.time, &mut 0);
+        self.end_relative_pos = pos_at(&self.position_function, self.end_time, &mut 0);
     }
 }
 
-fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
+pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
     let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
         .unwrap_or_else(|| {
             (position_function.len() - 1, position_function.last().unwrap())

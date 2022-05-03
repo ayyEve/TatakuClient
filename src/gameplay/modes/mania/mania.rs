@@ -154,6 +154,9 @@ impl ManiaGame {
         }
 
         // todo: update timing bar as well
+        for t in self.timing_bars.iter_mut() {
+            t.set_sv(self.sv_mult)
+        }
     }
     
     async fn load_col_images(&mut self) {
@@ -731,64 +734,6 @@ impl GameMode for ManiaGame {
         }
     }
 
-    async fn reset(&mut self, beatmap:&Beatmap) {
-        for col in self.columns.iter_mut() {
-            for note in col.iter_mut() {
-                note.reset().await;
-            }
-        }
-        for i in 0..self.columns.len() {
-            self.column_indices[i] = 0;
-            self.column_states[i] = false;
-        }
-
-        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
-        // setup hitwindows
-        self.hitwindow_miss = map_difficulty(od, 188.0, 173.0, 158.0);
-        self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);
-        self.hitwindow_300 = map_difficulty(od, 64.0, 49.0, 34.0);
-
-        // setup timing bars
-        //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        let x = self.col_pos(0);
-        if self.timing_bars.len() == 0 {
-            let tps = beatmap.get_timing_points();
-            // load timing bars
-            let parent_tps = tps.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
-            let mut time = parent_tps[0].time;
-            let mut tp_index = 0;
-            let step = beatmap.beat_length_at(time, false);
-            time %= step; // get the earliest bar line possible
-
-            let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f64 - self.playfield.column_spacing;
-
-            loop {
-                // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
-
-                // edge case for aspire maps
-                if next_bar_time.is_nan() || next_bar_time == 0.0 {
-                    break;
-                }
-
-                // add timing bar at current time
-                self.timing_bars.push(TimingBar::new(time, bar_width, x, self.playfield.clone()));
-
-                if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
-                    time = parent_tps[tp_index].time;
-                    tp_index += 1;
-                    continue;
-                }
-
-                // why isnt this accounting for bpm changes? because the bpm change doesnt allways happen inline with the bar idiot
-                time += next_bar_time;
-                if time >= self.end_time || time.is_nan() {break}
-            }
-
-            debug!("created {} timing bars", self.timing_bars.len());
-        }
-    }
-
 
     async fn update(&mut self, manager:&mut IngameManager, time: f32) {
 
@@ -930,6 +875,69 @@ impl GameMode for ManiaGame {
     }
 
 
+    async fn reset(&mut self, beatmap:&Beatmap) {
+        for col in self.columns.iter_mut() {
+            for note in col.iter_mut() {
+                note.reset().await;
+            }
+        }
+        for i in 0..self.columns.len() {
+            self.column_indices[i] = 0;
+            self.column_states[i] = false;
+        }
+
+        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
+        // setup hitwindows
+        self.hitwindow_miss = map_difficulty(od, 188.0, 173.0, 158.0);
+        self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);
+        self.hitwindow_300 = map_difficulty(od, 64.0, 49.0, 34.0);
+
+        // setup timing bars
+        //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
+        let x = self.col_pos(0);
+        if self.timing_bars.len() == 0 {
+            let tps = beatmap.get_timing_points();
+            // load timing bars
+            let parent_tps = tps.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
+            let mut time = parent_tps[0].time;
+            let mut tp_index = 0;
+            let step = beatmap.beat_length_at(time, false);
+            time %= step; // get the earliest bar line possible
+
+            let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f64 - self.playfield.column_spacing;
+
+            loop {
+                // if theres a bpm change, adjust the current time to that of the bpm change
+                let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
+
+                // edge case for aspire maps
+                if next_bar_time.is_nan() || next_bar_time == 0.0 {
+                    break;
+                }
+
+                // add timing bar at current time
+                let mut bar = TimingBar::new(time, bar_width, x, self.playfield.clone());
+                bar.set_position_function(self.position_function.clone());
+                self.timing_bars.push(bar);
+
+                if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
+                    time = parent_tps[tp_index].time;
+                    tp_index += 1;
+                    continue;
+                }
+
+                // why isnt this accounting for bpm changes? because the bpm change doesnt allways happen inline with the bar idiot
+                time += next_bar_time;
+                if time >= self.end_time || time.is_nan() {break}
+            }
+
+            debug!("created {} timing bars", self.timing_bars.len());
+        } else {
+            for t in self.timing_bars.iter_mut() {
+                t.reset();
+            }
+        }
+    }
 }
 
 
@@ -1129,11 +1137,15 @@ fn add_hit_indicator(time: f32, column: usize, hit_value: &ScoreHit, column_coun
 #[derive(Clone, Debug)]
 struct TimingBar {
     time: f32,
-    speed: f32,
+    speed: f64,
     pos: Vector2,
     size: Vector2,
 
-    playfield: Arc<ManiaPlayfieldSettings>
+    playfield: Arc<ManiaPlayfieldSettings>,
+
+    relative_y: f64,
+    position_function: Arc<Vec<PositionPoint>>,
+    position_function_index: usize,
 }
 impl TimingBar {
     pub fn new(time:f32, width:f64, x:f64, playfield: Arc<ManiaPlayfieldSettings>) -> TimingBar {
@@ -1142,17 +1154,36 @@ impl TimingBar {
             size: Vector2::new(width, BAR_HEIGHT),
             speed: 1.0,
             pos: Vector2::new(x, 0.0),
+            relative_y: 0.0,
+
+            position_function: Arc::new(Vec::new()),
+            position_function_index: 0,
 
             playfield
         }
     }
 
-    pub fn set_sv(&mut self, sv:f32) {
+    pub fn set_sv(&mut self, sv:f64) {
         self.speed = sv;
     }
 
+    fn y_at(&mut self, time: f32) -> f64 {
+        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
+
+        self.playfield.hit_y() - (self.relative_y - super::mania_notes::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
+    }
+
+    
+    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
+        self.position_function = p;
+
+        self.relative_y = super::mania_notes::pos_at(&self.position_function, self.time, &mut 0);
+    }
+
     pub fn update(&mut self, time:f32) {
-        self.pos.y = (self.playfield.hit_y() + self.playfield.note_size().y-self.size.y) - ((self.time - time) * self.speed) as f64;
+        self.pos.y = self.y_at(time);
+        
+        // (self.playfield.hit_y() + self.playfield.note_size().y-self.size.y) - ((self.time - time) * self.speed) as f64;
         // self.pos = HIT_POSITION + Vector2::new(( - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
     }
 
@@ -1163,12 +1194,16 @@ impl TimingBar {
         renderables.push(Box::new(Rectangle::new(
             BAR_COLOR,
             BAR_DEPTH,
-            self.pos,
+            self.pos + Vector2::y_only(self.playfield.note_size().y),
             self.size,
             None
         )));
 
         renderables
+    }
+
+    fn reset(&mut self) {
+        self.position_function_index = 0;
     }
 }
 
@@ -1242,7 +1277,7 @@ impl From<crate::beatmaps::quaver::QuaverSliderVelocity> for SliderVelocity {
     fn from(s: crate::beatmaps::quaver::QuaverSliderVelocity) -> Self {
         Self {
             time: s.start_time,
-            slider_velocity: s.multiplier.unwrap_or(1.0),
+            slider_velocity: s.multiplier,
         }
     }
 }
