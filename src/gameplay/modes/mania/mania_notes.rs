@@ -33,7 +33,9 @@ pub struct ManiaNote {
 
     playfield: Arc<ManiaPlayfieldSettings>,
 
-    note_image: Option<Image>
+    note_image: Option<Image>,
+
+    position_function_index: usize
 }
 impl ManiaNote {
     pub async fn new(
@@ -72,14 +74,15 @@ impl ManiaNote {
             pos: Vector2::new(x, 0.0),
 
             playfield,
-            note_image
+            note_image,
+            position_function_index: 0
         }
     }
 
-    fn y_at(&self, time: f32) -> f64 {
+    fn y_at(&mut self, time: f32) -> f64 {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
-        self.playfield.hit_y() - (self.relative_y - pos_at(&self.position_function, time)) * speed
+        self.playfield.hit_y() - (self.relative_y - pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
     }
 }
 #[async_trait]
@@ -121,6 +124,7 @@ impl HitObject for ManiaNote {
         self.hit_time = 0.0;
         self.hit = false;
         self.missed = false;
+        self.position_function_index = 0;
     }
 }
 impl ManiaHitObject for ManiaNote {
@@ -140,7 +144,7 @@ impl ManiaHitObject for ManiaNote {
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.relative_y = pos_at(&self.position_function, self.time);
+        self.relative_y = pos_at(&self.position_function, self.time, &mut self.position_function_index);
     }
 }
 
@@ -171,6 +175,8 @@ pub struct ManiaHold {
     start_image: Option<Image>,
     end_image: Option<Image>,
     middle_image: Option<Image>,
+
+    position_function_index: usize
 }
 impl ManiaHold {
     pub async fn new(
@@ -246,15 +252,19 @@ impl ManiaHold {
             start_image,
             end_image,
             middle_image,
+            position_function_index: 0
         }
     }
 
-    fn y_at(&self, beatmap_time: f32) -> (f64, f64) {
+    fn y_at(&mut self, beatmap_time: f32) -> (f64, f64) {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
-        let a = |y| self.playfield.hit_y() - (y - pos_at(&self.position_function, beatmap_time)) * speed;
+        let rel_start = self.start_relative_pos;
+        let rel_end = self.end_relative_pos;
 
-        (a(self.start_relative_pos), a(self.end_relative_pos))
+        let mut a = |y| self.playfield.hit_y() - (y - pos_at(&self.position_function, beatmap_time, &mut self.position_function_index)) * speed;
+
+        (a(rel_start), a(rel_end))
     }
 }
 #[async_trait]
@@ -402,6 +412,7 @@ impl HitObject for ManiaHold {
         self.holding = false;
         self.hold_starts.clear();
         self.hold_ends.clear();
+        self.position_function_index = 0;
     }
 }
 impl ManiaHitObject for ManiaHold {
@@ -429,17 +440,18 @@ impl ManiaHitObject for ManiaHold {
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.start_relative_pos = pos_at(&self.position_function, self.time);
-        self.end_relative_pos = pos_at(&self.position_function, self.end_time);
+        self.start_relative_pos = pos_at(&self.position_function, self.time, &mut self.position_function_index);
+        self.end_relative_pos = pos_at(&self.position_function, self.end_time, &mut self.position_function_index);
     }
 }
 
-fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32) -> f64 {
-    let (index, b) = position_function.iter().enumerate().find(|(_, p)| time < p.time)
+fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
+    let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
         .unwrap_or_else(|| {
             (position_function.len() - 1, position_function.last().unwrap())
         });
-    
+    // warn!("time: {time}");
+    *current_index = index;
     let a = &position_function[index - 1];
 
     f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
