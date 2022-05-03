@@ -32,7 +32,7 @@ impl GameWindow {
     pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: MultiFuze<GameEvent>) -> Self {
         let window_size = Settings::window_size();
 
-        let opengl = OpenGL::V3_0;
+        let opengl = OpenGL::V4_5;
         let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
             .graphics_api(opengl)
             .resizable(false)
@@ -98,8 +98,18 @@ impl GameWindow {
     }
 
     pub async fn run(&mut self) {
+
+        macro_rules! close_window {
+            (self) => {
+                self.window.window.set_should_close(true);
+                self.game_event_sender.ignite(GameEvent::WindowClosed);
+                return;
+            }
+        }
+
         loop {
             while let Some(e) = self.window.poll_event() {
+                if e.close_args().is_some() {close_window!(self);}
 
                 if let Some(axis) = e.controller_axis_args() {
                     let j_id = get_joystick_id(axis.id);
@@ -126,11 +136,7 @@ impl GameWindow {
                 match event {
                     RenderSideEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
                     RenderSideEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
-                    RenderSideEvent::CloseGame => {
-                        self.window.window.set_should_close(true);
-                        self.game_event_sender.ignite(GameEvent::WindowClosed);
-                        return
-                    },
+                    RenderSideEvent::CloseGame => {close_window!(self);},
                 }
             }
 
@@ -188,6 +194,7 @@ impl GameWindow {
 
                 let c = self.graphics.draw_begin(args.viewport());
                 graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+                
                 for i in data.iter() {
                     i.draw(&mut self.graphics, c);
                 }
@@ -196,6 +203,7 @@ impl GameWindow {
                         i.draw(&mut self.graphics, c);
                     }
                 }
+                
                 self.graphics.draw_end();
                 self.window.swap_buffers();
 

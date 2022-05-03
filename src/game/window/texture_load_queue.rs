@@ -3,9 +3,7 @@ use image::RgbaImage;
 
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
-pub type TextureLoadResult = (LoadImage, UnboundedSender<TatakuResult<Arc<Texture>>>);
-
-pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<TextureLoadResult>> = OnceCell::const_new();
+pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
 
 pub async fn texture_load_loop() {
@@ -17,14 +15,14 @@ pub async fn texture_load_loop() {
     let mut image_data = Vec::new();
 
     loop {
-        if let Ok((method, on_done)) = texture_load_receiver.try_recv() {
+        if let Ok(method) = texture_load_receiver.try_recv() {
             let settings = opengl_graphics::TextureSettings::new();
 
             macro_rules! send_tex {
-                ($tex:expr) => {{
+                ($tex:expr, $on_done:expr) => {{
                     let tex = Arc::new($tex);
                     image_data.push(tex.clone());
-                    if let Err(_) = on_done.send(Ok(tex)) {error!("uh oh")}
+                    if let Err(_) = $on_done.send(Ok(tex)) {error!("uh oh")}
                 }}
             }
 
@@ -33,16 +31,16 @@ pub async fn texture_load_loop() {
                     image_data.clear();
                     return;
                 }
-                LoadImage::Path(path) => {
+                LoadImage::Path(path, on_done) => {
                     match Texture::from_path(path, &settings) {
-                        Ok(t) => send_tex!(t),
+                        Ok(t) => send_tex!(t, on_done),
                         Err(e) => if let Err(_) = on_done.send(Err(TatakuError::String(e))) {error!("uh oh")},
                     };
                 },
-                LoadImage::Image(data) => {
-                    send_tex!(Texture::from_image(&data, &settings))
+                LoadImage::Image(data, on_done) => {
+                    send_tex!(Texture::from_image(&data, &settings), on_done)
                 },
-                LoadImage::Font(font, size) => {
+                LoadImage::Font(font, size, on_done) => {
                     let px = size.0;
 
                     // let mut textures = font.textures.write();
@@ -108,7 +106,7 @@ pub async fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<Arc<Texture>>
     trace!("loading tex {}", path);
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Path(path), sender)).ok().expect("no?");
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Path(path, sender)).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -121,7 +119,7 @@ pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<Arc<Texture>> {
     trace!("loading tex data");
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Image(data), sender)).ok().expect("no?");
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Image(data, sender)).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -133,12 +131,12 @@ pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<Arc<Texture>> {
 pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
     // info!("loading font char ('{ch}',{size})");
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send((LoadImage::Font(font, size), sender)).ok().expect("no?");
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Font(font, size, sender)).ok().expect("no?");
 
     loop {
         match receiver.try_recv() {
             Ok(t) => {
-                return t.map(|_|());
+                return Ok(())
             },
             Err(_) => {},
         }
@@ -154,7 +152,7 @@ pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
 
 pub enum LoadImage {
     GameClose,
-    Path(String),
-    Image(RgbaImage),
-    Font(Font2, FontSize),
+    Path(String, UnboundedSender<TatakuResult<Arc<Texture>>>),
+    Image(RgbaImage, UnboundedSender<TatakuResult<Arc<Texture>>>),
+    Font(Font2, FontSize, UnboundedSender<TatakuResult<()>>),
 }

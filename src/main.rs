@@ -85,6 +85,7 @@ async fn main() {
     main_thread.spawn_local(async {
         info!("starting texture load loop");
         texture_load_loop().await;
+        warn!("texture loop closed");
     });
 
     // start game
@@ -101,13 +102,15 @@ async fn main() {
         let game = Game::new(render_queue_sender, game_event_receiver).await;
         trace!("running game");
         game.game_loop().await;
-        trace!("game closed");
+        warn!("game closed");
+
+        TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::GameClose).ok().unwrap();
     });
 
     main_thread.spawn_local(async move {
         trace!("window running");
         window.run().await;
-        trace!("window closed");
+        warn!("window closed");
     });
 
     let _ = tokio::join!(main_thread, game);

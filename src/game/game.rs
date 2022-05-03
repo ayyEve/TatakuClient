@@ -159,7 +159,10 @@ impl Game {
                 match e {
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
-                    GameEvent::WindowClosed => { self.close_game(); return }
+                    GameEvent::WindowClosed => { 
+                        self.close_game(); 
+                        return
+                    }
                 }
             }
 
@@ -189,7 +192,7 @@ impl Game {
     }
 
     pub fn close_game(&mut self) {
-        trace!("stopping game");
+        warn!("stopping game");
     }
 
     async fn update(&mut self, _delta:f64) {
