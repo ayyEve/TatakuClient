@@ -156,3 +156,4 @@ pub enum LoadImage {
     Image(RgbaImage, UnboundedSender<TatakuResult<Arc<Texture>>>),
     Font(Font2, FontSize, UnboundedSender<TatakuResult<()>>),
 }
+

@@ -63,16 +63,17 @@ impl Database {
         if duration > 0.5 {info!("db lock took {:.4}ms to aquire", duration)};
         a
     }
-    pub async fn get_diffcalc<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
-        let now = Instant::now();
-        let a = DATABASE.connection.lock().await;
-        let duration = now.elapsed().as_secs_f32() * 1000.0;
-        if duration > 0.5 {info!("diffcalc db lock took {:.4}ms to aquire", duration)};
-        a
-    }
+    // pub async fn get_diffcalc<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
+    //     let now = Instant::now();
+    //     let a = DATABASE.connection.lock().await;
+    //     let duration = now.elapsed().as_secs_f32() * 1000.0;
+    //     if duration > 0.5 {info!("diffcalc db lock took {:.4}ms to aquire", duration)};
+    //     a
+    // }
 
     fn new() -> Arc<Self> {
         let connection = Connection::open("tataku.db").unwrap();
+        
         // scores table
         connection.execute(
             "CREATE TABLE IF NOT EXISTS scores (
@@ -166,18 +167,6 @@ impl Database {
             )", [])
         .expect("error creating db table");
 
-        // difficulties table
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS difficulties (
-                beatmap_hash TEXT,
-                playmode TEXT,
-                mods_string TEXT,
-                diff_calc_version INTEGER,
-                diff REAL,
-
-                PRIMARY KEY (beatmap_hash, playmode, mods_string, diff_calc_version)
-            )", [])
-        .expect("error creating db table");
 
 
         Database::init_beatmap_collection(&connection);

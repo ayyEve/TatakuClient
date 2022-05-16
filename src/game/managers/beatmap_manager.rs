@@ -327,7 +327,7 @@ impl BeatmapManager {
         tokio::spawn(async move {
             let playmode = playmode;
 
-            let mut existing = Database::get_all_diffs(&playmode, &mods).await;
+            let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
             let mut to_insert = Vec::new();
 
             // perform calc
@@ -347,7 +347,8 @@ impl BeatmapManager {
             // insert diffs
             if to_insert.len() > 0 {
                 tokio::spawn(async move {
-                    Database::insert_many_diffs(&playmode, &mods, to_insert.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
+                    DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
+                    info!("diff calc insert done");
                 });
             }
             

@@ -9,6 +9,7 @@
 /[Ss]ongs
 /replays
 tataku.db
+tataku_diffs.db
 settings.json
 
 test-commits.rs
