@@ -125,10 +125,10 @@ impl Default for ManiaPlayfieldSettings {
         Self {
             name: "unknown".to_owned(),
 
-            hit_pos: 100.0,
+            hit_pos: 200.0,
             column_width: 100.0,
             column_spacing: 5.0,
-            note_height: 30.0,
+            note_height: 50.0,
             x_offset: 0.0,
 
             note_border_width: 1.4,
