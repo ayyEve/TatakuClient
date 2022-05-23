@@ -135,18 +135,12 @@ pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
 
     loop {
         match receiver.try_recv() {
-            Ok(t) => {
+            Ok(_t) => {
                 return Ok(())
             },
             Err(_) => {},
         }
     }
-
-    // if let Some(t) = receiver.recv().await {
-    //     
-    // } else {
-    //     Err(TatakuError::String("idk".to_owned()))
-    // }
 }
 
 

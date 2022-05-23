@@ -27,7 +27,7 @@ pub struct BeatmapMeta {
     pub bpm_min: f32,
     pub bpm_max: f32,
 
-    // remove these at some point
+    // remove this at some point
     pub diff: f32
 }
 impl BeatmapMeta {

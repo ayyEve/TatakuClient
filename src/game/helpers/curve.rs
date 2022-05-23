@@ -162,7 +162,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
     let mut path = Vec::new();
 
-    let metadata = beatmap.get_beatmap_meta();
+    // let metadata = beatmap.get_beatmap_meta();
 
     let mut beatmap_version = 10;
     let mut slider_tick_rate = 1.0;

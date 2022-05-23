@@ -30,11 +30,6 @@ pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f64) -> Box<Rectangle> {
     ))
 }
 
-pub fn on_main_thread() -> bool {
-    format!("{:?}", std::thread::current().id()) == "ThreadId(1)"
-}
-
-
 // i might move this to its own crate tbh
 // i find myself needing something like this quite often
 
