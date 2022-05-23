@@ -565,11 +565,11 @@ impl Game {
                             }
                         }
 
-                        OnlineManager::set_action(UserAction::Idle, String::new(), String::new());
+                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), String::new());
                     },
                     GameState::Closing => {
                         // send logoff
-                        OnlineManager::set_action(UserAction::Leaving, String::new(), String::new());
+                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), String::new());
                     }
                     _ => {}
                 }

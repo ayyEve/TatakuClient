@@ -10,7 +10,7 @@ pub type DiffCalcInit = Arc<HashMap<String, f32>>;
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER:Arc<tokio::sync::RwLock<BeatmapManager>> = Arc::new(tokio::sync::RwLock::new(BeatmapManager::new()));
+    pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
 }
 
 pub struct BeatmapManager {

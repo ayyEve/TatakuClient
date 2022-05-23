@@ -59,7 +59,7 @@ impl QuaverBeatmap {
     pub fn load(path: String) -> TatakuResult<Self> {
         let lines = std::fs::read_to_string(&path)?;
         let mut s:QuaverBeatmap = serde_yaml::from_str(&lines).map_err(|e| {
-            error!("asdjlfhjskdfhjdsfhksdfflhksdfhkjsdfhjdf: {:?}", e);
+            error!("error parsing quaver beatmap: {:?}", e);
             BeatmapError::InvalidFile
         })?;
 

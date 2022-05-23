@@ -39,7 +39,7 @@ impl BeatmapPlaymodePreferences {
 impl Default for BeatmapPlaymodePreferences {
     fn default() -> Self {
         Self { 
-            scroll_speed: 1.0,
+            scroll_speed: 2.0,
         }
     }
 }

@@ -94,10 +94,15 @@ impl OnlineManager {
             "this is a test message".to_owned()
         )]);
 
+        let discord = Discord::new();
+        if let Err(e) = &discord {
+            error!("{e}")
+        }
+
         OnlineManager {
             user_id: 0,
             users: HashMap::new(),
-            discord: Discord::new().ok(),
+            discord: discord.ok(),
             // chat: Chat::new(),
             writer: None,
             connected: false,
@@ -354,7 +359,7 @@ impl OnlineManager {
             }
 
             if let Some(discord) = &mut s.discord {
-                discord.change_status(action_text.clone());
+                discord.change_status(action_text.clone()).await;
             }
         });
     }

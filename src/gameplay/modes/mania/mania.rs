@@ -16,10 +16,6 @@ const BAR_HEIGHT:f64 = 4.0; // how tall is a timing bar
 const BAR_SPACING:f32 = 4.0; // how many beats between timing bars
 const BAR_DEPTH:f64 = -90.0;
 
-// sv things (TODO!: rework sv to not suck)
-const SV_FACTOR:f32 = 700.0; // bc sv is bonked, divide it by this amount
-
-
 /// calculate the mania acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
     let x50 = score.x50 as f64;
@@ -303,8 +299,8 @@ impl GameMode for ManiaGame {
                     mania_skin_settings,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
-                    key_images_up:HashMap::new(),
-                    key_images_down:HashMap::new(),
+                    key_images_up: HashMap::new(),
+                    key_images_down: HashMap::new(),
                 };
 
                 for i in all_mania_skin_settings.iter() {
