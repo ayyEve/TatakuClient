@@ -102,6 +102,10 @@ impl ManiaGame {
                 }
             }
 
+            for tl in self.timing_bars.iter_mut() {
+                tl.set_position_function(self.position_function.clone());
+            }
+
             return;
         }
 
@@ -140,6 +144,9 @@ impl ManiaGame {
                 note.set_position_function(self.position_function.clone());
             }
         }
+        for tl in self.timing_bars.iter_mut() {
+            tl.set_position_function(self.position_function.clone());
+        }
     }
 
     fn set_sv_mult_notes(&mut self) {
@@ -149,7 +156,7 @@ impl ManiaGame {
             }
         }
 
-        // update timing bar as well
+        // update timing bars as well
         for t in self.timing_bars.iter_mut() {
             t.set_sv(self.sv_mult)
         }
@@ -912,6 +919,7 @@ impl GameMode for ManiaGame {
                 // add timing bar at current time
                 let mut bar = TimingBar::new(time, bar_width, x, self.playfield.clone());
                 bar.set_position_function(self.position_function.clone());
+                bar.set_sv(self.sv_mult);
                 self.timing_bars.push(bar);
 
                 if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
