@@ -1,5 +1,5 @@
 use tokio::{sync::Mutex, net::TcpStream};
-use futures_util::{SinkExt, StreamExt, stream::SplitSink};
+use futures_util::{SinkExt, StreamExt, stream::SplitSink, Future};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message};
 
 use crate::prelude::*;
@@ -349,17 +349,17 @@ impl OnlineManager {
         Ok(())
     }
 
-    pub fn set_action(action:UserAction, action_text:String, mode: PlayMode) {
+    pub fn set_action(action:UserAction, action_text:String, mode: PlayMode, (discord_state, discord_desc): (String, String)) {
         let c = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
-            let mut s = c.write().await;
+            let s = c.read().await;
             send_packet!(s.writer, create_packet!(Client_StatusUpdate {action, action_text: action_text.clone(), mode}));
             if action == UserAction::Leaving {
                 send_packet!(s.writer, create_packet!(Client_LogOut));
             }
 
-            if let Some(discord) = &mut s.discord {
-                discord.change_status(action_text.clone()).await;
+            if let Some(discord) = &s.discord {
+                discord.change_status(discord_state, discord_desc).await;
             }
         });
     }

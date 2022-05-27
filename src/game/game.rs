@@ -551,7 +551,11 @@ impl Game {
 
                         self.set_background_beatmap(&m).await;
                         let text = format!("Playing {}-{}[{}]", m.artist, m.title, m.version);
-                        OnlineManager::set_action(UserAction::Ingame, text, m.mode);
+
+                        let discord_desc = format!("{} - {}", m.title, m.artist);
+                        let discord_state = format!("{} by {}", m.version, m.creator);
+
+                        OnlineManager::set_action(UserAction::Ingame, text, m.mode, (discord_state, discord_desc));
                     },
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
@@ -565,11 +569,20 @@ impl Game {
                             }
                         }
 
-                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), String::new());
+                        let discord = (
+                            format!(""),
+                            format!("Idle")
+                        );
+
+                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), String::new(), discord);
                     },
                     GameState::Closing => {
                         // send logoff
-                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), String::new());
+                        let discord = (
+                            format!(""),
+                            format!("Closing")
+                        );
+                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), String::new(), discord);
                     }
                     _ => {}
                 }

@@ -7,7 +7,8 @@ lazy_static::lazy_static! {
     // static ref CONTINUE_CALLBACKS:AtomicBool = AtomicBool::new(true);
 }
 pub struct Discord {
-    client: Arc<Mutex<DiscordIpcClient>>
+    client: Arc<Mutex<DiscordIpcClient>>,
+    last_status: Arc<Mutex<(String, String)>>
 }
 
 impl Discord {
@@ -36,24 +37,41 @@ impl Discord {
 
         info!("Done");
         Ok(Self {
-            client: Arc::new(Mutex::new(client))
+            client: Arc::new(Mutex::new(client)),
+            last_status: Arc::new(Mutex::new((String::new(), String::new())))
         })
     }
 
-    pub async fn change_status(&self, desc:String) {
+    pub async fn change_status(&self, state:String, desc:String) {
         #[cfg(feature="discord")] {
-            info!("Setting Discord State to '{desc}'");
+            // check text
+            {
+                let mut lock = self.last_status.lock().await;
+                let (c_state, c_desc) = &*lock;
+                // if its the same text, exit
+                if c_state == &state && c_desc == &desc {return}
+                // if not, set the current text and continue
+                *lock = (state.clone(), desc.clone());
+            }
+
+            info!("Setting Discord State to '{state},{desc}'");
             let mut client = self.client.lock().await;
 
-            
-            if let Err(e) = client.set_activity(activity::Activity::new()
-                .state("Tataku")
-                .details(&desc)
+            let mut activity = activity::Activity::new()
                 .assets(Assets::new()
                     .large_image("icon-new")
-                    .large_text("Tataku")
-                )
-            ) {
+                    .large_text("Tataku!")
+                );
+            
+            if !state.is_empty() {
+                activity = activity.state(&state)
+            }
+            if !desc.is_empty() {
+                activity = activity.details(&desc)
+            }
+
+            
+            if let Err(e) = client.set_activity(activity) {
                 warn!("Error updating discord presence: {e}")
             } else {
                 info!("Done Setting Discord State");
