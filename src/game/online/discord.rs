@@ -42,7 +42,7 @@ impl Discord {
         })
     }
 
-    pub async fn change_status(&self, state:String, desc:String) {
+    pub async fn change_status(&self, state:String, desc:String, playmode: Option<PlayMode>) {
         #[cfg(feature="discord")] {
             // check text
             {
@@ -57,18 +57,22 @@ impl Discord {
             info!("Setting Discord State to '{state},{desc}'");
             let mut client = self.client.lock().await;
 
-            let mut activity = activity::Activity::new()
-                .assets(Assets::new()
-                    .large_image("icon-new")
-                    .large_text("Tataku!")
-                );
+            let mut activity = activity::Activity::new();
             
-            if !state.is_empty() {
-                activity = activity.state(&state)
+            if !state.is_empty() { activity = activity.state(&state) }
+            if !desc.is_empty() { activity = activity.details(&desc) }
+
+            let mut assets = Assets::new()
+                .large_image("icon-new")
+                .large_text ("Tataku!"); // TODO: make the username of the logged-in user
+
+            if let Some(mode) = &playmode {
+                let mode = gamemode_display_name(mode);
+                assets = assets
+                    .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
+                    .small_text (mode)
             }
-            if !desc.is_empty() {
-                activity = activity.details(&desc)
-            }
+            activity = activity.assets(assets);
 
             
             if let Err(e) = client.set_activity(activity) {

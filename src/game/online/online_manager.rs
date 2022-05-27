@@ -349,17 +349,18 @@ impl OnlineManager {
         Ok(())
     }
 
-    pub fn set_action(action:UserAction, action_text:String, mode: PlayMode, (discord_state, discord_desc): (String, String)) {
-        let c = ONLINE_MANAGER.clone();
+    pub fn set_action(action:UserAction, action_text:String, incoming_mode: Option<PlayMode>, (discord_state, discord_desc): (String, String)) {
         tokio::spawn(async move {
-            let s = c.read().await;
+            let s = ONLINE_MANAGER.read().await;
+
+            let mode = incoming_mode.clone().unwrap_or(String::new());
             send_packet!(s.writer, create_packet!(Client_StatusUpdate {action, action_text: action_text.clone(), mode}));
             if action == UserAction::Leaving {
                 send_packet!(s.writer, create_packet!(Client_LogOut));
             }
 
             if let Some(discord) = &s.discord {
-                discord.change_status(discord_state, discord_desc).await;
+                discord.change_status(discord_state, discord_desc, incoming_mode).await;
             }
         });
     }

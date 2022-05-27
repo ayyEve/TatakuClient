@@ -555,7 +555,7 @@ impl Game {
                         let discord_desc = format!("{} - {}", m.title, m.artist);
                         let discord_state = format!("{} by {}", m.version, m.creator);
 
-                        OnlineManager::set_action(UserAction::Ingame, text, m.mode, (discord_state, discord_desc));
+                        OnlineManager::set_action(UserAction::Ingame, text, Some(m.mode), (discord_state, discord_desc));
                     },
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
@@ -574,7 +574,7 @@ impl Game {
                             format!("Idle")
                         );
 
-                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), String::new(), discord);
+                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), None, discord);
                     },
                     GameState::Closing => {
                         // send logoff
@@ -582,7 +582,7 @@ impl Game {
                             format!(""),
                             format!("Closing")
                         );
-                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), String::new(), discord);
+                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), None, discord);
                     }
                     _ => {}
                 }
