@@ -124,7 +124,6 @@ pub struct CharData {
     pub size: Vector2,
     pub metrics: fontdue::Metrics
 }
-
 impl Into<ayyeve_piston_ui::prelude::FontCharacter> for CharData {
     fn into(self) -> ayyeve_piston_ui::prelude::FontCharacter {
         ayyeve_piston_ui::prelude::FontCharacter {
@@ -147,8 +146,6 @@ impl FontSize {
     }
 }
 impl Eq for FontSize {}
-
-
 impl std::hash::Hash for FontSize {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         ((self.0 * 10.0) as u32).hash(state);
@@ -177,8 +174,6 @@ impl FontRender for Font2 {
 
     fn draw_character_image(&self, font_size: Self::Size, ch: char, [x, y]: [&mut f64; 2], color: Color, draw_state: &graphics::DrawState, transform: graphics::types::Matrix2d, graphics: &mut GlGraphics) {
         let character = self.get_char(font_size.0, ch).unwrap();
-
-
         
         let ch_x = *x + character.metrics.xmin as f64;
         let ch_y = *y - (character.metrics.height as f64 + character.metrics.ymin as f64); // y = -metrics.bounds.height - metrics.bounds.ymin
