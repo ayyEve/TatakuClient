@@ -6,6 +6,7 @@
 
 use crate::prelude::*;
 use super::mania_notes::*;
+use super::ManiaHitJudgments;
 
 const FIELD_DEPTH:f64 = 110.0;
 const HIT_AREA_DEPTH: f64 = 99.9;
@@ -17,17 +18,34 @@ const BAR_SPACING:f32 = 4.0; // how many beats between timing bars
 const BAR_DEPTH:f64 = -90.0;
 
 /// calculate the mania acc for `score`
+/// from https://wiki.quavergame.com/docs/gameplay#accuracy
 pub fn calc_acc(score: &Score) -> f64 {
-    let x50 = score.x50 as f64;
-    let x100 = score.x100 as f64;
-    let x300 = score.x300 as f64;
-    let geki = score.xgeki as f64;
-    let katu = score.xkatu as f64;
-    let miss = score.xmiss as f64;
+    let marv = score.judgments.get("geki").copy_or_default() as f64;
+    let perf = score.judgments.get("x300").copy_or_default() as f64;
+    let great = score.judgments.get("katu").copy_or_default() as f64;
+    let good = score.judgments.get("x100").copy_or_default() as f64;
+    let okay  = score.judgments.get("x50").copy_or_default() as f64;
+    let miss = score.judgments.get("miss").copy_or_default() as f64;
 
-    // (50*count50 + 100*count100 + 200*count_katu + 300*(count300 + count_geki)) / (300*sum(count_miss, count50, count100, count300, count_geki, count_katu)); 
-    (50.0 * x50 + 100.0 * x100 + 200.0 * katu + 300.0 * (x300 + geki))
-    / (300.0 * (miss + x50 + x100 + x300 + geki + katu))
+    let top = [
+        marv * 1.0, // 100%
+        perf * 0.9825, // 98.25%
+        great * 0.65, // 65%
+        good * 0.25, // 25%
+        okay * -0.100, // -100%
+        miss * -0.50, // -50%
+    ].sum();
+
+    let bottom = [
+        marv, 
+        perf, 
+        great, 
+        good, 
+        okay, 
+        miss
+    ].sum();
+
+    top.max(0.0) / bottom
 }
 
 pub struct ManiaGame {
@@ -43,10 +61,10 @@ pub struct ManiaGame {
     /// true if held
     column_states: Vec<bool>,
 
-    // hit timing bar stuff
-    hitwindow_300: f32,
-    hitwindow_100: f32,
-    hitwindow_miss: f32,
+    // // hit timing bar stuff
+    // hitwindow_300: f32,
+    // hitwindow_100: f32,
+    // hitwindow_miss: f32,
 
     end_time: f32,
     sv_mult: f64,
@@ -62,6 +80,9 @@ pub struct ManiaGame {
 
     key_images_up: HashMap<u8, Image>,
     key_images_down: HashMap<u8, Image>,
+
+    hit_windows: Vec<(ManiaHitJudgments, Range<f32>)>,
+    miss_window: f32,
 }
 impl ManiaGame {
     /// get the x_pos for `col`
@@ -210,6 +231,17 @@ impl GameMode for ManiaGame {
         let mut mania_skin_settings = None;
         let map_preferences = Database::get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned()).await;
         
+        // windows
+        let hit_windows = vec![
+            (ManiaHitJudgments::Marvelous, 0.0..18.0),
+            (ManiaHitJudgments::Perfect, 18.0..43.0),
+            (ManiaHitJudgments::Great, 43.0..76.0),
+            (ManiaHitJudgments::Good, 76.0..106.0),
+            (ManiaHitJudgments::Okay, 106.0..127.0),
+            (ManiaHitJudgments::Miss, 127.0..164.0),
+        ];
+        let miss_window = hit_windows.last().unwrap().1.end;
+
         const DEFAULT_SNAP: Color = Color::SILVER;
 
         const SNAP_COLORS:&[(f32, Color)] = &[
@@ -289,14 +321,12 @@ impl GameMode for ManiaGame {
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
                     timing_bars: Vec::new(),
+                    hit_windows,
+                    miss_window,
 
                     position_function: Arc::new(Vec::new()),
 
                     end_time: 0.0,
-
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
 
                     sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
@@ -411,14 +441,12 @@ impl GameMode for ManiaGame {
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
                     timing_bars: Vec::new(),
+                    hit_windows,
+                    miss_window,
 
                     position_function: Arc::new(Vec::new()),
                     
                     end_time: 0.0,
-        
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
 
                     sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
@@ -500,14 +528,12 @@ impl GameMode for ManiaGame {
                     column_indices:Vec::new(),
                     column_states: Vec::new(),
                     timing_bars: Vec::new(),
+                    hit_windows,
+                    miss_window,
 
                     position_function: Arc::new(Vec::new()),
                     
                     end_time: 0.0,
-        
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
 
                     sv_mult: map_preferences.scroll_speed as f64,
                     column_count,
@@ -610,7 +636,6 @@ impl GameMode for ManiaGame {
                     KeyPress::Mania9 => 8,
                     _ => return
                 };
-                // let hit_type:HitType = key.into();
                 // let hit_volume = get_settings!().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
@@ -622,54 +647,31 @@ impl GameMode for ManiaGame {
                 let note_time = note.time();
                 *self.column_states.get_mut(col).unwrap() = true;
 
-                let diff = (time - note_time).abs();
-                // normal note
-                if diff < self.hitwindow_300 {
+                if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                    use ManiaHitJudgments::*;
+
+                    // tell the note it was hit
                     note.hit(time);
 
-                    manager.score.hit300(time, note_time);
-                    manager.hitbar_timings.push((time, time - note_time));
-                    manager.health.give_life();
-                    add_hit_indicator(time, col, &ScoreHit::X300, self.column_count, &self.game_settings, manager);
-
-                    play_sound!(sound);
-                    if note.note_type() != NoteType::Hold {
-                        self.next_note(col);
-                    }
-                } else if diff < self.hitwindow_100 {
-                    note.hit(time);
-
-                    manager.score.hit100(time, note_time);
-                    manager.hitbar_timings.push((time, time - note_time));
-                    manager.health.give_life();
-                    play_sound!(sound);
-                    add_hit_indicator(time, col, &ScoreHit::X100, self.column_count, &self.game_settings, manager);
-
-                    if note.note_type() != NoteType::Hold {
-                        self.next_note(col);
-                    }
-                } else if diff < self.hitwindow_miss { // too early, miss
-                    note.miss(time);
-
-                    manager.score.hit_miss(time, note_time);
-                    manager.hitbar_timings.push((time, time - note_time));
+                    // add the judgment
+                    add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, manager);
                     
-                    manager.health.take_damage();
-                    if manager.health.is_dead() {
-                        manager.fail()
-                    }
-
-                    if note.note_type() != NoteType::Hold {
-                        self.next_note(col);
-                    }
+                    // play the hit sound
                     play_sound!(sound);
 
-                    add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
-                } else { // way too early, ignore
+                    // incrememnt note index if this is not a slider
+                    if note.note_type() != NoteType::Hold { self.next_note(col); }
+
+                    // if this was a miss, check if we failed
+                    if let Miss = judge {
+                        if manager.health.is_dead() {
+                            manager.fail();
+                        }
+                    }
+                } else { // outside of any window, ignore
                     // play sound
                     play_sound!(sound);
                 }
-            
             }
             ReplayFrame::Release(key) => {
                 manager.key_counter.key_up(key);
@@ -689,48 +691,38 @@ impl GameMode for ManiaGame {
                 if self.column_indices[col] >= self.columns[col].len() {return}
 
                 let note = &mut self.columns[col][self.column_indices[col]];
-                if time < note.time() - self.hitwindow_miss || time > note.end_time(self.hitwindow_miss) {return}
+                if time < note.time() - self.miss_window || time > note.end_time(self.miss_window) {return}
                 note.release(time);
 
                 if note.note_type() == NoteType::Hold {
                     let note_time = note.end_time(0.0);
-                    let diff = (time - note_time).abs();
-                    // normal note
-                    if diff < self.hitwindow_300 {
-                        manager.score.hit300(time, note_time);
-                        manager.hitbar_timings.push((time, time - note_time));
-                        manager.health.give_life();
+
+                    if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                        use ManiaHitJudgments::*;
+    
+                        // tell the note it was hit
+                        note.hit(time);
+    
+                        // add the judgment
+                        add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, manager);
                         
-                        // // play sound
+                        // // play the hit sound
                         // play_sound!(sound);
-
-                        add_hit_indicator(time, col, &ScoreHit::X300, self.column_count, &self.game_settings, manager);
+    
+                        // increment note index 
                         self.next_note(col);
-                    } else if diff < self.hitwindow_100 {
-                        manager.score.hit100(time, note_time);
-                        manager.hitbar_timings.push((time, time - note_time));
-                        manager.health.give_life();
-
-                        // play sound
-                        // play_sound!(sound);
-
-                        add_hit_indicator(time, col, &ScoreHit::X100, self.column_count, &self.game_settings, manager);
-                        self.next_note(col);
-                    } else if diff < self.hitwindow_miss { // too early, miss
-                        manager.score.hit_miss(time, note_time);
-                        manager.hitbar_timings.push((time, time - note_time));
-                        
-                        manager.health.take_damage();
-                        if manager.health.is_dead() {
-                            manager.fail()
+    
+                        // if this was a miss, check if we failed
+                        if let Miss = judge {
+                            if manager.health.is_dead() {
+                                manager.fail();
+                            }
                         }
-
-                        add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
-                        self.next_note(col);
+                    } else { // outside of any window, ignore
+                        // play sound
+                        play_sound!(sound);
                     }
                 }
-                
-                // self.columns[col][self.column_indices[col]].release(time);
             }
         
             _ => {}
@@ -761,24 +753,19 @@ impl GameMode for ManiaGame {
 
         // check if we missed the current note
         for col in 0..self.column_count as usize {
-            if self.column_indices[col] >= self.columns[col].len() {continue}
+            if self.column_indices[col] >= self.columns[col].len() { continue; }
             let note = &self.columns[col][self.column_indices[col]];
-            if note.end_time(self.hitwindow_miss) <= time {
-                // need to set these manually instead of score.hit_miss,
-                // since we dont want to add anything to the hit error list
-                let s = &mut manager.score;
-                s.xmiss += 1;
-                s.combo = 0;
-                
-                manager.health.take_damage();
-                if manager.health.is_dead() {
-                    manager.fail()
-                }
-                
-                add_hit_indicator(time, col, &ScoreHit::Miss, self.column_count, &self.game_settings, manager);
+
+            if note.end_time(self.miss_window) <= time {
+                // TODO: do we need to check for holds?
+                // if note.note_type() != NoteType::Hold || note.was_hit() {}
+
+                let j = &ManiaHitJudgments::Miss;
+                manager.add_judgment(j).await;
+                add_hit_indicator(time, col, j, self.column_count, &self.game_settings, manager);
                 self.next_note(col);
             }
-        }
+        }   
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
@@ -886,12 +873,6 @@ impl GameMode for ManiaGame {
             self.column_indices[i] = 0;
             self.column_states[i] = false;
         }
-
-        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
-        // setup hitwindows
-        self.hitwindow_miss = map_difficulty(od, 188.0, 173.0, 158.0);
-        self.hitwindow_100 = map_difficulty(od, 127.0, 112.0, 97.0);
-        self.hitwindow_300 = map_difficulty(od, 64.0, 49.0, 34.0);
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
@@ -1012,9 +993,9 @@ impl GameModeInput for ManiaGame {
 
 #[async_trait]
 impl GameModeInfo for ManiaGame {
-    fn playmode(&self) -> PlayMode {"mania".to_owned()}
+    fn playmode(&self) -> PlayMode { "mania".to_owned() }
 
-    fn end_time(&self) -> f32 {self.end_time}
+    fn end_time(&self) -> f32 { self.end_time }
     
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         let mut list = Vec::new();
@@ -1036,25 +1017,17 @@ impl GameModeInfo for ManiaGame {
         list
     }
 
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
-        (vec![
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
-        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
+    fn timing_bar_things(&self) -> Vec<(f32,Color)> {
+        self.hit_windows
+            .iter()
+            .map(|(j, w) | {
+                (w.end, j.color())
+            })
+            .collect()
     }
 
-    fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
-        match hit {
-            ScoreHit::Miss  => "Miss".to_owned(),
-            ScoreHit::X50   => "Okay".to_owned(),
-            ScoreHit::X100  => "Good".to_owned(),
-            ScoreHit::Xkatu => "Great".to_owned(),
-            ScoreHit::X300  => "Perfect".to_owned(),
-            ScoreHit::Xgeki => "Marvelous".to_owned(),
-            
-            ScoreHit::None  => String::new(),
-            ScoreHit::Other(_, _) => String::new(),
-        }
+    fn judgment_type(&self) -> Box<dyn HitJudgments> {
+        Box::new(ManiaHitJudgments::Miss)
     }
 
     async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
@@ -1065,7 +1038,7 @@ impl GameModeInfo for ManiaGame {
 
 
         let start_x = self.col_pos(0);
-        let width = self.col_pos(self.column_count-1) - start_x;
+        let width = self.col_pos(self.column_count) - start_x;
 
         let combo_bounds = Rectangle::bounds_only(
             Vector2::zero(),
@@ -1098,13 +1071,15 @@ impl Drop for ManiaGame {
 }
 
 
-fn add_hit_indicator(time: f32, column: usize, hit_value: &ScoreHit, column_count: u8, game_settings: &Arc<ManiaSettings>, manager: &mut IngameManager) {
-    let (color, image) = match hit_value {
-        ScoreHit::Miss => (Color::RED, None),
-        ScoreHit::X100 | ScoreHit::Xkatu => (Color::LIME, None),
-        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
-        ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
-    };
+fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, manager: &mut IngameManager) {
+    let color = hit_value.color();
+    let image = None;
+    // let (color, image) = match hit_value {
+    //     Miss => (Color::RED, None),
+    //     Okay | Good => (Color::LIME, None),
+    //     Great | Marvelous => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+    //     Perfect => Color::new(),
+    // };
 
     let playfield = &game_settings.playfield_settings[column_count as usize - 1];
     let window_size = Settings::window_size();
@@ -1210,16 +1185,14 @@ impl TimingBar {
 }
 
 
-
+// TODO: document whatever the hell is happening here
 struct ManiaAutoHelper {
-    states: Vec<bool>,
-    timers: Vec<(f32, bool)>,
+    states: Vec<AutoplayColumnState>,
 }
 impl ManiaAutoHelper {
     fn new() -> Self {
         Self {
             states: Vec::new(),
-            timers: Vec::new(),
         }
     }
 
@@ -1231,40 +1204,54 @@ impl ManiaAutoHelper {
     fn update(&mut self, columns: &Vec<Vec<Box<dyn ManiaHitObject>>>, column_indices: &mut Vec<usize>, time: f32, list: &mut Vec<ReplayFrame>) {
         if self.states.len() != columns.len() {
             let new_len = columns.len();
-            self.states.resize(new_len, false);
-            self.timers.resize(new_len, (0.0, false));
+            self.states.resize(new_len, AutoplayColumnState::default());
             // self.notes_hit.resize(new_len, Vec::new());
         }
 
         for c in 0..columns.len() {
-            let timer = &mut self.timers[c];
-            if time > timer.0 && timer.1 {
+            let state = &mut self.states[c];
+            if state.pressed && time > state.release_time {
                 list.push(ReplayFrame::Release(Self::get_keypress(c)));
-                timer.1 = false;
+                state.pressed = false;
             }
 
             if column_indices[c] >= columns[c].len() {continue}
+
+            // catch up??
             for i in column_indices[c]..columns[c].len() {
                 let note = &columns[c][i];
-                if time > note.end_time(30.0) && !note.was_hit() {
+                if time > note.end_time(100.0) && !note.was_hit() {
                     column_indices[c] += 1;
                 } else {
                     break;
                 }
             }
 
-            if column_indices[c] >= columns[c].len() {continue}
+            if column_indices[c] >= columns[c].len() { continue }
             let note = &columns[c][column_indices[c]];
             if time >= note.time() && !note.was_hit() {
-                if timer.0 == note.end_time(50.0) && timer.1 {continue}
+                // if the key is already down, dont press it again
+                // if timer.0 == note.end_time(15.0) && 
+                if state.pressed { continue }
 
+                // press the key, and hold it until the note's end time
                 list.push(ReplayFrame::Press(Self::get_keypress(c)));
-                timer.0 = note.end_time(50.0);
-                timer.1 = true;
+                state.pressed = true;
+                if note.note_type() == NoteType::Hold {
+                    state.release_time = note.end_time(0.0);
+                } else {
+                    state.release_time = note.end_time(50.0);
+                }
             }
         }
     }
 }
+#[derive(Default, Copy, Clone)]
+struct AutoplayColumnState {
+    pressed: bool,
+    release_time: f32
+}
+
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct SliderVelocity {

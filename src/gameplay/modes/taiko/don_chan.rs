@@ -115,9 +115,10 @@ impl InnerUIElement for DonChan {
         // }
 
         // check fail anim
-        if self.last_miss_count < manager.score.xmiss {
+        let xmiss = manager.score.judgments.get("xmiss").copy_or_default();
+        if self.last_miss_count < xmiss {
             self.state = DonChanState::Fail;
-            self.last_miss_count = manager.score.xmiss;
+            self.last_miss_count = xmiss;
         } else if self.last_score != manager.score.score.score && self.state == DonChanState::Fail {
             self.state = DonChanState::Normal;
         }

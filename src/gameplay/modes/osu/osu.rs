@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use crate::prelude::*;
 use super::osu_notes::*;
+use super::OsuHitJudgments;
 
 
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
@@ -12,12 +13,12 @@ const STACK_LENIENCY:u32 = 3;
 
 /// calculate the standard acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
-    let x50 = score.x50 as f64;
-    let x100 = score.x100 as f64;
-    let x300 = score.x300 as f64;
-    let geki = score.xgeki as f64;
-    let katu = score.xkatu as f64;
-    let miss = score.xmiss as f64;
+    let x50  = score.judgments.get("x50").copy_or_default()  as f64;
+    let x100 = score.judgments.get("x100").copy_or_default() as f64;
+    let x300 = score.judgments.get("x300").copy_or_default() as f64;
+    let geki = score.judgments.get("geki").copy_or_default() as f64;
+    let katu = score.judgments.get("katu").copy_or_default() as f64;
+    let miss = score.judgments.get("miss").copy_or_default() as f64;
 
     (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
     / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
@@ -28,11 +29,14 @@ pub struct StandardGame {
     pub notes: Vec<Box<dyn StandardHitObject>>,
 
     // hit timing bar stuff
-    hitwindow_50: f32,
-    hitwindow_100: f32,
-    hitwindow_300: f32,
-    hitwindow_miss: f32,
+    // hitwindow_50: f32,
+    // hitwindow_100: f32,
+    // hitwindow_300: f32,
+    // hitwindow_miss: f32,
     end_time: f32,
+    
+    hit_windows: Vec<(OsuHitJudgments, Range<f32>)>,
+    miss_window: f32,
 
     // draw_points: Vec<(f32, Vector2, ScoreHit)>,
     mouse_pos: Vector2,
@@ -143,7 +147,6 @@ impl StandardGame {
 
 #[async_trait]
 impl GameMode for StandardGame {
-
     async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get().await.clone();
@@ -160,6 +163,22 @@ impl GameMode for StandardGame {
             settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect()
         };
 
+        
+        // windows
+        let od = map.get_beatmap_meta().get_od(&*ModManager::get().await);
+        let w_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
+        let w_50   = map_difficulty(od, 200.0, 150.0, 100.0);
+        let w_100  = map_difficulty(od, 140.0, 100.0, 60.0);
+        let w_300  = map_difficulty(od, 80.0, 50.0, 20.0);
+
+        let hit_windows = vec![
+            (OsuHitJudgments::X300, 0.0..w_300),
+            (OsuHitJudgments::X100, w_300..w_100),
+            (OsuHitJudgments::X50, w_100..w_50),
+            (OsuHitJudgments::Miss, w_50..w_miss),
+        ];
+        let miss_window = w_miss;
+
         match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
@@ -173,15 +192,17 @@ impl GameMode for StandardGame {
                     notes: Vec::new(),
                     mouse_pos:Vector2::zero(),
                     window_mouse_pos:Vector2::zero(),
+                    hit_windows,
+                    miss_window,
         
                     hold_count: 0,
                     // note_index: 0,
                     end_time: 0.0,
         
-                    hitwindow_50: 0.0,
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
+                    // hitwindow_50: 0.0,
+                    // hitwindow_100: 0.0,
+                    // hitwindow_300: 0.0,
+                    // hitwindow_miss: 0.0,
         
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
@@ -364,58 +385,82 @@ impl GameMode for StandardGame {
                 }
 
                 let mut check_notes = Vec::new();
-                let w = self.hitwindow_miss;
                 for note in self.notes.iter_mut() {
                     note.press(time);
                     // check if note is in hitwindow
-                    if (time - note.time()).abs() <= w && !note.was_hit() {
+                    if (time - note.time()).abs() <= self.miss_window && !note.was_hit() {
                         check_notes.push(note);
                     }
                 }
-                if check_notes.len() == 0 {return} // no notes to check
+                if check_notes.len() == 0 { return } // no notes to check
                 check_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
                 
 
                 let note = &mut check_notes[0];
                 let note_time = note.time();
-                let pts = note.get_points(true, time, (self.hitwindow_miss, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
-                
-                
-                let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
-                if !is_300 || (is_300 && self.game_settings.show_300s) {
-                    add_judgement_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
-                }
 
-                match &pts {
-                    ScoreHit::None | ScoreHit::Other(_,_) => {}
-                    ScoreHit::Miss => {
-                        manager.combo_break().await;
-                        manager.score.hit_miss(time, note_time);
-                        manager.hitbar_timings.push((time, time - note_time));
+                // check distance
+                if note.check_distance(self.mouse_pos) {
+                    if let Some(judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                        note.set_judgment(judge);
 
-                        manager.health.take_damage();
-                        if manager.health.is_dead() {
-                            manager.fail()
-                        }
-                    }
-
-                    pts => {
-                        let hitsound = note.get_hitsound();
-                        let hitsamples = note.get_hitsamples().clone();
-                        manager.play_note_sound(note_time, hitsound, hitsamples).await;
-
-                        match pts {
-                            ScoreHit::X50 => manager.score.hit50(time, note_time),
-                            ScoreHit::X100 | ScoreHit::Xkatu => manager.score.hit100(time, note_time),
-                            ScoreHit::X300 | ScoreHit::Xgeki => manager.score.hit300(time, note_time),
-                            _ => {}
+                        if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
+                            // dont show the judgment
+                        } else {
+                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, manager);
                         }
 
-                        manager.health.give_life();
+                        if let OsuHitJudgments::Miss = judge {
+                            // tell the note it was missed
+                            note.miss();
+                        } else {
+                            // tell the note it was hit
+                            note.hit(time);
 
-                        manager.hitbar_timings.push((time, time - note_time));
+                            // play the sound
+                            let hitsound = note.get_hitsound();
+                            let hitsamples = note.get_hitsamples().clone();
+                            manager.play_note_sound(note_time, hitsound, hitsamples).await;
+                        }
+
                     }
                 }
+
+
+                // let pts = note.get_points(true, time, (self.hitwindow_miss, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
+                
+                
+                // let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
+                // if !is_300 || (is_300 && self.game_settings.show_300s) {
+                // }
+
+                // match &pts {
+                //     ScoreHit::None | ScoreHit::Other(_,_) => {}
+                //     ScoreHit::Miss => {
+                //         manager.combo_break().await;
+                //         manager.score.hit_miss(time, note_time);
+                //         manager.hitbar_timings.push((time, time - note_time));
+
+                //         manager.health.take_damage();
+                //         if manager.health.is_dead() {
+                //             manager.fail()
+                //         }
+                //     }
+
+                //     pts => {
+
+                //         match pts {
+                //             ScoreHit::X50 => manager.score.hit50(time, note_time),
+                //             ScoreHit::X100 | ScoreHit::Xkatu => manager.score.hit100(time, note_time),
+                //             ScoreHit::X300 | ScoreHit::Xgeki => manager.score.hit300(time, note_time),
+                //             _ => {}
+                //         }
+
+                //         manager.health.give_life();
+
+                //         manager.hitbar_timings.push((time, time - note_time));
+                //     }
+                // }
             }
             // dont continue if no keys were being held (happens when leaving a menu)
             ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
@@ -429,16 +474,14 @@ impl GameMode for StandardGame {
                 }
 
                 let mut check_notes = Vec::new();
-                let w = self.hitwindow_miss;
                 for note in self.notes.iter_mut() {
-
                     // if this is the last key to be released
                     if self.hold_count == 0 {
                         note.release(time)
                     }
 
                     // check if note is in hitwindow
-                    if (time - note.time()).abs() <= w && !note.was_hit() {
+                    if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() != NoteType::Note {
                         check_notes.push(note);
                     }
                 }
@@ -488,82 +531,61 @@ impl GameMode for StandardGame {
             }
 
             for add_combo in note.pending_combo() {
-                if add_combo < 0 {
-                    manager.combo_break().await;
-                    manager.health.take_damage();
-                } else if add_combo > 0 {
-                    for _ in 0..add_combo {
-                        manager.score.hit300(0.0, 0.0);
-                        manager.health.give_life();
-                    }
-                }
+                manager.add_judgment(&add_combo).await;
+                add_judgement_indicator(note.point_draw_pos(time), time, &add_combo, &self.scaling_helper, manager);
             }
 
             // check if note was missed
             
             // if the time is leading in, we dont want to check if any notes have been missed
-            if time < 0.0 {continue}
+            if time < 0.0 { continue }
 
-            let end_time = note.end_time(self.hitwindow_miss);
+            let end_time = note.end_time(self.miss_window);
 
             // check if note is in hitwindow
-            if time - end_time >= 0.0 && !note.was_hit() {
+            if time >= end_time && !note.was_hit() {
 
                 // check if we missed the current note
                 match note.note_type() {
                     NoteType::Note if end_time < time => {
                         trace!("note missed: {}-{}", time, end_time);
-                        manager.combo_break().await;
-                        manager.score.hit_miss(time, end_time);
-                        add_judgement_indicator(note.point_draw_pos(time), time, &ScoreHit::Miss, &self.scaling_helper, manager);
 
-                        manager.health.take_damage();
-                        if manager.health.is_dead() {
-                            manager.fail()
-                        }
+                        let j = OsuHitJudgments::Miss;
+                        manager.add_judgment(&j).await;
+
+                        // manager.score.hit_miss(time, end_time);
+                        add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, manager);
                     }
                     NoteType::Slider if end_time <= time => {
                         let note_time = note.end_time(0.0);
                         // check slider release points
                         // -1.0 for miss hitwindow to indidate it was held to the end (ie, no hitwindow to check)
-                        let pts = note.get_points(false, time, (-1.0, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
+
+                        // internally checks distance
+                        let judge = &note.check_release_points(time);
+
+                        info!("slider end check: {:?}", judge);
+                        manager.add_judgment(judge).await;
                         
-                        let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
-                        if !is_300 || (is_300 && self.game_settings.show_300s) {
-                            add_judgement_indicator(note.point_draw_pos(time), time, &pts, &self.scaling_helper, manager);
+                        if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
+                            // dont show the judgment
+                        } else {
+                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, manager);
                         }
-                        
-                        match pts {
-                            ScoreHit::Other(_, _) => {}
-                            ScoreHit::None | ScoreHit::Miss => {
-                                manager.combo_break().await;
-                                manager.score.hit_miss(time, note_time);
-                                manager.hitbar_timings.push((time, time - note_time));
-                                
-                                manager.health.take_damage();
-                                if manager.health.is_dead() {
-                                    manager.fail()
-                                }
-                            }
-                            pts => {
-                                match pts {
-                                    ScoreHit::X300 | ScoreHit::Xgeki => manager.score.hit300(time, note_time),
-                                    ScoreHit::X100 | ScoreHit::Xkatu => {
-                                        manager.score.hit100(time, note_time);
-                                        // manager.combo_break();
-                                    },
-                                    ScoreHit::X50 => manager.score.hit50(time, note_time),
-                                    _ => {}
-                                }
 
-                                // play hitsound
-                                let hitsound = note.get_hitsound();
-                                let hitsamples = note.get_hitsamples().clone();
-                                manager.play_note_sound(note_time, hitsound, hitsamples).await;
-                                manager.hitbar_timings.push((time, time - note_time));
+                        if let OsuHitJudgments::Miss = judge {
+                            // // tell the note it was missed
+                            // unecessary bc its told it was missed later lol
+                            // info!("missed slider");
+                            // note.miss();
+                        } else {
+                            // tell the note it was hit
+                            note.hit(time);
 
-                                manager.health.give_life();
-                            }
+                            // play the sound
+                            let hitsound = note.get_hitsound();
+                            let hitsamples = note.get_hitsamples().clone();
+                            manager.play_note_sound(note_time, hitsound, hitsamples).await;
                         }
                     }
 
@@ -709,17 +731,9 @@ impl GameMode for StandardGame {
     }
 
     
-    async fn reset(&mut self, beatmap:&Beatmap) {
-        
-        // setup hitwindows
-        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
-        self.hitwindow_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
-        self.hitwindow_50   = map_difficulty(od, 200.0, 150.0, 100.0);
-        self.hitwindow_100  = map_difficulty(od, 140.0, 100.0, 60.0);
-        self.hitwindow_300  = map_difficulty(od, 80.0, 50.0, 20.0);
-
+    async fn reset(&mut self, _beatmap:&Beatmap) {
         // reset notes
-        let hwm = self.hitwindow_miss;
+        let hwm = self.miss_window;
         for note in self.notes.iter_mut() {
             note.reset().await;
             note.set_hitwindow_miss(hwm);
@@ -937,7 +951,6 @@ impl GameModeInput for StandardGame {
                     new_pos.x = playfield.current_pos.x + f64::lerp(0.0, playfield.size.x, normalized);
                 },
                 Some(ControllerAxis::Left_Y) => {
-                    
                     let normalized = (value + 1.0) / 2.0;
                     new_pos.y = playfield.current_pos.y + f64::lerp(0.0, playfield.size.y, normalized);
                 },
@@ -967,12 +980,13 @@ impl GameModeInfo for StandardGame {
         ]
     }
 
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
-        (vec![
-            (self.hitwindow_50, [0.8549, 0.6823, 0.2745, 1.0].into()),
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.0, 0.7647, 1.0, 1.0].into()),
-        ], (self.hitwindow_miss, [0.9, 0.05, 0.05, 1.0].into()))
+    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
+        self.hit_windows
+            .iter()
+            .map(|(j, w) | {
+                (w.end, j.color())
+            })
+            .collect()
     }
 
     async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
@@ -1003,29 +1017,30 @@ impl GameModeInfo for StandardGame {
         
     }
 
-    fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
-        match hit {
-            ScoreHit::Miss  => "Miss".to_owned(),
-            ScoreHit::X50   => "x50".to_owned(),
-            ScoreHit::X100  => "x100".to_owned(),
-            ScoreHit::X300  => "x300".to_owned(),
-            ScoreHit::Xgeki => "Geki".to_owned(),
-            ScoreHit::Xkatu => "Katu".to_owned(),
+    // fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
+    //     match hit {
+    //         ScoreHit::Miss  => "Miss".to_owned(),
+    //         ScoreHit::X50   => "x50".to_owned(),
+    //         ScoreHit::X100  => "x100".to_owned(),
+    //         ScoreHit::X300  => "x300".to_owned(),
+    //         ScoreHit::Xgeki => "Geki".to_owned(),
+    //         ScoreHit::Xkatu => "Katu".to_owned(),
 
-            ScoreHit::None  => String::new(),
-            ScoreHit::Other(_, _) => String::new(),
-        }
+    //         ScoreHit::None  => String::new(),
+    //         ScoreHit::Other(_, _) => String::new(),
+    //     }
+    // }
+
+    fn judgment_type(&self) -> Box<dyn HitJudgments> {
+        Box::new(OsuHitJudgments::Miss)
     }
 }
 
-fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &ScoreHit, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
-    let (color, image) = match hit_value {
-        ScoreHit::Miss => (Color::RED, None),
-        ScoreHit::X50  => (Color::YELLOW, None),
-        ScoreHit::X100 | ScoreHit::Xkatu => (Color::GREEN, None),
-        ScoreHit::X300 | ScoreHit::Xgeki => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
-        ScoreHit::None | ScoreHit::Other(_, _) => return,
-    };
+fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
+    if !hit_value.should_draw() { return }
+
+    let color = hit_value.color();
+    let image = None;
 
     manager.add_judgement_indicator(BasicJudgementIndicator::new(
         pos, 

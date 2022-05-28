@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait GameMode: GameModeInput + GameModeInfo + Send + Sync {
-    async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self: Sized;
+    async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self:Sized;
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager);
 
@@ -21,3 +21,4 @@ impl Default for Box<dyn GameMode> {
         Box::new(NoMode::default())
     }
 }
+

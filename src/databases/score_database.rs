@@ -16,6 +16,30 @@ impl Database {
                 }
             }
 
+            let mut judgments = HashMap::new();
+
+            // string will be key:val|key:val
+            let judgment_str = r
+                .get::<&str, String>("judgments")
+                .ok()
+                .and_then(|s| if s.is_empty() {None} else {Some(s)});
+            if let Some(judgment_string) = judgment_str {
+                judgments = Score::judgments_from_string(&judgment_string);
+            } else { // no judgments, load legacy values
+                for key in [
+                    "x50",
+                    "x100",
+                    "x300",
+                    "xmiss",
+                    "xgeki",
+                    "xkatu"
+                ] {
+                    let val = r.get(key).unwrap_or_default();
+                    judgments.insert(key.to_owned(), val);
+                }
+            }
+
+
             let score = Score {
                 version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
                 username: r.get("username")?,
@@ -23,18 +47,13 @@ impl Database {
                 score: r.get("score")?,
                 combo: r.get("combo")?,
                 max_combo: r.get("max_combo")?,
-                x50: r.get("x50").unwrap_or(0),
-                x100: r.get("x100")?,
-                x300: r.get("x300")?,
-                xmiss: r.get("xmiss")?,
-                xgeki: r.get("xgeki").unwrap_or_default(),
-                xkatu: r.get("xkatu").unwrap_or_default(),
                 accuracy: r.get("accuracy").unwrap_or_default(),
                 beatmap_hash: r.get("map_hash")?,
                 speed: r.get("speed").unwrap_or(1.0),
                 hit_timings: Vec::new(),
                 replay_string: None,
-                mods_string
+                mods_string,
+                judgments
             };
 
             Ok(score)
@@ -53,6 +72,7 @@ impl Database {
 
     pub async fn save_score(s:&Score) {
         trace!("saving score");
+
         let db = Self::get().await;
         let sql = format!(
             "INSERT INTO scores (
@@ -63,28 +83,40 @@ impl Database {
                 x50, x100, x300, geki, katu, xmiss,
                 speed, 
                 version,
-                mods_string
+                mods_string,
+                judgments
             ) VALUES (
                 '{}', '{}',
                 '{}', '{}',
                 {},
                 {}, {},
-                {}, {}, {}, {}, {}, {},
+                0, 0, 0, 0, 0, 0,
                 {},
                 {},
+                '{}',
                 '{}'
             )", 
             s.beatmap_hash, s.hash(),
             s.username, s.playmode,
             s.score,
             s.combo, s.max_combo,
-            s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
+            // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
             s.speed,
             s.version,
-            s.mods_string.clone().unwrap_or_default()
+            s.mods_string.clone().unwrap_or_default(),
+            s.judgment_string()
         );
-        let mut s = db.prepare(&sql).unwrap();
-        s.execute([]).unwrap();
+
+        match db.prepare(&sql) {
+            Ok(mut s) => {
+                if let Err(e) = s.execute([]) {
+                    error!("error executing query: {e}\n {sql}")
+                }
+            }
+
+            Err(e) => error!("error preparing query: {e}\n {sql}")
+        };
+        
     }
 
 }
@@ -97,19 +129,19 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<()> {
     let hash = s.hash();
     let actual_hash = format!("{:x}", md5::compute(hash));
     let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
-    info!("Saving replay as {}", filename);
+    info!("Saving replay as {}, judgments: {}", filename, s.judgment_string());
     Ok(save_database(&filename, writer)?)
 }
 
 pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
-    info!("Loading replay {}", fullpath);
     
     let mut reader = open_database(&fullpath)?;
     Ok(reader.read()?)
 }
 
 pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Replay> {
+    info!("Loading replay, judgments: {:#?}", score.judgment_string());
     get_local_replay(score.hash())
 }

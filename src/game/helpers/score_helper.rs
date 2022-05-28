@@ -239,7 +239,18 @@ mod osu {
     pub fn scores_from_api_response(resp: Vec<u8>, playmode: &PlayMode) -> Vec<Score> {
         let osu_scores:Vec<OsuApiScore> = serde_json::from_slice(resp.as_slice()).unwrap_or_default();
 
+
+
         osu_scores.iter().map(|s| {
+
+            let mut judgments = HashMap::new();
+            judgments.insert("x50".to_owned(),  s.count50.parse().unwrap_or_default());
+            judgments.insert("x100".to_owned(),  s.count100.parse().unwrap_or_default());
+            judgments.insert("x300".to_owned(),  s.count300.parse().unwrap_or_default());
+            judgments.insert("xgeki".to_owned(), s.countgeki.parse().unwrap_or_default());
+            judgments.insert("xkatu".to_owned(), s.countkatu.parse().unwrap_or_default());
+            judgments.insert("xmiss".to_owned(), s.countmiss.parse().unwrap_or_default());
+
             let mut s = Score { 
                 version: 0, 
                 username: s.username.clone(), 
@@ -248,12 +259,7 @@ mod osu {
                 score: s.score.parse().unwrap_or_default(), 
                 combo: s.maxcombo.parse().unwrap_or_default(), 
                 max_combo: s.maxcombo.parse().unwrap_or_default(), 
-                x50: s.count50.parse().unwrap_or_default(), 
-                x100: s.count100.parse().unwrap_or_default(), 
-                x300: s.count300.parse().unwrap_or_default(), 
-                xgeki: s.countgeki.parse().unwrap_or_default(),
-                xkatu: s.countkatu.parse().unwrap_or_default(), 
-                xmiss: s.countmiss.parse().unwrap_or_default(), 
+                judgments,
                 accuracy: 1.0,
                 speed: 1.0, 
                 mods_string: None, // TODO: 
@@ -287,6 +293,15 @@ mod quaver {
         let resp:QuaverResponse = serde_json::from_slice(resp.as_slice()).unwrap();
         if let Some(scores) = resp.scores {
             scores.iter().map(|s| {
+
+                let mut judgments = HashMap::new();
+                judgments.insert("x50".to_owned(),   s.count_okay as u16);
+                judgments.insert("x100".to_owned(),  s.count_good as u16);
+                judgments.insert("x300".to_owned(),  s.count_marv as u16);
+                judgments.insert("xgeki".to_owned(), s.count_perf as u16);
+                judgments.insert("xkatu".to_owned(), s.count_great as u16);
+                judgments.insert("xmiss".to_owned(), s.count_miss as u16);
+
                 Score { 
                     version: 0, 
                     username: s.user.username.clone(), 
@@ -295,12 +310,7 @@ mod quaver {
                     score: s.total_score, 
                     combo: s.max_combo as u16, 
                     max_combo: s.max_combo as u16, 
-                    x50  : s.count_okay as u16,
-                    x100 : s.count_good as u16,
-                    x300 : s.count_marv as u16,
-                    xgeki: s.count_perf as u16,
-                    xkatu: s.count_great as u16,
-                    xmiss: s.count_miss as u16,
+                    judgments,
                     accuracy: s.accuracy as f64 / 100.0,
                     speed: 1.0, 
                     mods_string: Some(s.mods_string.clone()),

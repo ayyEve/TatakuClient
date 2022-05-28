@@ -40,23 +40,39 @@ impl ScoreMenu {
             50.0,
             font.clone()
         );
-        let playmode = &score.playmode;
+        // let playmode = &score.playmode;
 
-        // map hit types to a display string
+        
+        // // map hit types to a display string
         let mut hit_counts = Vec::new();
-        for (hit_type, count) in [
-            (ScoreHit::Miss, score.xmiss),
-            (ScoreHit::X50, score.x50),
-            (ScoreHit::X100, score.x100),
-            (ScoreHit::Xkatu, score.xkatu),
-            (ScoreHit::X300, score.x300),
-            (ScoreHit::Xgeki, score.xgeki),
-        ] {
-            let txt = get_score_hit_string(playmode, &hit_type);
-            if txt.is_empty() {continue}
+        // TODO: get the judgment variants somehow, so we can order them correctly
+        // for judge in manager.judgment_type.variants().iter() {
+        //     let txt = judge.as_str();
+        //     if txt.is_empty() {continue}
 
-            hit_counts.push((txt, count as u32));
+        //     let count = score.judgments.get(txt).map(|n|*n).unwrap_or_default();
+        //     hit_counts.push((txt.to_owned(), count as u32));
+        // }
+
+        for (txt, count) in score.judgments.iter() {
+            if txt.is_empty() { continue }
+
+            hit_counts.push((txt.clone(), *count as u32));
         }
+
+        // for (hit_type, count) in [
+        //     (ScoreHit::Miss, score.xmiss),
+        //     (ScoreHit::X50, score.x50),
+        //     (ScoreHit::X100, score.x100),
+        //     (ScoreHit::Xkatu, score.xkatu),
+        //     (ScoreHit::X300, score.x300),
+        //     (ScoreHit::Xgeki, score.xgeki),
+        // ] {
+        //     let txt = get_score_hit_string(playmode, &hit_type);
+        //     if txt.is_empty() {continue}
+
+        //     hit_counts.push((txt, count as u32));
+        // }
 
         ScoreMenu {
             score: score.clone(),

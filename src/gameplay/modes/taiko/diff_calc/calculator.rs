@@ -192,7 +192,7 @@ impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
             }
         }
         
-        let count = diff.len() as f32;
+        // let count = diff.len() as f32;
 
         let mut difficulty = 0.0;
         let mut weight = 1.0;

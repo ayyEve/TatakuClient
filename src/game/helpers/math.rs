@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::prelude::Vector2;
 
 // this is essentially osu's math helper
@@ -344,5 +346,25 @@ pub trait VectorHelpers {
 impl VectorHelpers for Vector2 {
     fn distance(&self, v2: Vector2) -> f64 {
         distance(*self, v2)
+    }
+}
+
+
+pub trait Sum<T> {
+    fn sum(&mut self) -> T;
+}
+impl<T:Add<Output = T> + Default> Sum<T> for dyn Iterator<Item = T> {
+    fn sum(&mut self) -> T {
+        self.fold(T::default(), |sum, next| sum + next)
+    }
+}
+impl<T:Add<Output = T> + Default + Copy> Sum<T> for Vec<T> {
+    fn sum(&mut self) -> T {
+        self.iter().fold(T::default(), |sum, next| sum + *next)
+    }
+}
+impl<T:Add<Output = T> + Default + Copy> Sum<T> for [T] {
+    fn sum(&mut self) -> T {
+        self.iter().fold(T::default(), |sum, next| sum + *next)
     }
 }

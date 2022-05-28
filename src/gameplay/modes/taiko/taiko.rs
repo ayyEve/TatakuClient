@@ -2,6 +2,9 @@
  * Taiko game mode
  * Author: ayyEve
  * 
+ * NOTE! gekis and katus are for DISPLAY ONLY!!
+ * they are not factored into acc!!
+ * 
  * 
  * depths:
  *  notes: 0..1000
@@ -36,15 +39,12 @@ pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0
 
 /// calculate the taiko acc for `score`
 pub fn calc_acc(score: &Score) -> f64 {
-    // let x50 = score.x50 as f64;
-    let x100 = score.x100 as f64;
-    let x300 = score.x300 as f64;
-    let geki = score.xgeki as f64;
-    let katu = score.xkatu as f64;
-    let miss = score.xmiss as f64;
+    let x100 = score.judgments.get("x100").copy_or_default() as f64;
+    let x300 = score.judgments.get("x300").copy_or_default() as f64;
+    let miss = score.judgments.get("miss").copy_or_default() as f64;
 
-    ((x100 + katu) / 2.0 + x300 + geki) 
-    / (miss + x100 + x300 + katu + geki)
+    (x100 / 2.0 + x300) 
+    / (miss + x100 + x300)
 }
 
 pub struct TaikoGame {
@@ -54,27 +54,31 @@ pub struct TaikoGame {
     // list indices
     note_index: usize,
 
-    // hit timing bar stuff
-    hitwindow_300: f32,
-    hitwindow_100: f32,
-    hitwindow_miss: f32,
+    // // hit timing bar stuff
+    // hitwindow_300: f32,
+    // hitwindow_100: f32,
+    // hitwindow_miss: f32,
 
     end_time: f32,
     auto_helper: TaikoAutoHelper,
 
     hit_cache: HashMap<TaikoHit, f32>,
-
     taiko_settings: Arc<TaikoSettings>,
 
     left_kat_image: Option<Image>,
     left_don_image: Option<Image>,
     right_don_image: Option<Image>,
     right_kat_image: Option<Image>,
-
     judgement_helper: JudgmentImageHelper,
+
+    
+    hit_windows: Vec<(TaikoHitJudgments, Range<f32>)>,
+    miss_window: f32,
+
+    last_judgment: TaikoHitJudgments
 }
 impl TaikoGame {
-    pub fn next_note(&mut self) {self.note_index += 1}
+    pub fn next_note(&mut self) { self.note_index += 1 }
 }
 #[async_trait]
 impl GameMode for TaikoGame {
@@ -126,21 +130,27 @@ impl GameMode for TaikoGame {
                 right_kat_image.as_mut().unwrap().current_scale = scale;
             }
 
-            judgement_helper = {
-                JudgmentImageHelper::new(
-                    SkinManager::get_texture("taiko-hit0", true).await,
-                    None, // 50 doesnt exist
-                    SkinManager::get_texture("taiko-hit100", true).await,
-                    SkinManager::get_texture("taiko-hit300", true).await,
-                    SkinManager::get_texture("taiko-hit100k", true).await,
-                    SkinManager::get_texture("taiko-hit300g", true).await,
-                )
-            };
+            judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
         } else {
-            judgement_helper = JudgmentImageHelper::new(None, None, None, None, None, None);
+            judgement_helper = JudgmentImageHelper::new(DefaultHitJudgments::None).await;
         }
 
         let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
+
+        // windows
+        let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
+        let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
+        let w_300 = map_difficulty(od, 50.0, 35.0, 20.0);
+
+        use TaikoHitJudgments::*;
+        let hit_windows = vec![
+            (X300, 0.0..w_300),
+            (X100, w_300..w_100),
+            (Miss, w_100..w_miss),
+        ];
+        let miss_window = w_miss;
+
+
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -150,9 +160,9 @@ impl GameMode for TaikoGame {
                     timing_bars: Vec::new(),
                     end_time: 0.0,
 
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
+                    // hitwindow_100: 0.0,
+                    // hitwindow_300: 0.0,
+                    // hitwindow_miss: 0.0,
 
                     auto_helper: TaikoAutoHelper::new(),
                     taiko_settings: settings.clone(),
@@ -163,6 +173,10 @@ impl GameMode for TaikoGame {
                     right_don_image,
                     right_kat_image,
                     judgement_helper,
+
+                    hit_windows,
+                    miss_window,
+                    last_judgment: TaikoHitJudgments::Miss,
                 };
 
                 // add notes
@@ -276,9 +290,9 @@ impl GameMode for TaikoGame {
                     timing_bars: Vec::new(),
                     end_time: 0.0,
 
-                    hitwindow_100: 0.0,
-                    hitwindow_300: 0.0,
-                    hitwindow_miss: 0.0,
+                    // hitwindow_100: 0.0,
+                    // hitwindow_300: 0.0,
+                    // hitwindow_miss: 0.0,
                     auto_helper: TaikoAutoHelper::new(),
                     
                     taiko_settings: settings.clone(),
@@ -289,6 +303,10 @@ impl GameMode for TaikoGame {
                     right_don_image,
                     right_kat_image,
                     judgement_helper,
+
+                    hit_windows,
+                    miss_window,
+                    last_judgment: TaikoHitJudgments::Miss,
                 };
 
                 // add notes
@@ -362,82 +380,45 @@ impl GameMode for TaikoGame {
         }
 
         // check for finisher 2nd hit. 
-        if self.note_index > 0 {
+        if self.last_judgment != TaikoHitJudgments::Miss {
             let last_note = self.notes.get_mut(self.note_index-1).unwrap();
+            if last_note.check_finisher(hit_type, time) {
+                let j = &self.last_judgment;
 
-            match last_note.check_finisher(hit_type, time) {
-                ScoreHit::Miss | ScoreHit::X50 => {return},
-                ScoreHit::X100 | ScoreHit::Xkatu => {
-                    manager.score.add_pts(100, true);
-                    add_hit_indicator(time, &ScoreHit::X100, true, &self.taiko_settings, &self.judgement_helper, manager);
-                    return;
-                },
-                ScoreHit::X300 | ScoreHit::Xgeki => {
-                    manager.score.add_pts(300, true);
-                    add_hit_indicator(time, &ScoreHit::X300, true, &self.taiko_settings, &self.judgement_helper, manager);
-                    return;
-                },
-                ScoreHit::Other(points, _) => {
-                    manager.score.add_pts(points as u64, false);
-                    return;
-                },
-                ScoreHit::None => {},
+                // add whatever the last judgment was as a finisher score
+                manager.add_judgment(j).await;
+                add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
+                return;
             }
         }
 
         let note = self.notes.get_mut(self.note_index).unwrap();
         let note_time = note.time();
-        match note.get_points(hit_type, time, (self.hitwindow_miss, self.hitwindow_100, self.hitwindow_300)) {
-            ScoreHit::None | ScoreHit::X50 => {},
-            ScoreHit::Miss => {
-                manager.score.hit_miss(time, note_time);
-                manager.hitbar_timings.push((time, time - note_time));
-                manager.combo_break().await;
 
-                manager.health.take_damage();
-                if manager.health.is_dead() {
-                    manager.fail()
+        match note.note_type() {
+            NoteType::Note => {
+                let cond = || note.hit_type() == hit_type;
+
+                if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
+                    if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
+
+                    if let TaikoHitJudgments::Miss = judge {
+                        note.miss(time);
+                    } else {
+                        note.hit(time);
+                    }
+
+                    add_hit_indicator(time, judge, false, &self.taiko_settings, &self.judgement_helper, manager);
+                    
+                    self.last_judgment = *judge;
+                    self.next_note();
                 }
+            },
 
-                // indicate this was a miss
-                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, &self.judgement_helper, manager);
-                
-                // next note
-                self.next_note();
-            }
-            ScoreHit::X100 | ScoreHit::Xkatu => {
-                manager.score.hit100(time, note_time);
-                manager.hitbar_timings.push((time, time - note_time));
-
-                manager.health.give_life();
-
-                // only play finisher sounds if the note is both a finisher and was hit
-                // could maybe also just change this to HitObject.get_sound() -> &str
-                if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
-                //TODO: indicate this was a bad hit
-
-                add_hit_indicator(time, &ScoreHit::X100, false, &self.taiko_settings, &self.judgement_helper, manager);
-                
-                // next note
-                self.next_note();
-            }
-            ScoreHit::X300 | ScoreHit::Xgeki => {
-                manager.score.hit300(time, note_time);
-                manager.hitbar_timings.push((time, time - note_time));
-                manager.health.give_extra_life();
-                
-                if note.finisher_sound() {sound = match hit_type {HitType::Don => "bigdon", HitType::Kat => "bigkat"}}
-
-                add_hit_indicator(time, &ScoreHit::X300, false, &self.taiko_settings, &self.judgement_helper, manager);
-                
-                // next note
-                self.next_note();
-            }
-            ScoreHit::Other(score, consume) => { // used by sliders and spinners
-                // lol
-                manager.score.score.score += score as u64;
-                if consume {self.next_note()}
-            }
+            // slider or spinner, special hit stuff
+            NoteType::Slider  if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SliderPoint).await,
+            NoteType::Spinner if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SpinnerPoint).await,
+            _ => {}
         }
 
         #[cfg(feature="bass_audio")]
@@ -479,7 +460,7 @@ impl GameMode for TaikoGame {
 
         // if theres no more notes to hit, show score screen
         if self.note_index >= self.notes.len() {
-            if manager.time() >= self.notes.last().unwrap().end_time(self.hitwindow_miss) + 1000.0 {
+            if manager.time() >= self.notes.last().unwrap().end_time(self.miss_window) + 1000.0 {
                 manager.completed = true;
             }
 
@@ -487,21 +468,17 @@ impl GameMode for TaikoGame {
         }
 
         // check if we missed the current note
-        if self.notes[self.note_index].end_time(self.hitwindow_miss) < time {
+        if self.notes[self.note_index].end_time(self.miss_window) < time {
             if self.notes[self.note_index].causes_miss() {
-                // need to set these manually instead of score.hit_miss,
-                // since we dont want to add anything to the hit error list
-                let s = &mut manager.score;
-                s.xmiss += 1;
-                s.combo = 0;
-                add_hit_indicator(time, &ScoreHit::Miss, false, &self.taiko_settings, &self.judgement_helper, manager);
-                
-                manager.health.take_damage();
-                if manager.health.is_dead() {
-                    manager.fail()
-                }
+                info!("missed");
 
+                self.notes[self.note_index].miss(time);
+
+                let j = &TaikoHitJudgments::Miss;
+                manager.add_judgment(j).await;
+                add_hit_indicator(time, j, false, &self.taiko_settings, &self.judgement_helper, manager);
             }
+
             self.next_note();
         }
         
@@ -593,9 +570,9 @@ impl GameMode for TaikoGame {
         )));
 
         // draw notes
-        for note in self.notes.iter_mut() {list.extend(note.draw(args).await)}
+        for note in self.notes.iter_mut() { list.extend(note.draw(args).await) }
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() {tb.draw(args, list)}
+        for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
@@ -612,12 +589,6 @@ impl GameMode for TaikoGame {
         }
         
         self.note_index = 0;
-
-        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
-        // setup hitwindows
-        self.hitwindow_miss = map_difficulty(od, 135.0, 95.0, 70.0);
-        self.hitwindow_100 = map_difficulty(od, 120.0, 80.0, 50.0);
-        self.hitwindow_300 = map_difficulty(od, 50.0, 35.0, 20.0);
 
         // setup timing bars
         if self.timing_bars.len() == 0 {
@@ -672,12 +643,6 @@ impl GameMode for TaikoGame {
             let time_at = i.time_at(x_needed);
             time = time.min(time_at)
         }
-        // loop {
-        //     let mut found = false;
-        //     for note in self.notes.iter() {if note.x_at(time) <= x_needed {found = true; break}}
-        //     if found {break}
-        //     time += 1.0;
-        // }
 
         if manager.time() >= time {return}
 
@@ -873,6 +838,9 @@ impl GameModeInput for TaikoGame {
 impl GameModeInfo for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
+    fn judgment_type(&self) -> Box<dyn HitJudgments> {
+        Box::new(TaikoHitJudgments::Miss)
+    }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![
@@ -883,25 +851,13 @@ impl GameModeInfo for TaikoGame {
         ]
     }
 
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {
-        (vec![
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
-        ], (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into()))
-    }
-
-    fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
-        match hit {
-            ScoreHit::Miss  => "Miss".to_owned(),
-            ScoreHit::X100  => "x100".to_owned(),
-            ScoreHit::X300  => "x300".to_owned(),
-            ScoreHit::Xgeki => "Geki".to_owned(),
-            ScoreHit::Xkatu => "Katu".to_owned(),
-            
-            ScoreHit::X50   => String::new(),
-            ScoreHit::None  => String::new(),
-            ScoreHit::Other(_, _) => String::new(),
-        }
+    fn timing_bar_things(&self) -> Vec<(f32,Color)> {
+        self.hit_windows
+            .iter()
+            .map(|(j, w) | {
+                (w.end, j.color())
+            })
+            .collect()
     }
 
     async fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
@@ -939,26 +895,20 @@ impl GameModeInfo for TaikoGame {
 }
 
 
-fn add_hit_indicator(time: f32, mut hit_value: &ScoreHit, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
-    let color = match hit_value {
-        ScoreHit::Miss => Color::RED,
-        ScoreHit::X100 | ScoreHit::Xkatu => Color::LIME,
-        ScoreHit::X300 | ScoreHit::Xgeki => Color::new(0.0, 0.7647, 1.0, 1.0),
-        ScoreHit::None | ScoreHit::X50 | ScoreHit::Other(_, _) => return,
-    };
-
+fn add_hit_indicator(time: f32, mut hit_value: &TaikoHitJudgments, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
     let pos = game_settings.hit_position + Vector2::y_only(game_settings.judgement_indicator_offset);
 
     // if finisher, upgrade to geki or katu
     if finisher_hit {
-        if let &ScoreHit::X100 = hit_value {
-            hit_value = &ScoreHit::Xkatu;
-        } else if let &ScoreHit::X300 = hit_value {
-            hit_value = &ScoreHit::Xgeki;
+        if let &TaikoHitJudgments::X100 = hit_value {
+            hit_value = &TaikoHitJudgments::Katu;
+        } else if let &TaikoHitJudgments::X300 = hit_value {
+            hit_value = &TaikoHitJudgments::Geki;
         }
     }
 
-    let mut image = judgment_helper.get_from_scorehit(&hit_value);
+    let color = hit_value.color();
+    let mut image = judgment_helper.get_from_scorehit(hit_value);
     if let Some(image) = &mut image {
         image.current_pos = pos;
         image.depth = -2.0;
@@ -1039,7 +989,7 @@ impl TaikoAutoHelper {
         Self {
             don_presses: 0, 
             kat_presses: 0, 
-            note_index: - 1, 
+            note_index: -1, 
             last_hit: 0.0, 
             current_note_duration: 0.0,
             last_update: 0.0

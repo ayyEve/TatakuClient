@@ -53,7 +53,7 @@ impl Game {
         let mut g = Game {
             // engine
             input_manager,
-            volume_controller:VolumeControl::new(),
+            volume_controller: VolumeControl::new(),
             render_queue: Vec::new(),
             dialogs: Vec::new(),
             background_image: None,

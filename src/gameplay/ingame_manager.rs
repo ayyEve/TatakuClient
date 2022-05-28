@@ -25,6 +25,7 @@ pub struct IngameManager {
     pub score: IngameScore,
     pub replay: Replay,
     pub health: HealthHelper,
+    pub judgment_type: Box<dyn HitJudgments>,
 
     pub key_counter: KeyCounter,
 
@@ -149,6 +150,7 @@ impl IngameManager {
 
             lead_in_timer: Instant::now(),
             score: IngameScore::new(score, true, false),
+            judgment_type: gamemode.judgment_type(),
 
             replay: Replay::new(),
             beatmap,
@@ -389,6 +391,92 @@ impl IngameManager {
             }
         }
     }
+
+    /// add judgment, affects health and score, but not hit timings
+    pub async fn add_judgment<HJ:HitJudgments>(&mut self, judgment: &HJ) {
+        // increment judgment, if applicable
+        if let Some(count) = self.score.judgments.get_mut(judgment.as_str_internal()) {
+            *count += 1;
+        }
+
+        // do score 
+        // TODO: theres a way to do this with a match
+        let score_add = judgment.get_score(self.score.combo);
+        if score_add < 0 {
+            self.score.score.score -= score_add.abs() as u64;
+        } else {
+            self.score.score.score += score_add as u64;
+        }
+
+        // do combo
+        match judgment.affects_combo() {
+            AffectsCombo::Increment => {
+                self.score.combo += 1;
+                self.score.max_combo = self.score.max_combo.max(self.score.combo);
+            },
+            AffectsCombo::Reset => self.combo_break().await,
+            AffectsCombo::Ignore => {},
+        }
+        
+        // do health
+        self.health.do_health(judgment.get_health());
+
+        // check health
+        if self.health.is_dead() {
+            self.fail()
+        }
+    }
+
+    /// check and add to hit timings if found
+    pub async fn check_judgment<'a, HJ:HitJudgments>(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
+        let diff = time - note_time;
+        self.score.hit_timings.push(diff);
+        self.hitbar_timings.push((time, diff));
+
+        let diff = diff.abs();
+        for (hj, window) in windows.iter() {
+            if window.contains(&diff) {
+                self.add_judgment(hj).await;
+
+                // return the hit judgment we got
+                return Some(hj)
+            }
+        }
+
+        None
+    }
+    
+    pub async fn check_judgment_condition<
+        'a,
+        HJ:HitJudgments,
+        F:Fn() -> bool,
+    >(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HJ) -> Option<&'a HJ> {
+        let diff = time - note_time;
+        self.score.hit_timings.push(diff);
+        self.hitbar_timings.push((time, diff));
+
+        let diff = diff.abs();
+        for (hj, window) in windows.iter() {
+            if window.contains(&diff) {
+                let is_okay = cond();
+                if is_okay {
+                    self.add_judgment(hj).await;
+                    // return the hit judgment we got
+                    return Some(hj)
+                } else {
+                    self.add_judgment(if_bad).await;
+                    // return the hit judgment we got
+                    return Some(if_bad)
+                }
+
+                
+            }
+        }
+
+        info!("no judgment");
+        None
+    }
+
 
     pub fn add_judgement_indicator<HI:JudgementIndicator+'static>(&mut self, mut indicator: HI) {
         indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration);
@@ -845,6 +933,11 @@ impl IngameManager {
         // reset elements
         self.ui_elements.iter_mut().for_each(|e|e.reset_element());
 
+        // re-add judgments to score
+        for j in self.judgment_type.variants() {
+            self.score.judgments.insert(j.as_str_internal().to_owned(), 0);
+        }
+
     }
     pub fn fail(&mut self) {
         if self.failed || self.current_mods.nofail || self.current_mods.autoplay || self.menu_background {return}
@@ -1147,7 +1240,9 @@ impl Default for IngameManager {
             ui_editor: None,
             key_counter: KeyCounter::default(),
 
-            ui_changed: false
+            ui_changed: false,
+
+            judgment_type: Box::new(DefaultHitJudgments::None),
         }
     }
 }

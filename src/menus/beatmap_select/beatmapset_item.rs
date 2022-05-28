@@ -16,6 +16,7 @@ pub struct BeatmapsetItem {
     selected_index: usize,
     mouse_pos: Vector2,
     playmode: String,
+    current_mod_manager: Arc<ModManager>,
 
     diff_calc_start_helper: MultiBomb<()>,
     diff_calc_helper: MultiBomb<DiffCalcInit>,
@@ -43,6 +44,7 @@ impl BeatmapsetItem {
             diff_calc_helper,
             diff_calc_start_helper,
             diff_calc_bombs: Vec::new(),
+            current_mod_manager: Arc::new(ModManager::get().await.clone()),
         }
     }
 
@@ -50,6 +52,7 @@ impl BeatmapsetItem {
         // warn!("doing recalc with vals");
 
         // get the diff values from the beatmap manager
+        self.current_mod_manager = diffs.get_mods();
         for i in self.beatmaps.iter_mut() {
             let diff = diffs.get(&i.beatmap_hash).unwrap_or(&-2.0);
             
@@ -58,25 +61,6 @@ impl BeatmapsetItem {
             fuse.ignite((i.beatmap_hash.clone(), *diff));
         }
     }
-
-    // pub fn recalc(&mut self) {
-    //     warn!("doing recalc");
-
-    //     // get the diff values from the beatmap manager
-    //     for i in self.beatmaps.iter_mut() {
-    //         let (fuse, bomb) = Bomb::new();
-    //         self.diff_calc_bombs.push(bomb);
-
-    //         let playmode = self.playmode.clone();
-    //         let hash = i.beatmap_hash.clone();
-    //         tokio::spawn(async move {
-    //             let mods = ModManager::get().await.clone();
-    //             let diff = Database::get_diff(&hash, &playmode, &mods).await.unwrap_or(-2.0);
-    //             fuse.ignite((hash, diff));
-    //         });
-    //     }
-
-    // }
 
     /// set the currently selected map
     pub fn check_selected(&mut self, current_hash: &String) -> bool {
@@ -155,6 +139,63 @@ impl ScrollableItem for BeatmapsetItem {
         }
 
         false
+    }
+    
+    fn update(&mut self) {
+        if self.diff_calc_start_helper.exploded().is_some() {
+            // get the latest event
+            while let Some(_) = self.diff_calc_helper.exploded() {}
+
+            for i in self.beatmaps.iter_mut() {
+                i.diff = -2.0;
+            }
+        }
+
+        if let Some(mut diffs) = self.diff_calc_helper.exploded() {
+            // drain the queue
+            while let Some(vals) = self.diff_calc_helper.exploded() {diffs = vals}
+            self.recalc_with_vals(&diffs);
+        }
+
+        let mut did_diff_calc = false;
+        let mut bombs = std::mem::take(&mut self.diff_calc_bombs);
+        if bombs.len() > 0 {
+            // convert our beatmaps vec to a hashmap
+            // should improve perf in the next step
+            let mut maps_hash = HashMap::new();
+            for i in self.beatmaps.iter_mut() {
+                maps_hash.insert(i.beatmap_hash.clone(), i);
+            }
+
+            bombs.retain(|bomb| {
+                if let Some((hash, diff)) = bomb.exploded() {
+                    if let Some(i) = maps_hash.get_mut(hash) {
+                        i.diff = *diff;
+                        did_diff_calc |= true;
+                    }
+                    false
+                } else {
+                    true
+                }
+            });
+            self.diff_calc_bombs = bombs;
+        }
+
+
+        // re-sort
+        if did_diff_calc && self.diff_calc_bombs.len() == 0 {
+            let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
+            self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
+    
+            // reselect the proper index
+            for (i, map) in self.beatmaps.iter().enumerate() {
+                if map.beatmap_hash == previous_selected {
+                    self.selected_index = i;
+                    break
+                }
+            }
+        }
+
     }
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
@@ -248,75 +289,21 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
-                // // diff text
-                // list.push(Box::new(Text::new(
-                //     Color::WHITE,
-                //     parent_depth + 4.0,
-                //     pos + Vector2::new(5.0, 5.0 + 20.0),
-                //     12,
-                //     meta.diff_string(&ModManager::get().await),
-                //     font.clone()
-                // )));
+                // diff text
+                list.push(Box::new(Text::new(
+                    Color::WHITE,
+                    parent_depth + 4.0,
+                    pos + Vector2::new(5.0, 5.0 + 20.0),
+                    12,
+                    meta.diff_string(&self.current_mod_manager),
+                    font.clone()
+                )));
 
                 pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
             }
         }
     }
 
-    fn update(&mut self) {
-        if self.diff_calc_start_helper.exploded().is_some() {
-            while let Some(_) = self.diff_calc_helper.exploded() {}
-
-            for i in self.beatmaps.iter_mut() {
-                i.diff = -2.0;
-            }
-        }
-
-        if let Some(mut diffs) = self.diff_calc_helper.exploded() {
-            // drain the queue
-            while let Some(vals) = self.diff_calc_helper.exploded() {diffs = vals}
-            self.recalc_with_vals(&diffs)
-            // self.recalc();
-        }
-
-        let mut did_diff_calc = false;
-        let mut bombs = std::mem::take(&mut self.diff_calc_bombs);
-        if bombs.len() > 0 {
-            let mut maps_hash = HashMap::new();
-            for i in self.beatmaps.iter_mut() {
-                maps_hash.insert(i.beatmap_hash.clone(), i);
-            }
-                
-            bombs.retain(|bomb| {
-                if let Some((hash, diff)) = bomb.exploded() {
-                    if let Some(i) = maps_hash.get_mut(hash) {
-                        i.diff = *diff;
-                        did_diff_calc |= true;
-                    }
-                    false
-                } else {
-                    true
-                }
-            });
-            self.diff_calc_bombs = bombs;
-        }
-
-
-        // re-sort
-        if did_diff_calc && self.diff_calc_bombs.len() == 0 {
-            let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
-            self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
-    
-            // reselect the proper index
-            for (i, map) in self.beatmaps.iter().enumerate() {
-                if map.beatmap_hash == previous_selected {
-                    self.selected_index = i;
-                    break
-                }
-            }
-        }
-
-    }
 
     fn on_text(&mut self, playmode:String) {
         self.playmode = playmode;

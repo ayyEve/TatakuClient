@@ -110,6 +110,24 @@ impl UnwrapNormal for f64 {
 }
 
 
+pub trait CopyDefault<T> {
+    fn copy_or_default(&self) -> T;
+}
+impl<T:Copy+Default> CopyDefault<T> for Option<&T> {
+    fn copy_or_default(&self) -> T {
+        self.map(|n|*n).unwrap_or_default()
+    }
+}
+
+pub fn color_from_byte(r:u8, g:u8, b:u8) -> Color {
+    Color::new(
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        1.0
+    )
+}
+
 
 #[macro_export]
 macro_rules! async_retain {

@@ -1,4 +1,5 @@
 // std imports
+pub use std::ops::Range;
 pub use std::path::Path;
 pub use std::fmt::Display;
 pub use std::f64::consts::PI;

@@ -16,7 +16,7 @@ impl DifficultyDatabase {
         let now = Instant::now();
         let a = DIFFICULTY_DATABASE.connection.lock().await;
         let duration = now.elapsed().as_secs_f32() * 1000.0;
-        if duration > 0.5 {info!("db lock took {:.4}ms to aquire", duration)};
+        if duration > 0.5 {info!("diff db lock took {:.4}ms to aquire", duration)};
         a
     }
 
@@ -105,12 +105,13 @@ impl DifficultyDatabase {
             with + insert_query
         ].join(";\n");
 
+        info!("inserting {} diffs into db", hash_list.len());
 
         let db = Self::get().await;
         if let Err(e) = db.execute_batch(&sql) {
             warn!("error inserting into diff db: {e}")
         }
-
+        info!("insert done");
 
         // let delete_query = format!("DELETE FROM difficulties WHERE beatmap_hash IN ({hash_list}) AND playmode='{playmode}' AND mods_string='{mods}'");
         // let mut s = db.prepare(&delete_query).unwrap();
@@ -148,6 +149,7 @@ impl DifficultyDatabase {
             row.get::<&str, String>("hash")?,
             row.get::<&str, f32>("diff")?
         )));
+        info!("query done");
         
         let mut map = HashMap::new();
 
@@ -156,7 +158,8 @@ impl DifficultyDatabase {
                 map.insert(map_hash, diff);
             }
         }
-
+        
+        info!("map done");
         map
     }
 

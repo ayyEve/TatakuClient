@@ -6,7 +6,8 @@ const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
 
 pub struct JudgementCounterElement {
     hit_counts: Vec<(String, u32)>,
-    button_image: Option<Image>
+    button_image: Option<Image>,
+    colors: HashMap<String, Color>,
 }
 impl JudgementCounterElement {
     pub async fn new() -> Self {
@@ -19,6 +20,7 @@ impl JudgementCounterElement {
         Self {
             hit_counts: Vec::new(),
             button_image,
+            colors: HashMap::new()
         }
     }
 }
@@ -31,24 +33,44 @@ impl InnerUIElement for JudgementCounterElement {
     }
     
     fn update(&mut self, manager: &mut IngameManager) {
-
         // TODO: improve this
         self.hit_counts.clear();
-        let playmode = manager.gamemode.playmode();
         let score = &manager.score.score;
-        for (hit_type, count) in [
-            (ScoreHit::Miss, score.xmiss),
-            (ScoreHit::X50, score.x50),
-            (ScoreHit::X100, score.x100),
-            (ScoreHit::Xkatu, score.xkatu),
-            (ScoreHit::X300, score.x300),
-            (ScoreHit::Xgeki, score.xgeki),
-        ] {
-            let txt = get_score_hit_string(&playmode, &hit_type);
+
+        let load_colors = self.colors.is_empty();
+
+        for judge in manager.judgment_type.variants().iter() {
+            let txt = judge.as_str_display();
             if txt.is_empty() {continue}
 
-            self.hit_counts.push((txt, count as u32));
+            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
+            self.hit_counts.push((txt.to_owned(), count as u32));
+
+            if load_colors {
+                self.colors.insert(txt.to_owned(), judge.color());
+            }
         }
+
+        // let playmode = manager.gamemode.playmode();
+        // for (txt, count) in score.judgments.iter() {
+        //     if txt.is_empty() {continue}
+
+        //     self.hit_counts.push((txt.clone(), *count as u32));
+        // }
+
+        // for (hit_type, count) in [
+        //     (ScoreHit::Miss, score.xmiss),
+        //     (ScoreHit::X50, score.x50),
+        //     (ScoreHit::X100, score.x100),
+        //     (ScoreHit::Xkatu, score.xkatu),
+        //     (ScoreHit::X300, score.x300),
+        //     (ScoreHit::Xgeki, score.xgeki),
+        // ] {
+        //     let txt = get_score_hit_string(&playmode, &hit_type);
+        //     if txt.is_empty() {continue}
+
+        //     self.hit_counts.push((txt, count as u32));
+        // }
 
     }
 
@@ -67,6 +89,9 @@ impl InnerUIElement for JudgementCounterElement {
                 btn.current_pos = pos + pad / 2.0;
                 btn.current_scale = scale;
                 box_width = btn.size().x * scale.x;
+                if let Some(&color) = self.colors.get(txt) {
+                    btn.current_color = color;
+                }
                 
                 list.push(Box::new(btn));
             } else {
@@ -74,7 +99,7 @@ impl InnerUIElement for JudgementCounterElement {
 
                 // draw bg box
                 list.push(Box::new(Rectangle::new(
-                    Color::new(0.0, 0.0, 0.0, 0.8), // TODO: get a proper color
+                    *self.colors.get(txt).unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
                     -100.0,
                     pos,
                     BOX_SIZE * scale,

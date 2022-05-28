@@ -1,36 +1,27 @@
 use crate::prelude::*;
 
 pub struct JudgmentImageHelper {
-    miss: Option<Image>,
-    x50: Option<Image>,
-    x100: Option<Image>,
-    x300: Option<Image>,
-    geki: Option<Image>,
-    katu: Option<Image>,
+    images: HashMap<String, Option<Image>>,
+    
 }
 impl JudgmentImageHelper {
-    pub fn new(miss: Option<Image>, x50: Option<Image>, x100: Option<Image>, x300: Option<Image>, katu: Option<Image>, geki: Option<Image>) -> Self {
+    pub async fn new<J:HitJudgments>(judge: J) -> Self {
+        let mut images = HashMap::new();
+
+        for i in judge.variants().iter() {
+            let k = i.as_str_internal().to_owned();
+            let img = i.tex_name();
+            if img.is_empty() { continue }
+
+            images.insert(k, SkinManager::get_texture(img, true).await);
+        }
+
         Self {
-            miss,
-            x50,
-            x100,
-            x300,
-            katu,
-            geki,
+            images
         }
     }
 
-    pub fn get_from_scorehit(&self, hit: &ScoreHit) -> Option<Image> {
-        match hit {
-            ScoreHit::Miss => self.miss.clone(),
-            ScoreHit::X50 => self.x50.clone(),
-            ScoreHit::X100 => self.x100.clone(),
-            ScoreHit::X300 => self.x300.clone(),
-            ScoreHit::Xgeki => self.geki.clone(),
-            ScoreHit::Xkatu => self.katu.clone(),
-
-            ScoreHit::None
-            | ScoreHit::Other(_, _) => None,
-        }
+    pub fn get_from_scorehit<J:HitJudgments>(&self, judge: &J) -> Option<Image> {
+        self.images.get(judge.as_str_internal()).unwrap().clone()
     }
 }

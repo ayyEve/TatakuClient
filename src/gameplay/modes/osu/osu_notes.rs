@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use super::OsuHitJudgments;
+
 const SPINNER_RADIUS:f64 = 200.0;
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 
@@ -17,10 +19,11 @@ pub trait StandardHitObject: HitObject {
     fn pos_at(&self, time:f32) -> Vector2;
     /// does this object count as a miss if it is not hit?
     fn causes_miss(&self) -> bool; //TODO: might change this to return an enum of "no", "yes". "yes_combo_only" 
-    fn get_points(&mut self, is_press:bool, time:f32, hit_windows:(f32,f32,f32,f32)) -> ScoreHit;
+    // fn get_points(&mut self, is_press:bool, time:f32, hit_windows:(f32,f32,f32,f32)) -> ScoreHit;
+
 
     /// return negative for combo break
-    fn pending_combo(&mut self) -> Vec<i8> {Vec::new()}
+    fn pending_combo(&mut self) -> Vec<OsuHitJudgments> {Vec::new()}
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
 
@@ -33,13 +36,21 @@ pub trait StandardHitObject: HitObject {
 
     fn was_hit(&self) -> bool;
 
-    fn miss(&mut self);
+
     fn get_hitsound(&self) -> u8;
     fn get_hitsamples(&self) -> HitSamples;
     fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {vec![]}
 
-
     fn set_hitwindow_miss(&mut self, window: f32);
+
+
+    fn miss(&mut self);
+    fn hit(&mut self, time: f32);
+    fn set_judgment(&mut self, _j:&OsuHitJudgments) {}
+
+    fn check_distance(&self, mouse_pos: Vector2) -> bool;
+    fn check_release_points(&mut self, _time: f32) -> OsuHitJudgments { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
+
 }
 
 
@@ -168,26 +179,6 @@ impl StandardNote {
         }
     }
 
-    fn do_hit(&mut self, time: f32) {
-        self.hit = true;
-
-        if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new();
-
-            group.items.push(DrawItem::Circle(Circle::new(
-                Color::TRANSPARENT_WHITE,
-                self.base_depth,
-                self.pos,
-                self.radius,
-                Some(Border::new(self.color, 2.0))
-            )));
-
-            let duration = 500.0;
-            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
-
-            self.shapes.push(group);
-        }
-    }
 }
 #[async_trait]
 impl HitObject for StandardNote {
@@ -280,29 +271,55 @@ impl StandardHitObject for StandardNote {
         self.hitwindow_miss = window;
     }
 
-    fn get_points(&mut self, _is_press:bool, time:f32, (hitwindow_miss, hitwindow_50, hitwindow_100, hitwindow_300):(f32,f32,f32,f32)) -> ScoreHit {
-        let diff = (time - self.time).abs();
-        
-        // make sure the cursor is in the radius
-        let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
-        if distance > self.radius {return ScoreHit::None}
+    fn check_distance(&self, mouse_pos: Vector2) -> bool {
+        let distance = (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2);
+        distance <= self.radius.powi(2)
+    }
 
-        if diff < hitwindow_300 {
-            self.do_hit(time);
-            ScoreHit::X300
-        } else if diff < hitwindow_100 {
-            self.do_hit(time);
-            ScoreHit::X100
-        } else if diff < hitwindow_50 {
-            self.do_hit(time);
-            ScoreHit::X50
-        } else if diff < hitwindow_miss { // too early, miss
-            self.missed = true;
-            ScoreHit::Miss
-        } else { // way too early, ignore
-            ScoreHit::None
+    fn hit(&mut self, time: f32) {
+        self.hit = true;
+
+        if self.standard_settings.hit_ripples {
+            let mut group = TransformGroup::new();
+
+            group.items.push(DrawItem::Circle(Circle::new(
+                Color::TRANSPARENT_WHITE,
+                self.base_depth,
+                self.pos,
+                self.radius,
+                Some(Border::new(self.color, 2.0))
+            )));
+
+            let duration = 500.0;
+            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
+
+            self.shapes.push(group);
         }
     }
+
+    // fn get_points(&mut self, _is_press:bool, time:f32, (hitwindow_miss, hitwindow_50, hitwindow_100, hitwindow_300):(f32,f32,f32,f32)) -> ScoreHit {
+    //     let diff = (time - self.time).abs();
+        
+    //     // make sure the cursor is in the radius
+    //     let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
+    //     if distance > self.radius {return ScoreHit::None}
+
+    //     if diff < hitwindow_300 {
+    //         self.do_hit(time);
+    //         ScoreHit::X300
+    //     } else if diff < hitwindow_100 {
+    //         self.do_hit(time);
+    //         ScoreHit::X100
+    //     } else if diff < hitwindow_50 {
+    //         self.do_hit(time);
+    //         ScoreHit::X50
+    //     } else if diff < hitwindow_miss { // too early, miss
+    //         self.missed = true;
+    //         ScoreHit::Miss
+    //     } else { // way too early, ignore
+    //         ScoreHit::None
+    //     }
+    // }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
@@ -368,7 +385,7 @@ pub struct StandardSlider {
     hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
-    pending_combo: Vec<i8>,
+    pending_combo: Vec<OsuHitJudgments>,
 
     /// start time
     time: f32,
@@ -398,7 +415,7 @@ pub struct StandardSlider {
     /// how many dots is there
     dot_count: usize,
     /// what did the user get on the start of the slider?
-    start_judgment: ScoreHit,
+    start_judgment: OsuHitJudgments,
 
     /// if the mouse is being held
     holding: bool,
@@ -528,7 +545,7 @@ impl StandardSlider {
             
             dots_missed: 0,
             dot_count: 0,
-            start_judgment: ScoreHit::None,
+            start_judgment: OsuHitJudgments::Miss,
 
             combo_text,
             combo_image,
@@ -734,49 +751,6 @@ impl StandardSlider {
         }
     }
 
-    fn check_end_points(&mut self, time: f32) -> ScoreHit {
-        self.end_checked = true;
-        self.sound_index = self.def.edge_sounds.len() - 1;
-
-        macro_rules! ripple {
-            () => {
-                self.add_ripple(time, self.visual_end_pos, false);
-            }
-        }
-
-        match self.start_judgment {
-            ScoreHit::None | ScoreHit::Miss => {
-                if self.dot_count == 0 {
-                    let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
-                    return if distance > self.radius * 2.0 || !self.holding {
-                        ScoreHit::Miss
-                    } else {
-                        self.sound_index = self.def.edge_sounds.len() - 1;
-                        ScoreHit::X100
-                    }
-
-                } else if self.dots_missed == self.dot_count {
-                    ScoreHit::Miss
-                } else if self.dots_missed == 0 {
-                    ripple!();
-                    ScoreHit::X100
-                } else {
-                    ripple!();
-                    ScoreHit::X50
-                }
-            }
-
-            _ => {
-                if self.dots_missed == 0 {
-                    ripple!();
-                    ScoreHit::X300
-                } else {
-                    ripple!();
-                    ScoreHit::X100
-                }
-            }
-        }
-    }
 }
 #[async_trait]
 impl HitObject for StandardSlider {
@@ -799,15 +773,14 @@ impl HitObject for StandardSlider {
         let distance = ((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * 2.0;
 
-        if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {return}
+        if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time { return }
 
         // check if the start of the slider was missed.
         // if it was, perform a miss
-        if let ScoreHit::None = self.start_judgment {
-            if beatmap_time >= self.time + self.hitwindow_miss {
-                self.start_judgment = ScoreHit::Miss;
-                self.pending_combo.insert(0, -1);
-            }
+        if !self.start_checked && beatmap_time >= self.time + self.hitwindow_miss {
+            self.start_checked = true;
+            self.start_judgment = OsuHitJudgments::Miss;
+            self.pending_combo.insert(0, OsuHitJudgments::Miss);
         }
 
         // find out if a slide has been completed
@@ -828,8 +801,7 @@ impl HitObject for StandardSlider {
 
             // check cursor
             if self.sliding_ok {
-                // increment pending combo
-                self.pending_combo.push(1);
+                self.pending_combo.push(OsuHitJudgments::SliderEnd);
                 self.sound_queue.push((
                     beatmap_time,
                     self.get_hitsound(),
@@ -838,7 +810,7 @@ impl HitObject for StandardSlider {
                 self.add_ripple(beatmap_time, self.slider_ball_pos, false);
             } else {
                 // set it to negative, we broke combo
-                self.pending_combo.push(-1);
+                self.pending_combo.push(OsuHitJudgments::SliderEndMiss);
             }
         }
 
@@ -857,12 +829,15 @@ impl HitObject for StandardSlider {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding) {
                 if was_hit {
                     self.add_ripple(beatmap_time, dot.pos, true);
+                    
+                    self.pending_combo.push(OsuHitJudgments::SliderDot);
                     self.sound_queue.push((
                         beatmap_time,
                         0,
                         hitsamples.clone()
                     ));
                 } else {
+                    self.pending_combo.push(OsuHitJudgments::SliderDotMiss);
                     self.dots_missed += 1
                 }
             }
@@ -1108,7 +1083,7 @@ impl HitObject for StandardSlider {
 
         self.dots_missed = 0;
         self.dot_count = 0;
-        self.start_judgment = ScoreHit::None;
+        self.start_judgment = OsuHitJudgments::Miss;
         
         self.make_dots().await;
     }
@@ -1116,8 +1091,8 @@ impl HitObject for StandardSlider {
 
 #[async_trait]
 impl StandardHitObject for StandardSlider {
-    fn miss(&mut self) {self.end_checked = true}
-    fn was_hit(&self) -> bool {self.end_checked}
+    fn miss(&mut self) { self.end_checked = true }
+    fn was_hit(&self) -> bool { self.end_checked }
     fn get_hitsamples(&self) -> HitSamples {
         let mut samples = self.def.hitsamples.clone();
         let [normal_set, addition_set] = self.def.edge_sets[self.sound_index.min(self.def.edge_sets.len() - 1)];
@@ -1141,102 +1116,170 @@ impl StandardHitObject for StandardSlider {
         self.hitwindow_miss = window;
     }
 
-    // called on hit and release
-    fn get_points(&mut self, is_press:bool, time:f32, (h_miss, h50, h100, h300):(f32,f32,f32,f32)) -> ScoreHit {
-        // if slider was held to end, no hitwindow to check
-        if h_miss == -1.0 {
-            // let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+    fn set_judgment(&mut self, j: &OsuHitJudgments) {
+        self.start_checked = true;
+        self.start_judgment = *j;
+    }
 
-            // #[cfg(feature="debug_sliders")] {
-            //     trace!("checking end window (held to end)");
-            //     if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
-            //     if !self.holding {trace!("slider end miss (not held)")}
-            // }
-            
+    fn hit(&mut self, time: f32) {
+        self.start_checked = true;
 
-            return self.check_end_points(time);
+        if self.standard_settings.hit_ripples {
+            self.add_ripple(time, self.pos_at(time), false);
+        }
+    }
 
-            // self.end_checked = true;
-            // self.start_checked = true;
+    fn check_release_points(&mut self, time: f32) -> OsuHitJudgments {
+        self.end_checked = true;
+        self.sound_index = self.def.edge_sounds.len() - 1;
 
-            // return if distance > self.radius * 2.0 || !self.holding {
-            //     ScoreHit::Miss
-            // } else {
-            //     self.sound_index = self.def.edge_sounds.len() - 1;
-            //     ScoreHit::X300
-            // }
+        macro_rules! ripple {
+            () => {
+                self.add_ripple(time, self.visual_end_pos, false);
+            }
         }
 
-        // check press
-        if time > self.time - h_miss && time < self.time + h_miss {
-            // within starting time frame
+        match self.start_judgment {
+            OsuHitJudgments::Miss => {
+                if self.dot_count == 0 {
+                    let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+                    if distance > self.radius * 2.0 || !self.holding {
+                        OsuHitJudgments::Miss
+                    } else {
+                        self.sound_index = self.def.edge_sounds.len() - 1;
+                        OsuHitJudgments::X100
+                    }
 
-            // make sure the cursor is in the radius
-            let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
-
-            #[cfg(feature="debug_sliders")] {
-                trace!("checking start window");
-                if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
+                } else if self.dots_missed == self.dot_count {
+                    OsuHitJudgments::Miss
+                } else if self.dots_missed == 0 {
+                    ripple!();
+                    OsuHitJudgments::X100
+                } else {
+                    ripple!();
+                    OsuHitJudgments::X50
+                }
             }
 
-            // if already hit, or this is a release, return None
-            if self.start_checked || !is_press || distance > self.radius {return ScoreHit::None}
-            
-            // start wasnt hit yet, set it to true
-            self.start_checked = true;
-            // self.sound_index += 1;
-            
-            // get the points
-            let diff = (time - self.time).abs();
-
-            let ripple_pos = if self.end_checked {self.visual_end_pos} else {self.pos};
-
-            let score = if diff < h300 {
-                self.add_ripple(time, ripple_pos, false);
-                ScoreHit::X300
-            } else if diff < h100 {
-                self.add_ripple(time, ripple_pos, false);
-                ScoreHit::X100
-            } else if diff < h50 {
-                self.add_ripple(time, ripple_pos, false);
-                ScoreHit::X50
-            } else {
-                ScoreHit::Miss
-            };
-
-            self.start_judgment = score;
-            score
-        } else 
-
-        // check release
-        if time > self.curve.end_time - h_miss && time < self.curve.end_time + h_miss {
-            // within ending time frame
-            #[cfg(feature="debug_sliders")]
-            trace!("checking end window");
-
-            // make sure the cursor is in the radius
-            let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
-
-            // if already hit, return None
-            if self.end_checked || distance > self.radius * 2.0 {return ScoreHit::None}
-
-            // make sure the last hitsound in the list is played
-            self.sound_index = self.def.edge_sounds.len() - 1;
-
-            self.check_end_points(time)
-        } 
-        // not in either time frame, exit
-        else {
-            ScoreHit::None
+            _ => {
+                if self.dots_missed == 0 {
+                    ripple!();
+                    OsuHitJudgments::X300
+                } else {
+                    ripple!();
+                    OsuHitJudgments::X100
+                }
+            }
         }
-
     }
+
+    
+    fn check_distance(&self, _mouse_pos: Vector2) -> bool {
+        let distance = if self.start_checked {
+            (self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)
+        } else {
+            (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)
+        };
+
+        distance <= self.radius.powi(2)
+    }
+
+    // // called on hit and release
+    // fn get_points(&mut self, is_press:bool, time:f32, (h_miss, h50, h100, h300):(f32,f32,f32,f32)) -> ScoreHit {
+    //     // if slider was held to end, no hitwindow to check
+    //     if h_miss == -1.0 {
+    //         // let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+
+    //         // #[cfg(feature="debug_sliders")] {
+    //         //     trace!("checking end window (held to end)");
+    //         //     if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
+    //         //     if !self.holding {trace!("slider end miss (not held)")}
+    //         // }
+            
+
+    //         return self.check_end_points(time);
+
+    //         // self.end_checked = true;
+    //         // self.start_checked = true;
+
+    //         // return if distance > self.radius * 2.0 || !self.holding {
+    //         //     ScoreHit::Miss
+    //         // } else {
+    //         //     self.sound_index = self.def.edge_sounds.len() - 1;
+    //         //     ScoreHit::X300
+    //         // }
+    //     }
+
+    //     // check press
+    //     if time > self.time - h_miss && time < self.time + h_miss {
+    //         // within starting time frame
+
+    //         // make sure the cursor is in the radius
+    //         let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
+
+    //         #[cfg(feature="debug_sliders")] {
+    //             trace!("checking start window");
+    //             if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
+    //         }
+
+    //         // if already hit, or this is a release, return None
+    //         if self.start_checked || !is_press || distance > self.radius {return ScoreHit::None}
+            
+    //         // start wasnt hit yet, set it to true
+    //         self.start_checked = true;
+    //         // self.sound_index += 1;
+            
+    //         // get the points
+    //         let diff = (time - self.time).abs();
+
+    //         let ripple_pos = if self.end_checked {self.visual_end_pos} else {self.pos};
+
+    //         let score = if diff < h300 {
+    //             self.add_ripple(time, ripple_pos, false);
+    //             ScoreHit::X300
+    //         } else if diff < h100 {
+    //             self.add_ripple(time, ripple_pos, false);
+    //             ScoreHit::X100
+    //         } else if diff < h50 {
+    //             self.add_ripple(time, ripple_pos, false);
+    //             ScoreHit::X50
+    //         } else {
+    //             ScoreHit::Miss
+    //         };
+
+    //         self.start_judgment = score;
+    //         score
+    //     } else 
+
+    //     // check release
+    //     if time > self.curve.end_time - h_miss && time < self.curve.end_time + h_miss {
+    //         // within ending time frame
+    //         #[cfg(feature="debug_sliders")]
+    //         trace!("checking end window");
+
+    //         // make sure the cursor is in the radius
+    //         let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+
+    //         // if already hit, return None
+    //         if self.end_checked || distance > self.radius * 2.0 {return ScoreHit::None}
+
+    //         // make sure the last hitsound in the list is played
+    //         self.sound_index = self.def.edge_sounds.len() - 1;
+
+    //         self.check_end_points(time)
+    //     } 
+    //     // not in either time frame, exit
+    //     else {
+    //         ScoreHit::None
+    //     }
+
+    // }
 
 
     fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {
         std::mem::take(&mut self.sound_queue)
     }
-    fn pending_combo(&mut self) -> Vec<i8> {
+    fn pending_combo(&mut self) -> Vec<OsuHitJudgments> {
         std::mem::take(&mut self.pending_combo)
     }
 
@@ -1244,7 +1287,7 @@ impl StandardHitObject for StandardSlider {
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.scaling_helper = new_scale;
         self.pos = self.scaling_helper.scale_coords(self.def.pos);
-        self.radius = CIRCLE_RADIUS_BASE *  self.scaling_helper.scaled_cs;
+        self.radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
         self.visual_end_pos =  self.scaling_helper.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
         
@@ -1519,9 +1562,9 @@ impl StandardHitObject for StandardSpinner {
     fn causes_miss(&self) -> bool {self.rotations_completed < self.rotations_required} // if the spinner wasnt completed in time, cause a miss
     fn set_hitwindow_miss(&mut self, _window: f32) {}
 
-    fn get_points(&mut self, _is_press:bool, _:f32, _:(f32,f32,f32,f32)) -> ScoreHit {
-        ScoreHit::Other(100, false)
-    }
+    // fn get_points(&mut self, _is_press:bool, _:f32, _:(f32,f32,f32,f32)) -> ScoreHit {
+    //     ScoreHit::Other(100, false)
+    // }
 
     fn press(&mut self, _time:f32) {
         self.holding = true;
@@ -1552,6 +1595,10 @@ impl StandardHitObject for StandardSpinner {
             r.sin()
         ) * self.scaling_helper.scale * 20.0
     }
+
+
+    fn hit(&mut self, _time: f32) {}
+    fn check_distance(&self, _:Vector2) -> bool { true }
 }
 
 

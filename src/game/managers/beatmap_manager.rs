@@ -5,7 +5,29 @@ use rand::Rng;
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
 
-pub type DiffCalcInit = Arc<HashMap<String, f32>>;
+pub type DiffCalcInit = Arc<DiffCalcInitInner>;
+
+pub struct DiffCalcInitInner {
+    diffs: HashMap<String, f32>,
+    mods: Arc<ModManager>
+}
+impl DiffCalcInitInner {
+    pub fn new(diffs: HashMap<String, f32>, mods: ModManager) -> Self {
+        let mods = Arc::new(mods);
+        Self {diffs, mods}
+    }
+
+    pub fn get_mods(&self) -> Arc<ModManager> {
+        self.mods.clone()
+    }
+}
+impl core::ops::Deref for DiffCalcInitInner {
+    type Target = HashMap<String, f32>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.diffs
+    }
+}
 
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
@@ -345,6 +367,7 @@ impl BeatmapManager {
             }
 
             // insert diffs
+            let mods2 = mods.clone();
             if to_insert.len() > 0 {
                 tokio::spawn(async move {
                     DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
@@ -355,7 +378,7 @@ impl BeatmapManager {
             {
                 let mut lock = BEATMAP_MANAGER.write().await;
                 lock.beatmaps = maps;
-                lock.on_diffcalc_complete.0.ignite(Arc::new(existing));
+                lock.on_diffcalc_complete.0.ignite(Arc::new(DiffCalcInitInner::new(existing, mods2)));
             }
 
             // trace!("Diff calc Done");

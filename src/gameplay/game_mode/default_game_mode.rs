@@ -28,7 +28,9 @@ impl GameModeInfo for NoMode {
     fn end_time(&self) -> f32 {0.0}
     
     // fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}
-    fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {(Vec::new(), (0.0, Color::WHITE))}
-    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
-    fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized {String::new()}
+    fn timing_bar_things(&self) -> Vec<(f32,Color)> { Vec::new() }
+    fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> { Vec::new() }
+    // fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized { String::new() }
+
+    fn judgment_type(&self) -> Box<dyn HitJudgments> { Box::new(DefaultHitJudgments::None) }
 }
