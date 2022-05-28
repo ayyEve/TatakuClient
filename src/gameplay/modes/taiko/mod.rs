@@ -12,3 +12,5 @@ pub use taiko::calc_acc;
 pub use taiko::TaikoGame as Game;
 pub use taiko_hit_judgments::TaikoHitJudgments;
 pub use diff_calc::TaikoDifficultyCalculator as DiffCalc;
+
+pub use TaikoHitJudgments::Miss as DefaultHitJudgment;

@@ -16,8 +16,7 @@ pub struct ScoreMenu {
 
     // cached
     hit_error: HitError,
-
-    hit_counts: Vec<(String, u32)>,
+    hit_counts: Vec<(String, u32, Color)>,
 
 
     pub dont_do_menu: bool,
@@ -40,39 +39,20 @@ impl ScoreMenu {
             50.0,
             font.clone()
         );
-        // let playmode = &score.playmode;
-
         
-        // // map hit types to a display string
+        // map hit types to a display string
         let mut hit_counts = Vec::new();
-        // TODO: get the judgment variants somehow, so we can order them correctly
-        // for judge in manager.judgment_type.variants().iter() {
-        //     let txt = judge.as_str();
-        //     if txt.is_empty() {continue}
+        for judge in get_judgments(&score.playmode).variants().iter() {
+            let txt = judge.as_str_display();
+            if txt.is_empty() {continue}
 
-        //     let count = score.judgments.get(txt).map(|n|*n).unwrap_or_default();
-        //     hit_counts.push((txt.to_owned(), count as u32));
-        // }
+            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
 
-        for (txt, count) in score.judgments.iter() {
-            if txt.is_empty() { continue }
+            let mut color = judge.color();
+            if color.a == 0.0 { color = Color::BLACK }
 
-            hit_counts.push((txt.clone(), *count as u32));
+            hit_counts.push((txt.to_owned(), count as u32, color));
         }
-
-        // for (hit_type, count) in [
-        //     (ScoreHit::Miss, score.xmiss),
-        //     (ScoreHit::X50, score.x50),
-        //     (ScoreHit::X100, score.x100),
-        //     (ScoreHit::Xkatu, score.xkatu),
-        //     (ScoreHit::X300, score.x300),
-        //     (ScoreHit::Xgeki, score.xgeki),
-        // ] {
-        //     let txt = get_score_hit_string(playmode, &hit_type);
-        //     if txt.is_empty() {continue}
-
-        //     hit_counts.push((txt, count as u32));
-        // }
 
         ScoreMenu {
             score: score.clone(),
@@ -154,9 +134,9 @@ impl AsyncMenu<Game> for ScoreMenu {
         )));
         current_pos += size;
 
-        for (str, count) in self.hit_counts.iter() {
+        for (str, count, color) in self.hit_counts.iter() {
             list.push(Box::new(Text::new(
-                Color::BLACK,
+                *color,
                 depth + 1.0,
                 current_pos,
                 30,

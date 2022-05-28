@@ -7,3 +7,5 @@ pub use osu::calc_acc;
 pub use osu::StandardGame as Game;
 pub use osu_hit_judgments::OsuHitJudgments;
 pub use diff_calc::OsuDifficultyCalculator as DiffCalc;
+
+pub use osu_hit_judgments::OsuHitJudgments::Miss as DefaultHitJudgment;

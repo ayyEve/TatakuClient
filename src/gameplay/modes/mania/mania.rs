@@ -240,6 +240,7 @@ impl GameMode for ManiaGame {
             (ManiaHitJudgments::Okay, 106.0..127.0),
             (ManiaHitJudgments::Miss, 127.0..164.0),
         ];
+
         let miss_window = hit_windows.last().unwrap().1.end;
 
         const DEFAULT_SNAP: Color = Color::SILVER;

@@ -25,7 +25,7 @@ pub fn build_gamemodes() {
     let mut diff_calc_lines = vec![String::new()];
     let mut display_lines = vec![String::new()];
     let mut mode_list = Vec::new();
-    let score_string_list:Vec<String> = Vec::new();
+    let mut hit_judgment_list:Vec<String> = Vec::new();
 
     for f in files {
         if !f.path().is_dir() {continue}
@@ -60,7 +60,7 @@ pub fn build_gamemodes() {
         diff_calc_lines.push(     format!("        \"{internal_name}\" => {mode_folder}::DiffCalc::new(map).await?.calc(mods).await,"));
         display_lines.push(       format!("        \"{internal_name}\" => \"{display_name}\","));
         mode_list.push(           format!("        \"{internal_name}\","));
-        // score_string_list.push(   format!("        \"{internal_name}\" => {mode_folder}::Game::score_hit_string(score_hit),"))
+        hit_judgment_list.push(   format!("        \"{internal_name}\" => Box::new({mode_folder}::DefaultHitJudgment),"))
     }
 
     let mods = mods.join("\n");
@@ -69,7 +69,7 @@ pub fn build_gamemodes() {
     let diff_calc_lines = diff_calc_lines.join("\n");
     let display_lines = display_lines.join("\n");
     let mode_list = format!("\n{}\n", mode_list.join("\n"));
-    let score_string_list = format!("\n{}\n", score_string_list.join("\n"));
+    let hit_judgment_lines = format!("\n{}\n", hit_judgment_list.join("\n"));
 
     let output_file = format!(r#"use crate::prelude::*;
 {mods}
@@ -107,13 +107,13 @@ pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {{
     }}
 }}
 
-// pub fn get_score_hit_string(mode: &PlayMode, score_hit: &ScoreHit) -> String {{
-//     match &**mode {{{score_string_list}
-//         _ => String::new()
-//     }}
-// }}
+pub fn get_judgments(playmode:&PlayMode) -> Box<dyn crate::prelude::HitJudgments> {{
+    match &**playmode {{{hit_judgment_lines}
+        _ => Box::new(crate::prelude::DefaultHitJudgments::None)
+    }}
+}}
 
-// pub fn get_editor(playmode: &Playmode, beatmap: &Beatmap) -> TatakuResult<Box<dyn Menu>> {{}} // todo
+// pub fn get_editor(playmode: &Playmode, beatmap: &Beatmap) -> TatakuResult<Box<dyn Menu>> {{}} // TODO: this
 
 "#);
 
