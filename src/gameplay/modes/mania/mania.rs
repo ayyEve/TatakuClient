@@ -51,7 +51,7 @@ pub fn calc_acc(score: &Score) -> f64 {
 pub struct ManiaGame {
     map_meta: BeatmapMeta,
     // lists
-    columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
+    pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     timing_bars: Vec<TimingBar>,
 
     position_function: Arc<Vec<PositionPoint>>,
@@ -332,7 +332,7 @@ impl GameMode for ManiaGame {
                     column_count,
 
                     auto_helper,
-                    playfield: Arc::new(playfields[(beatmap.metadata.cs-1.0) as usize].clone()),
+                    playfield: Arc::new(playfields[(column_count - 1) as usize].clone()),
                     mania_skin_settings,
                     map_preferences,
                     game_settings: Arc::new(game_settings),

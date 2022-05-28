@@ -594,7 +594,6 @@ impl GameMode for StandardGame {
                     _ => {},
                 }
                 
-
                 // force the note to be misssed
                 note.miss(); 
             }
