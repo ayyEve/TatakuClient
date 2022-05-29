@@ -15,6 +15,15 @@ pub const DURATION_HEIGHT:f64 = 35.0;
 const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 
 
+// bc im lazy
+macro_rules! add_timing {
+    ($self:ident, $time:expr, $note_time:expr) => {{
+        let diff = $time - $note_time;
+        $self.score.hit_timings.push(diff);
+        $self.hitbar_timings.push(($time, diff));
+    }}
+}
+
 pub struct IngameManager {
     pub beatmap: Beatmap,
     pub metadata: BeatmapMeta,
@@ -429,14 +438,12 @@ impl IngameManager {
 
     /// check and add to hit timings if found
     pub async fn check_judgment<'a, HJ:HitJudgments>(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
-        let diff = time - note_time;
-        self.score.hit_timings.push(diff);
-        self.hitbar_timings.push((time, diff));
 
-        let diff = diff.abs();
+        let diff = (time - note_time).abs();
         for (hj, window) in windows.iter() {
             if window.contains(&diff) {
                 self.add_judgment(hj).await;
+                add_timing!(self, time, note_time);
 
                 // return the hit judgment we got
                 return Some(hj)
@@ -451,16 +458,13 @@ impl IngameManager {
         HJ:HitJudgments,
         F:Fn() -> bool,
     >(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HJ) -> Option<&'a HJ> {
-        let diff = time - note_time;
-        self.score.hit_timings.push(diff);
-        self.hitbar_timings.push((time, diff));
-
-        let diff = diff.abs();
+        let diff = (time - note_time).abs();
         for (hj, window) in windows.iter() {
             if window.contains(&diff) {
                 let is_okay = cond();
                 if is_okay {
                     self.add_judgment(hj).await;
+                    add_timing!(self, time, note_time);
                     // return the hit judgment we got
                     return Some(hj)
                 } else {
@@ -469,7 +473,6 @@ impl IngameManager {
                     return Some(if_bad)
                 }
 
-                
             }
         }
 

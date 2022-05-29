@@ -75,9 +75,7 @@ impl InnerUIElement for JudgementBarElement {
         }
         
         // draw hit timings
-        for (hit_time, diff) in self.hitbar_timings.iter() {
-            let hit_time = hit_time.clone();
-            let mut diff = diff.clone();
+        for &(hit_time, mut diff) in self.hitbar_timings.iter() {
             if diff < 0.0 {
                 diff = diff.max(-self.miss_window);
             } else {
