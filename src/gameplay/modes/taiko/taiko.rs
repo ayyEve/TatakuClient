@@ -383,8 +383,12 @@ impl GameMode for TaikoGame {
         if self.last_judgment != TaikoHitJudgments::Miss {
             let last_note = self.notes.get_mut(self.note_index-1).unwrap();
             if last_note.check_finisher(hit_type, time) {
-                let j = &self.last_judgment;
-
+                let j = match &self.last_judgment {
+                    TaikoHitJudgments::X300 | TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
+                    TaikoHitJudgments::X100 | TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
+                    _ => return, // this shouldnt happen, last judgment will always be one of the above
+                };
+                
                 // add whatever the last judgment was as a finisher score
                 manager.add_judgment(j).await;
                 add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
