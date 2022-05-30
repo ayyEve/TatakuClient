@@ -532,7 +532,7 @@ impl Game {
                 // self.window.set_should_close(true);
                 self.current_state = GameState::Closing;
                 
-                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::CloseGame) {
+                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::CloseGame) {
                     panic!("no: {}", e)
                 }
             }

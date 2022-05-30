@@ -186,9 +186,9 @@ impl CursorManager {
                 CursorEvent::ShowSystemCursor(show) => {
                     self.show_system_cursor = show;
                     if show {
-                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::ShowCursor);
+                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::ShowCursor);
                     } else {
-                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(RenderSideEvent::HideCursor);
+                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::HideCursor);
                     }
                 }
             }

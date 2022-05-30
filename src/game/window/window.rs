@@ -10,7 +10,7 @@ use piston::{
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
-pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<RenderSideEvent>> = OnceCell::const_new();
+pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
 
 lazy_static::lazy_static! {
 
@@ -29,7 +29,7 @@ pub struct GameWindow {
 
     game_event_sender: MultiFuze<GameEvent>,
     render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
-    window_event_receiver: Receiver<RenderSideEvent>,
+    window_event_receiver: Receiver<WindowEvent>,
 
     #[cfg(feature="bass_audio")]
     #[allow(dead_code)]
@@ -53,7 +53,7 @@ impl GameWindow {
             .build()
             .expect("Error creating window");
         // window.window.set_cursor_mode(glfw::CursorMode::Hidden);
-        // window.window.set_raw_mouse_motion(true);
+
 
         let graphics = GlGraphics::new(opengl);
         info!("done graphics");
@@ -151,13 +151,16 @@ impl GameWindow {
             // check render-side events
             if let Ok(event) = self.window_event_receiver.try_recv() {
                 match event {
-                    RenderSideEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
-                    RenderSideEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
-                    RenderSideEvent::CloseGame => { close_window!(self); },
+                    WindowEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
+                    WindowEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
+                    WindowEvent::RequestAttention => self.window.window.request_attention(),
+                    WindowEvent::SetRawInput(val) => self.window.window.set_raw_mouse_motion(val),
+                    WindowEvent::SetClipboard(val) => self.window.window.set_clipboard_string(&val),
+                    WindowEvent::CloseGame => { close_window!(self); },
                 }
             }
 
-                
+            
             let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
             INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
             INPUT_COUNT.fetch_add(1, SeqCst);
@@ -233,7 +236,6 @@ impl GameWindow {
                 
                 self.graphics.draw_end();
                 self.window.swap_buffers();
-
             },
         }
     }
@@ -251,10 +253,13 @@ impl Default for TatakuRenderEvent {
 
 
 
-
-pub enum RenderSideEvent {
+#[allow(unused)]
+pub enum WindowEvent {
     ShowCursor,
     HideCursor,
+    RequestAttention,
+    SetRawInput(bool),
+    SetClipboard(String),
     CloseGame,
 }
 
