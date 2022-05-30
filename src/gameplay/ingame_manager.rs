@@ -253,6 +253,24 @@ impl IngameManager {
             JudgementCounterElement::new().await
         ).await);
 
+
+        
+        // elapsed timer
+        self.ui_elements.push(UIElement::new(
+            &get_name("elapsed_timer"),
+            Vector2::new(30.0, window_size.y - 150.0),
+            ElapsedElement::new().await
+        ).await);
+
+        // remaining timer
+        self.ui_elements.push(UIElement::new(
+            &get_name("remaining_timer"),
+            Vector2::new(window_size.x - 300.0, window_size.y - 150.0),
+            RemainingElement::new().await
+        ).await);
+
+
+
         // anything in the gamemode itself
         self.gamemode.get_ui_elements(window_size, &mut self.ui_elements).await;
     }
