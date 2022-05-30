@@ -27,10 +27,11 @@ impl HitJudgments for TaikoHitJudgments {
 
     fn get_health(&self) -> f32 {
         match self {
-            X300 | Geki => 3.0,
-            X100 | Katu => 1.0,
+            X300 => 3.0,
+            X100 => 1.0,
             Miss => -10.0,
 
+            // gekis and katus are just addons to existing judgments, they should not be given extra health
             _ => 0.0
         }
     }
@@ -38,7 +39,9 @@ impl HitJudgments for TaikoHitJudgments {
     fn affects_combo(&self) -> AffectsCombo {
         match self {
             Miss => AffectsCombo::Reset,
-            SliderPoint | SpinnerPoint => AffectsCombo::Ignore,
+            
+            // gekis and katus are just addons to existing judgments, they should count for combo
+            SliderPoint | SpinnerPoint | Geki | Katu  => AffectsCombo::Ignore,
             _ => AffectsCombo::Increment,
         }
     }
