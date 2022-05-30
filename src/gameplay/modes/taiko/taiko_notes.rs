@@ -424,7 +424,7 @@ impl SliderDot {
 
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
         
-        if !self.done && (self.pos.x - SLIDER_DOT_RADIUS <= 0.0 || self.pos.y - SLIDER_DOT_RADIUS > Settings::window_size().y) {
+        if !self.done && (self.pos.x + SLIDER_DOT_RADIUS <= 0.0 || self.pos.y - SLIDER_DOT_RADIUS > Settings::window_size().y) {
             self.done = true;
         }
     }
