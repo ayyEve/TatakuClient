@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use glfw_window::GlfwWindow as AppWindow;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
     input::*, 
@@ -13,9 +12,19 @@ const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
 pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<RenderSideEvent>> = OnceCell::const_new();
 
+lazy_static::lazy_static! {
+
+
+    pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+    pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+
+    pub static ref INPUT_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+    pub static ref INPUT_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
+}
+
 
 pub struct GameWindow {
-    pub window: AppWindow,
+    pub window: glfw_window::GlfwWindow,
     pub graphics: GlGraphics,
 
     game_event_sender: MultiFuze<GameEvent>,
@@ -26,6 +35,9 @@ pub struct GameWindow {
     #[allow(dead_code)]
     /// needed to prevent bass from deinitializing
     bass: bass_rs::Bass,
+
+    frametime_timer: Instant,
+    input_timer: Instant,
 }
 
 impl GameWindow {
@@ -33,7 +45,7 @@ impl GameWindow {
         let window_size = Settings::window_size();
 
         let opengl = OpenGL::V4_5;
-        let mut window: AppWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
+        let mut window: glfw_window::GlfwWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
             .graphics_api(opengl)
             .resizable(false)
             // .fullscreen(true) // this doesnt work?
@@ -41,11 +53,11 @@ impl GameWindow {
             .build()
             .expect("Error creating window");
         // window.window.set_cursor_mode(glfw::CursorMode::Hidden);
+        // window.window.set_raw_mouse_motion(true);
 
         let graphics = GlGraphics::new(opengl);
         info!("done graphics");
 
-        
 
         // pre-load fonts
         get_font();
@@ -54,10 +66,10 @@ impl GameWindow {
         info!("done fonts");
 
         
-        info!("done texture load queue");
-
         let (window_event_sender, window_event_receiver) = sync_channel(10);
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
+        info!("done texture load queue");
+        
         
         #[cfg(feature="bass_audio")] 
         let bass = {
@@ -83,6 +95,7 @@ impl GameWindow {
             }
         }
 
+        let now = Instant::now();
 
         Self {
             window,
@@ -94,6 +107,9 @@ impl GameWindow {
             
             #[cfg(feature="bass_audio")] 
             bass,
+
+            frametime_timer: now,
+            input_timer: now,
         }
     }
 
@@ -108,8 +124,9 @@ impl GameWindow {
         }
 
         loop {
+
             while let Some(e) = self.window.poll_event() {
-                if e.close_args().is_some() {close_window!(self);}
+                if e.close_args().is_some() { close_window!(self); }
 
                 if let Some(axis) = e.controller_axis_args() {
                     let j_id = get_joystick_id(axis.id);
@@ -136,9 +153,14 @@ impl GameWindow {
                 match event {
                     RenderSideEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
                     RenderSideEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
-                    RenderSideEvent::CloseGame => {close_window!(self);},
+                    RenderSideEvent::CloseGame => { close_window!(self); },
                 }
             }
+
+                
+            let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
+            INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
+            INPUT_COUNT.fetch_add(1, SeqCst);
 
             self.render().await;
 
@@ -148,11 +170,16 @@ impl GameWindow {
     }
     
     async fn render(&mut self) {
-        if !self.render_event_receiver.updated() {return}
+        if !self.render_event_receiver.updated() { return }
+
+        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
+        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
+        RENDER_COUNT.fetch_add(1, SeqCst);
 
         match self.render_event_receiver.read() {
             TatakuRenderEvent::None => {},
             TatakuRenderEvent::Draw(data) => {
+
                 let args = RenderArgs {
                     ext_dt: 0.0,
                     window_size: self.window.size().into(),

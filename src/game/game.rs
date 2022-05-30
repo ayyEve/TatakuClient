@@ -25,6 +25,8 @@ pub struct Game {
     // fps
     fps_display: FpsDisplay,
     update_display: FpsDisplay,
+    render_display: AsyncFpsDisplay,
+    input_display: AsyncFpsDisplay,
     // input_update_display: FpsDisplay,
 
     // transition
@@ -64,8 +66,10 @@ impl Game {
             queued_state: GameState::None,
 
             // fps
-            fps_display: FpsDisplay::new("fps", 0),
-            update_display: FpsDisplay::new("updates/s", 1),
+            fps_display: FpsDisplay::new("fps", 3),
+            update_display: FpsDisplay::new("updates/s", 2),
+            render_display: AsyncFpsDisplay::new("draws/s", 1, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
+            input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()),
             // input_update_display: FpsDisplay::new("inputs/s", 2),
 
             // transition
@@ -200,6 +204,12 @@ impl Game {
         let elapsed = self.game_start.elapsed().as_millis() as u64;
         self.update_display.increment();
         let mut current_state = std::mem::take(&mut self.current_state);
+
+        // update counters
+        self.fps_display.update();
+        self.update_display.update();
+        self.render_display.update();
+        self.input_display.update();
 
         // read input events
         let mouse_pos = self.input_manager.mouse_pos;
@@ -705,6 +715,8 @@ impl Game {
         // draw fps's
         self.fps_display.draw(&mut self.render_queue);
         self.update_display.draw(&mut self.render_queue);
+        self.render_display.draw(&mut self.render_queue);
+        self.input_display.draw(&mut self.render_queue);
         // self.input_update_display.draw(&mut self.render_queue);
 
         // draw the notification manager
