@@ -446,12 +446,18 @@ impl GameMode for TaikoGame {
             // get auto inputs
             self.auto_helper.update(time, notes, &mut pending_frames);
 
-            // update index
-            for i in 0..notes.len() {
-                self.note_index = i;
-                if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
-                    break;
+            if !manager.completed {
+                
+                // update index
+                for i in 0..notes.len() + 1 {
+                    self.note_index = i;
+                    if i == notes.len() { break }
+
+                    if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
+                        break;
+                    }
                 }
+
             }
 
             for frame in pending_frames.iter() {
@@ -460,7 +466,7 @@ impl GameMode for TaikoGame {
         }
 
         // update notes
-        for note in self.notes.iter_mut() {note.update(time).await}
+        for note in self.notes.iter_mut() { note.update(time).await }
 
         // if theres no more notes to hit, show score screen
         if self.note_index >= self.notes.len() {
@@ -474,8 +480,6 @@ impl GameMode for TaikoGame {
         // check if we missed the current note
         if self.notes[self.note_index].end_time(self.miss_window) < time {
             if self.notes[self.note_index].causes_miss() {
-                info!("missed");
-
                 self.notes[self.note_index].miss(time);
 
                 let j = &TaikoHitJudgments::Miss;
@@ -487,7 +491,7 @@ impl GameMode for TaikoGame {
         }
         
         // TODO: might move tbs to a (time, speed) tuple
-        for tb in self.timing_bars.iter_mut() {tb.update(time)}
+        for tb in self.timing_bars.iter_mut() { tb.update(time); }
     }
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         let time = manager.time();
