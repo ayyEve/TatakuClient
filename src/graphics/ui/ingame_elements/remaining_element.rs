@@ -50,16 +50,17 @@ impl InnerUIElement for RemainingElement {
         bounds.size *= scale;
 
         let diff = self.elapsed - self.end_time;
-        let secs = (diff / 1000.0).floor();
+        let sign = if diff < 0.0 {"-"} else {""};
+        let secs = (diff / 1000.0).floor().abs();
         let mins = (secs / 60.0).floor() as i16;
-        let secs = secs.abs() as i16 % 60;
+        let secs = secs as i16 % 60;
 
         let mut text = Text::new(
             Color::WHITE,
             0.0,
             Vector2::zero(),
             (30.0 * scale.x) as u32,
-            format!("{mins:02}:{secs:02}"),
+            format!("{sign}{mins:02}:{secs:02}"),
             get_font()
         );
         text.center_text(bounds);
