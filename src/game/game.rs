@@ -9,9 +9,6 @@ const TRANSITION_TIME:u64 = 500;
 
 pub struct Game {
     // engine things
-    render_queue: Vec<Box<dyn Renderable>>,
-    // pub window: AppWindow,
-    // pub graphics: GlGraphics,
     pub input_manager: InputManager,
     pub volume_controller: VolumeControl,
     
@@ -56,7 +53,6 @@ impl Game {
             // engine
             input_manager,
             volume_controller: VolumeControl::new(),
-            render_queue: Vec::new(),
             dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
@@ -70,7 +66,6 @@ impl Game {
             update_display: FpsDisplay::new("updates/s", 2),
             render_display: AsyncFpsDisplay::new("draws/s", 1, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
             input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()),
-            // input_update_display: FpsDisplay::new("inputs/s", 2),
 
             // transition
             transition: None,
@@ -450,11 +445,9 @@ impl Game {
 
                 // clicks
                 for b in mouse_down { 
-                    // game.start_map() can happen here, which needs &mut self
                     menu.on_click(mouse_pos, b, mods, self).await;
                 }
                 for b in mouse_up { 
-                    // game.start_map() can happen here, which needs &mut self
                     menu.on_click_release(mouse_pos, b, self).await;
                 }
 
@@ -488,7 +481,7 @@ impl Game {
 
 
                 // check text
-                if text.len() > 0 {menu.on_text(text).await}
+                if text.len() > 0 { menu.on_text(text).await }
 
                 // window focus change
                 if let Some(has_focus) = window_focus_changed {
@@ -529,7 +522,6 @@ impl Game {
             GameState::None => self.current_state = current_state,
             GameState::Closing => {
                 get_settings!().save().await;
-                // self.window.set_should_close(true);
                 self.current_state = GameState::Closing;
                 
                 if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::CloseGame) {
@@ -538,9 +530,6 @@ impl Game {
             }
 
             _ => {
-                // if the mode is being changed, clear all shapes, even ones with a lifetime
-                self.clear_render_queue(true);
-
                 // if the old state is a menu, tell it we're changing
                 if let GameState::InMenu(menu) = &current_state {
                     menu.lock().await.on_change(false).await
@@ -641,9 +630,12 @@ impl Game {
         let settings = get_settings!();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
+
+        let mut render_queue:Vec<Box<dyn Renderable>> = Vec::new();
+
         // draw background image here
         if let Some(img) = &self.background_image {
-            self.render_queue.push(Box::new(img.clone()));
+            render_queue.push(Box::new(img.clone()));
         }
 
         // should we draw the background dim?
@@ -652,20 +644,20 @@ impl Game {
 
         // mode
         match &mut self.current_state {
-            GameState::Ingame(manager) => manager.draw(args, &mut self.render_queue).await,
+            GameState::Ingame(manager) => manager.draw(args, &mut render_queue).await,
             GameState::InMenu(menu) => {
                 let mut lock = menu.lock().await;
-                self.render_queue.extend(lock.draw(args).await);
+                render_queue.extend(lock.draw(args).await);
                 if lock.get_name() == "main_menu" {
                     draw_bg_dim = false;
                 }
             },
-            GameState::Spectating(manager) => manager.draw(args, &mut self.render_queue).await,
+            GameState::Spectating(manager) => manager.draw(args, &mut render_queue).await,
             _ => {}
         }
 
         if draw_bg_dim {
-            self.render_queue.push(Box::new(Rectangle::new(
+            render_queue.push(Box::new(Rectangle::new(
                 Color::BLACK.alpha(settings.background_dim),
                 f64::MAX - 1.0,
                 Vector2::zero(),
@@ -684,7 +676,7 @@ impl Game {
             let mut alpha = diff / (TRANSITION_TIME as f64 / 2.0);
             if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME as f64}
 
-            self.render_queue.push(Box::new(Rectangle::new(
+            render_queue.push(Box::new(Rectangle::new(
                 [0.0, 0.0, 0.0, alpha as f32].into(),
                 -f64::MAX,
                 Vector2::zero(),
@@ -694,7 +686,7 @@ impl Game {
 
             // draw old mode
             match (&self.current_state, &self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => self.render_queue.extend(menu.lock().await.draw(args).await),
+                (GameState::None, Some(GameState::InMenu(menu))) => render_queue.extend(menu.lock().await.draw(args).await),
                 _ => {}
             }
         }
@@ -704,23 +696,23 @@ impl Game {
         let mut current_depth = -50_000_000.0;
         const DIALOG_DEPTH_DIFF:f64 = 50.0;
         for d in dialog_list.iter_mut() { //.rev() {
-            d.draw(&args, &current_depth, &mut self.render_queue).await;
+            d.draw(&args, &current_depth, &mut render_queue).await;
             current_depth += DIALOG_DEPTH_DIFF;
         }
         self.dialogs = dialog_list;
 
         // volume control
-        self.render_queue.extend(self.volume_controller.draw(args).await);
+        render_queue.extend(self.volume_controller.draw(args).await);
 
         // draw fps's
-        self.fps_display.draw(&mut self.render_queue);
-        self.update_display.draw(&mut self.render_queue);
-        self.render_display.draw(&mut self.render_queue);
-        self.input_display.draw(&mut self.render_queue);
+        self.fps_display.draw(&mut render_queue);
+        self.update_display.draw(&mut render_queue);
+        self.render_display.draw(&mut render_queue);
+        self.input_display.draw(&mut render_queue);
         // self.input_update_display.draw(&mut self.render_queue);
 
         // draw the notification manager
-        NOTIFICATION_MANAGER.lock().await.draw(&mut self.render_queue);
+        NOTIFICATION_MANAGER.lock().await.draw(&mut render_queue);
 
         // draw cursor
         // let mouse_pressed = self.input_manager.mouse_buttons.len() > 0 
@@ -729,31 +721,15 @@ impl Game {
         // self.cursor_manager.draw(&mut self.render_queue);
 
         // sort the queue here (so it only needs to be sorted once per frame, instead of every time a shape is added)
-        self.render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
+        render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
         // toss the items to the window to render
-        let data = std::mem::take(&mut self.render_queue);
-        self.render_queue_sender.write(TatakuRenderEvent::Draw(data));
+        self.render_queue_sender.write(TatakuRenderEvent::Draw(render_queue));
         
-        
-        // trace!("clearing");
-        // self.clear_render_queue(false);
         self.fps_display.increment();
 
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
-    }
-
-    pub fn clear_render_queue(&mut self, _remove_all:bool) {
-        // if remove_all {return self.render_queue.clear()}
-
-        // let elapsed = self.game_start.elapsed().as_millis() as u64;
-        // only return items who's lifetime has expired
-        // self.render_queue.retain(|e| {
-        //     let lifetime = e.get_lifetime();
-        //     lifetime > 0 && elapsed - e.get_spawn_time() < lifetime
-        // });
-        self.render_queue.clear();
     }
     
     pub fn queue_state_change(&mut self, state:GameState) {self.queued_state = state}
