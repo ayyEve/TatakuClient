@@ -382,7 +382,7 @@ impl GameMode for TaikoGame {
         // check for finisher 2nd hit. 
         if self.last_judgment != TaikoHitJudgments::Miss {
             let last_note = self.notes.get_mut(self.note_index-1).unwrap();
-            if last_note.check_finisher(hit_type, time) {
+            if last_note.check_finisher(hit_type, time, manager.current_mods.speed) {
                 let j = match &self.last_judgment {
                     TaikoHitJudgments::X300 | TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
                     TaikoHitJudgments::X100 | TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,

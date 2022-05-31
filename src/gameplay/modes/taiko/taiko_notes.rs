@@ -31,7 +31,7 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     // fn get_points(&mut self, hit_type:HitType, time:f32, hit_windows:(f32,f32,f32)) -> ScoreHit;
 
     /// returns true if a finisher was successfully hit
-    fn check_finisher(&mut self, _hit_type:HitType, _time:f32) -> bool { false }
+    fn check_finisher(&mut self, _hit_type:HitType, _time:f32, _game_speed: f32) -> bool { false }
 
 
     fn x_at(&self, time:f32) -> f32 {
@@ -210,8 +210,8 @@ impl TaikoHitObject for TaikoNote {
     //     }
     // }
 
-    fn check_finisher(&mut self, hit_type:HitType, time:f32) -> bool {
-        self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY
+    fn check_finisher(&mut self, hit_type:HitType, time:f32, game_speed: f32) -> bool {
+        self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
     }
 }
 
