@@ -81,7 +81,7 @@ impl InnerUIElement for DonChan {
         let time = manager.time(); 
 
         // check init
-        if time < 0.0 && !self.init {
+        if !self.init {
             let tp = manager.timing_point_at(0.0, false);
             self.set_offset(tp.time - tp.beat_length * 4.0);
             self.update_delays(tp);
