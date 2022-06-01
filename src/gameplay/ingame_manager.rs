@@ -128,7 +128,9 @@ impl IngameManager {
         let timing_points = beatmap.get_timing_points();
 
         let hitsound_cache = HashMap::new();
-        let current_mods = Arc::new(ModManager::get().await.clone());
+        let mut current_mods = ModManager::get().await.clone();
+        if current_mods.speed == 0.0 { current_mods.speed = 1.0; }
+        let current_mods = Arc::new(current_mods);
 
         let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
 
@@ -456,10 +458,8 @@ impl IngameManager {
 
     /// check and add to hit timings if found
     pub async fn check_judgment<'a, HJ:HitJudgments>(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
-        let speed = self.current_mods.speed;
-
-        let diff = (time - note_time).abs();
-        for (hj, window) in windows.iter().map(|(hj, w)| (hj, (w.start*speed)..(w.end*speed))) {
+        let diff = (time - note_time).abs() / self.game_speed();
+        for (hj, window) in windows.iter() {
             if window.contains(&diff) {
                 self.add_judgment(hj).await;
                 add_timing!(self, time, note_time);
@@ -477,10 +477,8 @@ impl IngameManager {
         HJ:HitJudgments,
         F:Fn() -> bool,
     >(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HJ) -> Option<&'a HJ> {
-        let speed = self.current_mods.speed;
-        
-        let diff = (time - note_time).abs();
-        for (hj, window) in windows.iter().map(|(hj, w)| (hj, (w.start*speed)..(w.end*speed))) {
+        let diff = (time - note_time).abs() / self.game_speed();
+        for (hj, window) in windows.iter() {
             if window.contains(&diff) {
                 let is_okay = cond();
                 if is_okay {
@@ -497,7 +495,7 @@ impl IngameManager {
             }
         }
 
-        info!("no judgment");
+        // info!("no judgment");
         None
     }
 
@@ -684,7 +682,7 @@ impl IngameManager {
 
 
         // dont draw score, combo, etc if this is a menu bg
-        if self.menu_background {return}
+        if self.menu_background { return }
 
 
         // gamemode things
