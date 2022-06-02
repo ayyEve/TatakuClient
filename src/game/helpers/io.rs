@@ -29,6 +29,20 @@ pub async fn check_file<P:AsRef<Path>>(path:P, download_url:&str) {
     }
 }
 
+pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
+    filename.as_ref()
+        .replace("\\", "") 
+        .replace("/", "") 
+        .replace(":", "")  
+        .replace("*", "") 
+        .replace("?", "") 
+        .replace("\"", "") 
+        .replace("'", "") 
+        .replace("<", "") 
+        .replace(">", "") 
+        .replace("|", "") 
+}
+
 
 /// read a file to the end
 pub fn read_lines<P: AsRef<Path>>(filename: P) -> io::Result<Lines<BufReader<File>>> {

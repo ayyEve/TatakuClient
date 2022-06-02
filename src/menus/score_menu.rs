@@ -1,6 +1,14 @@
 use crate::prelude::*;
+use crate::REPLAY_EXPORTS_DIR;
 use crate::{databases, format_number};
 use crate::gameplay::modes::manager_from_playmode;
+
+use chrono::{ 
+    NaiveDateTime,
+    DateTime,
+    Local,
+    Utc
+};
 
 const GRAPH_SIZE:Vector2 = Vector2::new(400.0, 200.0);
 const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
@@ -9,6 +17,9 @@ const MENU_ITEM_COUNT:usize = 2;
 
 pub struct ScoreMenu {
     score: Score,
+    pub replay: Option<Replay>,
+    score_mods: String,
+
     beatmap: BeatmapMeta,
     back_button: MenuButton<Font2, Text>,
     replay_button: MenuButton<Font2, Text>,
@@ -54,8 +65,14 @@ impl ScoreMenu {
             hit_counts.push((txt.to_owned(), count as u32, color));
         }
 
+        // extract mods
+        let mut score_mods = (score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
+        if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
+
         ScoreMenu {
             score: score.clone(),
+            score_mods,
+            replay: None,
             beatmap,
             hit_error,
             graph,
@@ -82,14 +99,15 @@ impl ScoreMenu {
 
     async fn replay(&mut self, game: &mut Game) {
         match databases::get_local_replay_for_score(&self.score) {
-            Ok(replay) => {
+            Ok(mut replay) => {
                 // game.menus.get("beatmap").unwrap().lock().on_change(false);
                 // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
                 match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
                     Ok(mut manager) => {
-                        manager.replaying = true;
-                        manager.replay = replay.clone();
-                        manager.replay.speed = self.score.speed;
+                        if replay.score_data.is_none() {
+                            replay.score_data = Some(self.score.clone());
+                        }
+                        manager.set_replay(replay);
                         game.queue_state_change(GameState::Ingame(manager));
                     },
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
@@ -116,7 +134,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             depth + 1.0,
             Vector2::new(10.0, 20.0),
             30,
-            format!("{} ({})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode)),
+            format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed),
             font.clone()
         )));
 
@@ -153,6 +171,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             format!("Mean: {:.2}ms", self.hit_error.mean),
             format!("Error: {:.2}ms - {:.2}ms avg", self.hit_error.early, self.hit_error.late),
             format!("Deviance: {:.2}ms", self.hit_error.deviance),
+            self.score_mods.clone(),
         ] {
             if !str.is_empty() {
                 list.push(Box::new(Text::new(
@@ -210,6 +229,42 @@ impl AsyncMenu<Game> for ScoreMenu {
     async fn on_key_press(&mut self, key:piston::Key, game: &mut Game, _mods:KeyModifiers) {
         if key == piston::Key::Escape {
             self.close(game)
+        }
+
+        if key == piston::Key::F2 {
+            if let Some(replay) = &self.replay {
+                // save the replay
+                match save_replay(replay, &self.score) {
+                    Ok(saved_path) => {
+                        let saved_path = Path::new(&saved_path);
+
+                        let BeatmapMeta { artist, title, version, .. } = &self.beatmap;
+                        let Score { playmode, username, time, .. } = &self.score;
+                        let playmode = gamemode_display_name(playmode);
+
+                        let datetime = NaiveDateTime::from_timestamp(*time as i64, 0);
+                        let score_time = DateTime::<Utc>::from_utc(datetime, Utc).with_timezone(&Local);
+                        let date = score_time.date().format("%d-%m-%Y").to_string();
+
+                        let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
+                        let export_path = Path::new(&export_path);
+
+                        // ensure export dir exists
+                        match std::fs::create_dir_all(&export_path.parent().unwrap()) {
+                            Ok(_) => {
+                                // copy the file from the saved_path to the exports file
+                                if let Err(e) = std::fs::copy(saved_path, export_path) {
+                                    NotificationManager::add_error_notification("Error exporting replay", e).await;
+                                } else {
+                                    NotificationManager::add_text_notification("Replay exported!", 5000.0, Color::BLUE).await;
+                                }
+                            }
+                            Err(e) => NotificationManager::add_error_notification("Error creating exports directory", e).await,
+                        }
+                    }
+                    Err(e) => NotificationManager::add_error_notification("Error saving replay", e).await,
+                };
+            }
         }
     }
 }

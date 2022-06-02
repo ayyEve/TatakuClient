@@ -397,7 +397,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
                 // add scores to list
                 for s in scores.iter() {
-                    self.current_scores.insert(s.username.clone(), Arc::new(Mutex::new(s.clone())));
+                    self.current_scores.insert(s.hash(), Arc::new(Mutex::new(s.clone())));
                     self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned())));
                 }
             }

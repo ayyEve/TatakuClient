@@ -33,19 +33,25 @@ impl ModManager {
 
 // instance
 impl ModManager {
-    pub fn mods_list_string(&self) -> String {
+    fn mods_list(&self, include_speed: bool) -> String {
         let mut list = Vec::new();
         
+        if self.easy { list.push("EZ".to_owned()) }
+        if self.hard_rock { list.push("HR".to_owned()) }
 
-        if self.easy {list.push("EZ".to_owned())}
-        if self.hard_rock {list.push("HR".to_owned())}
+        if self.nofail { list.push("NF".to_owned()) }
+        if self.autoplay { list.push("AT".to_owned()) }
 
-        if self.nofail {list.push("NF".to_owned())}
-        if self.autoplay {list.push("AT".to_owned())}
-
-        if self.speed != 1.0 {list.push(format!("({:.2}x)", self.speed))}
+        if include_speed && self.speed != 1.0 { list.push(format!("({:.2}x)", self.speed)) }
 
         list.join(" ")
+    }
+
+    pub fn mods_list_string(&self) -> String {
+        self.mods_list(true)
+    }
+    pub fn mods_list_string_no_speed(&self) -> String {
+        self.mods_list(false)
     }
 
     pub fn as_json(&self) -> String {

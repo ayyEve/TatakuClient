@@ -21,7 +21,7 @@ pub struct LeaderboardItem {
 }
 impl LeaderboardItem {
     pub fn new(score:Score) -> LeaderboardItem {
-        let tag = score.username.clone();
+        let tag = score.hash(); //username.clone();
         let font = get_font();
 
         let mods = if let Some(mods) = &score.mods_string {
@@ -45,6 +45,14 @@ impl LeaderboardItem {
 impl ScrollableItem for LeaderboardItem {
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         const PADDING:Vector2 = Vector2::new(5.0, 5.0);
+
+        let now = chrono::Utc::now().timestamp() as u64;
+        let time_diff = now as i64 - self.score.time as i64;
+        let time_diff_str = if time_diff < 60 * 5 {
+            format!(" | {time_diff}s")
+        } else {
+            String::new()
+        };
 
         // bounding rect
         list.push(Box::new(Rectangle::new(
@@ -71,7 +79,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING + Vector2::new(0.0, PADDING.y + 15.0),
             12,
-            format!("{}x, {:.2}%, {}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods.mods_list_string()),
+            format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods.mods_list_string()),
             self.font.clone()
         )));
     }

@@ -282,9 +282,6 @@ impl IngameManager {
             NotificationManager::add_text_notification("Error applying mods to IngameManager\nmap already started", 2000.0, Color::RED).await;
         } else {
             self.current_mods = Arc::new(mods);
-            // update replay speed too
-            // TODO: add mods to replay data instead of this shit lmao
-            self.replay.speed = self.current_mods.speed;
         }
     }
 
@@ -763,9 +760,6 @@ impl IngameManager {
     pub fn game_speed(&self) -> f32 {
         if self.menu_background {
             1.0 // TODO: 
-        } else if self.replaying {
-            // if we're replaying, make sure we're using the score's speed
-            self.replay.speed
         } else {
             self.current_mods.speed
         }
@@ -830,9 +824,9 @@ impl IngameManager {
                         warn!("error pausing audio: {:?}", e)
                     }
                     
-                    if self.replaying {
-                        self.song.set_rate(self.replay.speed).unwrap();
-                    }
+                    // if self.replaying {
+                    self.song.set_rate(self.current_mods.speed).unwrap();
+                    // }
                 }
 
                 #[cfg(feature="neb_audio")]
@@ -1178,6 +1172,19 @@ impl IngameManager {
 
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl IngameManager {
+    pub fn set_replay(&mut self, replay: Replay) {
+        self.replaying = true;
+        self.replay = replay;
+
+        // load speed from score
+        if let Some(score) = &self.replay.score_data {
+            if let Some(mods_str) = &score.mods_string {
+                if let Ok(mods) = serde_json::from_str::<ModManager>(mods_str) {
+                    self.current_mods = Arc::new(mods);
+                }
+            }
+        }
+    }
     
     pub async fn increment_offset(&mut self, delta:f32) {
         let time = self.time();

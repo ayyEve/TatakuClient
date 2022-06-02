@@ -208,23 +208,22 @@ impl SpectatorManager {
             Some(map) => {
                 beatmap_manager.set_current_beatmap(game, &map, false, false).await;
                 match manager_from_playmode(mode, &map).await {
-                    Ok(manager) => {
+                    Ok(mut manager) => {
                         // remove score menu
                         self.score_menu = None;
-                        // set our game manager
-                        self.game_manager = Some(manager);
 
-                        // need a mutable reference
-                        let m = self.game_manager.as_mut().unwrap();
-                        m.apply_mods(mods).await;
-                        m.replaying = true;
-                        m.on_start = Box::new(move |manager| {
+                        // set manager things
+                        manager.apply_mods(mods).await;
+                        manager.replaying = true;
+                        manager.on_start = Box::new(move |manager| {
                             trace!("Jumping to time {}", current_time);
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                         });
-                        m.start().await;
-
-                        self.map_length = m.end_time;
+                        manager.start().await;
+                        
+                        // set our game manager
+                        self.map_length = manager.end_time;
+                        self.game_manager = Some(manager);
                         self.state = SpectatorState::Watching;
                     }
                     Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await

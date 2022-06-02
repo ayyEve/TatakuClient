@@ -251,11 +251,14 @@ mod osu {
             judgments.insert("xkatu".to_owned(), s.countkatu.parse().unwrap_or_default());
             judgments.insert("xmiss".to_owned(), s.countmiss.parse().unwrap_or_default());
 
+            let time = 0;
+
             let mut s = Score { 
                 version: 0, 
                 username: s.username.clone(), 
                 beatmap_hash: String::new(), 
                 playmode: playmode.clone(), 
+                time,
                 score: s.score.parse().unwrap_or_default(), 
                 combo: s.maxcombo.parse().unwrap_or_default(), 
                 max_combo: s.maxcombo.parse().unwrap_or_default(), 
@@ -264,7 +267,6 @@ mod osu {
                 speed: 1.0, 
                 mods_string: None, // TODO: 
                 hit_timings: Vec::new(), 
-                replay_string: None
             };
             
             s.accuracy = calc_acc(&s);
@@ -302,11 +304,14 @@ mod quaver {
                 judgments.insert("xkatu".to_owned(), s.count_great as u16);
                 judgments.insert("xmiss".to_owned(), s.count_miss as u16);
 
+                let time = 0;
+
                 Score { 
                     version: 0, 
                     username: s.user.username.clone(), 
                     beatmap_hash: String::new(), 
                     playmode: String::new(), 
+                    time,
                     score: s.total_score, 
                     combo: s.max_combo as u16, 
                     max_combo: s.max_combo as u16, 
@@ -315,7 +320,6 @@ mod quaver {
                     speed: 1.0, 
                     mods_string: Some(s.mods_string.clone()),
                     hit_timings: Vec::new(), 
-                    replay_string: None
                 }
             }).collect()
         } else {

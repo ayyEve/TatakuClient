@@ -376,6 +376,7 @@ impl Game {
                     if manager.completed {
                         trace!("beatmap complete");
                         manager.on_complete();
+                        manager.score.time = chrono::Utc::now().timestamp() as u64;
 
                         if manager.failed {
                             trace!("player failed");
@@ -429,7 +430,8 @@ impl Game {
                                 self.queue_state_change(GameState::InMenu(menu));
                             } else {
                                 // show score menu
-                                let menu = ScoreMenu::new(&score, manager.metadata.clone());
+                                let mut menu = ScoreMenu::new(&score, manager.metadata.clone());
+                                menu.replay = Some(replay.clone());
                                 self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                             }
                         }

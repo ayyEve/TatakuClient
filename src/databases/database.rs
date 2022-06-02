@@ -20,6 +20,7 @@ const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
         ("version", "INTEGER"),
         ("mods_string", "TEXT"),
         ("judgments", "TEXT"),
+        ("time", "INTEGER"),
     ]),
     ("beatmaps", &[
         ("bpm_min", "INTEGER"),
