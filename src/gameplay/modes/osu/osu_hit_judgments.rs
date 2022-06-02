@@ -15,7 +15,6 @@ pub enum OsuHitJudgments {
 }
 
 use OsuHitJudgments::*;
-
 impl OsuHitJudgments {
     pub fn should_draw(&self) -> bool {
         match self {

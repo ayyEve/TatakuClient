@@ -547,20 +547,18 @@ impl GameMode for StandardGame {
 
                 // check if we missed the current note
                 match note.note_type() {
-                    NoteType::Note if end_time < time => {
+                    NoteType::Note => {
                         trace!("note missed: {}-{}", time, end_time);
 
                         let j = OsuHitJudgments::Miss;
                         manager.add_judgment(&j).await;
 
-                        // manager.score.hit_miss(time, end_time);
                         add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, manager);
                     }
-                    NoteType::Slider if end_time <= time => {
+                    NoteType::Slider => {
                         let note_time = note.end_time(0.0);
-                        // check slider release points
-                        // -1.0 for miss hitwindow to indidate it was held to the end (ie, no hitwindow to check)
 
+                        // check slider release points
                         // internally checks distance
                         let judge = &note.check_release_points(time);
 
@@ -589,7 +587,7 @@ impl GameMode for StandardGame {
                         }
                     }
 
-                    NoteType::Spinner if end_time <= time => {}
+                    NoteType::Spinner => {}
 
                     _ => {},
                 }
