@@ -116,13 +116,21 @@ impl ModButton {
         }
     }
 
-    fn apply_mod(&self, manager: &mut ModManager) {
+    fn apply_mod(&self) {
+        let mut list = HashMap::new();
         for (i, name) in self.mod_names.iter().enumerate() {
             let use_val = i+1 == self.selected_mod && self.selected_mod > 0;
             trace!("set: {}, name:{}", use_val, name);
-            
-            *str_2_modval(name, manager) = use_val;
+            list.insert(name.clone(), use_val);
         }
+
+        tokio::spawn(async move {
+            let mut manager = ModManager::get().await;
+            
+            for (name, use_val) in list {
+                *str_2_modval(&name, &mut manager) = use_val;
+            }
+        });
     }
 }
 impl ScrollableItem for ModButton {
@@ -176,7 +184,7 @@ impl ScrollableItem for ModButton {
     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
         if self.hover {
            self.selected_mod = (self.selected_mod + 1) % (self.mod_names.len() + 1);
-        //    self.apply_mod(&mut *ModManager::get().await)
+           self.apply_mod()
         }
 
         self.hover
@@ -194,4 +202,8 @@ fn str_2_modval<'a>(name: &String, manager: &'a mut ModManager) -> &'a mut bool 
         
         other => panic!("Unknown mod name: {}", other)
     }
+}
+
+async fn apply_mod(mod_str: &str) {
+
 }
