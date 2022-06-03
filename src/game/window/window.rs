@@ -145,6 +145,11 @@ impl GameWindow {
                     continue;
                 }
 
+                if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
+                    self.game_event_sender.ignite(GameEvent::DragAndDrop(d));
+                    continue
+                }
+
                 self.game_event_sender.ignite(GameEvent::WindowEvent(e));
             }
 

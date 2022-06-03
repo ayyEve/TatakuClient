@@ -1,11 +1,20 @@
+use std::path::PathBuf;
+
 use crate::prelude::*;
 use crate::databases::save_replay;
 
-pub trait SendSyncTest: Send + Sync {}
-impl SendSyncTest for Game {}
-
 /// how long do transitions between gamemodes last?
 const TRANSITION_TIME:u64 = 500;
+
+macro_rules! err_text_notif {
+    ($str: expr) => {
+        NotificationManager::add_text_notification(
+            $str, 
+            5_000.0, 
+            Color::RED
+        ).await;
+    }
+}
 
 pub struct Game {
     // engine things
@@ -158,6 +167,8 @@ impl Game {
                 match e {
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
+                    
+                    GameEvent::DragAndDrop(path) => self.handle_drop(path).await,
                     GameEvent::WindowClosed => { 
                         self.close_game(); 
                         return
@@ -775,6 +786,82 @@ impl Game {
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
         self.dialogs.push(dialog)
     }
+
+    pub async fn handle_drop(&mut self, path: PathBuf) {
+        let path = path.as_path();
+        let filename = path.file_name();
+
+
+        if let Some(ext) = path.extension() {
+            let ext = ext.to_str().unwrap();
+            match *&ext {
+                "osz" | "qp" => {
+                    if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
+                        error!("Error copying file: {}", e);
+                        NotificationManager::add_error_notification(
+                            "Error copying file", 
+                            e
+                        ).await;
+                    } else {
+                        NotificationManager::add_text_notification(
+                            "Set file added, it will be loaded soon...", 
+                            2_000.0, 
+                            Color::BLUE
+                        ).await;
+                    }
+                }
+
+                // tataku replay
+                "ttkr" => {
+                    if let Ok(mut reader) = open_database(path.to_str().unwrap()) {
+                        if let Ok(replay) = reader.read::<Replay>() {
+                            self.try_open_replay(replay).await;
+                        } else {
+                            err_text_notif!("Error loading replay file");
+                        }
+                    } else {
+                        err_text_notif!("Error opening file");
+                    }
+                }
+                // osu replay
+                "osr" => {
+                    if let Ok(replay) = crate::beatmaps::osu::replay_converter::convert_osu_replay(path) {
+                        self.try_open_replay(replay).await;
+                    } else {
+                        err_text_notif!("Error opening osu replay file");
+                    }
+                }
+
+                _ => {
+                    NotificationManager::add_text_notification(
+                        &format!("What is this?"), 
+                        3_000.0, 
+                        Color::RED
+                    ).await;
+                }
+            }
+        }
+    }
+
+    pub async fn try_open_replay(&mut self, replay: Replay) {
+        if let Some(score) = &replay.score_data {
+            let mut manager = BEATMAP_MANAGER.write().await;
+
+            if let Some(map) = manager.get_by_hash(&score.beatmap_hash) {
+                manager.set_current_beatmap(self, &map, false, true).await;
+
+                // move to a score menu with this as the score
+                let mut menu = ScoreMenu::new(score, map);
+                menu.replay = Some(replay);
+                self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
+            } else {
+                err_text_notif!("You don't have this beatmap!");
+            }
+        } else {
+            err_text_notif!("Replay does not contain score data (too old?)");
+        }
+    }
+
 }
 
 
@@ -810,6 +897,7 @@ pub enum SpectatorState {
 pub enum GameEvent {
     WindowClosed,
     WindowEvent(piston::Event),
+    DragAndDrop(PathBuf),
     /// controller event, controller name
     ControllerEvent(piston::Event, String)
 }

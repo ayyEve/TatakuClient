@@ -98,24 +98,33 @@ impl ScoreMenu {
     }
 
     async fn replay(&mut self, game: &mut Game) {
-        match databases::get_local_replay_for_score(&self.score) {
-            Ok(mut replay) => {
-                // game.menus.get("beatmap").unwrap().lock().on_change(false);
-                // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
-                match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-                    Ok(mut manager) => {
-                        if replay.score_data.is_none() {
-                            replay.score_data = Some(self.score.clone());
-                        }
-                        manager.set_replay(replay);
-                        game.queue_state_change(GameState::Ingame(manager));
-                    },
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
-                }
-            },
-            Err(e) => NotificationManager::add_error_notification("Error loading replay", e).await,
+        if let Some(replay) = self.replay.clone() {
+            self.do_replay(game, replay).await;
+        } else {
+            match databases::get_local_replay_for_score(&self.score) {
+                Ok(replay) => self.do_replay(game, replay).await,
+                Err(e) => NotificationManager::add_error_notification("Error loading replay", e).await,
+            }
         }
     }
+
+    async fn do_replay(&mut self, game: &mut Game, mut replay: Replay) {
+
+        // game.menus.get("beatmap").unwrap().lock().on_change(false);
+        // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
+        match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
+            Ok(mut manager) => {
+                if replay.score_data.is_none() {
+                    replay.score_data = Some(self.score.clone());
+                }
+                manager.set_replay(replay);
+                game.queue_state_change(GameState::Ingame(manager));
+            },
+            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+        }
+    }
+
+
 }
 
 #[async_trait]
