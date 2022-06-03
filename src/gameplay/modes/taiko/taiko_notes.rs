@@ -165,10 +165,7 @@ impl TaikoHitObject for TaikoNote {
     fn set_sv(&mut self, sv:f32) { self.speed = sv }
     fn is_kat(&self) -> bool { self.hit_type == HitType::Kat }
     fn finisher_sound(&self) -> bool { self.finisher }
-
     fn causes_miss(&self) -> bool { true }
-
-
 
     fn hit(&mut self, time: f32) -> bool {
         self.hit_time = time;
@@ -179,36 +176,6 @@ impl TaikoHitObject for TaikoNote {
         self.hit_time = time;
         self.missed = true;
     }
-
-    // fn get_points(&mut self, hit_type:HitType, time:f32, (hitwindow_miss, hitwindow_100, hitwindow_300):(f32,f32,f32)) -> ScoreHit {
-    //     let diff = (time - self.time).abs();
-
-    //     if diff < hitwindow_300 {
-    //         self.hit_time = time.max(0.0);
-    //         if hit_type != self.hit_type {
-    //             self.missed = true;
-    //             ScoreHit::Miss
-    //         } else {
-    //             self.hit = true;
-    //             ScoreHit::X300
-    //         }
-    //     } else if diff < hitwindow_100 {
-    //         self.hit_time = time.max(0.0);
-    //         if hit_type != self.hit_type {
-    //             self.missed = true;
-    //             ScoreHit::Miss
-    //         } else {
-    //             self.hit = true;
-    //             ScoreHit::X100
-    //         }
-    //     } else if diff < hitwindow_miss { // too early, miss
-    //         self.hit_time = time.max(0.0);
-    //         self.missed = true;
-    //         ScoreHit::Miss
-    //     } else { // way too early, ignore
-    //         ScoreHit::None
-    //     }
-    // }
 
     fn check_finisher(&mut self, hit_type:HitType, time:f32, game_speed: f32) -> bool {
         self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
@@ -224,7 +191,7 @@ pub struct TaikoSlider {
 
     time: f32, // ms
     end_time: f32, // ms
-    finisher: bool,
+    // finisher: bool,
     speed: f32,
     radius: f64,
     //TODO: figure out how to pre-calc this
@@ -269,7 +236,7 @@ impl TaikoSlider {
         Self {
             time, 
             end_time,
-            finisher,
+            // finisher,
             radius,
             speed: 0.0,
             depth,
@@ -379,15 +346,7 @@ impl TaikoHitObject for TaikoSlider {
     fn causes_miss(&self) -> bool { false }
     fn get_sv(&self) -> f32 { self.speed }
     fn set_sv(&mut self, sv:f32) { self.speed = sv }
-    fn hits_to_complete(&self) -> u32 {((self.end_time - self.time) / 50.0) as u32}
-
-    // fn get_points(&mut self, _hit_type:HitType, time:f32, _:(f32,f32,f32)) -> ScoreHit {
-    //     // too soon or too late
-    //     if time < self.time || time > self.end_time {return ScoreHit::None}
-        
-    //     self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));
-    //     ScoreHit::Other(if self.finisher {200} else {100}, false)
-    // }
+    fn hits_to_complete(&self) -> u32 { ((self.end_time - self.time) / 50.0) as u32 }
 
     fn hit(&mut self, time: f32) -> bool {
         self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));

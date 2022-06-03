@@ -387,6 +387,7 @@ impl BeatmapManager {
 }
 
 
+#[allow(unused)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum GroupBy {
     Title,

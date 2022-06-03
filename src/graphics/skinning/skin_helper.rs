@@ -81,11 +81,11 @@ impl SkinManager {
         }
     }
 
-    async fn load_texture<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool) -> Option<Image> {
-        // trace!("thread: {:?}", std::thread::current().id());
-        // trace!("Getting tex: '{}'", name.as_ref());
-        self.load_texture_grayscale(name, allow_default, false).await
-    }
+    // async fn load_texture<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool) -> Option<Image> {
+    //     // trace!("thread: {:?}", std::thread::current().id());
+    //     // trace!("Getting tex: '{}'", name.as_ref());
+    //     self.load_texture_grayscale(name, allow_default, false).await
+    // }
 
     async fn load_texture_grayscale<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
         // since opengl stuff needs to be done on the main thread, return none if we arent on it

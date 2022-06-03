@@ -271,7 +271,7 @@ impl StandardHitObject for StandardNote {
         self.hitwindow_miss = window;
     }
 
-    fn check_distance(&self, mouse_pos: Vector2) -> bool {
+    fn check_distance(&self, _mouse_pos: Vector2) -> bool {
         let distance = (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2);
         distance <= self.radius.powi(2)
     }
@@ -296,30 +296,6 @@ impl StandardHitObject for StandardNote {
             self.shapes.push(group);
         }
     }
-
-    // fn get_points(&mut self, _is_press:bool, time:f32, (hitwindow_miss, hitwindow_50, hitwindow_100, hitwindow_300):(f32,f32,f32,f32)) -> ScoreHit {
-    //     let diff = (time - self.time).abs();
-        
-    //     // make sure the cursor is in the radius
-    //     let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
-    //     if distance > self.radius {return ScoreHit::None}
-
-    //     if diff < hitwindow_300 {
-    //         self.do_hit(time);
-    //         ScoreHit::X300
-    //     } else if diff < hitwindow_100 {
-    //         self.do_hit(time);
-    //         ScoreHit::X100
-    //     } else if diff < hitwindow_50 {
-    //         self.do_hit(time);
-    //         ScoreHit::X50
-    //     } else if diff < hitwindow_miss { // too early, miss
-    //         self.missed = true;
-    //         ScoreHit::Miss
-    //     } else { // way too early, ignore
-    //         ScoreHit::None
-    //     }
-    // }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         self.pos = new_scale.scale_coords(self.def.pos);
@@ -1603,7 +1579,6 @@ impl StandardHitObject for StandardSpinner {
 
 
 async fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f32, depth:f64, scaled_cs:f64, alpha: f32, color: Color) -> Box<dyn Renderable> {
-    // let instant = Instant::now();
 
     if let Some(mut tex) = SkinManager::get_texture("approachcircle", true).await {
         tex.depth = depth - 100.0;
@@ -1616,9 +1591,6 @@ async fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f3
         tex.current_pos = tex.initial_pos;
         tex.current_color = tex.initial_color;
         tex.current_scale = tex.initial_scale;
-
-        // let time = instant.elapsed();
-        // debug!("took:{}", time.as_secs_f32() * 1000.0);
 
         Box::new(tex)
     } else {
