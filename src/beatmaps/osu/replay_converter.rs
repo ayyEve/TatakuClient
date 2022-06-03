@@ -2,46 +2,45 @@
 use crate::prelude::*;
 use std::convert::TryInto;
 
-//TODO: make this more error-resistant
-
 pub fn convert_osu_replay(filepath: impl AsRef<Path>) -> TatakuResult<Replay> {
     let osu_replay = read_osu_replay(filepath)?;
     Ok(osu_replay.get_replay())
 }
 
 fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
-    let file = std::fs::read(file).unwrap();
+    let file = std::fs::read(file)?;
     let file = file.as_slice();
     let mut offset = 0;
 
+    let game_mode = read_byte(file, &mut offset)?;
+    let game_version = read_int(file, &mut offset)?;
+    let map_hash = read_string(file, &mut offset)?;
+    let username = read_string(file, &mut offset)?;
+    let replay_hash = read_string(file, &mut offset)?;
 
-    let game_mode = read_byte(file, &mut offset);
-    let game_version = read_int(file, &mut offset);
-    let map_hash = read_string(file, &mut offset).unwrap();
-    let username = read_string(file, &mut offset).unwrap();
-    let replay_hash = read_string(file, &mut offset).unwrap();
+    let x300 = read_short(file, &mut offset)?;
+    let x100 = read_short(file, &mut offset)?;
+    let x50 = read_short(file, &mut offset)?;
+    let geki = read_short(file, &mut offset)?;
+    let katu = read_short(file, &mut offset)?;
+    let miss = read_short(file, &mut offset)?;
 
-    let x300 = read_short(file, &mut offset);
-    let x100 = read_short(file, &mut offset);
-    let x50 = read_short(file, &mut offset);
-    let geki = read_short(file, &mut offset);
-    let katu = read_short(file, &mut offset);
-    let miss = read_short(file, &mut offset);
-
-    let score = read_int(file, &mut offset);
-    let max_combo = read_short(file, &mut offset);
+    let score = read_int(file, &mut offset)?;
+    let max_combo = read_short(file, &mut offset)?;
     
-    let perfect = read_byte(file, &mut offset) == 1;
-    let mods_num = read_int(file, &mut offset);
-    let health_str = read_string(file, &mut offset).unwrap();
-    let timestamp = read_long(file, &mut offset);
+    let perfect = read_byte(file, &mut offset)? == 1;
+    let mods_num = read_int(file, &mut offset)?;
+    let health_str = read_string(file, &mut offset)?;
+    let timestamp = read_long(file, &mut offset)?;
 
-    let data_len = read_int(file, &mut offset) as usize;
-    let replay_data = &file[offset..(offset + data_len)]; offset += data_len;
+    let data_len = read_int(file, &mut offset)? as usize;
+    
+    if offset + (data_len - 1) >= file.len() { return Err(TatakuError::String(format!("buffer overflow"))) }
+    let mut replay_data = &file[offset..(offset + data_len)]; offset += data_len;
 
-    let score_id = read_long(file, &mut offset);
+    let score_id = read_long(file, &mut offset)?;
 
-    // get game mode
+    // convert game mode
     let game_mode = match game_mode {
         0 => "osu",
         1 => "taiko",
@@ -52,26 +51,20 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 
     // parse health
     // Life bar graph: comma separated pairs u/v, where u is the time in milliseconds into the song and v is a floating point value from 0 - 1 that represents the amount of life you have at the given time (0 = life bar is empty, 1= life bar is full)
-    // println!("health: '{health_str}'");
-
     let mut health = Vec::new();
     for i in health_str.split(",") {
         if i.len() == 0 { continue }
         let mut split2 = i.split("|");
 
         macro_rules! parse {
-            () => {{
-                let str = split2.next().unwrap();
-                if let Ok(val) = str.parse() {
-                    val
-                } else {
-                    panic!("invalid! {}", str)
-                }
+            ($seg:expr) => {{
+                let str = split2.next().ok_or(TatakuError::String(format!("missing {} segment in health string", $seg)))?;
+                str.parse().map_err(|e| TatakuError::String(format!("parse err: {e}")))?
             }};
         }
 
-        let time:u32 = parse!();
-        let value:f32 = parse!();
+        let time:u32  = parse!("time");
+        let value:f32 = parse!("health");
         health.push(OsuHealth { time, value });
     }
 
@@ -87,12 +80,10 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 
     // parse replay data
     let mut replay_data_decompressed = Vec::new();
-    let mut replay_data = replay_data.clone();
     if let Err(e) = lzma_rs::lzma_decompress(&mut replay_data, &mut replay_data_decompressed) {
-        println!("error decompress: {e}")
+        return Err(TatakuError::String(format!("Error decompressing replay data")))
     }
     let replay_str = String::from_utf8_lossy(&replay_data_decompressed);
-    // println!("replay: {replay_str}");
 
     let mut replay_frames = Vec::new();
     let mut accumulated_time = 0;
@@ -101,16 +92,16 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
         let mut split2 = i.split("|");
 
         macro_rules! parse {
-            () => {{
-                let str = split2.next().unwrap();
+            ($seg:expr) => {{
+                let str = split2.next().ok_or(TatakuError::String(format!("missing {} segment in replay string", $seg)))?;
                 str.parse().map_err(|e| TatakuError::String(format!("{e}")))?
             }};
         }
         
-        let time:i64 = parse!();
-        let x:f32    = parse!();
-        let y:f32    = parse!();
-        let keys:u32 = parse!();
+        let time:i64 = parse!("time");
+        let x:f32    = parse!("x");
+        let y:f32    = parse!("y");
+        let keys:u32 = parse!("keys");
         accumulated_time += time;
 
         let mut key_presses = Vec::new();
@@ -120,6 +111,7 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
                 key_presses.push(OsuKeys::from_num(i));
             }
         }
+        
         replay_frames.push(OsuReplayFrame {
             time: accumulated_time,
             x,
@@ -163,43 +155,48 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 macro_rules! read_num {
     ($bytes:expr, $offset: expr, $t:ident) => {{
         let len = (<$t>::BITS / 8) as usize;
+
+        if *$offset + (len - 1) >= $bytes.len() { return Err(TatakuError::String(format!("buffer overflow"))); }
+
         let val = <$t>::from_le_bytes($bytes[*$offset..(*$offset + len)].try_into().unwrap());
         *$offset += len;
-        val
+        Ok(val)
     }}
 }
 
-fn read_byte(bytes: &[u8], offset:&mut usize) -> u8 {
+fn read_byte(bytes: &[u8], offset:&mut usize) -> TatakuResult<u8> {
+    if *offset >= bytes.len() { return Err(TatakuError::String(format!("buffer overflow"))); }
+
     let b = bytes[*offset];
     *offset += 1;
-    b
+    Ok(b)
 }
 
-fn read_short(bytes: &[u8], offset:&mut usize) -> u16 {
+fn read_short(bytes: &[u8], offset:&mut usize) -> TatakuResult<u16> {
     read_num!(bytes, offset, u16)
 }
-fn read_int(bytes: &[u8], offset:&mut usize) -> u32 {
+fn read_int(bytes: &[u8], offset:&mut usize) -> TatakuResult<u32> {
     read_num!(bytes, offset, u32)
 }
-fn read_long(bytes: &[u8], offset:&mut usize) -> u64 {
+fn read_long(bytes: &[u8], offset:&mut usize) -> TatakuResult<u64> {
     read_num!(bytes, offset, u64)
 }
 
-fn read_string(bytes: &[u8], offset:&mut usize) -> Option<String> {
+fn read_string(bytes: &[u8], offset:&mut usize) -> TatakuResult<String> {
     let b = bytes[*offset];
     *offset += 1;
 
     if b == 0x00 {
-        return None
+        Ok(String::new())
     } else if b == 0x0b {
         let len = read_uleb128(bytes, offset) as usize;
         // println!("got string len {len}");
 
-        let string = String::from_utf8(bytes[*offset..(*offset+len)].to_vec()).ok();
+        let string = String::from_utf8(bytes[*offset..(*offset+len)].to_vec()).map_err(|e|format!("error parsing string: {e}"))?;
         *offset += len;
-        string
+        Ok(string)
     } else {
-        panic!("wrong first byte for uleb: {:X}", b)
+        Err(TatakuError::String(format!("wrong first byte for uleb: {:X}", b)))
     }
 }
 
