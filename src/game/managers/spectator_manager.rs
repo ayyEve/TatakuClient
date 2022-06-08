@@ -40,9 +40,8 @@ impl SpectatorManager {
 
     pub async fn update(&mut self, game: &mut Game) {
         // (try to) read pending data from the online manager
-        match ONLINE_MANAGER.try_write() {
-            Ok(mut online_manager) => self.frames.extend(online_manager.get_pending_spec_frames()),
-            Err(e) => warn!("Failed to lock online manager, {}", e),
+        if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
+            self.frames.extend(online_manager.get_pending_spec_frames());
         }
 
         if let Some(menu) = &self.score_menu {
@@ -58,6 +57,7 @@ impl SpectatorManager {
             trace!("Packet: {:?}", frame);
             match frame {
                 SpectatorFrameData::Play { beatmap_hash, mode, mods } => {
+                    println!("got play: {beatmap_hash}, {mode}, {mods}");
                     self.start_game(game, beatmap_hash, mode, mods, 0.0).await
                 }
 
@@ -103,17 +103,9 @@ impl SpectatorManager {
                 }
 
                 SpectatorFrameData::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time } => {
-                    let self_id;
-                    // cant do .blocking_lock() because it spawns a runtime?
-                    loop {
-                        match ONLINE_MANAGER.try_read() {
-                            Ok(m) => {
-                                self_id = m.user_id;
-                                break;
-                            }
-                            Err(_) => {}
-                        }
-                    }
+                    warn!("got playing response: {user_id}, {beatmap_hash}, {mode}, {mods}, {current_time}");
+
+                    let self_id = ONLINE_MANAGER.read().await.user_id;
 
                     if user_id == self_id {
                         self.start_game(game, beatmap_hash, mode, mods, current_time).await
@@ -159,7 +151,9 @@ impl SpectatorManager {
                     let manager_time = manager.time();
                     self.buffered_score_frames.retain(|(time, score)| {
                         if manager_time <= *time {
-                            manager.score = IngameScore::new(score.clone(), true, false);
+                            let mut other_score = score.clone();
+                            other_score.hit_timings = manager.score.hit_timings.clone();
+                            manager.score = IngameScore::new(other_score, true, false);
                             false
                         } else {
                             true
