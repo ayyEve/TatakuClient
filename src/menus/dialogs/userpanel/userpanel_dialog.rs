@@ -2,7 +2,13 @@ use crate::prelude::*;
 
 
 lazy_static::lazy_static! {
-    static ref SET_CURRENT_USER:Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
+    static ref PANEL_QUEUE: Arc<(parking_lot::Mutex<MultiFuze<UserPanelEvent>>, Mutex<MultiBomb<UserPanelEvent>>)> = {
+        let (fuze, bomb) = MultiBomb::new();
+        let fuze = parking_lot::Mutex::new(fuze);
+        let bomb = Mutex::new(bomb);
+
+        Arc::new((fuze, bomb))
+    };
 }
 
 pub struct UserPanel {
@@ -69,11 +75,8 @@ impl Dialog<Game> for UserPanel {
                     }));
                 }
 
-                let clone = SET_CURRENT_USER.clone();
                 user_menu_dialog.add_button("Send Message", Box::new(move |dialog, _game| {
-                    // tokio::spawn(async move {
-                    //     *clone.write().await = username.clone();
-                    // });
+                    PANEL_QUEUE.0.lock().ignite(UserPanelEvent::OpenChat(username.clone()));
                     dialog.should_close = true;
                 }));
 
@@ -105,11 +108,13 @@ impl Dialog<Game> for UserPanel {
     async fn update(&mut self, game:&mut Game) {
         self.chat.update(game).await;
 
-        let mut lock = SET_CURRENT_USER.write().await;
-        if !lock.is_empty() {
-            self.chat.selected_channel = Some(ChatChannel::from_name(lock.clone()));
-            *lock = String::new();
+        let mut bomb = PANEL_QUEUE.1.lock().await;
+        while let Some(event) = bomb.exploded() {
+            match event {
+                UserPanelEvent::OpenChat(username) => self.chat.selected_channel = Some(ChatChannel::from_name(username)),
+            }
         }
+
 
         // update users from online manager
         if let Ok(om) = ONLINE_MANAGER.try_read() {
@@ -142,4 +147,9 @@ impl Dialog<Game> for UserPanel {
         
     }
 
+}
+
+#[derive(Clone)]
+pub enum UserPanelEvent {
+    OpenChat(String)
 }

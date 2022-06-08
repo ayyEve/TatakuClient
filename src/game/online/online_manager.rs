@@ -153,6 +153,13 @@ impl OnlineManager {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
                             }
                         }
+
+                        Ok(Message::Close(_)) => {
+                            NotificationManager::add_text_notification("Disconnected from server", 5000.0, Color::RED).await;
+                            let mut s = s.write().await;
+                            s.connected = false;
+                            s.writer = None;
+                        }
                         Ok(message) => if EXTRA_ONLINE_LOGGING {warn!("Got something else: {:?}", message)},
 
                         Err(oof) => {
@@ -341,6 +348,7 @@ impl OnlineManager {
 
                 p => {
                     warn!("Got unhandled packet: {:?}, dropping remaining packets", p);
+
                     break;
                 }
             }
