@@ -21,13 +21,15 @@ pub struct SkinManager {
 
     texture_cache: HashMap<String, Option<Image>>,
     // audio_cache: HashMap<String, Option<Sound>>,
+    settings: SettingsHelper
 }
 
 // static
 impl SkinManager {
 
     pub async fn init() {
-        let _ = SKIN_MANAGER.read().await;
+        let mut s = SKIN_MANAGER.write().await;
+        s.settings = SettingsHelper::new().await;
     }
 
     pub async fn get_texture<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool) -> Option<Image> {
@@ -77,7 +79,7 @@ impl SkinManager {
             // current_skin,
             current_skin_config,
             texture_cache: HashMap::new(),
-            // audio_cache: HashMap::new(),
+            settings: Default::default(), // default because this fn isnt async
         }
     }
 
@@ -88,13 +90,13 @@ impl SkinManager {
     // }
 
     async fn load_texture_grayscale<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool, grayscale: bool) -> Option<Image> {
-        // since opengl stuff needs to be done on the main thread, return none if we arent on it
-        // if !on_main_thread() { return None }
+        // update settings before we load anything
+        self.settings.update();
 
         let name = name.as_ref().to_owned();
 
         if !self.texture_cache.contains_key(&name) {
-            let tex_path = get_tex_path(&name, &get_settings!().current_skin);
+            let tex_path = get_tex_path(&name, &self.settings.current_skin);
             let mut maybe_img = load_image(tex_path, grayscale).await;
 
             if maybe_img.is_none() && allow_default {

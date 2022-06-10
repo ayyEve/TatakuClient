@@ -81,7 +81,7 @@ pub struct OnlineManager {
     pub(crate) spectate_info_pending: Vec<u32>,
 
     /// was a spectator request accepted? if so, this will be the user_id
-    spectate_pending: u32
+    spectate_pending: u32,
 }
 impl OnlineManager {
     pub fn new() -> OnlineManager {

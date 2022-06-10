@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::ops::DerefMut;
+use std::ops::{ Deref, DerefMut };
 use tokio::sync::RwLockWriteGuard;
 
 lazy_static::lazy_static! {
@@ -26,13 +26,34 @@ impl SettingsHelper {
         }
     }
 
-    pub fn check_settings(&mut self) {
+    pub fn update(&mut self) -> bool {
+        let mut changed = false;
         // while to get the most up-to-date settings
         while let Some(settings) = self.settings_bomb.exploded() {
-            self.settings = settings
+            self.settings = settings;
+            changed |= true;
+        }
+        changed
+    }
+}
+impl Deref for SettingsHelper {
+    type Target = Arc<Settings>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.settings
+    }
+}
+
+impl Default for SettingsHelper {
+    fn default() -> Self {
+        Self { 
+            settings: Arc::new(Settings::default()), 
+            settings_bomb: SETTINGS_CHECK.1.clone() 
         }
     }
 }
+
+
 
 
 /// helper so when a mutable reference to settings is dropped, it sends out an update with the new info

@@ -5,8 +5,8 @@ use crate::beatmaps::osu::hitobject_defs::HitSamples;
 
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
 pub const LEAD_IN_TIME:f32 = 1000.0;
-/// how long should the offset be drawn for?
-const OFFSET_DRAW_TIME:f32 = 2_000.0;
+/// how long should center text be drawn for?
+const CENTER_TEXT_DRAW_TIME:f32 = 2_000.0;
 /// how tall is the duration bar
 pub const DURATION_HEIGHT:f64 = 35.0;
 
@@ -80,11 +80,8 @@ pub struct IngameManager {
     #[cfg(feature="neb_audio")] 
     pub hitsound_cache: HashMap<String, Option<Sound>>,
 
-
-    // offset things
-    // TODO: merge these into one text helper, so they dont overlap
-    offset: CenteredTextHelper<f32>,
-    global_offset: CenteredTextHelper<f32>,
+    /// center text helper (ie, for offset and global offset)
+    pub center_text_helper: CenteredTextHelper,
 
 
     /// (map.time, note.time - hit.time)
@@ -98,6 +95,7 @@ pub struct IngameManager {
 
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: Arc<CommonGameplaySettings>,
+    settings: SettingsHelper,
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
@@ -111,18 +109,15 @@ pub struct IngameManager {
     pub on_start: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 
     pub events: Vec<InGameEvent>,
-
     ui_editor: Option<GameUIEditorDialog>,
 }
 
 impl IngameManager {
     pub async fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
-        let now = Instant::now();
-        
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = get_settings!();
+        let settings = SettingsHelper::new().await;
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
@@ -146,10 +141,7 @@ impl IngameManager {
         let song = Audio::get_song().await.unwrap_or(create_empty_stream()); // temp until we get the audio file path
 
         let font = get_font();
-        let offset = CenteredTextHelper::new("Offset", beatmap_preferences.audio_offset, OFFSET_DRAW_TIME, -20.0, font.clone());
-        let global_offset = CenteredTextHelper::new("Global Offset", 0.0, OFFSET_DRAW_TIME, -20.0, font.clone());
-
-        info!("ingame manager took {:.4} to init", now.elapsed().as_secs_f32() * 1000.0);
+        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME, -20.0, font.clone());
 
         Self {
             metadata,
@@ -174,8 +166,7 @@ impl IngameManager {
             lead_in_time: LEAD_IN_TIME,
             end_time: gamemode.end_time(),
 
-            offset,
-            global_offset,
+            center_text_helper,
             beatmap_preferences,
 
             background_game_settings: settings.background_game_settings.clone(),
@@ -184,6 +175,7 @@ impl IngameManager {
             gamemode,
             score_list: Vec::new(),
             score_loader,
+            settings,
             // initialize defaults for anything else not specified
             ..Self::default()
         }
@@ -296,7 +288,7 @@ impl IngameManager {
         let play_clap = (note_hitsound & 8) > 0; // 3: Clap
 
         // get volume
-        let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * get_settings!().get_effect_vol();
+        let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * self.settings.get_effect_vol();
         if self.menu_background {vol *= self.background_game_settings.hitsound_volume};
 
 
@@ -504,12 +496,15 @@ impl IngameManager {
 
 
     pub async fn update(&mut self) {
+        // update settings
+        self.settings.update();
+
         // update ui elements
         let mut ui_elements = std::mem::take(&mut self.ui_elements);
         ui_elements.iter_mut().for_each(|ui|ui.update(self));
         self.ui_elements = ui_elements;
 
-        
+        // update ui editor
         let mut ui_editor = std::mem::take(&mut self.ui_editor);
         let mut should_close = false;
         if let Some(ui_editor) = &mut ui_editor {
@@ -536,7 +531,7 @@ impl IngameManager {
 
                 #[cfg(feature="bass_audio")] {
                     self.song.set_position(-self.lead_in_time as f64).unwrap();
-                    self.song.set_volume(get_settings!().get_music_vol()).unwrap();
+                    self.song.set_volume(self.settings.get_music_vol()).unwrap();
                     self.song.set_rate(self.game_speed()).unwrap();
                     self.song.play(true).unwrap();
                 }
@@ -544,7 +539,7 @@ impl IngameManager {
                 #[cfg(feature="neb_audio")] {
                     let song = self.song.upgrade().unwrap();
                     song.set_position(-self.lead_in_time);
-                    song.set_volume(get_settings!().get_music_vol());
+                    song.set_volume(self.settings.get_music_vol());
                     song.set_playback_speed(self.game_speed() as f64);
                     song.play();
                 }
@@ -673,9 +668,8 @@ impl IngameManager {
         } 
 
 
-        // draw center texts
-        self.offset.draw(time, list);
-        self.global_offset.draw(time, list);
+        // draw center text
+        self.center_text_helper.draw(time, list);
 
 
         // dont draw score, combo, etc if this is a menu bg
@@ -743,7 +737,7 @@ impl IngameManager {
             (Some(song), _) => song.current_time(),
         };
 
-        t - (self.lead_in_time + self.offset.value + self.global_offset.value)
+        t - (self.lead_in_time + self.beatmap_preferences.audio_offset + self.settings.global_offset)
     }
 
     pub fn should_save_score(&self) -> bool {
@@ -893,8 +887,6 @@ impl IngameManager {
         self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
     }
     pub async fn reset(&mut self) {
-        let settings = get_settings!();
-        
         self.gamemode.reset(&self.beatmap).await;
         self.health.reset();
         self.key_counter.reset();
@@ -902,7 +894,7 @@ impl IngameManager {
         self.judgement_indicators.clear();
 
         if self.menu_background {
-            self.background_game_settings = settings.background_game_settings.clone();
+            self.background_game_settings = self.settings.background_game_settings.clone();
             self.gamemode.apply_auto(&self.background_game_settings)
         } else {
             // reset song
@@ -935,7 +927,7 @@ impl IngameManager {
         self.failed = false;
         self.lead_in_time = LEAD_IN_TIME;
         self.lead_in_timer = Instant::now();
-        self.score = IngameScore::new(Score::new(self.beatmap.hash(), settings.username.clone(), self.gamemode.playmode()), true, false);
+        self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.mods_string = Some(self.current_mods.as_json());
         self.replay_frame = 0;
         self.timing_point_index = 0;
@@ -1188,20 +1180,19 @@ impl IngameManager {
     
     pub async fn increment_offset(&mut self, delta:f32) {
         let time = self.time();
-        let new_val = self.offset.value + delta;
-        self.offset.set_value(new_val, time);
+        self.beatmap_preferences.audio_offset += delta;
+        self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), time);
 
         // update the beatmap offset
-        self.beatmap_preferences.audio_offset = new_val;
         Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
     }
     /// locks settings
     pub async fn increment_global_offset(&mut self, delta:f32) {
+        let time = self.time();
         let mut settings = get_settings_mut!();
         settings.global_offset += delta;
 
-        let time = self.time();
-        self.global_offset.set_value(settings.global_offset, time);
+        self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", settings.global_offset), time);
     }
 
 }
@@ -1248,8 +1239,7 @@ impl Default for IngameManager {
             timing_points: Default::default(),
             timing_point_index: Default::default(),
             hitsound_cache: Default::default(),
-            offset: Default::default(),
-            global_offset: Default::default(),
+            center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),
             background_game_settings: Default::default(), 
@@ -1272,6 +1262,8 @@ impl Default for IngameManager {
             ui_changed: false,
 
             judgment_type: Box::new(DefaultHitJudgments::None),
+
+            settings: Default::default(),
         }
     }
 }

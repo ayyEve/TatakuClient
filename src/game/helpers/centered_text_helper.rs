@@ -2,20 +2,18 @@ use crate::prelude::*;
 
 const TEXT_HPADDING:f64 = 5.0;
 
-pub struct CenteredTextHelper<V:Display> {
-    label: String,
-    pub value: V,
+pub struct CenteredTextHelper {
+    text: String,
 
     pub depth: f64,
     changed_time: f32,
     draw_time: f32,
     font: Font2,
 }
-impl<V:Display> CenteredTextHelper<V>{
-    pub fn new(label:&str, initial_value: V, draw_time: f32, depth: f64, font: Font2) -> Self {
+impl CenteredTextHelper {
+    pub fn new(draw_time: f32, depth: f64, font: Font2) -> Self {
         Self {
-            label: label.to_owned(),
-            value: initial_value,
+            text: String::new(),
 
             depth,
             draw_time,
@@ -25,8 +23,8 @@ impl<V:Display> CenteredTextHelper<V>{
         }
     }
 
-    pub fn set_value(&mut self, new_value:V, time: f32) {
-        self.value = new_value;
+    pub fn set_value(&mut self, text: String, time: f32) {
+        self.text = text;
         self.changed_time = time;
     }
     pub fn _reset_timer(&mut self) {
@@ -42,7 +40,7 @@ impl<V:Display> CenteredTextHelper<V>{
                 self.depth,
                 Vector2::zero(), // centered anyways
                 32,
-                format!("{}: {}", self.label, self.value),
+                self.text.clone(),
                 self.font.clone()
             );
             
@@ -59,12 +57,12 @@ impl<V:Display> CenteredTextHelper<V>{
         }
     }
 }
-impl<V:Display + Default> Default for CenteredTextHelper<V> {
+
+impl Default for CenteredTextHelper {
     fn default() -> Self {
         Self {
             font: get_font(),
-            label: Default::default(),
-            value: Default::default(),
+            text: Default::default(),
             depth: Default::default(),
             changed_time: Default::default(),
             draw_time: Default::default(),

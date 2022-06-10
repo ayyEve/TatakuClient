@@ -23,6 +23,8 @@ pub struct MainMenu {
     menu_visible: bool,
 
     music_box: MusicBox,
+
+    settings: SettingsHelper,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -54,14 +56,16 @@ impl MainMenu {
             background_game: None,
             selected_index: 99,
             menu_visible: false,
-            music_box: MusicBox::new()
+            music_box: MusicBox::new(),
+
+            settings: SettingsHelper::new().await,
         }
     }
 
     async fn setup_manager(&mut self, called_by: &str) {
         trace!("setup manager called by {}", called_by);
 
-        let settings = get_settings!().background_game_settings.clone();
+        let settings = self.settings.background_game_settings.clone();
         if !settings.enabled {return}
 
         let lock = BEATMAP_MANAGER.read().await;
@@ -167,6 +171,8 @@ impl AsyncMenu<Game> for MainMenu {
     }
 
     async fn update(&mut self, g:&mut Game) {
+        self.settings.update();
+
         let mut song_done = false;
 
         // run updates on the interactables
@@ -282,15 +288,15 @@ impl AsyncMenu<Game> for MainMenu {
 
         // open direct menu
         if self.direct_button.on_click(pos, button, mods) {
-            let mode = get_settings!().background_game_settings.mode.clone();
-            let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new(DirectMenu::new(mode).await));
+            let mode = self.settings.background_game_settings.mode.clone();
+            let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode).await));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
 
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
-            let menu = Arc::new(tokio::sync::Mutex::new(SettingsMenu::new().await));
+            let menu = Arc::new(Mutex::new(SettingsMenu::new().await));
             game.queue_state_change(GameState::InMenu(menu));
             return;
         }
@@ -419,7 +425,7 @@ impl ControllerInputMenu<Game> for MainMenu {
                     game.queue_state_change(GameState::InMenu(menu));
                 },
                 1 => {
-                    let mode = get_settings!().background_game_settings.mode.clone();
+                    let mode = self.settings.background_game_settings.mode.clone();
                     let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new(DirectMenu::new(mode).await));
                     game.queue_state_change(GameState::InMenu(menu));
                 },

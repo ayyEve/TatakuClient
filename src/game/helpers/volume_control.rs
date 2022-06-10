@@ -9,14 +9,17 @@ pub struct VolumeControl {
     vol_selected_index: u8, 
     ///when the volume was changed, or the selected index changed
     vol_selected_time: u64,
-    timer: Instant
+    timer: Instant,
+
+    settings: SettingsHelper,
 }
 impl VolumeControl {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             vol_selected_index: 0,
             vol_selected_time: 0,
-            timer: Instant::now()
+            timer: Instant::now(),
+            settings: SettingsHelper::new().await,
         }
     }
 
@@ -53,14 +56,15 @@ impl VolumeControl {
 
 
     pub async fn draw(&mut self, _args: RenderArgs) -> Vec<Box<dyn Renderable>> {
+        self.settings.update();
+
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
         if self.vol_selected_time > 0 && elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME {
             let font = get_font();
-            let settings = get_settings!();
-            let window_size:Vector2 = settings.window_size.into();
+            let window_size:Vector2 = self.settings.window_size.into();
 
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = Rectangle::new(
@@ -98,7 +102,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 90.0),
-                Vector2::new(border_size.x * settings.master_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.master_vol as f64, border_size.y),
                 None
             );
 
@@ -125,7 +129,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 60.0),
-                Vector2::new(border_size.x * settings.effect_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.effect_vol as f64, border_size.y),
                 None
             );
 
@@ -152,7 +156,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 30.0),
-                Vector2::new(border_size.x * settings.music_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.music_vol as f64, border_size.y),
                 None
             );
             

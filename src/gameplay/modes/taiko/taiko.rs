@@ -584,7 +584,7 @@ impl GameMode for TaikoGame {
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
-        for note in self.notes.as_mut_slice() {
+        for note in self.notes.iter_mut() {
             note.reset().await;
 
             // set note svs

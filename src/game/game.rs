@@ -53,18 +53,21 @@ pub struct Game {
     game_event_receiver: MultiBomb<GameEvent>,
     render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
 
+    settings: SettingsHelper,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>,) -> Game {
         let input_manager = InputManager::new();
+        let settings = SettingsHelper::new().await;
 
         let mut g = Game {
             // engine
             input_manager,
-            volume_controller: VolumeControl::new(),
+            volume_controller: VolumeControl::new().await,
             dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
+            settings,
 
             menus: HashMap::new(),
             current_state: GameState::None,
@@ -158,9 +161,8 @@ impl Game {
             draw_size: [window_size[0] as u32, window_size[1] as u32],
         };
 
-        let settings = get_settings!().clone();
-        let render_rate = 1.0 / settings.fps_target as f64;
-        let update_target = 1.0 / settings.update_target as f64;
+        let render_rate   = 1.0 / self.settings.fps_target as f64;
+        let update_target = 1.0 / self.settings.update_target as f64;
 
         loop {
             while let Some(e) = self.game_event_receiver.exploded() {
@@ -168,7 +170,7 @@ impl Game {
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
                     
-                    GameEvent::DragAndDrop(path) => self.handle_drop(path).await,
+                    GameEvent::DragAndDrop(path) => self.handle_file_drop(path).await,
                     GameEvent::WindowClosed => { 
                         self.close_game(); 
                         return
@@ -206,6 +208,9 @@ impl Game {
     }
 
     async fn update(&mut self, _delta:f64) {
+        // update our settings
+        self.settings.update();
+
         // let timer = Instant::now();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
         self.update_display.increment();
@@ -242,7 +247,6 @@ impl Game {
             }
         }
 
-        let settings_clone = get_settings!().clone();
         // if keys.len() > 0 {
         //     self.register_timings = self.input_manager.get_register_delay();
         //     debug!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
@@ -261,7 +265,7 @@ impl Game {
         self.volume_controller.on_key_press(&mut keys_down, mods).await;
         
         // check user panel
-        if keys_down.contains(&settings_clone.key_user_panel) {
+        if keys_down.contains(&self.settings.key_user_panel) {
             let mut user_panel_exists = false;
             let mut chat_exists = false;
             for i in self.dialogs.iter() {
@@ -344,7 +348,7 @@ impl Game {
 
                 // pause button, or focus lost, only if not replaying
                 if let Some(got_focus) = window_focus_changed {
-                    if settings_clone.pause_on_focus_lost {
+                    if self.settings.pause_on_focus_lost {
                         manager.window_focus_lost(got_focus)
                     }
                 }
@@ -534,7 +538,7 @@ impl Game {
             // queued mode didnt change, set the unlocked's mode to the updated mode
             GameState::None => self.current_state = current_state,
             GameState::Closing => {
-                get_settings!().save().await;
+                self.settings.save().await;
                 self.current_state = GameState::Closing;
                 
                 if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::CloseGame) {
@@ -640,9 +644,7 @@ impl Game {
 
     async fn render(&mut self, args: RenderArgs) {
         // let timer = Instant::now();
-        let settings = get_settings!();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
-
 
         let mut render_queue:Vec<Box<dyn Renderable>> = Vec::new();
 
@@ -671,7 +673,7 @@ impl Game {
 
         if draw_bg_dim {
             render_queue.push(Box::new(Rectangle::new(
-                Color::BLACK.alpha(settings.background_dim),
+                Color::BLACK.alpha(self.settings.background_dim),
                 f64::MAX - 1.0,
                 Vector2::zero(),
                 Settings::window_size(),
@@ -787,7 +789,7 @@ impl Game {
         self.dialogs.push(dialog)
     }
 
-    pub async fn handle_drop(&mut self, path: PathBuf) {
+    pub async fn handle_file_drop(&mut self, path: PathBuf) {
         let path = path.as_path();
         let filename = path.file_name();
 

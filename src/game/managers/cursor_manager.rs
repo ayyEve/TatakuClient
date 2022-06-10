@@ -55,7 +55,9 @@ pub struct CursorManager {
     show_system_cursor: bool,
 
 
-    cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>
+    cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>,
+
+    settings: SettingsHelper,
 }
 
 impl CursorManager {
@@ -107,8 +109,7 @@ impl CursorManager {
         let (sender, event_receiver) = sync_channel(1000);
         if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) {panic!("Cursor event queue already exists")}
 
-        
-        let settings = get_settings!();
+        let settings = SettingsHelper::new().await;
 
         Self {
             pos: Vector2::zero(),
@@ -135,6 +136,7 @@ impl CursorManager {
             right_pressed: false,
             visible: true,
             show_system_cursor: false,
+            settings
         }
     }
 
@@ -162,6 +164,15 @@ impl CursorManager {
     }
 
     pub async fn update(&mut self, time: f64) {
+
+        // check settings update 
+        if self.settings.update() {
+            self.color = Color::from_hex(&self.settings.cursor_color);
+            self.border_color = Color::from_hex(&self.settings.cursor_border_color);
+            self.cursor_scale =  self.settings.cursor_scale;
+            self.cursor_border = self.settings.cursor_border;
+        }
+
 
         // work through the event queue
         if let Ok(event) = self.event_receiver.try_recv() {
@@ -236,8 +247,6 @@ impl CursorManager {
         if self.left_pressed || self.right_pressed {
             radius *= 2.0;
         }
-
-        // let settings = get_settings!();
 
         if self.cursor_trail_image.is_some() {
             // draw the transforms

@@ -37,7 +37,7 @@ impl ModDialog {
 impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str {"mod_menu"}
     fn should_close(&self) -> bool {self.should_close}
-    fn get_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Settings::window_size())}
+    fn get_bounds(&self) -> Rectangle { Rectangle::bounds_only(Vector2::zero(), Settings::window_size()) }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         self.draw_background(depth + 0.00000001, Color::BLACK, list);
@@ -46,7 +46,7 @@ impl Dialog<Game> for ModDialog {
         }
     }
 
-    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool{
+    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == &Key::Escape {
             self.should_close = true;
             return true;
@@ -202,8 +202,4 @@ fn str_2_modval<'a>(name: &String, manager: &'a mut ModManager) -> &'a mut bool 
         
         other => panic!("Unknown mod name: {}", other)
     }
-}
-
-async fn apply_mod(mod_str: &str) {
-
 }
