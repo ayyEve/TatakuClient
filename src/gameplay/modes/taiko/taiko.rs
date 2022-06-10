@@ -597,6 +597,7 @@ impl GameMode for TaikoGame {
         }
         
         self.note_index = 0;
+        self.last_judgment = TaikoHitJudgments::Miss;
 
         // setup timing bars
         if self.timing_bars.len() == 0 {
