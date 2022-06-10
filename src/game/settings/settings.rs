@@ -18,7 +18,7 @@ macro_rules! get_settings {
 #[macro_export]
 macro_rules! get_settings_mut {
     () => {{
-        Settings::get_mut().await
+        MutSettingsHelper::new(Settings::get_mut().await)
     }}
 }
 
