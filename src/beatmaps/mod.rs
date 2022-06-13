@@ -88,7 +88,7 @@ impl TatakuBeatmap for Beatmap {
         }
     }
 
-    fn get_beatmap_meta(&self) -> BeatmapMeta {
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         match self {
             Beatmap::None => todo!(),
             Beatmap::Osu(map) => map.get_beatmap_meta(),

@@ -37,9 +37,9 @@ pub struct BeatmapSelectMenu {
     /// drag_start is where the original click occurred
     /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
     mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>,
-
-
-    diff_calc_start_helper: (MultiFuse<()>, MultiBomb<()>),
+    
+    // info_changed: (MultiFuse<CalcInfo>, MultiBomb<CalcInfo>),
+    // diff_calc_started: (MultiFuse<()>, MultiBomb<()>),
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
@@ -105,7 +105,7 @@ impl BeatmapSelectMenu {
             leaderboard_method_dropdown,
 
             mouse_down: None,
-            diff_calc_start_helper: MultiBomb::new()
+            // diff_calc_start_helper: MultiBomb::new()
         }
     }
 
@@ -117,7 +117,7 @@ impl BeatmapSelectMenu {
 
         // recalc diffs
         let mod_manager = ModManager::get().await.clone();
-        self.diff_calc_start_helper.0.ignite(());
+        // self.diff_calc_start_helper.0.ignite(());
         BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
 
         // set modes and update diffs
@@ -134,9 +134,24 @@ impl BeatmapSelectMenu {
         //TODO: allow grouping by not just map set
         let sets = beatmap_manager.all_by_sets(GroupBy::Title);
         let mut full_list = Vec::new();
-        let diff_calc_helper = beatmap_manager.on_diffcalc_complete.1.clone();
+        // let diff_calc_helper = beatmap_manager.on_diffcalc_completed.1.clone();
 
-        for mut maps in sets {
+
+        let mods = Arc::new(ModManager::get().await.clone());
+        let mode = Arc::new(self.mode.clone());
+
+        for maps in sets {
+            let mut maps:Vec<BeatmapMetaWithDiff> = maps.into_iter().map(|m| 
+                BeatmapMetaWithDiff::new(
+                    m,
+                    mods.clone(),
+                    mode.clone(),
+                    Arc::new(HashMap::new()),
+                    beatmap_manager.on_diffcalc_started.1.clone(),
+                    beatmap_manager.on_diffcalc_completed.1.clone(),
+                )
+            ).collect();
+
             if !filter_text.is_empty() {
                 let filters = filter_text.split(" ");
 
@@ -149,7 +164,7 @@ impl BeatmapSelectMenu {
 
             let meta = &maps[0];
             let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
-            let mut i = BeatmapsetItem::new(maps, self.mode.clone(), diff_calc_helper.clone(), self.diff_calc_start_helper.1.clone(), display_text).await;
+            let mut i = BeatmapsetItem::new(maps, display_text, mods.clone()).await;
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
@@ -236,9 +251,9 @@ impl BeatmapSelectMenu {
         // set any time mods
         if let Some(song) = Audio::get_song().await {
             #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().await.speed).unwrap();
+            song.set_rate(ModManager::get().await.get_speed()).unwrap();
             #[cfg(feature="neb_audio")]
-            song.set_playback_speed(ModManager::get().speed as f64);
+            song.set_playback_speed(ModManager::get().get_speed() as f64);
         }
 
         self.beatmap_scroll.refresh_layout();
@@ -413,7 +428,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                         let lock = BEATMAP_MANAGER.read().await;
                         let map = lock.current_beatmap.as_ref().unwrap();
                         let _ = song.set_position(map.audio_preview as f64);
-                        song.set_rate(ModManager::get().await.speed).unwrap();
+                        song.set_rate(ModManager::get().await.get_speed()).unwrap();
                         
                         song.play(false).unwrap();
                     },
@@ -426,7 +441,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 match &lock.current_beatmap {
                     Some(map) => {
                         let audio = Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
-                        audio.set_rate(ModManager::get().await.speed).unwrap();
+                        audio.set_rate(ModManager::get().await.get_speed()).unwrap();
                     }
                     None => if !self.no_maps_notif_sent {
                         NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN).await;
@@ -608,7 +623,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         if let Some(song) = Audio::get_song().await {
             // set any time mods
             #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().await.speed).unwrap();
+            song.set_rate(ModManager::get().await.get_speed()).unwrap();
             #[cfg(feature="neb_audio")]
             song.set_playback_speed(ModManager::get().speed as f64);
         }
@@ -760,7 +775,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         // mods and speed
         if mods.ctrl {
-            let mut speed = ModManager::get().await.speed;
+            let mut speed = ModManager::get().await.get_speed();
             let prev_speed = speed;
             const SPEED_DIFF:f32 = 0.05;
 
@@ -791,7 +806,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
             speed = speed.clamp(SPEED_DIFF, 10.0);
             if speed != prev_speed {
-                ModManager::get().await.speed = speed;
+                ModManager::get().await.set_speed(speed);
 
                 // update audio speed
                 if let Some(song) = Audio::get_song().await {

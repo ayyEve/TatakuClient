@@ -267,13 +267,12 @@ impl OsuReplay {
         }
         
         // mods
-        let mods = ModManager {
-            speed: score.speed,
-            easy: self.mods.contains(&OsuMods::Easy),
-            hard_rock: self.mods.contains(&OsuMods::HardRock),
-            autoplay: self.mods.contains(&OsuMods::Autoplay),
-            nofail: self.mods.contains(&OsuMods::NoFail),
-        };
+        let mut mods = ModManager::default();
+        mods.easy = self.mods.contains(&OsuMods::Easy);
+        mods.hard_rock = self.mods.contains(&OsuMods::HardRock);
+        mods.autoplay = self.mods.contains(&OsuMods::Autoplay);
+        mods.nofail = self.mods.contains(&OsuMods::NoFail);
+        mods.set_speed(score.speed);
         score.mods_string = Some(mods.as_json());
 
         score

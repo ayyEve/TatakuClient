@@ -56,27 +56,24 @@ pub struct Game {
     settings: SettingsHelper,
 }
 impl Game {
-    pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>,) -> Game {
-        let input_manager = InputManager::new();
-        let settings = SettingsHelper::new().await;
-
+    pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>) -> Game {
         let mut g = Game {
             // engine
-            input_manager,
+            input_manager: InputManager::new(),
             volume_controller: VolumeControl::new().await,
             dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
-            settings,
+            settings: SettingsHelper::new().await,
 
             menus: HashMap::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
 
             // fps
-            fps_display: FpsDisplay::new("fps", 3),
-            update_display: FpsDisplay::new("updates/s", 2),
-            render_display: AsyncFpsDisplay::new("draws/s", 1, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
+            render_display: AsyncFpsDisplay::new("fps", 3, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
+            fps_display: FpsDisplay::new("draws/s", 2),
+            update_display: FpsDisplay::new("updates/s", 1),
             input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()),
 
             // transition
@@ -161,7 +158,7 @@ impl Game {
             draw_size: [window_size[0] as u32, window_size[1] as u32],
         };
 
-        let render_rate   = 1.0 / self.settings.fps_target as f64;
+        let render_rate   = 1.0 / (self.settings.fps_target as f64 * 1.2);
         let update_target = 1.0 / self.settings.update_target as f64;
 
         loop {
@@ -571,7 +568,7 @@ impl Game {
                         let discord_desc = format!("{} - {}", m.title, m.artist);
                         let discord_state = format!("{} by {}", m.version, m.creator);
 
-                        OnlineManager::set_action(UserAction::Ingame, text, Some(m.mode), (discord_state, discord_desc));
+                        OnlineManager::set_action(UserAction::Ingame, text, Some(m.mode.clone()), (discord_state, discord_desc));
                     },
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {

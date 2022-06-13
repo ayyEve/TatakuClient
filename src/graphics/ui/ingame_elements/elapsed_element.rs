@@ -36,7 +36,7 @@ impl InnerUIElement for ElapsedElement {
     fn update(&mut self, manager: &mut IngameManager) {
         // if the values arent set yet, set them
         if self.start_time == -1.0 {
-            self.speed = manager.current_mods.speed;
+            self.speed = manager.current_mods.get_speed();
             self.end_time = manager.end_time / self.speed;
             self.start_time = self.end_time - manager.metadata.duration / self.speed;
         }

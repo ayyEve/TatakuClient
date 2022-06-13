@@ -7,7 +7,8 @@ lazy_static::lazy_static! {
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ModManager {
-    pub speed: f32,
+    /// use get/set_speed instead of direct access to this
+    pub speed: u16,
     
     pub easy: bool,
     pub hard_rock: bool,
@@ -21,7 +22,7 @@ pub struct ModManager {
 impl ModManager {
     pub fn new() -> Self {
         Self {
-            speed: 1.0,
+            speed: 100,
             ..Self::default()
         }
     }
@@ -33,6 +34,14 @@ impl ModManager {
 
 // instance
 impl ModManager {
+    pub fn get_speed(&self) -> f32 {
+        self.speed as f32 / 100.0
+    }
+    pub fn set_speed(&mut self, speed: f32) {
+        self.speed = (speed * 100.0).round() as u16;
+        error!("set speed: {speed} -> {}", self.speed);
+    }
+
     fn mods_list(&self, include_speed: bool) -> String {
         let mut list = Vec::new();
         
@@ -42,7 +51,8 @@ impl ModManager {
         if self.nofail { list.push("NF".to_owned()) }
         if self.autoplay { list.push("AT".to_owned()) }
 
-        if include_speed && self.speed != 1.0 { list.push(format!("({:.2}x)", self.speed)) }
+        let speed = self.get_speed();
+        if include_speed && speed != 1.0 { list.push(format!("({:.2}x)", speed)) }
 
         list.join(" ")
     }
@@ -58,3 +68,4 @@ impl ModManager {
         serde_json::to_string(self).expect("error converting mods to json string")
     }
 }
+

@@ -356,10 +356,12 @@ impl ControllerInputMenu<Game> for DirectMenu {
 /// perform a download on another thread
 pub(crate) fn perform_download(url:String, path:String) {
     debug!("Downloading '{}' to '{}'", url, path);
-    std::thread::spawn(move || {
-        let file_bytes = reqwest::blocking::get(url)
+    tokio::spawn(async {
+        let file_bytes = reqwest::get(url)
+            .await
             .expect("error with request")
             .bytes()
+            .await
             .expect("error getting bytes");
         
         write_file(path, &file_bytes).expect("Error writing file");

@@ -193,7 +193,7 @@ impl ManiaDifficultyCalculator {
         let mut note_density = Vec::new();
         let mut density = 0.0;
 
-        let bucket_length = BUCKET_LENGTH * mods.speed;
+        let bucket_length = BUCKET_LENGTH * mods.get_speed();
 
         let window = 43.0; // perfect window
 

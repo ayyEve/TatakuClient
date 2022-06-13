@@ -11,7 +11,7 @@ impl OsuDifficultyCalculator {
     fn calc_aim(&mut self, mods: &ModManager) -> TatakuResult<Vec<f64>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
-        let bucket_length = BUCKET_LENGTH * mods.speed;
+        let bucket_length = BUCKET_LENGTH * mods.get_speed();
         let mut aim_density = Vec::new();
         let mut aims = 0.0;
 
@@ -52,7 +52,7 @@ impl OsuDifficultyCalculator {
         let mut note_density = Vec::new();
         let mut density = 0.0;
 
-        let bucket_length = BUCKET_LENGTH * mods.speed;
+        let bucket_length = BUCKET_LENGTH * mods.get_speed();
 
         for o in self.notes.iter().skip(1) {
             let o_time = o.time;// * mods.speed;

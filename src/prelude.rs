@@ -1,11 +1,11 @@
 // std imports
-pub use std::ops::Range;
 pub use std::path::Path;
 pub use std::fmt::Display;
 pub use std::f64::consts::PI;
 pub use std::collections::HashMap;
 pub use std::collections::HashSet;
 pub use std::time::{Duration, Instant};
+pub use std::ops::{ Range, Deref, DerefMut };
 pub use std::sync::mpsc::{Sender, SyncSender, Receiver, sync_channel, channel};
 
 // rayon imports

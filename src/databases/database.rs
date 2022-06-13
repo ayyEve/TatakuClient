@@ -62,7 +62,7 @@ impl Database {
         let now = Instant::now();
         let a = DATABASE.connection.lock().await;
         let duration = now.elapsed().as_secs_f32() * 1000.0;
-        if duration > 0.5 {info!("db lock took {:.4}ms to aquire", duration)};
+        if duration > 100.0 {info!("db lock took {:.4}ms to aquire", duration)};
         a
     }
     // pub async fn get_diffcalc<'a>() -> tokio::sync::MutexGuard<'a, Connection> {

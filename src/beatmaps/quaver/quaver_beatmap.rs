@@ -100,14 +100,14 @@ impl TatakuBeatmap for QuaverBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
     fn playmode(&self, _incoming:PlayMode) -> PlayMode {"mania".to_owned()}
 
-    fn get_timing_points(&self) -> Vec<crate::beatmaps::common::TimingPoint> {
+    fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points
             .iter()
             .map(|t|t.clone().into())
             .collect()
     }
 
-    fn get_beatmap_meta(&self) -> crate::beatmaps::common::BeatmapMeta {
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let cs:u8 = self.mode.into();
         let cs = cs as f32;
 
@@ -122,7 +122,7 @@ impl TatakuBeatmap for QuaverBeatmap {
             }
         }
 
-        let mut meta = crate::beatmaps::common::BeatmapMeta { 
+        let mut meta = BeatmapMeta { 
             file_path: self.path.clone(), 
             beatmap_hash: self.hash.clone(), 
             beatmap_type: BeatmapType::Quaver,
@@ -144,7 +144,6 @@ impl TatakuBeatmap for QuaverBeatmap {
 
             bpm_min,
             bpm_max,
-            diff: -1.0,
         };
 
 
@@ -162,7 +161,7 @@ impl TatakuBeatmap for QuaverBeatmap {
         }
         meta.duration = end_time - start_time;
 
-        meta
+        Arc::new(meta)
     }
 
     fn slider_velocity_at(&self, time:f32) -> f32 {

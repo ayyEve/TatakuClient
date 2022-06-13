@@ -18,14 +18,20 @@ pub struct SpectatorManager {
     pub good_until: f32,
     pub map_length: f32,
 
+    /// what is the current map's hash? 
+    /// if this is Some and game_manager is None, we dont have the map
+    pub current_map: Option<(String, PlayMode, String)>,
+
     /// list of id,username for specs
     pub spectator_cache: HashMap<u32, String>,
 
     /// list
-    buffered_score_frames: Vec<(f32, Score)>
+    buffered_score_frames: Vec<(f32, Score)>,
+
+    new_map_check: MultiBomb<Arc<BeatmapMeta>>
 }
 impl SpectatorManager {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             frames: Vec::new(),
             state: SpectatorState::None,
@@ -34,7 +40,9 @@ impl SpectatorManager {
             map_length: 0.0,
             spectator_cache: HashMap::new(),
             score_menu: None,
-            buffered_score_frames: Vec::new()
+            buffered_score_frames: Vec::new(),
+            current_map: None,
+            new_map_check: BEATMAP_MANAGER.read().await.new_map_added.1.clone(),
         }
     }
 
@@ -50,6 +58,21 @@ impl SpectatorManager {
             }
         }
 
+        // handle all new maps
+        while let Some(new_map) = self.new_map_check.exploded() {
+            info!("got new map: {new_map:?}");
+            
+            let current_time = self.good_until;
+            if let (true, Some((current_map, mode, mods))) = (self.game_manager.is_none(), self.current_map.clone()) {
+                info!("good state to start map");
+                if &new_map.beatmap_hash == &current_map {
+                    info!("starting map");
+                    self.start_game(game, current_map, mode, mods, current_time).await;
+                }
+            }
+        }
+
+
         // check all incoming frames
         for (time, frame) in std::mem::take(&mut self.frames) {
             self.good_until = self.good_until.max(time as f32);
@@ -58,7 +81,46 @@ impl SpectatorManager {
             match frame {
                 SpectatorFrameData::Play { beatmap_hash, mode, mods } => {
                     println!("got play: {beatmap_hash}, {mode}, {mods}");
-                    self.start_game(game, beatmap_hash, mode, mods, 0.0).await
+                    self.start_game(game, beatmap_hash, mode, mods, 0.0).await;
+                }
+
+                SpectatorFrameData::MapInfo { beatmap_hash, game, download_link } => {
+                    let beatmap_manager = BEATMAP_MANAGER.read().await;
+                    if beatmap_manager.get_by_hash(&beatmap_hash).is_none() {
+                        // we dont have the map, try downloading it
+
+                        match &*game {
+                            "osu" => {
+                                // need to query the osu api to get the set id for this hashmap
+                                match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
+                                    Ok(Some(map_info)) => {
+                                        // we have a thing! lets download it
+                                        let settings = get_settings!();
+                                        let username = &settings.osu_username;
+                                        let password = &settings.osu_password;
+
+                                        if !username.is_empty() && !password.is_empty() {
+                                            let url = format!("https://osu.ppy.sh/d/{}.osz?u={username}&h={password}", map_info.beatmapset_id);
+                                            
+                                            let path = format!("downloads/{}.osz", map_info.beatmapset_id);
+                                            perform_download(url, path)
+                                        } else {
+                                            warn!("not downloading map, osu user or password missing")
+                                        }
+                                    },
+                                    Ok(None) => warn!("not downloading map, map not found"),
+                                    Err(e) => warn!("not downloading map, {e}"),
+                                }
+                            },
+                            "quaver" => {
+                                // dont know how to download these yet
+                            },
+
+                            _ => {
+                                // hmm
+                            }
+                        }
+                    }
                 }
 
                 SpectatorFrameData::Pause => {
@@ -179,6 +241,7 @@ impl SpectatorManager {
                         self.score_menu = Some(score_menu);
 
                         self.state = SpectatorState::None;
+                        self.current_map = None;
                         self.game_manager = None;
                     }
                 }
@@ -188,20 +251,22 @@ impl SpectatorManager {
         }
     }
 
-    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods:String, current_time:f32) {
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods_str:String, current_time:f32) {
+        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone()));
+
         self.good_until = 0.0;
         self.map_length = 0.0;
         self.buffered_score_frames.clear();
         // user started playing a map
         trace!("Host started playing map");
 
-        let mods:ModManager = serde_json::from_str(&mods).unwrap();
+        let mods:ModManager = serde_json::from_str(&mods_str).unwrap();
         // find the map
         let mut beatmap_manager = BEATMAP_MANAGER.write().await;
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
                 beatmap_manager.set_current_beatmap(game, &map, false, false).await;
-                match manager_from_playmode(mode, &map).await {
+                match manager_from_playmode(mode.clone(), &map).await {
                     Ok(mut manager) => {
                         // remove score menu
                         self.score_menu = None;

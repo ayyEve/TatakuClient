@@ -4,7 +4,7 @@ pub trait TatakuBeatmap {
     fn hash(&self) -> String;
 
     fn get_timing_points(&self) -> Vec<TimingPoint>;
-    fn get_beatmap_meta(&self) -> BeatmapMeta;
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta>;
 
     fn playmode(&self, incoming:PlayMode) -> PlayMode;
 

@@ -1,16 +1,16 @@
 use crate::prelude::*;
 
 impl Database {
-    pub async fn get_all_beatmaps() -> Vec<BeatmapMeta> {
+    pub async fn get_all_beatmaps() -> Vec<Arc<BeatmapMeta>> {
         let db = Self::get().await;
         let mut s = db.prepare("SELECT * FROM beatmaps").unwrap();
         
         s.query_map([], row_into_metadata).unwrap()
             .filter_map(|m|{
                 if let Err(e) = &m {error!("DB Err: {}", e)}
-                m.ok()
+                m.map(|b|Arc::new(b)).ok()
             })
-            .collect::<Vec<BeatmapMeta>>()
+            .collect::<Vec<Arc<BeatmapMeta>>>()
     }
 
     pub async fn clear_all_maps() {
@@ -109,7 +109,5 @@ fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
         duration: r.get("duration")?,
         bpm_min: r.get("bpm_min").unwrap_or(0.0),
         bpm_max: r.get("bpm_max").unwrap_or(0.0),
-
-        diff: -1.0
     })
 }

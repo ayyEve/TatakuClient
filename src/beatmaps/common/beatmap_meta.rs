@@ -26,9 +26,6 @@ pub struct BeatmapMeta {
     pub ar: f32,
     pub bpm_min: f32,
     pub bpm_max: f32,
-
-    // remove this at some point
-    pub diff: f32
 }
 impl BeatmapMeta {
     pub fn new(file_path:String, beatmap_hash:String, beatmap_type:BeatmapType) -> BeatmapMeta {
@@ -55,13 +52,12 @@ impl BeatmapMeta {
 
             duration: 0.0,
             bpm_min: 0.0,
-            bpm_max: 0.0,
-            diff: -1.0
+            bpm_max: 0.0
         }
     }
 
     pub fn do_checks(&mut self) {
-        if self.ar < 0.0 {self.ar = self.od}
+        if self.ar < 0.0 { self.ar = self.od }
     }
 
     /// get the title string with the version
@@ -69,37 +65,118 @@ impl BeatmapMeta {
         format!("{} - {} [{}]", self.artist, self.title, self.version)  
     }
 
-    /// get the difficulty string (od, hp, sr, bpm, len)
-    pub fn diff_string(&mut self, mods: &ModManager) -> String {
-        let symb = if mods.speed > 1.0 {"+"} else if mods.speed < 1.0 {"-"} else {""};
 
-        let mut secs = format!("{}", self.secs(mods.speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
+    pub fn check_mode_override(&self, override_mode:String) -> String {
+        if self.mode == "osu" {
+            override_mode
+        } else {
+            self.mode.clone()
+        }
+    }
+}
 
-        let mut txt = format!(
-            "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 
-            self.get_od(mods), symb,
-            self.get_hp(mods), symb,
-            self.mins(mods.speed), secs
-        );
+// getter helpers
+impl BeatmapMeta {
+    fn mins(&self, speed:f32) -> f32 {
+        ((self.duration / speed) / 60000.0).floor() 
+    }
+    fn secs(&self, speed:f32) -> f32 {
+        let mins = self.mins(speed);
+        let remaining_ms = (self.duration / speed) - mins * 60000.0;
+        (remaining_ms / 1000.0).floor()
+    }
 
-        // make sure at least one has a value
-        if self.bpm_min != 0.0 || self.bpm_max != 0.0 {
-            // one bpm
-            if self.bpm_min == self.bpm_max {
-                txt += &format!(" BPM: {:.2}", self.bpm_min * mods.speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = self.bpm_min.min(self.bpm_max);
-                let max = self.bpm_max.max(self.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * mods.speed, max * mods.speed);
+
+    pub fn get_hp(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_od(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_cs(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
+    }
+    pub fn get_ar(&self, mods: &ModManager) -> f32 {
+        scale_by_mods(self.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
+    }
+
+}
+
+#[inline]
+fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    if mods.easy {val * ez_scale} else if mods.hard_rock {val * hr_scale} else {val}
+}
+
+// might use this later idk
+// pub trait IntoSets {
+//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>>;
+// }
+// impl IntoSets for Vec<BeatmapMeta> {
+//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>> {
+//         todo!()
+//     }
+// }
+
+
+pub struct BeatmapMetaWithDiff {
+    meta: Arc<BeatmapMeta>,
+    pub sort_pending: bool,
+    
+    playmode: Arc<String>,
+    mods: Arc<ModManager>,
+    pub diff: f32,
+    
+    diffcalc_start: MultiBomb<DiffCalcStart>,
+    diffcalc_complete: MultiBomb<DiffCalcComplete>,
+}
+impl BeatmapMetaWithDiff {
+
+    pub fn new(
+        meta: Arc<BeatmapMeta>, 
+        mods: Arc<ModManager>,
+        playmode: Arc<String>, 
+        diffs: Arc<HashMap<String, f32>>,
+        diffcalc_start: MultiBomb<DiffCalcStart>,
+        diffcalc_complete: MultiBomb<DiffCalcComplete>,
+    ) -> Self {
+        Self { 
+            diff: diffs.get(&meta.beatmap_hash).map(|d|*d).unwrap_or(-1.0), 
+            meta, 
+            mods,
+            playmode,
+            diffcalc_start,
+            diffcalc_complete,
+            sort_pending: true,
+        }
+    }
+
+    pub fn update(&mut self) {
+        while let Some(data) = self.diffcalc_start.exploded() {
+            // info!("got calc start");
+            
+            if &self.playmode != &data.playmode {
+                let p2 = Arc::new(self.meta.check_mode_override(data.playmode.as_ref().clone()));
+                if self.playmode != p2 {
+                    self.diff = -1.0;
+                    self.playmode = data.playmode.clone();
+                }
             }
+            if &self.mods != &data.mods {
+                self.diff = -1.0;
+            }
+
+            self.mods = data.mods.clone();
         }
 
-        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
-        txt += &format!(", Diff: {}", diff);
+        while let Some(data) = self.diffcalc_complete.exploded() {
+            // info!("got calc complete");
 
-        txt
+            if &data.get_mode() == &self.playmode && &data.get_mods() == &self.mods {
+                self.diff = data.get(&self.meta.beatmap_hash).map(|d|*d).unwrap_or(-1.0);
+                self.sort_pending = true;
+            }
+
+        }
     }
 
     pub fn filter(&self, filter_str: &str) -> bool {
@@ -153,54 +230,45 @@ impl BeatmapMeta {
         || self.version.to_ascii_lowercase().contains(filter_str) 
     }
 
-    pub fn check_mode_override(&self, override_mode:String) -> String {
-        if self.mode == "osu" {
-            override_mode
-        } else {
-            self.mode.clone()
+    /// get the difficulty string (od, hp, sr, bpm, len)
+    pub fn diff_string(&self, mods: &ModManager) -> String {
+        let speed = mods.get_speed();
+        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
+
+        let mut secs = format!("{}", self.secs(speed));
+        if secs.len() == 1 {secs = format!("0{}", secs)}
+
+        let mut txt = format!(
+            "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 
+            self.get_od(mods), symb,
+            self.get_hp(mods), symb,
+            self.mins(speed), secs
+        );
+
+        // make sure at least one has a value
+        if self.bpm_min != 0.0 || self.bpm_max != 0.0 {
+            // one bpm
+            if self.bpm_min == self.bpm_max {
+                txt += &format!(" BPM: {:.2}", self.bpm_min * speed);
+            } else { // multi bpm
+                // i think i had it backwards when setting, just make sure its the right way :/
+                let min = self.bpm_min.min(self.bpm_max);
+                let max = self.bpm_max.max(self.bpm_min);
+                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
+            }
         }
+
+        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
+        txt += &format!(", Diff: {}", diff);
+
+        txt
     }
 }
 
-// getter helpers
-impl BeatmapMeta {
-    fn mins(&self, speed:f32) -> f32 {
-        ((self.duration / speed) / 60000.0).floor() 
-    }
-    fn secs(&self, speed:f32) -> f32 {
-        let mins = self.mins(speed);
-        let remaining_ms = (self.duration / speed) - mins * 60000.0;
-        (remaining_ms / 1000.0).floor()
-    }
+impl Deref for BeatmapMetaWithDiff {
+    type Target = Arc<BeatmapMeta>;
 
-
-    pub fn get_hp(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    fn deref(&self) -> &Self::Target {
+        &self.meta
     }
-    pub fn get_od(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
-    }
-    pub fn get_cs(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
-    }
-    pub fn get_ar(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
-    }
-
 }
-
-#[inline]
-fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.easy {val * ez_scale} else if mods.hard_rock {val * hr_scale} else {val}
-}
-
-// might use this later idk
-// pub trait IntoSets {
-//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>>;
-// }
-// impl IntoSets for Vec<BeatmapMeta> {
-//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>> {
-//         todo!()
-//     }
-// }
-

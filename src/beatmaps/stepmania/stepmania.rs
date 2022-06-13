@@ -304,8 +304,8 @@ impl TatakuBeatmap for StepmaniaBeatmap {
         }).collect()
     }
 
-    fn get_beatmap_meta(&self) -> BeatmapMeta {
-        BeatmapMeta {
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
+        Arc::new(BeatmapMeta {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash.clone(),
             beatmap_type: BeatmapType::Stepmania,
@@ -326,8 +326,7 @@ impl TatakuBeatmap for StepmaniaBeatmap {
             ar: 1.0,
             bpm_min: 0.0,
             bpm_max: 0.0,
-            diff: 0.0,
-        }
+        })
     }
 
 

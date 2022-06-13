@@ -5,7 +5,7 @@ pub struct OsuBeatmap {
     pub hash: String,
     
     // meta info
-    pub metadata: BeatmapMeta,
+    pub metadata: Arc<BeatmapMeta>,
     pub timing_points: Vec<OsuTimingPoint>,
 
     pub notes: Vec<NoteDef>,
@@ -41,8 +41,10 @@ impl OsuBeatmap {
         }
 
         let mut current_area = BeatmapSection::Version;
+        let mut metadata = BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu);
+
         let mut beatmap = Self {
-            metadata: BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu),
+            metadata: Arc::new(metadata.clone()),
             hash,
             notes: Vec::new(),
             sliders: Vec::new(),
@@ -93,12 +95,12 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim();
 
-                    if key == "AudioFilename" {beatmap.metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
-                    if key == "PreviewTime" {beatmap.metadata.audio_preview = val.parse().unwrap_or(0.0)}
+                    if key == "AudioFilename" {metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
+                    if key == "PreviewTime" {metadata.audio_preview = val.parse().unwrap_or(0.0)}
                     if key == "StackLeniency" {beatmap.stack_leniency = val.parse().unwrap_or(0.0)}
                     if key == "Mode" {
                         let m = val.parse::<u8>().unwrap();
-                        beatmap.metadata.mode = playmode_from_u8(m);
+                        metadata.mode = playmode_from_u8(m);
                     }
                 }
                 BeatmapSection::Metadata => {
@@ -106,22 +108,22 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap_or("").trim();
                     
-                    if key == "Title" {beatmap.metadata.title = val.to_owned()}
-                    if key == "TitleUnicode" {beatmap.metadata.title_unicode = val.to_owned()}
-                    if key == "Artist" {beatmap.metadata.artist = val.to_owned()}
-                    if key == "ArtistUnicode" {beatmap.metadata.artist_unicode = val.to_owned()}
-                    if key == "Creator" {beatmap.metadata.creator = val.to_owned()}
-                    if key == "Version" {beatmap.metadata.version = val.to_owned()}
+                    if key == "Title" {metadata.title = val.to_owned()}
+                    if key == "TitleUnicode" {metadata.title_unicode = val.to_owned()}
+                    if key == "Artist" {metadata.artist = val.to_owned()}
+                    if key == "ArtistUnicode" {metadata.artist_unicode = val.to_owned()}
+                    if key == "Creator" {metadata.creator = val.to_owned()}
+                    if key == "Version" {metadata.version = val.to_owned()}
                 }
                 BeatmapSection::Difficulty => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim().parse::<f32>().unwrap();
 
-                    if key == "HPDrainRate" {beatmap.metadata.hp = val}
-                    if key == "CircleSize" {beatmap.metadata.cs = val}
-                    if key == "OverallDifficulty" {beatmap.metadata.od = val}
-                    if key == "ApproachRate" {beatmap.metadata.ar = val}
+                    if key == "HPDrainRate" {metadata.hp = val}
+                    if key == "CircleSize" {metadata.cs = val}
+                    if key == "OverallDifficulty" {metadata.od = val}
+                    if key == "ApproachRate" {metadata.ar = val}
                     if key == "SliderMultiplier" {beatmap.slider_multiplier = val}
                     if key == "SliderTickRate" {beatmap.slider_tick_rate = val}
                 }
@@ -134,7 +136,7 @@ impl OsuBeatmap {
                     if event_type == "0" && split.next().unwrap() == "0" {
                         let filename = split.next().unwrap().to_owned();
                         let filename = filename.trim_matches('"');
-                        beatmap.metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
+                        metadata.image_filename = parent_dir.join(filename).to_str().unwrap().to_owned();
                     
                     }
                 }
@@ -302,8 +304,8 @@ impl OsuBeatmap {
                 bpm_max = i.beat_length;
             }
         }
-        beatmap.metadata.bpm_min = 60_000.0 / bpm_min;
-        beatmap.metadata.bpm_max = 60_000.0 / bpm_max;
+        metadata.bpm_min = 60_000.0 / bpm_min;
+        metadata.bpm_max = 60_000.0 / bpm_max;
 
         // metadata duration (scuffed bc .osu is trash)
         let mut start_time = 0.0;
@@ -332,16 +334,18 @@ impl OsuBeatmap {
                 end_time = note.time
             }
         }
-        beatmap.metadata.duration = end_time - start_time;
+        metadata.duration = end_time - start_time;
 
 
         // make sure we have the ar set
-        beatmap.metadata.do_checks();
+        metadata.do_checks();
+
+        beatmap.metadata = Arc::new(metadata);
 
         Ok(beatmap)
     }
 
-    pub fn from_metadata(metadata: &BeatmapMeta) -> OsuBeatmap {
+    pub fn from_metadata(metadata: &Arc<BeatmapMeta>) -> OsuBeatmap {
         // load the betmap
         let mut b = Self::load(metadata.file_path.clone()).unwrap();
         // overwrite the loaded meta with the old meta, this maintains calculations etc
@@ -361,7 +365,7 @@ impl TatakuBeatmap for OsuBeatmap {
             .map(|t|t.clone().into())
             .collect()
     }
-    fn get_beatmap_meta(&self) -> BeatmapMeta {self.metadata.clone()}
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {self.metadata.clone()}
 
     fn playmode(&self, incoming:PlayMode) -> PlayMode {
         match &*self.metadata.mode {

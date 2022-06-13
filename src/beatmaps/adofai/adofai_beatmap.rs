@@ -119,7 +119,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         self.timing_points.clone()
     }
 
-    fn get_beatmap_meta(&self) -> crate::beatmaps::common::BeatmapMeta {
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let parent_dir = Path::new(&self.file_path);
         let parent_dir = parent_dir.parent().unwrap().to_str().unwrap();
 
@@ -135,7 +135,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         //     }
         // }
 
-        crate::beatmaps::common::BeatmapMeta {
+        Arc::new(BeatmapMeta {
             file_path: self.file_path.clone(),
             beatmap_hash: self.hash(),
             beatmap_type: BeatmapType::Adofai,
@@ -156,9 +156,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
             ar: 0.0,
             bpm_min: 0.0,
             bpm_max: 0.0,
-            
-            diff: -1.0,
-        }
+        })
     }
 
     fn playmode(&self, _incoming:PlayMode) -> PlayMode {

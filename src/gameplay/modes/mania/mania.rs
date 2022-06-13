@@ -49,7 +49,7 @@ pub fn calc_acc(score: &Score) -> f64 {
 }
 
 pub struct ManiaGame {
-    map_meta: BeatmapMeta,
+    map_meta: Arc<BeatmapMeta>,
     // lists
     pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     timing_bars: Vec<TimingBar>,

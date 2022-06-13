@@ -20,7 +20,7 @@ pub struct ScoreMenu {
     pub replay: Option<Replay>,
     score_mods: String,
 
-    beatmap: BeatmapMeta,
+    beatmap: Arc<BeatmapMeta>,
     back_button: MenuButton<Font2, Text>,
     replay_button: MenuButton<Font2, Text>,
     graph: Graph<Font2, Text>,
@@ -36,7 +36,7 @@ pub struct ScoreMenu {
     selected_index: usize
 }
 impl ScoreMenu {
-    pub fn new(score:&Score, beatmap: BeatmapMeta) -> ScoreMenu {
+    pub fn new(score:&Score, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
         let window_size = Settings::window_size();
         let hit_error = score.hit_error();
         let font = get_font();
@@ -247,7 +247,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                     Ok(saved_path) => {
                         let saved_path = Path::new(&saved_path);
 
-                        let BeatmapMeta { artist, title, version, .. } = &self.beatmap;
+                        let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
                         let Score { playmode, username, time, .. } = &self.score;
                         let playmode = gamemode_display_name(playmode);
 

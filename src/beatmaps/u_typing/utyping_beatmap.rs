@@ -196,9 +196,9 @@ impl TatakuBeatmap for UTypingBeatmap {
         vec![self.control_point_at(0.0)]
     }
 
-    fn get_beatmap_meta(&self) -> BeatmapMeta {
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let bpm = 60_000.0 / self.beat_length;
-        BeatmapMeta { 
+        Arc::new(BeatmapMeta { 
             file_path: self.file_path.clone(), 
             beatmap_hash: self.hash.clone(), 
             beatmap_type: BeatmapType::UTyping,
@@ -219,8 +219,7 @@ impl TatakuBeatmap for UTypingBeatmap {
             ar: 0.0, 
             bpm_min: bpm, 
             bpm_max: bpm, 
-            diff: -1.0
-        }
+        })
     }
 
     fn slider_velocity_at(&self, _time:f32) -> f32 {0.0}

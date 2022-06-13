@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use rusqlite::Connection;
 
 lazy_static::lazy_static! {
     pub static ref DIFFICULTY_DATABASE: Arc<DifficultyDatabase> = DifficultyDatabase::new();
@@ -7,157 +6,83 @@ lazy_static::lazy_static! {
 
 #[derive(Clone)]
 pub struct DifficultyDatabase {
-    connection: Arc<Mutex<Connection>>,
+    // connection: Arc<Mutex<Connection>>,
+    data: Arc<RwLock<HashMap<DiffInfo, f32>>>
 }
 
 
 impl DifficultyDatabase {
-    pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
-        let now = Instant::now();
-        let a = DIFFICULTY_DATABASE.connection.lock().await;
-        let duration = now.elapsed().as_secs_f32() * 1000.0;
-        if duration > 0.5 {info!("diff db lock took {:.4}ms to aquire", duration)};
-        a
-    }
-
-
     pub fn new() -> Arc<Self> {
-        let connection = Connection::open("tataku_diffs.db").unwrap();
+        let file = Path::new("./diffs.json");
 
-        // difficulties table
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS difficulties (
-                map INTEGER,
-                mode INTEGER,
-                mods INTEGER,
-                diff_calc_version INTEGER,
-                diff REAL,
+        let mut data = HashMap::new();
+        if file.exists() {
+            if let Ok(file) = std::fs::read(file) {
+                if let Ok(parsed) = serde_json::from_slice::<HashMap<String, f32>>(&file) {
+                    for (s, diff) in parsed.iter() {
+                        if let Some(d) = DiffInfo::from_string(s) {
+                            data.insert(d,  *diff);
+                        }
+                    }
+                } else {
+                    error!("error parsing diffs")
+                }
+            } else {
+                error!("error opening diffs")
+            }
+        }
 
-                PRIMARY KEY (map, mode, mods, diff_calc_version)
-            )", [])
-        .expect("error creating db table");
-
-        // modes map table (mode string -> integer)
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS mode_map (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                mode TEXT UNIQUE
-            )", [])
-        .expect("error creating db table");
-
-        // mods
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS mods_map (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                mods TEXT UNIQUE
-            )", [])
-        .expect("error creating db table");
-
-        // beatmap_hash
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS beatmap_hash_map (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                hash TEXT UNIQUE
-            )", [])
-        .expect("error creating db table");
-
-        // update any tables that are missing values
-        perform_migrations(&connection);
-
-
-        let connection = Arc::new(Mutex::new(connection));
-        Arc::new(Self {connection})
+        let data = Arc::new(RwLock::new(data));
+        Arc::new(Self {data})
     }
 
 
 
     pub async fn insert_many_diffs(playmode:&PlayMode, mods:&ModManager, diffs:impl Iterator<Item=(String, f32)>) {
-        info!("insert many");
-        let version = 1;
+        warn!("insert many");
+        // let version = 1;
 
-        let mods_str = serde_json::to_string(mods).unwrap().replace("'", "\\'");
+        let mods = mods.as_json().replace("'", "\\'");
+        let playmode = playmode.clone();
         
-        let mut insert_query = "INSERT OR IGNORE INTO difficulties (map, mode, mods, diff_calc_version, diff) VALUES ".to_owned();
-        let mut hash_list = Vec::new();
-
+        let mut data = DIFFICULTY_DATABASE.data.write().await;
 
         for (hash, diff) in diffs {
-            insert_query += &format!("((SELECT id FROM beatmap_hash_map WHERE hash='{hash}'), (SELECT mode FROM diff_info), (SELECT mod FROM diff_info), {version}, {diff}),");
-            hash_list.push(hash);
+            let diff_info = DiffInfo::new(hash, mods.clone(), playmode.clone());
+            
+            if !data.contains_key(&diff_info) {
+                data.insert(diff_info, diff);
+            }
         }
 
-        let insert_query = insert_query.trim_end_matches(",");
-        let maps = verify_beatmap_hashes(&hash_list);
-        let mods = verify_mods(&mods_str);
-        let mode = verify_mode(playmode);
 
-        let with = format!(
-            "WITH 
-                mods_t AS (SELECT id as mod FROM mods_map WHERE mods='{mods_str}'),
-                mode_t AS (SELECT id as mode FROM mode_map WHERE mode='{playmode}'),
-                diff_info AS (select * from mods_t JOIN mode_t)",
-        );
-
-        let sql = [
-            maps, 
-            mods.insert_query.clone(), 
-            mode.insert_query.clone(), 
-            with + insert_query
-        ].join(";\n");
-
-        info!("inserting {} diffs into db", hash_list.len());
-
-        let db = Self::get().await;
-        if let Err(e) = db.execute_batch(&sql) {
-            warn!("error inserting into diff db: {e}")
+        let file = Path::new("./diffs.json");
+        let mut data2 = HashMap::new();
+        for (i, d) in data.iter() {
+            data2.insert(i.string(), d);
         }
-        info!("insert done");
 
-        // let delete_query = format!("DELETE FROM difficulties WHERE beatmap_hash IN ({hash_list}) AND playmode='{playmode}' AND mods_string='{mods}'");
-        // let mut s = db.prepare(&delete_query).unwrap();
-        // if let Err(e) = s.execute([]) {
-        //     error!("Error deleting from difficulties table: {e}")
-        // }
-
-        // // insert new vals
-        // let mut s = db.prepare(&insert_query).unwrap();
-        // if let Err(e) = s.execute([]) {
-        //     error!("Error inserting into difficulties table: {e}")
-        // }
-
+        std::fs::write(file, serde_json::to_string(&data2).unwrap()).expect("err saving diffs");
     }
 
 
     pub async fn get_all_diffs(playmode: &PlayMode, mods: &ModManager) -> HashMap<String, f32> {
         info!("retreive many");
 
-        let mods = serde_json::to_string(mods).unwrap().replace("'", "\\'");
+        let mods = mods.as_json().replace("'", "\\'");
 
-        let mode = verify_mode(playmode);
-        let mods = verify_mods(&mods);
-
-        let query = format!(
-            "SELECT d.diff, b.hash FROM difficulties d JOIN beatmap_hash_map b ON (d.map = b.id) WHERE d.mode=({}) AND d.mods=({})",
-            mode.select_query,
-            mods.select_query
-        );
-
-        
-        let db = Self::get().await;
-        let mut s = db.prepare(&query).unwrap();
-        let res = s.query_map([], |row| Ok((
-            row.get::<&str, String>("hash")?,
-            row.get::<&str, f32>("diff")?
-        )));
-        info!("query done");
-        
         let mut map = HashMap::new();
-
-        if let Ok(rows) = res {
-            for (map_hash, diff) in rows.filter_map(|r|r.ok()) {
-                map.insert(map_hash, diff);
-            }
-        }
+        
+        let data = DIFFICULTY_DATABASE.data.read().await;
+        data
+            .iter()
+            .for_each(
+                |(info, diff)| {
+                    if &info.mode == playmode && info.mods == mods {
+                        map.insert(info.map.clone(), *diff);
+                    }
+                }
+            );
         
         info!("map done");
         map
@@ -167,54 +92,33 @@ impl DifficultyDatabase {
 
 
 
-
-// add new db columns here
-// needed to add new cols to existing dbs
-// this is essentially migrations, but a lazy way to do it lol
-const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
-];
-fn perform_migrations(db: &Connection) {
-    for (table, entries) in MIGRATIONS {
-        for (col, t) in *entries {
-            match db.execute(&format!("ALTER TABLE {table} ADD {col} {t};"), []) {
-                Ok(_) => debug!("Column added to {table} db: {col}"),
-                Err(e) => {
-                    let e = format!("{}", e);
-                    // only log error if its not a duplicate column name
-                    if !e.contains("duplicate column name") {
-                        error!("Error adding column to scores db: {}", e)
-                    }
-                }
-            }
+#[derive(Hash, PartialEq, Eq, Serialize, Deserialize, Clone)]
+struct DiffInfo {
+    map: String,
+    mods: String,
+    mode: String,
+}
+impl DiffInfo {
+    fn new(map: String, mods: String, mode: String) -> Self {
+        Self { map, mods, mode }
+    }
+    fn string(&self) -> String {
+        format!("{}|{}|{}", self.map, self.mode, self.mods)
+    }
+    fn from_string(str: impl AsRef<str>) -> Option<Self> {
+        let mut split = str.as_ref().split("|");
+        if let (Some(map), Some(mode), Some(mods)) = (split.next(), split.next(), split.next()) {
+            Some(Self {
+                map: map.to_owned(),
+                mode: mode.to_owned(),
+                mods: mods.to_owned(),
+            })
+        } else {
+            None
         }
     }
 }
 
-
-
-fn verify(table_name: &str, col_name: &str, item: &String) -> DbVerify {
-    DbVerify {
-        insert_query: format!("INSERT OR IGNORE INTO {table_name}({col_name}) VALUES ('{item}')"),
-        select_query: format!("SELECT id AS col_name FROM {table_name} WHERE {col_name}='{item}'")
-    }
-}
-fn verify_beatmap_hashes(hashes:&Vec<String>) -> String {
-    // INSERT OR IGNORE INTO beatmap_hash_map (beatmap_hash) VALUES ('2'), ('3')
-    format!(
-        "INSERT OR IGNORE INTO beatmap_hash_map (hash) VALUES {}",
-        hashes.iter().map(|hash|format!("('{hash}')")).collect::<Vec<String>>().join(",")
-    )
-}
-fn verify_mods(mods_str:&String) -> DbVerify {
-    verify("mods_map", "mods", mods_str)
-}
-fn verify_mode(mode:&PlayMode) -> DbVerify {
-    verify("mode_map", "mode", mode)
-}
-struct DbVerify {
-    insert_query: String,
-    select_query: String
-}
 
 
 #[test]
@@ -242,20 +146,3 @@ fn test_diff_db() {
         println!("retreive test done: {}", diffs.len());
     });
 }
-
-
-
-/*
-WITH 
-	mods_t AS (SELECT id as mod FROM mods_map WHERE mods='{"speed":1.0,"easy":false,"hard_rock":false,"autoplay":false,"nofail":false}'),
-    mode_t AS (SELECT id as mode FROM mode_map WHERE mode='osu'),
-    
-    diff_info AS (select * from mods_t JOIN mode_t)
-
-
-INSERT INTO difficulties (map, mode, mods, diff_calc_version, diff) VALUES 
-((SELECT id FROM beatmap_hash_map WHERE hash='1'), (select mode from diff_info), (select mod from diff_info), 1, 0.1),
-((SELECT id FROM beatmap_hash_map WHERE hash='2'), (select mode from diff_info), (select mod from diff_info), 1, 0.2),
-((SELECT id FROM beatmap_hash_map WHERE hash='3'), (select mode from diff_info), (select mod from diff_info), 1, 0.3),
-((SELECT id FROM beatmap_hash_map WHERE hash='4'), (select mode from diff_info), (select mod from diff_info), 1, 0.4)
- */

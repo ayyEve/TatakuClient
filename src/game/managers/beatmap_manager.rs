@@ -1,63 +1,42 @@
-use std::fs::read_dir;
 use rand::Rng;
-
-
+use std::fs::read_dir;
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
-
-pub type DiffCalcInit = Arc<DiffCalcInitInner>;
-
-pub struct DiffCalcInitInner {
-    diffs: HashMap<String, f32>,
-    mods: Arc<ModManager>
-}
-impl DiffCalcInitInner {
-    pub fn new(diffs: HashMap<String, f32>, mods: ModManager) -> Self {
-        let mods = Arc::new(mods);
-        Self {diffs, mods}
-    }
-
-    pub fn get_mods(&self) -> Arc<ModManager> {
-        self.mods.clone()
-    }
-}
-impl core::ops::Deref for DiffCalcInitInner {
-    type Target = HashMap<String, f32>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.diffs
-    }
-}
+pub use DiffCalcStuff::*;
 
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
     pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
+
+    // lock to ensure other diffcalcs are completed first, will reduce speed over multiple calcs, but should help prevent memory overflows lol
+    static ref DIFF_CALC_LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
 pub struct BeatmapManager {
     pub initialized: bool,
 
-    pub current_beatmap: Option<BeatmapMeta>,
-    pub beatmaps: Vec<BeatmapMeta>,
-    pub beatmaps_by_hash: HashMap<String, BeatmapMeta>,
+    pub current_beatmap: Option<Arc<BeatmapMeta>>,
+    pub beatmaps: Vec<Arc<BeatmapMeta>>,
+    pub beatmaps_by_hash: HashMap<String, Arc<BeatmapMeta>>,
 
     /// previously played maps
     played: Vec<String>,
     /// current index of previously played maps
     play_index: usize,
 
-    new_maps: Vec<BeatmapMeta>,
+    new_maps: Vec<Arc<BeatmapMeta>>,
 
     /// helpful when a map is deleted
     pub(crate) force_beatmap_list_refresh: bool,
 
-    pub on_diffcalc_complete: (MultiFuse<DiffCalcInit>, MultiBomb<DiffCalcInit>),
+    pub on_diffcalc_started: (MultiFuse<DiffCalcStart>, MultiBomb<DiffCalcStart>),
+    pub on_diffcalc_completed: (MultiFuse<DiffCalcComplete>, MultiBomb<DiffCalcComplete>),
+
+    pub new_map_added: (MultiFuse<Arc<BeatmapMeta>>, MultiBomb<Arc<BeatmapMeta>>),
 }
 impl BeatmapManager {
     pub fn new() -> Self {
-        let on_diffcalc_complete = MultiBomb::new();
-
         Self {
             initialized: false,
 
@@ -71,12 +50,14 @@ impl BeatmapManager {
 
             force_beatmap_list_refresh: false,
 
-            on_diffcalc_complete
+            on_diffcalc_started: MultiBomb::new(),
+            on_diffcalc_completed: MultiBomb::new(),
+            new_map_added: MultiBomb::new()
         }
     }
 
     // download checking
-    pub fn get_new_maps(&mut self) -> Vec<BeatmapMeta> {
+    pub fn get_new_maps(&mut self) -> Vec<Arc<BeatmapMeta>> {
         std::mem::take(&mut self.new_maps)
     }
     async fn check_downloads() {
@@ -183,7 +164,7 @@ impl BeatmapManager {
         }
     }
 
-    pub fn add_beatmap(&mut self, beatmap:&BeatmapMeta) {
+    pub fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>) {
         // check if we already have this map
         if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {return debug!("map already added")}
 
@@ -192,6 +173,7 @@ impl BeatmapManager {
         if self.initialized {self.new_maps.push(beatmap.clone())}
         self.beatmaps_by_hash.insert(new_hash, beatmap.clone());
         self.beatmaps.push(beatmap.clone());
+        self.new_map_added.0.ignite(beatmap.clone());
     }
 
 
@@ -201,7 +183,7 @@ impl BeatmapManager {
         self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
         if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
             // delete the file
-            if let Err(e) = std::fs::remove_file(old_map.file_path) {
+            if let Err(e) = std::fs::remove_file(&old_map.file_path) {
                 NotificationManager::add_error_notification("Error deleting map", e).await;
             }
             // TODO: should check if this is the last beatmap in this folder
@@ -214,7 +196,7 @@ impl BeatmapManager {
     }
 
     // setters
-    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&BeatmapMeta, _do_async:bool, use_preview_time:bool) {
+    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, _do_async:bool, use_preview_time:bool) {
         self.current_beatmap = Some(beatmap.clone());
         if let Some(map) = self.current_beatmap.clone() {
             self.played.push(map.beatmap_hash.clone());
@@ -246,7 +228,7 @@ impl BeatmapManager {
     
 
     // getters
-    pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<Vec<BeatmapMeta>> { // list of sets as (list of beatmaps in the set)
+    pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<Vec<Arc<BeatmapMeta>>> { // list of sets as (list of beatmaps in the set)
         
         // match group_by {
         //     GroupBy::Title => todo!(),
@@ -269,7 +251,7 @@ impl BeatmapManager {
 
 
     }
-    pub fn get_by_hash(&self, hash:&String) -> Option<BeatmapMeta> {
+    pub fn get_by_hash(&self, hash:&String) -> Option<Arc<BeatmapMeta>> {
         match self.beatmaps_by_hash.get(hash) {
             Some(b) => Some(b.clone()),
             None => None
@@ -277,7 +259,7 @@ impl BeatmapManager {
     }
 
 
-    pub fn random_beatmap(&self) -> Option<BeatmapMeta> {
+    pub fn random_beatmap(&self) -> Option<Arc<BeatmapMeta>> {
         if self.beatmaps.len() > 0 {
             let ind = rand::thread_rng().gen_range(0..self.beatmaps.len());
             let map = self.beatmaps[ind].clone();
@@ -340,48 +322,54 @@ impl BeatmapManager {
     
     // changers
     pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
+        if !DO_DIFF_CALC { return }
+
+        warn!("Diff calc start");
         // this will be what we access and perform diff cals on
         // it will cause a momentary lagspike, 
         // but shouldnt lock everything until all diff calcs are complete
-        let mut maps = self.beatmaps.clone();
+        let maps = self.beatmaps.clone();
         let mods = mods.clone();
 
+        let calc_info = Arc::new(CalcInfo {
+            playmode: Arc::new(playmode.clone()),
+            mods: Arc::new(mods.clone()),
+        });
+
+        self.on_diffcalc_started.0.ignite(calc_info.clone());
+
         tokio::spawn(async move {
-            let playmode = playmode;
+            DIFF_CALC_LOCK.lock().await;
 
             let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
-            let mut to_insert = Vec::new();
+            let mut to_insert = HashMap::new();
 
             // perform calc
             // trace!("Starting Diff Calc");
-            for i in maps.iter_mut() {
+            for i in maps {
                 let hash = &i.beatmap_hash;
-                i.diff = if let Some(diff) = existing.get(hash) { //Database::get_diff(hash, &playmode, &mods) {
-                    *diff
-                } else {
-                    let diff = calc_diff(i, playmode.clone(), &mods).await.unwrap_or_default();
+                if !existing.contains_key(hash) {
+                    let diff = calc_diff(&i, playmode.clone(), &mods).await.unwrap_or_default();
                     existing.insert(hash.clone(), diff);
-                    to_insert.push(i.clone());
-                    diff
-                };
+                    to_insert.insert(hash.clone(), diff);
+                }
             }
 
             // insert diffs
-            let mods2 = mods.clone();
             if to_insert.len() > 0 {
-                tokio::spawn(async move {
-                    DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.iter().map(|m| (m.beatmap_hash.clone(), m.diff))).await;
-                    info!("diff calc insert done");
-                });
+                DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.into_iter()).await;
             }
             
-            {
-                let mut lock = BEATMAP_MANAGER.write().await;
-                lock.beatmaps = maps;
-                lock.on_diffcalc_complete.0.ignite(Arc::new(DiffCalcInitInner::new(existing, mods2)));
-            }
+            
+            BEATMAP_MANAGER
+                .write()
+                .await
+                .on_diffcalc_completed
+                .0
+                .ignite(Arc::new(DiffCalcCompleteInner::new(existing, calc_info)));
+            
 
-            // trace!("Diff calc Done");
+            warn!("Diff calc done");
         });
     }
 }
@@ -395,4 +383,50 @@ pub enum GroupBy {
     Creator,
     // Difficulty,
     Collections,
+}
+
+
+pub mod DiffCalcStuff {
+    use crate::prelude::*;
+
+    pub type DiffCalcStart = Arc<CalcInfo>;
+    pub type DiffCalcComplete = Arc<DiffCalcCompleteInner>;
+
+    pub(super) const DO_DIFF_CALC:bool = false;
+
+    #[derive(Clone)]
+    pub struct CalcInfo {
+        pub mods: Arc<ModManager>,
+        pub playmode: Arc<String>,
+    }
+
+    pub struct DiffCalcCompleteInner {
+        diffs: HashMap<String, f32>,
+        pub mods: Arc<ModManager>,
+        pub playmode: Arc<String>,
+    }
+    impl DiffCalcCompleteInner {
+        pub fn new(diffs: HashMap<String, f32>, calc_info: Arc<CalcInfo>) -> Self {
+            Self {
+                diffs, 
+                mods: calc_info.mods.clone(), 
+                playmode: calc_info.playmode.clone()
+            }
+        }
+
+        pub fn get_mods(&self) -> Arc<ModManager> {
+            self.mods.clone()
+        }
+        pub fn get_mode(&self) -> Arc<String> {
+            self.playmode.clone()
+        }
+    }
+    impl core::ops::Deref for DiffCalcCompleteInner {
+        type Target = HashMap<String, f32>;
+
+        fn deref(&self) -> &Self::Target {
+            &self.diffs
+        }
+    }
+
 }

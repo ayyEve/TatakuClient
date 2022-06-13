@@ -1,7 +1,7 @@
-use prelude::helpers::score_helper::ScoreLoaderHelper;
-
 use crate::prelude::*;
 use crate::beatmaps::osu::hitobject_defs::HitSamples;
+use prelude::helpers::score_helper::ScoreLoaderHelper;
+
 
 /// how much time should pass at beatmap start before audio begins playing (and the map "starts")
 pub const LEAD_IN_TIME:f32 = 1000.0;
@@ -9,7 +9,6 @@ pub const LEAD_IN_TIME:f32 = 1000.0;
 const CENTER_TEXT_DRAW_TIME:f32 = 2_000.0;
 /// how tall is the duration bar
 pub const DURATION_HEIGHT:f64 = 35.0;
-
 
 /// ms between spectator score sync packets
 const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
@@ -26,7 +25,7 @@ macro_rules! add_timing {
 
 pub struct IngameManager {
     pub beatmap: Beatmap,
-    pub metadata: BeatmapMeta,
+    pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
     pub beatmap_preferences: BeatmapPreferences,
@@ -121,16 +120,17 @@ impl IngameManager {
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
-
         let hitsound_cache = HashMap::new();
+
+
         let mut current_mods = ModManager::get().await.clone();
-        if current_mods.speed == 0.0 { current_mods.speed = 1.0; }
+        if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
         let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
-        score.speed = current_mods.speed;
+        score.speed = current_mods.get_speed();
 
 
         let health = HealthHelper::new(Some(metadata.hp));
@@ -755,7 +755,7 @@ impl IngameManager {
         if self.menu_background {
             1.0 // TODO: 
         } else {
-            self.current_mods.speed
+            self.current_mods.get_speed()
         }
     }
 
@@ -806,6 +806,12 @@ impl IngameManager {
                     mode: self.gamemode.playmode(),
                     mods: serde_json::to_string(&(*self.current_mods)).unwrap()
                 }));
+                
+                self.outgoing_spectator_frame((0.0, SpectatorFrameData::MapInfo {
+                    beatmap_hash: self.beatmap.hash(),
+                    game: format!("{:?}", self.metadata.beatmap_type).to_lowercase(),
+                    download_link: None
+                }));
             }
 
             if self.menu_background {
@@ -819,7 +825,7 @@ impl IngameManager {
                     }
                     
                     // if self.replaying {
-                    self.song.set_rate(self.current_mods.speed).unwrap();
+                    self.song.set_rate(self.current_mods.get_speed()).unwrap();
                     // }
                 }
 
@@ -828,7 +834,7 @@ impl IngameManager {
                     Some(song) => {
                         song.set_position(0.0);
                         if self.replaying {
-                            song.set_playback_speed(self.replay.speed as f64)
+                            song.set_playback_speed(self.current_mods.get_speed() as f64)
                         }
                     }
                     None => {
@@ -935,7 +941,7 @@ impl IngameManager {
         if !self.replaying {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
-            self.score.speed = self.current_mods.speed;
+            self.score.speed = self.current_mods.get_speed();
         }
 
         // reset elements
@@ -1186,7 +1192,7 @@ impl IngameManager {
         // update the beatmap offset
         Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
     }
-    /// locks settings
+    
     pub async fn increment_global_offset(&mut self, delta:f32) {
         let time = self.time();
         let mut settings = get_settings_mut!();

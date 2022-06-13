@@ -22,7 +22,7 @@ impl TaikoDifficultyCalculator {
         let mut note_density = Vec::new();
         let mut density = 0.0;
 
-        let bucket_length = BUCKET_LENGTH * mods.speed;
+        let bucket_length = BUCKET_LENGTH * mods.get_speed();
 
         for o in self.difficulty_hitobjects.iter().skip(1) {
             let o_time = o.time;// * mods.speed;
@@ -93,7 +93,7 @@ impl TaikoDifficultyCalculator {
         let mut changes = 0;
 
         
-        let bucket_length = BUCKET_LENGTH * mods.speed;
+        let bucket_length = BUCKET_LENGTH * mods.get_speed();
 
         for o in self.difficulty_hitobjects.iter() {
             let o_time = o.time; // * mods.speed;

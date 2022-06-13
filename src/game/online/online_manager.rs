@@ -381,7 +381,7 @@ impl OnlineManager {
             self.buffered_spectator_frames.clear();
             self.spectating = true;
             self.spectate_pending = 0;
-            game.queue_state_change(GameState::Spectating(SpectatorManager::new()));
+            game.queue_state_change(GameState::Spectating(SpectatorManager::new().await));
         }
         
         if self.spectate_info_pending.len() > 0 {

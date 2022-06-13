@@ -12,26 +12,26 @@ pub struct BeatmapsetItem {
     hover: bool,
     selected: bool,
     
-    pub beatmaps: Vec<BeatmapMeta>,
+    pub beatmaps: Vec<BeatmapMetaWithDiff>,
     selected_index: usize,
     mouse_pos: Vector2,
-    playmode: String,
+    // playmode: String,
     current_mod_manager: Arc<ModManager>,
 
-    diff_calc_start_helper: MultiBomb<()>,
-    diff_calc_helper: MultiBomb<DiffCalcInit>,
+    // diff_calc_start_helper: MultiBomb<Arc<ModManager>>,
+    // diff_calc_helper: MultiBomb<DiffCalcComplete>,
     // diff_calc_helper: CalcNotifyHelper
 
-    diff_calc_bombs: Vec<Bomb<(String, f32)>>,
+    // diff_calc_bombs: Vec<Bomb<(String, f32)>>,
 
     display_text: String,
 }
 impl BeatmapsetItem {
-    pub async fn new(beatmaps: Vec<BeatmapMeta>, playmode: PlayMode, diff_calc_helper: MultiBomb<DiffCalcInit>, diff_calc_start_helper: MultiBomb<()>, display_text: String) -> BeatmapsetItem {
+    pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String, mods: Arc<ModManager>) -> BeatmapsetItem {
         let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
         
         BeatmapsetItem {
-            beatmaps: beatmaps.clone(), 
+            beatmaps, 
             pos: Vector2::new(x, 0.0),
             hover: false,
             selected: false,
@@ -39,28 +39,23 @@ impl BeatmapsetItem {
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
-            playmode,
-
-            diff_calc_helper,
-            diff_calc_start_helper,
-            diff_calc_bombs: Vec::new(),
-            current_mod_manager: Arc::new(ModManager::get().await.clone()),
+            current_mod_manager: mods
         }
     }
 
-    fn recalc_with_vals(&mut self, diffs: &DiffCalcInit) {
-        // warn!("doing recalc with vals");
+    // fn recalc_with_vals(&mut self, diffs: &DiffCalcComplete) {
+    //     // warn!("doing recalc with vals");
 
-        // get the diff values from the beatmap manager
-        self.current_mod_manager = diffs.get_mods();
-        for i in self.beatmaps.iter_mut() {
-            let diff = diffs.get(&i.beatmap_hash).unwrap_or(&-2.0);
+    //     // get the diff values from the beatmap manager
+    //     self.current_mod_manager = diffs.get_mods();
+    //     for i in self.beatmaps.iter_mut() {
+    //         let diff = diffs.get(&i.beatmap_hash).unwrap_or(&-2.0);
             
-            let (fuse, bomb) = Bomb::new();
-            self.diff_calc_bombs.push(bomb);
-            fuse.ignite((i.beatmap_hash.clone(), *diff));
-        }
-    }
+    //         let (fuse, bomb) = Bomb::new();
+    //         self.diff_calc_bombs.push(bomb);
+    //         fuse.ignite((i.beatmap_hash.clone(), *diff));
+    //     }
+    // }
 
     /// set the currently selected map
     pub fn check_selected(&mut self, current_hash: &String) -> bool {
@@ -142,48 +137,14 @@ impl ScrollableItem for BeatmapsetItem {
     }
     
     fn update(&mut self) {
-        if self.diff_calc_start_helper.exploded().is_some() {
-            // get the latest event
-            while let Some(_) = self.diff_calc_helper.exploded() {}
-
-            for i in self.beatmaps.iter_mut() {
-                i.diff = -2.0;
-            }
+        let mut needs_sort = false;
+        for b in self.beatmaps.iter_mut() {
+            b.update();
+            needs_sort |= b.sort_pending;
+            b.sort_pending = false;
         }
 
-        if let Some(mut diffs) = self.diff_calc_helper.exploded() {
-            // drain the queue
-            while let Some(vals) = self.diff_calc_helper.exploded() {diffs = vals}
-            self.recalc_with_vals(&diffs);
-        }
-
-        let mut did_diff_calc = false;
-        let mut bombs = std::mem::take(&mut self.diff_calc_bombs);
-        if bombs.len() > 0 {
-            // convert our beatmaps vec to a hashmap
-            // should improve perf in the next step
-            let mut maps_hash = HashMap::new();
-            for i in self.beatmaps.iter_mut() {
-                maps_hash.insert(i.beatmap_hash.clone(), i);
-            }
-
-            bombs.retain(|bomb| {
-                if let Some((hash, diff)) = bomb.exploded() {
-                    if let Some(i) = maps_hash.get_mut(hash) {
-                        i.diff = *diff;
-                        did_diff_calc |= true;
-                    }
-                    false
-                } else {
-                    true
-                }
-            });
-            self.diff_calc_bombs = bombs;
-        }
-
-
-        // re-sort
-        if did_diff_calc && self.diff_calc_bombs.len() == 0 {
+        if needs_sort {
             let previous_selected = self.beatmaps[self.selected_index].beatmap_hash.clone();
             self.beatmaps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
     
@@ -304,8 +265,4 @@ impl ScrollableItem for BeatmapsetItem {
         }
     }
 
-
-    fn on_text(&mut self, playmode:String) {
-        self.playmode = playmode;
-    }
 }
