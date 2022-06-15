@@ -6,6 +6,7 @@ authors = [
     "~Nebula~ <stefanb1289@gmail.com>"
 ]
 edition = "2018"
+build = "build/mod.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -91,3 +92,11 @@ serde_json = "1.0"
 
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 # tataku-common = { path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-common" }
+
+
+[package.metadata.x]
+run = "cargo run --release"
+run-neb = "cargo run --release --no-default-features --features neb_audio --features discord"
+
+check = "cargo check --release"
+check-neb = "cargo check --release --no-default-features --features neb_audio --features discord"

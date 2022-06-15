@@ -1,24 +1,34 @@
+# cargo build dir
 /target
+# cargo dependancy locks
+cargo.lock
+# any zip files
 *.zip
+# vscode config dir
 .vscode
-
+# logs
 /logs
 
+# old tataku resource files, before /game was used
 /downloads
 /resources
 /[Ss]ongs
 /replays
+/skins
 tataku.db
 tataku_diffs.db
 settings.json
 
-test-commits.rs
-commits.rs
-test.log
+# new tataku resource dir
 /game
 
+# things that are auto-generated each build
+test-commits.rs
+commits.rs
+/src/gameplay/modes/mod.rs
+
+
+# test files
+test.log
 /csv
 /html
-/skins
-
-/src/gameplay/modes/mod.rs
