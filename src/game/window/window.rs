@@ -86,13 +86,8 @@ impl GameWindow {
 
         // set window icon
         match image::open("resources/icon-small.png") {
-            Ok(img) => {
-                window.window.set_icon(vec![img.into_rgba8()]);
-                info!("window icon set");
-            }
-            Err(e) => {
-                info!("error setting window icon: {}", e);
-            }
+            Ok(img) => window.window.set_icon(vec![img.into_rgba8()]),
+            Err(e) => warn!("error setting window icon: {}", e)
         }
 
         let now = Instant::now();

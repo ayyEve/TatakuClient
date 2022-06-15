@@ -420,7 +420,7 @@ impl GameMode for StandardGame {
                             // play the sound
                             let hitsound = note.get_hitsound();
                             let hitsamples = note.get_hitsamples().clone();
-                            manager.play_note_sound(note_time, hitsound, hitsamples).await;
+                            manager.play_note_sound(note_time, hitsound, hitsamples, true).await;
                         }
 
                     }
@@ -527,7 +527,7 @@ impl GameMode for StandardGame {
 
             // play queued sounds
             for (time, hitsound, samples) in note.get_sound_queue() {
-                manager.play_note_sound(time, hitsound, samples).await;
+                manager.play_note_sound(time, hitsound, samples, true).await;
             }
 
             for add_combo in note.pending_combo() {
@@ -583,7 +583,7 @@ impl GameMode for StandardGame {
                             // play the sound
                             let hitsound = note.get_hitsound();
                             let hitsamples = note.get_hitsamples().clone();
-                            manager.play_note_sound(note_time, hitsound, hitsamples).await;
+                            manager.play_note_sound(note_time, hitsound, hitsamples, true).await;
                         }
                     }
 

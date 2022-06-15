@@ -37,7 +37,7 @@ impl NotificationManager { // static
     pub async fn add_text_notification(text: &str, duration: f32, color: Color) {
         let notif = Notification::new(text.to_owned(), color, duration, NotificationOnClick::None);
 
-        trace!("adding text notif");
+        trace!("adding text notif '{text}'");
         Self::add_notification(notif).await;
     }
     pub async fn add_error_notification<E: Into<TatakuError>>(msg:&str, error:E) {

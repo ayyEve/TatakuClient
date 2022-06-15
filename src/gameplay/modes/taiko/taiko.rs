@@ -79,6 +79,27 @@ pub struct TaikoGame {
 }
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
+
+
+    async fn play_sound(&self, manager: &mut IngameManager, note_time:f32,  hit_type: HitType, finisher: bool) {
+        let hitsound;
+        match (hit_type, finisher) {
+            (HitType::Don, false) => hitsound = 1, // normal is don
+            (HitType::Don, true)  => hitsound = 4, // finish is bigdon
+            (HitType::Kat, false) => hitsound = 8, // clap is kat
+            (HitType::Kat, true)  => hitsound = 2, // whistle is bigkat
+        }
+
+        let samples = HitSamples {
+            normal_set: 0,
+            addition_set: 0,
+            index: 0,
+            volume: 0,
+            filename: None,
+        };
+
+        manager.play_note_sound(note_time, hitsound, samples, false).await;
+    }
 }
 #[async_trait]
 impl GameMode for TaikoGame {
@@ -360,22 +381,12 @@ impl GameMode for TaikoGame {
         }
 
         let hit_type:HitType = key.into();
-        let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
-        let mut hit_volume = get_settings!().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
-        if manager.menu_background {
-            hit_volume *= manager.background_game_settings.hitsound_volume;
-        }
+        let mut finisher_sound = false;
+        // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
         // if theres no more notes to hit, return after playing the sound
         if self.note_index >= self.notes.len() {
-            #[cfg(feature="bass_audio")]
-            if let Ok(a) = Audio::play_preloaded(sound).await {
-                a.set_volume(hit_volume).unwrap();
-            }
-            #[cfg(feature="neb_audio")] {
-                let a = Audio::play_preloaded(sound);
-                a.upgrade().unwrap().set_volume(hit_volume);
-            }
+            self.play_sound(manager, time, hit_type, false).await;
             return;
         }
 
@@ -404,7 +415,8 @@ impl GameMode for TaikoGame {
                 let cond = || note.hit_type() == hit_type;
 
                 if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
-                    if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
+                    // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
+                    finisher_sound = note.finisher_sound();
 
                     if let TaikoHitJudgments::Miss = judge {
                         note.miss(time);
@@ -425,14 +437,7 @@ impl GameMode for TaikoGame {
             _ => {}
         }
 
-        #[cfg(feature="bass_audio")]
-        if let Ok(a) = Audio::play_preloaded(sound).await {
-            a.set_volume(hit_volume).unwrap();
-        }
-        #[cfg(feature="neb_audio")] {
-            let a = Audio::play_preloaded(sound);
-            a.upgrade().unwrap().set_volume(hit_volume);
-        }
+        self.play_sound(manager, note_time, hit_type, finisher_sound).await;
     }
 
 

@@ -32,10 +32,10 @@ fn download_url<T:AsRef<str>>(file:T) -> String {
 pub const REQUIRED_FILES:&[&str] = &[
 
     // default audio
-    "resources/audio/don.wav",
-    "resources/audio/kat.wav",
-    "resources/audio/bigdon.wav",
-    "resources/audio/bigkat.wav",
+    // "resources/audio/don.wav",
+    // "resources/audio/kat.wav",
+    // "resources/audio/bigdon.wav",
+    // "resources/audio/bigkat.wav",
     "resources/audio/combobreak.mp3",
 
     // icons
@@ -140,10 +140,12 @@ async fn setup() {
     }
 
     // hitsounds
-    for sample_set in ["normal", "soft", "drum"] {
-        for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
-            let file = &format!("resources/audio/{}-{}.wav", sample_set, hitsound);
-            check_file(file, &download_url(file)).await;
+    for mode in ["", "taiko-"] {
+        for sample_set in ["normal", "soft", "drum"] {
+            for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
+                let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
+                check_file(&file, &download_url(&file)).await;
+            }
         }
     }
     

@@ -71,13 +71,15 @@ pub struct IngameManager {
 
     #[cfg(feature="bass_audio")]
     pub song: StreamChannel,
-    #[cfg(feature="bass_audio")]
-    pub hitsound_cache: HashMap<String, Option<SampleChannel>>,
+    // #[cfg(feature="bass_audio")]
+    // pub hitsound_cache: HashMap<String, Option<SampleChannel>>,
 
     #[cfg(feature="neb_audio")] 
     pub song: Weak<AudioHandle>,
-    #[cfg(feature="neb_audio")] 
-    pub hitsound_cache: HashMap<String, Option<Sound>>,
+    // #[cfg(feature="neb_audio")] 
+    // pub hitsound_cache: HashMap<String, Option<Sound>>,
+
+    pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
     pub center_text_helper: CenteredTextHelper,
@@ -120,7 +122,7 @@ impl IngameManager {
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
-        let hitsound_cache = HashMap::new();
+        // let hitsound_cache = HashMap::new();
 
 
         let mut current_mods = ModManager::get().await.clone();
@@ -143,10 +145,22 @@ impl IngameManager {
         let font = get_font();
         let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME, -20.0, font.clone());
 
+        // hardcode for now
+        let audio_playmode_prefix = match &*playmode {
+            "taiko" => "taiko".to_owned(),
+            "mania" => "mania".to_owned(),
+            // "taiko" => "taiko".to_owned(),
+
+            _ => String::new(),
+        };
+
+        let mut hitsound_manager = HitsoundManager::new(audio_playmode_prefix);
+        hitsound_manager.init(&metadata).await;
+
         Self {
             metadata,
             timing_points,
-            hitsound_cache,
+            // hitsound_cache,
             current_mods,
             health,
             key_counter,
@@ -157,6 +171,8 @@ impl IngameManager {
 
             replay: Replay::new(),
             beatmap,
+
+            hitsound_manager,
 
             #[cfg(feature="bass_audio")]
             song,
@@ -279,135 +295,24 @@ impl IngameManager {
 
     // interactions with game mode
 
-    pub async fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, note_hitsamples:HitSamples) {
+    // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
+    // essentially the same thing as judgments
+    pub async fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, mut note_hitsamples:HitSamples, normal_by_default: bool) {
         let timing_point = self.beatmap.control_point_at(note_time);
-        
-        let mut play_normal = true; //(note_hitsound & 1) > 0; // 0: Normal
-        let play_whistle = (note_hitsound & 2) > 0; // 1: Whistle
-        let play_finish = (note_hitsound & 4) > 0; // 2: Finish
-        let play_clap = (note_hitsound & 8) > 0; // 3: Clap
+
+        if note_hitsamples.normal_set == 0 {
+            note_hitsamples.normal_set = timing_point.sample_set;
+            note_hitsamples.index = timing_point.sample_index;
+        }
+        if note_hitsamples.addition_set == 0 {
+            note_hitsamples.addition_set = note_hitsamples.normal_set;
+        }
 
         // get volume
         let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * self.settings.get_effect_vol();
         if self.menu_background {vol *= self.background_game_settings.hitsound_volume};
 
-
-        // https://osu.ppy.sh/wiki/en/osu%21_File_Formats/Osu_%28file_format%29#hitsounds
-
-        // normalSet and additionSet can be any of the following:
-        // 0: No custom sample set
-        // For normal sounds, the set is determined by the timing point's sample set.
-        // For additions, the set is determined by the normal sound's sample set.
-        // 1: Normal set
-        // 2: Soft set
-        // 3: Drum set
-
-        // The filename is <sampleSet>-hit<hitSound><index>.wav, where:
-
-        // sampleSet is normal, soft, or drum, determined by either normalSet or additionSet depending on which hitsound is playing
-        const SAMPLE_SETS:&[&str] = &["normal", "normal", "soft", "drum"];
-        // hitSound is normal, whistle, finish, or clap
-        // index is the same index as above, except it is not written if the value is 0 or 1
-
-        // (filename, index)
-        let mut play_list = Vec::new();
-
-        // if the hitsound is being overridden
-        if let Some(name) = note_hitsamples.filename {
-            if name.len() > 0 {
-                #[cfg(feature="debug_hitsounds")]
-                debug!("got custom sound: {}", name);
-                if exists(format!("resources/audio/{}", name)) {
-                    play_normal = (note_hitsound & 1) > 0;
-                    play_list.push((name, 0))
-                } else {
-                    #[cfg(feature="debug_hitsounds")]
-                    warn!("doesnt exist");
-                }
-            }
-        }
-
-        if play_normal {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitnormal.wav", sample_set);
-            let index = note_hitsamples.index;
-            // if sample_set == 0 {sample_set = timing_point.sample_set}
-            // if index == 1 {} //idk wtf 
-
-            play_list.push((hitsound, index))
-        }
-
-        if play_whistle {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitwhistle.wav", sample_set);
-            let index = note_hitsamples.index;
-            // if sample_set == 0 {sample_set = timing_point.sample_set}
-            // if index == 1 {} //idk wtf 
-
-            play_list.push((hitsound, index))
-        }
-        if play_finish {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitfinish.wav", sample_set);
-            let index = note_hitsamples.index;
-            // if sample_set == 0 {sample_set = timing_point.sample_set}
-            // if index == 1 {} //idk wtf 
-
-            play_list.push((hitsound, index))
-        }
-        if play_clap {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitclap.wav", sample_set);
-            let index = note_hitsamples.index;
-            // if sample_set == 0 {sample_set = timing_point.sample_set}
-            // if index == 1 {} //idk wtf 
-
-            play_list.push((hitsound, index))
-        }
-
-
-        // The sound file is loaded from the first of the following directories that contains a matching filename:
-        // Beatmap, if index is not 0
-        // Skin, with the index removed
-        // Default osu! resources, with the index removed
-        // When filename is given, no addition sounds will be played, and this file in the beatmap directory is played instead.
-
-        // debug!("{}, {} | {}", timing_point.volume, note_hitsamples.volume, );
-
-
-        for (sound_file, _index) in play_list.iter() {
-            if !self.hitsound_cache.contains_key(sound_file) {
-                #[cfg(feature="debug_hitsounds")]
-                trace!("not cached");
-
-                #[cfg(feature="bass_audio")]
-                let sound = Audio::load(format!("resources/audio/{}", sound_file));
-                #[cfg(feature="neb_audio")]
-                let sound = crate::game::Sound::load(format!("resources/audio/{}", sound_file));
-
-                if let Err(e) = &sound {
-                    error!("error loading: {:?}", e);
-                }
-                
-                self.hitsound_cache.insert(sound_file.clone(), sound.ok());
-            }
-
-            if let Some(sound) = self.hitsound_cache.get(sound_file).unwrap() {
-                #[cfg(feature="bass_audio")] {
-                    sound.set_volume(vol).unwrap();
-                    sound.set_position(0.0).unwrap();
-                    sound.play(true).unwrap();
-                }
-                #[cfg(feature="neb_audio")] {
-                    let sound = Audio::play_sound(sound.clone());
-                    if let Some(sound) = sound.upgrade() {
-                        sound.set_volume(vol);
-                        sound.set_position(0.0);
-                        sound.play();
-                    }
-                }
-            }
-        }
+        self.hitsound_manager.play_sound(note_hitsound, note_hitsamples, vol, normal_by_default);
     }
 
     /// add judgment, affects health and score, but not hit timings
@@ -1225,6 +1130,7 @@ impl Default for IngameManager {
             #[cfg(feature="neb_audio")]
             song: Weak::new(),
             judgement_indicators: Vec::new(),
+            hitsound_manager: HitsoundManager::new(String::new()),
 
             failed: false,
             failed_time: 0.0,
@@ -1244,7 +1150,7 @@ impl Default for IngameManager {
             lead_in_timer: Instant::now(),
             timing_points: Default::default(),
             timing_point_index: Default::default(),
-            hitsound_cache: Default::default(),
+            // hitsound_cache: Default::default(),
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),
@@ -1274,15 +1180,6 @@ impl Default for IngameManager {
     }
 }
 
-
-
-// struct HitsoundManager {
-//     sounds: HashMap<String, Option<Sound>>,
-//     /// sound, index
-//     beatmap_sounds: HashMap<String, HashMap<u8, Sound>>
-// }
-// impl HitsoundManager {
-// }
 
 #[cfg(feature="bass_audio")]
 lazy_static::lazy_static! {
