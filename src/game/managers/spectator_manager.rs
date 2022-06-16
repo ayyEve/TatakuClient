@@ -84,7 +84,7 @@ impl SpectatorManager {
                     self.start_game(game, beatmap_hash, mode, mods, 0.0).await;
                 }
 
-                SpectatorFrameData::MapInfo { beatmap_hash, game, download_link } => {
+                SpectatorFrameData::MapInfo { beatmap_hash, game, download_link: _ } => {
                     let beatmap_manager = BEATMAP_MANAGER.read().await;
                     if beatmap_manager.get_by_hash(&beatmap_hash).is_none() {
                         // we dont have the map, try downloading it

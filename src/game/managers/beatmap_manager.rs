@@ -2,7 +2,7 @@ use rand::Rng;
 use std::fs::read_dir;
 use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
-pub use DiffCalcStuff::*;
+pub use diff_calc_stuff::*;
 
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
@@ -386,7 +386,7 @@ pub enum GroupBy {
 }
 
 
-pub mod DiffCalcStuff {
+pub mod diff_calc_stuff {
     use crate::prelude::*;
 
     pub type DiffCalcStart = Arc<CalcInfo>;
