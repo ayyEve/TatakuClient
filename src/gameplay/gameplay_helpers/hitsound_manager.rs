@@ -83,9 +83,9 @@ impl HitsoundManager {
                 }
             }
         }
-        error!("beatmap: {:?}", beatmap_sounds.keys());
-        error!("skin: {:?}", skin_sounds.keys());
-        error!("default: {:?}", default_sounds.keys());
+        // error!("beatmap: {:?}", beatmap_sounds.keys());
+        // error!("skin: {:?}", skin_sounds.keys());
+        // error!("default: {:?}", default_sounds.keys());
 
         self.sounds.insert(HitsoundSource::Skin, skin_sounds);
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
@@ -206,20 +206,20 @@ impl HitsoundManager {
 
             let sound = format!("{sound}.wav");
             play_sound = self.sounds[&HitsoundSource::Beatmap].get(&sound);
-            if play_sound.is_some() {warn!("playing {sound} from beatmap")}
+            // if play_sound.is_some() {warn!("playing {sound} from beatmap")}
         }
         let sound = format!("{sound}.wav");
 
         // try skin
         if play_sound.is_none() {
             play_sound = self.sounds[&HitsoundSource::Skin].get(&sound);
-            if play_sound.is_some() {warn!("playing {sound} from skin")}
+            // if play_sound.is_some() {warn!("playing {sound} from skin")}
         }
 
         // try default
         if play_sound.is_none() {
             play_sound = self.sounds[&HitsoundSource::Default].get(&sound);
-            if play_sound.is_some() {warn!("playing {sound} from resources")}
+            // if play_sound.is_some() {warn!("playing {sound} from resources")}
         }
 
         if let Some(sound) = play_sound {
