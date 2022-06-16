@@ -31,10 +31,12 @@ pub struct Settings {
     pub music_vol: f32,
     pub effect_vol: f32,
     pub global_offset: f32,
-
+    
     // login
     pub username: String,
     pub password: String,
+    pub server_url: String,
+    pub score_url: String,
     
     // osu login (for direct)
     pub osu_username: String,
@@ -73,7 +75,6 @@ pub struct Settings {
 
     // other misc
     pub last_git_hash: String,
-    pub server_url: String,
     pub current_skin: String,
     pub logging_settings: LoggingSettings,
 
@@ -191,6 +192,7 @@ impl Default for Settings {
             last_git_hash: String::new(),
 
             server_url: "wss://taikors.ayyeve.xyz".to_owned(),
+            score_url: "https://scores.tataku.ca".to_owned(),
             current_skin: "None".to_owned(),
             logging_settings: LoggingSettings::new(),
 

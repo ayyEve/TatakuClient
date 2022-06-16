@@ -33,7 +33,6 @@ pub struct Game {
     update_display: FpsDisplay,
     render_display: AsyncFpsDisplay,
     input_display: AsyncFpsDisplay,
-    // input_update_display: FpsDisplay,
 
     // transition
     transition: Option<GameState>,
@@ -44,11 +43,6 @@ pub struct Game {
     pub game_start: Instant,
     pub background_image: Option<Image>,
     // register_timings: (f32,f32,f32),
-
-    // #[cfg(feature="bass_audio")]
-    // #[allow(dead_code)]
-    // /// needed to prevent bass from deinitializing
-    // bass: bass_rs::Bass,
 
     game_event_receiver: MultiBomb<GameEvent>,
     render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
@@ -80,8 +74,6 @@ impl Game {
             transition: None,
             transition_last: None,
             transition_timer: 0,
-
-            // cursor
 
             // misc
             game_start: Instant::now(),
@@ -386,68 +378,7 @@ impl Game {
                     // update, then check if complete
                     manager.update().await;
                     if manager.completed {
-                        trace!("beatmap complete");
-                        manager.on_complete();
-                        manager.score.time = chrono::Utc::now().timestamp() as u64;
-
-                        if manager.failed {
-                            trace!("player failed");
-                            let manager2 = std::mem::take(manager);
-                            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true)))));
-                            
-                        } else {
-                            let score = &manager.score;
-                            let replay = &manager.replay;
-
-                            if manager.should_save_score() {
-                                // save score
-                                Database::save_score(&score).await;
-                                match save_replay(&replay, &score) {
-                                    Ok(_)=> trace!("replay saved ok"),
-                                    Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
-                                }
-
-                                // submit score
-                                #[cfg(feature = "online_scores")] {
-                                    self.threading.spawn(async move {
-                                        //TODO: do this async
-                                        trace!("submitting score");
-                                        let mut writer = SerializationWriter::new();
-                                        writer.write(score.clone());
-                                        writer.write(replay.clone());
-                                        let data = writer.data();
-                                        
-                                        let c = reqwest::Client::new();
-                                        let res = c.post("http://localhost:8000/score_submit")
-                                            .body(data)
-                                            .send().await;
-
-                                        match res {
-                                            Ok(_isgood) => {
-                                                //TODO: do something with the response?
-                                                trace!("score submitted successfully");
-                                            },
-                                            Err(e) => error!("error submitting score: {}", e),
-                                        }
-                                    });
-                                }
-
-                            }
-
-                            // used to indicate user stopped watching a replay
-                            if manager.replaying && !manager.started {
-                                // go back to beatmap select
-                                let menu = self.menus.get("beatmap").unwrap();
-                                let menu = menu.clone();
-                                self.queue_state_change(GameState::InMenu(menu));
-                            } else {
-                                // show score menu
-                                let mut menu = ScoreMenu::new(&score, manager.metadata.clone());
-                                menu.replay = Some(replay.clone());
-                                self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
-                            }
-                        }
-
+                        self.ingame_complete(manager).await;
                     }
                 }
             }
@@ -858,6 +789,88 @@ impl Game {
             }
         } else {
             err_text_notif!("Replay does not contain score data (too old?)");
+        }
+    }
+
+
+    pub async fn ingame_complete(&mut self, manager: &mut IngameManager) {
+        trace!("beatmap complete");
+        manager.on_complete();
+        manager.score.time = chrono::Utc::now().timestamp() as u64;
+
+        if manager.failed {
+            trace!("player failed");
+            let manager2 = std::mem::take(manager);
+            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true)))));
+            
+        } else {
+            let mut score = manager.score.clone();
+            score.accuracy = calc_acc(&score);
+
+            let mut replay = manager.replay.clone();
+            replay.score_data = Some(score.score.clone());
+
+            // used to indicate user stopped watching a replay
+            if manager.replaying && !manager.started {
+                // go back to beatmap select
+                let menu = self.menus.get("beatmap").unwrap();
+                let menu = menu.clone();
+                self.queue_state_change(GameState::InMenu(menu));
+            } else {
+                // show score menu
+                let mut menu = ScoreMenu::new(&score, manager.metadata.clone());
+                menu.replay = Some(replay.clone());
+                self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+            }
+
+            if manager.should_save_score() {
+                // save score
+                Database::save_score(&score).await;
+                match save_replay(&replay, &score) {
+                    Ok(_)=> trace!("replay saved ok"),
+                    Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
+                }
+
+                // submit score
+                let settings = self.settings.clone();
+                tokio::spawn(async move {
+                    //TODO: do this async
+                    trace!("submitting score");
+
+                    let username = settings.username.clone();
+                    let password = settings.password.clone();
+                    if username.is_empty() || password.is_empty() { 
+                        warn!("no user or pass, not submitting score");
+                        return 
+                    }
+                    let score_submit = ScoreSubmit {
+                        username,
+                        password,
+                        game: "tataku".to_owned(),
+                        replay
+                    };
+
+                    if let Ok(replay_data) = serde_json::to_string(&score_submit) {
+                        let url = format!("{}/score_submit", settings.score_url);
+                        
+                        let c = reqwest::Client::new();
+                        let res = c.post(url)
+                            .body(replay_data)
+                            .send()
+                            .await;
+
+                        match res {
+                            Ok(_isgood) => {
+                                //TODO: do something with the response?
+                                trace!("score submitted successfully");
+                            },
+                            Err(e) => NotificationManager::add_error_notification("error submitting score", format!("{e}")).await,
+                        }
+                    }
+                });
+                
+            }
+
         }
     }
 
