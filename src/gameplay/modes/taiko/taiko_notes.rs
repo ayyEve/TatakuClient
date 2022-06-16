@@ -349,9 +349,11 @@ impl TaikoHitObject for TaikoSlider {
     fn hits_to_complete(&self) -> u32 { ((self.end_time - self.time) / 50.0) as u32 }
 
     fn hit(&mut self, time: f32) -> bool {
+        if time < self.time || time > self.end_time { return false }
+
         self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));
 
-        time > self.time && time < self.end_time
+        true
     }
 
 }
@@ -383,27 +385,28 @@ impl SliderDot {
 
         self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
         
-        if !self.done && (self.pos.x + SLIDER_DOT_RADIUS <= 0.0 || self.pos.y - SLIDER_DOT_RADIUS > Settings::window_size().y) {
+        if !self.done && (self.pos.x + SLIDER_DOT_RADIUS <= 0.0) {
             self.done = true;
         }
     }
     pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
         list.push(Box::new(Circle::new(
             Color::YELLOW,
-            -100.0,
+            -1.0,
             self.pos,
             SLIDER_DOT_RADIUS,
             Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
         )));
         list.push(Box::new(Circle::new(
             BAR_COLOR,
-            0.0,
+            -1.0,
             Vector2::new(self.pos.x, self.settings.hit_position.y),
             SLIDER_DOT_RADIUS,
             None
         )))
     }
 }
+
 
 // spinner
 #[derive(Clone)]
@@ -636,11 +639,6 @@ impl HitCircleImageHelper {
             overlay: overlay.unwrap(),
         })
     }
-
-    // fn set_alpha(&mut self, alpha: f32) {
-    //     self.circle.current_color.a = alpha;
-    //     self.overlay.current_color.a = alpha;
-    // }
 
     fn set_pos(&mut self, pos: Vector2) {
         self.circle.current_pos  = pos;
