@@ -65,7 +65,6 @@ pub use crate::game::audio::fft::*;
 // game and helper imports
 pub use crate::game::*;
 pub use crate::menus::*;
-pub use crate::RetainMut;
 pub use crate::window::*;
 pub use crate::graphics::*;
 pub use crate::game::audio::*;

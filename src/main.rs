@@ -261,16 +261,3 @@ pub fn format_float<T:Display>(num:T, precis: usize) -> String {
     }
     new_new.trim_start_matches(",").to_owned()
 }
-
-// because rust broke the feature somehow
-pub trait RetainMut<T> {
-    fn retain_mut<F>(&mut self, f: F) where F:FnMut(&mut T) -> bool;
-}
-impl<T> RetainMut<T> for Vec<T> {
-    fn retain_mut<F>(&mut self, mut f: F) where F:FnMut(&mut T) -> bool {
-        *self = std::mem::take(self)
-            .into_iter()
-            .filter_map(|mut t| if f(&mut t) {Some(t)} else {None})
-            .collect()
-    }
-}

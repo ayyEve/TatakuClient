@@ -20,10 +20,6 @@ required deps:
 How to build:
  - install rust (https://rustup.rs/)
 
- - add nightly toolchain (required until iter_mut is added to stable)
-   - rustup toolchain add nightly
-   - rustup override set nightly
-
  - build and run
   - cargo run --release
    
@@ -34,6 +30,10 @@ TODO:
  - multiplayer (oh boy lmao)
  - online replays
 
+- // UI
+ - skin folder overhaul (separate ui, gamemodes, etc)
+ - make things not ugly (help ;-;)
+
 - // Audio Engine
  - handle headphones being unplugged (might require a dropdown to select the output device)
 
@@ -43,5 +43,4 @@ TODO:
 
 maybe todo:
  - profiler
- - read osu replays
  - more mods
