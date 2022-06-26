@@ -834,7 +834,6 @@ impl Game {
                 // submit score
                 let settings = self.settings.clone();
                 tokio::spawn(async move {
-                    //TODO: do this async
                     trace!("submitting score");
 
                     let username = settings.username.clone();
@@ -843,26 +842,47 @@ impl Game {
                         warn!("no user or pass, not submitting score");
                         return 
                     }
+
+
+                    let map = match BEATMAP_MANAGER.read().await.beatmaps_by_hash.get(&score.beatmap_hash){
+                        None => { return } // what
+                        Some(map) => map.clone()
+                    };
+                    let game = match &map.beatmap_type {
+                        BeatmapType::Osu => MapGame::Osu,
+                        BeatmapType::Quaver => MapGame::Quaver,
+                        other => MapGame::Other(format!("{other:?}").to_lowercase())
+                    };
+                    let map_info = ScoreMapInfo {
+                        game,
+                        map_hash: score.beatmap_hash.clone(),
+                        playmode: score.playmode.clone(),
+                    };
                     let score_submit = ScoreSubmit {
                         username,
                         password,
                         game: "tataku".to_owned(),
-                        replay
+                        replay,
+                        map_info
                     };
 
                     if let Ok(replay_data) = serde_json::to_string(&score_submit) {
                         let url = format!("{}/score_submit", settings.score_url);
                         
                         let c = reqwest::Client::new();
-                        let res = c.post(url)
+                        let res = c
+                            .post(url)
+                            .header("Content-Type", "application/json")
                             .body(replay_data)
                             .send()
                             .await;
 
                         match res {
-                            Ok(_isgood) => {
-                                //TODO: do something with the response?
+                            Ok(is_good) => {
+                                // TODO: do something with the response?
                                 trace!("score submitted successfully");
+                                let data = is_good.text().await;
+                                info!("{data:?}");
                             },
                             Err(e) => NotificationManager::add_error_notification("error submitting score", format!("{e}")).await,
                         }

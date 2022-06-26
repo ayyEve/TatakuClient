@@ -124,7 +124,11 @@ impl BeatmapManager {
 
         for file in dir_files {
             let file = file.unwrap().path();
-            let file = file.to_str().unwrap();
+        
+            let file = match file.to_str() {
+                Some(f) => f,
+                None => continue,
+            };
 
             if file.ends_with(".osu") 
             || file.ends_with(".qua") 
