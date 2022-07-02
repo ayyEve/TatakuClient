@@ -1,28 +1,7 @@
-use std::path::Path;
 use crate::prelude::*;
-
-const SOUND_LIST:&[&'static str] = &[
-    "resources/audio/combobreak.mp3"
-];
 
 lazy_static::lazy_static!(
     static ref CURRENT_SONG: Arc<Mutex<Option<(String, StreamChannel)>>> = Arc::new(Mutex::new(None));
-
-    static ref PRELOADED_SOUNDS: HashMap<String, SampleChannel> = {
-        let mut sounds:HashMap<String, SampleChannel> = HashMap::new();
-
-        for sound in SOUND_LIST.iter() {
-            let sound_name = Path::new(sound).file_stem().unwrap().to_str().unwrap();
-            trace!("loading audio file {}", sound_name);
-
-            match Audio::load(sound) {
-                Ok(sound) => sounds.insert(sound_name.to_owned(), sound),
-                Err(e) => panic!("error loading sound: {}", e),
-            };
-        }
-
-        sounds
-    };
 
     pub static ref CURRENT_DATA: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
     static ref PLAY_PENDING: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
@@ -147,20 +126,5 @@ impl Audio {
     pub fn load(path: impl AsRef<str>) -> TatakuResult<SampleChannel> {
         let bytes = std::fs::read(path.as_ref())?;
         Ok(SampleChannel::load_from_memory(bytes, 0i32, 32)?)
-    }
-
-
-    pub async fn play_preloaded(name: impl AsRef<str>) -> TatakuResult<Channel> {
-        match PRELOADED_SOUNDS.get(name.as_ref()).clone() {
-            Some(sample) => {
-                let channel = sample.clone().get_channel()?;
-
-                channel.set_volume(get_settings!().get_effect_vol()).unwrap();
-                channel.play(true).expect("Error playing sample");
-
-                Ok(channel)
-            }
-            None => panic!("audio was not preloaded")
-        }
     }
 }

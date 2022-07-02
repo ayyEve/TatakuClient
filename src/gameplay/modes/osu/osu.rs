@@ -562,7 +562,7 @@ impl GameMode for StandardGame {
                         // internally checks distance
                         let judge = &note.check_release_points(time);
 
-                        info!("slider end check: {:?}", judge);
+                        // info!("slider end check: {:?}", judge);
                         manager.add_judgment(judge).await;
                         
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
