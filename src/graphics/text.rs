@@ -69,6 +69,12 @@ impl Text {
         self.initial_pos = rect.current_pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
         self.current_pos = self.initial_pos;
     }
+    pub fn center_text_chain(mut self, rect:[Vector2;2]) -> Self {
+        let text_size = self.measure_text();
+        self.initial_pos = rect[0] + (rect[1] - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
+        self.current_pos = self.initial_pos;
+        self
+    }
 
     pub fn _set_text_colors(&mut self, colors: Vec<Color>) {
         self.text_colors = colors

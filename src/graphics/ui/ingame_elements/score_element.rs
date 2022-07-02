@@ -1,15 +1,38 @@
 use crate::prelude::*;
-
+const PADDING:Vector2 = Vector2::new(3.0, 3.0);
+const WHITE_TEXT:bool = true;
 
 
 pub struct ScoreElement {
-    score_image: Option<SkinnedNumber>,
     score: u64,
+    bounds_size: Vector2,
+    score_image: Option<SkinnedNumber>,
 }
 impl ScoreElement {
     pub async fn new() -> Self {
+        let number:u32 = 1_000_000_000;
+        let mut score_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).await.ok();
+
+        // get the bounds
+        // TODO: make it not rely on this shit
+        let bounds_size = if let Some(im) = &mut score_image {
+            im.number = number as f64; 
+            im.measure_text()
+        } else {
+            Text::new(
+                Color::BLACK,
+                0.0,
+                Vector2::zero(),
+                30,
+                crate::format_number(number),
+                get_font()
+            ).measure_text()
+        };
+
+
         Self {
-            score_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).await.ok(),
+            bounds_size,
+            score_image,
             score: 0
         }
     }
@@ -17,15 +40,9 @@ impl ScoreElement {
 
 impl InnerUIElement for ScoreElement {
     fn get_bounds(&self) -> Rectangle {
-        let size = if let Some(i) = &self.score_image {
-            i.measure_text()
-        } else {
-            Vector2::new(-200.0, 10.0)
-        };
-
         Rectangle::bounds_only(
-            Vector2::x_only(-size.x),
-            size
+            -self.bounds_size.x() - PADDING,
+            self.bounds_size + PADDING * 2.0
         )
     }
 
@@ -40,27 +57,34 @@ impl InnerUIElement for ScoreElement {
             score.number = self.score as f64;
 
             let mut score = score.clone();
-            score.current_pos = pos_offset + Vector2::x_only(-score.measure_text().x);
+            score.current_pos = pos_offset - self.bounds_size.x();
             score.current_scale = scale;
             
             list.push(Box::new(score.clone()));
         } else {
-            let font = get_font();
             
             // score bg
-            let text = Text::new(
-                Color::BLACK,
+            let mut text = Text::new(
+                if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
-                pos_offset - Vector2::new(200.0, 10.0),
-                30 * scale.x as u32,
+                pos_offset - self.bounds_size.x(),
+                30 * scale.y as u32,
                 crate::format_number(self.score),
-                font.clone()
+                get_font()
             );
-            list.push(visibility_bg(
-                text.current_pos,
-                text.measure_text(),
-                1.0
-            ));
+            // space needed to align this to the right
+            let text_size = text.measure_text();
+            let right_align = self.bounds_size.x - text_size.x;
+            // offset text position to account for right alrign
+            text.current_pos.x = pos_offset.x - self.bounds_size.x + right_align;
+
+            if !WHITE_TEXT {
+                list.push(visibility_bg(
+                    text.current_pos - PADDING,
+                    text_size + PADDING * 2.0,
+                    1.0
+                ));
+            }
             
             // score text
             list.push(Box::new(text));
