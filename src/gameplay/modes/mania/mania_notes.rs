@@ -23,7 +23,7 @@ pub struct ManiaNote {
     pos: Vector2,
     relative_y: f64,
     time: f32, // ms
-    // column: u8,
+    column: u8,
     color: Color,
 
     hit_time: f32,
@@ -73,7 +73,7 @@ impl ManiaNote {
             position_function: Arc::new(Vec::new()),
             relative_y: 0.0,
             sv_mult,
-            // column,
+            column,
             color,
 
             hit_time: 0.0,
@@ -159,6 +159,7 @@ impl ManiaHitObject for ManiaNote {
     }
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
+        self.pos.x = self.playfield.col_pos(self.column);
     }
 
     fn get_hitsound(&self) -> (u8, HitSamples) {
@@ -175,7 +176,7 @@ pub struct ManiaHold {
 
     start_relative_pos: f64,
     end_relative_pos: f64,
-    // column: u8,
+    column: u8,
     color: Color,
 
     /// when the user started holding
@@ -259,7 +260,7 @@ impl ManiaHold {
         Self {
             time, 
             end_time,
-            // column,
+            column,
             position_function: Arc::new(Vec::new()),
             position_function_index: 0,
 
@@ -474,6 +475,8 @@ impl ManiaHitObject for ManiaHold {
     
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
+        
+        self.pos.x = self.playfield.col_pos(self.column);
     }
 
     fn get_hitsound(&self) -> (u8, HitSamples) {

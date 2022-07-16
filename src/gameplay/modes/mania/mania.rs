@@ -91,11 +91,10 @@ pub struct ManiaGame {
 }
 impl ManiaGame {
     /// get the x_pos for `col`
+    /// TODO: remove
+    #[inline]
     pub fn col_pos(&self, col:u8) -> f64 {
-        let total_width = self.column_count as f64 * self.playfield.column_width;
-        let x_offset = self.playfield.x_offset + (self.playfield.window_size.x - total_width) / 2.0;
-
-        x_offset + self.playfield.x_offset + (self.playfield.column_width + self.playfield.column_spacing) * col as f64
+        self.playfield.col_pos(col)
     }
 
     pub fn get_color(&self, col:u8) -> Color {
@@ -321,7 +320,7 @@ impl GameMode for ManiaGame {
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -446,7 +445,7 @@ impl GameMode for ManiaGame {
                     }
                 }
 
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -548,7 +547,7 @@ impl GameMode for ManiaGame {
                     }
                 }
 
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -971,7 +970,7 @@ impl GameMode for ManiaGame {
 
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        let playfield = Arc::new(ManiaPlayfield::new(self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), window_size.0));
+        let playfield = Arc::new(ManiaPlayfield::new(self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), window_size.0, self.column_count));
         self.playfield = playfield.clone();
 
         for col in self.columns.iter_mut() {
@@ -1357,12 +1356,14 @@ impl Default for PositionPoint {
 pub struct ManiaPlayfield {
     settings: ManiaPlayfieldSettings,
     pub window_size: Vector2,
+    col_count: u8
 }
 impl ManiaPlayfield {
-    pub fn new(settings: ManiaPlayfieldSettings, window_size: Vector2) -> Self {
+    pub fn new(settings: ManiaPlayfieldSettings, window_size: Vector2, col_count: u8) -> Self {
         Self {
             settings, 
-            window_size
+            window_size,
+            col_count
         }
     }
 
@@ -1372,6 +1373,12 @@ impl ManiaPlayfield {
         } else {
             self.window_size.y - self.hit_pos
         }
+    }
+    pub fn col_pos(&self, col: u8) -> f64 {
+        let total_width = self.col_count as f64 * self.column_width;
+        let x_offset = self.x_offset + (self.window_size.x - total_width) / 2.0;
+
+        x_offset + self.x_offset + (self.column_width + self.column_spacing) * col as f64
     }
 }
 
