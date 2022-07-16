@@ -332,8 +332,8 @@ impl SettingsMenu {
 #[async_trait]
 impl AsyncMenu<Game> for SettingsMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.scroll_area.set_size(Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0));
         self.window_size = window_size;
-        
     }
 
     
