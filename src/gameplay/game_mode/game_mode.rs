@@ -15,6 +15,8 @@ pub trait GameMode: GameModeInput + GameModeInfo + Send + Sync {
     fn pause(&mut self, _manager:&mut IngameManager) {}
     fn unpause(&mut self, _manager:&mut IngameManager) {}
     async fn reset(&mut self, beatmap:&Beatmap);
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {

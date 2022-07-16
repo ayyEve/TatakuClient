@@ -681,6 +681,10 @@ impl GameMode for TaikoGame {
         // }
     }
 
+    
+    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
+        // self.playfield = playfield;
+    }
 }
 
 #[async_trait]

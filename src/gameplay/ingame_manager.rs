@@ -1106,6 +1106,11 @@ impl IngameManager {
         self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", settings.global_offset), time);
     }
 
+    
+    pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.gamemode.window_size_changed(window_size).await
+    }
+
 }
 
 // Spectator Stuff

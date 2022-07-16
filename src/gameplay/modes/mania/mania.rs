@@ -227,7 +227,7 @@ impl GameMode for ManiaGame {
         let game_settings = get_settings!().mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
-        let window_size = WindowSizeHelper::new().await;
+        let window_size = WindowSize::get();
 
         let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
         let mut mania_skin_settings = None;
@@ -739,7 +739,6 @@ impl GameMode for ManiaGame {
 
 
     async fn update(&mut self, manager:&mut IngameManager, time: f32) {
-
         if manager.current_mods.autoplay {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
@@ -927,6 +926,22 @@ impl GameMode for ManiaGame {
             for t in self.timing_bars.iter_mut() {
                 t.reset();
             }
+        }
+    }
+
+    
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        let playfield = Arc::new(ManiaPlayfield::new(self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), window_size.0));
+        self.playfield = playfield.clone();
+
+        for col in self.columns.iter_mut() {
+            for note in col.iter_mut() {
+                note.playfield_changed(playfield.clone());
+            }
+        }
+
+        for timing_bar in self.timing_bars.iter_mut() {
+            timing_bar.playfield_changed(playfield.clone());
         }
     }
 }
@@ -1188,6 +1203,10 @@ impl TimingBar {
 
     fn reset(&mut self) {
         self.position_function_index = 0;
+    }
+    
+    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
+        self.playfield = playfield;
     }
 }
 

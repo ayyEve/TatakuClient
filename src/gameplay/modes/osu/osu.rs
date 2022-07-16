@@ -56,7 +56,6 @@ pub struct StandardGame {
 
     /// cached settings, saves on locking
     game_settings: Arc<StandardSettings>,
-    window_size: WindowSizeHelper,
 
     /// autoplay helper
     auto_helper: StandardAutoHelper,
@@ -65,6 +64,7 @@ pub struct StandardGame {
     new_combos: Vec<usize>,
 
     use_controller_cursor: bool,
+    window_size: Arc<WindowSize>,
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
@@ -151,7 +151,7 @@ impl GameMode for StandardGame {
     async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get().await.clone();
-        let window_size = WindowSizeHelper::new().await;
+        let window_size = WindowSize::get();
         
         let settings = get_settings!().standard_settings.clone();
         let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned(), window_size.0).await);
@@ -504,8 +504,6 @@ impl GameMode for StandardGame {
 
 
     async fn update(&mut self, manager:&mut IngameManager, time:f32) {
-        self.window_size.update();
-
         // do autoplay things
         if manager.current_mods.autoplay {
             let mut pending_frames = Vec::new();
@@ -759,6 +757,11 @@ impl GameMode for StandardGame {
         // }
     }
 
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        self.playfield_changed().await;
+    }
 }
 
 #[async_trait]

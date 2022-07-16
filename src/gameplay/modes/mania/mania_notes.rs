@@ -14,9 +14,7 @@ pub trait ManiaHitObject: HitObject {
 
     fn set_sv_mult(&mut self, sv: f64);
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
-
-    // TODO:
-    // fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
+    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
 }
 
 // note
@@ -149,6 +147,9 @@ impl ManiaHitObject for ManiaNote {
         self.position_function = p;
 
         self.relative_y = pos_at(&self.position_function, self.time, &mut 0);
+    }
+    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
+        self.playfield = playfield;
     }
 }
 
@@ -448,6 +449,10 @@ impl ManiaHitObject for ManiaHold {
 
         self.start_relative_pos = pos_at(&self.position_function, self.time, &mut 0);
         self.end_relative_pos = pos_at(&self.position_function, self.end_time, &mut 0);
+    }
+    
+    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
+        self.playfield = playfield;
     }
 }
 

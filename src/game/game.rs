@@ -341,6 +341,9 @@ impl Game {
         // run update on current state
         match &mut current_state {
             GameState::Ingame(manager) => {
+                if window_size_updated {
+                    manager.window_size_changed((*self.window_size).clone()).await;
+                }
 
                 // pause button, or focus lost, only if not replaying
                 if let Some(got_focus) = window_focus_changed {
