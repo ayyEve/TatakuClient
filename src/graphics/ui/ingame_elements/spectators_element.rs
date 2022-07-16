@@ -34,7 +34,7 @@ impl InnerUIElement for SpectatorsElement {
     }
 
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
-
+        
         // draw spectators
         if self.spectator_cache.len() > 0 {
             const DEPTH:f64 = -1000.0;
@@ -52,7 +52,7 @@ impl InnerUIElement for SpectatorsElement {
                     Color::WHITE, 
                     DEPTH - 0.001, 
                     pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f64) * scale,
-                    (30.0 * scale.x) as u32,
+                    (30.0 * scale.y) as u32,
                     username.clone(),
                     font.clone()
                 )))
