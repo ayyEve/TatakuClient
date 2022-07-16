@@ -90,7 +90,7 @@ pub struct IngameManager {
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: Arc<CommonGameplaySettings>,
     settings: SettingsHelper,
-    window_size: WindowSizeHelper,
+    window_size: Arc<WindowSize>,
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
@@ -185,7 +185,7 @@ impl IngameManager {
             score_list: Vec::new(),
             score_loader,
             settings,
-            window_size: WindowSizeHelper::new().await,
+            window_size: WindowSize::get(),
             // initialize defaults for anything else not specified
             ..Self::default()
         }
@@ -1098,7 +1098,19 @@ impl IngameManager {
 
     
     pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.gamemode.window_size_changed(window_size).await
+        self.window_size = window_size.clone();
+        self.gamemode.window_size_changed(window_size).await;
+
+        // TODO: relocate ui elements properly
+        if let Some(mut editor) = std::mem::take(&mut self.ui_editor) {
+
+            self.init_ui().await;
+            editor.elements = std::mem::take(&mut self.ui_elements);
+            self.ui_editor = Some(editor);
+        } else {
+            self.ui_elements.clear();
+            self.init_ui().await;
+        }
     }
 
 }

@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-//TODO: proper window size
-
-
 lazy_static::lazy_static! {
     static ref PANEL_QUEUE: Arc<(parking_lot::Mutex<MultiFuze<UserPanelEvent>>, Mutex<MultiBomb<UserPanelEvent>>)> = {
         let (fuze, bomb) = MultiBomb::new();
@@ -19,7 +16,8 @@ pub struct UserPanel {
     /// user_id, user
     users: HashMap<u32, PanelUser>,
 
-    should_close: bool
+    should_close: bool,
+    window_size: Arc<WindowSize>
 }
 impl UserPanel {
     pub fn new() -> Self {
@@ -27,6 +25,7 @@ impl UserPanel {
             chat: Chat::new(),
             users: HashMap::new(),
             should_close: false,
+            window_size: WindowSize::get(),
         }
     }
 }
@@ -34,8 +33,7 @@ impl UserPanel {
 #[async_trait]
 impl Dialog<Game> for UserPanel {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        // self.window_size = window_size;
-        
+        self.window_size = window_size;
     }
 
     fn name(&self) -> &'static str {"UserPanel"}
@@ -43,7 +41,7 @@ impl Dialog<Game> for UserPanel {
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             Vector2::zero(), 
-            WindowSize::get().0
+            self.window_size.0
         )
     }
     

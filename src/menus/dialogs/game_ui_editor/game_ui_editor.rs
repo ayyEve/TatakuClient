@@ -45,7 +45,6 @@ impl GameUIEditorDialog {
 impl Dialog<()> for GameUIEditorDialog {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
-        
     }
 
     fn get_bounds(&self) -> Rectangle {

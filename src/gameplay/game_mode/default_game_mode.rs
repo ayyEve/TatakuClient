@@ -15,7 +15,7 @@ impl GameMode for NoMode {
     fn apply_auto(&mut self, _: &BackgroundGameSettings) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     async fn reset(&mut self, _:&Beatmap) {}
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {}
+    async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}
 }
 
 #[async_trait]
