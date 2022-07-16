@@ -34,7 +34,7 @@ impl InnerUIElement for SpectatorsElement {
     }
 
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
-        
+
         // draw spectators
         if self.spectator_cache.len() > 0 {
             const DEPTH:f64 = -1000.0;

@@ -8,13 +8,16 @@ const MODS: &[&[&'static str]] = &[
 pub struct ModDialog {
     should_close: bool,
 
-    buttons: Vec<ModButton>
+    buttons: Vec<ModButton>,
+
+    window_size: Arc<WindowSize>
 }
 impl ModDialog {
     pub async fn new() -> Self {
 
         let mut buttons = Vec::new();
         let mut current_pos = Vector2::new(100.0, 100.0);
+        let window_size = WindowSize::get();
 
         //TODO: properly implement rows
         for m in MODS.iter() {
@@ -28,7 +31,8 @@ impl ModDialog {
 
         Self {
             should_close: false,
-            buttons
+            buttons,
+            window_size
         }
     }
 }
@@ -36,15 +40,14 @@ impl ModDialog {
 #[async_trait]
 impl Dialog<Game> for ModDialog {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        // self.window_size = window_size;
-        
+        self.window_size = window_size;
     }
 
 
     fn name(&self) -> &'static str {"mod_menu"}
     fn should_close(&self) -> bool {self.should_close}
     fn get_bounds(&self) -> Rectangle { 
-        Rectangle::bounds_only(Vector2::zero(), WindowSize::get().0) 
+        Rectangle::bounds_only(Vector2::zero(), self.window_size.0) 
     }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {

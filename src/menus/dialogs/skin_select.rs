@@ -98,7 +98,7 @@ impl Dialog<Game> for SkinSelect {
     }
 
     
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
         
     }
 }

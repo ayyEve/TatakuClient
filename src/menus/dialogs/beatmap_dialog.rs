@@ -51,7 +51,7 @@ impl BeatmapDialog {
 impl Dialog<Game> for BeatmapDialog {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         // self.window_size = window_size;
-        
+        self.bounds.size = window_size.0;
     }
 
     fn get_bounds(&self) -> Rectangle {
