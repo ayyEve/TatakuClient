@@ -100,11 +100,19 @@ impl MainMenu {
     }
 
     fn show_menu(&mut self) {
-        self.play_button.show(0, 4);
-        self.direct_button.show(1, 4);
-        self.settings_button.show(2, 4);
-        self.exit_button.show(3, 4);
         self.menu_visible = true;
+
+        // ensure they have the latest window size
+        self.play_button.window_size = self.window_size.0;
+        self.direct_button.window_size = self.window_size.0;
+        self.settings_button.window_size = self.window_size.0;
+        self.exit_button.window_size = self.window_size.0;
+
+        // show
+        self.play_button.show(0, 4, true);
+        self.direct_button.show(1, 4, true);
+        self.settings_button.show(2, 4, true);
+        self.exit_button.show(3, 4, true);
     }
 
     fn interactables(&mut self, include_buttons: bool) -> Vec<&mut dyn ScrollableItem> {
@@ -150,6 +158,10 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn on_change(&mut self, into:bool) {
         if into {
+
+            // update our window size
+            self.window_size_changed(WindowSize::get()).await;
+
             self.visualization.reset();
 
             // play song if it exists
@@ -383,8 +395,13 @@ impl AsyncMenu<Game> for MainMenu {
 
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
+        self.play_button.window_size_changed(&window_size);
+        self.direct_button.window_size_changed(&window_size);
+        self.settings_button.window_size_changed(&window_size);
+        self.exit_button.window_size_changed(&window_size);
 
+        self.window_size = window_size;
+        self.music_box = MusicBox::new().await;
     }
 }
 #[async_trait]

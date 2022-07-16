@@ -79,6 +79,7 @@ impl BeatmapSelectMenu {
             font.clone()
         );
 
+
         let mut beatmap_scroll = ScrollableArea::new(
             Vector2::new(window_size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT), 
             Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), 
@@ -86,7 +87,7 @@ impl BeatmapSelectMenu {
         );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
 
-        BeatmapSelectMenu {
+        let mut m = BeatmapSelectMenu {
             no_maps_notif_sent: false,
 
             // mouse_down: false,
@@ -112,8 +113,12 @@ impl BeatmapSelectMenu {
 
             mouse_down: None,
             // diff_calc_start_helper: MultiBomb::new()
-            window_size,
-        }
+            window_size: window_size.clone(),
+        };
+
+        // reposition things
+        m.window_size_changed(window_size).await;
+        m
     }
 
     async fn set_selected_mode(&mut self, new_mode: PlayMode) {
@@ -382,7 +387,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         let size = self.window_size.0;
 
         
-        self.beatmap_scroll.set_pos(Vector2::new(size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT));
+        self.beatmap_scroll.set_pos(Vector2::new(size.x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT), INFO_BAR_HEIGHT));
         self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x, size.y - INFO_BAR_HEIGHT));
         self.beatmap_scroll.window_size_changed(size);
 
@@ -643,7 +648,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     }
 
     async fn on_change(&mut self, into:bool) {
-        if !into {return}
+        if !into { return }
+        
+        // update our window size
+        self.window_size_changed(WindowSize::get()).await;
 
         OnlineManager::send_spec_frames(vec![(0.0, SpectatorFrameData::ChangingMap)], true);
 

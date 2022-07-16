@@ -14,7 +14,10 @@ pub struct MainMenuButton {
     pub visible: bool,
     timer: Instant,
 
-    window_size: Vector2,
+    pub window_size: Vector2,
+
+    last_num: usize,
+    last_count: usize,
 }
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
@@ -35,15 +38,21 @@ impl MainMenuButton {
             visible: true,
             timer: Instant::now(),
 
-            window_size
+            window_size,
+
+            last_num: 0,
+            last_count: 0,
         }
     }
 
     /// num: this button number, count: number of buttons
-    pub fn show(&mut self, num: usize, count: usize) {
-        if self.visible {return}
-        self.visible = true;
+    pub fn show(&mut self, num: usize, count: usize, do_transform: bool) {
+        if self.visible { return }
+
         let time = self.time();
+        self.visible = true;
+        self.last_num = num;
+        self.last_count = count;
 
 
         const X_OFFSET:f64 = 10.0;
@@ -54,13 +63,12 @@ impl MainMenuButton {
 
         let height = self.size.y;
         let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f64) * (num + ITEM_PADDING) as f64 - PI / 2.0;
-
-
         let end = center + Vector2::new(
             angle.cos() * radius,
             angle.sin() * radius,
         ) - Vector2::new(0.0, height / 2.0);
 
+        let duration = if do_transform { 500.0 } else { 1.0 };
         let start = Vector2::new(
             center.x,
             end.y
@@ -68,15 +76,13 @@ impl MainMenuButton {
 
         let t1 = Transformation::new(
             0.0,
-            500.0,
+            duration,
             TransformType::Position {start, end},
             TransformEasing::Linear,
             time
         );
 
-
-
-
+        
         // let transform = Transformation::new(
         //     0.0,
         //     500.0,
@@ -105,16 +111,27 @@ impl MainMenuButton {
         // self.shapes.transforms.push(transform);
         // self.shapes.transforms.push(transform2);
         // self.shapes.transforms.push(transform3);
+
         for i in self.disposable_shapes.iter_mut() {
             i.transforms.push(t1);
             // i.transforms.push(transform);
             // i.transforms.push(transform2);
             // i.transforms.push(transform3);
         }
+
     }
 
     pub fn time(&self) -> f64 {
         self.timer.elapsed().as_secs_f64() * 1000.0
+    }
+
+    pub fn window_size_changed(&mut self, window_size: &Arc<WindowSize>) {
+        self.window_size = window_size.0;
+
+        if self.visible {
+            self.visible = false;
+            self.show(self.last_num, self.last_count, false);
+        }
     }
 }
 impl ScrollableItemGettersSetters for MainMenuButton {

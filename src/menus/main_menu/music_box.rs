@@ -35,9 +35,6 @@ pub struct MusicBox {
 
     next_pending: AtomicBool,
     prev_pending: AtomicBool,
-
-    
-    window_size: Arc<WindowSize>,
 }
 impl MusicBox {
     pub async fn new() -> Self {
@@ -96,7 +93,6 @@ impl MusicBox {
 
             next_pending: AtomicBool::new(false),
             prev_pending: AtomicBool::new(false),
-            window_size
         }
     }
     pub fn get_next_pending(&self) -> bool {
