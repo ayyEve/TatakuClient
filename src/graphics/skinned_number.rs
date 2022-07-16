@@ -140,7 +140,7 @@ impl SkinnedNumber {
 
         for c in s.chars() {
             if let Some(t) = self.get_char_tex(c) {
-                let t = t.size();
+                let t = t.size() * self.current_scale;
                 width += t.x;
                 max_height = max_height.max(t.y)
             }
@@ -176,6 +176,7 @@ impl Renderable for SkinnedNumber {
             if let Some(t) = self.get_char_tex(c) {
                 let mut t = t.clone();
                 t.current_pos = current_pos;
+                t.current_scale = self.current_scale;
                 current_pos.x += t.size().x;
 
                 t.draw(g, context);

@@ -57,8 +57,12 @@ impl InnerUIElement for ScoreElement {
             score.number = self.score as f64;
 
             let mut score = score.clone();
-            score.current_pos = pos_offset - self.bounds_size.x();
             score.current_scale = scale;
+
+            let size = score.measure_text();
+
+            // TODO: right align
+            score.current_pos = pos_offset-self.bounds_size.x() + ((self.bounds_size * scale).x() - size.x());
             
             list.push(Box::new(score.clone()));
         } else {

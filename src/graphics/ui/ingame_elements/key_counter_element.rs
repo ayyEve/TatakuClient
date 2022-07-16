@@ -56,9 +56,9 @@ impl InnerUIElement for KeyCounterElement {
         // } else {
         //     BOX_SIZE
         // };
-        let pad = BOX_SIZE;
+        let box_size = BOX_SIZE * scale;
         
-        let base_pos = pos_offset - pad;
+        let base_pos = pos_offset - BOX_SIZE;
 
         // if let Some(bg) = &self.background_image {
         //     let mut bg = bg.clone();
@@ -69,12 +69,12 @@ impl InnerUIElement for KeyCounterElement {
         //TODO: center properly somehow
         for i in 0..self.counter.key_order.len() {
             let info = &self.counter.keys[&self.counter.key_order[i]];
-            let pos = base_pos + Vector2::new(0.0, pad.y * i as f64);
+            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f64);
             let box_width;
 
             if let Some(btn) = &self.button_image {
                 let mut btn = btn.clone();
-                btn.current_pos = pos + pad / 2.0;
+                btn.current_pos = pos + box_size / 2.0;
                 btn.current_scale = scale;
                 if info.held {
                     btn.current_scale = Vector2::new(1.1, 1.1) * scale;
@@ -115,7 +115,7 @@ impl InnerUIElement for KeyCounterElement {
                 text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
             }
 
-            text.center_text(Rectangle::bounds_only(pos, BOX_SIZE));
+            text.center_text(Rectangle::bounds_only(pos, box_size));
             list.push(Box::new(text));
         }
 

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 impl Database {
-    pub async fn save_info(pos: Vector2, scale: Vector2, visible: bool, name: &String) {
+    pub async fn save_element_info(pos: Vector2, scale: Vector2, visible: bool, name: &String) {
         let db = Self::get().await;
 
         let sql = format!("
@@ -35,7 +35,7 @@ impl Database {
         }
     }
 
-    pub async fn get_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
+    pub async fn get_element_info(name: &String) -> Option<(Vector2, Vector2, bool)> {
         let sql = format!("SELECT pos_x, pos_y, scale_x, scale_y, visible FROM ui_elements WHERE name='{name}'");
 
         let db = Self::get().await;
@@ -57,4 +57,16 @@ impl Database {
             None
         }
     }
+
+    
+    pub async fn clear_element_info(name: &String) {
+        let db = Self::get().await;
+        let sql = format!("DELETE FROM ui_elements WHERE name='{name}'");
+        
+        let mut s = db.prepare(&sql).unwrap();
+        if let Err(e) = s.execute([]) {
+            error!("Error inserting/updateing ui_elements table: {e}")
+        }
+    }
+
 }

@@ -1103,7 +1103,6 @@ impl IngameManager {
 
         // TODO: relocate ui elements properly
         if let Some(mut editor) = std::mem::take(&mut self.ui_editor) {
-
             self.init_ui().await;
             editor.elements = std::mem::take(&mut self.ui_elements);
             self.ui_editor = Some(editor);

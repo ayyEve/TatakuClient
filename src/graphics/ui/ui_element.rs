@@ -17,7 +17,7 @@ impl UIElement {
         let mut scale = Vector2::one();
         let mut visible = true;
         
-        if let Some((pos, scale2, visible2)) = Database::get_info(&element_name).await {
+        if let Some((pos, scale2, visible2)) = Database::get_element_info(&element_name).await {
             pos_offset = pos;
             scale = scale2;
             visible = visible2;
@@ -54,7 +54,11 @@ impl UIElement {
     }
 
     pub async fn save(&self) {
-        Database::save_info(self.pos_offset, self.scale, self.visible, &self.element_name).await;
+        Database::save_element_info(self.pos_offset, self.scale, self.visible, &self.element_name).await;
+    }
+
+    pub async fn clear_save(&self) {
+        Database::clear_element_info(&self.element_name).await;
     }
 
     pub fn reset_element(&mut self) {

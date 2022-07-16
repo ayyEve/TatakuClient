@@ -1,4 +1,5 @@
 use crate::prelude::*;
+const PAIN:bool = true;
 
 pub struct GameUIEditorDialog {
     pub should_close: bool,
@@ -95,22 +96,28 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut ()) -> bool {
+    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut ()) -> bool {
 
-        // TODO: fix scaling
-        // if let Some((index, _, _)) = self.mouse_down {
-        //     let ele = &mut self.elements[index];
-            
-        //     ele.scale += Vector2::one() * *delta;
-            
-        //     if ele.scale.x.abs() < 0.01 {ele.scale.x = 1.0}
-        //     if ele.scale.y.abs() < 0.01 {ele.scale.y = 1.0}
-        // } else if let Some((_, ele)) = self.find_ele_under_mouse() {
-        //     ele.scale += Vector2::one() * *delta;
-            
-        //     if ele.scale.x.abs() < 0.01 {ele.scale.x = 1.0}
-        //     if ele.scale.y.abs() < 0.01 {ele.scale.y = 1.0}
-        // }
+        if PAIN {
+
+            let delta = (*delta) / 5.0;
+
+            // TODO: fix scaling
+            if let Some((index, _, _)) = self.mouse_down {
+                let ele = &mut self.elements[index];
+                
+                ele.scale += Vector2::one() * delta;
+                
+                if ele.scale.x.abs() < 0.01 { ele.scale.x = 1.0 }
+                if ele.scale.y.abs() < 0.01 { ele.scale.y = 1.0 }
+            } else if let Some((_, ele)) = self.find_ele_under_mouse() {
+                ele.scale += Vector2::one() * delta;
+                
+                if ele.scale.x.abs() < 0.01 { ele.scale.x = 1.0 }
+                if ele.scale.y.abs() < 0.01 { ele.scale.y = 1.0 }
+            }
+        }
+
 
         true
     }
@@ -121,7 +128,7 @@ impl Dialog<()> for GameUIEditorDialog {
                 if let Some((_, ele)) = self.find_ele_under_mouse() {
                     ele.pos_offset = ele.default_pos;
                     ele.scale = Vector2::one();
-                    ele.save().await;
+                    ele.clear_save().await;
                 }
             }
         }

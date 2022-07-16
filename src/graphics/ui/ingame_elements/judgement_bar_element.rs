@@ -61,40 +61,44 @@ impl InnerUIElement for JudgementBarElement {
         //     HIT_TIMING_BAR_SIZE * scale,
         //     None // for now
         // )));
+        let timing_bar_size = HIT_TIMING_BAR_SIZE * scale;
+
+        // since the calcs scale the x, but the x pos does not actually scale, we need to offset it
+        let x_offset = Vector2::x_only(timing_bar_size.x - HIT_TIMING_BAR_SIZE.x) / 2.0;
+        let pos_offset = pos_offset + x_offset;
         
         // draw other hit windows
         for (window, color) in &self.judgment_colors {
-            let width = (window / self.miss_window) as f64 * HIT_TIMING_BAR_SIZE.x;
+            let width = (window / self.miss_window) as f64 * timing_bar_size.x;
+            
             list.push(Box::new(Rectangle::new(
                 *color,
                 17.0,
                 pos_offset + Vector2::new(-width/2.0, HIT_TIMING_BAR_POS.y),
-                Vector2::new(width, HIT_TIMING_BAR_SIZE.y) * scale,
+                Vector2::new(width, timing_bar_size.y),
                 None // for now
             )));
         }
         
         // draw hit timings
         for &(hit_time, mut diff) in self.hitbar_timings.iter() {
-            if diff < 0.0 {
-                diff = diff.max(-self.miss_window);
-            } else {
-                diff = diff.min(self.miss_window);
-            }
+            diff = if diff < 0.0 { diff.max(-self.miss_window) } else { diff.min(self.miss_window) };
 
-            let pos = (diff / self.miss_window) as f64 * (HIT_TIMING_BAR_SIZE.x / 2.0);
+            let pos = (diff / self.miss_window) as f64 * (timing_bar_size.x / 2.0);
+            // let pos = (diff / self.miss_window) as f64 * (HIT_TIMING_BAR_SIZE.x / 2.0);
+
 
             // draw diff line
             let diff = self.game_time - hit_time;
             let alpha = if diff > HIT_TIMING_DURATION - HIT_TIMING_FADE {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
-            } else {1.0};
+            } else { 1.0 };
 
             list.push(Box::new(Rectangle::new(
                 HIT_TIMING_BAR_COLOR.alpha(alpha),
                 10.0,
                 pos_offset + Vector2::new(pos, HIT_TIMING_BAR_POS.y),
-                Vector2::new(2.0, HIT_TIMING_BAR_SIZE.y) * scale,
+                Vector2::new(2.0, timing_bar_size.y),
                 None // for now
             )));
         }

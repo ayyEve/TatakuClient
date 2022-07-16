@@ -50,45 +50,23 @@ impl InnerUIElement for JudgementCounterElement {
                 self.colors.insert(txt.to_owned(), judge.color());
             }
         }
-
-        // let playmode = manager.gamemode.playmode();
-        // for (txt, count) in score.judgments.iter() {
-        //     if txt.is_empty() {continue}
-
-        //     self.hit_counts.push((txt.clone(), *count as u32));
-        // }
-
-        // for (hit_type, count) in [
-        //     (ScoreHit::Miss, score.xmiss),
-        //     (ScoreHit::X50, score.x50),
-        //     (ScoreHit::X100, score.x100),
-        //     (ScoreHit::Xkatu, score.xkatu),
-        //     (ScoreHit::X300, score.x300),
-        //     (ScoreHit::Xgeki, score.xgeki),
-        // ] {
-        //     let txt = get_score_hit_string(&playmode, &hit_type);
-        //     if txt.is_empty() {continue}
-
-        //     self.hit_counts.push((txt, count as u32));
-        // }
-
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
         let font = get_font();
-        let pad = BOX_SIZE;
+        let box_size = BOX_SIZE * scale;
         
-        let base_pos = pos_offset - pad;
+        let base_pos = pos_offset - BOX_SIZE;
 
         for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
-            let pos = base_pos + Vector2::new(0.0, pad.y * i as f64);
+            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f64);
             let box_width;
 
-            if let Some(btn) = &self.button_image {
-                let mut btn = btn.clone();
-                btn.current_pos = pos + pad / 2.0;
+            if let Some(mut btn) = self.button_image.clone() {
+                btn.current_pos = pos + box_size / 2.0;
                 btn.current_scale = scale;
                 box_width = btn.size().x * scale.x;
+
                 if let Some(&color) = self.colors.get(txt) {
                     btn.current_color = color;
                 }
@@ -112,7 +90,7 @@ impl InnerUIElement for JudgementCounterElement {
                 Color::WHITE,
                 -100.1,
                 pos,
-                (20.0 * scale.x) as u32,
+                (20.0 * scale.y) as u32,
                 if count == &0 {txt.clone()} else {format!("{}", count)},
                 font.clone()
             );
@@ -121,7 +99,7 @@ impl InnerUIElement for JudgementCounterElement {
             if text_size.x >= max_width {
                 text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
             }
-            text.center_text(Rectangle::bounds_only(pos, BOX_SIZE));
+            text.center_text(Rectangle::bounds_only(pos, box_size));
 
             list.push(Box::new(text));
         }
