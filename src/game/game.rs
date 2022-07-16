@@ -81,11 +81,9 @@ impl Game {
             game_event_receiver,
             render_queue_sender,
         };
-        // game_init_benchmark.log("game created", true);
 
         CursorManager::init();
         g.init().await;
-        // game_init_benchmark.log("game initialized", true);
 
         g
     }
@@ -166,11 +164,11 @@ impl Game {
                     }
                 }
             }
+            let now = Instant::now();
 
-            let update_now = Instant::now();
-            let update_elapsed = update_now.duration_since(update_timer).as_secs_f64();
+            let update_elapsed = now.duration_since(update_timer).as_secs_f64();
             if update_elapsed >= update_target {
-                update_timer = update_now;
+                update_timer = now;
                 self.update(update_elapsed).await;
             }
 
@@ -180,7 +178,6 @@ impl Game {
             }
 
             const RENDER_DAMPENING_FACTOR:f64 = 0.9;
-            let now = Instant::now();
             let elapsed = now.duration_since(draw_timer).as_secs_f64();
             if elapsed + last_draw_offset >= render_rate {
                 draw_timer = now;

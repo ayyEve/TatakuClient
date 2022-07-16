@@ -22,7 +22,6 @@ macro_rules! get_settings_mut {
     }}
 }
 
-
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -56,6 +55,10 @@ pub struct Settings {
     pub fps_target: u64,
     pub update_target: u64,
     pub window_size: [f64; 2],
+    pub ui_scale: f64,
+    pub background_dim: f32,
+    /// should the game pause when focus is lost?
+    pub pause_on_focus_lost: bool,
 
     // cursor
     pub cursor_color: String,
@@ -63,12 +66,6 @@ pub struct Settings {
     pub cursor_border: f32,
     pub cursor_border_color: String,
     
-
-    // bg
-    pub background_dim: f32,
-    /// should the game pause when focus is lost?
-    pub pause_on_focus_lost: bool,
-
 
     // misc keybinds
     pub key_user_panel: Key,
@@ -82,17 +79,9 @@ pub struct Settings {
 }
 impl Settings {
     pub async fn load() -> Settings {
-        let mut s = match std::fs::read_to_string(SETTINGS_FILE) {
-            Ok(b) => match serde_json::from_str(&b) {
-                Ok(settings) => settings,
-                Err(e) => {
-                    // warn!("error reading settings.json, loading defaults");
-                    NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
-                    backup_settings().await;
-                    Settings::default()
-                }
-            }
-            Err(e) => {
+        let mut s = match std::fs::read_to_string(SETTINGS_FILE).map(|s| serde_json::from_str(&s).map_err(|e|e.to_string())).map_err(|e|e.to_string()) {
+            Ok(Ok(settings)) => settings,
+            Err(e) | Ok(Err(e)) => {
                 // warn!("error reading settings.json, loading defaults");
                 NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
                 backup_settings().await;
@@ -175,6 +164,7 @@ impl Default for Settings {
             fps_target: 144,
             update_target: 10000,
             window_size: [1280.0, 720.0],
+            ui_scale: 1.0,
             background_dim: 0.8,
 
             // cursor

@@ -7,60 +7,17 @@ lazy_static::lazy_static! {
         let (f, b) = MultiBomb::new();
         (Arc::new(parking_lot::Mutex::new(f)), b)
     };
+    
+    static ref WINDOW_SIZE_CHECK: (Arc<parking_lot::Mutex<MultiFuze<Arc<WindowSize>>>>, MultiBomb<Arc<WindowSize>>) = {
+        let (f, b) = MultiBomb::new();
+        (Arc::new(parking_lot::Mutex::new(f)), b)
+    };
 }
-
-
-pub struct SettingsHelper {
-    /// cached settings
-    settings: Arc<Settings>,
-
-    /// what checks for new settings updates
-    settings_bomb: MultiBomb<Arc<Settings>>,
-}
-impl SettingsHelper {
-    pub async fn new() -> Self {
-        let settings = get_settings!();
-        Self {
-            settings: Arc::new(settings.clone()),
-            settings_bomb: SETTINGS_CHECK.1.clone(),
-        }
-    }
-
-    pub fn update(&mut self) -> bool {
-        let mut changed = false;
-        // while to get the most up-to-date settings
-        while let Some(settings) = self.settings_bomb.exploded() {
-            self.settings = settings;
-            changed |= true;
-        }
-        changed
-    }
-}
-impl Deref for SettingsHelper {
-    type Target = Arc<Settings>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.settings
-    }
-}
-
-impl Default for SettingsHelper {
-    fn default() -> Self {
-        Self { 
-            settings: Arc::new(Settings::default()), 
-            settings_bomb: SETTINGS_CHECK.1.clone() 
-        }
-    }
-}
-
-
-
 
 /// helper so when a mutable reference to settings is dropped, it sends out an update with the new info
 pub struct MutSettingsHelper<'a> {
     guard: RwLockWriteGuard<'a, Settings>
 }
-
 impl<'a> MutSettingsHelper<'a> {
     pub fn new(guard:RwLockWriteGuard<'a, Settings>) -> Self {
         Self {
@@ -68,8 +25,7 @@ impl<'a> MutSettingsHelper<'a> {
         }
     }
 }
-
-impl<'a> std::ops::Deref for MutSettingsHelper<'a> {
+impl<'a> Deref for MutSettingsHelper<'a> {
     type Target = RwLockWriteGuard<'a, Settings>;
 
     fn deref(&self) -> &Self::Target {
@@ -81,12 +37,49 @@ impl<'a> DerefMut for MutSettingsHelper<'a> {
         &mut self.guard
     }
 }
-
 impl<'a> Drop for MutSettingsHelper<'a> {
     fn drop(&mut self) {
         info!("mut settings dropped");
         // assume something was changed for now
         let a = Arc::new(self.guard.clone());
         SETTINGS_CHECK.0.lock().ignite(a);
+    }
+}
+
+
+// settings helper
+pub type SettingsHelper = EventHandler<Settings>;
+impl EventHandlerInit for Settings {
+    fn get_receiver() -> MultiBomb<Arc<Self>> {
+        SETTINGS_CHECK.1.clone() 
+    }
+}
+#[async_trait]
+impl EventHandlerInitial for Settings {
+    async fn get_initial() -> Arc<Self> {
+        Arc::new(get_settings!().clone())
+    }
+}
+
+
+// window size helper
+pub type WindowSizeHelper = EventHandler<WindowSize>;
+pub struct WindowSize(Vector2);
+impl Deref for WindowSize {
+    type Target = Vector2;
+    
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl EventHandlerInit for WindowSize {
+    fn get_receiver() -> MultiBomb<Arc<Self>> {
+        WINDOW_SIZE_CHECK.1.clone() 
+    }
+}
+#[async_trait]
+impl EventHandlerInitial for WindowSize {
+    async fn get_initial() -> Arc<Self> {
+        Arc::new(WindowSize(get_settings!().window_size.into()))
     }
 }

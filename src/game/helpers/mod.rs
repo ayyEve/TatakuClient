@@ -10,9 +10,11 @@ pub mod curve;
 pub mod crypto;
 pub mod key_counter;
 pub mod score_helper;
+pub mod event_handler;
 pub mod centered_text_helper;
 
 pub use fps_display::*;
+pub use event_handler::*;
 pub use volume_control::*;
 pub use benchmark_helper::*;
 
