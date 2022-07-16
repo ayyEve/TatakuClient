@@ -32,11 +32,10 @@ pub struct IngameManager {
 
     pub score: IngameScore,
     pub replay: Replay,
+
     pub health: HealthHelper,
     pub judgment_type: Box<dyn HitJudgments>,
-
     pub key_counter: KeyCounter,
-
     ui_elements: Vec<UIElement>,
 
     pub score_list: Vec<IngameScore>,
@@ -71,19 +70,13 @@ pub struct IngameManager {
 
     #[cfg(feature="bass_audio")]
     pub song: StreamChannel,
-    // #[cfg(feature="bass_audio")]
-    // pub hitsound_cache: HashMap<String, Option<SampleChannel>>,
-
     #[cfg(feature="neb_audio")] 
     pub song: Weak<AudioHandle>,
-    // #[cfg(feature="neb_audio")] 
-    // pub hitsound_cache: HashMap<String, Option<Sound>>,
 
     pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
     pub center_text_helper: CenteredTextHelper,
-
 
     /// (map.time, note.time - hit.time)
     pub hitbar_timings: Vec<(f32, f32)>,
@@ -101,7 +94,6 @@ pub struct IngameManager {
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
-
     /// when was the last score sync packet sent?
     last_spectator_score_sync: f32,
     pub spectator_cache: Vec<(u32, String)>,
@@ -865,16 +857,14 @@ impl IngameManager {
     }
 
     pub async fn combo_break(&mut self) {
-        // reset combo to 0
-        self.score.combo = 0;
-        
         // play hitsound
         if self.score.combo >= 20 && !self.menu_background {
-            #[cfg(feature="bass_audio")]
-            Audio::play_preloaded("combobreak").await.unwrap();
-            #[cfg(feature="neb_audio")]
-            Audio::play_preloaded("combobreak");
+            // index of 1 because we want to try beatmap sounds
+            self.hitsound_manager.play_sound_single(&"combobreak".to_owned(), 1, self.settings.get_effect_vol());
         }
+
+        // reset combo to 0
+        self.score.combo = 0;
     }
 
     // TODO: implement this properly, gamemode will probably have to handle some things too

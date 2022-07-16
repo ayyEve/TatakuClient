@@ -1,5 +1,4 @@
 use crate::prelude::*;
-
 use super::mania::PositionPoint;
 use super::mania::ManiaPlayfield;
 
@@ -10,11 +9,12 @@ pub trait ManiaHitObject: HitObject {
     fn hit(&mut self, time:f32);
     fn release(&mut self, _time:f32) {}
     fn miss(&mut self, time:f32);
-    fn was_hit(&self) -> bool {false}
+    fn was_hit(&self) -> bool { false }
 
     fn set_sv_mult(&mut self, sv: f64);
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
+    fn get_hitsound(&self) -> (u8, HitSamples);
 }
 
 // note
@@ -36,8 +36,11 @@ pub struct ManiaNote {
     sv_mult: f64,
 
     playfield: Arc<ManiaPlayfield>,
-
     note_image: Option<Image>,
+
+
+    hitsound: u8,
+    hitsamples: HitSamples,
 }
 impl ManiaNote {
     pub async fn new(
@@ -45,7 +48,10 @@ impl ManiaNote {
         
         sv_mult: f64,
 
-        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+
+        hitsound: u8,
+        hitsamples: HitSamples,
     ) -> Self {
         let mut note_image = None;
         if let Some(settings) = &mania_skin_settings {
@@ -73,11 +79,14 @@ impl ManiaNote {
             hit_time: 0.0,
             hit: false,
             missed: false,
-            pos: Vector2::new(x, 0.0),
+            pos: Vector2::x_only(x),
 
             playfield,
             note_image,
-            position_function_index: 0
+            position_function_index: 0,
+
+            hitsound,
+            hitsamples
         }
     }
 
@@ -89,7 +98,7 @@ impl ManiaNote {
 }
 #[async_trait]
 impl HitObject for ManiaNote {
-    fn note_type(&self) -> NoteType {NoteType::Note}
+    fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
 
@@ -151,6 +160,10 @@ impl ManiaHitObject for ManiaNote {
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
     }
+
+    fn get_hitsound(&self) -> (u8, HitSamples) {
+        (self.hitsound, self.hitsamples.clone())
+    }
 }
 
 // slider
@@ -183,6 +196,9 @@ pub struct ManiaHold {
     end_image: Option<Image>,
     middle_image: Option<Image>,
 
+
+    hitsound: u8,
+    hitsamples: HitSamples,
 }
 impl ManiaHold {
     pub async fn new(
@@ -190,7 +206,10 @@ impl ManiaHold {
         
         sv_mult: f64,
         
-        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
+
+        hitsound: u8,
+        hitsamples: HitSamples,
     ) -> Self {
         let mut start_image = None;
         if let Some(settings) = &mania_skin_settings {
@@ -238,7 +257,6 @@ impl ManiaHold {
         }
 
         Self {
-            
             time, 
             end_time,
             // column,
@@ -260,6 +278,9 @@ impl ManiaHold {
             start_image,
             end_image,
             middle_image,
+
+            hitsound,
+            hitsamples,
         }
     }
 
@@ -453,6 +474,10 @@ impl ManiaHitObject for ManiaHold {
     
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
+    }
+
+    fn get_hitsound(&self) -> (u8, HitSamples) {
+        (self.hitsound, self.hitsamples.clone())
     }
 }
 

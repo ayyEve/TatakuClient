@@ -342,10 +342,24 @@ pub trait VectorHelpers {
     }
 
     fn distance(&self, v2: Vector2) -> f64;
+
+    fn x(self) -> Vector2;
+    fn y(self) -> Vector2;
 }
 impl VectorHelpers for Vector2 {
     fn distance(&self, v2: Vector2) -> f64 {
         distance(*self, v2)
+    }
+
+    // get only this vector's x value
+    fn x(mut self) -> Vector2 {
+        self.y = 0.0;
+        self
+    }
+    // get only this vector's y value
+    fn y(mut self) -> Vector2 {
+        self.x = 0.0;
+        self
     }
 }
 

@@ -797,7 +797,7 @@ impl HitObject for StandardSlider {
             addition_set: 0,
             index: 0,
             volume: 0,
-            filename: Some(format!("{}-slidertick.wav", SAMPLE_SETS[hitsamples.addition_set as usize]))
+            filename: Some(format!("{}-slidertick", SAMPLE_SETS[hitsamples.addition_set as usize]))
         };
 
         let mut dots = std::mem::take(&mut self.hit_dots);

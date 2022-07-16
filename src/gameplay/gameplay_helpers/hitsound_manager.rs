@@ -1,10 +1,25 @@
 use crate::prelude::*;
 
-async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut HashMap<String, SampleChannel>) {
-    match Audio::load(path.as_ref()) {
-        Ok(sound) => { sounds_list.insert(filename, sound); },
-        Err(e) => NotificationManager::add_error_notification(&format!("Error loading sound {}", path.as_ref()), e).await,
+async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut HashMap<String, SampleChannel>) -> bool {
+    let path = path.as_ref();
+
+    for ext in &["wav", "mp3"] {
+        let path2 = format!("{path}.{ext}");
+        if !Path::new(&path2).exists() { continue }
+
+        match Audio::load(path2) {
+            Ok(sound) => {
+                // filename without extention
+                // let filename = Path::new(&filename).file_stem().unwrap().to_string_lossy().to_string();
+                // info!("inserting {filename}");
+                sounds_list.insert(filename, sound); 
+                return true
+            },
+            Err(e) => NotificationManager::add_error_notification(&format!("Error loading sound {}", path), e).await,
+        }
     }
+
+    false
 }
 
 pub struct HitsoundManager {
@@ -24,7 +39,6 @@ impl HitsoundManager {
         let map_folder = Path::new(&beatmap.file_path).parent().unwrap();
         let map_files = map_folder.read_dir().unwrap();
 
-
         // load beatmap sounds first
         let mut beatmap_sounds = HashMap::new();
         for file in map_files {
@@ -37,60 +51,64 @@ impl HitsoundManager {
         }
 
         // skin and default sounds
-        let mut skin_sounds = HashMap::new();
-        let mut default_sounds = HashMap::new();
+        self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
+        self.sounds.insert(HitsoundSource::Skin, HashMap::new());
+        self.sounds.insert(HitsoundSource::Default, HashMap::new());
 
 
         let skin = get_settings!().current_skin.clone();
         let skin_folder = format!("{SKIN_FOLDER}/{skin}");
         const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
-        const HITSOUNDS:&[&str] = &["normal", "whistle", "finish", "clap"];
-
+        const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];
+        
         for sample in SAMPLE_SETS {
             for hitsound in HITSOUNDS {
-                let filename = format!("{sample}-hit{hitsound}.wav");
-
-                // skin
-                let skin_filepath = format!("{skin_folder}/{filename}");
-                let skin_file = Path::new(&skin_filepath);
-                if skin_file.exists() {
-                    load_sound(skin_filepath, filename.clone(), &mut skin_sounds).await;
-                }
-
-                // default
-                let default_filepath = format!("resources/audio/{filename}");
-                let default_file = Path::new(&default_filepath);
-                if default_file.exists() {
-                    load_sound(default_filepath, filename.clone(), &mut default_sounds).await;
-                }
-                
-                if self.playmode_prefix.len() > 0 {
-                    let filename = format!("{}-{sample}-hit{hitsound}.wav", self.playmode_prefix);
-
-                    // skin
-                    let skin_filepath = format!("{skin_folder}/{filename}");
-                    let skin_file = Path::new(&skin_filepath);
-                    if skin_file.exists() {
-                        load_sound(skin_filepath, filename.clone(), &mut skin_sounds).await;
-                    }
-
-                    // default
-                    let default_filepath = format!("resources/audio/{filename}");
-                    let default_file = Path::new(&default_filepath);
-                    if default_file.exists() {
-                        load_sound(default_filepath, filename.clone(), &mut default_sounds).await;
-                    }
-                }
+                let filename = format!("{sample}-{hitsound}");
+                self.load_hitsound(&skin_folder, filename).await;
             }
         }
         // error!("beatmap: {:?}", beatmap_sounds.keys());
         // error!("skin: {:?}", skin_sounds.keys());
         // error!("default: {:?}", default_sounds.keys());
 
-        self.sounds.insert(HitsoundSource::Skin, skin_sounds);
-        self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
-        self.sounds.insert(HitsoundSource::Default, default_sounds);
+        const OTHER_SOUNDS:&[&str] = &["combobreak"];
+
+        for sound in OTHER_SOUNDS {
+            self.load_hitsound(&skin_folder, (*sound).to_owned()).await;
+        }
+
     } 
+
+    async fn load_hitsound(&mut self, skin_folder: &String, filename: String) {
+
+        // skin
+        let skin_filepath = format!("{skin_folder}/{filename}");
+        let skin_file = Path::new(&skin_filepath);
+        if skin_file.exists() {
+            let skin_sounds = self.sounds.get_mut(&HitsoundSource::Skin).unwrap();
+            load_sound(skin_filepath, filename.clone(), skin_sounds).await;
+        }
+
+        // default
+        let default_filepath = format!("resources/audio/{filename}");
+        // let default_file = Path::new(&default_filepath);
+        // if default_file.exists() {
+        load_sound(default_filepath, filename.clone(), self.sounds.get_mut(&HitsoundSource::Default).unwrap()).await;
+        // }
+        
+        // check for playmode override
+        if self.playmode_prefix.len() > 0 {
+            let filename = format!("{}-{filename}", self.playmode_prefix);
+
+            // skin
+            let skin_filepath = format!("{skin_folder}/{filename}");
+            load_sound(skin_filepath, filename.clone(), self.sounds.get_mut(&HitsoundSource::Skin).unwrap()).await;
+
+            // default
+            let default_filepath = format!("resources/audio/{filename}");
+            load_sound(default_filepath, filename.clone(), self.sounds.get_mut(&HitsoundSource::Default).unwrap()).await;
+        }
+    }
 
     // TODO: completely redo this
     pub fn play_sound(&self, note_hitsound: u8, note_hitsamples:HitSamples, vol: f32, normal_by_default: bool) {
@@ -134,6 +152,7 @@ impl HitsoundManager {
                     play_whistle = false;
                     play_clap = false;
                     play_finish = false;
+                    #[cfg(feature="debug_hitsounds")]
                     warn!("playing custom sound {name}");
 
                     play_list.push(name)
@@ -153,17 +172,17 @@ impl HitsoundManager {
 
         if play_whistle {
             let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitwhistle", sample_set);
+            let hitsound = format!("{sample_set}-hitwhistle");
             play_list.push(hitsound)
         }
         if play_finish {
             let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitfinish", sample_set);
+            let hitsound = format!("{sample_set}-hitfinish");
             play_list.push(hitsound)
         }
         if play_clap {
             let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{}-hitclap", sample_set);
+            let hitsound = format!("{sample_set}-hitclap");
             play_list.push(hitsound)
         }
 
@@ -193,7 +212,7 @@ impl HitsoundManager {
 
     }
 
-    fn play_sound_single(&self, sound: &String, index: u8, vol:f32) -> bool {
+    pub fn play_sound_single(&self, sound: &String, index: u8, vol:f32) -> bool {
         let mut play_sound = None;
         
         // check beatmap if index is not 0
@@ -204,21 +223,21 @@ impl HitsoundManager {
                 sound.clone()
             };
 
-            let sound = format!("{sound}.wav");
+            // let sound = format!("{sound}");
             play_sound = self.sounds[&HitsoundSource::Beatmap].get(&sound);
             // if play_sound.is_some() {warn!("playing {sound} from beatmap")}
         }
-        let sound = format!("{sound}.wav");
+        // let sound = format!("{sound}");
 
         // try skin
         if play_sound.is_none() {
-            play_sound = self.sounds[&HitsoundSource::Skin].get(&sound);
+            play_sound = self.sounds[&HitsoundSource::Skin].get(sound);
             // if play_sound.is_some() {warn!("playing {sound} from skin")}
         }
 
         // try default
         if play_sound.is_none() {
-            play_sound = self.sounds[&HitsoundSource::Default].get(&sound);
+            play_sound = self.sounds[&HitsoundSource::Default].get(sound);
             // if play_sound.is_some() {warn!("playing {sound} from resources")}
         }
 
@@ -241,6 +260,8 @@ impl HitsoundManager {
             false
         }
     }
+
+
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

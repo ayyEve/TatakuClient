@@ -2,6 +2,10 @@
  * Mania game mode
  * Authored by ayyEve
  * scroll velocity by Nebula
+ * 
+ * 
+ * depth doc:
+ * tbi
  */
 
 use crate::prelude::*;
@@ -359,9 +363,10 @@ impl GameMode for ManiaGame {
 
                 // add notes
                 for note in beatmap.notes.iter() {
-                    if metadata.mode == "mania" {
+                    // if metadata.mode == "mania" {
                         let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
                         let x = s.col_pos(column);
+                        warn!("{}, {:?}", note.hitsound, note.hitsamples);
 
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             note.time,
@@ -371,23 +376,25 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
+                            note.hitsound,
+                            note.hitsamples.clone()
                         ).await));
-                    }
+                    // }
                 }
                 for hold in beatmap.holds.iter() {
-                    let HoldDef {pos, time, end_time, ..} = hold.to_owned();
-        
-                    let column = (pos.x * s.column_count as f64 / 512.0).floor() as u8;
+                    let column = (hold.pos.x * s.column_count as f64 / 512.0).floor() as u8;
                     let x = s.col_pos(column);
                     s.columns[column as usize].push(Box::new(ManiaHold::new(
-                        time,
-                        end_time,
+                        hold.time,
+                        hold.end_time,
                         column,
-                        get_color(time),
+                        get_color(hold.time),
                         x,
                         s.sv_mult,
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
+                        hold.hitsound,
+                        hold.hitsamples.clone()
                     ).await));
                 }
 
@@ -430,7 +437,7 @@ impl GameMode for ManiaGame {
                 s.load_col_images().await;
 
                 Ok(s)
-            },
+            }
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
                 for i in all_mania_skin_settings.iter() {
@@ -480,6 +487,15 @@ impl GameMode for ManiaGame {
                     let time = note.start_time;
                     let x = s.col_pos(column);
 
+                    let hitsound = 1;
+                    let hitsamples = HitSamples {
+                        normal_set: 1,
+                        addition_set: 0,
+                        index: 1,
+                        volume: 100,
+                        filename: None
+                    };
+
                     if let Some(end_time) = note.end_time {
                         s.columns[column as usize].push(Box::new(ManiaHold::new(
                             time,
@@ -490,6 +506,8 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
+                            hitsound,
+                            hitsamples
                         ).await));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
@@ -500,6 +518,8 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
+                            hitsound,
+                            hitsamples
                         ).await));
                     }
                 }
@@ -518,7 +538,7 @@ impl GameMode for ManiaGame {
                 s.load_col_images().await;
         
                 Ok(s)
-            },
+            }
             Beatmap::Stepmania(beatmap) => {
                 // stepmania maps are always 4k
                 let column_count = 4;
@@ -569,6 +589,15 @@ impl GameMode for ManiaGame {
                     let time = note.start;
                     let x = s.col_pos(column);
 
+                    let hitsound = 1;
+                    let hitsamples = HitSamples {
+                        normal_set: 1,
+                        addition_set: 0,
+                        index: 1,
+                        volume: 100,
+                        filename: None
+                    };
+
                     if let Some(end_time) = note.end {
                         s.columns[column as usize].push(Box::new(ManiaHold::new(
                             time,
@@ -579,6 +608,8 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
+                            hitsound,
+                            hitsamples
                         ).await));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
@@ -589,6 +620,8 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
+                            hitsound,
+                            hitsamples,
                         ).await));
                     }
                 }
@@ -619,16 +652,6 @@ impl GameMode for ManiaGame {
             manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
         }
 
-        let sound = "kat";
-        macro_rules! play_sound {
-            ($sound:expr) => {
-                #[cfg(feature="bass_audio")]
-                Audio::play_preloaded($sound).await.unwrap();
-                #[cfg(feature="neb_audio")]
-                Audio::play_preloaded($sound);
-            }
-        }
-
         match frame {
             ReplayFrame::Press(key) => {
                 manager.key_counter.key_down(key);
@@ -648,7 +671,12 @@ impl GameMode for ManiaGame {
 
                 // if theres no more notes to hit, return after playing the sound
                 if self.column_indices[col] >= self.columns[col].len() {
-                    play_sound!(sound);
+                    // we need a hitsound though
+                    let thing = self.columns[col].iter().last().unwrap();
+                    let (sound, samples) = thing.get_hitsound();
+
+                    manager.play_note_sound(thing.time(), sound, samples, true).await;
+                    // play_sound!(sound);
                     return;
                 }
                 let note = &mut self.columns[col][self.column_indices[col]];
@@ -665,7 +693,11 @@ impl GameMode for ManiaGame {
                     add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
                     
                     // play the hit sound
-                    play_sound!(sound);
+
+                    // we need a hitsound though
+                    let (sound, samples) = note.get_hitsound();
+                    manager.play_note_sound(note.time(), sound, samples, true).await;
+                    // play_sound!(sound);
 
                     // incrememnt note index if this is not a slider
                     if note.note_type() != NoteType::Hold { self.next_note(col); }
@@ -678,7 +710,11 @@ impl GameMode for ManiaGame {
                     }
                 } else { // outside of any window, ignore
                     // play sound
-                    play_sound!(sound);
+                    let thing = &self.columns[col][self.column_indices[col]];
+                    let (sound, samples) = thing.get_hitsound();
+
+                    // play_sound!(sound);
+                    manager.play_note_sound(thing.time(), sound, samples, true).await;
                 }
             }
             ReplayFrame::Release(key) => {
@@ -728,7 +764,11 @@ impl GameMode for ManiaGame {
                         }
                     } else { // outside of any window, ignore
                         // play sound
-                        play_sound!(sound);
+                        let thing = &self.columns[col][self.column_indices[col]];
+                        let (sound, samples) = thing.get_hitsound();
+
+                        // play_sound!(sound);
+                        manager.play_note_sound(thing.time(), sound, samples, true).await;
                     }
                 }
             }

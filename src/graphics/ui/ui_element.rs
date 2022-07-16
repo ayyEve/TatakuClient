@@ -23,8 +23,8 @@ impl UIElement {
             visible = visible2;
         }
 
-        if scale.x.abs() < 0.01 {scale.x = 1.0}
-        if scale.y.abs() < 0.01 {scale.y = 1.0}
+        if scale.x.abs() < 0.01 { scale.x = 1.0 }
+        if scale.y.abs() < 0.01 { scale.y = 1.0 }
 
         Self {
             default_pos,
@@ -37,13 +37,13 @@ impl UIElement {
     }
 
     pub fn update(&mut self, manager: &mut IngameManager) {
-        if !self.visible {return}
+        if !self.visible { return }
         self.inner.update(manager);
     }
 
     pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
-        if !self.visible {return}
-        self.inner.draw(self.pos_offset, self.scale, list)
+        if !self.visible { return }
+        self.inner.draw(self.pos_offset, self.scale, list);
     }
 
     pub fn get_bounds(&self) -> Rectangle {
