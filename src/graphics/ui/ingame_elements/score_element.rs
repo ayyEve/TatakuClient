@@ -96,3 +96,4 @@ impl InnerUIElement for ScoreElement {
 
     }
 }
+
