@@ -48,6 +48,7 @@ pub struct Game {
     render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
 
     settings: SettingsHelper,
+    window_size: WindowSizeHelper,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>) -> Game {
@@ -59,16 +60,17 @@ impl Game {
             background_image: None,
             wallpapers: Vec::new(),
             settings: SettingsHelper::new().await,
+            window_size: WindowSizeHelper::new().await,
 
             menus: HashMap::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
 
             // fps
-            render_display: AsyncFpsDisplay::new("fps", 3, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()),
-            fps_display: FpsDisplay::new("draws/s", 2),
-            update_display: FpsDisplay::new("updates/s", 1),
-            input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()),
+            render_display: AsyncFpsDisplay::new("fps", 3, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()).await,
+            fps_display: FpsDisplay::new("draws/s", 2).await,
+            update_display: FpsDisplay::new("updates/s", 1).await,
+            input_display: AsyncFpsDisplay::new("inputs/s", 0, INPUT_COUNT.clone(), INPUT_FRAMETIME.clone()).await,
 
             // transition
             transition: None,
@@ -100,7 +102,7 @@ impl Game {
         // beatmap manager loop
         BeatmapManager::download_check_loop();
         
-        let mut loading_menu = LoadingMenu::new();
+        let mut loading_menu = LoadingMenu::new().await;
         loading_menu.load().await;
 
         // region == menu setup ==
@@ -115,8 +117,8 @@ impl Game {
         self.menus.insert("beatmap", beatmap_menu.clone());
         menu_init_benchmark.log("beatmap menu created", true);
 
-        // check git updates
-        self.add_dialog(Box::new(ChangelogDialog::new().await));
+        // // check git updates
+        // self.add_dialog(Box::new(ChangelogDialog::new().await));
 
         // load background images
         match std::fs::read_dir("resources/wallpapers") {
@@ -136,17 +138,12 @@ impl Game {
 
         self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(loading_menu))));
     }
+    
     pub async fn game_loop(mut self) {
         let mut update_timer = Instant::now();
         let mut draw_timer = Instant::now();
         let mut last_draw_offset = 0.0;
 
-        let window_size:[f64;2] = Settings::window_size().into();
-        let args = RenderArgs {
-            ext_dt: 0.0,
-            window_size,
-            draw_size: [window_size[0] as u32, window_size[1] as u32],
-        };
 
         let render_rate   = 1.0 / (self.settings.fps_target as f64 * 1.2);
         let update_target = 1.0 / self.settings.update_target as f64;
@@ -182,6 +179,13 @@ impl Game {
             if elapsed + last_draw_offset >= render_rate {
                 draw_timer = now;
                 last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * RENDER_DAMPENING_FACTOR;
+
+                let window_size:[f64;2] = self.window_size.0.into();
+                let args = RenderArgs {
+                    ext_dt: 0.0,
+                    window_size,
+                    draw_size: [window_size[0] as u32, window_size[1] as u32],
+                };
                 self.render(args).await;
             }
 
@@ -196,6 +200,12 @@ impl Game {
     async fn update(&mut self, _delta:f64) {
         // update our settings
         self.settings.update();
+
+        // check window size
+        let window_size_updated = self.window_size.update();
+        if window_size_updated {
+            self.resize_bg();
+        }
 
         // let timer = Instant::now();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
@@ -384,6 +394,9 @@ impl Game {
                 let mut menu = menu.lock().await;
 
                 // menu input events
+                if window_size_updated {
+                    menu.window_size_changed((*self.window_size).clone()).await;
+                }
 
                 // clicks
                 for b in mouse_down { 
@@ -601,7 +614,7 @@ impl Game {
                 Color::BLACK.alpha(self.settings.background_dim),
                 f64::MAX - 1.0,
                 Vector2::zero(),
-                Settings::window_size(),
+                self.window_size.0,
                 None
             )));
         }
@@ -620,7 +633,7 @@ impl Game {
                 [0.0, 0.0, 0.0, alpha as f32].into(),
                 -f64::MAX,
                 Vector2::zero(),
-                Settings::window_size(),
+                self.window_size.0,
                 None
             )));
 
@@ -684,30 +697,32 @@ impl Game {
             self.background_image = Some(self.wallpapers[0].clone());
         }
 
+        self.resize_bg();
+    }
+
+    fn resize_bg(&mut self) {
         if let Some(bg) = self.background_image.as_mut() {
             bg.origin = Vector2::zero();
             
             // resize to maintain aspect ratio
-            let window_size = Settings::window_size();
             let image_size = bg.tex_size();
             let ratio = image_size.y / image_size.x;
             if image_size.x > image_size.y {
                 // use width as base
                 bg.set_size(Vector2::new(
-                    window_size.x,
-                    window_size.x * ratio,
+                    self.window_size.x,
+                    self.window_size.x * ratio,
                 ));
             } else {
                 // use height as base
                 bg.set_size(Vector2::new(
-                    window_size.y * ratio,
-                    window_size.y,
+                    self.window_size.y * ratio,
+                    self.window_size.y,
                 ));
             }
-            bg.initial_pos = (window_size - bg.size()) / 2.0;
+            bg.initial_pos = (self.window_size.0 - bg.size()) / 2.0;
             bg.current_pos = bg.initial_pos;
         }
-    
     }
 
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
@@ -840,10 +855,12 @@ impl Game {
                         warn!("no user or pass, not submitting score");
                         return 
                     }
+
                     let score_submit = ScoreSubmit {
                         username,
                         password,
                         game: "tataku".to_owned(),
+                        map_info: ScoreMapInfo { game: MapGame::Osu, map_hash: score.beatmap_hash.clone(), playmode: score.playmode.clone() },
                         replay
                     };
 

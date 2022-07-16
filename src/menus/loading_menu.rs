@@ -1,18 +1,19 @@
-use std::fs::read_dir;
-
 use crate::prelude::*;
 /// helper for when starting the game. will load beatmaps, settings, etc from storage
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
     pub complete: bool,
     status: Arc<Mutex<LoadingStatus>>,
+    window_size: Arc<WindowSize>,
 }
 
 impl LoadingMenu {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             complete: false,
-            status: Arc::new(Mutex::new(LoadingStatus::new()))
+            status: Arc::new(Mutex::new(LoadingStatus::new())),
+            
+            window_size: WindowSize::get(),
         }
     }
     pub async fn load(&mut self) {
@@ -54,19 +55,8 @@ impl LoadingMenu {
         status.lock().await.loading_count = 0;
         status.lock().await.loading_done = 0;
 
-        let mut dirs_to_check = get_settings!().external_games_folders.clone();
-        dirs_to_check.push(SONGS_DIR.to_owned());
 
-
-        let mut folders = Vec::new();
-        for dir in dirs_to_check {
-            read_dir(dir)
-                .unwrap()
-                .for_each(|f| {
-                    let f = f.unwrap().path();
-                    folders.push(f.to_str().unwrap().to_owned());
-                });
-        }
+        let folders = BeatmapManager::folders_to_check().await;
 
 
         {
@@ -98,8 +88,9 @@ impl LoadingMenu {
                 existing_paths.insert(parent.to_string_lossy().to_string());
             }
         }
+
         // filter out folders that already exist
-        let folders:Vec<String> = folders.into_iter().filter(|f|!existing_paths.contains(f)).collect();
+        let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
 
         {
             let mut lock = status.lock().await;
@@ -121,6 +112,11 @@ impl LoadingMenu {
 
 #[async_trait]
 impl AsyncMenu<Game> for LoadingMenu {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
+    }
+
     async fn update(&mut self, game:&mut Game) {
         if let LoadingStage::Done = self.status.lock().await.stage {
             let menu = game.menus.get("main").unwrap().clone();
@@ -215,7 +211,7 @@ impl AsyncMenu<Game> for LoadingMenu {
             },
         }
 
-        text.center_text(Rectangle::bounds_only(Vector2::zero(), Settings::window_size()));
+        text.center_text(Rectangle::bounds_only(Vector2::zero(), self.window_size.0));
         list.push(Box::new(text));
         list
     }

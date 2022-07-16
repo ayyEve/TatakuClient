@@ -106,7 +106,7 @@ impl GameMode for TaikoGame {
     async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
         // calculate the hit area
-        settings.init_settings();
+        settings.init_settings().await;
         let settings = Arc::new(settings);
 
 
@@ -650,7 +650,8 @@ impl GameMode for TaikoGame {
     fn skip_intro(&mut self, manager: &mut IngameManager) {
         if self.note_index > 0 {return}
 
-        let x_needed = Settings::window_size().x as f32;
+        // TODO: self.playfield.window_size.x
+        let x_needed = 10000.0; // Settings::window_size().x as f32;
         let mut time = self.end_time; //manager.time();
 
         for i in self.notes.iter().rev() {

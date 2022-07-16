@@ -35,13 +35,16 @@ pub struct MusicBox {
 
     next_pending: AtomicBool,
     prev_pending: AtomicBool,
+
+    
+    window_size: Arc<WindowSize>,
 }
 impl MusicBox {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         // this is a big mess
-
+        let window_size = WindowSize::get();
         let mut size = Vector2::zero();
-        let mut pos = Vector2::new(X_PADDING, Settings::window_size().y);
+        let mut pos = Vector2::new(X_PADDING, window_size.y);
 
         // setup buttons
         let mut texts = Vec::new();
@@ -93,6 +96,7 @@ impl MusicBox {
 
             next_pending: AtomicBool::new(false),
             prev_pending: AtomicBool::new(false),
+            window_size
         }
     }
     pub fn get_next_pending(&self) -> bool {
@@ -203,6 +207,9 @@ impl ScrollableItem for MusicBox {
         self.hover
     }
 
+    fn update(&mut self) {
+
+    }
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
         // let draw_pos = self.pos + pos_offset;
 

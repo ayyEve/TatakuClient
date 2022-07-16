@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 
-const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
-const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
+pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
+pub const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
 const BEATMAP_ITEM_PADDING:f64 = 5.0;
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
 
@@ -21,18 +21,15 @@ pub struct BeatmapsetItem {
     // diff_calc_start_helper: MultiBomb<Arc<ModManager>>,
     // diff_calc_helper: MultiBomb<DiffCalcComplete>,
     // diff_calc_helper: CalcNotifyHelper
-
     // diff_calc_bombs: Vec<Bomb<(String, f32)>>,
 
     display_text: String,
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String, mods: Arc<ModManager>) -> BeatmapsetItem {
-        let x = Settings::window_size().x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT + LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x);
-        
         BeatmapsetItem {
             beatmaps, 
-            pos: Vector2::new(x, 0.0),
+            pos: Vector2::new(0.0, 0.0),
             hover: false,
             selected: false,
             display_text,

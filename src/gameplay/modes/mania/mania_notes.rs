@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 use super::mania::PositionPoint;
+use super::mania::ManiaPlayfield;
 
 const MANIA_NOTE_DEPTH: f64 = 100.0;
 const MANIA_SLIDER_DEPTH: f64 = 100.1;
@@ -13,6 +14,9 @@ pub trait ManiaHitObject: HitObject {
 
     fn set_sv_mult(&mut self, sv: f64);
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
+
+    // TODO:
+    // fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
 }
 
 // note
@@ -33,7 +37,7 @@ pub struct ManiaNote {
 
     sv_mult: f64,
 
-    playfield: Arc<ManiaPlayfieldSettings>,
+    playfield: Arc<ManiaPlayfield>,
 
     note_image: Option<Image>,
 }
@@ -43,7 +47,7 @@ impl ManiaNote {
         
         sv_mult: f64,
 
-        playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
     ) -> Self {
         let mut note_image = None;
         if let Some(settings) = &mania_skin_settings {
@@ -172,7 +176,7 @@ pub struct ManiaHold {
     //TODO: figure out how to pre-calc this
     end_y: f64,
 
-    playfield: Arc<ManiaPlayfieldSettings>,
+    playfield: Arc<ManiaPlayfield>,
 
     start_image: Option<Image>,
     end_image: Option<Image>,
@@ -185,7 +189,7 @@ impl ManiaHold {
         
         sv_mult: f64,
         
-        playfield: Arc<ManiaPlayfieldSettings>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
+        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>
     ) -> Self {
         let mut start_image = None;
         if let Some(settings) = &mania_skin_settings {

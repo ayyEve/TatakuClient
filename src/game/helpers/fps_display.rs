@@ -15,12 +15,15 @@ pub struct FpsDisplay {
     /// what frametime to actually draw
     frametime_last_draw: f32,
     frametime_timer: Instant,
+
+    window_size: WindowSizeHelper,
+    pos_count: u8,
 }
 impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub fn new(name:&str, pos_count:u8) -> Self {
+    pub async fn new(name:&str, pos_count:u8) -> Self {
+        let window_size = WindowSizeHelper::new().await;
 
-        let window_size = Settings::window_size();
         Self {
             count: 0,
             last: 0.0,
@@ -31,10 +34,16 @@ impl FpsDisplay {
             frametime_last: 0.0,
             frametime_last_draw: 0.0,
             frametime_timer: Instant::now(),
+            window_size,
+            pos_count
         }
     }
 
     pub fn update(&mut self) {
+        if self.window_size.update() {
+            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
+        }
+
         let fps_elapsed = self.timer.elapsed().as_micros() as f64 / 1000.0;
         if fps_elapsed >= 100.0 {
             self.last = (self.count as f64 / fps_elapsed * 1000.0) as f32;
@@ -83,12 +92,15 @@ pub struct AsyncFpsDisplay {
     last: f32,
 
     frametime_last: Arc<AtomicU32>,
-    frametime_last_draw: f32
+    frametime_last_draw: f32,
+    
+    window_size: WindowSizeHelper,
+    pos_count: u8,
 }
 impl AsyncFpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
-    pub fn new(name:&str, pos_count:u8, count: Arc<AtomicU32>, frametime_last: Arc<AtomicU32>) -> Self {
-        let window_size = Settings::window_size();
+    pub async fn new(name:&str, pos_count:u8, count: Arc<AtomicU32>, frametime_last: Arc<AtomicU32>) -> Self {
+        let window_size = WindowSizeHelper::new().await;
 
         Self {
             count,
@@ -100,10 +112,16 @@ impl AsyncFpsDisplay {
             pos: Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f64),
 
             frametime_last_draw: 0.0,
+            window_size,
+            pos_count
         }
     }
 
     pub fn update(&mut self) {
+        if self.window_size.update() {
+            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
+        }
+        
         let now = Instant::now();
         let fps_elapsed = now.duration_since(self.timer).as_micros() as f64 / 1000.0;
 

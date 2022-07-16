@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+// TODO: TaikoPlayfield, TaikoNote::playfield_changed(&mut self, playfield:Arc<TaikoPlayfield>)
+
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -45,10 +47,10 @@ pub struct TaikoSettings {
     pub judgement_indicator_offset: f64,
 }
 impl TaikoSettings {
-    pub fn init_settings(&mut self) {
+    pub async fn init_settings(&mut self) {
         // load hit_position
         let base = if self.hit_position_relative_to_window_size {
-            let window_size = Settings::window_size();
+            let window_size = **WindowSize::get_initial().await;
             window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
         } else {
             Vector2::zero()

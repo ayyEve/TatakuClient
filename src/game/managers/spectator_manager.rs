@@ -12,6 +12,7 @@ pub struct SpectatorManager {
     pub state: SpectatorState, 
     pub game_manager: Option<IngameManager>,
     score_menu: Option<ScoreMenu>,
+    window_size: WindowSizeHelper,
 
     /// what time we have data for
     /// ie, up to what time we can show gameplay
@@ -43,10 +44,13 @@ impl SpectatorManager {
             buffered_score_frames: Vec::new(),
             current_map: None,
             new_map_check: BEATMAP_MANAGER.read().await.new_map_added.1.clone(),
+            window_size: WindowSizeHelper::new().await,
         }
     }
 
     pub async fn update(&mut self, game: &mut Game) {
+        self.window_size.update();
+
         // (try to) read pending data from the online manager
         if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
             self.frames.extend(online_manager.get_pending_spec_frames());
@@ -308,13 +312,13 @@ impl SpectatorManager {
         match &self.state {
             SpectatorState::None => {
                 if self.score_menu.is_none() {
-                    draw_banner("Waiting for Host", list);
+                    draw_banner("Waiting for Host", self.window_size.0, list);
                 }
             }
             SpectatorState::Watching => {}
-            SpectatorState::Buffering => draw_banner("Buffering", list),
-            SpectatorState::Paused => draw_banner("Host Paused", list),
-            SpectatorState::MapChanging => draw_banner("Host Changing Map", list),
+            SpectatorState::Buffering => draw_banner("Buffering", self.window_size.0, list),
+            SpectatorState::Paused => draw_banner("Host Paused", self.window_size.0, list),
+            SpectatorState::MapChanging => draw_banner("Host Changing Map", self.window_size.0, list),
         }
     }
 
@@ -406,8 +410,7 @@ impl Drop for SpectatorManager {
 }
 
 
-fn draw_banner(text:&str, list: &mut Vec<Box<dyn Renderable>>) {
-    let window_size = Settings::window_size();
+fn draw_banner(text:&str, window_size: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
     let font = get_font();
 
     let mut offset_text = Text::new(

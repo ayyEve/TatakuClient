@@ -12,6 +12,7 @@ pub struct VolumeControl {
     timer: Instant,
 
     settings: SettingsHelper,
+    window_size: WindowSizeHelper,
 }
 impl VolumeControl {
     pub async fn new() -> Self {
@@ -20,6 +21,7 @@ impl VolumeControl {
             vol_selected_time: 0,
             timer: Instant::now(),
             settings: SettingsHelper::new().await,
+            window_size: WindowSizeHelper::new().await,
         }
     }
 
@@ -57,6 +59,7 @@ impl VolumeControl {
 
     pub async fn draw(&mut self, _args: RenderArgs) -> Vec<Box<dyn Renderable>> {
         self.settings.update();
+        self.window_size.update();
 
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let elapsed = self.elapsed();
@@ -191,11 +194,10 @@ impl VolumeControl {
 
     pub fn on_mouse_move(&mut self, mouse_pos: Vector2) {
         let elapsed = self.elapsed();
-        let window_size = Settings::window_size();
 
-        let master_pos:Vector2 = Vector2::new(window_size.x - 300.0, window_size.y - 90.0);
-        let effect_pos:Vector2 = Vector2::new(window_size.x - 300.0, window_size.y - 60.0);
-        let music_pos:Vector2 = Vector2::new(window_size.x - 300.0, window_size.y - 30.0);
+        let master_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 90.0);
+        let effect_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 60.0);
+        let music_pos:Vector2 = Vector2::new(self.window_size.x - 300.0, self.window_size.y - 30.0);
 
         // check if mouse moved over a volume button
         if self.vol_selected_time > 0 && elapsed as f64 - (self.vol_selected_time as f64) < VOLUME_CHANGE_DISPLAY_TIME as f64 {

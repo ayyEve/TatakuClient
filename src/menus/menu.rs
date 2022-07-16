@@ -20,4 +20,7 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     async fn on_key_press(&mut self, _key:Key, _g:&mut G, _mods:KeyModifiers) {}
     async fn on_key_release(&mut self, _key:Key, _g:&mut G) {}
     async fn on_focus_change(&mut self, _has_focus:bool, _g:&mut G) {}
+
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 }

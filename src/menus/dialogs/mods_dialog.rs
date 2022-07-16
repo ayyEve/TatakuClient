@@ -35,9 +35,17 @@ impl ModDialog {
 
 #[async_trait]
 impl Dialog<Game> for ModDialog {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        // self.window_size = window_size;
+        
+    }
+
+
     fn name(&self) -> &'static str {"mod_menu"}
     fn should_close(&self) -> bool {self.should_close}
-    fn get_bounds(&self) -> Rectangle { Rectangle::bounds_only(Vector2::zero(), Settings::window_size()) }
+    fn get_bounds(&self) -> Rectangle { 
+        Rectangle::bounds_only(Vector2::zero(), WindowSize::get().0) 
+    }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         self.draw_background(depth + 0.00000001, Color::BLACK, list);

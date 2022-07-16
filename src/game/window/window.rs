@@ -38,16 +38,16 @@ pub struct GameWindow {
 
     frametime_timer: Instant,
     input_timer: Instant,
+
+    window_size: WindowSizeHelper,
 }
 
 impl GameWindow {
     pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: MultiFuze<GameEvent>) -> Self {
-        let window_size = Settings::window_size();
-
         let opengl = OpenGL::V4_5;
-        let mut window: glfw_window::GlfwWindow = WindowSettings::new("Tataku!", [window_size.x, window_size.y])
+        let mut window: glfw_window::GlfwWindow = WindowSettings::new("Tataku!", [20, 20])
             .graphics_api(opengl)
-            .resizable(false)
+            // .resizable(false)
             // .fullscreen(true) // this doesnt work?
             // .samples(32) // not sure if this actually works or not
             .build()
@@ -98,6 +98,7 @@ impl GameWindow {
             render_event_receiver,
             window_event_receiver,
             game_event_sender: gane_event_sender, 
+            window_size: WindowSizeHelper::default(),
 
             
             #[cfg(feature="bass_audio")] 
@@ -109,6 +110,14 @@ impl GameWindow {
     }
 
     pub async fn run(&mut self) {
+        // fire event so things get moved around correctly
+        let size = get_settings!().window_size;
+        set_window_size(size.into());
+
+        self.window_size.init().await;
+
+        // resize window
+        self.window.window.set_size(self.window_size.x as i32, self.window_size.y as i32);
 
         macro_rules! close_window {
             (self) => {

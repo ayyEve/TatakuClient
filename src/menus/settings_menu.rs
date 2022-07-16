@@ -10,13 +10,14 @@ const SCROLLABLE_YOFFSET:f64 = 20.0;
 pub struct SettingsMenu {
     scroll_area: ScrollableArea,
 
-    finalize_list: Vec<Arc<dyn OnFinalize>>
+    finalize_list: Vec<Arc<dyn OnFinalize>>,
+    window_size: Arc<WindowSize>,
 }
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
         let settings = get_settings!();
         let p = Vector2::new(10.0 + SECTION_XOFFSET, 0.0); // scroll area edits the y
-        let window_size = Settings::window_size();
+        let window_size = WindowSize::get();
 
         // setup items
         let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET), Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0), true);
@@ -306,7 +307,8 @@ impl SettingsMenu {
 
         SettingsMenu {
             scroll_area,
-            finalize_list
+            finalize_list,
+            window_size,
         }
     }
 
@@ -329,15 +331,20 @@ impl SettingsMenu {
 
 #[async_trait]
 impl AsyncMenu<Game> for SettingsMenu {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
+    }
+
+    
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
-        let window_size = Settings::window_size();
 
         // background
         list.push(visibility_bg(
             Vector2::new(10.0, SCROLLABLE_YOFFSET), 
-            Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0),
+            Vector2::new(self.window_size.x - 20.0, self.window_size.y - SCROLLABLE_YOFFSET*2.0),
             10.0
         ));
 

@@ -52,7 +52,9 @@ impl SkinSelect {
 impl Dialog<Game> for SkinSelect {
     fn name(&self) -> &'static str {"skin_select"}
     fn should_close(&self) -> bool {self.should_close}
-    fn get_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Settings::window_size())}
+    fn get_bounds(&self) -> Rectangle {
+        Rectangle::bounds_only(Vector2::zero(), WindowSize::get().0)
+    }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         self.draw_background(*depth, Color::WHITE, list);
@@ -93,6 +95,11 @@ impl Dialog<Game> for SkinSelect {
     }
     async fn on_key_release(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         true
+    }
+
+    
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        
     }
 }
 

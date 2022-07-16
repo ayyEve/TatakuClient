@@ -1,14 +1,16 @@
 use crate::prelude::*;
 
+//TODO: proper window size
+
 pub struct BeatmapDialog {
     bounds: Rectangle,
     target_map: String,
     delete_map: MenuButton<Font2, Text>,
-    should_close: bool
+    should_close: bool,
 }
 impl BeatmapDialog {
     pub fn new(map_hash: String) -> Self {
-        let window = Settings::window_size();
+        let window = WindowSize::get();
 
         const Y_PADDING:f64 = 5.0;
         const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
@@ -28,7 +30,7 @@ impl BeatmapDialog {
             Color::BLACK.alpha(0.7),
             0.0,
             Vector2::zero(),
-            window,
+            window.0,
             Some(Border::new(
                 Color::BLACK, 
                 1.5
@@ -47,6 +49,11 @@ impl BeatmapDialog {
 
 #[async_trait]
 impl Dialog<Game> for BeatmapDialog {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        // self.window_size = window_size;
+        
+    }
+
     fn get_bounds(&self) -> Rectangle {
         self.bounds
     }

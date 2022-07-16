@@ -12,12 +12,15 @@ pub struct MainMenuButton {
     shapes: TransformGroup,
     disposable_shapes: Vec<TransformGroup>,
     pub visible: bool,
-    timer: Instant
+    timer: Instant,
+
+    window_size: Vector2,
 }
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
         let pos = Vector2::zero();
         let shapes = TransformGroup::new();
+        let window_size = WindowSize::get().0;
 
         MainMenuButton {
             pos, 
@@ -30,7 +33,9 @@ impl MainMenuButton {
             shapes,
             disposable_shapes: Vec::new(),
             visible: true,
-            timer: Instant::now()
+            timer: Instant::now(),
+
+            window_size
         }
     }
 
@@ -42,8 +47,8 @@ impl MainMenuButton {
 
 
         const X_OFFSET:f64 = 10.0;
-        let radius = visualization_initial_radius() * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
-        let center = Settings::window_size() / 2.0;
+        let radius = (self.window_size.y / 6.0) * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
+        let center = self.window_size / 2.0;
 
         const ITEM_PADDING:usize = 2;
 

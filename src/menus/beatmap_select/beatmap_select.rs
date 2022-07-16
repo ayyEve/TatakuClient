@@ -40,11 +40,13 @@ pub struct BeatmapSelectMenu {
     
     // info_changed: (MultiFuse<CalcInfo>, MultiBomb<CalcInfo>),
     // diff_calc_started: (MultiFuse<()>, MultiBomb<()>),
+
+    window_size: Arc<WindowSize>
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
-        let window_size = Settings::window_size();
         let font = get_font();
+        let window_size = WindowSize::get();
 
         let sort_by = SortBy::Title;
         let sort_by_dropdown = Dropdown::new(
@@ -77,7 +79,11 @@ impl BeatmapSelectMenu {
             font.clone()
         );
 
-        let mut beatmap_scroll = ScrollableArea::new(Vector2::new(LEADERBOARD_POS.x + LEADERBOARD_ITEM_SIZE.x, INFO_BAR_HEIGHT), Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), true);
+        let mut beatmap_scroll = ScrollableArea::new(
+            Vector2::new(window_size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT), 
+            Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), 
+            true
+        );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
 
         BeatmapSelectMenu {
@@ -89,7 +95,7 @@ impl BeatmapSelectMenu {
             // pending_refresh: false,
             map_changing: (false, false, 0),
             current_scores: HashMap::new(),
-            back_button: MenuButton::back_button(window_size, font.clone()),
+            back_button: MenuButton::back_button(window_size.0, font.clone()),
 
             beatmap_scroll,
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
@@ -106,6 +112,7 @@ impl BeatmapSelectMenu {
 
             mouse_down: None,
             // diff_calc_start_helper: MultiBomb::new()
+            window_size,
         }
     }
 
@@ -326,7 +333,7 @@ impl BeatmapSelectMenu {
 
                 if let Some(selected) = &BEATMAP_MANAGER.read().await.current_beatmap {
                     let menu = ScoreMenu::new(&score, selected.clone());
-                    game.queue_state_change(GameState::InMenu(Arc::new(tokio::sync::Mutex::new(menu))));
+                    game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                 }
             }
             return;
@@ -370,6 +377,27 @@ impl BeatmapSelectMenu {
 }
 #[async_trait]
 impl AsyncMenu<Game> for BeatmapSelectMenu {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        let size = self.window_size.0;
+
+        
+        self.beatmap_scroll.set_pos(Vector2::new(size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT));
+        self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x, size.y - INFO_BAR_HEIGHT));
+        self.beatmap_scroll.window_size_changed(size);
+
+        
+        self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
+        self.leaderboard_scroll.window_size_changed(size);
+
+
+        self.search_text.set_pos(Vector2::new(size.x - (size.x / 4.0), 0.0));
+        self.search_text.set_size(Vector2::new(size.x / 4.0, INFO_BAR_HEIGHT));
+
+
+        self.back_button.set_pos(Vector2::new(10.0, size.y - (50.0 + 10.0)));
+    }
+
     async fn update(&mut self, game:&mut Game) {
         self.search_text.set_selected(true); // always have it selected
         let old_text = self.search_text.get_text();
@@ -714,11 +742,20 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.leaderboard_scroll.on_mouse_move(pos);
     }
     async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
-        self.beatmap_scroll.on_scroll(delta);
-        self.leaderboard_scroll.on_scroll(delta);
+        let mut h = false;
+
+        h |= self.beatmap_scroll.on_scroll(delta);
+        h |= self.leaderboard_scroll.on_scroll(delta);
 
         for i in self.interactables() {
-            i.on_scroll(delta);
+            h |= i.on_scroll(delta);
+        }
+
+        if !h {
+            // make the scroll think its hovered
+            self.beatmap_scroll.set_hover(true);
+            // try again
+            self.beatmap_scroll.on_scroll(delta);
         }
     }
 

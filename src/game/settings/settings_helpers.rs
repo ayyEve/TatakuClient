@@ -12,6 +12,8 @@ lazy_static::lazy_static! {
         let (f, b) = MultiBomb::new();
         (Arc::new(parking_lot::Mutex::new(f)), b)
     };
+
+    static ref CURRENT_WINDOW_SIZE: Arc<parking_lot::RwLock<Arc<WindowSize>>> = Arc::new(parking_lot::RwLock::new(Arc::new(WindowSize(Vector2::zero()))));
 }
 
 /// helper so when a mutable reference to settings is dropped, it sends out an update with the new info
@@ -49,7 +51,7 @@ impl<'a> Drop for MutSettingsHelper<'a> {
 
 // settings helper
 pub type SettingsHelper = EventHandler<Settings>;
-impl EventHandlerInit for Settings {
+impl EventHandlerReceiver for Settings {
     fn get_receiver() -> MultiBomb<Arc<Self>> {
         SETTINGS_CHECK.1.clone() 
     }
@@ -64,7 +66,16 @@ impl EventHandlerInitial for Settings {
 
 // window size helper
 pub type WindowSizeHelper = EventHandler<WindowSize>;
-pub struct WindowSize(Vector2);
+
+#[derive(Copy, Clone)]
+pub struct WindowSize(pub Vector2);
+impl WindowSize {
+    pub fn get() -> Arc<WindowSize> {
+        CURRENT_WINDOW_SIZE.read().clone()
+    }
+}
+
+
 impl Deref for WindowSize {
     type Target = Vector2;
     
@@ -72,7 +83,7 @@ impl Deref for WindowSize {
         &self.0
     }
 }
-impl EventHandlerInit for WindowSize {
+impl EventHandlerReceiver for WindowSize {
     fn get_receiver() -> MultiBomb<Arc<Self>> {
         WINDOW_SIZE_CHECK.1.clone() 
     }
@@ -80,6 +91,18 @@ impl EventHandlerInit for WindowSize {
 #[async_trait]
 impl EventHandlerInitial for WindowSize {
     async fn get_initial() -> Arc<Self> {
-        Arc::new(WindowSize(get_settings!().window_size.into()))
+        Self::get()
     }
+}
+impl Default for WindowSize {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+
+pub fn set_window_size(new_size: Vector2) {
+    let a = Arc::new(WindowSize(new_size));
+    *CURRENT_WINDOW_SIZE.write() = a.clone();
+    WINDOW_SIZE_CHECK.0.lock().light(a);
 }

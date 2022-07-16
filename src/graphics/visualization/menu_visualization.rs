@@ -4,10 +4,6 @@ use super::{FFTEntry, Visualization};
 const CUTOFF:f32 = 0.1;
 pub const VISUALIZATION_SIZE_FACTOR:f64 = 1.2;
 
-pub fn visualization_initial_radius() -> f64 {
-    Settings::window_size().y / 6.0
-}
-
 
 pub struct MenuVisualization {
     data: Vec<FFTEntry>,
@@ -23,10 +19,15 @@ pub struct MenuVisualization {
     ripples: Vec<TransformGroup>,
     last_ripple_at: f32,
     current_timing_point: TimingPoint,
+
+    window_size: WindowSizeHelper,
+
 }
 impl MenuVisualization {
     pub async fn new() -> Self {
-        let initial_inner_radius = visualization_initial_radius();
+        let window_size = WindowSizeHelper::new().await;
+        let initial_inner_radius = window_size.y / 6.0;
+
         Self {
             rotation: 0.0,
             data: Vec::new(),
@@ -41,7 +42,8 @@ impl MenuVisualization {
             // ripple things
             ripples: Vec::new(),
             last_ripple_at: 0.0,
-            current_timing_point: TimingPoint::default()
+            current_timing_point: TimingPoint::default(),
+            window_size
         }
     }
 
@@ -56,7 +58,7 @@ impl MenuVisualization {
             group.items.push(DrawItem::Circle(Circle::new(
                 Color::WHITE.alpha(0.5),
                 10.0,
-                Settings::window_size() / 2.0,
+                self.window_size.0 / 2.0,
                 self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR,
                 Some(Border::new(Color::WHITE, 2.0))
             )));
@@ -82,6 +84,8 @@ impl MenuVisualization {
     }
 
     pub async fn update(&mut self, manager: &mut Option<IngameManager>) {
+        self.window_size.update();
+
         // update ripples
         if let Some(manager) = manager {
             let time = manager.time();
@@ -106,7 +110,7 @@ impl MenuVisualization {
     }
 
     pub fn on_click(&self, pos:Vector2) -> bool {
-        let circle_pos = Settings::window_size() / 2.0;
+        let circle_pos = self.window_size.0 / 2.0;
 
         let dist = (pos.x - circle_pos.x).powi(2) + (pos.y - circle_pos.y).powi(2);
         let radius = self.current_inner_radius.powi(2);

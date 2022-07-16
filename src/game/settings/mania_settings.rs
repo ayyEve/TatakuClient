@@ -104,14 +104,6 @@ impl ManiaPlayfieldSettings {
         }
     }
 
-    pub fn hit_y(&self) -> f64 {
-        if self.upside_down {
-            self.hit_pos
-        } else {
-            Settings::window_size().y - self.hit_pos
-        }
-    }
-
     #[inline(always)]
     pub fn note_size(&self) -> Vector2 {
         Vector2::new(

@@ -21,6 +21,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn on_text(&mut self, _text:&String) -> bool {false}
     async fn on_key_press(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
     async fn on_key_release(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 
     fn string_function1(&mut self, _val: String) {}
     // fn string_function2(&mut self, _val: String) {}
@@ -35,6 +36,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
             Some(Border::new(color, 2.0))
         )))
     }
+    
 }
 
 // // toolbar options

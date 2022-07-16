@@ -4,7 +4,6 @@ use crate::prelude::*;
 use crate::{DOWNLOADS_DIR, SONGS_DIR};
 pub use diff_calc_stuff::*;
 
-
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
     pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
@@ -56,6 +55,25 @@ impl BeatmapManager {
         }
     }
 
+
+    pub async fn folders_to_check() -> Vec<std::path::PathBuf> {
+        let mut folders = Vec::new();
+        let mut dirs_to_check = get_settings!().external_games_folders.clone();
+        dirs_to_check.push(SONGS_DIR.to_owned());
+
+        dirs_to_check.iter()
+        .map(|d| read_dir(d))
+        .filter_map(|d|d.ok())
+        .for_each(|f| {
+            f.filter_map(|f|f.ok())
+            .for_each(|p| {
+                folders.push(p.path());
+            })
+        });
+
+        folders
+    }
+
     // download checking
     pub fn get_new_maps(&mut self) -> Vec<Arc<BeatmapMeta>> {
         std::mem::take(&mut self.new_maps)
@@ -93,27 +111,17 @@ impl BeatmapManager {
 
         Database::clear_all_maps().await;
 
-
-        let mut dirs_to_check = get_settings!().external_games_folders.clone();
-        dirs_to_check.push(SONGS_DIR.to_owned());
-
-
-        let mut folders = Vec::new();
-        for dir in dirs_to_check {
-            read_dir(dir)
-                .unwrap()
-                .for_each(|f| {
-                    let f = f.unwrap().path();
-                    folders.push(f.to_str().unwrap().to_owned());
-                });
+        let folders = Self::folders_to_check().await;
+        for f in folders {
+            self.check_folder(f).await
         }
-
-        for f in folders {self.check_folder(&f).await}
     }
 
     // adders
-    pub async fn check_folder(&mut self, dir:&String) {
-        if !Path::new(dir).is_dir() {return}
+    pub async fn check_folder(&mut self, dir: impl AsRef<Path>) {
+        let dir = dir.as_ref();
+
+        if !dir.is_dir() { return }
         let dir_files = read_dir(dir).unwrap();
 
         // cache of existing paths

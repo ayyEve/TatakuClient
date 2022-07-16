@@ -1,4 +1,5 @@
 use piston::Event;
+use piston::ResizeEvent;
 use piston::TextEvent;
 use piston::FocusEvent;
 use piston::ButtonEvent;
@@ -155,29 +156,18 @@ impl InputManager {
 
         e.mouse_cursor(|[x, y]| {
             let incoming = Vector2::new(x, y);
-
-            if self.raw_input {
-                // let half_window = Settings::window_size() / 2.0;
-                // let diff = incoming - half_window;
-                // if diff == Vector2::zero() {return}
-                // self.mouse_pos = self.mouse_pos + diff;
-                // self.mouse_moved = true;
-
-                // if !(self.mouse_pos.x < 0.0 || self.mouse_pos.y < 0.0 
-                // || self.mouse_pos.x > half_window.x * 2.0 || self.mouse_pos.y > half_window.y * 2.0) {
-                //     window.window.set_cursor_pos(half_window.x, half_window.y)
-                // }
-
-            } else {
-                if incoming == self.mouse_pos {return}
-                self.mouse_moved = true;
-                self.mouse_pos = incoming;
-            }
+            if incoming == self.mouse_pos { return }
+            self.mouse_moved = true;
+            self.mouse_pos = incoming;
         });
 
-        e.mouse_scroll(|d| {self.scroll_delta += d[1]});
-        if let Some(e) = e.text_args() {self.text_cache += &e}
-        if let Some(has_focus) = e.focus_args() {self.window_change_focus = Some(has_focus)}
+        e.mouse_scroll(|d| { self.scroll_delta += d[1]} );
+        if let Some(e) = e.text_args() { self.text_cache += &e; }
+        if let Some(has_focus) = e.focus_args() { self.window_change_focus = Some(has_focus); }
+        if let Some(thing) = e.resize_args() { 
+            set_window_size(thing.window_size.into());
+        }
+
         // e.text(|text| debug!("Typed '{}'", text));
     }
 

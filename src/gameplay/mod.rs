@@ -1,5 +1,7 @@
 pub mod modes;
 
+//TODO: fix window size for this oh god
+
 // pub mod diff_calc;
 mod game_mode;
 mod ingame_manager;
@@ -50,9 +52,7 @@ pub struct ScalingHelper {
     playfield_scaled_with_cs_border: Rectangle,
 }
 impl ScalingHelper {
-    pub async fn new(cs:f32, mode:PlayMode) -> Self {
-        let window_size = Settings::window_size();
-
+    pub async fn new(cs:f32, mode:PlayMode, window_size: Vector2) -> Self {
         let border_size;
         let circle_size;
         let settings_scale;

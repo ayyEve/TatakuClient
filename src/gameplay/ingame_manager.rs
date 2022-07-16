@@ -97,6 +97,7 @@ pub struct IngameManager {
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: Arc<CommonGameplaySettings>,
     settings: SettingsHelper,
+    window_size: WindowSizeHelper,
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
@@ -143,7 +144,7 @@ impl IngameManager {
         let song = Audio::get_song().await.unwrap_or(create_empty_stream()); // temp until we get the audio file path
 
         let font = get_font();
-        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME, -20.0, font.clone());
+        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME, -20.0, font.clone()).await;
 
         // hardcode for now
         let audio_playmode_prefix = match &*playmode {
@@ -192,6 +193,7 @@ impl IngameManager {
             score_list: Vec::new(),
             score_loader,
             settings,
+            window_size: WindowSizeHelper::new().await,
             // initialize defaults for anything else not specified
             ..Self::default()
         }
@@ -199,8 +201,6 @@ impl IngameManager {
 
     async fn init_ui(&mut self) {
         if self.ui_editor.is_some() {return}
-
-        let window_size = Settings::window_size();
         
         let playmode = self.gamemode.playmode();
         let get_name = |name| {
@@ -210,14 +210,14 @@ impl IngameManager {
         // score
         self.ui_elements.push(UIElement::new(
             &get_name("score"),
-            Vector2::new(window_size.x, 0.0),
+            Vector2::new(self.window_size.x, 0.0),
             ScoreElement::new().await
         ).await);
 
         // Acc
         self.ui_elements.push(UIElement::new(
             &get_name("acc"),
-            Vector2::new(window_size.x, 40.0),
+            Vector2::new(self.window_size.x, 40.0),
             AccuracyElement::new().await
         ).await);
 
@@ -231,35 +231,35 @@ impl IngameManager {
         // Duration Bar
         self.ui_elements.push(UIElement::new(
             &get_name("durationbar"),
-            Vector2::new(0.0, window_size.y),
+            Vector2::new(0.0, self.window_size.y),
             DurationBarElement::new(self.common_game_settings.clone())
         ).await);
 
         // Judgement Bar
         self.ui_elements.push(UIElement::new(
             &get_name("judgementbar"),
-            Vector2::new(window_size.x/2.0, window_size.y),
+            Vector2::new(self.window_size.x/2.0, self.window_size.y),
             JudgementBarElement::new(self.gamemode.timing_bar_things())
         ).await);
 
         // Key Counter
         self.ui_elements.push(UIElement::new(
             &get_name("key_counter"),
-            Vector2::new(window_size.x, window_size.y/2.0),
+            Vector2::new(self.window_size.x, self.window_size.y/2.0),
             KeyCounterElement::new().await
         ).await);
 
         // Spectators
         self.ui_elements.push(UIElement::new(
             &get_name("spectators"),
-            Vector2::new(0.0, window_size.y/3.0),
+            Vector2::new(0.0, self.window_size.y/3.0),
             SpectatorsElement::new()
         ).await);
 
         // judgement counter
         self.ui_elements.push(UIElement::new(
             &get_name("judgement_counter"),
-            Vector2::new(window_size.x, window_size.y * (2.0/3.0)),
+            Vector2::new(self.window_size.x, self.window_size.y * (2.0/3.0)),
             JudgementCounterElement::new().await
         ).await);
 
@@ -268,21 +268,21 @@ impl IngameManager {
         // elapsed timer
         self.ui_elements.push(UIElement::new(
             &get_name("elapsed_timer"),
-            Vector2::new(30.0, window_size.y - 150.0),
+            Vector2::new(30.0, self.window_size.y - 150.0),
             ElapsedElement::new().await
         ).await);
 
         // remaining timer
         self.ui_elements.push(UIElement::new(
             &get_name("remaining_timer"),
-            Vector2::new(window_size.x - 300.0, window_size.y - 150.0),
+            Vector2::new(self.window_size.x - 300.0, self.window_size.y - 150.0),
             RemainingElement::new().await
         ).await);
 
 
 
         // anything in the gamemode itself
-        self.gamemode.get_ui_elements(window_size, &mut self.ui_elements).await;
+        self.gamemode.get_ui_elements(self.window_size.0, &mut self.ui_elements).await;
     }
 
     pub async fn apply_mods(&mut self, mods: ModManager) {
@@ -1176,6 +1176,7 @@ impl Default for IngameManager {
             judgment_type: Box::new(DefaultHitJudgments::None),
 
             settings: Default::default(),
+            window_size: Default::default()
         }
     }
 }

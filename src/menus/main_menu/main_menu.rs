@@ -25,10 +25,13 @@ pub struct MainMenu {
     music_box: MusicBox,
 
     settings: SettingsHelper,
+
+    window_size: Arc<WindowSize>
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
-        let middle = Settings::window_size().x /2.0 - BUTTON_SIZE.x/2.0;
+        let window_size = WindowSize::get();
+        let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
         let mut counter = 1.0;
         
         let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play");
@@ -56,9 +59,10 @@ impl MainMenu {
             background_game: None,
             selected_index: 99,
             menu_visible: false,
-            music_box: MusicBox::new(),
+            music_box: MusicBox::new().await,
 
             settings: SettingsHelper::new().await,
+            window_size,
         }
     }
 
@@ -228,7 +232,6 @@ impl AsyncMenu<Game> for MainMenu {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let pos_offset = Vector2::zero();
         let depth = 0.0;
-        let window_size = Settings::window_size();
 
         // // draw welcome text
         // let mut welcome_text = Text::new(
@@ -255,7 +258,7 @@ impl AsyncMenu<Game> for MainMenu {
         }
 
         // visualization
-        let mid = window_size / 2.0;
+        let mid = self.window_size.0 / 2.0;
         self.visualization.draw(args, mid, depth + 10.0, &mut list).await;
 
         if let Some(manager) = self.background_game.as_mut() {
@@ -267,7 +270,7 @@ impl AsyncMenu<Game> for MainMenu {
             Color::BLACK.alpha(0.5),
             depth + 11.0,
             Vector2::zero(),
-            Settings::window_size(),
+            self.window_size.0,
             None
         )));
 
@@ -375,6 +378,12 @@ impl AsyncMenu<Game> for MainMenu {
         if needs_manager_setup {
             self.setup_manager("key press").await;
         }
+
+    }
+
+    
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
 
     }
 }

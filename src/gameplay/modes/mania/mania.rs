@@ -48,6 +48,7 @@ pub fn calc_acc(score: &Score) -> f64 {
     top.max(0.0) / bottom
 }
 
+
 pub struct ManiaGame {
     map_meta: Arc<BeatmapMeta>,
     // lists
@@ -71,7 +72,7 @@ pub struct ManiaGame {
     column_count: u8,
 
     auto_helper: ManiaAutoHelper,
-    playfield: Arc<ManiaPlayfieldSettings>,
+    playfield: Arc<ManiaPlayfield>,
 
     game_settings: Arc<ManiaSettings>,
 
@@ -88,7 +89,7 @@ impl ManiaGame {
     /// get the x_pos for `col`
     pub fn col_pos(&self, col:u8) -> f64 {
         let total_width = self.column_count as f64 * self.playfield.column_width;
-        let x_offset = self.playfield.x_offset + (Settings::window_size().x - total_width) / 2.0;
+        let x_offset = self.playfield.x_offset + (self.playfield.window_size.x - total_width) / 2.0;
 
         x_offset + self.playfield.x_offset + (self.playfield.column_width + self.playfield.column_spacing) * col as f64
     }
@@ -226,6 +227,7 @@ impl GameMode for ManiaGame {
         let game_settings = get_settings!().mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
+        let window_size = WindowSizeHelper::new().await;
 
         let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
         let mut mania_skin_settings = None;
@@ -315,6 +317,7 @@ impl GameMode for ManiaGame {
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -333,7 +336,7 @@ impl GameMode for ManiaGame {
                     column_count,
 
                     auto_helper,
-                    playfield: Arc::new(playfields[(column_count - 1) as usize].clone()),
+                    playfield,
                     mania_skin_settings,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
@@ -436,6 +439,8 @@ impl GameMode for ManiaGame {
                     }
                 }
 
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
+
                 let mut s = Self {
                     map_meta: metadata.clone(),
                     columns: Vec::new(),
@@ -453,7 +458,7 @@ impl GameMode for ManiaGame {
                     column_count,
 
                     auto_helper,
-                    playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
+                    playfield,
                     mania_skin_settings,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
@@ -523,6 +528,8 @@ impl GameMode for ManiaGame {
                     }
                 }
 
+                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0));
+
                 let mut s = Self {
                     map_meta: metadata.clone(),
                     columns: Vec::new(),
@@ -540,7 +547,7 @@ impl GameMode for ManiaGame {
                     column_count,
 
                     auto_helper,
-                    playfield: Arc::new(playfields[(column_count-1) as usize].clone()),
+                    playfield,
                     mania_skin_settings,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
@@ -655,7 +662,7 @@ impl GameMode for ManiaGame {
                     note.hit(time);
 
                     // add the judgment
-                    add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, manager);
+                    add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
                     
                     // play the hit sound
                     play_sound!(sound);
@@ -705,7 +712,7 @@ impl GameMode for ManiaGame {
                         note.hit(time);
     
                         // add the judgment
-                        add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, manager);
+                        add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
                         
                         // // play the hit sound
                         // play_sound!(sound);
@@ -763,7 +770,7 @@ impl GameMode for ManiaGame {
 
                 let j = &ManiaHitJudgments::Miss;
                 manager.add_judgment(j).await;
-                add_hit_indicator(time, col, j, self.column_count, &self.game_settings, manager);
+                add_hit_indicator(time, col, j, self.column_count, &self.game_settings, &self.playfield, manager);
                 self.next_note(col);
             }
         }   
@@ -772,7 +779,7 @@ impl GameMode for ManiaGame {
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
-        let window_size = Settings::window_size();
+        let window_size = self.playfield.window_size;
 
         // playfield
         list.push(Box::new(Rectangle::new(
@@ -1072,7 +1079,7 @@ impl Drop for ManiaGame {
 }
 
 
-fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, manager: &mut IngameManager) {
+fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut IngameManager) {
     let color = hit_value.color();
     let image = None;
     // let (color, image) = match hit_value {
@@ -1082,8 +1089,7 @@ fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, co
     //     Perfect => Color::new(),
     // };
 
-    let playfield = &game_settings.playfield_settings[column_count as usize - 1];
-    let window_size = Settings::window_size();
+    let window_size = playfield.window_size;
     
     let total_width =column_count as f64 * playfield.column_width;
     let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
@@ -1112,21 +1118,21 @@ fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, co
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct TimingBar {
     time: f32,
     speed: f64,
     pos: Vector2,
     size: Vector2,
 
-    playfield: Arc<ManiaPlayfieldSettings>,
+    playfield: Arc<ManiaPlayfield>,
 
     relative_y: f64,
     position_function: Arc<Vec<PositionPoint>>,
     position_function_index: usize,
 }
 impl TimingBar {
-    pub fn new(time:f32, width:f64, x:f64, playfield: Arc<ManiaPlayfieldSettings>) -> TimingBar {
+    pub fn new(time:f32, width:f64, x:f64, playfield: Arc<ManiaPlayfield>) -> TimingBar {
         TimingBar {
             time, 
             size: Vector2::new(width, BAR_HEIGHT),
@@ -1167,7 +1173,7 @@ impl TimingBar {
 
     fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut renderables: Vec<Box<dyn Renderable>> = Vec::new();
-        if self.pos.y < 0.0 || self.pos.y > Settings::window_size().y {return renderables}
+        if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return renderables }
 
         renderables.push(Box::new(Rectangle::new(
             BAR_COLOR,
@@ -1284,5 +1290,37 @@ impl Default for PositionPoint {
             time: -LEAD_IN_TIME,
             position: -LEAD_IN_TIME as f64,
         }
+    }
+}
+
+
+#[derive(Clone)]
+pub struct ManiaPlayfield {
+    settings: ManiaPlayfieldSettings,
+    pub window_size: Vector2,
+}
+impl ManiaPlayfield {
+    pub fn new(settings: ManiaPlayfieldSettings, window_size: Vector2) -> Self {
+        Self {
+            settings, 
+            window_size
+        }
+    }
+
+    pub fn hit_y(&self) -> f64 {
+        if self.upside_down {
+            self.hit_pos
+        } else {
+            self.window_size.y - self.hit_pos
+        }
+    }
+}
+
+
+impl Deref for ManiaPlayfield {
+    type Target = ManiaPlayfieldSettings;
+
+    fn deref(&self) -> &Self::Target {
+        &self.settings
     }
 }

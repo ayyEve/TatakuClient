@@ -9,9 +9,11 @@ pub struct CenteredTextHelper {
     changed_time: f32,
     draw_time: f32,
     font: Font2,
+
+    window_size: WindowSizeHelper,
 }
 impl CenteredTextHelper {
-    pub fn new(draw_time: f32, depth: f64, font: Font2) -> Self {
+    pub async fn new(draw_time: f32, depth: f64, font: Font2) -> Self {
         Self {
             text: String::new(),
 
@@ -19,7 +21,8 @@ impl CenteredTextHelper {
             draw_time,
             changed_time: 0.0,
 
-            font
+            font,
+            window_size: WindowSizeHelper::new().await,
         }
     }
 
@@ -32,8 +35,8 @@ impl CenteredTextHelper {
     }
 
     pub fn draw(&mut self, time: f32, list: &mut Vec<Box<dyn Renderable>>) {
-        let window_size = Settings::window_size();
-
+        self.window_size.update();
+        
         if self.changed_time > 0.0 && time - self.changed_time < self.draw_time {
             let mut offset_text = Text::new(
                 Color::BLACK,
@@ -47,7 +50,7 @@ impl CenteredTextHelper {
             let text_width = offset_text.measure_text().x + TEXT_HPADDING;
             // center
             let rect = Rectangle::bounds_only(
-                Vector2::new((window_size.x - text_width) / 2.0, window_size.y * 1.0/3.0), 
+                Vector2::new((self.window_size.x - text_width) / 2.0, self.window_size.y * 1.0/3.0), 
                 Vector2::new( text_width + TEXT_HPADDING, 64.0)
             );
             offset_text.center_text(rect);
@@ -66,6 +69,7 @@ impl Default for CenteredTextHelper {
             depth: Default::default(),
             changed_time: Default::default(),
             draw_time: Default::default(),
+            window_size: Default::default(),
         }
     }
 }

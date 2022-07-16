@@ -28,7 +28,9 @@ lazy_static::lazy_static! {
 
 pub struct NotificationManager {
     processed_notifs: Vec<ProcessedNotif>,
-    pending_notifs: Vec<Notification>
+    pending_notifs: Vec<Notification>,
+
+    window_size: WindowSizeHelper,
 }
 impl NotificationManager { // static
     pub async fn add_notification(notif: Notification) {
@@ -57,19 +59,24 @@ impl NotificationManager { // non-static
         Self {
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
+            
+            window_size: WindowSizeHelper::default(),
         }
     }
 
     pub async fn update(&mut self) {
+        self.window_size.init().await;
+        self.window_size.update();
+
         for notif in std::mem::take(&mut self.pending_notifs) {
             // trace!("adding notif");
             let new = ProcessedNotif::new(notif);
 
-            // move all the other notifs up
-            let offset = new.size.y + NOTIF_MARGIN.y;
-            for n in self.processed_notifs.iter_mut() {
-                n.pos.y -= offset;
-            }
+            // // move all the other notifs up
+            // let offset = new.size.y + NOTIF_MARGIN.y;
+            // for n in self.processed_notifs.iter_mut() {
+            //     n.pos.y -= offset;
+            // }
 
             // add the new one
             self.processed_notifs.push(new);
@@ -91,15 +98,20 @@ impl NotificationManager { // non-static
     }
 
     pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
+        let mut current_pos = self.window_size.0;
+
         for i in self.processed_notifs.iter() {
-            i.draw(list);
+            i.draw(current_pos, list);
+            current_pos.y -= i.size.y + NOTIF_MARGIN.y;
         }
     }
 
 
     pub fn on_click(&mut self, mouse_pos: Vector2, _game: &mut Game) -> bool {
+        let mut current_pos = self.window_size.0;
+        
         for n in self.processed_notifs.iter_mut() {
-            if Rectangle::bounds_only(n.pos, n.size).contains(mouse_pos) {
+            if Rectangle::bounds_only(current_pos, n.size).contains(mouse_pos) {
                 match &n.notification.onclick {
                     NotificationOnClick::None => {}
                     NotificationOnClick::Url(url) => {
@@ -112,6 +124,8 @@ impl NotificationManager { // non-static
                 n.remove = true;
                 return true;
             }
+
+            current_pos.y -= n.size.y + NOTIF_MARGIN.y;
         }
 
         false
@@ -143,7 +157,6 @@ impl Notification {
 
 #[derive(Clone)]
 struct ProcessedNotif {
-    pos: Vector2,
     size: Vector2,
     time: Instant,
     text: Text,
@@ -153,22 +166,20 @@ struct ProcessedNotif {
 impl ProcessedNotif {
     fn new(notification: Notification) -> Self {
         let font = get_font();
-        let window_size = Settings::window_size();
 
         let text = Text::new(
             Color::WHITE,
             NOTIF_DEPTH - 0.1,
-            Vector2::zero(), // set in draw
+            Vector2::zero(),
             NOTIF_TEXT_SIZE,
             notification.text.clone(),
             font.clone()
         );
 
         let size = text.measure_text() + NOTIF_PADDING * 2.0;
-        let pos = window_size - Vector2::new(size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + size.y);
+        // let pos = window_size - Vector2::new(size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + size.y);
 
         Self {
-            pos,
             size,
             time: Instant::now(),
             text,
@@ -179,16 +190,18 @@ impl ProcessedNotif {
 
     /// returns if the time has not expired
     fn check_time(&self) -> bool {
-        if self.remove {return false}
+        if self.remove { return false }
         self.time.elapsed().as_secs_f32() * 1000.0 < self.notification.duration
     }
 
-    fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&self, pos_offset: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+        let pos = pos_offset - Vector2::new(self.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + self.size.y);
+
         // bg
         list.push(Box::new(Rectangle::new(
             NOTIF_BG_COLOR,
             NOTIF_DEPTH + 0.1,
-            self.pos,
+            pos,
             self.size,
             Some(Border::new(
                 self.notification.color,
@@ -197,7 +210,7 @@ impl ProcessedNotif {
         ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10))));
 
         let mut text = self.text.clone();
-        text.current_pos = self.pos + NOTIF_PADDING;
+        text.current_pos = pos + NOTIF_PADDING;
         list.push(Box::new(text));
     }
 }

@@ -33,14 +33,16 @@ pub struct ScoreMenu {
     pub dont_do_menu: bool,
     pub should_close: bool,
 
-    selected_index: usize
+    selected_index: usize,
+
+    window_size: Arc<WindowSize>,
 }
 impl ScoreMenu {
     pub fn new(score:&Score, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
-        let window_size = Settings::window_size();
+        let window_size = WindowSize::get();
         let hit_error = score.hit_error();
         let font = get_font();
-        let back_button = MenuButton::back_button(window_size, font.clone());
+        let back_button = MenuButton::back_button(window_size.0, font.clone());
 
         let graph = Graph::new(
             Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
@@ -83,7 +85,8 @@ impl ScoreMenu {
             should_close: false,
 
             selected_index: 99,
-            hit_counts
+            hit_counts,
+            window_size,
         }
     }
 
@@ -132,8 +135,6 @@ impl AsyncMenu<Game> for ScoreMenu {
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let font = get_font();
-
-        let window_size = Settings::window_size();
 
         let depth = 0.0;
         
@@ -210,7 +211,7 @@ impl AsyncMenu<Game> for ScoreMenu {
         // draw background so score info is readable
         list.push(visibility_bg(
             Vector2::one() * 5.0, 
-            Vector2::new(window_size.x * 2.0/3.0, window_size.y - 5.0),
+            Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0),
             depth + 10.0
         ));
 
@@ -275,6 +276,11 @@ impl AsyncMenu<Game> for ScoreMenu {
                 };
             }
         }
+    }
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
     }
 }
 #[async_trait]

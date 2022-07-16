@@ -56,6 +56,7 @@ pub struct StandardGame {
 
     /// cached settings, saves on locking
     game_settings: Arc<StandardSettings>,
+    window_size: WindowSizeHelper,
 
     /// autoplay helper
     auto_helper: StandardAutoHelper,
@@ -63,11 +64,11 @@ pub struct StandardGame {
     /// list of note_indices which are new_combos
     new_combos: Vec<usize>,
 
-    use_controller_cursor: bool
+    use_controller_cursor: bool,
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned()).await);
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned(), self.window_size.0).await);
         self.scaling_helper = new_scale.clone();
 
         // update playfield for notes
@@ -150,9 +151,10 @@ impl GameMode for StandardGame {
     async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get().await.clone();
+        let window_size = WindowSizeHelper::new().await;
         
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned()).await);
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned(), window_size.0).await);
         let ar = metadata.get_ar(&mods);
 
         // TODO: beatmap combo colors
@@ -213,7 +215,8 @@ impl GameMode for StandardGame {
                     game_settings: std_settings.clone(),
                     auto_helper: StandardAutoHelper::new(),
                     new_combos: Vec::new(),
-                    stack_leniency
+                    stack_leniency,
+                    window_size
                 };
                 
                 // join notes and sliders into a single array
@@ -501,6 +504,7 @@ impl GameMode for StandardGame {
 
 
     async fn update(&mut self, manager:&mut IngameManager, time:f32) {
+        self.window_size.update();
 
         // do autoplay things
         if manager.current_mods.autoplay {
@@ -632,17 +636,16 @@ impl GameMode for StandardGame {
                     Color::WHITE
                 );
 
-                let window_size = Settings::window_size();
                 let wx_line = Line::new(
-                    Vector2::new(0.0, window_size.y/2.0),
-                    Vector2::new(window_size.x, window_size.y/2.0),
+                    Vector2::new(0.0, self.window_size.y/2.0),
+                    Vector2::new(self.window_size.x, self.window_size.y/2.0),
                     line_size,
                     -100.0,
                     Color::WHITE
                 );
                 let wy_line = Line::new(
-                    Vector2::new(window_size.x/2.0, 0.0),
-                    Vector2::new(window_size.x/2.0, window_size.y),
+                    Vector2::new(self.window_size.x/2.0, 0.0),
+                    Vector2::new(self.window_size.x/2.0, self.window_size.y),
                     line_size, 
                     -100.0,
                     Color::WHITE
@@ -814,11 +817,10 @@ impl GameModeInput for StandardGame {
 
                 // check playfield snapping
                 // TODO: can this be simplified?
-                let window_size = Settings::window_size();
                 let playfield_size = self.scaling_helper.playfield_scaled_with_cs_border.size;
 
                 // what the offset should be if playfield is centered
-                let center_offset = (window_size - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (window_size - playfield_size) / 2.0;
+                let center_offset = (self.window_size.0 - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.window_size.0 - playfield_size) / 2.0;
 
                 let snap_threshold = settings.playfield_snap;
                 if (center_offset.x - change.x).abs() < snap_threshold {

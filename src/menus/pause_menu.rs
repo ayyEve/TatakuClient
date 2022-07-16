@@ -12,11 +12,14 @@ pub struct PauseMenu {
     exit_button: MenuButton<Font2, Text>,
     is_fail_menu: bool,
 
-    selected_index: i8
+    selected_index: i8,
+
+    window_size: Arc<WindowSize>,
 }
 impl PauseMenu {
     pub fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
-        let middle = Settings::window_size().x /2.0 - BUTTON_SIZE.x/2.0;
+        let window_size = WindowSize::get();
+        let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
         let font = get_font();
 
         let mut n = 0.0;
@@ -33,6 +36,7 @@ impl PauseMenu {
             retry_button,
             exit_button,
             selected_index: 99,
+            window_size
         }
     }
 
@@ -58,6 +62,13 @@ impl PauseMenu {
 #[async_trait]
 impl AsyncMenu<Game> for PauseMenu {
     fn get_name(&self) -> &str {if self.is_fail_menu {"fail"} else {"pause"}}
+
+    
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+
+    }
+    
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let pos_offset = Vector2::zero();

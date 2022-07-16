@@ -8,6 +8,8 @@ pub struct GameUIEditorDialog {
 
     /// selected_item_index, original_pos, mouse_start
     mouse_down: Option<(usize, Vector2, Vector2)>,
+
+    window_size: Arc<WindowSize>
 }
 impl GameUIEditorDialog {
     pub fn new(elements: Vec<UIElement>) -> Self {
@@ -15,7 +17,9 @@ impl GameUIEditorDialog {
             should_close: false,
             elements,
             mouse_pos: Vector2::zero(),
-            mouse_down: None
+            mouse_down: None,
+
+            window_size: WindowSize::get(),
         }
     }
 
@@ -39,10 +43,15 @@ impl GameUIEditorDialog {
 
 #[async_trait]
 impl Dialog<()> for GameUIEditorDialog {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
+    }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             Vector2::zero(), 
-            Settings::window_size()
+            self.window_size.0
         )
     }
 

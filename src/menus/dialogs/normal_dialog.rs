@@ -11,17 +11,18 @@ pub struct NormalDialog {
     bounds: Rectangle,
     buttons: Vec<MenuButton<Font2, Text>>,
     actions: HashMap<String, ClickFn>,
-    pub should_close: bool
+    pub should_close: bool,
+    window_size: Arc<WindowSize>
 }
 impl NormalDialog {
     pub fn new(_title: impl AsRef<str>) -> Self {
-        let window = Settings::window_size();
+        let window_size = WindowSize::get();
 
         let bounds = Rectangle::new(
             Color::BLACK.alpha(0.7),
             0.0,
             Vector2::zero(),
-            window,
+            window_size.0,
             Some(Border::new(
                 Color::BLACK, 
                 1.5
@@ -33,18 +34,18 @@ impl NormalDialog {
             buttons: Vec::new(),
             actions: HashMap::new(),
 
-            should_close: false
+            should_close: false,
+            window_size
         }
     }
 
     pub fn add_button(&mut self, text: impl AsRef<str>, on_click: ClickFn) {
         let text = text.as_ref().to_owned();
-        let window = Settings::window_size();
 
         let y_pos = 100.0 + (BUTTON_SIZE.y + Y_PADDING) * self.buttons.len() as f64;
 
         let mut button = MenuButton::new(
-            Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, y_pos),
+            Vector2::new((self.window_size.x - BUTTON_SIZE.x) / 2.0, y_pos),
             BUTTON_SIZE,
             &text,
             get_font(),
@@ -57,6 +58,11 @@ impl NormalDialog {
 
 #[async_trait]
 impl Dialog<Game> for NormalDialog {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
+    }
+
     fn get_bounds(&self) -> Rectangle {
         self.bounds
     }

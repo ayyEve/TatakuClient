@@ -3,6 +3,8 @@ use ayyeve_piston_ui::prelude::ScrollableGettersSetters;
 use futures_util::SinkExt;
 use crate::prelude::*;
 
+//TODO: proper window size
+
 const INPUT_HEIGHT:f64 = 45.0;
 
 /// how many pixels away from the thing can it be to resize?
@@ -33,10 +35,12 @@ pub struct Chat {
     height_resize: bool,
     width_resize_hover: bool,
     height_resize_hover: bool,
+
+    window_size: Arc<WindowSize>,
 }
 impl Chat {
     pub fn new() -> Self {
-        let window_size = Settings::window_size();
+        let window_size = WindowSize::get();
 
         let chat_height = window_size.y / 3.0 - INPUT_HEIGHT;
         let channel_list_width = window_size.x / 5.0;
@@ -72,6 +76,7 @@ impl Chat {
             height_resize: false,
             width_resize_hover:  false,
             height_resize_hover: false,
+            window_size
         }
     }
 
@@ -86,8 +91,12 @@ impl Chat {
 
 #[async_trait]
 impl Dialog<Game> for Chat {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+    }
+
     fn get_bounds(&self) -> Rectangle {
-        let window_size = Settings::window_size();
+        let window_size = &self.window_size;
         Rectangle::bounds_only(
             Vector2::new(0.0, window_size.y - (self.chat_height + RESIZE_LENIENCE)), 
             Vector2::new(
@@ -148,11 +157,10 @@ impl Dialog<Game> for Chat {
                 // clear old messages
                 self.message_scroll.clear();
 
-                let window_size = Settings::window_size();
                 for m in message_list.iter() {
                     self.message_scroll.add_item(Box::new(MessageScroll::new(
                         m.clone(),
-                        window_size.x - self.channel_list_width,
+                        self.window_size.x - self.channel_list_width,
                         30
                     )));
                 }
@@ -188,7 +196,7 @@ impl Dialog<Game> for Chat {
         self.channel_scroll.on_mouse_move(*pos);
         self.message_scroll.on_mouse_move(*pos);
 
-        let window_size = Settings::window_size();
+        let window_size = self.window_size.0;
         // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
         self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
 
@@ -283,7 +291,7 @@ impl Dialog<Game> for Chat {
                     if channel.get_name() == current_channel.get_name() {
                         let cached_messages = self.messages.get_mut(channel).unwrap();
 
-                        let window_size = Settings::window_size();
+                        let window_size = self.window_size.0;
                         for message in online_manager.chat_messages.get(channel).unwrap() {
                             if !cached_messages.contains(message) {
                                 // cached_messages.push(message.clone())
@@ -315,7 +323,7 @@ impl Dialog<Game> for Chat {
     async fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         let args = *args;
         let depth = *depth;
-        let window_size = Settings::window_size();
+        let window_size = self.window_size.0;
 
         // draw backgrounds
         list.push(Box::new(Rectangle::new(

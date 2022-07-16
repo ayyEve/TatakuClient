@@ -44,16 +44,18 @@ pub struct DirectMenu {
     mode: PlayMode,
     // status: MapStatus,
     // _converts: bool,
+
+    window_size: Arc<WindowSize>
 }
 impl DirectMenu {
     pub async fn new(mode: PlayMode) -> DirectMenu {
-        let window_size = Settings::window_size();
+        let window_size = WindowSize::get();
 
         let mut x = DirectMenu {
             scroll_area: ScrollableArea::new(
                 Vector2::new(0.0, SEARCH_BAR_HEIGHT+5.0), 
                 Vector2::new(DIRECT_ITEM_SIZE.x, window_size.y - SEARCH_BAR_HEIGHT+5.0), 
-                true
+                true,
             ),
             downloading: Vec::new(),
             queue: Vec::new(),
@@ -67,6 +69,7 @@ impl DirectMenu {
             mode,
             // status: MapStatus::Ranked,
             // _converts: false
+            window_size: window_size,
         };
 
         x.do_search().await;
@@ -165,6 +168,12 @@ impl DirectMenu {
 
 #[async_trait]
 impl AsyncMenu<Game> for DirectMenu {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+        
+    }
+
+    
     async fn update(&mut self, _game:&mut Game) {
         // check download statuses
         let dir = std::fs::read_dir(DOWNLOADS_DIR).unwrap();

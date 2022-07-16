@@ -4,7 +4,7 @@ const SETTINGS_FILE:&str = "settings.json";
 
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Arc<OnceCell<RwLock<Settings>>> = Arc::new(OnceCell::const_new());
-    static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::const_new();
+    // static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::const_new();
     // pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 }
 
@@ -92,8 +92,8 @@ impl Settings {
         // check password hashes
         s.check_hashes();
 
-        // set window size const
-        WINDOW_SIZE.set(s.window_size.into()).unwrap();
+        // // set window size const
+        // WINDOW_SIZE.set(s.window_size.into()).unwrap();
         
         SETTINGS.set(RwLock::new(s.clone())).ok().unwrap();
 
@@ -120,9 +120,9 @@ impl Settings {
         SETTINGS.get().unwrap().write().await
     }
 
-    pub fn window_size() -> Vector2 {
-        *WINDOW_SIZE.get().unwrap()
-    }
+    // pub fn window_size() -> Vector2 {
+    //     *WINDOW_SIZE.get().unwrap()
+    // }
 
     pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}
     pub fn get_music_vol(&self) -> f32 {self.music_vol * self.master_vol}
