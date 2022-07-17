@@ -70,6 +70,8 @@ impl DonChan {
 
 
 impl InnerUIElement for DonChan {
+    fn display_name(&self) -> &'static str { "DonChan" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             -Vector2::y_only(DEFAULT_DONCHAN_SIZE.y / 2.0), 
@@ -164,7 +166,7 @@ impl InnerUIElement for DonChan {
                         list.push(Box::new(anim))
                     }
                 }
-            },
+            }
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
                     let mut anim = anim.clone();
@@ -172,7 +174,7 @@ impl InnerUIElement for DonChan {
                     anim.current_scale *= scale;
                     list.push(Box::new(anim))
                 }
-            },
+            }
             DonChanState::Fail => {
                 if let Some(anim) = &self.fail_anim {
                     let mut anim = anim.clone();
@@ -180,7 +182,7 @@ impl InnerUIElement for DonChan {
                     anim.current_scale *= scale;
                     list.push(Box::new(anim))
                 }
-            },
+            }
         }
     }
 

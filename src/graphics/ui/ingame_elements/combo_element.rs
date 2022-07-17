@@ -16,6 +16,8 @@ impl ComboElement {
 }
 
 impl InnerUIElement for ComboElement {
+    fn display_name(&self) -> &'static str { "Combo" }
+
     fn get_bounds(&self) -> Rectangle {
         self.combo_bounds.clone()
     }

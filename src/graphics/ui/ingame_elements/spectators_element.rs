@@ -17,6 +17,8 @@ impl SpectatorsElement {
 }
 
 impl InnerUIElement for SpectatorsElement {
+    fn display_name(&self) -> &'static str { "Spectators" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             Vector2::zero(),

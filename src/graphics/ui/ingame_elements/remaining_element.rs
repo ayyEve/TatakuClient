@@ -29,6 +29,8 @@ impl RemainingElement {
 }
 
 impl InnerUIElement for RemainingElement {
+    fn display_name(&self) -> &'static str { "Time Remaining" }
+
     fn get_bounds(&self) -> Rectangle {
         self.elapsed_bounds.clone()
     }

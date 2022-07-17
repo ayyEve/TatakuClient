@@ -12,6 +12,8 @@ impl LeaderboardElement {
 }
 
 impl InnerUIElement for LeaderboardElement {
+    fn display_name(&self) -> &'static str { "Leaderboard" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             Vector2::zero(),

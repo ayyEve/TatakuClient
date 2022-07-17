@@ -6,6 +6,10 @@ pub use std::collections::HashMap;
 pub use std::collections::HashSet;
 pub use std::time::{Duration, Instant};
 pub use std::ops::{ Range, Deref, DerefMut };
+
+// sync imports
+pub use std::sync::{Arc, Weak};
+pub use std::sync::atomic::{*, Ordering::SeqCst};
 pub use std::sync::mpsc::{Sender, SyncSender, Receiver, sync_channel, channel};
 
 // rayon imports
@@ -72,9 +76,6 @@ pub use crate::game::managers::*;
 pub use crate::game::helpers::centered_text_helper::CenteredTextHelper;
 pub use crate::game::helpers::{*, io::*, math::*, curve::*, key_counter::*, crypto::*};
 
-// sync imports
-pub use std::sync::{Arc, Weak};
-pub use std::sync::atomic::{*, Ordering::SeqCst};
 
 // error imports
 pub use crate::errors::*;

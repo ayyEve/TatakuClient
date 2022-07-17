@@ -39,6 +39,8 @@ impl ScoreElement {
 }
 
 impl InnerUIElement for ScoreElement {
+    fn display_name(&self) -> &'static str { "Score" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             -self.bounds_size.x() - PADDING,

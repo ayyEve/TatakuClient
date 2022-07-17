@@ -71,4 +71,5 @@ pub trait InnerUIElement: Send + Sync {
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>);
     fn get_bounds(&self) -> Rectangle;
     fn reset(&mut self) {}
+    fn display_name(&self) -> &'static str;
 }

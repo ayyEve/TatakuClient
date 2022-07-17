@@ -15,6 +15,8 @@ impl HealthBarElement {
     }
 }
 impl InnerUIElement for HealthBarElement {
+    fn display_name(&self) -> &'static str { "Health Bar" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             Vector2::zero(),

@@ -34,6 +34,8 @@ impl JudgementBarElement {
     }
 }
 impl InnerUIElement for JudgementBarElement {
+    fn display_name(&self) -> &'static str { "Judgement Bar" }
+
     fn get_bounds(&self) -> Rectangle {
         let items_width = HIT_TIMING_BAR_SIZE.x; // * (self.timing_bar_things.0.len() + 1) as f64;
 

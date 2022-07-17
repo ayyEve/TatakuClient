@@ -38,6 +38,8 @@ impl AccuracyElement {
 }
 
 impl InnerUIElement for AccuracyElement {
+    fn display_name(&self) -> &'static str { "Accuracy" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             -self.bounds_size.x() - PADDING,

@@ -29,6 +29,8 @@ impl ElapsedElement {
 }
 
 impl InnerUIElement for ElapsedElement {
+    fn display_name(&self) -> &'static str { "Time Elapsed" }
+
     fn get_bounds(&self) -> Rectangle {
         self.elapsed_bounds.clone()
     }

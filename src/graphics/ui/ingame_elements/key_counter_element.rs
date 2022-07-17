@@ -32,6 +32,8 @@ impl KeyCounterElement {
     }
 }
 impl InnerUIElement for KeyCounterElement {
+    fn display_name(&self) -> &'static str { "Key Counter" }
+
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
             -BOX_SIZE,
