@@ -265,8 +265,6 @@ impl ScrollableItemGettersSetters for UISideBarElement {
         }
     }
     
-    
-    
     fn get_selectable(&self) -> bool { false }
     fn get_multi_selectable(&self) -> bool { false }
 }
@@ -285,7 +283,7 @@ impl UISideBarElement {
 }
 impl ScrollableItem for UISideBarElement {
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
-        let text = Text::new(Color::BLACK, parent_depth, self.pos + pos_offset, TEXT_SIZE as u32, self.display_name.clone(), get_font());
+        let text = Text::new(Color::WHITE, parent_depth, self.pos + pos_offset, TEXT_SIZE as u32, self.display_name.clone(), get_font());
         
         let color = if self.hover {Color::BLUE} else {Color::RED};
         let mut r = Rectangle::bounds_only(self.pos + pos_offset, text.measure_text());
