@@ -100,7 +100,7 @@ impl NotificationManager { // non-static
     pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
         let mut current_pos = self.window_size.0;
 
-        for i in self.processed_notifs.iter() {
+        for i in self.processed_notifs.iter().rev() {
             i.draw(current_pos, list);
             current_pos.y -= i.size.y + NOTIF_MARGIN.y;
         }
