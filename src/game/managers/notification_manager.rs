@@ -45,6 +45,7 @@ impl NotificationManager { // static
     pub async fn add_error_notification<E: Into<TatakuError>>(msg:&str, error:E) {
         let error:TatakuError = error.into();
         let text = format!("{}:\n{}", msg, error);
+        error!("{text}");
         
         // debug!("{}", text);
         Self::add_text_notification(
@@ -111,7 +112,9 @@ impl NotificationManager { // non-static
         let mut current_pos = self.window_size.0;
         
         for n in self.processed_notifs.iter_mut() {
-            if Rectangle::bounds_only(current_pos, n.size).contains(mouse_pos) {
+            let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
+            
+            if Rectangle::bounds_only(pos, n.size).contains(mouse_pos) {
                 match &n.notification.onclick {
                     NotificationOnClick::None => {}
                     NotificationOnClick::Url(url) => {
@@ -119,6 +122,17 @@ impl NotificationManager { // non-static
                     }
                     NotificationOnClick::Menu(menu_name) => {
                         debug!("goto menu {}", menu_name);
+                    }
+
+                    NotificationOnClick::File(file_path) => {
+                        let path = Path::new(file_path);
+                        let folder = path.parent().unwrap().to_string_lossy().to_string();
+                        let file = path.file_name().unwrap().to_string_lossy().to_string();
+
+                        open_folder(folder, Some(file));
+                    }
+                    NotificationOnClick::Folder(folder) => {
+                        open_folder(folder.clone(), None);
                     }
                 }
                 n.remove = true;
@@ -223,4 +237,7 @@ pub enum NotificationOnClick {
     None,
     Url(String),
     Menu(String),
+
+    File(String),
+    Folder(String),
 }

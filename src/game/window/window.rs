@@ -166,6 +166,36 @@ impl GameWindow {
                     WindowEvent::SetRawInput(val) => self.window.window.set_raw_mouse_motion(val),
                     WindowEvent::SetClipboard(val) => self.window.window.set_clipboard_string(&val),
                     WindowEvent::CloseGame => { close_window!(self); },
+
+                    WindowEvent::TakeScreenshot(fuze) => {
+                        let width = self.window_size.x as usize;
+                        let height = self.window_size.y as usize;
+
+                        let data_size = 3 * width * height;
+                        let mut window_data:Vec<u8> = vec![0; data_size];
+                        let window_data2 = window_data.as_mut_slice().as_mut_ptr() as *mut std::ffi::c_void;
+
+                        unsafe {
+                            gl::ReadPixels(
+                                0, 
+                                0, 
+                                width as i32, 
+                                width as i32, 
+                                gl::RGB, 
+                                gl::UNSIGNED_BYTE, 
+                                window_data2
+                            );
+                        }
+
+                        // screenshot is upside down for some reason
+                        let mut window_data2 = Vec::new();
+                        for i in (0..window_data.len()).step_by(3 * width).rev() {
+                            window_data2.extend(window_data[i..i + 3 * width].iter());
+                        }
+                        
+                        // send it off
+                        fuze.ignite((window_data2, width as u32, height as u32));
+                    }
                 }
             }
 
@@ -270,6 +300,7 @@ pub enum WindowEvent {
     SetRawInput(bool),
     SetClipboard(String),
     CloseGame,
+    TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>)
 }
 
 fn get_joystick_id(id: u32) -> glfw::JoystickId {

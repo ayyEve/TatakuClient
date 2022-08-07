@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use chrono::{ Datelike, Timelike };
+
 use crate::prelude::*;
 use crate::databases::save_replay;
 
@@ -290,6 +292,66 @@ impl Game {
             //     self.add_dialog(Box::new(chat));
             // }
             // trace!("Show user list: {}", self.show_user_list);
+        }
+
+        if keys_down.contains(&Key::F12) {
+            let (f, b) = Bomb::new();
+            WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::TakeScreenshot(f)).unwrap();
+
+            loop {
+
+                macro_rules! check {
+                    ($e:expr) => {
+                        match $e {
+                            Ok(e) => e,
+                            Err(e) => {
+                                NotificationManager::add_error_notification("Error saving screenshot", e).await;
+                                break;
+                            }
+                        }
+                    };
+                }
+
+                if let Some((data, width, height)) = b.exploded() {
+
+                    // create file
+                    let date = chrono::Local::now();
+                    let year = date.year();
+                    let month = date.month();
+                    let day = date.day();
+                    let hour = date.hour();
+                    let minute = date.minute();
+                    let second = date.second();
+
+                    let file = format!("../Screenshots/{year}-{month}-{day}--{hour}-{minute}-{second}.png");
+                    let path = Path::new(&file);
+
+                    check!(std::fs::create_dir_all(path.parent().unwrap()));
+                    let file = check!(std::fs::File::create(path));
+
+                    // save as png
+                    let w = &mut std::io::BufWriter::new(file);
+                    let mut encoder = png::Encoder::new(w, *width, *height);
+                    encoder.set_color(png::ColorType::RGB);
+
+                    let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
+                    check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));
+
+                    // notify user
+                    let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
+                    // TODO: when clicked, open folder to file
+                    NotificationManager::add_notification(Notification::new(
+                        format!("Screenshot saved to {full_path}"), 
+                        Color::BLUE, 
+                        5000.0, 
+                        NotificationOnClick::File(full_path)
+                    )).await;
+
+                    // if shift is pressed, upload to server, and get link
+
+                    break;
+                }
+            }
         }
 
 

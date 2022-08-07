@@ -210,3 +210,26 @@ pub async fn extract_all() {
         // }
     }
 }
+
+
+/// opens a folder in the os' file explorer
+pub fn open_folder(path: String, selected_file: Option<String>) {
+    #[cfg(windows)] {
+        let mut cmd = &mut std::process::Command::new("explorer.exe");
+        let path = path.replace("/", "\\");
+        
+        if let Some(selected_file) = selected_file {
+            let arg = format!("/select,{path}\\{selected_file}");
+            info!("a: {arg}");
+            cmd = cmd.arg(arg)
+        } else {
+            cmd = cmd.arg(path)
+        }
+
+        if let Err(e) = cmd.spawn() {
+            error!("error running cmd: {e}")
+        }
+
+        // explorer.exe /select,"C:\Folder\subfolder\file.txt"
+    }
+}
