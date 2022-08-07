@@ -10,16 +10,16 @@ lazy_static::lazy_static! {
 
 #[macro_export]
 macro_rules! get_settings {
-    () => {{
+    () => {
         Settings::get().await
-    }}
+    }
 }
 
 #[macro_export]
 macro_rules! get_settings_mut {
-    () => {{
+    () => {
         MutSettingsHelper::new(Settings::get_mut().await)
-    }}
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -43,6 +43,7 @@ pub struct Settings {
     pub osu_api_key: String,
     
     // game settings
+    pub logging_settings: LoggingSettings,
     pub standard_settings: StandardSettings,
     pub taiko_settings: TaikoSettings,
     pub catch_settings: CatchSettings,
@@ -50,6 +51,8 @@ pub struct Settings {
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: CommonGameplaySettings,
     pub last_played_mode: PlayMode,
+    pub current_skin: String,
+    pub external_games_folders: Vec<String>,
 
     // window settings
     pub fps_target: u64,
@@ -72,10 +75,8 @@ pub struct Settings {
 
     // other misc
     pub last_git_hash: String,
-    pub current_skin: String,
-    pub logging_settings: LoggingSettings,
+    pub current_version: String,
 
-    pub external_games_folders: Vec<String>
 }
 impl Settings {
     pub async fn load() -> Settings {
@@ -141,16 +142,19 @@ impl Default for Settings {
             master_vol: 0.3,
             global_offset: 0.0,
 
-            // username
+            // login
             username: "Guest".to_owned(),
             password: String::new(),
+            server_url: "wss://server.tataku.ca".to_owned(),
+            score_url: "https://scores.tataku.ca".to_owned(),
 
             // osu
             osu_username: String::new(),
             osu_password: String::new(),
             osu_api_key: String::new(),
 
-            // mode settings
+            // game settings
+            logging_settings: LoggingSettings::new(),
             standard_settings: StandardSettings::default(),
             taiko_settings: TaikoSettings::default(),
             catch_settings: CatchSettings::default(),
@@ -159,6 +163,8 @@ impl Default for Settings {
             common_game_settings: CommonGameplaySettings::default(),
             pause_on_focus_lost: true,
             last_played_mode: "osu".to_owned(),
+            current_skin: "None".to_owned(),
+            external_games_folders: Vec::new(),
 
             // window settings
             fps_target: 144,
@@ -173,20 +179,12 @@ impl Default for Settings {
             cursor_color: "#ffff32".to_owned(),
             cursor_border_color: "#000".to_owned(),
             
-
-            // keys
+            // keybinds
             key_user_panel: Key::F8,
             
-
             // other
             last_git_hash: String::new(),
-
-            server_url: "wss://server.tataku.ca".to_owned(),
-            score_url: "https://scores.tataku.ca".to_owned(),
-            current_skin: "None".to_owned(),
-            logging_settings: LoggingSettings::new(),
-
-            external_games_folders: Vec::new()
+            current_version: String::new(),
         }
     }
 }

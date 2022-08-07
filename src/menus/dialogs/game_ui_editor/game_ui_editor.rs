@@ -1,5 +1,6 @@
 use crate::prelude::*;
 const PAIN:bool = true;
+const TEXT_SIZE:f64 = 30.0;
 
 pub struct GameUIEditorDialog {
     pub should_close: bool,
@@ -236,7 +237,6 @@ async fn reset_element(ele: &mut UIElement) {
 }
 
 
-const TEXT_SIZE:f64 = 30.0;
 
 pub struct UISideBarElement {
     pos: Vector2,

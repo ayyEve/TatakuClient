@@ -1,4 +1,3 @@
-// #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
 #[macro_use]
@@ -21,8 +20,8 @@ pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
 pub const SKIN_FOLDER:&str = "skins";
 pub const REPLAY_EXPORTS_DIR:&str = "../replays";
-
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.xyz/tataku";
+
 #[inline]
 fn download_url<T:AsRef<str>>(file:T) -> String {
     format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
@@ -30,12 +29,7 @@ fn download_url<T:AsRef<str>>(file:T) -> String {
 
 // https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
-
     // default audio
-    // "resources/audio/don.wav",
-    // "resources/audio/kat.wav",
-    // "resources/audio/bigdon.wav",
-    // "resources/audio/bigkat.wav",
     "resources/audio/combobreak.mp3",
 
     // icons
@@ -54,6 +48,7 @@ const FIRST_MAPS: &[u32] = &[
     1605148, // mayday (std)
     727903, // galaxy collapse (taiko)
 ];
+
 
 // main fn
 #[tokio::main]
@@ -120,6 +115,7 @@ async fn main() {
     info!("byebye!");
 }
 
+
 async fn setup() {
     Settings::load().await;
 
@@ -171,7 +167,7 @@ async fn setup() {
 async fn check_bass() {
     #[cfg(target_os = "windows")]
     let filename = "bass.dll";
-       
+    
     #[cfg(target_os = "linux")]
     let filename = "libbass.so";
 

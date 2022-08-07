@@ -1,36 +1,44 @@
-
-variables:
-  CARGO_HOME: $CI_PROJECT_DIR/.cargo
-
 stages:
   - build-client
 
 
-rust-latest:
+build-windows:
   stage: build-client
   image: rust:latest
   script:
-    - apt update
-    - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
-    - cargo build --release --verbose #--features gitlab_build
-    # - cargo test --verbose
-  # allow_failure: true
-  cache:
-    paths:
-      - target
-      - .cargo
+    - cargo build --release --verbose
+    - ./release/windows.ps1
+  tags:
+    - windows
+    - local
+    - non-vm
 
 
-rust-nightly:
+build-linux:
   stage: build-client
-  image: rustlang/rust:nightly
+  image: rust:latest
+  rules:
+    - if: $TATAKU_RELEASE_KEY != null
   script:
     - apt update
-    - apt install libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev -y
-    - cargo build --release --verbose #--features gitlab_build
-    # - cargo test --verbose
-  allow_failure: true
-  cache:
-    paths:
-      - target
-      - .cargo
+    - apt install -y libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev
+    - cargo build --release --verbose
+    - ./release/linux.sh
+  tags:
+    - linux
+    - local
+
+
+# TODO: build-mac
+build-mac:
+  stage: build-client
+  image: rust:latest
+  rules:
+    - if: $TATAKU_RELEASE_KEY != null
+  script:
+    - cargo build --release --verbose
+    - ./release/linux.sh
+  tags:
+    - mac
+    - local
+    - never #TODO: remove this when ready
