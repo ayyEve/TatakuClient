@@ -146,8 +146,10 @@ impl Game {
         let mut draw_timer = Instant::now();
         let mut last_draw_offset = 0.0;
 
+        let game_start = std::time::Instant::now();
 
-        let render_rate   = 1.0 / (self.settings.fps_target as f64 * 1.2);
+
+        let render_rate   = 1.0 / (self.settings.fps_target as f64);
         let update_target = 1.0 / self.settings.update_target as f64;
 
         loop {
@@ -163,6 +165,10 @@ impl Game {
                     }
                 }
             }
+
+            // update our instant's time
+            set_time(game_start.elapsed());
+            
             let now = Instant::now();
 
             let update_elapsed = now.duration_since(update_timer).as_secs_f64();
@@ -176,11 +182,11 @@ impl Game {
                 return;
             }
 
-            const RENDER_DAMPENING_FACTOR:f64 = 0.9;
+            const DRAW_DAMPENING_FACTOR:f64 = 0.9;
             let elapsed = now.duration_since(draw_timer).as_secs_f64();
             if elapsed + last_draw_offset >= render_rate {
                 draw_timer = now;
-                last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * RENDER_DAMPENING_FACTOR;
+                last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * DRAW_DAMPENING_FACTOR;
 
                 let window_size:[f64;2] = self.window_size.0.into();
                 let args = RenderArgs {
@@ -188,7 +194,7 @@ impl Game {
                     window_size,
                     draw_size: [window_size[0] as u32, window_size[1] as u32],
                 };
-                self.render(args).await;
+                self.draw(args).await;
             }
 
         }
@@ -339,7 +345,6 @@ impl Game {
 
                     // notify user
                     let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
-                    // TODO: when clicked, open folder to file
                     NotificationManager::add_notification(Notification::new(
                         format!("Screenshot saved to {full_path}"), 
                         Color::BLUE, 
@@ -645,7 +650,7 @@ impl Game {
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
     }
 
-    async fn render(&mut self, args: RenderArgs) {
+    async fn draw(&mut self, args: RenderArgs) {
         // let timer = Instant::now();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 

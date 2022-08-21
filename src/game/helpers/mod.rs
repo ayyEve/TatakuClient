@@ -8,17 +8,20 @@ pub mod io;
 pub mod math;
 pub mod curve;
 pub mod crypto;
+pub mod instant;
 pub mod key_counter;
 pub mod score_helper;
 pub mod event_handler;
 pub mod centered_text_helper;
 
+pub use instant::*;
 pub use fps_display::*;
+pub use score_helper::*;
 pub use event_handler::*;
 pub use volume_control::*;
 pub use benchmark_helper::*;
 
-pub use score_helper::*;
+
 
 pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f64) -> Box<Rectangle> {
     let mut color = Color::WHITE;

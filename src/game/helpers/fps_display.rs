@@ -43,11 +43,13 @@ impl FpsDisplay {
         if self.window_size.update() {
             self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
         }
+        
+        let now = Instant::now();
+        let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
 
-        let fps_elapsed = self.timer.elapsed().as_micros() as f64 / 1000.0;
         if fps_elapsed >= 100.0 {
-            self.last = (self.count as f64 / fps_elapsed * 1000.0) as f32;
-            self.timer = Instant::now();
+            self.last = self.count as f32 / fps_elapsed * 1000.0;
+            self.timer = now;
             self.count = 0;
             
             // frame times
@@ -123,7 +125,7 @@ impl AsyncFpsDisplay {
         }
         
         let now = Instant::now();
-        let fps_elapsed = now.duration_since(self.timer).as_micros() as f64 / 1000.0;
+        let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
 
         
         if fps_elapsed >= 100.0 {
@@ -132,7 +134,7 @@ impl AsyncFpsDisplay {
 
             // update frametime and last updates/s
             self.frametime_last_draw = self.frametime_last.swap(0, SeqCst) as f32 / 100.0; // restore 2 decimal places
-            self.last = (self.count.swap(0, SeqCst) as f64 / fps_elapsed * 1000.0) as f32;
+            self.last = self.count.swap(0, SeqCst) as f32 / fps_elapsed * 1000.0;
         }
     }
 

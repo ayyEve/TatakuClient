@@ -4,7 +4,10 @@ pub use std::fmt::Display;
 pub use std::f64::consts::PI;
 pub use std::collections::HashMap;
 pub use std::collections::HashSet;
-pub use std::time::{Duration, Instant};
+pub use std::time::{ 
+    Duration, 
+    // Instant 
+};
 pub use std::ops::{ Range, Deref, DerefMut };
 
 // sync imports
