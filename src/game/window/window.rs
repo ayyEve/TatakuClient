@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use glfw::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
     input::*, 
@@ -10,11 +11,21 @@ use piston::{
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
+// pain and suffering
+static mut GRAPHICS: OnceCell<GlGraphics> = OnceCell::const_new();
+static mut GAME_EVENT_SENDER: OnceCell<MultiFuze<GameEvent>> = OnceCell::const_new();
+
 pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
+static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
+
+fn graphics() -> &'static mut GlGraphics {
+    unsafe {
+        GRAPHICS.get_mut().unwrap()
+    }
+}
+
 
 lazy_static::lazy_static! {
-
-
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
 
@@ -25,10 +36,10 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow {
     pub window: glfw_window::GlfwWindow,
-    pub graphics: GlGraphics,
+    // pub graphics: GlGraphics,
 
-    game_event_sender: MultiFuze<GameEvent>,
-    render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
+    // game_event_sender: MultiFuze<GameEvent>,
+    // render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
     window_event_receiver: Receiver<WindowEvent>,
 
     #[cfg(feature="bass_audio")]
@@ -90,14 +101,25 @@ impl GameWindow {
             Err(e) => warn!("error setting window icon: {}", e)
         }
 
+
         let now = Instant::now();
+        unsafe {
+            let _ = GRAPHICS.set(graphics);
+            let _ = RENDER_EVENT_RECEIVER.set(render_event_receiver);
+            let _ = GAME_EVENT_SENDER.set(gane_event_sender);
+
+            #[cfg(target_os = "windows")] 
+            glfw::ffi::glfwSetWindowSizeCallback(window.window.window_ptr(), Some(RESIZE_WINDOW));
+            #[cfg(target_os = "windows")] 
+            glfw::ffi::glfwSetWindowPosCallback(window.window.window_ptr(), Some(REPOSITION_WINDOW));
+        }
 
         Self {
             window,
-            graphics,
-            render_event_receiver,
+            // graphics,
+            // render_event_receiver,
             window_event_receiver,
-            game_event_sender: gane_event_sender, 
+            // game_event_sender: gane_event_sender, 
             window_size: WindowSizeHelper::default(),
 
             
@@ -122,7 +144,9 @@ impl GameWindow {
         macro_rules! close_window {
             (self) => {
                 self.window.window.set_should_close(true);
-                self.game_event_sender.ignite(GameEvent::WindowClosed);
+                unsafe {
+                    GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::WindowClosed);
+                }
                 return;
             }
         }
@@ -135,7 +159,9 @@ impl GameWindow {
                 if let Some(axis) = e.controller_axis_args() {
                     let j_id = get_joystick_id(axis.id);
                     let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                    self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
+                    unsafe {
+                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::ControllerEvent(e, name));
+                    }
                     continue
                 }
                 
@@ -144,17 +170,22 @@ impl GameWindow {
 
                     let j_id = get_joystick_id(cb.id);
                     let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                    self.game_event_sender.ignite(GameEvent::ControllerEvent(e, name));
-                    
+                    unsafe {
+                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::ControllerEvent(e, name));
+                    }
                     continue;
                 }
 
                 if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
-                    self.game_event_sender.ignite(GameEvent::DragAndDrop(d));
+                    unsafe {
+                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::DragAndDrop(d));
+                    }
                     continue
                 }
 
-                self.game_event_sender.ignite(GameEvent::WindowEvent(e));
+                unsafe {
+                    GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::WindowEvent(e));
+                }
             }
 
             // check render-side events
@@ -208,25 +239,37 @@ impl GameWindow {
 
             tokio::task::yield_now().await;
         }
-
     }
     
     async fn render(&mut self) {
-        if !self.render_event_receiver.updated() { return }
+        unsafe {
+            if !RENDER_EVENT_RECEIVER.get().unwrap().updated() { return }
+        }
 
         let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
         RENDER_COUNT.fetch_add(1, SeqCst);
 
-        match self.render_event_receiver.read() {
+        render(
+            self.window.window.window_ptr(),
+            RenderArgs {
+                ext_dt: 0.0,
+                window_size: self.window.size().into(),
+                draw_size:   self.window.draw_size().into(),
+            }
+        );
+        
+    }
+}
+
+
+//TODO: could pass the window pointer here
+fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs) {
+    unsafe {
+        match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
             TatakuRenderEvent::None => {},
             TatakuRenderEvent::Draw(data) => {
-
-                let args = RenderArgs {
-                    ext_dt: 0.0,
-                    window_size: self.window.size().into(),
-                    draw_size: self.window.draw_size().into(),
-                };
+                let graphics = graphics();
 
                 // TODO: use this for snipping
                 // // actually draw everything now
@@ -261,24 +304,31 @@ impl GameWindow {
 
                 // TODO: dont use this for snipping
 
-                let c = self.graphics.draw_begin(args.viewport());
-                graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+                let c = graphics.draw_begin(args.viewport());
+                graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
                 
                 for i in data.iter() {
-                    i.draw(&mut self.graphics, c);
+                    i.draw(graphics, c);
                 }
                 if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                    for i in q.lock().await.read().iter() {
-                        i.draw(&mut self.graphics, c);
+                    if let Ok(mut q) = q.try_lock() {
+                        for i in q.read().iter() {
+                            i.draw(graphics, c);
+                        }
                     }
                 }
                 
-                self.graphics.draw_end();
-                self.window.swap_buffers();
-            },
+                graphics.draw_end();
+
+                // self.window.swap_buffers();
+
+                glfw::ffi::glfwSwapBuffers(window);
+            }
         }
     }
 }
+
+
 
 pub enum TatakuRenderEvent {
     None,
@@ -300,7 +350,7 @@ pub enum WindowEvent {
     SetRawInput(bool),
     SetClipboard(String),
     CloseGame,
-    TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>)
+    TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
 }
 
 fn get_joystick_id(id: u32) -> glfw::JoystickId {
@@ -325,3 +375,78 @@ fn get_joystick_id(id: u32) -> glfw::JoystickId {
         _ => panic!("unknown joystick id: {}", id)
     }
 }
+
+
+
+
+struct WindowWrapper(*mut glfw::ffi::GLFWwindow);
+unsafe impl Send for WindowWrapper {}
+
+
+
+
+// callbacks for windows because windows is bad
+#[cfg(target_os = "windows")] 
+pub static RESIZE_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, i32) = {
+    extern "C" fn actual_callback(window: *mut glfw::ffi::GLFWwindow, w:i32, h:i32) {
+
+        // generate a window event
+        let draw_size = unsafe {
+            let mut width = 0;
+            let mut height = 0;
+            glfw::ffi::glfwGetFramebufferSize(window, &mut width, &mut height);
+            [width as u32, height as u32]
+        };
+        let window_size = [w as f64, h as f64];
+
+        unsafe {
+            GAME_EVENT_SENDER.get_mut().unwrap().ignite(
+                GameEvent::WindowEvent(
+                    Event::Input(
+                        Input::Resize(ResizeArgs {
+                            window_size,
+                            draw_size,
+                        }), 
+                        None
+                    )
+                )
+            );
+        }
+
+        let args = RenderArgs { 
+            ext_dt: 0.0, 
+            window_size,
+            draw_size
+        };
+
+        // re-render
+        render(window, args);
+    }
+    actual_callback
+};
+
+#[cfg(target_os = "windows")] 
+pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, i32) = {
+    extern "C" fn actual_callback(window: *mut glfw::ffi::GLFWwindow, _x:i32, _y:i32) {
+        let draw_size = unsafe {
+            let mut width = 0;
+            let mut height = 0;
+            glfw::ffi::glfwGetFramebufferSize(window, &mut width, &mut height);
+            [width as u32, height as u32]
+        };
+        let window_size = unsafe {
+            let mut width = 0;
+            let mut height = 0;
+            glfw::ffi::glfwGetWindowSize(window, &mut width, &mut height);
+            [width as f64, height as f64]
+        };
+
+        let args = RenderArgs { 
+            ext_dt: 0.0, 
+            window_size,
+            draw_size
+        };
+        render(window, args);
+    }
+    actual_callback
+};
