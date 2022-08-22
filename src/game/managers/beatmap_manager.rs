@@ -182,10 +182,13 @@ impl BeatmapManager {
 
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash.clone();
-        if self.initialized {self.new_maps.push(beatmap.clone())}
+        if self.initialized { 
+            self.new_maps.push(beatmap.clone());
+            self.new_map_added.0.ignite(beatmap.clone());
+        }
+        
         self.beatmaps_by_hash.insert(new_hash, beatmap.clone());
         self.beatmaps.push(beatmap.clone());
-        self.new_map_added.0.ignite(beatmap.clone());
     }
 
 

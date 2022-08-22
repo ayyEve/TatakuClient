@@ -365,7 +365,7 @@ impl GameMode for ManiaGame {
                     // if metadata.mode == "mania" {
                         let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
                         let x = s.col_pos(column);
-                        warn!("{}, {:?}", note.hitsound, note.hitsamples);
+                        // warn!("{}, {:?}", note.hitsound, note.hitsamples);
 
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
                             note.time,

@@ -5,6 +5,7 @@ use crate::prelude::*;
 extern crate log;
 
 // include files
+mod cli;
 mod game;
 mod menus;
 mod errors;
@@ -60,7 +61,6 @@ const FIRST_MAPS: &[u32] = &[
 async fn main() {
     tataku_logging::init("logs/").unwrap();
 
-    let main_thread = tokio::task::LocalSet::new();
 
     // enter game dir
     if exists("./game") {
@@ -74,6 +74,36 @@ async fn main() {
 
     // init skin manager
     SkinManager::init().await;
+
+
+    let mut play_game = true;
+
+    let mut args = std::env::args().map(|s|s.to_string());
+    args.next(); // skip the file param
+
+    if let Some(param1) = args.next() {
+        match &*param1 {
+            "--diff_calc" | "--diffcalc" | "-d" => {
+                play_game = false;
+                cli::diff_calc_cli(&mut args).await;
+            }
+
+            _ => {}
+        }
+    }
+
+    if play_game {
+        start_game().await;
+    }
+
+
+    
+    // game.await.ok().expect("error finishing game?");
+    info!("byebye!");
+}
+
+async fn start_game() {
+    let main_thread = tokio::task::LocalSet::new();
 
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
     let (game_event_sender, game_event_receiver) = MultiBomb::new();
@@ -115,10 +145,8 @@ async fn main() {
     });
 
     let _ = tokio::join!(main_thread, game);
-    
-    // game.await.ok().expect("error finishing game?");
-    info!("byebye!");
 }
+
 
 async fn setup() {
     Settings::load().await;
@@ -202,62 +230,3 @@ async fn check_bass() {
     }
 }
 
-
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_number<T:Display>(num:T) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
-
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
-
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        new_new += &format!(".{}", dec);
-    }
-    new_new.trim_start_matches(",").to_owned()
-}
-
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_float<T:Display>(num:T, precis: usize) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
-
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
-
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        let dec = if dec.len() < precis {
-            format!("{}{}", dec, "0".repeat(precis - dec.len()))
-        } else {
-            dec.split_at(precis.min(dec.len())).0.to_owned()
-        };
-        new_new += &format!(".{}", dec);
-    } else if precis > 0 {
-        new_new += & format!(".{}", "0".repeat(precis))
-    }
-    new_new.trim_start_matches(",").to_owned()
-}

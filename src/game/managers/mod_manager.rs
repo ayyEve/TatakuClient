@@ -12,9 +12,7 @@ pub struct ModManager {
     
     pub easy: bool,
     pub hard_rock: bool,
-
     pub autoplay: bool,
-    
     pub nofail: bool,
 }
 
@@ -69,3 +67,15 @@ impl ModManager {
     }
 }
 
+
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ModManagerOld {
+    /// use get/set_speed instead of direct access to this
+    pub speed: u16,
+    
+    pub easy: bool,
+    pub hard_rock: bool,
+    pub autoplay: bool,
+    pub nofail: bool,
+}

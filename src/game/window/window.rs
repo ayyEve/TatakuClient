@@ -133,13 +133,18 @@ impl GameWindow {
 
     pub async fn run(&mut self) {
         // fire event so things get moved around correctly
-        let size = get_settings!().window_size;
-        set_window_size(size.into());
+        let settings = get_settings!().clone();
+        set_window_size(settings.window_size.into());
 
         self.window_size.init().await;
 
         // resize window
         self.window.window.set_size(self.window_size.x as i32, self.window_size.y as i32);
+
+        // if settings.raw_input {
+        //     self.window.window.set_raw_mouse_motion(true);
+        // }
+
 
         macro_rules! close_window {
             (self) => {
