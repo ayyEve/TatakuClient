@@ -15,6 +15,9 @@ const TRAIL_CREATE_TIMER_IF_MIDDLE:f64 = 0.1;
 const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
 const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
 
+const DEFAULT_CURSOR_SIZE:f64 = 5.0;
+const PRESSED_CURSOR_SCALE:f64 = 1.2;
+
 
 static CURSOR_EVENT_QUEUE:OnceCell<SyncSender<CursorEvent>> = OnceCell::const_new();
 
@@ -28,9 +31,7 @@ pub struct CursorManager {
     // cached settings
     pub color: Color,
     pub border_color: Color,
-    cursor_border: f32,
-    cursor_scale: f64,
-
+    ripple_color: Color,
 
     pub cursor_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
@@ -54,10 +55,12 @@ pub struct CursorManager {
 
     show_system_cursor: bool,
 
-
     cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>,
 
     settings: SettingsHelper,
+
+    ripples: Vec<TransformGroup>,
+    time: Instant,
 }
 
 impl CursorManager {
@@ -115,8 +118,7 @@ impl CursorManager {
             pos: Vector2::zero(),
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
-            cursor_scale: settings.cursor_scale,
-            cursor_border: settings.cursor_border,
+            ripple_color: Color::from_hex(&settings.cursor_ripple_color),
             
             skin_change_helper: SkinChangeHelper::new().await,
 
@@ -136,7 +138,10 @@ impl CursorManager {
             right_pressed: false,
             visible: true,
             show_system_cursor: false,
-            settings
+            settings,
+
+            ripples: Vec::new(),
+            time: Instant::now()
         }
     }
 
@@ -163,14 +168,14 @@ impl CursorManager {
         }
     }
 
+
     pub async fn update(&mut self, time: f64) {
 
         // check settings update 
         if self.settings.update() {
             self.color = Color::from_hex(&self.settings.cursor_color);
             self.border_color = Color::from_hex(&self.settings.cursor_border_color);
-            self.cursor_scale =  self.settings.cursor_scale;
-            self.cursor_border = self.settings.cursor_border;
+            self.ripple_color = Color::from_hex(&self.settings.cursor_ripple_color);
         }
 
 
@@ -179,12 +184,18 @@ impl CursorManager {
             match event {
                 CursorEvent::SetLeftDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
-                        self.left_pressed = down
+                        self.left_pressed = down;
+                        if down && self.settings.cursor_ripples {
+                            self.add_ripple()
+                        }
                     }
                 },
                 CursorEvent::SetRightDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
-                        self.right_pressed = down
+                        self.right_pressed = down;
+                        if down && self.settings.cursor_ripples {
+                            self.add_ripple()
+                        }
                     }
                 },
                 CursorEvent::SetVisible(show) => self.visible = show,
@@ -237,15 +248,23 @@ impl CursorManager {
             i.update(time);
             i.items[0].visible()
         });
+
+        // update ripples
+        let time = self.time.elapsed().as_secs_f64() * 1000.0;
+        self.ripples.retain_mut(|ripple| {
+            ripple.update(time);
+            ripple.items[0].visible()
+        });
+
     }
 
 
     pub async fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
         if !self.visible {return}
 
-        let mut radius = 5.0;
+        let mut radius = DEFAULT_CURSOR_SIZE;
         if self.left_pressed || self.right_pressed {
-            radius *= 2.0;
+            radius *= PRESSED_CURSOR_SCALE;
         }
 
         if self.cursor_trail_image.is_some() {
@@ -255,13 +274,19 @@ impl CursorManager {
             }
         }
         
+        // draw ripples
+        for ripple in self.ripples.iter_mut() {
+            ripple.draw(list)
+        }
+
+        // draw cursor itself
         if let Some(cursor) = &self.cursor_image {
             let mut cursor = cursor.clone();
             cursor.current_pos = self.pos;
             cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
-                cursor.current_scale = Vector2::one() * 1.2;
+                cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE;
             }
             
             list.push(Box::new(cursor.clone()));
@@ -270,16 +295,39 @@ impl CursorManager {
                 self.color,
                 -f64::MAX,
                 self.pos,
-                radius * self.cursor_scale,
-                if self.cursor_border > 0.0 {
+                radius * self.settings.cursor_scale,
+                if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
                         self.border_color,
-                        self.cursor_border as f64
+                        self.settings.cursor_border as f64
                     ))
-                } else {None}
+                } else { None }
             )));
         }
+    }
 
+
+    fn add_ripple(&mut self) {
+        let mut group = TransformGroup::new();
+        let duration = 500.0;
+        let time = self.time.elapsed().as_secs_f64() * 1000.0;
+
+        let radius = if let Some(img) = &self.cursor_image {
+            img.size().x / 2.0
+        } else {
+            DEFAULT_CURSOR_SIZE * self.settings.cursor_scale
+        } * PRESSED_CURSOR_SCALE;
+
+        group.items.push(DrawItem::Circle(Circle::new(
+            Color::WHITE.alpha(0.5),
+            1_000.0,
+            self.pos,
+            radius,
+            Some(Border::new(Color::WHITE, 2.0))
+        )));
+        group.ripple(0.0, duration, time, self.settings.cursor_ripple_final_scale, true, Some(0.5));
+
+        self.ripples.push(group);
     }
 }
 

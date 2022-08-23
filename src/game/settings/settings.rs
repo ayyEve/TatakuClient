@@ -65,6 +65,11 @@ pub struct Settings {
     pub cursor_scale: f64,
     pub cursor_border: f32,
     pub cursor_border_color: String,
+
+    pub cursor_ripples: bool,
+    pub cursor_ripple_color: String,
+    pub cursor_ripple_final_scale: f64,
+
     
 
     // misc keybinds
@@ -168,10 +173,13 @@ impl Default for Settings {
             background_dim: 0.8,
 
             // cursor
-            cursor_scale: 2.0,
+            cursor_scale: 3.0,
             cursor_border: 1.5,
             cursor_color: "#ffff32".to_owned(),
             cursor_border_color: "#000".to_owned(),
+            cursor_ripples: true,
+            cursor_ripple_color: "#000".to_owned(),
+            cursor_ripple_final_scale: 4.0,
             
 
             // keys
