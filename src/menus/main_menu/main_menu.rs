@@ -16,7 +16,7 @@ pub struct MainMenu {
     // index 3
     pub exit_button: MainMenuButton,
 
-    visualization: MenuVisualization,
+    visualization: MenuVisualizationNew,
     background_game: Option<IngameManager>,
 
     selected_index: usize,
@@ -47,7 +47,7 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
-        let visualization = MenuVisualization::new().await;
+        let visualization = MenuVisualizationNew::new().await;
 
         MainMenu {
             play_button,
@@ -354,6 +354,21 @@ impl AsyncMenu<Game> for MainMenu {
         if mods.ctrl && key == Key::N {
             NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
         }
+
+
+        
+        if mods.ctrl && key == Key::Up {
+            self.visualization.index += 1;
+            info!("i: {}", self.visualization.index)
+        }
+        if mods.ctrl && key == Key::Down {
+            if self.visualization.index > 0 {
+                self.visualization.index -= 1;
+            }
+            info!("i: {}", self.visualization.index)
+        }
+
+        
 
         // check offset keys
         if let Some(manager) = self.background_game.as_mut() {

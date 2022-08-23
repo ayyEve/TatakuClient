@@ -27,4 +27,12 @@ impl Instant {
     pub fn duration_since(&self, other: Self) -> Duration {
         Duration::from_nanos(self.0 - other.0)
     }
+
+    pub fn as_millis(&self) -> f32 {
+        self.elapsed().as_secs_f32() * 1000.0
+    }
+
+    pub fn as_millis64(&self) -> f64 {
+        self.elapsed().as_secs_f64() * 1000.0
+    }
 }
