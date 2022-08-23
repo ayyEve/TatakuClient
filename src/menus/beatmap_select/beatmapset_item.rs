@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
 pub const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
-const BEATMAP_ITEM_PADDING:f64 = 5.0;
+const BEATMAP_ITEM_Y_PADDING:f64 = 8.0;
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
 
 
@@ -72,7 +72,7 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
         if !self.selected {
             BEATMAPSET_ITEM_SIZE
         } else {
-            Vector2::new(BEATMAPSET_ITEM_SIZE.x, (BEATMAPSET_ITEM_SIZE.y + BEATMAP_ITEM_PADDING) * (self.beatmaps.len()+1) as f64)
+            Vector2::new(BEATMAPSET_ITEM_SIZE.x, (BEATMAPSET_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * (self.beatmaps.len()+1) as f64)
         }
     }
     fn get_tag(&self) -> String {self.beatmaps[self.selected_index].beatmap_hash.clone()}
@@ -93,7 +93,7 @@ impl ScrollableItem for BeatmapsetItem {
             // find the clicked item
             // we only care about y pos, because we know we were clicked
             let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
-            let index = (((rel_y2 + BEATMAP_ITEM_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
+            let index = (((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
 
             self.selected_index = index;
 
@@ -166,11 +166,11 @@ impl ScrollableItem for BeatmapsetItem {
             self.pos + pos_offset,
             BEATMAPSET_ITEM_SIZE,
             if self.hover {
-                Some(Border::new(Color::RED, 1.0))
-            } else if self.selected {
                 Some(Border::new(Color::BLUE, 1.0))
+            } else if self.selected {
+                Some(Border::new(Color::RED, 1.0))
             } else {
-                None
+                Some(Border::new(Color::WHITE * 0.8, 1.0))
             }
         ).shape(Shape::Round(5.0, 10))));
 
@@ -203,7 +203,7 @@ impl ScrollableItem for BeatmapsetItem {
 
         // if selected, draw map items
         if self.selected {
-            let mut pos = self.pos+pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING);
+            let mut pos = self.pos+pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING);
             
             // try to find the clicked item
             // // we only care about y pos, because we know we were clicked
@@ -212,7 +212,7 @@ impl ScrollableItem for BeatmapsetItem {
             // if x is in correct area to hover over beatmap items
             if self.mouse_pos.x >= self.pos.x + (BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x) {
                 let rel_y2 = (self.mouse_pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
-                index = ((rel_y2 + BEATMAP_ITEM_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING)).floor() as usize;
+                index = ((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize;
             }
 
             if self.mouse_pos.y < self.pos.y {
@@ -228,12 +228,12 @@ impl ScrollableItem for BeatmapsetItem {
                     parent_depth + 5.0,
                     pos,
                     BEATMAP_ITEM_SIZE,
-                    if i == index {
+                    if i == index { // hover
                         Some(Border::new(Color::BLUE, 1.0))
-                    } else if i == self.selected_index {
+                    } else if i == self.selected_index { // selected
                         Some(Border::new(Color::RED, 1.0))
                     } else {
-                        Some(Border::new(Color::BLACK, 1.0))
+                        Some(Border::new(Color::WHITE * 0.8, 1.0))
                     }
                 ).shape(Shape::Round(5.0, 10))));
 
@@ -257,7 +257,7 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
-                pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_PADDING;
+                pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING;
             }
         }
     }
