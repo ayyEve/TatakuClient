@@ -141,9 +141,9 @@ impl GameWindow {
         // resize window
         self.window.window.set_size(self.window_size.x as i32, self.window_size.y as i32);
 
-        // if settings.raw_input {
-        //     self.window.window.set_raw_mouse_motion(true);
-        // }
+        if settings.raw_mouse_input {
+            self.window.window.set_raw_mouse_motion(true);
+        }
 
 
         macro_rules! close_window {

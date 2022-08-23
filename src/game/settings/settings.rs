@@ -59,6 +59,7 @@ pub struct Settings {
     pub background_dim: f32,
     /// should the game pause when focus is lost?
     pub pause_on_focus_lost: bool,
+    pub raw_mouse_input: bool,
 
     // cursor
     pub cursor_color: String,
@@ -171,6 +172,7 @@ impl Default for Settings {
             window_size: [1280.0, 720.0],
             ui_scale: 1.0,
             background_dim: 0.8,
+            raw_mouse_input: false,
 
             // cursor
             cursor_scale: 3.0,
