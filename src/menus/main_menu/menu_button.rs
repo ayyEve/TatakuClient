@@ -1,5 +1,8 @@
 use crate::prelude::*;
 
+const X_OFFSET:f64 = 10.0;
+const ITEM_PADDING:usize = 2;
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct MainMenuButton {
@@ -18,6 +21,8 @@ pub struct MainMenuButton {
 
     last_num: usize,
     last_count: usize,
+
+    hide_time: f32,
 }
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
@@ -42,6 +47,8 @@ impl MainMenuButton {
 
             last_num: 0,
             last_count: 0,
+
+            hide_time: -1.0
         }
     }
 
@@ -53,13 +60,12 @@ impl MainMenuButton {
         self.visible = true;
         self.last_num = num;
         self.last_count = count;
+        self.hide_time = -1.0;
 
 
-        const X_OFFSET:f64 = 10.0;
         let radius = (self.window_size.y / 6.0) * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
         let center = self.window_size / 2.0;
 
-        const ITEM_PADDING:usize = 2;
 
         let height = self.size.y;
         let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f64) * (num + ITEM_PADDING) as f64 - PI / 2.0;
@@ -81,48 +87,85 @@ impl MainMenuButton {
             TransformEasing::Linear,
             time
         );
-
-        
-        // let transform = Transformation::new(
-        //     0.0,
-        //     500.0,
-        //     TransformType::Transparency {start: 0.0, end: 1.0},
-        //     TransformEasing::EaseInSine,
-        //     time
-        // );
-
-        // let transform2 = Transformation::new(
-        //     0.0,
-        //     500.0,
-        //     TransformType::Rotation {start: 0.0, end: PI * 2.0},
-        //     TransformEasing::Linear,
-        //     time
-        // );
-
-        // let transform3 = Transformation::new(
-        //     500.0,
-        //     500.0,
-        //     TransformType::Scale {start: 1.0, end: 3.0},
-        //     TransformEasing::Linear,
-        //     time
-        // );
+        let t2 = Transformation::new(
+            0.0,
+            duration,
+            TransformType::Transparency { start: 0.0, end: 1.0 },
+            TransformEasing::Linear,
+            time
+        );
 
         self.shapes.transforms.push(t1);
-        // self.shapes.transforms.push(transform);
-        // self.shapes.transforms.push(transform2);
-        // self.shapes.transforms.push(transform3);
+        self.shapes.transforms.push(t2);
 
         for i in self.disposable_shapes.iter_mut() {
             i.transforms.push(t1);
-            // i.transforms.push(transform);
-            // i.transforms.push(transform2);
-            // i.transforms.push(transform3);
+            i.transforms.push(t2);
         }
 
     }
 
+
+    /// num: this button number, count: number of buttons
+    pub fn hide(&mut self, num: usize, count: usize, do_transform: bool) {
+        if !self.visible { return }
+
+        let time = self.time();
+        self.visible = true;
+        self.last_num = num;
+        self.last_count = count;
+        self.hide_time = time as f32;
+
+
+        let radius = (self.window_size.y / 6.0) * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
+        let center = self.window_size / 2.0;
+
+
+        let height = self.size.y;
+        let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f64) * (num + ITEM_PADDING) as f64 - PI / 2.0;
+        let mut end = center + Vector2::new(
+            angle.cos() * radius,
+            angle.sin() * radius,
+        ) - Vector2::new(0.0, height / 2.0);
+
+        let duration = if do_transform { 500.0 } else { 1.0 };
+        let mut start = Vector2::new(
+            center.x,
+            end.y
+        );
+
+        std::mem::swap(&mut end, &mut start);
+
+        let t1 = Transformation::new(
+            0.0,
+            duration,
+            TransformType::Position {start, end},
+            TransformEasing::Linear,
+            time
+        );
+        
+
+        let t2 = Transformation::new(
+            0.0,
+            duration,
+            TransformType::Transparency { start: 1.0, end: 0.0 },
+            TransformEasing::Linear,
+            time
+        );
+
+        self.shapes.transforms.push(t1);
+        self.shapes.transforms.push(t2);
+
+        for i in self.disposable_shapes.iter_mut() {
+            i.transforms.push(t1);
+            i.transforms.push(t2);
+        }
+
+    }
+    
+
     pub fn time(&self) -> f64 {
-        self.timer.elapsed().as_secs_f64() * 1000.0
+        self.timer.as_millis64()
     }
 
     pub fn window_size_changed(&mut self, window_size: &Arc<WindowSize>) {
@@ -199,7 +242,7 @@ impl ScrollableItem for MainMenuButton {
             // draw box
             let r = Rectangle::new(
                 [0.2, 0.2, 0.2, 1.0].into(),
-                1.0,
+                10.0,
                 self.pos,
                 self.size,
                 Some(Border::new(Color::RED, 0.0))
@@ -208,7 +251,7 @@ impl ScrollableItem for MainMenuButton {
             // draw text
             let mut txt = Text::new(
                 Color::WHITE,
-                0.0,
+                9.0,
                 Vector2::zero(),
                 font_size,
                 self.text.to_owned(),
@@ -229,10 +272,19 @@ impl ScrollableItem for MainMenuButton {
             i.update(time);
             i.items.find(|s|s.visible()).is_some()
         });
+
+
+        if self.hide_time > 0.0 {
+            if time - self.hide_time as f64 > 500.0 {
+                self.visible = false;
+            }
+        }
+
+
     }
 
     fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
-        if !self.visible {return}
+        if !self.visible { return }
         self.shapes.draw(list);
 
         for i in self.disposable_shapes.iter_mut() {

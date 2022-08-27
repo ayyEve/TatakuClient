@@ -81,7 +81,7 @@ impl MenuVisualizationNew {
 
         group.items.push(DrawItem::Circle(Circle::new(
             Color::WHITE.alpha(0.5),
-            10.0,
+            50.0,
             self.window_size.0 / 2.0,
             self.current_inner_radius,
             Some(Border::new(Color::WHITE, 2.0))
@@ -91,14 +91,14 @@ impl MenuVisualizationNew {
         self.ripples.push(group);
     }
 
-    pub fn song_changed(&mut self, new_manager: &mut Option<IngameManager>) {
+    pub fn song_changed(&mut self, _new_manager: &mut Option<IngameManager>) {
         self.ripples.clear();
         self.last_bass = 0.0;
         self.last_ripple = 0.0;
         self.created_ripple = false;
     }
 
-    pub async fn update(&mut self, manager: &mut Option<IngameManager>) {
+    pub async fn update(&mut self, _manager: &mut Option<IngameManager>) {
         if self.window_size.update() {
             self.initial_inner_radius = self.window_size.y / 6.0;
             
@@ -108,13 +108,6 @@ impl MenuVisualizationNew {
 
         // see if we should add a ripple
         if self.data.len() >= self.index {
-
-            // let mut current_bass = 0.0;
-            // let s = 10.min(self.data.len());
-            // for i in 0..s {
-            //     current_bass += self.data[i] / s as f32;
-            // }
-            
 
             // current bass
             let current_bass = self.data[self.index];
@@ -191,14 +184,6 @@ impl Visualization for MenuVisualizationNew {
         let rotation_increment = 0.2;
         self.rotation += rotation_increment * since_last;
 
-        // draw cookie
-        // let s = self.cookie.initial_scale;
-        // let s2 = s * val;
-        // self.cookie.current_scale = Vector2::new(
-        //     s2.x.clamp(s.x / 1.1, s.x * 1.1), 
-        //     s2.y.clamp(s.y / 1.1, s.y * 1.1)
-        // );
-
         self.cookie.depth = depth - 1.0;
         self.cookie.current_pos = pos;
         self.cookie.current_rotation = self.rotation * 2.0;
@@ -234,7 +219,7 @@ impl Visualization for MenuVisualizationNew {
 
         const BAR_MULT:f64 = 1.5;
 
-        for i in 0..self.data.len() {
+        for i in 1..self.data.len() {
             #[cfg(feature="bass_audio")]
             let val = self.data[i];
             #[cfg(feature="neb_audio")]
@@ -263,7 +248,7 @@ impl Visualization for MenuVisualizationNew {
                 p1,
                 p2,
                 n,
-                depth,
+                depth + 10.0,
                 // COLORS[i % COLORS.len()]
                 if i == self.index { Color::RED } else { *BAR_COLOR }
             )));

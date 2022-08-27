@@ -6,6 +6,10 @@ const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
 const Y_MARGIN: f64 = 20.0;
 const Y_OFFSET: f64 = 10.0;
 
+const MENU_HIDE_TIMER:f32 = 5_000.0;
+// const COOKIE_HIDE_TIMER:f32 = 10_000.0;
+// const COOKIE_FADE_TIME:f32 = 10_000.0;
+
 pub struct MainMenu {
     // index 0
     pub play_button: MainMenuButton,
@@ -18,15 +22,14 @@ pub struct MainMenu {
 
     visualization: MenuVisualizationNew,
     background_game: Option<IngameManager>,
+    music_box: MusicBox,
 
     selected_index: usize,
     menu_visible: bool,
-
-    music_box: MusicBox,
+    last_input: Instant,
 
     settings: SettingsHelper,
-
-    window_size: Arc<WindowSize>
+    window_size: Arc<WindowSize>,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -63,6 +66,7 @@ impl MainMenu {
 
             settings: SettingsHelper::new().await,
             window_size,
+            last_input: Instant::now()
         }
     }
 
@@ -115,6 +119,23 @@ impl MainMenu {
         self.exit_button.show(3, 4, true);
     }
 
+    fn hide_menu(&mut self) {
+        self.menu_visible = false;
+
+        // ensure they have the latest window size
+        self.play_button.window_size = self.window_size.0;
+        self.direct_button.window_size = self.window_size.0;
+        self.settings_button.window_size = self.window_size.0;
+        self.exit_button.window_size = self.window_size.0;
+
+        // show
+        self.play_button.hide(0, 4, true);
+        self.direct_button.hide(1, 4, true);
+        self.settings_button.hide(2, 4, true);
+        self.exit_button.hide(3, 4, true);
+    }
+    
+
     fn interactables(&mut self, include_buttons: bool) -> Vec<&mut dyn ScrollableItem> {
         if include_buttons {
             vec![
@@ -150,6 +171,10 @@ impl MainMenu {
             trace!("no prev");
             false
         }
+    }
+
+    fn reset_timer(&mut self) {
+        self.last_input = Instant::now()
     }
 }
 #[async_trait]
@@ -238,31 +263,23 @@ impl AsyncMenu<Game> for MainMenu {
                 self.background_game = None;
             }
         }
+    
+    
+        // check last input timer
+        let last_input = self.last_input.as_millis();
+        if last_input > MENU_HIDE_TIMER {
+            if self.menu_visible {
+                self.hide_menu();
+            }
+        }
+
+
     }
 
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let pos_offset = Vector2::zero();
         let depth = 0.0;
-
-        // // draw welcome text
-        // let mut welcome_text = Text::new(
-        //     Color::BLACK,
-        //     depth-1.0,
-        //     pos_offset,
-        //     40,
-        //     "Welcome to Tataku!".to_owned(),
-        //     get_font()
-        // );
-        // welcome_text.center_text(Rectangle::bounds_only(Vector2::new(0.0, 30.0), Vector2::new(window_size.x , 50.0)));
-        
-        // const TEXT_PAD:f64 = 5.0;
-        // list.push(visibility_bg(
-        //     welcome_text.initial_pos - Vector2::new(0.0, TEXT_PAD), 
-        //     Vector2::new(welcome_text.measure_text().x , 50.0),
-        //     depth+10.0
-        // ));
-        // list.push(Box::new(welcome_text));
 
         // draw interactables
         for i in self.interactables(true) {
@@ -290,6 +307,7 @@ impl AsyncMenu<Game> for MainMenu {
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+        self.reset_timer();
         if self.visualization.on_click(pos) {
             self.show_menu();
         }
@@ -341,12 +359,14 @@ impl AsyncMenu<Game> for MainMenu {
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
+        self.reset_timer();
         for i in self.interactables(true) {
             i.on_mouse_move(pos)
         }
     }
 
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+        self.reset_timer();
         use piston::Key::*;
 
         let mut needs_manager_setup = false;
@@ -422,6 +442,7 @@ impl AsyncMenu<Game> for MainMenu {
 #[async_trait]
 impl ControllerInputMenu<Game> for MainMenu {
     async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+        self.reset_timer();
         if !self.menu_visible {
             if let Some(ControllerButton::A) = controller.map_button(button) {
                 self.show_menu();

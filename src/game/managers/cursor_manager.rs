@@ -319,13 +319,13 @@ impl CursorManager {
         } * PRESSED_CURSOR_SCALE;
 
         group.items.push(DrawItem::Circle(Circle::new(
-            Color::WHITE.alpha(0.5),
+            Color::WHITE,
             1_000.0,
             self.pos,
             radius,
             Some(Border::new(Color::WHITE, 2.0))
         )));
-        group.ripple(0.0, duration, time, self.settings.cursor_ripple_final_scale, true, Some(0.5));
+        group.ripple(0.0, duration, time, self.settings.cursor_ripple_final_scale, true, Some(0.2));
 
         self.ripples.push(group);
     }
