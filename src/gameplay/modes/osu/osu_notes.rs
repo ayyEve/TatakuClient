@@ -887,32 +887,60 @@ impl HitObject for StandardSlider {
             }
 
         } else {
-            let mut color = color.clone();
+            let mut color = color.alpha(alpha);
             const DARKER:f32 = 2.0/3.0;
             color.r *= DARKER;
             color.g *= DARKER;
             color.b *= DARKER;
 
+            const BORDER_RADIUS: f64 = 6.0;
+            // border
             for line in self.curve.smooth_lines.iter() {
                 let p1 = self.scaling_helper.scale_coords(line.p1);
                 let p2 = self.scaling_helper.scale_coords(line.p2);
-                let l = Line::new(
+                let border = Line::new(
                     p1,
                     p2,
                     self.radius,
                     self.slider_depth,
+                    Color::WHITE.alpha(alpha)
+                );
+                list.push(Box::new(border));
+
+                // add a circle to smooth out the corners
+                // border
+                list.push(Box::new(Circle::new(
+                    Color::WHITE.alpha(alpha),
+                    self.slider_depth,
+                    p2,
+                    self.radius,
+                    None
+                )));
+            }
+
+            for line in self.curve.smooth_lines.iter() {
+                let p1 = self.scaling_helper.scale_coords(line.p1);
+                let p2 = self.scaling_helper.scale_coords(line.p2);
+
+                let l = Line::new(
+                    p1,
+                    p2,
+                    self.radius - BORDER_RADIUS,
+                    self.slider_depth,
                     color
                 );
                 list.push(Box::new(l));
+
 
                 // add a circle to smooth out the corners
                 list.push(Box::new(Circle::new(
                     color,
                     self.slider_depth,
                     p2,
-                    self.radius,
+                    self.radius - BORDER_RADIUS,
                     None
-                )))
+                )));
+                
             }
             
             // add extra circle to start of slider as well
