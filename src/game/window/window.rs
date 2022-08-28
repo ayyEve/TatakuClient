@@ -155,9 +155,10 @@ impl GameWindow {
                 return;
             }
         }
-
+        
         loop {
 
+            // poll window events
             while let Some(e) = self.window.poll_event() {
                 if e.close_args().is_some() { close_window!(self); }
 
@@ -235,21 +236,21 @@ impl GameWindow {
                 }
             }
 
-            
+            // increment input frametime stuff
             let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
             INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
             INPUT_COUNT.fetch_add(1, SeqCst);
 
+            // actually render
             self.render().await;
-
             tokio::task::yield_now().await;
         }
     }
     
     async fn render(&mut self) {
-        unsafe {
-            if !RENDER_EVENT_RECEIVER.get().unwrap().updated() { return }
-        }
+        // unsafe {
+        //     if !RENDER_EVENT_RECEIVER.get().unwrap().updated() { return }
+        // }
 
         let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
@@ -268,7 +269,6 @@ impl GameWindow {
 }
 
 
-//TODO: could pass the window pointer here
 fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs) {
     unsafe {
         match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
@@ -277,38 +277,38 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs) {
                 let graphics = graphics();
 
                 // TODO: use this for snipping
-                // // actually draw everything now
-                // let mut orig_c = self.graphics.draw_begin(args.viewport());
+                {
+                    // // actually draw everything now
+                    // let mut orig_c = self.graphics.draw_begin(args.viewport());
 
-                // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
-                // for i in self.render_queue.iter_mut() {
-                //     let mut drawstate_changed = false;
-                //     let c = if let Some(ic) = i.get_context() {
-                //         drawstate_changed = true;
-                //         // debug!("ic: {:?}", ic);
-                //         self.graphics.draw_end();
-                //         self.graphics.draw_begin(args.viewport());
-                //         self.graphics.use_draw_state(&ic.draw_state);
-                //         ic
-                //     } else {
-                //         orig_c
-                //     };
-                    
-                //     // self.graphics.use_draw_state(&c.draw_state);
-                //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
-                //     i.draw(&mut self.graphics, c);
+                    // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+                    // for i in self.render_queue.iter_mut() {
+                    //     let mut drawstate_changed = false;
+                    //     let c = if let Some(ic) = i.get_context() {
+                    //         drawstate_changed = true;
+                    //         // debug!("ic: {:?}", ic);
+                    //         self.graphics.draw_end();
+                    //         self.graphics.draw_begin(args.viewport());
+                    //         self.graphics.use_draw_state(&ic.draw_state);
+                    //         ic
+                    //     } else {
+                    //         orig_c
+                    //     };
+                        
+                    //     // self.graphics.use_draw_state(&c.draw_state);
+                    //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
+                    //     i.draw(&mut self.graphics, c);
 
-                //     if drawstate_changed {
-                //         self.graphics.draw_end();
-                //         orig_c = self.graphics.draw_begin(args.viewport());
-                //         self.graphics.use_draw_state(&orig_c.draw_state);
-                //     }
-                // }
-                // self.graphics.draw_end();
-
+                    //     if drawstate_changed {
+                    //         self.graphics.draw_end();
+                    //         orig_c = self.graphics.draw_begin(args.viewport());
+                    //         self.graphics.use_draw_state(&orig_c.draw_state);
+                    //     }
+                    // }
+                    // self.graphics.draw_end();
+                }
 
                 // TODO: dont use this for snipping
-
                 let c = graphics.draw_begin(args.viewport());
                 graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
                 
@@ -324,8 +324,6 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs) {
                 }
                 
                 graphics.draw_end();
-
-                // self.window.swap_buffers();
 
                 glfw::ffi::glfwSwapBuffers(window);
             }
@@ -380,15 +378,6 @@ fn get_joystick_id(id: u32) -> glfw::JoystickId {
         _ => panic!("unknown joystick id: {}", id)
     }
 }
-
-
-
-
-struct WindowWrapper(*mut glfw::ffi::GLFWwindow);
-unsafe impl Send for WindowWrapper {}
-
-
-
 
 // callbacks for windows because windows is bad
 #[cfg(target_os = "windows")] 
