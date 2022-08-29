@@ -18,7 +18,7 @@ static mut GAME_EVENT_SENDER: OnceCell<MultiFuze<GameEvent>> = OnceCell::const_n
 pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
 static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
 
-fn graphics() -> &'static mut GlGraphics {
+pub fn graphics() -> &'static mut GlGraphics {
     unsafe {
         GRAPHICS.get_mut().unwrap()
     }

@@ -84,6 +84,19 @@ pub async fn texture_load_loop() {
 
                     on_done.send(Err(TatakuError::String(String::new()))).ok().expect("uh oh");
                 }
+                
+                LoadImage::RenderBuffer((w, h), on_done, callback) => {
+                    match RenderTarget::new_main_thread(w, h) {
+                        Ok(mut render_target) => {
+                            callback(&mut render_target);
+                            
+                            if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
+                        }
+                        Err(e) => {
+                            if let Err(_) = on_done.send(Err(e)) { error!("uh oh") }
+                        }
+                    }
+                }
             }
 
             trace!("Done loading tex");
@@ -144,10 +157,25 @@ pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
 }
 
 
+pub async fn create_render_target(size: (f64, f64), callback: fn(&mut RenderTarget)) -> TatakuResult<RenderTarget> {
+    trace!("create render target");
+
+    let (sender, mut receiver) = unbounded_channel();
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::RenderBuffer(size, sender, callback)).ok().expect("no?");
+
+    if let Some(t) = receiver.recv().await {
+        t
+    } else {
+        Err(TatakuError::String("idk".to_owned()))
+    }
+}
+
 pub enum LoadImage {
     GameClose,
     Path(String, UnboundedSender<TatakuResult<Arc<Texture>>>),
     Image(RgbaImage, UnboundedSender<TatakuResult<Arc<Texture>>>),
     Font(Font2, FontSize, UnboundedSender<TatakuResult<()>>),
+
+    RenderBuffer((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, fn(&mut RenderTarget))
 }
 

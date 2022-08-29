@@ -28,7 +28,12 @@ pub struct RenderTarget {
     pub image: Image,
 }
 impl RenderTarget {
-    pub fn new(width: f64, height: f64) -> TatakuResult<Self> {
+
+    pub async fn new(width: f64, height: f64, callback: fn(&mut RenderTarget)) -> TatakuResult<Self> {
+        create_render_target((width, height), callback).await
+    }
+
+    pub fn new_main_thread(width: f64, height: f64) -> TatakuResult<Self> {
 
         // Generate and bind a FrameBuffer
         let framebuffer_id = unsafe {
