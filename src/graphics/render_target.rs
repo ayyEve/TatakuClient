@@ -8,16 +8,8 @@ lazy_static::lazy_static! {
     static ref CURRENT_BOUND:AtomicU32 = AtomicU32::new(0);
 }
 
-// #[deprecated = "unfinidhsed"]
 pub struct RenderTarget {
-    /// Unique ID of this FrameBuffer
-    framebuffer_id: u32,
-
-    /// Texture ID of the Texture that this RenderTarget draws to
-    texture_id: u32,
-
-    /// Depth Buffer of this RenderTarget
-    depth_renderbuffer_id: u32,
+    pub render_target_data: Arc<RenderTargetData>,
 
     /// When binding, it saves the old viewport here so it can reset it upon Unbinding
     old_view_port: [i32; 4],
@@ -107,25 +99,29 @@ impl RenderTarget {
             Vector2::new(width, height)
         );
 
-        Ok(Self {
-            height,
-            width,
+        let data = Arc::new(RenderTargetData {
             framebuffer_id,
             texture_id,
             depth_renderbuffer_id,
+        });
+
+        Ok(Self {
+            height,
+            width,
+            render_target_data: data,
             old_view_port,
 
-            image
+            image,
         })
     }
 
     pub fn bind(&mut self) {
         trace!("binding");
-        CURRENT_BOUND.store(self.framebuffer_id, Ordering::SeqCst);
-        trace!("{}", self.framebuffer_id);
+        CURRENT_BOUND.store(self.render_target_data.framebuffer_id, Ordering::SeqCst);
+        trace!("{}", self.render_target_data.framebuffer_id);
 
         unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.framebuffer_id);
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.render_target_data.framebuffer_id);
             gl::GetIntegerv(gl::VIEWPORT, self.old_view_port.as_mut_ptr());
             gl::Viewport(0, 0, self.width as i32, self.height as i32);
         }
@@ -143,11 +139,30 @@ impl RenderTarget {
     }
 }
 
-impl Drop for RenderTarget {
+
+#[derive(Clone)]
+pub struct RenderTargetData {
+    /// Unique ID of this FrameBuffer
+    framebuffer_id: u32,
+
+    /// Texture ID of the Texture that this RenderTarget draws to
+    texture_id: u32,
+
+    /// Depth Buffer of this RenderTarget
+    depth_renderbuffer_id: u32,
+}
+
+impl Drop for RenderTargetData {
     fn drop(&mut self) {
         let current_bound = CURRENT_BOUND.load(Ordering::SeqCst);
         if self.framebuffer_id == current_bound {
-            self.unbind()
+            CURRENT_BOUND.store(0, Ordering::SeqCst);
+
+            unsafe {
+                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+                // rip viewport
+                warn!("dropping render target while active")
+            }
         }
 
         unsafe {

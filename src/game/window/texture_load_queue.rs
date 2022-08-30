@@ -13,6 +13,7 @@ pub async fn texture_load_loop() {
 
     // used to keep textures from dropping off the main thread
     let mut image_data = Vec::new();
+    let mut render_targets = Vec::new();
 
     loop {
         if let Ok(method) = texture_load_receiver.try_recv() {
@@ -89,6 +90,7 @@ pub async fn texture_load_loop() {
                     match RenderTarget::new_main_thread(w, h) {
                         Ok(mut render_target) => {
                             callback(&mut render_target);
+                            render_targets.push(render_target.render_target_data.clone());
                             
                             if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
                         }
@@ -103,9 +105,8 @@ pub async fn texture_load_loop() {
         }
 
         // drop textures that only have a reference here (ie, dropped everywhere else)
-        image_data.retain(|i| {
-            Arc::strong_count(i) > 1
-        });
+        image_data.retain(|i| Arc::strong_count(i) > 1);
+        render_targets.retain(|i| Arc::strong_count(i) > 1);
 
         tokio::task::yield_now().await;
         // tokio::time::sleep(Duration::from_millis(10)).await;

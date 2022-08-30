@@ -31,7 +31,8 @@ pub struct MainMenu {
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
 
-    // render_target:RenderTarget,
+    #[cfg(feature="render_target_test")]
+    render_target:RenderTarget,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -54,31 +55,33 @@ impl MainMenu {
 
         let visualization = MenuVisualizationNew::new().await;
 
-        // fn callback(render_target: &mut RenderTarget) {
-        //     let circle = Circle::new(Color::BLUE, 1.0, Vector2::one() * 200.0, 50.0, None);
+        #[cfg(feature="render_target_test")]
+        fn callback(render_target: &mut RenderTarget) {
+            let circle = Circle::new(Color::BLUE, 1.0, Vector2::one() * 200.0, 50.0, None);
 
-        //     let viewport = Viewport {
-        //         rect: [0, 0, render_target.width as i32, render_target.height as i32],
-        //         draw_size: [render_target.width as u32, render_target.height as u32],
-        //         window_size: [render_target.width, render_target.height],
-        //     };
+            let viewport = graphics::Viewport {
+                rect: [0, 0, render_target.width as i32, render_target.height as i32],
+                draw_size: [render_target.width as u32, render_target.height as u32],
+                window_size: [render_target.width, render_target.height],
+            };
 
-        //     let graphics = graphics();
+            let graphics = graphics();
 
 
-        //     render_target.bind();
+            render_target.bind();
 
-        //     let c = graphics.draw_begin(viewport);
+            let c = graphics.draw_begin(viewport);
 
-        //     circle.draw(graphics, c);
+            circle.draw(graphics, c);
 
-        //     graphics.draw_end();
-        //     render_target.unbind();
+            graphics.draw_end();
+            render_target.unbind();
 
-        //     render_target.image.current_pos = Vector2::one() * 500.0;
-        // }
+            render_target.image.current_pos = Vector2::one() * 500.0;
+        }
 
-        // let render_target = RenderTarget::new(500.0, 500.0, callback).await.expect("error creating render target");
+        #[cfg(feature="render_target_test")]
+        let render_target = RenderTarget::new(500.0, 500.0, callback).await.expect("error creating render target");
     
 
         MainMenu {
@@ -97,7 +100,8 @@ impl MainMenu {
             window_size,
             last_input: Instant::now(),
 
-            // render_target
+            #[cfg(feature="render_target_test")]
+            render_target
         }
     }
 
@@ -334,7 +338,8 @@ impl AsyncMenu<Game> for MainMenu {
             None
         )));
 
-        // list.push(Box::new(self.render_target.image.clone()));
+        #[cfg(feature="render_target_test")]
+        list.push(Box::new(self.render_target.image.clone()));
 
         list
     }
