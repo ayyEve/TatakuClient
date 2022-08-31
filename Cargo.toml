@@ -5,7 +5,7 @@ authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
 ]
-edition = "2018"
+edition = "2021"
 build = "build/mod.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -78,6 +78,7 @@ encoding_rs = "0.8"
 chrono = "0.4"
 lzma-rs = "0.2"
 png = "*"
+base64 = "*"
 
 # logging
 tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }

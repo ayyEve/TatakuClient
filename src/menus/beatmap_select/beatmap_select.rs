@@ -7,7 +7,7 @@ const DRAG_FACTOR:f64 = 10.0;
 
 
 pub struct BeatmapSelectMenu {
-    current_scores: HashMap<String, Arc<Mutex<Score>>>,
+    current_scores: HashMap<String, Arc<Mutex<IngameScore>>>,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
     back_button: MenuButton<Font2, Text>,
@@ -441,7 +441,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
                 // load scores
                 let mut scores = helper.scores.clone();
-                scores.sort_by(|a, b| b.score.cmp(&a.score));
+                scores.sort_by(|a, b| b.score.score.cmp(&a.score.score));
 
                 // add scores to list
                 for s in scores.iter() {

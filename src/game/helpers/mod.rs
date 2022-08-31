@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 mod fps_display;
 mod volume_control;
+mod replay_helpers;
 mod benchmark_helper;
 
 pub mod io;
@@ -19,6 +20,7 @@ pub use fps_display::*;
 pub use score_helper::*;
 pub use event_handler::*;
 pub use volume_control::*;
+pub use replay_helpers::*;
 pub use benchmark_helper::*;
 
 

@@ -456,7 +456,7 @@ impl IngameManager {
         if let Some(loader) = self.score_loader.clone() {
             let loader = loader.read().await;
             if loader.done {
-                self.score_list = loader.scores.iter().map(|s|IngameScore::new(s.clone(), false, s.username == self.score.username)).collect();
+                self.score_list = loader.scores.iter().map(|s| { let mut s = s.clone(); s.is_previous = s.username == self.score.username; s }).collect();
                 self.score_loader = None;
             }
         }

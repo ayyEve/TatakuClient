@@ -8,6 +8,7 @@ use crate::databases::save_replay;
 /// how long do transitions between gamemodes last?
 const TRANSITION_TIME:u64 = 500;
 
+#[macro_export]
 macro_rules! err_text_notif {
     ($str: expr) => {
         NotificationManager::add_text_notification(
@@ -823,24 +824,11 @@ impl Game {
                     }
                 }
 
-                // tataku replay
-                "ttkr" => {
-                    if let Ok(mut reader) = open_database(path.to_str().unwrap()) {
-                        if let Ok(replay) = reader.read::<Replay>() {
-                            self.try_open_replay(replay).await;
-                        } else {
-                            err_text_notif!("Error loading replay file");
-                        }
-                    } else {
-                        err_text_notif!("Error opening file");
-                    }
-                }
-                // osu replay
-                "osr" => {
-                    if let Ok(replay) = crate::beatmaps::osu::replay_converter::convert_osu_replay(path) {
-                        self.try_open_replay(replay).await;
-                    } else {
-                        err_text_notif!("Error opening osu replay file");
+                // tataku | osu replay
+                "ttkr" | "osr" => {
+                    match read_other_game_replay(path).await {
+                        Ok(replay) => self.try_open_replay(replay).await,
+                        Err(e) => NotificationManager::add_error_notification("Error opening replay", e).await,
                     }
                 }
 
@@ -863,7 +851,8 @@ impl Game {
                 manager.set_current_beatmap(self, &map, false, true).await;
 
                 // move to a score menu with this as the score
-                let mut menu = ScoreMenu::new(score, map);
+                let score = IngameScore::new(score.clone(), false, false);
+                let mut menu = ScoreMenu::new(&score, map);
                 menu.replay = Some(replay);
                 self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
             } else {

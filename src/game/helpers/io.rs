@@ -29,6 +29,7 @@ pub async fn check_file<P:AsRef<Path>>(path:P, download_url:&str) {
     }
 }
 
+
 pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
     filename.as_ref()
         .replace("\\", "") 
@@ -108,6 +109,20 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Im
     }
 }
 
+/// download a file from `url` to `download_path`
+pub async fn download_file(url: impl reqwest::IntoUrl, download_path: impl AsRef<Path>) -> TatakuResult<()> {
+    let bytes = reqwest::get(url).await?.bytes().await?;
+    
+    // check if the received data 
+    if bytes.len() == 0 {
+        return Err(TatakuError::String("Downloaded file was empty".to_owned()));
+    }
+
+    std::fs::write(download_path, bytes)?;
+
+
+    Ok(())
+}
 
 
 pub async fn extract_all() {
@@ -210,6 +225,24 @@ pub async fn extract_all() {
         // }
     }
 }
+
+
+
+pub async fn read_other_game_replay(path: impl AsRef<Path>) -> TatakuResult<Replay> {
+    let path = path.as_ref();
+
+    match path.extension().and_then(|s|s.to_str()) {
+
+        // tataku replay
+        Some("ttkr") => Ok(open_database(path.to_str().unwrap())?.read::<Replay>()?),
+
+        // osu replay
+        Some("osr") => Ok(crate::beatmaps::osu::replay_converter::convert_osu_replay(path)?),
+
+        _ => Err(TatakuError::String("Unknown replay file".to_owned()))
+    }
+}
+
 
 
 /// opens a folder in the os' file explorer

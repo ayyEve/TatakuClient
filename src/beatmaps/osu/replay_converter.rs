@@ -79,8 +79,41 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 
 
     // parse replay data
+    let mut replay_frames = parse_lzma_stream(&mut replay_data)?;
+
+    if game_version >= 20130319 {
+        // last one is rng data
+        replay_frames.pop();
+    }
+
+
+    Ok(OsuReplay {
+        game_mode,
+        game_version,
+        map_hash,
+        username,
+        replay_hash,
+        x300,
+        x100,
+        x50,
+        geki,
+        katu,
+        miss,
+        score,
+        max_combo,
+        perfect,
+        mods,
+        health,
+        timestamp,
+        score_id,
+        replay_frames,
+    })
+}
+
+
+fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> TatakuResult<Vec<OsuReplayFrame>>{
     let mut replay_data_decompressed = Vec::new();
-    if let Err(e) = lzma_rs::lzma_decompress(&mut replay_data, &mut replay_data_decompressed) {
+    if let Err(e) = lzma_rs::lzma_decompress(lzma, &mut replay_data_decompressed) {
         return Err(TatakuError::String(format!("Error decompressing replay data")))
     }
     let replay_str = String::from_utf8_lossy(&replay_data_decompressed);
@@ -120,36 +153,8 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
         });
     }
 
-
-    if game_version >= 20130319 {
-        // last one is rng data
-        replay_frames.pop();
-    }
-
-
-    Ok(OsuReplay {
-        game_mode,
-        game_version,
-        map_hash,
-        username,
-        replay_hash,
-        x300,
-        x100,
-        x50,
-        geki,
-        katu,
-        miss,
-        score,
-        max_combo,
-        perfect,
-        mods,
-        health,
-        timestamp,
-        score_id,
-        replay_frames,
-    })
+    Ok(replay_frames)
 }
-
 
 
 macro_rules! read_num {
@@ -219,7 +224,7 @@ fn read_uleb128(bytes: &[u8], offset:&mut usize) -> u128 {
 
 
 #[derive(Clone, Debug)]
-struct OsuReplay {
+pub struct OsuReplay {
     game_mode: String,
     game_version: u32,
     map_hash: String,
@@ -244,7 +249,7 @@ struct OsuReplay {
     replay_frames: Vec<OsuReplayFrame>
 }
 impl OsuReplay {
-    fn get_score(&self) -> Score {
+    pub fn get_score(&self) -> Score {
         let mut score = Score::new(self.map_hash.clone(), self.username.clone(), self.game_mode.clone());
         score.score = self.score as u64;
         score.max_combo = self.max_combo;
@@ -279,15 +284,31 @@ impl OsuReplay {
     }
 
 
-    fn get_replay(&self) -> Replay {
-        let mut replay = Replay::new();
+    pub fn get_replay(&self) -> Replay {
+        let mut replay = Self::parse_frames(&self.game_mode, &self.replay_frames);
         replay.score_data = Some(self.get_score());
+        replay
+    }
+
+    
+
+    pub fn replay_from_score_and_lzma(score: &Score, lzma: &mut impl std::io::BufRead) -> TatakuResult<Replay> {
+        let frames = parse_lzma_stream(lzma)?;
+        let mut replay = Self::parse_frames(&score.playmode, &frames);
+        replay.score_data = Some(score.clone());
+
+        Ok(replay)
+    }
+
+
+    fn parse_frames(game_mode: &String, replay_frames: &Vec<OsuReplayFrame>) -> Replay {
+        let mut replay = Replay::new();
 
         // mania keys are stored in the x pos as bitflags
-        if self.game_mode == "mania" {
+        if game_mode == "mania" {
             let mut pressed_keys = HashSet::new();
 
-            for f in self.replay_frames.iter() {
+            for f in replay_frames.iter() {
                 let pressed = f.x as u32;
 
                 // i dont know what these are, theres one at -1 and 0 :/
@@ -318,7 +339,7 @@ impl OsuReplay {
             let mut last_mouse_pos = Vector2::zero();
             let mut last_keys = Vec::new();
 
-            for f in self.replay_frames.iter() {
+            for f in replay_frames.iter() {
                 // check mouse pos
                 let mouse_pos = Vector2::new(f.x as f64, f.y as f64);
                 if last_mouse_pos != mouse_pos {
@@ -331,14 +352,14 @@ impl OsuReplay {
 
                     // press 
                     if !last_keys.contains(k) && f.keys.contains(k) {
-                        let key = k.to_keypress(&self.game_mode);
+                        let key = k.to_keypress(&game_mode);
 
                         replay.frames.push((f.time as f32, ReplayFrame::Press(key)));
                     }
                     
                     // release 
-                    if last_keys.contains(k) && !f.keys.contains(k) && self.game_mode != "taiko" {
-                        let key = k.to_keypress(&self.game_mode);
+                    if last_keys.contains(k) && !f.keys.contains(k) && game_mode != "taiko" {
+                        let key = k.to_keypress(&game_mode);
 
                         replay.frames.push((f.time as f32, ReplayFrame::Release(key)));
                     }
@@ -349,7 +370,9 @@ impl OsuReplay {
         }
 
         replay
-    } 
+    }
+
+
 
 } 
 

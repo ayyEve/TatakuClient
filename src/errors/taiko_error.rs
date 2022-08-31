@@ -25,6 +25,7 @@ pub enum TatakuError {
 
     String(String),
     SerializationError(SerializationError),
+    ReqwestError(reqwest::Error),
 }
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,6 +39,7 @@ impl Display for TatakuError {
             TatakuError::GlError(e) => write!(f, "{:?}", e),
             TatakuError::GameMode(e) => write!(f, "{:?}", e),
             TatakuError::SerializationError(e) => write!(f, "{:?}", e),
+            TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -74,6 +76,9 @@ impl From<GameModeError> for TatakuError {
 }
 impl From<SerializationError> for TatakuError {
     fn from(e: SerializationError) -> Self {TatakuError::SerializationError(e)}
+}
+impl From<reqwest::Error> for TatakuError {
+    fn from(e: reqwest::Error) -> Self {TatakuError::ReqwestError(e)}
 }
 
 

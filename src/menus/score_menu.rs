@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::REPLAY_EXPORTS_DIR;
-use crate::{databases, format_number};
 use crate::gameplay::modes::manager_from_playmode;
 
 use chrono::{ 
@@ -16,7 +15,7 @@ const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
 const MENU_ITEM_COUNT:usize = 2;
 
 pub struct ScoreMenu {
-    score: Score,
+    score: IngameScore,
     pub replay: Option<Replay>,
     score_mods: String,
 
@@ -38,7 +37,7 @@ pub struct ScoreMenu {
     window_size: Arc<WindowSize>,
 }
 impl ScoreMenu {
-    pub fn new(score:&Score, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
+    pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
         let window_size = WindowSize::get();
         let hit_error = score.hit_error();
         let font = get_font();
@@ -103,11 +102,10 @@ impl ScoreMenu {
     async fn replay(&mut self, game: &mut Game) {
         if let Some(replay) = self.replay.clone() {
             self.do_replay(game, replay).await;
+        } else if let Some(replay) = self.score.get_replay().await {
+            self.do_replay(game, replay).await;
         } else {
-            match databases::get_local_replay_for_score(&self.score) {
-                Ok(replay) => self.do_replay(game, replay).await,
-                Err(e) => NotificationManager::add_error_notification("Error loading replay", e).await,
-            }
+
         }
     }
 
@@ -118,7 +116,7 @@ impl ScoreMenu {
         match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
             Ok(mut manager) => {
                 if replay.score_data.is_none() {
-                    replay.score_data = Some(self.score.clone());
+                    replay.score_data = Some(self.score.score.clone());
                 }
                 manager.set_replay(replay);
                 game.queue_state_change(GameState::Ingame(manager));
@@ -157,7 +155,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             depth + 1.0,
             current_pos,
             30,
-            format!("Score: {}", format_number(self.score.score)),
+            format!("Score: {}", format_number(self.score.score.score)),
             font.clone()
         )));
         current_pos += size;
@@ -249,7 +247,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                         let saved_path = Path::new(&saved_path);
 
                         let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
-                        let Score { playmode, username, time, .. } = &self.score;
+                        let Score { playmode, username, time, .. } = &self.score.score;
                         let playmode = gamemode_display_name(playmode);
 
                         let datetime = NaiveDateTime::from_timestamp(*time as i64, 0);

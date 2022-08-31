@@ -14,7 +14,7 @@ pub struct LeaderboardItem {
     selected: bool,
     tag: String,
 
-    score: Score,
+    score: IngameScore,
     font: Font2,
 
     score_mods: ModManager,
@@ -22,7 +22,7 @@ pub struct LeaderboardItem {
     ui_scale: Vector2,
 }
 impl LeaderboardItem {
-    pub fn new(score:Score) -> LeaderboardItem {
+    pub fn new(score:IngameScore) -> LeaderboardItem {
         let tag = score.hash(); //username.clone();
         let font = get_font();
 
@@ -76,7 +76,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING * self.ui_scale,
             (15.0 * self.ui_scale.y) as u32,
-            format!("{}: {}", self.score.username, crate::format_number(self.score.score)),
+            format!("{}: {}", self.score.username, crate::format_number(self.score.score.score)),
             self.font.clone()
         )));
 

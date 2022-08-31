@@ -41,7 +41,7 @@ impl InnerUIElement for LeaderboardElement {
 
         let mut base_pos = pos_offset;
         for score in self.scores.iter() {
-            let mut l = LeaderboardItem::new(score.score.clone());
+            let mut l = LeaderboardItem::new(score.clone());
             l.ui_scale_changed(scale);
 
             if score.is_current {l.set_hover(true)}
