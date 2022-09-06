@@ -18,12 +18,12 @@ fn get_depth(time: f32) -> f64 {
 
 
 pub trait TaikoHitObject: HitObject + Send + Sync {
-    fn is_kat(&self) -> bool { false }// needed for diff calc and autoplay
+    fn is_kat(&self) -> bool { false } // needed for diff calc and autoplay
 
     fn get_sv(&self) -> f32;
     fn set_sv(&mut self, sv:f32);
     /// does this hit object play a finisher sound when hit?
-    fn finisher_sound(&self) -> bool {false}
+    fn finisher_sound(&self) -> bool { false }
 
     /// does this object count as a miss if it is not hit?
     fn causes_miss(&self) -> bool;
@@ -33,10 +33,17 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     /// returns true if a finisher was successfully hit
     fn check_finisher(&mut self, _hit_type:HitType, _time:f32, _game_speed: f32) -> bool { false }
 
+    fn get_playfield(&self) -> Arc<TaikoPlayfield>;
+
 
     fn x_at(&self, time:f32) -> f32 {
-        (self.time() - time) * self.get_sv()
+        // (self.time() - time) * self.get_sv()
+        ((self.time() - time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32
     }
+    fn end_x_at(&self, time:f32) -> f32 {
+        ((self.end_time(0.0) - time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32
+    }
+
     fn time_at(&self, x: f32) -> f32 {
         -(x / self.get_sv()) + self.time()
     }
@@ -52,6 +59,9 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn miss(&mut self, _time: f32) {}
 
     fn hits_to_complete(&self) -> u32 { 1 }
+
+
+    fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
 }
 
 
@@ -69,13 +79,14 @@ pub struct TaikoNote {
     speed: f32,
 
     settings: Arc<TaikoSettings>,
+    playfield: Arc<TaikoPlayfield>,
 
     bounce_factor: f32,
 
-    image: Option<HitCircleImageHelper>
+    image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
-    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
@@ -97,6 +108,7 @@ impl TaikoNote {
             pos: Vector2::zero(),
             image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth, hit_type, finisher).await},
             settings,
+            playfield,
             bounce_factor
         }
     }
@@ -119,12 +131,11 @@ impl HitObject for TaikoNote {
 
         let delta_time = beatmap_time - self.hit_time;
         let y = 
-            if self.hit {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor)} 
-            else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
-            else {0.0};
+            if self.hit { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) } 
+            else if self.missed { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) } 
+            else { 0.0 };
 
-        let x = (self.time - beatmap_time) * self.speed;
-
+        let x = self.x_at(beatmap_time);
         self.pos = self.settings.hit_position + Vector2::new(x as f64, y as f64);
 
         if let Some(image) = &mut self.image {
@@ -180,6 +191,14 @@ impl TaikoHitObject for TaikoNote {
     fn check_finisher(&mut self, hit_type:HitType, time:f32, game_speed: f32) -> bool {
         self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
     }
+
+
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield
+    }
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
+    }
 }
 
 
@@ -187,28 +206,30 @@ impl TaikoHitObject for TaikoNote {
 #[derive(Clone)]
 pub struct TaikoSlider {
     pos: Vector2,
-    hit_dots: Vec<SliderDot>, // list of times the slider was hit at
+    hit_dots: Vec<f32>, // list of times the slider was hit at
 
     time: f32, // ms
     end_time: f32, // ms
+    current_time: f32, 
     // finisher: bool,
     speed: f32,
     radius: f64,
-    //TODO: figure out how to pre-calc this
+    // TODO: figure out how to pre-calc this
     end_x: f64,
 
     depth: f64,
     settings: Arc<TaikoSettings>,
+    playfield: Arc<TaikoPlayfield>,
 
     middle_image:Option<Image>,
     end_image: Option<Image>,
 }
 impl TaikoSlider {
-    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
-        let radius = if finisher {settings.note_radius * settings.big_note_multiplier} else {settings.note_radius};
+    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
+        let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
         let depth = get_depth(time);
 
-        let mut middle_image = if diff_calc_only {None} else {SkinManager::get_texture("taiko-roll-middle", true).await};
+        let mut middle_image = if diff_calc_only { None } else { SkinManager::get_texture("taiko-roll-middle", true).await };
         if let Some(image) = &mut middle_image {
             image.depth = depth;
             image.origin.x = 0.0;
@@ -220,7 +241,7 @@ impl TaikoSlider {
             image.current_scale = scale;
         }
 
-        let mut end_image = if diff_calc_only {None} else {SkinManager::get_texture("taiko-roll-end", true).await};
+        let mut end_image = if diff_calc_only { None } else { SkinManager::get_texture("taiko-roll-end", true).await };
         if let Some(image) = &mut end_image {
             image.depth = depth;
             image.origin.x = 0.0;
@@ -236,6 +257,7 @@ impl TaikoSlider {
         Self {
             time, 
             end_time,
+            current_time: 0.0,
             // finisher,
             radius,
             speed: 0.0,
@@ -245,6 +267,7 @@ impl TaikoSlider {
             end_x: 0.0,
             hit_dots: Vec::new(),
             settings,
+            playfield,
 
             middle_image,
             end_image
@@ -254,18 +277,13 @@ impl TaikoSlider {
 
 #[async_trait]
 impl HitObject for TaikoSlider {
-    fn note_type(&self) -> NoteType {NoteType::Slider}
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self,_:f32) -> f32 {self.end_time}
+    fn note_type(&self) -> NoteType { NoteType::Slider }
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self,_:f32) -> f32 { self.end_time }
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos.x = self.settings.hit_position.x + ((self.time - beatmap_time) * self.speed) as f64;
-        self.end_x = self.settings.hit_position.x + ((self.end_time(0.0) - beatmap_time) * self.speed) as f64;
-
-        // draw hit dots
-        for dot in self.hit_dots.iter_mut() {
-            if dot.done {continue}
-            dot.update(beatmap_time);
-        }
+        self.pos.x = self.settings.hit_position.x + self.x_at(beatmap_time) as f64;
+        self.end_x = self.settings.hit_position.x + self.end_x_at(beatmap_time) as f64;
+        self.current_time = beatmap_time;
     }
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
@@ -327,9 +345,30 @@ impl HitObject for TaikoSlider {
 
 
         // draw hit dots
-        for dot in self.hit_dots.as_slice() {
-            if dot.done {continue}
-            dot.draw(&mut list);
+        for time in self.hit_dots.iter() {
+            let bounce_factor = 1.6;
+
+            let x = self.settings.hit_position.x as f32 + ((time - self.current_time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32;
+            let diff = self.current_time - time;
+            let y = self.settings.hit_position.y as f32 + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
+
+            // flying dot
+            list.push(Box::new(Circle::new(
+                Color::YELLOW,
+                -1.0,
+                Vector2::new(x as f64, y as f64),
+                SLIDER_DOT_RADIUS,
+                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
+            )));
+
+            // "hole"
+            list.push(Box::new(Circle::new(
+                BAR_COLOR,
+                -1.0,
+                Vector2::new(x as f64, self.pos.y + self.radius),
+                SLIDER_DOT_RADIUS,
+                None
+            )))
         }
 
         list
@@ -350,61 +389,18 @@ impl TaikoHitObject for TaikoSlider {
 
     fn hit(&mut self, time: f32) -> bool {
         if time < self.time || time > self.end_time { return false }
-
-        self.hit_dots.push(SliderDot::new(time, self.speed, self.settings.clone()));
-
+        self.hit_dots.push(time);
         true
     }
 
-}
-/// helper struct for drawing hit slider points
-#[derive(Clone)]
-struct SliderDot {
-    time: f32,
-    speed: f32,
-    pos: Vector2,
-    pub done: bool,
-    settings: Arc<TaikoSettings>,
 
-    bounce_factor: f32
-}
-impl SliderDot {
-    pub fn new(time:f32, speed:f32, settings:Arc<TaikoSettings>) -> SliderDot {
-        SliderDot {
-            time,
-            speed,
-            pos: Vector2::zero(),
-            done: false,
-            settings,
-            bounce_factor: 1.6
-        }
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield
     }
-    pub fn update(&mut self, beatmap_time:f32) {
-        let delta_time = beatmap_time - self.time;
-        let y = GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor);
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
+    }
 
-        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
-        
-        if !self.done && (self.pos.x + SLIDER_DOT_RADIUS <= 0.0) {
-            self.done = true;
-        }
-    }
-    pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
-        list.push(Box::new(Circle::new(
-            Color::YELLOW,
-            -1.0,
-            self.pos,
-            SLIDER_DOT_RADIUS,
-            Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
-        )));
-        list.push(Box::new(Circle::new(
-            BAR_COLOR,
-            -1.0,
-            Vector2::new(self.pos.x, self.settings.hit_position.y),
-            SLIDER_DOT_RADIUS,
-            None
-        )))
-    }
 }
 
 
@@ -422,6 +418,7 @@ pub struct TaikoSpinner {
 
     depth: f64,
     settings: Arc<TaikoSettings>,
+    playfield: Arc<TaikoPlayfield>,
 
     spinner_image: Option<Image>,
 
@@ -429,7 +426,7 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
         let mut spinner_image = if diff_calc_only {None} else {SkinManager::get_texture("spinner-warning", true).await};
 
         
@@ -454,6 +451,7 @@ impl TaikoSpinner {
             pos: Vector2::zero(),
 
             settings,
+            playfield,
             
             spinner_image,
             don_color,
@@ -472,8 +470,8 @@ impl HitObject for TaikoSpinner {
     }
 
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, 0.0);
-        if beatmap_time > self.end_time {self.complete = true}
+        self.pos = self.settings.hit_position + Vector2::new(self.x_at(beatmap_time) as f64, 0.0);
+        if beatmap_time > self.end_time { self.complete = true }
     }
     async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
@@ -547,7 +545,6 @@ impl TaikoHitObject for TaikoSpinner {
     fn hits_to_complete(&self) -> u32 { self.hits_required as u32 }
 
     fn causes_miss(&self) -> bool {!self.complete} // if the spinner wasnt completed in time, cause a miss
-    fn x_at(&self, time:f32) -> f32 {(self.time - time) * self.speed}
 
     fn hit(&mut self, time: f32) -> bool {
         // too soon or too late
@@ -561,6 +558,13 @@ impl TaikoHitObject for TaikoSpinner {
         !self.complete
     }
 
+
+    fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
+        self.playfield = new_playfield
+    }
+    fn get_playfield(&self) -> Arc<TaikoPlayfield> {
+        self.playfield.clone()
+    }
 }
 
 

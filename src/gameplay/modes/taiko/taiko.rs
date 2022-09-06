@@ -54,16 +54,11 @@ pub struct TaikoGame {
     // list indices
     note_index: usize,
 
-    // // hit timing bar stuff
-    // hitwindow_300: f32,
-    // hitwindow_100: f32,
-    // hitwindow_miss: f32,
-
     end_time: f32,
     auto_helper: TaikoAutoHelper,
 
-    hit_cache: HashMap<TaikoHit, f32>,
     taiko_settings: Arc<TaikoSettings>,
+    playfield: Arc<TaikoPlayfield>,
 
     left_kat_image: Option<Image>,
     left_don_image: Option<Image>,
@@ -73,9 +68,10 @@ pub struct TaikoGame {
 
     
     hit_windows: Vec<(TaikoHitJudgments, Range<f32>)>,
+    hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
 
-    last_judgment: TaikoHitJudgments
+    last_judgment: TaikoHitJudgments,
 }
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
@@ -172,6 +168,12 @@ impl GameMode for TaikoGame {
         let miss_window = w_miss;
 
 
+        let playfield = Arc::new(TaikoPlayfield {
+            pos: Vector2::zero(),
+            size: WindowSize::get().0
+        });
+
+
         match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
@@ -181,13 +183,10 @@ impl GameMode for TaikoGame {
                     timing_bars: Vec::new(),
                     end_time: 0.0,
 
-                    // hitwindow_100: 0.0,
-                    // hitwindow_300: 0.0,
-                    // hitwindow_miss: 0.0,
-
                     auto_helper: TaikoAutoHelper::new(),
                     taiko_settings: settings.clone(),
-                    hit_cache,
+                    playfield: playfield.clone(),
+                    
 
                     left_kat_image,
                     left_don_image,
@@ -197,6 +196,7 @@ impl GameMode for TaikoGame {
 
                     hit_windows,
                     miss_window,
+                    hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                 };
 
@@ -210,6 +210,7 @@ impl GameMode for TaikoGame {
                         hit_type,
                         finisher,
                         settings.clone(),
+                        playfield.clone(),
                         diff_calc_only,
                     ).await);
                     s.notes.push(note);
@@ -259,6 +260,7 @@ impl GameMode for TaikoGame {
                                 sound_type.0,
                                 sound_type.1,
                                 settings.clone(),
+                                playfield.clone(),
                                 diff_calc_only,
                             ).await);
                             s.notes.push(note);
@@ -274,6 +276,7 @@ impl GameMode for TaikoGame {
                             end_time, 
                             finisher, 
                             settings.clone(),
+                            playfield.clone(),
                             diff_calc_only,
                         ).await);
                         s.notes.push(slider);
@@ -291,6 +294,7 @@ impl GameMode for TaikoGame {
                         *end_time, 
                         hits_required, 
                         settings.clone(),
+                        playfield.clone(),
                         diff_calc_only,
                     ).await);
                     s.notes.push(spinner);
@@ -311,13 +315,9 @@ impl GameMode for TaikoGame {
                     timing_bars: Vec::new(),
                     end_time: 0.0,
 
-                    // hitwindow_100: 0.0,
-                    // hitwindow_300: 0.0,
-                    // hitwindow_miss: 0.0,
                     auto_helper: TaikoAutoHelper::new(),
-                    
                     taiko_settings: settings.clone(),
-                    hit_cache,
+                    playfield: playfield.clone(),
 
                     left_kat_image,
                     left_don_image,
@@ -327,6 +327,7 @@ impl GameMode for TaikoGame {
 
                     hit_windows,
                     miss_window,
+                    hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                 };
 
@@ -339,6 +340,7 @@ impl GameMode for TaikoGame {
                         hit_type,
                         false,
                         settings.clone(),
+                        playfield.clone(),
                         diff_calc_only,
                     ).await);
                     s.notes.push(note);
@@ -471,7 +473,9 @@ impl GameMode for TaikoGame {
         }
 
         // update notes
-        for note in self.notes.iter_mut() { note.update(time).await }
+        for note in self.notes.iter_mut() { 
+            note.update(time).await;
+        }
 
         // if theres no more notes to hit, show score screen
         if self.note_index >= self.notes.len() {
@@ -627,7 +631,7 @@ impl GameMode for TaikoGame {
                 }
 
                 // add timing bar at current time
-                self.timing_bars.push(TimingBar::new(time, sv, self.taiko_settings.clone()));
+                self.timing_bars.push(TimingBar::new(time, sv, self.taiko_settings.clone(), self.playfield.clone()));
 
                 if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
                     time = parent_tps[tp_index].time;
@@ -648,10 +652,10 @@ impl GameMode for TaikoGame {
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
-        if self.note_index > 0 {return}
+        if self.note_index > 0 { return }
 
         // TODO: self.playfield.window_size.x
-        let x_needed = 10000.0; // Settings::window_size().x as f32;
+        let x_needed = self.playfield.size.x as f32;
         let mut time = self.end_time; //manager.time();
 
         for i in self.notes.iter().rev() {
@@ -659,7 +663,7 @@ impl GameMode for TaikoGame {
             time = time.min(time_at)
         }
 
-        if manager.time() >= time {return}
+        if manager.time() >= time { return }
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
@@ -668,7 +672,7 @@ impl GameMode for TaikoGame {
             }
         }
         
-        if time < 0.0 {return}
+        if time < 0.0 { return }
         #[cfg(feature="bass_audio")]
         manager.song.set_position(time as f64).unwrap();
         #[cfg(feature="neb_audio")]
@@ -682,9 +686,27 @@ impl GameMode for TaikoGame {
     }
 
     
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
-        // self.playfield = playfield;
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.playfield = Arc::new(TaikoPlayfield { pos: Vector2::zero(), size: window_size.0 });
+        
+        // update notes
+        for note in self.notes.iter_mut() { 
+            note.playfield_changed(self.playfield.clone());
+        }
+
+        for tb in self.timing_bars.iter_mut() {
+            tb.playfield_changed(self.playfield.clone());
+        }
     }
+
+    // fn fit_to_area(&mut self, pos:Vector2, size:Vector2) {
+    //     self.playfield = Arc::new(TaikoPlayfield { pos, size });
+        
+    //     // update notes
+    //     for note in self.notes.iter_mut() { 
+    //         note.playfield_changed(self.playfield.clone());
+    //     }
+    // }
 }
 
 #[async_trait]
@@ -957,10 +979,11 @@ struct TimingBar {
     speed: f32,
     pos: Vector2,
     settings: Arc<TaikoSettings>,
+    playfield: Arc<TaikoPlayfield>,
     size: Vector2
 }
 impl TimingBar {
-    pub fn new(time:f32, speed:f32, settings: Arc<TaikoSettings>) -> TimingBar {
+    pub fn new(time:f32, speed:f32, settings: Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> TimingBar {
         let size = Vector2::new(BAR_WIDTH, settings.get_playfield(0.0, false).size.y);
 
         TimingBar {
@@ -968,14 +991,18 @@ impl TimingBar {
             speed,
             pos: Vector2::new(0.0, settings.hit_position.y - size.y/2.0),
             settings,
+            playfield,
             size
         }
     }
 
     pub fn update(&mut self, time:f32) {
-        self.pos.x = self.settings.hit_position.x + ((self.time - time) * self.speed) as f64 - BAR_WIDTH / 2.0;
+        self.pos.x = self.settings.hit_position.x + self.x_at(time) as f64 - BAR_WIDTH / 2.0;
     }
 
+    fn x_at(&self, time: f32) -> f32 {
+        ((self.time - time) / 1000.0) * self.speed * self.playfield.size.x as f32
+    }
     fn draw(&mut self, args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
 
@@ -987,6 +1014,11 @@ impl TimingBar {
             None
         )));
     }
+
+    fn playfield_changed(&mut self, new: Arc<TaikoPlayfield>) {
+        self.playfield = new;
+    }
+
 }
 
 
@@ -1120,4 +1152,11 @@ pub enum TaikoHit {
     LeftDon,
     RightDon,
     RightKat
+}
+
+
+
+pub struct TaikoPlayfield {
+    pub pos: Vector2,
+    pub size: Vector2,
 }
