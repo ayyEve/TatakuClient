@@ -221,6 +221,20 @@ impl ManiaGame {
             }
         }
     }
+
+    fn apply_new_playfield(&mut self, playfield: Arc<ManiaPlayfield>) {
+        self.playfield = playfield.clone();
+        
+        for col in self.columns.iter_mut() {
+            for note in col.iter_mut() {
+                note.playfield_changed(playfield.clone());
+            }
+        }
+
+        for timing_bar in self.timing_bars.iter_mut() {
+            timing_bar.playfield_changed(playfield.clone());
+        }
+    }
 }
 #[async_trait]
 impl GameMode for ManiaGame {
@@ -831,7 +845,7 @@ impl GameMode for ManiaGame {
 
         // draw columns
         for col in 0..self.column_count {
-            let x = self.col_pos(col);
+            let x = self.playfield.col_pos(col);
 
             // column background
             list.push(Box::new(Rectangle::new(
@@ -971,17 +985,27 @@ impl GameMode for ManiaGame {
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         let playfield = Arc::new(ManiaPlayfield::new(self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), window_size.0, self.column_count));
-        self.playfield = playfield.clone();
+        self.apply_new_playfield(playfield);
+    }
 
-        for col in self.columns.iter_mut() {
-            for note in col.iter_mut() {
-                note.playfield_changed(playfield.clone());
-            }
-        }
 
-        for timing_bar in self.timing_bars.iter_mut() {
-            timing_bar.playfield_changed(playfield.clone());
-        }
+    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
+        let mut playfield = ManiaPlayfield::new(
+            self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
+            size, 
+            self.column_count
+        );
+
+        playfield.settings.x_offset = pos.x;
+
+        // if playfield.upside_down {
+        //     playfield.settings.hit_pos -= pos.y
+        // } else {
+        //     playfield.settings.hit_pos += pos.y
+        // }
+        
+
+        self.apply_new_playfield(Arc::new(playfield));
     }
 }
 

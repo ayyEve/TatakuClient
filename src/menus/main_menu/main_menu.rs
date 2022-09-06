@@ -110,7 +110,7 @@ impl MainMenu {
         self.settings.update();
 
         let settings = self.settings.background_game_settings.clone();
-        if !settings.enabled { return }
+        if !settings.main_menu_enabled { return }
 
         let lock = BEATMAP_MANAGER.read().await;
         let map = match &lock.current_beatmap {
@@ -474,8 +474,12 @@ impl AsyncMenu<Game> for MainMenu {
         self.settings_button.window_size_changed(&window_size);
         self.exit_button.window_size_changed(&window_size);
 
-        self.window_size = window_size;
+        self.window_size = window_size.clone();
         self.music_box = MusicBox::new().await;
+
+        if let Some(m) = &mut self.background_game {
+            m.window_size_changed(window_size).await
+        }
     }
 }
 #[async_trait]

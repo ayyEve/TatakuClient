@@ -17,7 +17,7 @@ pub trait GameMode: GameModeInput + GameModeInfo + Send + Sync {
     async fn reset(&mut self, beatmap:&Beatmap);
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
-    // fn fit_to_area(&mut self, _pos: Vector2, _size: Vector2);
+    async fn fit_to_area(&mut self, _pos: Vector2, _size: Vector2);
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {

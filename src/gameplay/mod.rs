@@ -52,30 +52,17 @@ pub struct ScalingHelper {
     playfield_scaled_with_cs_border: Rectangle,
 }
 impl ScalingHelper {
-    pub async fn new(cs:f32, mode:PlayMode, window_size: Vector2) -> Self {
-        let border_size;
-        let circle_size;
-        let settings_scale;
-        let settings_offset;
+    pub async fn new(cs:f32, window_size: Vector2) -> Self {
+        let things = get_settings!().standard_settings.get_playfield();
+        let settings_scale = things.0;
+        let settings_offset = things.1;
+        Self::new_offset_scale(cs, window_size, settings_offset, settings_scale)
+    }
 
-        match &*mode {
-            "osu" => {
-                let things = get_settings!().standard_settings.get_playfield();
-                settings_scale = things.0;
-                settings_offset = things.1;
-                circle_size = CIRCLE_RADIUS_BASE;
-
-                border_size = NOTE_BORDER_SIZE;
-            },
-            
-            _ => {
-                settings_scale = 0.0;
-                settings_offset = Vector2::zero();
-                circle_size = 0.0;
-                border_size = 0.0;
-            }
-        };
-            
+    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64) -> Self {
+        let circle_size = CIRCLE_RADIUS_BASE;
+        let border_size = NOTE_BORDER_SIZE;
+        
         let scale = (window_size.y / FIELD_SIZE.y) * settings_scale;
         let scaled_pos_offset = (window_size - FIELD_SIZE * scale) / 2.0 + settings_offset;
 

@@ -16,6 +16,7 @@ impl GameMode for NoMode {
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     async fn reset(&mut self, _:&Beatmap) {}
     async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}
+    async fn fit_to_area(&mut self, _:Vector2, _:Vector2) {}
 }
 
 #[async_trait]

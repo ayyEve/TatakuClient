@@ -3,8 +3,13 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BackgroundGameSettings {
-    /// wether to have gameplay in the main menu bg or not
-    pub enabled: bool,
+    /// whether to have gameplay in the main menu bg or not
+    #[serde(alias="enabled")]
+    pub main_menu_enabled: bool,
+
+    /// whether to have gameplay in the beatmap select menu bg or not
+    pub beatmap_select_enabled: bool,
+
     /// gameplay alpha multiplier
     pub opacity: f32,
     /// hitsound volume multiplier
@@ -15,7 +20,8 @@ pub struct BackgroundGameSettings {
 impl Default for BackgroundGameSettings {
     fn default() -> Self {
         Self { 
-            enabled: true,
+            main_menu_enabled: true,
+            beatmap_select_enabled: true,
             opacity: 0.5,
             hitsound_volume: 0.3,
             mode: "osu".to_owned()

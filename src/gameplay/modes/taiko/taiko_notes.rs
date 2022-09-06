@@ -393,14 +393,12 @@ impl TaikoHitObject for TaikoSlider {
         true
     }
 
-
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
         self.playfield = new_playfield
     }
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
     }
-
 }
 
 

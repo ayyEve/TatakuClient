@@ -68,12 +68,15 @@ pub struct StandardGame {
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, "osu".to_owned(), self.window_size.0).await);
-        self.scaling_helper = new_scale.clone();
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0).await);
+        self.apply_playfield(new_scale).await
+    }
+    async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
+        self.scaling_helper = playfield.clone();
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
-            note.playfield_changed(new_scale.clone()).await;
+            note.playfield_changed(playfield.clone()).await;
         }
     }
 
@@ -154,7 +157,7 @@ impl GameMode for StandardGame {
         let window_size = WindowSize::get();
         
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), "osu".to_owned(), window_size.0).await);
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), window_size.0).await);
         let ar = metadata.get_ar(&mods);
 
         // TODO: beatmap combo colors
@@ -761,6 +764,14 @@ impl GameMode for StandardGame {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
         self.playfield_changed().await;
+    }
+
+
+    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
+        let pos = pos;
+        let size = size;
+        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5);
+        self.apply_playfield(Arc::new(playfield)).await;
     }
 }
 
