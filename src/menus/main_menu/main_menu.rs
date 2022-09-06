@@ -107,9 +107,10 @@ impl MainMenu {
 
     async fn setup_manager(&mut self, called_by: &str) {
         trace!("setup manager called by {}", called_by);
+        self.settings.update();
 
         let settings = self.settings.background_game_settings.clone();
-        if !settings.enabled {return}
+        if !settings.enabled { return }
 
         let lock = BEATMAP_MANAGER.read().await;
         let map = match &lock.current_beatmap {
