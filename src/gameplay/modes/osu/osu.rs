@@ -680,6 +680,7 @@ impl GameMode for StandardGame {
         // draw follow points
         let time = manager.time();
         if self.game_settings.draw_follow_points {
+            if self.notes.len() == 0 { return }
             for i in 0..self.notes.len() - 1 {
                 if !self.new_combos.contains(&(i + 1)) {
                     let n1 = &self.notes[i];

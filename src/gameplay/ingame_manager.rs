@@ -682,9 +682,14 @@ impl IngameManager {
         if !self.gamemode.show_cursor() {
             if !self.menu_background {
                 CursorManager::set_visible(false)
+            } else {
+                CursorManager::set_visible(true);
             }
         } else if self.replaying || self.current_mods.autoplay {
             CursorManager::show_system_cursor(true)
+        } else {
+            CursorManager::set_visible(true);
+            CursorManager::show_system_cursor(false);
         }
 
         self.pause_pending = false;
@@ -1186,7 +1191,6 @@ impl Default for IngameManager {
         }
     }
 }
-
 
 #[cfg(feature="bass_audio")]
 lazy_static::lazy_static! {
