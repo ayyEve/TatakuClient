@@ -934,12 +934,14 @@ impl IngameManager {
             self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
             self.ui_changed = true;
 
-            // start autoplay
-            self.replaying = true;
-            self.current_mods = Arc::new(ModManager {
-                autoplay: true,
-                ..self.current_mods.as_ref().clone()
-            });
+            if !self.replaying {
+                // start autoplay
+                self.replaying = true;
+                self.current_mods = Arc::new(ModManager {
+                    autoplay: true,
+                    ..self.current_mods.as_ref().clone()
+                });
+            }
             
             if self.gamemode.show_cursor() {
                 if self.replaying || self.current_mods.autoplay {
