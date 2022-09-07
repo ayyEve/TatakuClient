@@ -29,7 +29,7 @@ pub fn calc_acc(score: &Score) -> f64 {
     let great = score.judgments.get("katu").copy_or_default() as f64;
     let good = score.judgments.get("x100").copy_or_default() as f64;
     let okay  = score.judgments.get("x50").copy_or_default() as f64;
-    let miss = score.judgments.get("miss").copy_or_default() as f64;
+    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
 
     let top = [
         marv * 1.0, // 100%

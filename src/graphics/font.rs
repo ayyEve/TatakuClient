@@ -141,7 +141,7 @@ impl Into<ayyeve_piston_ui::prelude::FontCharacter> for CharData {
 pub struct FontSize(pub f32);
 impl FontSize {
     pub fn new(size: f32) -> Option<Self> {
-        if !size.is_normal() {return None} 
+        if size != 0.0 && !size.is_normal() { return None } 
         Some(Self(size))
     }
 }

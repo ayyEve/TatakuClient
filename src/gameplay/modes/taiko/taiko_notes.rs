@@ -38,10 +38,10 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
 
     fn x_at(&self, time:f32) -> f32 {
         // (self.time() - time) * self.get_sv()
-        ((self.time() - time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32
+        ((self.time() - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32
     }
     fn end_x_at(&self, time:f32) -> f32 {
-        ((self.end_time(0.0) - time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32
+        ((self.end_time(0.0) - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32
     }
 
     fn time_at(&self, x: f32) -> f32 {
@@ -348,7 +348,7 @@ impl HitObject for TaikoSlider {
         for time in self.hit_dots.iter() {
             let bounce_factor = 1.6;
 
-            let x = self.settings.hit_position.x as f32 + ((time - self.current_time) / 1000.0) * self.get_sv() * self.get_playfield().size.x as f32;
+            let x = self.settings.hit_position.x as f32 + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32;
             let diff = self.current_time - time;
             let y = self.settings.hit_position.y as f32 + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
 
@@ -427,7 +427,6 @@ impl TaikoSpinner {
     pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
         let mut spinner_image = if diff_calc_only {None} else {SkinManager::get_texture("spinner-warning", true).await};
 
-        
         let depth = get_depth(time);
 
         if let Some(image) = &mut spinner_image {

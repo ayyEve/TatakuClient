@@ -88,7 +88,7 @@ impl HitJudgments for OsuHitJudgments {
             SliderDotMiss => "slider_dot_miss",
 
             SliderEnd => "slider_end",
-            SliderEndMiss => "miss", // alias to miss, so it counts as misses when added
+            SliderEndMiss => "xmiss", // alias to miss, so it counts as misses when added
         }
     }
 

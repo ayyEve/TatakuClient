@@ -28,6 +28,7 @@ const BAR_SPACING:f32 = 4.0;
 
 /// bc sv is bonked, divide it by this amount
 const SV_FACTOR:f32 = 700.0;
+pub const SV_OVERRIDE:f32 = 1200.0;
 
 /// how long should the drum buttons last for?
 const DRUM_LIFETIME_TIME:f32 = 100.0;
@@ -41,7 +42,7 @@ pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0
 pub fn calc_acc(score: &Score) -> f64 {
     let x100 = score.judgments.get("x100").copy_or_default() as f64;
     let x300 = score.judgments.get("x300").copy_or_default() as f64;
-    let miss = score.judgments.get("miss").copy_or_default() as f64;
+    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
 
     (x100 / 2.0 + x300) 
     / (miss + x100 + x300)
@@ -706,6 +707,10 @@ impl GameMode for TaikoGame {
         for note in self.notes.iter_mut() { 
             note.playfield_changed(self.playfield.clone());
         }
+        
+        for tb in self.timing_bars.iter_mut() {
+            tb.playfield_changed(self.playfield.clone());
+        }
     }
 }
 
@@ -1001,7 +1006,7 @@ impl TimingBar {
     }
 
     fn x_at(&self, time: f32) -> f32 {
-        ((self.time - time) / 1000.0) * self.speed * self.playfield.size.x as f32
+        ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x as f32
     }
     fn draw(&mut self, args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}

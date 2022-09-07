@@ -18,7 +18,7 @@ pub fn calc_acc(score: &Score) -> f64 {
     let x300 = score.judgments.get("x300").copy_or_default() as f64;
     let geki = score.judgments.get("geki").copy_or_default() as f64;
     let katu = score.judgments.get("katu").copy_or_default() as f64;
-    let miss = score.judgments.get("miss").copy_or_default() as f64;
+    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
 
     (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
     / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
