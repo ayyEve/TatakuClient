@@ -45,6 +45,8 @@ pub struct BeatmapSelectMenu {
     settings: SettingsHelper,
 
     background_game: Option<IngameManager>,
+
+    cached_maps: Vec<Vec<Arc<BeatmapMeta>>>
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
@@ -118,7 +120,8 @@ impl BeatmapSelectMenu {
             // diff_calc_start_helper: MultiBomb::new()
             window_size: window_size.clone(),
             background_game: None,
-            settings: SettingsHelper::new().await
+            settings: SettingsHelper::new().await,
+            cached_maps: Vec::new(),
         };
 
         // reposition things
@@ -177,25 +180,35 @@ impl BeatmapSelectMenu {
     }
 
     pub async fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
-        let filter_text = self.search_text.get_text().to_ascii_lowercase();
-        self.beatmap_scroll.clear();
-
-        // used to select the current map in the list
-        let current_hash = if let Some(map) = &beatmap_manager.current_beatmap {map.beatmap_hash.clone()} else {String::new()};
-
         //TODO: allow grouping by not just map set
         let sets = beatmap_manager.all_by_sets(GroupBy::Title);
-        let mut full_list = Vec::new();
         // let diff_calc_helper = beatmap_manager.on_diffcalc_completed.1.clone();
 
+        self.cached_maps = sets;
+        self.apply_filter(beatmap_manager).await;
 
+        // update diffs
+        let mode_clone = self.mode.clone();
+        tokio::spawn(async {
+            BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
+        });
+    }
+
+
+    pub async fn apply_filter(&mut self, beatmap_manager:&mut BeatmapManager) {
+        self.beatmap_scroll.clear();
+        let filter_text = self.search_text.get_text().to_ascii_lowercase();
+        let mut full_list = Vec::new();
         let mods = Arc::new(ModManager::get().await.clone());
         let mode = Arc::new(self.mode.clone());
 
-        for maps in sets {
-            let mut maps:Vec<BeatmapMetaWithDiff> = maps.into_iter().map(|m| 
+        // used to select the current map in the list
+        let current_hash = if let Some(map) = &beatmap_manager.current_beatmap {map.beatmap_hash.clone()} else {String::new()};
+        
+        for maps in self.cached_maps.iter() {
+            let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| 
                 BeatmapMetaWithDiff::new(
-                    m,
+                    m.clone(),
                     mods.clone(),
                     mode.clone(),
                     Arc::new(HashMap::new()),
@@ -211,7 +224,7 @@ impl BeatmapSelectMenu {
                     maps.retain(|bm|bm.filter(&filter));
                 }
 
-                if maps.len() == 0 {continue}
+                if maps.len() == 0 { continue }
             }
 
             let meta = &maps[0];
@@ -242,13 +255,8 @@ impl BeatmapSelectMenu {
         for i in full_list {self.beatmap_scroll.add_item(i)}
 
         self.beatmap_scroll.scroll_to_selection();
-
-        // update diffs
-        let mode_clone = self.mode.clone();
-        tokio::spawn(async {
-            BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
-        });
     }
+
 
     pub async fn load_scores(&mut self) {
         // if nothing is selected, leave
@@ -961,7 +969,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         if self.search_text.get_text() != old_text {
-            self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
+            // self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
+            self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
         }
     }
 
@@ -972,12 +981,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     }
 
     async fn on_text(&mut self, text:String) {
-        // DO NOT ACTIVAT FOR BEATMAP ITEMS!!
+        // DO NOT ACTIVATE FOR BEATMAP ITEMS!!
         // on_text is used to change the playmode lol
         for i in self.interactables() {
             i.on_text(text.clone());
         }
-        self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
+
+        self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
     }
 }
 #[async_trait]

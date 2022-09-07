@@ -73,9 +73,7 @@ impl CursorManager {
             let timer = Instant::now();
 
             loop {
-                let now = Instant::now();
-                
-                let diff = now.duration_since(timer).as_secs_f64() * 1000.0;
+                let diff = timer.as_millis64();
                 s.update(diff).await;
 
 
