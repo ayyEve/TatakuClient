@@ -30,8 +30,6 @@ impl ReplayDownloader for TatakuReplayDownloader {
             return Err(TatakuError::String("Downloaded file was empty".to_owned()));
         }
 
-        std::fs::write("/tmp/test.ttkr", &bytes).unwrap();
-
         let replay = SerializationReader::new(bytes.to_vec()).read()?;
         Ok(replay)
     }
