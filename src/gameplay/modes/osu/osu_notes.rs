@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use super::OsuHitJudgments;
+use super::{ OsuHitJudgments, osu::ScalingHelper };
 
 const SPINNER_RADIUS:f64 = 200.0;
 const SLIDER_DOT_RADIUS:f64 = 8.0;
