@@ -55,6 +55,11 @@ impl BeatmapManager {
         }
     }
 
+    fn log_played(&self) {
+        for (n, i) in self.played.iter().enumerate() {
+            println!("{n}. {}", i.beatmap_hash)
+        }
+    }
 
     pub async fn folders_to_check() -> Vec<std::path::PathBuf> {
         let mut folders = Vec::new();
@@ -214,10 +219,11 @@ impl BeatmapManager {
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, _do_async:bool, use_preview_time:bool) {
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
+        self.play_index += 1;
 
         // play song
         let audio_filename = beatmap.audio_filename.clone();
-        let time = if use_preview_time {beatmap.audio_preview} else {0.0};
+        let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
         // dont async with bass, causes race conditions + double audio bugs
         #[cfg(feature="neb_audio")]
@@ -283,18 +289,22 @@ impl BeatmapManager {
     }
 
     pub async fn next_beatmap(&mut self, game:&mut Game) -> bool {
-        self.play_index += 1;
+        // println!("i: {}", self.play_index);
 
-        match self.played.get(self.play_index).cloned() {
+        match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
                 self.set_current_beatmap(game, &map, false, false).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
+
+                // self.log_played();
+
                 true
             }
 
             None => if let Some(map) = self.random_beatmap() {
                 self.set_current_beatmap(game, &map, false, false).await;
+
                 true
             } else {
                 false
@@ -311,13 +321,18 @@ impl BeatmapManager {
 
     pub async fn previous_beatmap(&mut self, game:&mut Game) -> bool {
         if self.play_index == 0 { return false }
-        self.play_index -= 1;
+        // println!("i: {}", self.play_index);
         
-        match self.played.get(self.play_index).cloned() {
+        match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
                 self.set_current_beatmap(game, &map, false, false).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
+                // undo the index bump done in set_current_beatmap
+                self.play_index -= 2; 
+                
+                // self.log_played();
+
                 true
             }
             None => false
