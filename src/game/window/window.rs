@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use glfw::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
@@ -17,6 +18,7 @@ static mut GAME_EVENT_SENDER: OnceCell<MultiFuze<GameEvent>> = OnceCell::const_n
 
 pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
 static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
+pub static NEW_RENDER_DATA_AVAILABLE: AtomicBool = AtomicBool::new(true);
 
 pub fn graphics() -> &'static mut GlGraphics {
     unsafe {
@@ -252,82 +254,85 @@ impl GameWindow {
         //     if !RENDER_EVENT_RECEIVER.get().unwrap().updated() { return }
         // }
 
-        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
-        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
-        RENDER_COUNT.fetch_add(1, SeqCst);
-
         render(
             self.window.window.window_ptr(),
             RenderArgs {
                 ext_dt: 0.0,
                 window_size: self.window.size().into(),
                 draw_size:   self.window.draw_size().into(),
-            }
+            },
+            &mut self.frametime_timer
         );
-        
     }
 }
 
 
-fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs) {
+fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut Instant) {
     unsafe {
-        match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
-            TatakuRenderEvent::None => {},
-            TatakuRenderEvent::Draw(data) => {
-                let graphics = graphics();
+        if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
+            match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
+                TatakuRenderEvent::None => {},
+                TatakuRenderEvent::Draw(data) => {
+                    let graphics = graphics();
 
-                // TODO: use this for snipping
-                {
-                    // // actually draw everything now
-                    // let mut orig_c = self.graphics.draw_begin(args.viewport());
+                    let frametime = (frametime.duration_and_reset() * 100.0).floor() as u32;
+                    RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
+                    RENDER_COUNT.fetch_add(1, SeqCst);
 
-                    // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
-                    // for i in self.render_queue.iter_mut() {
-                    //     let mut drawstate_changed = false;
-                    //     let c = if let Some(ic) = i.get_context() {
-                    //         drawstate_changed = true;
-                    //         // debug!("ic: {:?}", ic);
-                    //         self.graphics.draw_end();
-                    //         self.graphics.draw_begin(args.viewport());
-                    //         self.graphics.use_draw_state(&ic.draw_state);
-                    //         ic
-                    //     } else {
-                    //         orig_c
-                    //     };
-                        
-                    //     // self.graphics.use_draw_state(&c.draw_state);
-                    //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
-                    //     i.draw(&mut self.graphics, c);
+                    // TODO: use this for snipping
+                    {
+                        // // actually draw everything now
+                        // let mut orig_c = self.graphics.draw_begin(args.viewport());
 
-                    //     if drawstate_changed {
-                    //         self.graphics.draw_end();
-                    //         orig_c = self.graphics.draw_begin(args.viewport());
-                    //         self.graphics.use_draw_state(&orig_c.draw_state);
-                    //     }
-                    // }
-                    // self.graphics.draw_end();
-                }
+                        // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
+                        // for i in self.render_queue.iter_mut() {
+                        //     let mut drawstate_changed = false;
+                        //     let c = if let Some(ic) = i.get_context() {
+                        //         drawstate_changed = true;
+                        //         // debug!("ic: {:?}", ic);
+                        //         self.graphics.draw_end();
+                        //         self.graphics.draw_begin(args.viewport());
+                        //         self.graphics.use_draw_state(&ic.draw_state);
+                        //         ic
+                        //     } else {
+                        //         orig_c
+                        //     };
+                            
+                        //     // self.graphics.use_draw_state(&c.draw_state);
+                        //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
+                        //     i.draw(&mut self.graphics, c);
 
-                // TODO: dont use this for snipping
-                let c = graphics.draw_begin(args.viewport());
-                graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-                
-                for i in data.iter() {
-                    i.draw(graphics, c);
-                }
-                if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                    if let Ok(mut q) = q.try_lock() {
-                        for i in q.read().iter() {
-                            i.draw(graphics, c);
+                        //     if drawstate_changed {
+                        //         self.graphics.draw_end();
+                        //         orig_c = self.graphics.draw_begin(args.viewport());
+                        //         self.graphics.use_draw_state(&orig_c.draw_state);
+                        //     }
+                        // }
+                        // self.graphics.draw_end();
+                    }
+
+                    // TODO: dont use this for snipping
+                    let c = graphics.draw_begin(args.viewport());
+                    graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
+                    
+                    for i in data.iter() {
+                        i.draw(graphics, c);
+                    }
+                    if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                        if let Ok(mut q) = q.try_lock() {
+                            for i in q.read().iter() {
+                                i.draw(graphics, c);
+                            }
                         }
                     }
-                }
-                
-                graphics.draw_end();
+                    
+                    graphics.draw_end();
 
-                glfw::ffi::glfwSwapBuffers(window);
+                    glfw::ffi::glfwSwapBuffers(window);
+                }
             }
         }
+
     }
 }
 
@@ -413,8 +418,10 @@ pub static RESIZE_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, 
             draw_size
         };
 
+        let mut timer = Instant::new();
+
         // re-render
-        render(window, args);
+        render(window, args, &mut timer);
     }
     actual_callback
 };
@@ -440,7 +447,9 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
             window_size,
             draw_size
         };
-        render(window, args);
+
+        let mut timer = Instant::new();
+        render(window, args, &mut timer);
     }
     actual_callback
 };

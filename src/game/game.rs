@@ -749,6 +749,7 @@ impl Game {
 
         // toss the items to the window to render
         self.render_queue_sender.write(TatakuRenderEvent::Draw(render_queue));
+        NEW_RENDER_DATA_AVAILABLE.store(true, Ordering::Release);
         
         self.fps_display.increment();
 
