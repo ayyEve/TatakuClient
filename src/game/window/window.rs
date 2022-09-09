@@ -418,7 +418,7 @@ pub static RESIZE_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, 
             draw_size
         };
 
-        let mut timer = Instant::new();
+        let mut timer = Instant::now();
 
         // re-render
         render(window, args, &mut timer);
@@ -448,7 +448,7 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
             draw_size
         };
 
-        let mut timer = Instant::new();
+        let mut timer = Instant::now();
         render(window, args, &mut timer);
     }
     actual_callback
