@@ -122,12 +122,6 @@ pub async fn texture_load_loop() {
 
 
                         let i = image::RgbaImage::from_vec(overall_width as u32, overall_height as u32, image_data).unwrap();
-                        
-
-                        let name = format!("{}.{}.png", font.font.file_hash(), size.0);
-                        i.save_with_format(name, image::ImageFormat::Png).expect("pain");
-
-
                         let texture = Arc::new(Texture::from_image(&i, &settings));
 
                         for (pos, size2, metrics, char) in char_data {
