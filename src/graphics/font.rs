@@ -103,7 +103,7 @@ impl Font2 {
     }
 
     pub fn get_char(&self, font_size: f32, c: char) -> Option<CharData> {
-        if !self.font.chars().contains_key(&c) {return None}
+        if !self.font.chars().contains_key(&c) { return None }
 
         let font_size = FontSize::new(font_size)?;
         let key = (font_size, c);
@@ -165,7 +165,11 @@ impl FontRender for Font2 {
     }
 
     fn get_character(&self, font_size: Self::Size, ch: char) -> ayyeve_piston_ui::prelude::FontCharacter {
-        self.get_char(font_size.0, ch).unwrap().into()
+        if let Some(c) = self.get_char(font_size.0, ch) {
+            c.into()
+        } else {
+            Default::default()
+        }
     }
 
     fn has_character(&self, ch: char) -> bool {
