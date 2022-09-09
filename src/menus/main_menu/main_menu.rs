@@ -56,18 +56,11 @@ impl MainMenu {
         let visualization = MenuVisualizationNew::new().await;
 
         #[cfg(feature="render_target_test")]
-        fn callback(render_target: &mut RenderTarget) {
+        fn callback(render_target: &mut RenderTarget, graphics: &mut GlGraphics) {
             let circle = Circle::new(Color::BLUE, 1.0, Vector2::one() * 200.0, 50.0, None);
 
-            let viewport = graphics::Viewport {
-                rect: [0, 0, render_target.width as i32, render_target.height as i32],
-                draw_size: [render_target.width as u32, render_target.height as u32],
-                window_size: [render_target.width, render_target.height],
-            };
-
-            let graphics = graphics();
-
-
+            let viewport = render_target.viewport();
+            
             render_target.bind();
 
             let c = graphics.draw_begin(viewport);

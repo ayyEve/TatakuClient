@@ -177,12 +177,17 @@ pub async fn texture_load_loop() {
                     on_done.send(Err(TatakuError::String(String::new()))).ok().expect("uh oh");
                 }
 
-                LoadImage::RenderBuffer((w, h), on_done, callback) => {
+                LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
                     match RenderTarget::new_main_thread(w, h) {
                         Ok(mut render_target) => {
-                            callback(&mut render_target);
+                            let graphics = graphics();
+                            render_target.bind();
+                            callback(&mut render_target, graphics);
+                            render_target.unbind();
+
                             render_targets.push(render_target.render_target_data.clone());
-                            
+                            image_data.push(render_target.image.tex.clone());
+
                             if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
                         }
                         Err(e) => {
@@ -190,14 +195,23 @@ pub async fn texture_load_loop() {
                         }
                     }
                 }
+
+                LoadImage::UpdateRenderTarget(mut render_target, on_done, callback) => {
+                    render_target.bind();
+                    let graphics = graphics();
+                    callback(&mut render_target, graphics);
+                    render_target.unbind();
+
+                    if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") };
+                }
             }
 
             trace!("Done loading tex");
         }
 
         // drop textures that only have a reference here (ie, dropped everywhere else)
-        image_data.retain(|i| Arc::strong_count(i) > 1);
         render_targets.retain(|i| Arc::strong_count(i) > 1);
+        image_data.retain(|i| Arc::strong_count(i) > 1);
 
         tokio::task::yield_now().await;
         // tokio::time::sleep(Duration::from_millis(10)).await;
@@ -249,11 +263,11 @@ pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
 }
 
 
-pub async fn create_render_target(size: (f64, f64), callback: fn(&mut RenderTarget)) -> TatakuResult<RenderTarget> {
+pub async fn create_render_target(size: (f64, f64), callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
     trace!("create render target");
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::RenderBuffer(size, sender, callback)).ok().expect("no?");
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -262,12 +276,28 @@ pub async fn create_render_target(size: (f64, f64), callback: fn(&mut RenderTarg
     }
 }
 
+pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
+    trace!("update render target");
+
+    let (sender, mut receiver) = unbounded_channel();
+    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+
+    if let Some(t) = receiver.recv().await {
+        t
+    } else {
+        Err(TatakuError::String("idk".to_owned()))
+    }
+}
+
+
+
 pub enum LoadImage {
     GameClose,
     Path(String, UnboundedSender<TatakuResult<Arc<Texture>>>),
     Image(RgbaImage, UnboundedSender<TatakuResult<Arc<Texture>>>),
     Font(Font2, FontSize, UnboundedSender<TatakuResult<()>>),
 
-    RenderBuffer((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, fn(&mut RenderTarget))
+    CreateRenderTarget((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
+    UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
 }
 

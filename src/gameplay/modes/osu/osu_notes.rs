@@ -1,3 +1,5 @@
+use graphics::Graphics;
+
 use crate::prelude::*;
 
 use super::{ OsuHitJudgments, osu::ScalingHelper };
@@ -9,9 +11,6 @@ pub const NOTE_BORDER_SIZE:f64 = 2.0;
 pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
 const APPROACH_CIRCLE_MULT:f64 = 4.0;
 const PREEMPT_MIN:f32 = 450.0;
-
-// temp var for testing alternate slider rendering
-const USE_BROKEN_SLIDERS:bool = false;
 
 #[async_trait]
 pub trait StandardHitObject: HitObject {
@@ -424,13 +423,6 @@ pub struct StandardSlider {
     /// cached slider ball pos
     slider_ball_pos: Vector2,
 
-
-    // lines_cache: Vec<Box<Line>>,
-    // circles_cache: Vec<Box<Circle>>
-    slider_draw: SliderPath,
-    // slider_draw2: SliderPath,
-
-
     /// cached settings for this game
     standard_settings: Arc<StandardSettings>,
     /// list of shapes to be drawn
@@ -441,7 +433,9 @@ pub struct StandardSlider {
     end_circle_image: Option<Image>,
     slider_reverse_image: Option<Image>,
 
-    hitwindow_miss: f32
+    hitwindow_miss: f32,
+
+    slider_body_render_target: Option<RenderTarget>,
 }
 impl StandardSlider {
     pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
@@ -489,7 +483,7 @@ impl StandardSlider {
         }
 
         
-        let slider_reverse_image = if diff_calc_only {None} else {SkinManager::get_texture("reversearrow", true).await};
+        let slider_reverse_image = if diff_calc_only { None } else { SkinManager::get_texture("reversearrow", true).await };
 
         let mut slider = Self {
             def,
@@ -530,7 +524,6 @@ impl StandardSlider {
             scaling_helper,
             sliding_ok: false,
             slider_ball_pos: Vector2::zero(),
-            slider_draw: SliderPath::default(),
 
 
             standard_settings,
@@ -539,136 +532,113 @@ impl StandardSlider {
 
             start_circle_image,
             end_circle_image,
-            slider_reverse_image
+            slider_reverse_image,
+            slider_body_render_target: None
         };
     
         slider.make_dots().await;
-        slider.make_body().await;
         slider
     }
 
     async fn make_body(&mut self) {
-        let mut side1_total = Vec::new();
-        let mut side2_total = Vec::new();
+        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+        let alpha = 1.0;
+        
+        let mut color = self.color.alpha(alpha);
+        const DARKER:f32 = 2.0/3.0;
+        color.r *= DARKER;
+        color.g *= DARKER;
+        color.b *= DARKER;
 
-        for segment in self.curve.path.iter() {
-            let mut side1 = Vec::new();
-            let mut side2 = Vec::new();
+        const BORDER_RADIUS: f64 = 6.0;
+        // border
+        for line in self.curve.smooth_lines.iter() {
+            let mut p1 = self.scaling_helper.scale_coords(line.p1);
+            let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
+            p1.y = self.scaling_helper.window_size.y - p1.y;
+            p2.y = self.scaling_helper.window_size.y - p2.y;
 
-            macro_rules! check_sides {
-                ($p1:expr, $direction:expr, $perpendicular1:expr, $perpendicular2:expr) => {{
-                    let s1 = $p1 + $perpendicular1;
-                    let s2 = $p1 + $perpendicular2;
-                    let origin = $p1;
-                    
-                    if side1_total.len() > 0 {
-                        let last_point = *side1_total.last().unwrap();
-                        let middle_of_curve = origin + $direction * self.radius;
+            let border = Line::new(
+                p1,
+                p2,
+                self.radius,
+                self.slider_depth,
+                Color::WHITE.alpha(alpha)
+            );
+            list.push(Box::new(border));
 
-                        let (center, radius, t_initial, t_final) = circle_through_points(last_point, middle_of_curve, s1);
-                        let curve_length = ((t_final - t_initial) * radius).abs();
-                        let segments = (curve_length * 0.125) as u32;
-
-                        let mut curve = Vec::new();
-                        curve.push(last_point);
-
-                        for i in 0..segments {
-                            let progress = i as f64 / segments as f64;
-                            let t = t_final * progress + t_initial * (1.0 - progress);
-                            let new_point = circle_point(center, radius, t);
-                            side1.push(new_point);
-                        }
-                    }
-
-                    if side2_total.len() > 0 {
-                        let last_point = *side2_total.last().unwrap();
-                        let middle_of_curve = origin + $direction * self.radius;
-
-                        let (center, radius, t_initial, t_final) = circle_through_points(last_point, middle_of_curve, s2);
-                        let curve_length = ((t_final - t_initial) * radius).abs();
-                        let segments = (curve_length * 0.125) as u32;
-
-                        let mut curve = Vec::new();
-                        curve.push(last_point);
-
-                        for i in 0..segments {
-                            let progress = i as f64 / segments as f64;
-                            let t = t_final * progress + t_initial * (1.0 - progress);
-                            let new_point = circle_point(center, radius, t);
-                            side2.push(new_point);
-                        }
-                    }
-
-                    side1.push(s1);
-                    side2.push(s2);
-                }}
-            }
-
-            match segment {
-                CurveSegment::Bezier { curve } 
-                | CurveSegment::Catmull { curve }
-                | CurveSegment::Perfect { curve } => {
-                    for i in 1..curve.len() {
-                        let p1 = self.scaling_helper.scale_coords(curve[i - 1]);
-                        let p2 = self.scaling_helper.scale_coords(curve[i]);
-
-                        let direction = Vector2::normalize(p2 - p1);
-                        let perpendicular1 = Vector2::new(direction.y, -direction.x) * self.radius;
-                        let perpendicular2 = Vector2::new(-direction.y, direction.x) * self.radius;
-
-                        // if this is the first entry in this list
-                        if i == 1 {
-                            check_sides!(p1, direction, perpendicular1, perpendicular2)
-                        }
-                        side1.push(p2 + perpendicular1);
-                        side2.push(p2 + perpendicular2);
-                    }
-                },
-
-                &CurveSegment::Linear { p1, p2 } => {
-                    let p1 = self.scaling_helper.scale_coords(p1);
-                    let p2 = self.scaling_helper.scale_coords(p2);
-
-                    let direction = Vector2::normalize(p2 - p1);
-                    let perpendicular1 = Vector2::new(direction.y, -direction.x) * self.radius;
-                    let perpendicular2 = Vector2::new(-direction.y, direction.x) * self.radius;
-
-                    check_sides!(p1, direction, perpendicular1, perpendicular2);
-                },
-            }
-
-            side1_total.extend(side1.iter());
-            side2_total.extend(side2.iter());
+            // add a circle to smooth out the corners
+            // border
+            list.push(Box::new(Circle::new(
+                Color::WHITE.alpha(alpha),
+                self.slider_depth,
+                p2,
+                self.radius,
+                None
+            )));
         }
 
-        // for (i, line) in self.curve.smooth_lines.iter().enumerate() {
-        //     let p1 = self.scaling_helper.scale_coords(line.p1);
-        //     let p2 = self.scaling_helper.scale_coords(line.p2);
+        for line in self.curve.smooth_lines.iter() {
+            let mut p1 = self.scaling_helper.scale_coords(line.p1);
+            let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
-        //     let direction = Vector2::normalize(p2 - p1);
-        //     let perpendicular1 = Vector2::new(direction.y, -direction.x);
-        //     let perpendicular2 = Vector2::new(-direction.y, direction.x);
+            p1.y = self.scaling_helper.window_size.y - p1.y;
+            p2.y = self.scaling_helper.window_size.y - p2.y;
 
-        //     // if this is the first entry in the list
-        //     if i == 0 {
-        //         side1.push(p1 + perpendicular1 * self.radius);
-        //         side2.push(p1 + perpendicular2 * self.radius);
-        //         // og_path.push(p1);
-        //     }
-        //     side1.push(p2 + perpendicular1 * self.radius);
-        //     side2.push(p2 + perpendicular2 * self.radius);
-        //     // og_path.push(p2);
-        // }
+            let l = Line::new(
+                p1,
+                p2,
+                self.radius - BORDER_RADIUS,
+                self.slider_depth,
+                color
+            );
+            list.push(Box::new(l));
 
-        let mut full:Vec<Vector2> = Vec::new();
-        // full.extend(start_cap);
-        full.extend(side1_total.iter());
-        full.extend(side2_total.iter().rev());
 
-        // snippy(&og_path, &mut full, self.radius);
+            // add a circle to smooth out the corners
+            list.push(Box::new(Circle::new(
+                color,
+                self.slider_depth,
+                p2,
+                self.radius - BORDER_RADIUS,
+                None
+            )));
+            
+        }
 
-        self.slider_draw = SliderPath::new(full, Color::BLUE, self.slider_depth)
+        let mut p = self.scaling_helper.scale_coords(self.curve.smooth_lines[0].p1);
+        p.y = self.scaling_helper.window_size.y - p.y;
+        
+        // add extra circle to start of slider as well
+        list.push(Box::new(Circle::new(
+            color,
+            self.slider_depth,
+            p,
+            self.radius,
+            None
+        )));
+
+        
+        let window_size = self.scaling_helper.window_size;
+        let mut slider_body_render_target = RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await.expect("error creating slider body");
+        slider_body_render_target.image.origin = Vector2::zero();
+        slider_body_render_target.image.depth = self.slider_depth;
+        self.slider_body_render_target = Some(slider_body_render_target);
+
+
+        if let Some(rt) = &mut self.slider_body_render_target {
+            rt.update(move |rt, g| {
+                let c = g.draw_begin(rt.viewport());
+                g.clear_color(Color::TRANSPARENT_WHITE.into());
+
+                for i in list {
+                    i.draw(g, c);
+                }
+
+                g.draw_end();
+            }).await;
+        }
     }
 
     async fn make_dots(&mut self) {
@@ -727,6 +697,14 @@ impl StandardSlider {
         }
     }
 
+    fn get_alpha(&self) -> f32 {
+        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
+        if self.map_time >= self.curve.end_time {
+            alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
+        }
+        alpha
+    }
+
 }
 #[async_trait]
 impl HitObject for StandardSlider {
@@ -749,7 +727,15 @@ impl HitObject for StandardSlider {
         let distance = ((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * 2.0;
 
-        if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time { return }
+        
+        let alpha = self.get_alpha();
+        if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
+            if self.slider_body_render_target.is_some() && alpha <= 0.0 {
+                self.slider_body_render_target = None;
+            }
+
+            return 
+        }
 
         // check if the start of the slider was missed.
         // if it was, perform a miss
@@ -819,6 +805,11 @@ impl HitObject for StandardSlider {
             }
         }
         self.hit_dots = dots;
+
+        if alpha > 0.0 && self.slider_body_render_target.is_none() {
+            self.make_body().await;
+        }
+
     }
 
     async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
@@ -830,14 +821,10 @@ impl HitObject for StandardSlider {
         }
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss {return list}
+        if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss { return list }
         
-        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
-        if self.map_time >= self.curve.end_time {
-            alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
-        }
         
-        let alpha = alpha * self.alpha_mult;
+        let alpha = self.get_alpha();
         let color = self.color.alpha(alpha);
 
         if self.time > self.map_time {
@@ -874,101 +861,13 @@ impl HitObject for StandardSlider {
         }
 
 
-
-        if USE_BROKEN_SLIDERS {
-            self.slider_draw.color.a = alpha;
-            list.push(Box::new(self.slider_draw.clone()));
-
-            for line in self.curve.smooth_lines.iter() {
-                let p1 = self.scaling_helper.scale_coords(line.p1);
-                let p2 = self.scaling_helper.scale_coords(line.p2);
-                let line = Line::new(p1, p2, 6.0, -999999.9, Color::YELLOW);
-                list.push(Box::new(line));
-            }
-
-        } else {
-            let mut color = color.alpha(alpha);
-            const DARKER:f32 = 2.0/3.0;
-            color.r *= DARKER;
-            color.g *= DARKER;
-            color.b *= DARKER;
-
-            const BORDER_RADIUS: f64 = 6.0;
-            // border
-            for line in self.curve.smooth_lines.iter() {
-                let p1 = self.scaling_helper.scale_coords(line.p1);
-                let p2 = self.scaling_helper.scale_coords(line.p2);
-                let border = Line::new(
-                    p1,
-                    p2,
-                    self.radius,
-                    self.slider_depth,
-                    Color::WHITE.alpha(alpha)
-                );
-                list.push(Box::new(border));
-
-                // add a circle to smooth out the corners
-                // border
-                list.push(Box::new(Circle::new(
-                    Color::WHITE.alpha(alpha),
-                    self.slider_depth,
-                    p2,
-                    self.radius,
-                    None
-                )));
-            }
-
-            for line in self.curve.smooth_lines.iter() {
-                let p1 = self.scaling_helper.scale_coords(line.p1);
-                let p2 = self.scaling_helper.scale_coords(line.p2);
-
-                let l = Line::new(
-                    p1,
-                    p2,
-                    self.radius - BORDER_RADIUS,
-                    self.slider_depth,
-                    color
-                );
-                list.push(Box::new(l));
-
-
-                // add a circle to smooth out the corners
-                list.push(Box::new(Circle::new(
-                    color,
-                    self.slider_depth,
-                    p2,
-                    self.radius - BORDER_RADIUS,
-                    None
-                )));
-                
-            }
-            
-            // add extra circle to start of slider as well
-            list.push(Box::new(Circle::new(
-                color,
-                self.slider_depth,
-                self.scaling_helper.scale_coords(self.curve.smooth_lines[0].p1),
-                self.radius,
-                None
-            )))
+        if let Some(rt) = &self.slider_body_render_target {
+            let mut b = rt.image.clone();
+            b.current_color.a = alpha;
+            list.push(Box::new(b));
         }
 
-
-        // for line in self.curve.path.iter() {
-        //     let p1 = self.scaling_helper.scale_coords(line.p1);
-        //     let p2 = self.scaling_helper.scale_coords(line.p2);
-            
-        //     let line = Line::new(
-        //         p1,
-        //         p2,
-        //         5.0,
-        //         self.slider_depth - 1.0,
-        //         Color::YELLOW
-        //     );
-        //     list.push(Box::new(line));
-        // }
-
-
+        
         // start and end circles
         let slides_remaining = self.def.slides - self.slides_complete;
         let end_repeat = slides_remaining > self.def.slides % 2 + 1;
@@ -1239,6 +1138,9 @@ impl StandardHitObject for StandardSlider {
         }
 
         self.combo_text = Some(combo_text);
+        if self.slider_body_render_target.is_some() {
+            self.make_body().await;
+        }
         self.make_dots().await;
     }
 
@@ -1540,123 +1442,6 @@ async fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f3
     }
 }
 
-
-#[derive(Clone)]
-pub struct SliderPath {
-    path: Vec<[f64; 2]>,
-    geom: Vec<[[f64;2]; 3]>,
-    color: Color,
-    depth: f64
-}
-impl SliderPath {
-    fn new(path: Vec<Vector2>, color: Color, depth: f64,) -> Self {
-
-        if !USE_BROKEN_SLIDERS {
-            return Self {
-                path: Vec::new(),
-                geom: Vec::new(),
-                color: Color::WHITE,
-                depth: 0.0
-            }
-        }
-
-
-        macro_rules! point {
-            ($v: expr) => {
-                lyon_tessellation::geom::Point::new($v.x as f32, $v.y as f32)
-            }
-        }
-
-        use lyon_tessellation::*;
-        use lyon_tessellation::geometry_builder::simple_builder;
-        use lyon_tessellation::math::Point;
-
-        let mut path_builder = lyon_tessellation::path::Path::builder();
-        path_builder.begin(point!(path[0]));
-
-        for i in 1..path.len() {
-            path_builder.line_to(point!(path[i]));
-        }
-        path_builder.end(true);
-
-        let path2 = path_builder.build();
-
-        
-        let mut buffers: &mut VertexBuffers<Point, u16> = &mut VertexBuffers::new();
-        {
-            // Create the destination vertex and index buffers.
-            let mut vertex_builder = simple_builder(&mut buffers);
-        
-            // Create the tessellator.
-            let mut tessellator = FillTessellator::new();
-
-            let mut fill_options = FillOptions::default();
-            fill_options.fill_rule = FillRule::NonZero;
-        
-            // Compute the tessellation.
-            let result = tessellator.tessellate_path(
-                path2.as_slice(), //.path_iter().flattened(0.05),
-                &fill_options,
-                &mut vertex_builder
-            );
-            assert!(result.is_ok());
-        }
-
-        let mut geom = Vec::new();
-        for i in (0..buffers.indices.len()).step_by(3) {
-            let i1 = buffers.indices[i + 0];
-            let i2 = buffers.indices[i + 1];
-            let i3 = buffers.indices[i + 2];
-
-            let v1 = buffers.vertices[i1 as usize];
-            let v2 = buffers.vertices[i2 as usize];
-            let v3 = buffers.vertices[i3 as usize];
-
-            let p1 = [v1.x as f64, v1.y as f64];
-            let p2 = [v2.x as f64, v2.y as f64];
-            let p3 = [v3.x as f64, v3.y as f64];
-
-            geom.push([p1, p2, p3]);
-        }
-
-
-        let path = path.iter().map(|a|(*a).into()).collect();
-        Self {path, color, depth, geom}
-    }
-}
-impl Renderable for SliderPath {
-    fn get_depth(&self) -> f64 {self.depth}
-
-    fn draw(&self, g: &mut opengl_graphics::GlGraphics, c:graphics::Context) {
-        for tri in self.geom.iter() {
-            graphics::polygon(self.color.into(), tri, c.transform, g);
-        }
-
-        // outline
-        for i in 0..self.path.len() - 1 {
-            graphics::line(
-                Color::BLACK.into(),
-                1.0,
-                [
-                    self.path[i][0], self.path[i][1],
-                    self.path[i+1][0], self.path[i+1][1],
-                ],
-                c.transform,
-                g
-            )
-        }
-    }
-}
-impl Default for SliderPath {
-    fn default() -> Self {
-        Self { 
-            path: Default::default(), 
-            geom: Default::default(), 
-            color: Color::WHITE, 
-            depth: Default::default() 
-        }
-    }
-}
 
 #[derive(Clone)]
 struct HitCircleImageHelper {

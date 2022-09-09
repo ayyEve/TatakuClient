@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::sync::atomic::Ordering::{ Acquire, Relaxed };
+use std::{sync::atomic::Ordering::{ Acquire, Relaxed }, ffi::c_void};
 use glfw::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
@@ -114,6 +114,20 @@ impl GameWindow {
             glfw::ffi::glfwSetWindowSizeCallback(window.window.window_ptr(), Some(RESIZE_WINDOW));
             #[cfg(target_os = "windows")] 
             glfw::ffi::glfwSetWindowPosCallback(window.window.window_ptr(), Some(REPOSITION_WINDOW));
+
+
+            // extern "system" fn gl_callback(src:u32, t:u32, id:u32, severity:u32, len:i32, msg: *const i8, p: *mut c_void) {
+            //     let e = unsafe { std::ffi::CStr::from_ptr(msg).to_string_lossy().to_string() };
+
+            //     error!(
+            //         "gl error! {e}\nsrc:{src}\ntype:{t:x}\nid:{id}\nseverity:{severity}"
+            //     )
+
+            // }
+            gl::Enable(gl::DEBUG_OUTPUT);
+            // gl::DebugMessageCallback(gl_callback, 0u8 as *const c_void);
+
+
         }
 
         Self {
@@ -327,6 +341,12 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut 
                     }
                     
                     graphics.draw_end();
+
+                    // loop {
+                    //     let e = gl::GetError();
+                    //     if e == gl::NO_ERROR { break }
+                    //     println!("gl error: {e}");
+                    // }
 
                     glfw::ffi::glfwSwapBuffers(window);
                 }

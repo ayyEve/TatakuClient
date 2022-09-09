@@ -261,7 +261,7 @@ mod osu {
                     score.accuracy = calc_acc(&score);
 
                     let mut score = IngameScore::new(score, false, false);
-                    error!("{}", s.replay_available);
+                    // error!("{}", s.replay_available);
                     score.replay_location = if s.replay_available == "1" {
                         ReplayLocation::Online(Arc::new(OsuReplayDownloader::new(score.score.clone(), id.parse().unwrap_or_default())))
                     } else {

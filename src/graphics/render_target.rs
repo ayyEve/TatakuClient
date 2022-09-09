@@ -1,4 +1,6 @@
 #![allow(unused, dead_code)]
+use graphics::Viewport;
+
 use crate::prelude::*;
 
 // yoinked form https://github.com/Furball-Engine/Furball.Vixie/blob/master/Furball.Vixie/Graphics/TextureRenderTarget.cs
@@ -8,6 +10,7 @@ lazy_static::lazy_static! {
     static ref CURRENT_BOUND:AtomicU32 = AtomicU32::new(0);
 }
 
+#[derive(Clone)]
 pub struct RenderTarget {
     pub render_target_data: Arc<RenderTargetData>,
 
@@ -20,8 +23,7 @@ pub struct RenderTarget {
     pub image: Image,
 }
 impl RenderTarget {
-
-    pub async fn new(width: f64, height: f64, callback: fn(&mut RenderTarget)) -> TatakuResult<Self> {
+    pub async fn new(width: f64, height: f64, callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<Self> {
         create_render_target((width, height), callback).await
     }
 
@@ -83,12 +85,16 @@ impl RenderTarget {
         };
         trace!("got depth_renderbuffer_id: {}", depth_renderbuffer_id);
 
-        //Check if FrameBuffer created successfully
+        //Check if FrameBuffer created successfully, and unbind it
         unsafe {
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
                 return Err(TatakuError::GlError(GlError::RenderBuffer))
             }
+            
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
+
 
         let old_view_port = [0; 4];
 
@@ -137,6 +143,23 @@ impl RenderTarget {
             gl::Viewport(x, y, width, height);
         }
     }
+
+    pub async fn update(&mut self, callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) {
+        let t = self.clone();
+        if let Ok(t) = update_render_target(t, callback).await {
+            *self = t;
+        } else {
+            error!("error updating render target")
+        }
+    }
+
+    pub fn viewport(&self) -> Viewport {
+        Viewport {
+            rect: [0, 0, self.width as i32, self.height as i32],
+            draw_size: [self.width as u32, self.height as u32],
+            window_size: [self.width, self.height],
+        }
+    }
 }
 
 
@@ -156,18 +179,19 @@ impl Drop for RenderTargetData {
     fn drop(&mut self) {
         let current_bound = CURRENT_BOUND.load(Ordering::SeqCst);
         if self.framebuffer_id == current_bound {
+            warn!("dropping render target while active");
+
             CURRENT_BOUND.store(0, Ordering::SeqCst);
 
             unsafe {
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
                 // rip viewport
-                warn!("dropping render target while active")
             }
         }
 
         unsafe {
             gl::DeleteFramebuffers(1, [self.framebuffer_id].as_ptr());
-            // gl::DeleteTextures(1, [self.texture_id].as_ptr());
+            // gl::DeleteTextures(1, [self.texture_id].as_ptr()); // let the image drop do this
             gl::DeleteRenderbuffers(1, [self.depth_renderbuffer_id].as_ptr());
         }
     }
