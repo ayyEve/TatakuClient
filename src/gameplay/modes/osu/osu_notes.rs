@@ -302,7 +302,7 @@ impl StandardHitObject for StandardNote {
         self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
         self.scaling_helper = new_scale;
 
-        let mut combo_text =  Box::new(Text::new(
+        let mut combo_text = Box::new(Text::new(
             Color::BLACK,
             self.base_depth - 0.0000001,
             self.pos,
@@ -321,13 +321,13 @@ impl StandardHitObject for StandardNote {
         }
         
         if let Some(image) = &mut self.combo_image {
+            image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+            image.current_scale = image.initial_scale;
+
             image.center_text(Rectangle::bounds_only(
                 self.pos - Vector2::one() * self.radius / 2.0,
                 Vector2::one() * self.radius,
             ));
-           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-           image.current_pos   = image.initial_pos;
-           image.current_scale = image.initial_scale;
         }
 
         self.combo_text = Some(combo_text);
@@ -1188,98 +1188,6 @@ impl StandardHitObject for StandardSlider {
         distance <= self.radius.powi(2)
     }
 
-    // // called on hit and release
-    // fn get_points(&mut self, is_press:bool, time:f32, (h_miss, h50, h100, h300):(f32,f32,f32,f32)) -> ScoreHit {
-    //     // if slider was held to end, no hitwindow to check
-    //     if h_miss == -1.0 {
-    //         // let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
-
-    //         // #[cfg(feature="debug_sliders")] {
-    //         //     trace!("checking end window (held to end)");
-    //         //     if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
-    //         //     if !self.holding {trace!("slider end miss (not held)")}
-    //         // }
-            
-
-    //         return self.check_end_points(time);
-
-    //         // self.end_checked = true;
-    //         // self.start_checked = true;
-
-    //         // return if distance > self.radius * 2.0 || !self.holding {
-    //         //     ScoreHit::Miss
-    //         // } else {
-    //         //     self.sound_index = self.def.edge_sounds.len() - 1;
-    //         //     ScoreHit::X300
-    //         // }
-    //     }
-
-    //     // check press
-    //     if time > self.time - h_miss && time < self.time + h_miss {
-    //         // within starting time frame
-
-    //         // make sure the cursor is in the radius
-    //         let distance = ((self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2)).sqrt();
-
-    //         #[cfg(feature="debug_sliders")] {
-    //             trace!("checking start window");
-    //             if distance > self.radius * 2.0 {trace!("slider end miss (out of radius)")}
-    //         }
-
-    //         // if already hit, or this is a release, return None
-    //         if self.start_checked || !is_press || distance > self.radius {return ScoreHit::None}
-            
-    //         // start wasnt hit yet, set it to true
-    //         self.start_checked = true;
-    //         // self.sound_index += 1;
-            
-    //         // get the points
-    //         let diff = (time - self.time).abs();
-
-    //         let ripple_pos = if self.end_checked {self.visual_end_pos} else {self.pos};
-
-    //         let score = if diff < h300 {
-    //             self.add_ripple(time, ripple_pos, false);
-    //             ScoreHit::X300
-    //         } else if diff < h100 {
-    //             self.add_ripple(time, ripple_pos, false);
-    //             ScoreHit::X100
-    //         } else if diff < h50 {
-    //             self.add_ripple(time, ripple_pos, false);
-    //             ScoreHit::X50
-    //         } else {
-    //             ScoreHit::Miss
-    //         };
-
-    //         self.start_judgment = score;
-    //         score
-    //     } else 
-
-    //     // check release
-    //     if time > self.curve.end_time - h_miss && time < self.curve.end_time + h_miss {
-    //         // within ending time frame
-    //         #[cfg(feature="debug_sliders")]
-    //         trace!("checking end window");
-
-    //         // make sure the cursor is in the radius
-    //         let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
-
-    //         // if already hit, return None
-    //         if self.end_checked || distance > self.radius * 2.0 {return ScoreHit::None}
-
-    //         // make sure the last hitsound in the list is played
-    //         self.sound_index = self.def.edge_sounds.len() - 1;
-
-    //         self.check_end_points(time)
-    //     } 
-    //     // not in either time frame, exit
-    //     else {
-    //         ScoreHit::None
-    //     }
-
-    // }
-
-
     fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {
         std::mem::take(&mut self.sound_queue)
     }
@@ -1321,13 +1229,13 @@ impl StandardHitObject for StandardSlider {
         
         
         if let Some(image) = &mut self.combo_image {
+            image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+            image.current_scale = image.initial_scale;
+
             image.center_text(Rectangle::bounds_only(
                 self.pos - Vector2::one() * self.radius / 2.0,
                 Vector2::one() * self.radius,
             ));
-           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-           image.current_pos   = image.initial_pos;
-           image.current_scale = image.initial_scale;
         }
 
         self.combo_text = Some(combo_text);
