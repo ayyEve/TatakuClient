@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use std::{sync::atomic::Ordering::{ Acquire, Relaxed }, ffi::c_void};
+use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use glfw::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{

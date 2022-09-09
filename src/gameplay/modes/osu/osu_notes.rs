@@ -543,6 +543,7 @@ impl StandardSlider {
     async fn make_body(&mut self) {
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         let alpha = 1.0;
+        let window_size = WindowSize::get().0;
         
         let mut color = self.color.alpha(alpha);
         const DARKER:f32 = 2.0/3.0;
@@ -556,8 +557,8 @@ impl StandardSlider {
             let mut p1 = self.scaling_helper.scale_coords(line.p1);
             let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
-            p1.y = self.scaling_helper.window_size.y - p1.y;
-            p2.y = self.scaling_helper.window_size.y - p2.y;
+            p1.y = window_size.y - p1.y;
+            p2.y = window_size.y - p2.y;
 
             let border = Line::new(
                 p1,
@@ -583,8 +584,8 @@ impl StandardSlider {
             let mut p1 = self.scaling_helper.scale_coords(line.p1);
             let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
-            p1.y = self.scaling_helper.window_size.y - p1.y;
-            p2.y = self.scaling_helper.window_size.y - p2.y;
+            p1.y = window_size.y - p1.y;
+            p2.y = window_size.y - p2.y;
 
             let l = Line::new(
                 p1,
@@ -608,7 +609,7 @@ impl StandardSlider {
         }
 
         let mut p = self.scaling_helper.scale_coords(self.curve.smooth_lines[0].p1);
-        p.y = self.scaling_helper.window_size.y - p.y;
+        p.y = window_size.y - p.y;
         
         // add extra circle to start of slider as well
         list.push(Box::new(Circle::new(
@@ -620,7 +621,6 @@ impl StandardSlider {
         )));
 
         
-        let window_size = self.scaling_helper.window_size;
         let mut slider_body_render_target = RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await.expect("error creating slider body");
         slider_body_render_target.image.origin = Vector2::zero();
         slider_body_render_target.image.depth = self.slider_depth;
