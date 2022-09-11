@@ -305,59 +305,109 @@ impl Game {
             let (f, b) = Bomb::new();
             WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::TakeScreenshot(f)).unwrap();
 
-            loop {
+            tokio::spawn(async move {
 
-                macro_rules! check {
-                    ($e:expr) => {
-                        match $e {
-                            Ok(e) => e,
-                            Err(e) => {
-                                NotificationManager::add_error_notification("Error saving screenshot", e).await;
-                                break;
+                loop {
+                    macro_rules! check {
+                        ($e:expr) => {
+                            match $e {
+                                Ok(e) => e,
+                                Err(e) => {
+                                    NotificationManager::add_error_notification("Error saving screenshot", e).await;
+                                    break;
+                                }
+                            }
+                        };
+                    }
+
+                    if let Some((data, width, height)) = b.exploded() {
+                        // create file
+                        let date = chrono::Local::now();
+                        let year = date.year();
+                        let month = date.month();
+                        let day = date.day();
+                        let hour = date.hour();
+                        let minute = date.minute();
+                        let second = date.second();
+
+                        let file = format!("../Screenshots/{year}-{month}-{day}--{hour}-{minute}-{second}.png");
+                        let path = Path::new(&file);
+
+                        check!(std::fs::create_dir_all(path.parent().unwrap()));
+                        let file = check!(std::fs::File::create(path));
+
+                        // save as png
+                        let w = &mut std::io::BufWriter::new(file);
+                        let mut encoder = png::Encoder::new(w, *width, *height);
+                        encoder.set_color(png::ColorType::RGB);
+
+                        let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
+                        check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));
+
+                        // notify user
+                        let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
+                        NotificationManager::add_notification(Notification::new(
+                            format!("Screenshot saved to {full_path}"), 
+                            Color::BLUE, 
+                            5000.0, 
+                            NotificationOnClick::File(full_path.clone())
+                        )).await;
+
+                        // if shift is pressed, upload to server, and get link
+                        if mods.shift {
+                            NotificationManager::add_text_notification("uploading screenshot", 5000.0, Color::YELLOW).await;
+
+                            let settings = SettingsHelper::new().await;
+                            let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
+
+                            let mut err:Option<(&str, TatakuError)> = None;
+                            match std::fs::read(full_path) {
+                                Err(e) => err = Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
+                                Ok(data) => match reqwest::Client::new().post(url).body(data).send().await {
+                                    Err(e) => err = Some(("Error sending screenshot request", TatakuError::String(e.to_string()))),
+                                    Ok(r) => match r.bytes().await {
+                                        Err(e) => err = Some(("Error reading screenshot response", TatakuError::String(e.to_string()))),
+                                        Ok(b) => match String::from_utf8(b.to_vec()) {
+                                            Err(e) => err = Some(("Error parsing screenshot response", TatakuError::String(e.to_string()))),
+                                            Ok(s) => match s.parse::<i64>() {
+                                                Err(e) => err = Some(("Error parsing screenshot id", TatakuError::String(e.to_string()))),
+                                                Ok(id) => {
+                                                    let url = format!("{}/screenshots/{id}", settings.score_url);
+                                                    // copy to clipboard
+                                                    if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::SetClipboard(url.clone())) {
+                                                        println!("error copying to clipboard: {e}");
+                                                        NotificationManager::add_notification(Notification::new(
+                                                            format!("Screenshot uploaded {url}"), 
+                                                            Color::BLUE, 
+                                                            5000.0, 
+                                                            NotificationOnClick::Url(url)
+                                                        )).await;
+                                                    } else {
+                                                        NotificationManager::add_notification(Notification::new(
+                                                            format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
+                                                            Color::BLUE, 
+                                                            5000.0, 
+                                                            NotificationOnClick::Url(url)
+                                                        )).await;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if let Some((s, err)) = err {
+                                NotificationManager::add_error_notification(s, err).await
                             }
                         }
-                    };
+
+                        break;
+                    }
                 }
+            
+            });
 
-                if let Some((data, width, height)) = b.exploded() {
-
-                    // create file
-                    let date = chrono::Local::now();
-                    let year = date.year();
-                    let month = date.month();
-                    let day = date.day();
-                    let hour = date.hour();
-                    let minute = date.minute();
-                    let second = date.second();
-
-                    let file = format!("../Screenshots/{year}-{month}-{day}--{hour}-{minute}-{second}.png");
-                    let path = Path::new(&file);
-
-                    check!(std::fs::create_dir_all(path.parent().unwrap()));
-                    let file = check!(std::fs::File::create(path));
-
-                    // save as png
-                    let w = &mut std::io::BufWriter::new(file);
-                    let mut encoder = png::Encoder::new(w, *width, *height);
-                    encoder.set_color(png::ColorType::RGB);
-
-                    let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
-                    check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));
-
-                    // notify user
-                    let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
-                    NotificationManager::add_notification(Notification::new(
-                        format!("Screenshot saved to {full_path}"), 
-                        Color::BLUE, 
-                        5000.0, 
-                        NotificationOnClick::File(full_path)
-                    )).await;
-
-                    // if shift is pressed, upload to server, and get link
-
-                    break;
-                }
-            }
         }
 
 
