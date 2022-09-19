@@ -52,6 +52,7 @@ pub struct Settings {
     pub last_played_mode: PlayMode,
     pub last_score_retreival_method: ScoreRetreivalMethod,
     pub last_sort_by: SortBy,
+    pub allow_gamemode_cursor_ripple_override: bool,
 
     // window settings
     pub fps_target: u64,
@@ -169,6 +170,7 @@ impl Default for Settings {
             last_played_mode: "osu".to_owned(),
             last_score_retreival_method: ScoreRetreivalMethod::Local,
             last_sort_by: SortBy::Title,
+            allow_gamemode_cursor_ripple_override: true,
 
             // window settings
             fps_target: 144,

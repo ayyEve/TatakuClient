@@ -32,6 +32,7 @@ pub struct CursorManager {
     pub color: Color,
     pub border_color: Color,
     ripple_color: Color,
+    ripple_radius_override: Option<f64>,
 
     pub cursor_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
@@ -136,6 +137,7 @@ impl CursorManager {
             right_pressed: false,
             visible: true,
             show_system_cursor: false,
+            ripple_radius_override: None,
             settings,
 
             ripples: Vec::new(),
@@ -180,6 +182,9 @@ impl CursorManager {
         // work through the event queue
         if let Ok(event) = self.event_receiver.try_recv() {
             match event {
+                CursorEvent::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
+                CursorEvent::SetVisible(show) => self.visible = show,
+
                 CursorEvent::SetLeftDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.left_pressed = down;
@@ -196,13 +201,13 @@ impl CursorManager {
                         }
                     }
                 },
-                CursorEvent::SetVisible(show) => self.visible = show,
 
                 CursorEvent::SetPos(pos, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.pos = pos
                     }
                 }
+
                 CursorEvent::ShowSystemCursor(show) => {
                     self.show_system_cursor = show;
                     if show {
@@ -316,6 +321,9 @@ impl CursorManager {
             DEFAULT_CURSOR_SIZE * self.settings.cursor_scale
         } * PRESSED_CURSOR_SCALE;
 
+
+        let end_scale = self.ripple_radius_override.map(|r|r/radius).unwrap_or(self.settings.cursor_ripple_final_scale);
+
         group.items.push(DrawItem::Circle(Circle::new(
             Color::WHITE,
             1_000.0,
@@ -323,7 +331,7 @@ impl CursorManager {
             radius,
             Some(Border::new(Color::WHITE, 2.0))
         )));
-        group.ripple(0.0, duration, time, self.settings.cursor_ripple_final_scale, true, Some(0.2));
+        group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
 
         self.ripples.push(group);
     }
@@ -360,6 +368,9 @@ impl CursorManager {
     pub fn show_system_cursor(show: bool) {
         Self::add_event(CursorEvent::ShowSystemCursor(show));
     }
+    pub fn set_ripple_override(radius: Option<f64>) {
+        Self::add_event(CursorEvent::OverrideRippleRadius(radius));
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -369,5 +380,6 @@ pub enum CursorEvent {
     SetPos(Vector2, bool),
     ShowSystemCursor(bool),
     SetVisible(bool),
+    OverrideRippleRadius(Option<f64>),
 }
 

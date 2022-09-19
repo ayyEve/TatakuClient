@@ -7,6 +7,8 @@ pub trait GameModeInfo: Send + Sync {
     fn playmode(&self) -> PlayMode;
     /// should the cursor be visible (ie, osu yes, taiko/mania no)
     fn show_cursor(&self) -> bool {false}
+    /// what should the cursor ripple size be? None for default
+    fn ripple_size(&self) -> Option<f64> {None}
     
     /// what ms does this map end?
     fn end_time(&self) -> f32;

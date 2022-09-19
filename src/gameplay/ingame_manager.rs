@@ -679,6 +679,10 @@ impl IngameManager {
 impl IngameManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
+        if self.settings.allow_gamemode_cursor_ripple_override {
+            CursorManager::set_ripple_override(self.gamemode.ripple_size());
+        }
+
         if !self.gamemode.show_cursor() {
             if !self.menu_background {
                 CursorManager::set_visible(false)
@@ -781,6 +785,7 @@ impl IngameManager {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
         CursorManager::show_system_cursor(false);
+        CursorManager::set_ripple_override(None);
 
         #[cfg(feature="bass_audio")]
         let _ = self.song.pause();
@@ -891,6 +896,7 @@ impl IngameManager {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
         CursorManager::show_system_cursor(false);
+        CursorManager::set_ripple_override(None);
     }
     
 }

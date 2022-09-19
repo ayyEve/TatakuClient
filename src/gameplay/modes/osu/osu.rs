@@ -984,6 +984,9 @@ impl GameModeInfo for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
     fn show_cursor(&self) -> bool {true}
+    fn ripple_size(&self) -> Option<f64> {
+        Some(self.scaling_helper.scaled_circle_size.x * 1.5)
+    }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![
