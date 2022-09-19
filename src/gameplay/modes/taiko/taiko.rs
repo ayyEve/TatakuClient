@@ -28,7 +28,7 @@ const BAR_SPACING:f32 = 4.0;
 
 /// bc sv is bonked, divide it by this amount
 const SV_FACTOR:f32 = 700.0;
-pub const SV_OVERRIDE:f32 = 1200.0;
+pub const SV_OVERRIDE:f32 = 2000.0;
 
 /// how long should the drum buttons last for?
 const DRUM_LIFETIME_TIME:f32 = 100.0;
