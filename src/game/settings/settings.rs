@@ -50,6 +50,8 @@ pub struct Settings {
     pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: CommonGameplaySettings,
     pub last_played_mode: PlayMode,
+    pub last_score_retreival_method: ScoreRetreivalMethod,
+    pub last_sort_by: SortBy,
 
     // window settings
     pub fps_target: u64,
@@ -165,6 +167,8 @@ impl Default for Settings {
             common_game_settings: CommonGameplaySettings::default(),
             pause_on_focus_lost: true,
             last_played_mode: "osu".to_owned(),
+            last_score_retreival_method: ScoreRetreivalMethod::Local,
+            last_sort_by: SortBy::Title,
 
             // window settings
             fps_target: 144,

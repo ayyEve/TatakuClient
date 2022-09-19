@@ -102,6 +102,11 @@ impl Game {
             }
         });
 
+        // set the current leaderboard filter
+        // this is here so it happens before anything else
+        let settings = SettingsHelper::new().await;
+        SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
+
         // beatmap manager loop
         BeatmapManager::download_check_loop();
         
@@ -134,8 +139,8 @@ impl Game {
                     }
                 }
             }
-            Err(e) => {
-                NotificationManager::add_error_notification("Error loading wallpaper", e).await
+            Err(_e) => {
+                // NotificationManager::add_error_notification("Error loading wallpaper", e).await
             }
         }
 

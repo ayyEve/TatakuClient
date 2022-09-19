@@ -52,8 +52,9 @@ impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
         let font = get_font();
         let window_size = WindowSize::get();
+        let settings = SettingsHelper::new().await;
 
-        let sort_by = SortBy::Title;
+        let sort_by = settings.last_sort_by;
         let sort_by_dropdown = Dropdown::new(
             Vector2::new(0.0, 5.0),
             200.0,
@@ -63,7 +64,7 @@ impl BeatmapSelectMenu {
             font.clone()
         );
 
-        let mode = get_settings!().last_played_mode.clone();
+        let mode = settings.last_played_mode.clone();
         let playmode_dropdown = Dropdown::new(
             Vector2::new(205.0, 5.0),
             200.0,
@@ -107,7 +108,7 @@ impl BeatmapSelectMenu {
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
             search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
 
-            mode: mode.clone(),
+            mode,
             sort_method: sort_by,
 
             score_loader: None,
@@ -120,7 +121,7 @@ impl BeatmapSelectMenu {
             // diff_calc_start_helper: MultiBomb::new()
             window_size: window_size.clone(),
             background_game: None,
-            settings: SettingsHelper::new().await,
+            settings,
             cached_maps: Vec::new(),
         };
 
@@ -342,11 +343,14 @@ impl BeatmapSelectMenu {
             return;
         }
 
+        let mut dropdown_clicked = false;
         for i in self.interactables() {
             if i.on_click(pos, button, mods) {
+                dropdown_clicked = true;
                 break;
             }
         }
+
 
         // check if selected mode changed
         let mut new_mode = None;
@@ -361,10 +365,11 @@ impl BeatmapSelectMenu {
 
         // check sort by dropdown
         let mut map_refresh = false;
-        if let Some(sort_by) = &self.sort_by_dropdown.value {
-            if sort_by != &self.sort_method {
-                self.sort_method = sort_by.clone();
+        if let Some(sort_by) = self.sort_by_dropdown.value {
+            if sort_by != self.sort_method {
+                self.sort_method = sort_by;
                 map_refresh = true;
+                get_settings_mut!().last_sort_by = sort_by;
             }
         }
         if map_refresh {
@@ -372,15 +377,23 @@ impl BeatmapSelectMenu {
         }
 
         // check score dropdown
-        let mut score_refresh = false;
-        if let Some(leaderboard_method) = &self.leaderboard_method_dropdown.value {
-            if &SCORE_HELPER.read().await.current_method != leaderboard_method {
-                SCORE_HELPER.write().await.current_method = *leaderboard_method;
-                score_refresh = true;
+        let mut score_method_changed = false;
+        if let Some(leaderboard_method) = self.leaderboard_method_dropdown.value {
+            if SCORE_HELPER.read().await.current_method != leaderboard_method {
+                SCORE_HELPER.write().await.current_method = leaderboard_method;
+                score_method_changed = true;
+                get_settings_mut!().last_score_retreival_method = leaderboard_method;
             }
+
         }
-        if score_refresh {
+        if score_method_changed {
             self.load_scores().await
+        }
+
+        // dont continue if a dropdown click was handled
+        // because the dropdown could be overlapping something below
+        if dropdown_clicked {
+            return;
         }
 
         

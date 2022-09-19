@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PlayModeDropdown {
     Mode(PlayMode)
 }

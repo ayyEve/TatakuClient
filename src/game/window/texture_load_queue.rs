@@ -43,16 +43,17 @@ pub async fn texture_load_loop() {
                 }
                 LoadImage::Font(font, size, on_done) => {
                     let px = size.0;
+                    // TODO: store rows in their own image maybe?
+                    // or just fix the trash code lol
 
                     // let mut textures = font.textures.write();
                     let mut characters = font.characters.write();
 
                     let count = font.font.chars().len();
 
-                    println!("count: {count}");
+                    // println!("count: {count}");
 
                     if count < 1000 {
-
                         let count_width = count; //(count as f32 / 2.0).ceil() as usize; // keep as 1 row for now because this code sucks balls
                         
                         // generate all datas
