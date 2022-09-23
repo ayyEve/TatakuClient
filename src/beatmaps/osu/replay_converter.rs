@@ -468,7 +468,6 @@ impl OsuMods {
     }
 }
 
-// TODO: account for whatever the hell mania does
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OsuKeys {
     None, // 0

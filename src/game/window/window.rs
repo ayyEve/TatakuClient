@@ -293,55 +293,57 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut 
                     RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
                     RENDER_COUNT.fetch_add(1, SeqCst);
 
-                    // TODO: use this for snipping
-                    {
-                        // // actually draw everything now
-                        // let mut orig_c = self.graphics.draw_begin(args.viewport());
+                    // use this for snipping
+                    #[cfg(feature="snipping")] {
+                        // actually draw everything now
+                        let mut orig_c = graphics.draw_begin(args.viewport());
+                        graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
 
-                        // graphics::clear(GFX_CLEAR_COLOR.into(), &mut self.graphics);
-                        // for i in self.render_queue.iter_mut() {
-                        //     let mut drawstate_changed = false;
-                        //     let c = if let Some(ic) = i.get_context() {
-                        //         drawstate_changed = true;
-                        //         // debug!("ic: {:?}", ic);
-                        //         self.graphics.draw_end();
-                        //         self.graphics.draw_begin(args.viewport());
-                        //         self.graphics.use_draw_state(&ic.draw_state);
-                        //         ic
-                        //     } else {
-                        //         orig_c
-                        //     };
+                        for i in data.iter() {
+                            if let Some(ic) = i.get_context() {
+                                orig_c.draw_state = ic.draw_state;
+                            } else {
+                                orig_c.draw_state = Default::default();
+                            }
+
+                            graphics.use_draw_state(&orig_c.draw_state);
                             
-                        //     // self.graphics.use_draw_state(&c.draw_state);
-                        //     if i.get_spawn_time() == 0 {i.set_spawn_time(elapsed)}
-                        //     i.draw(&mut self.graphics, c);
+                            i.draw(graphics, orig_c);
+                        }
 
-                        //     if drawstate_changed {
-                        //         self.graphics.draw_end();
-                        //         orig_c = self.graphics.draw_begin(args.viewport());
-                        //         self.graphics.use_draw_state(&orig_c.draw_state);
-                        //     }
-                        // }
-                        // self.graphics.draw_end();
-                    }
-
-                    // TODO: dont use this for snipping
-                    let c = graphics.draw_begin(args.viewport());
-                    graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-                    
-                    for i in data.iter() {
-                        i.draw(graphics, c);
-                    }
-                    if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                        if let Ok(mut q) = q.try_lock() {
-                            for i in q.read().iter() {
-                                i.draw(graphics, c);
+                        // draw cursor
+                        orig_c.draw_state = Default::default();
+                        graphics.use_draw_state(&orig_c.draw_state);
+                        if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                            if let Ok(mut q) = q.try_lock() {
+                                for i in q.read().iter() {
+                                    i.draw(graphics, orig_c);
+                                }
                             }
                         }
+                        
+                        graphics.draw_end();
                     }
-                    
-                    graphics.draw_end();
 
+                    #[cfg(not(feature="snipping"))] {
+
+                        // TODO: dont use this for snipping
+                        let c = graphics.draw_begin(args.viewport());
+                        graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
+                        
+                        for i in data.iter() {
+                            i.draw(graphics, c);
+                        }
+                        if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                            if let Ok(mut q) = q.try_lock() {
+                                for i in q.read().iter() {
+                                    i.draw(graphics, c);
+                                }
+                            }
+                        }
+                        
+                        graphics.draw_end();
+                    }
                     // loop {
                     //     let e = gl::GetError();
                     //     if e == gl::NO_ERROR { break }

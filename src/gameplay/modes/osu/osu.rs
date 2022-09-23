@@ -201,13 +201,7 @@ impl GameMode for StandardGame {
                     miss_window,
         
                     hold_count: 0,
-                    // note_index: 0,
                     end_time: 0.0,
-        
-                    // hitwindow_50: 0.0,
-                    // hitwindow_100: 0.0,
-                    // hitwindow_300: 0.0,
-                    // hitwindow_miss: 0.0,
         
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),

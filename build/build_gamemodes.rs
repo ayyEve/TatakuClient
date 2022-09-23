@@ -53,7 +53,7 @@ pub fn build_gamemodes() {
         let display_name = config.display_name.unwrap_or(mode_folder.clone());
 
 
-        // TODO: look for config file
+        // TODO: look for config file (?)
         mods.push(format!("mod {};", mode_folder));
         build_gamemode_lines.push(format!("        \"{internal_name}\" => Box::new({mode_folder}::Game::new(&beatmap, false).await?),"));
         acc_calc_lines.push(      format!("        \"{internal_name}\" => {mode_folder}::calc_acc(score),"));

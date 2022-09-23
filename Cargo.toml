@@ -17,6 +17,7 @@ neb_audio = ["cpal", "symphonia", "rustfft", "uuid"]
 discord = ["discord-rich-presence"]
 debug_sliders = []
 debug_hitsounds = []
+snipping = []
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }

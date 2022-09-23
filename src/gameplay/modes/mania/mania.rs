@@ -90,13 +90,6 @@ pub struct ManiaGame {
     miss_window: f32,
 }
 impl ManiaGame {
-    /// get the x_pos for `col`
-    /// TODO: remove
-    #[inline]
-    pub fn col_pos(&self, col:u8) -> f64 {
-        self.playfield.col_pos(col)
-    }
-
     pub fn get_color(&self, col:u8) -> Color {
         match col {
             0|3 => Color::BLUE_ORCHID,
@@ -192,7 +185,7 @@ impl ManiaGame {
             let up_map = &settings.key_image;
             let down_map = &settings.key_image_d;
             for col in 0..self.column_count {
-                let x = self.col_pos(col);
+                let x = self.playfield.col_pos(col);
 
                 // up image
                 if let Some(path) = up_map.get(&col) {
@@ -378,7 +371,7 @@ impl GameMode for ManiaGame {
                 for note in beatmap.notes.iter() {
                     // if metadata.mode == "mania" {
                         let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
-                        let x = s.col_pos(column);
+                        let x = s.playfield.col_pos(column);
                         // warn!("{}, {:?}", note.hitsound, note.hitsamples);
 
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
@@ -396,7 +389,7 @@ impl GameMode for ManiaGame {
                 }
                 for hold in beatmap.holds.iter() {
                     let column = (hold.pos.x * s.column_count as f64 / 512.0).floor() as u8;
-                    let x = s.col_pos(column);
+                    let x = s.playfield.col_pos(column);
                     s.columns[column as usize].push(Box::new(ManiaHold::new(
                         hold.time,
                         hold.end_time,
@@ -498,7 +491,7 @@ impl GameMode for ManiaGame {
                 for note in beatmap.hit_objects.iter() {
                     let column = note.lane - 1;
                     let time = note.start_time;
-                    let x = s.col_pos(column);
+                    let x = s.playfield.col_pos(column);
 
                     let hitsound = 1;
                     let hitsamples = HitSamples {
@@ -600,7 +593,7 @@ impl GameMode for ManiaGame {
                 for note in beatmap.chart_info.notes.iter() {
                     let column = note.column;
                     let time = note.start;
-                    let x = s.col_pos(column);
+                    let x = s.playfield.col_pos(column);
 
                     let hitsound = 1;
                     let hitsamples = HitSamples {
@@ -837,8 +830,8 @@ impl GameMode for ManiaGame {
         list.push(Box::new(Rectangle::new(
             Color::new(0.0, 0.0, 0.0, 0.8),
             FIELD_DEPTH + 1.0,
-            Vector2::new(self.col_pos(0), 0.0),
-            Vector2::new(self.col_pos(self.column_count) - self.col_pos(0), window_size.y),
+            Vector2::new(self.playfield.col_pos(0), 0.0),
+            Vector2::new(self.playfield.col_pos(self.column_count) - self.playfield.col_pos(0), window_size.y),
             Some(Border::new(if manager.current_timing_point().kiai {Color::YELLOW} else {Color::BLACK}, 1.2))
         )));
 
@@ -936,7 +929,7 @@ impl GameMode for ManiaGame {
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        let x = self.col_pos(0);
+        let x = self.playfield.col_pos(0);
         if self.timing_bars.len() == 0 {
             let tps = beatmap.get_timing_points();
             // load timing bars
@@ -1123,8 +1116,8 @@ impl GameModeInfo for ManiaGame {
         };
 
 
-        let start_x = self.col_pos(0);
-        let width = self.col_pos(self.column_count) - start_x;
+        let start_x = self.playfield.col_pos(0);
+        let width = self.playfield.col_pos(self.column_count) - start_x;
 
         let combo_bounds = Rectangle::bounds_only(
             Vector2::zero(),
