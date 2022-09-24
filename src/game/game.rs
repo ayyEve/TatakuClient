@@ -213,7 +213,22 @@ impl Game {
 
     async fn update(&mut self, _delta:f64) {
         // update our settings
-        self.settings.update();
+        let last_master_vol = self.settings.master_vol;
+        let last_music_vol = self.settings.music_vol;
+        let last_effect_vol = self.settings.effect_vol;
+
+        if self.settings.update() {
+            let audio_changed = 
+                last_master_vol != self.settings.master_vol
+                || last_music_vol != self.settings.music_vol
+                || last_effect_vol != self.settings.effect_vol;
+
+            // dont save when audio is changed, that would spam too hard
+            if !audio_changed {
+                // save the settings
+                self.settings.save().await;
+            }
+        }
 
         // check window size
         let window_size_updated = self.window_size.update();
@@ -306,6 +321,7 @@ impl Game {
             // trace!("Show user list: {}", self.show_user_list);
         }
 
+        // screenshot
         if keys_down.contains(&Key::F12) {
             let (f, b) = Bomb::new();
             WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::TakeScreenshot(f)).unwrap();
@@ -414,7 +430,6 @@ impl Game {
             });
 
         }
-
 
         // update any dialogs
         use crate::async_retain;
@@ -539,9 +554,11 @@ impl Game {
 
 
                 // TODO: this is temp
-                if keys_up.contains(&Key::M) && mods.ctrl {self.add_dialog(Box::new(ModDialog::new().await))}
+                if keys_up.contains(&Key::M) && mods.ctrl { self.add_dialog(Box::new(ModDialog::new().await)) }
                 // TODO: this too
-                if keys_up.contains(&Key::S) && mods.ctrl {self.add_dialog(Box::new(SkinSelect::new().await))}
+                if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await)) }
+                // TODO: and this
+                if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await)) }
 
                 // check keys down
                 for key in keys_down {menu.on_key_press(key, self, mods).await}
@@ -1039,18 +1056,6 @@ impl Default for GameState {
         GameState::None
     }
 }
-
-
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug)]
-pub enum SpectatorState {
-    None, // Default
-    Buffering, // waiting for data
-    Watching, // host playing
-    Paused, // host paused
-    MapChanging, // host is changing map
-}
-
 
 #[derive(Clone)]
 pub enum GameEvent {

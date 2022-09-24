@@ -433,3 +433,15 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut Vec<Box<dyn Renderabl
     list.push(visibility_bg(rect.current_pos, rect.size, BANNER_DEPTH + 10.0));
     list.push(Box::new(offset_text));
 }
+
+
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug)]
+pub enum SpectatorState {
+    None, // Default
+    Buffering, // waiting for data
+    Watching, // host playing
+    Paused, // host paused
+    MapChanging, // host is changing map
+}

@@ -112,7 +112,7 @@ impl Settings {
         s
     }
     pub async fn save(&self) {
-        trace!("Saving settings");
+        info!("Saving settings");
         let str = serde_json::to_string_pretty(self).unwrap();
         match std::fs::write(SETTINGS_FILE, str) {
             Ok(_) => trace!("settings saved successfully"),
