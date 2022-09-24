@@ -42,19 +42,22 @@ impl HitsoundManager {
     pub async fn init(&mut self, beatmap: &Arc<BeatmapMeta>) {
         let map_folder = Path::new(&beatmap.file_path).parent().unwrap();
         let map_files = map_folder.read_dir().unwrap();
+        let settings = get_settings!();
 
-        // load beatmap sounds first
+        // load beatmap sounds first (if enabled)
         let mut beatmap_sounds = HashMap::new();
-        for file in map_files {
-            if let Ok(file) = file {
-                let file_name = file.file_name().to_string_lossy().to_lowercase();
-                if file_name.ends_with(".wav") {
-                    let filename = file_name.trim_end_matches(".wav").to_owned();
-                    load_sound(file.path().to_string_lossy().trim_end_matches(".wav"), filename, &mut beatmap_sounds).await;
+        if settings.beatmap_hitsounds {
+            for file in map_files {
+                if let Ok(file) = file {
+                    let file_name = file.file_name().to_string_lossy().to_lowercase();
+                    if file_name.ends_with(".wav") {
+                        let filename = file_name.trim_end_matches(".wav").to_owned();
+                        load_sound(file.path().to_string_lossy().trim_end_matches(".wav"), filename, &mut beatmap_sounds).await;
+                    }
                 }
             }
+            // error!("beatmap: {:?}", beatmap_sounds.keys());
         }
-        // error!("beatmap: {:?}", beatmap_sounds.keys());
 
         // skin and default sounds
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
@@ -62,7 +65,7 @@ impl HitsoundManager {
         self.sounds.insert(HitsoundSource::Default, HashMap::new());
 
 
-        let skin = get_settings!().current_skin.clone();
+        let skin = settings.current_skin.clone();
         let skin_folder = format!("{SKIN_FOLDER}/{skin}");
         const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
         const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];

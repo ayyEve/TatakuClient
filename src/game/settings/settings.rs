@@ -53,6 +53,7 @@ pub struct Settings {
     pub last_score_retreival_method: ScoreRetreivalMethod,
     pub last_sort_by: SortBy,
     pub allow_gamemode_cursor_ripple_override: bool,
+    pub beatmap_hitsounds: bool,
 
     // window settings
     pub fps_target: u64,
@@ -171,6 +172,7 @@ impl Default for Settings {
             last_score_retreival_method: ScoreRetreivalMethod::Local,
             last_sort_by: SortBy::Title,
             allow_gamemode_cursor_ripple_override: true,
+            beatmap_hitsounds: true,
 
             // window settings
             fps_target: 144,
