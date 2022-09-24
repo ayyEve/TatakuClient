@@ -49,10 +49,12 @@ impl HitsoundManager {
             if let Ok(file) = file {
                 let file_name = file.file_name().to_string_lossy().to_lowercase();
                 if file_name.ends_with(".wav") {
-                    load_sound(file.path().to_string_lossy(), file_name, &mut beatmap_sounds).await;
+                    let filename = file_name.trim_end_matches(".wav").to_owned();
+                    load_sound(file.path().to_string_lossy().trim_end_matches(".wav"), filename, &mut beatmap_sounds).await;
                 }
             }
         }
+        // error!("beatmap: {:?}", beatmap_sounds.keys());
 
         // skin and default sounds
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
@@ -64,19 +66,14 @@ impl HitsoundManager {
         let skin_folder = format!("{SKIN_FOLDER}/{skin}");
         const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
         const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];
-        
         for sample in SAMPLE_SETS {
             for hitsound in HITSOUNDS {
                 let filename = format!("{sample}-{hitsound}");
                 self.load_hitsound(&skin_folder, filename).await;
             }
         }
-        // error!("beatmap: {:?}", beatmap_sounds.keys());
-        // error!("skin: {:?}", skin_sounds.keys());
-        // error!("default: {:?}", default_sounds.keys());
 
         const OTHER_SOUNDS:&[&str] = &["combobreak"];
-
         for sound in OTHER_SOUNDS {
             self.load_hitsound(&skin_folder, (*sound).to_owned()).await;
         }
