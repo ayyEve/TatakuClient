@@ -5,17 +5,12 @@ use crate::beatmaps::osu::hitobject_defs::{CurveType, SliderDef};
 pub struct CurveLine {
     pub p1: Vector2,
     pub p2: Vector2,
-
-    pub straight: bool,
-    pub force_end: bool
 }
 impl CurveLine {
     pub fn new(p1: Vector2, p2: Vector2) -> Self {
         Self {
             p1,
             p2,
-            straight: false,
-            force_end: false
         }
     }
 
@@ -30,9 +25,9 @@ pub struct Curve {
     pub slider: SliderDef,
     pub end_time: f32,
 
-    pub path: Vec<CurveSegment>,
-    pub smooth_lines: Vec<CurveLine>,
-    pub cumulative_lengths: Vec<f32>,
+    pub segments: Vec<CurveSegment>,
+    pub curve_lines: Vec<CurveLine>,
+    pub lengths: Vec<f32>,
 
     pub velocity: f32,
     pub score_times: Vec<f32>
@@ -55,12 +50,12 @@ impl Curve {
 
         let velocity = beatmap.slider_velocity_at(slider.time);
         Self {
-            path,
+            segments: path,
             slider,
             velocity,
             end_time,
-            smooth_lines: Vec::new(),
-            cumulative_lengths: Vec::new(),
+            curve_lines: Vec::new(),
+            lengths: Vec::new(),
             score_times: Vec::new()
         }
     }
@@ -72,11 +67,6 @@ impl Curve {
     pub fn length(&self) -> f32 {
         self.end_time - self.slider.time
     }
-
-    pub fn get_non_normalized_length_required(&self, time: f32) -> f32 {
-        let pos = (time - self.slider.time) / (self.length() / self.slider.slides as f32);
-        self.cumulative_lengths.last().unwrap() * pos
-    }
     
     pub fn get_length_required(&self, time: f32) -> f32 {
         let mut pos = (time - self.slider.time) / (self.length() / self.slider.slides as f32);
@@ -86,14 +76,14 @@ impl Curve {
             pos = pos % 1.0;
         }
 
-        self.cumulative_lengths.last().unwrap() * pos
+        self.lengths.last().unwrap() * pos
     }
     
     pub fn position_at_time(&self, time:f32) -> Vector2 {
         // if (this.sliderCurveSmoothLines == null) this.UpdateCalculations();
-        if self.cumulative_lengths.len() == 0 {return self.slider.pos}
-        if time < self.slider.time {return self.slider.pos}
-        if time > self.end_time {return self.position_at_length(self.length())}
+        if self.lengths.len() == 0 { return self.slider.pos }
+        if time < self.slider.time { return self.slider.pos }
+        if time > self.end_time { return self.position_at_length(self.length()) }
 
         // if (this.sliderCurveSmoothLines == null) this.UpdateCalculations();
 
@@ -102,28 +92,28 @@ impl Curve {
 
     pub fn position_at_length(&self, length:f32) -> Vector2 {
         // if (this.sliderCurveSmoothLines == null || this.cumulativeLengths == null) this.UpdateCalculations();
-        if self.smooth_lines.len() == 0 || self.cumulative_lengths.len() == 0 {return self.slider.pos}
+        if self.curve_lines.len() == 0 || self.lengths.len() == 0 {return self.slider.pos}
         
-        if length == 0.0 {return self.smooth_lines[0].p1}
+        if length == 0.0 {return self.curve_lines[0].p1}
         
-        let end = *self.cumulative_lengths.last().unwrap();
+        let end = *self.lengths.last().unwrap();
 
         if length > end {
-            let end = self.smooth_lines.len();
-            return self.smooth_lines[end - 1].p2;
+            let end = self.curve_lines.len();
+            return self.curve_lines[end - 1].p2;
         }
-        let i = match self.cumulative_lengths.binary_search_by(|f| f.partial_cmp(&length).unwrap_or(std::cmp::Ordering::Greater)) {
+        let i = match self.lengths.binary_search_by(|f| f.partial_cmp(&length).unwrap_or(std::cmp::Ordering::Greater)) {
             Ok(n) => n,
-            Err(n) => n.min(self.cumulative_lengths.len() - 1),
+            Err(n) => n.min(self.lengths.len() - 1),
         };
 
-        let length_next = self.cumulative_lengths[i];
-        let length_previous = if i == 0 {0.0} else {self.cumulative_lengths[i - 1]};
+        let length_next = self.lengths[i];
+        let length_previous = if i == 0 {0.0} else {self.lengths[i - 1]};
         
-        let mut res = self.smooth_lines[i].p1;
+        let mut res = self.curve_lines[i].p1;
     
         if length_next != length_previous {
-            let n = (self.smooth_lines[i].p2 - self.smooth_lines[i].p1) 
+            let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1) 
                 * ((length - length_previous) / (length_next - length_previous)) as f64;
             res = res + n;
         }
@@ -182,9 +172,9 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
                 let mut curve = Vec::new();
                 for k in 0..=SLIDER_DETAIL_LEVEL {
-                    curve.push(catmull_rom(v1,v2,v3,v4, k as f64 / SLIDER_DETAIL_LEVEL as f64));
+                    curve.push(catmull_rom(v1, v2, v3, v4, k as f64 / SLIDER_DETAIL_LEVEL as f64));
                 }
-                path.push(CurveSegment::Catmull {curve})
+                path.push(CurveSegment::Catmull { curve })
             }
         }
         CurveType::Bézier => {
@@ -271,12 +261,12 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
                 curve.push(new_point);
             }
 
-            path.push(CurveSegment::Perfect {curve});
+            path.push(CurveSegment::Perfect { curve });
 
         }
         CurveType::Linear => {
             for i in 1..points.len() {
-                path.push(CurveSegment::Linear {p1: points[i - 1], p2:points[i]});
+                path.push(CurveSegment::Linear { p1: points[i - 1], p2:points[i] });
             }
         }
     }
@@ -302,18 +292,18 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
     let mut curve = Curve::new(slider.clone(), path, beatmap);
 
-    let path_count = curve.path.len();
+    let path_count = curve.segments.len();
     let mut total = 0.0;
     if path_count > 0 {
         //fill the cache
-        curve.smooth_lines = smooth_path;
-        curve.cumulative_lengths.clear();
+        curve.curve_lines = smooth_path;
+        curve.lengths.clear();
 
-        for l in 0..curve.smooth_lines.len() {
-            let mut add = curve.smooth_lines[l].rho();
-            if add.is_nan() {add = 0.0}
+        for l in 0..curve.curve_lines.len() {
+            let mut add = curve.curve_lines[l].rho();
+            if add.is_nan() { add = 0.0 }
             total += add;
-            curve.cumulative_lengths.push(total);
+            curve.lengths.push(total);
         }
     }
 

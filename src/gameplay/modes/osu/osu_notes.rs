@@ -443,7 +443,7 @@ impl StandardSlider {
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
         let pos = scaling_helper.scale_coords(def.pos);
-        let visual_end_pos = scaling_helper.scale_coords(curve.smooth_lines.last().unwrap().p2);
+        let visual_end_pos = scaling_helper.scale_coords(curve.curve_lines.last().unwrap().p2);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
@@ -553,7 +553,7 @@ impl StandardSlider {
 
         const BORDER_RADIUS: f64 = 6.0;
         // border
-        for line in self.curve.smooth_lines.iter() {
+        for line in self.curve.curve_lines.iter() {
             let mut p1 = self.scaling_helper.scale_coords(line.p1);
             let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
@@ -580,7 +580,7 @@ impl StandardSlider {
             )));
         }
 
-        for line in self.curve.smooth_lines.iter() {
+        for line in self.curve.curve_lines.iter() {
             let mut p1 = self.scaling_helper.scale_coords(line.p1);
             let mut p2 = self.scaling_helper.scale_coords(line.p2);
 
@@ -608,7 +608,7 @@ impl StandardSlider {
             
         }
 
-        let mut p = self.scaling_helper.scale_coords(self.curve.smooth_lines[0].p1);
+        let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
         
         // add extra circle to start of slider as well
@@ -888,7 +888,7 @@ impl HitObject for StandardSlider {
                     im.current_color.a = alpha;
                     im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
-                    let l = self.curve.smooth_lines[self.curve.smooth_lines.len() - 1];
+                    let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
                     im.current_rotation = Vector2::atan2(l.p1 - l.p2);
 
                     list.push(Box::new(im));
@@ -921,7 +921,7 @@ impl HitObject for StandardSlider {
                     im.current_color.a = alpha;
                     im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
-                    let l = self.curve.smooth_lines[0];
+                    let l = self.curve.curve_lines[0];
                     im.current_rotation = Vector2::atan2(l.p2 - l.p1);
 
                     list.push(Box::new(im));
