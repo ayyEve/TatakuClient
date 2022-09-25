@@ -5,7 +5,7 @@
  * ie, a gamemode might want to hide the cursor, however it does not have direct access to the cursor field in game
  */
 use crate::prelude::*;
-use std::sync::mpsc::{SyncSender, Receiver, sync_channel};
+use tokio::sync::mpsc::{Sender, Receiver, channel};
 
 const TRAIL_CREATE_TIMER:f64 = 10.0;
 const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
@@ -19,9 +19,11 @@ const DEFAULT_CURSOR_SIZE:f64 = 5.0;
 const PRESSED_CURSOR_SCALE:f64 = 1.2;
 
 
-static CURSOR_EVENT_QUEUE:OnceCell<SyncSender<CursorEvent>> = OnceCell::const_new();
+static CURSOR_EVENT_QUEUE:OnceCell<Sender<CursorEvent>> = OnceCell::const_new();
 
-pub static CURSOR_RENDER_QUEUE: OnceCell<Mutex<TripleBufferReceiver<Vec<Box<dyn Renderable>>>>> = OnceCell::const_new();
+
+
+// pub static CURSOR_RENDER_QUEUE: OnceCell<Mutex<TripleBufferReceiver<Vec<Box<dyn Renderable>>>>> = OnceCell::const_new();
 
 
 pub struct CursorManager {
@@ -44,6 +46,7 @@ pub struct CursorManager {
     trail_fadeout_timer_start: f64,
     trail_fadeout_timer_duration: f64,
 
+    // event_receiver: Arc<Receiver<CursorEvent>>,
     event_receiver: Receiver<CursorEvent>,
 
     // event vals
@@ -56,7 +59,7 @@ pub struct CursorManager {
 
     show_system_cursor: bool,
 
-    cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>,
+    // cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>,
 
     settings: SettingsHelper,
 
@@ -65,30 +68,31 @@ pub struct CursorManager {
 }
 
 impl CursorManager {
-    pub fn init() {
-        tokio::spawn(async move {
-            let (cursor_render_sender, receiver) = TripleBuffer::default().split();
-            CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
+    pub async fn init() {
+        // tokio::spawn(async move {
+            // let (cursor_render_sender, receiver) = TripleBuffer::default().split();
+            // CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
 
-            let mut s = Self::new(cursor_render_sender).await;
-            let timer = Instant::now();
+            // let mut s = Self::new(cursor_render_sender).await;
+            // let timer = Instant::now();
 
-            loop {
-                let diff = timer.as_millis64();
-                s.update(diff).await;
+            // loop {
+            //     let diff = timer.as_millis64();
+            //     s.update(diff).await;
 
 
-                let mut list = Vec::new();
-                s.draw(&mut list).await;
-                s.cursor_render_sender.write(list);
+            //     let mut list = Vec::new();
+            //     s.draw(&mut list).await;
+            //     s.cursor_render_sender.write(list);
 
-                // timer = now;
-                // tokio::time::sleep(Duration::from_millis(1)).await;
-            }
-        });
+            //     // timer = now;
+            //     // tokio::time::sleep(Duration::from_millis(1)).await;
+            // }
+        // });
     }
 
-    pub async fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
+    // pub async fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
+    pub async fn new() -> Self {
         let mut cursor_image = SkinManager::get_texture("cursor", true).await;
         if let Some(cursor) = &mut cursor_image {
             cursor.depth = -f64::MAX;
@@ -108,8 +112,8 @@ impl CursorManager {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
         };
 
-        let (sender, event_receiver) = sync_channel(1000);
-        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) {panic!("Cursor event queue already exists")}
+        let (sender, event_receiver) = channel(1000);
+        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) { panic!("Cursor event queue already exists") }
 
         let settings = SettingsHelper::new().await;
 
@@ -131,7 +135,7 @@ impl CursorManager {
             trail_fadeout_timer_duration,
 
             event_receiver,
-            cursor_render_sender,
+            // cursor_render_sender,
 
             left_pressed: false,
             right_pressed: false,
@@ -180,7 +184,7 @@ impl CursorManager {
 
 
         // work through the event queue
-        if let Ok(event) = self.event_receiver.try_recv() {
+        while let Ok(event) = self.event_receiver.try_recv() {
             match event {
                 CursorEvent::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
                 CursorEvent::SetVisible(show) => self.visible = show,
@@ -263,7 +267,7 @@ impl CursorManager {
 
 
     pub async fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
-        if !self.visible {return}
+        if !self.visible { return }
 
         let mut radius = DEFAULT_CURSOR_SIZE;
         if self.left_pressed || self.right_pressed {
@@ -344,7 +348,7 @@ impl CursorManager {
             match q.try_send(event) {
                 Ok(_) => {},
                 Err(e) => {
-                    error!("cursor channel error: {}", e)
+                    error!("cursor channel error: {e}")
                 }
             }
             // q.send().expect("cursor channel dead?");
@@ -372,6 +376,7 @@ impl CursorManager {
         Self::add_event(CursorEvent::OverrideRippleRadius(radius));
     }
 }
+
 
 #[derive(Copy, Clone)]
 pub enum CursorEvent {

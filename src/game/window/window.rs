@@ -311,16 +311,16 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut 
                             i.draw(graphics, orig_c);
                         }
 
-                        // draw cursor
-                        orig_c.draw_state = Default::default();
-                        graphics.use_draw_state(&orig_c.draw_state);
-                        if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                            if let Ok(mut q) = q.try_lock() {
-                                for i in q.read().iter() {
-                                    i.draw(graphics, orig_c);
-                                }
-                            }
-                        }
+                        // // draw cursor
+                        // orig_c.draw_state = Default::default();
+                        // graphics.use_draw_state(&orig_c.draw_state);
+                        // if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                        //     if let Ok(mut q) = q.try_lock() {
+                        //         for i in q.read().iter() {
+                        //             i.draw(graphics, orig_c);
+                        //         }
+                        //     }
+                        // }
                         
                         graphics.draw_end();
                     }
@@ -334,13 +334,13 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut 
                         for i in data.iter() {
                             i.draw(graphics, c);
                         }
-                        if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                            if let Ok(mut q) = q.try_lock() {
-                                for i in q.read().iter() {
-                                    i.draw(graphics, c);
-                                }
-                            }
-                        }
+                        // if let Some(q) = CURSOR_RENDER_QUEUE.get() {
+                        //     if let Ok(mut q) = q.try_lock() {
+                        //         for i in q.read().iter() {
+                        //             i.draw(graphics, c);
+                        //         }
+                        //     }
+                        // }
                         
                         graphics.draw_end();
                     }

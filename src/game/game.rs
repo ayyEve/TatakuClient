@@ -52,6 +52,7 @@ pub struct Game {
 
     settings: SettingsHelper,
     window_size: WindowSizeHelper,
+    cursor_manager: CursorManager,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>) -> Game {
@@ -85,9 +86,10 @@ impl Game {
             // register_timings: (0.0,0.0,0.0),
             game_event_receiver,
             render_queue_sender,
+            cursor_manager: CursorManager::new().await
         };
 
-        CursorManager::init();
+        CursorManager::init().await;
         g.init().await;
 
         g
@@ -212,6 +214,10 @@ impl Game {
     }
 
     async fn update(&mut self, _delta:f64) {
+        let elapsed = self.game_start.elapsed().as_millis() as u64;
+        // update the cursor
+        self.cursor_manager.update(elapsed as f64).await;
+
         // update our settings
         let last_master_vol = self.settings.master_vol;
         let last_music_vol = self.settings.music_vol;
@@ -237,7 +243,6 @@ impl Game {
         }
 
         // let timer = Instant::now();
-        let elapsed = self.game_start.elapsed().as_millis() as u64;
         self.update_display.increment();
         let mut current_state = std::mem::take(&mut self.current_state);
 
@@ -728,6 +733,8 @@ impl Game {
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
         let mut render_queue:Vec<Box<dyn Renderable>> = Vec::new();
+
+        self.cursor_manager.draw(&mut render_queue).await;
 
         // draw background image here
         if let Some(img) = &self.background_image {
