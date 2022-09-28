@@ -22,7 +22,7 @@ pub trait StandardHitObject: HitObject {
 
 
     /// return negative for combo break
-    fn pending_combo(&mut self) -> Vec<OsuHitJudgments> {Vec::new()}
+    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {Vec::new()}
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
 
@@ -360,7 +360,7 @@ pub struct StandardSlider {
     hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
-    pending_combo: Vec<OsuHitJudgments>,
+    pending_combo: Vec<(OsuHitJudgments, Vector2)>,
 
     /// start time
     time: f32,
@@ -403,8 +403,6 @@ pub struct StandardSlider {
     circle_depth: f64,
     /// when should the note start being drawn (specifically the )
     time_preempt:f32,
-    /// alpha multiplier, used for background game
-    alpha_mult: f32,
 
     /// combo text cache, probably not needed but whatever
     combo_text: Option<Box<Text>>,
@@ -498,7 +496,6 @@ impl StandardSlider {
             pos,
             visual_end_pos,
             time_end_pos,
-            alpha_mult: 1.0,
 
             time, 
             hit_dots: Vec::new(),
@@ -724,7 +721,7 @@ impl HitObject for StandardSlider {
 
         // check sliding ok
         self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
-        let distance = ((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+        let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * 2.0;
 
         
@@ -742,7 +739,7 @@ impl HitObject for StandardSlider {
         if !self.start_checked && beatmap_time >= self.time + self.hitwindow_miss {
             self.start_checked = true;
             self.start_judgment = OsuHitJudgments::Miss;
-            self.pending_combo.insert(0, OsuHitJudgments::Miss);
+            self.pending_combo.insert(0, (OsuHitJudgments::Miss, self.pos));
         }
 
         // find out if a slide has been completed
@@ -758,21 +755,24 @@ impl HitObject for StandardSlider {
             #[cfg(feature="debug_sliders")]
             debug!("slide complete: {}", self.slides_complete);
 
+            // TODO: calc this properly? use to determine if ripple is on visual start or end
+            let pos = self.slider_ball_pos;
+
             // increment index
             self.sound_index += 1;
 
             // check cursor
             if self.sliding_ok {
-                self.pending_combo.push(OsuHitJudgments::SliderEnd);
+                self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
                 self.sound_queue.push((
                     beatmap_time,
                     self.get_hitsound(),
                     self.get_hitsamples().clone()
                 ));
-                self.add_ripple(beatmap_time, self.slider_ball_pos, false);
+                self.add_ripple(beatmap_time, pos, false);
             } else {
-                // set it to negative, we broke combo
-                self.pending_combo.push(OsuHitJudgments::SliderEndMiss);
+                // we broke combo
+                self.pending_combo.push((OsuHitJudgments::SliderEndMiss, pos));
             }
         }
 
@@ -792,14 +792,14 @@ impl HitObject for StandardSlider {
                 if was_hit {
                     self.add_ripple(beatmap_time, dot.pos, true);
                     
-                    self.pending_combo.push(OsuHitJudgments::SliderDot);
+                    self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
                     self.sound_queue.push((
                         beatmap_time,
                         0,
                         hitsamples.clone()
                     ));
                 } else {
-                    self.pending_combo.push(OsuHitJudgments::SliderDotMiss);
+                    self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
                     self.dots_missed += 1
                 }
             }
@@ -1090,7 +1090,7 @@ impl StandardHitObject for StandardSlider {
     fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {
         std::mem::take(&mut self.sound_queue)
     }
-    fn pending_combo(&mut self) -> Vec<OsuHitJudgments> {
+    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
         std::mem::take(&mut self.pending_combo)
     }
 

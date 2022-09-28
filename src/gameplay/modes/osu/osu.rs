@@ -529,9 +529,9 @@ impl GameMode for StandardGame {
                 manager.play_note_sound(time, hitsound, samples, true).await;
             }
 
-            for add_combo in note.pending_combo() {
+            for (add_combo, pos) in note.pending_combo() {
                 manager.add_judgment(&add_combo).await;
-                add_judgement_indicator(note.point_draw_pos(time), time, &add_combo, &self.scaling_helper, manager);
+                add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, manager);
             }
 
             // check if note was missed
