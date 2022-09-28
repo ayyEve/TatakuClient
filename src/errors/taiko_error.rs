@@ -27,6 +27,13 @@ pub enum TatakuError {
     SerializationError(SerializationError),
     ReqwestError(reqwest::Error),
 }
+impl TatakuError {
+    pub fn from_err(e: impl std::error::Error) -> Self {
+        Self::String(format!("{e}"))
+    }
+}
+
+
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
