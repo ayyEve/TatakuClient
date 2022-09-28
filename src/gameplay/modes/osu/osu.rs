@@ -768,6 +768,12 @@ impl GameMode for StandardGame {
         let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5);
         self.apply_playfield(Arc::new(playfield)).await;
     }
+
+    async fn time_jump(&mut self, new_time:f32) {
+        for n in self.notes.iter_mut() {
+            n.time_jump(new_time).await;
+        }
+    }
 }
 
 #[async_trait]
@@ -1071,10 +1077,12 @@ struct StandardAutoHelper {
     point_trail_start_pos: Vector2,
     point_trail_end_pos: Vector2,
 
-    /// list of notes currently being held
-    holding: Vec<usize>,
+    /// list of notes currently being held, and what key was held for that note
+    holding: HashMap<usize, KeyPress>,
 
-    release_queue:Vec<ReplayFrame>
+    release_queue:Vec<ReplayFrame>,
+
+    press_counter:usize,
 }
 impl StandardAutoHelper {
     fn new() -> Self {
@@ -1085,29 +1093,41 @@ impl StandardAutoHelper {
             point_trail_start_pos: Vector2::zero(),
             point_trail_end_pos: Vector2::zero(),
 
-            holding: Vec::new(),
+            holding: HashMap::new(),
 
-            release_queue: Vec::new()
+            release_queue: Vec::new(),
+            press_counter: 0
         }
     }
     fn get_release_queue(&mut self) -> Vec<ReplayFrame> {
         std::mem::take(&mut self.release_queue)
     }
 
+    fn get_key(&self) -> KeyPress {
+        if self.press_counter % 2 == 0 {
+            KeyPress::LeftMouse
+        } else {
+            KeyPress::RightMouse
+        }
+    }
+
     fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn StandardHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
         let mut any_checked = false;
 
+        let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);
+        if map_over { return; }
+
+
         for i in 0..notes.len() {
             let note = &notes[i];
-            if note.was_hit() {continue}
+            if note.was_hit() { continue }
 
-            if let Ok(ind) = self.holding.binary_search(&i) {
+            if self.holding.contains_key(&i) {
                 if time >= note.end_time(0.0) {
-                    self.release_queue.push(ReplayFrame::Release(KeyPress::LeftMouse));
+                    let k = self.holding.remove(&i).unwrap_or(KeyPress::LeftMouse);
+                    self.release_queue.push(ReplayFrame::Release(k));
 
                     let pos = scaling_helper.descale_coords(note.pos_at(time));
-
-                    self.holding.remove(ind);
                     if i+1 >= notes.len() {
                         self.point_trail_start_pos = pos;
                         self.point_trail_end_pos = pos;
@@ -1142,11 +1162,14 @@ impl StandardAutoHelper {
                     pos.y as f32
                 ));
                 
-                frames.push(ReplayFrame::Press(KeyPress::LeftMouse));
+                self.press_counter += 1;
+                let k = self.get_key();
+                frames.push(ReplayFrame::Press(k));
                 if note.note_type() == NoteType::Note {
-                    self.release_queue.push(ReplayFrame::Release(KeyPress::LeftMouse));
+                    // TODO: add some delay to the release?
+                    self.release_queue.push(ReplayFrame::Release(k));
                 } else {
-                    self.holding.push(i)
+                    self.holding.insert(i, k);
                 }
 
                 // if this was the last note
@@ -1171,7 +1194,7 @@ impl StandardAutoHelper {
                 any_checked = true;
             }
         }
-        if any_checked {return}
+        if any_checked { return }
 
         // if we got here no notes were updated
         // follow the point_trail

@@ -117,7 +117,7 @@ impl MainMenu {
                     autoplay: true,
                     ..Default::default()
                 });
-                manager.menu_background = true;
+                manager.make_menu_background();
                 manager.start().await;
                 trace!("manager started");
 

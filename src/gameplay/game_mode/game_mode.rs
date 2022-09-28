@@ -18,6 +18,9 @@ pub trait GameMode: GameModeInput + GameModeInfo + Send + Sync {
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
     async fn fit_to_area(&mut self, _pos: Vector2, _size: Vector2);
+
+    
+    async fn time_jump(&mut self, _new_time: f32) {}
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {

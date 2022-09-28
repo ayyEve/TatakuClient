@@ -94,9 +94,6 @@ pub struct StandardNote {
     /// current mouse pos
     mouse_pos: Vector2,
 
-    /// alpha multiplier, used for background game
-    alpha_mult: f32,
-
     /// cached settings for this game
     standard_settings: Arc<StandardSettings>,
     /// list of shapes to be drawn
@@ -168,7 +165,6 @@ impl StandardNote {
             hitwindow_miss: 0.0,
             radius,
             scaling_helper,
-            alpha_mult: 1.0,
             
             combo_text,
 
@@ -177,13 +173,12 @@ impl StandardNote {
             combo_image
         }
     }
-
 }
 #[async_trait]
 impl HitObject for StandardNote {
     fn note_type(&self) -> NoteType {NoteType::Note}
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
         
@@ -203,7 +198,7 @@ impl HitObject for StandardNote {
         }
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit {return list}
+        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { return list }
 
         // fade im
         let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
@@ -214,13 +209,12 @@ impl HitObject for StandardNote {
             // debug!("fading out: {}", alpha)
         }
 
-        alpha *= self.alpha_mult;
         if let Some(image) = &mut self.circle_image {
             image.set_alpha(alpha);
         }
 
         // timing circle
-        let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
+        let approach_circle_color = if self.standard_settings.approach_combo_color { self.color } else { Color::WHITE };
         list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.base_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
 
 
@@ -255,17 +249,27 @@ impl HitObject for StandardNote {
         
         self.shapes.clear();
     }
+
+    async fn time_jump(&mut self, new_time: f32) {
+        if new_time > self.time {
+            self.hit = true;
+            self.missed = true;
+        } else {
+            self.hit = false;
+            self.missed = false;
+        }
+    }
 }
 #[async_trait]
 impl StandardHitObject for StandardNote {
-    fn miss(&mut self) {self.missed = true}
-    fn was_hit(&self) -> bool {self.hit || self.missed}
-    fn get_hitsamples(&self) -> HitSamples {self.def.hitsamples.clone()}
-    fn get_hitsound(&self) -> u8 {self.def.hitsound}
-    fn point_draw_pos(&self, _: f32) -> Vector2 {self.pos}
-    fn causes_miss(&self) -> bool {true}
-    fn mouse_move(&mut self, pos:Vector2) {self.mouse_pos = pos}
-    fn get_preempt(&self) -> f32 {self.time_preempt}
+    fn miss(&mut self) { self.missed = true }
+    fn was_hit(&self) -> bool { self.hit || self.missed }
+    fn get_hitsamples(&self) -> HitSamples { self.def.hitsamples.clone() }
+    fn get_hitsound(&self) -> u8 { self.def.hitsound }
+    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
+    fn causes_miss(&self) -> bool { true }
+    fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
+    fn get_preempt(&self) -> f32 { self.time_preempt }
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
@@ -987,6 +991,19 @@ impl HitObject for StandardSlider {
         
         self.make_dots().await;
     }
+
+    async fn time_jump(&mut self, new_time: f32) {
+        if new_time > self.time {
+            self.start_checked = true;
+            if new_time > self.end_time(0.0) {
+                self.end_checked = true;
+            }
+        } else {
+            self.start_checked = false;
+            self.end_checked = false;
+        }
+    }
+
 }
 
 #[async_trait]

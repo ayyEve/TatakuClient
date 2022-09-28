@@ -104,6 +104,8 @@ pub struct IngameManager {
 
     pub events: Vec<InGameEvent>,
     ui_editor: Option<GameUIEditorDialog>,
+
+    pending_time_jump: Option<f32>,
 }
 
 impl IngameManager {
@@ -395,6 +397,12 @@ impl IngameManager {
     pub async fn update(&mut self) {
         // update settings
         self.settings.update();
+
+        // make sure we jump to the time we're supposed to be at
+        if let Some(time) = self.pending_time_jump {
+            self.gamemode.time_jump(time).await;
+            self.pending_time_jump = None;
+        }
 
         // update ui elements
         let mut ui_elements = std::mem::take(&mut self.ui_elements);
@@ -877,8 +885,12 @@ impl IngameManager {
         self.score.combo = 0;
     }
 
-    // TODO: implement this properly, gamemode will probably have to handle some things too
+    /// the time set here will be properly applied next update call, as async is required
     pub fn jump_to_time(&mut self, time: f32, skip_intro: bool) {
+        if skip_intro {
+            self.lead_in_time = 0.0;
+        }
+        
         #[cfg(feature="bass_audio")]
         self.song.set_position(time as f64).unwrap();
 
@@ -887,9 +899,7 @@ impl IngameManager {
             song.set_position(time)
         }
 
-        if skip_intro {
-            self.lead_in_time = 0.0;
-        }
+        self.pending_time_jump = Some(time);
     }
 
     pub fn on_complete(&mut self) {
@@ -899,6 +909,12 @@ impl IngameManager {
         CursorManager::set_ripple_override(None);
     }
     
+    pub fn make_menu_background(&mut self) {
+        self.menu_background = true;
+
+        self.lead_in_time = 0.0;
+        self.pending_time_jump = Some(self.time());
+    }
 }
 
 // Input Handlers
@@ -1195,7 +1211,8 @@ impl Default for IngameManager {
             judgment_type: Box::new(DefaultHitJudgments::None),
 
             settings: Default::default(),
-            window_size: Default::default()
+            window_size: Default::default(),
+            pending_time_jump: None,
         }
     }
 }

@@ -15,4 +15,6 @@ pub trait HitObject: Send + Sync {
 
     /// set this object back to defaults
     async fn reset(&mut self);
+
+    async fn time_jump(&mut self, _new_time: f32) {}
 }

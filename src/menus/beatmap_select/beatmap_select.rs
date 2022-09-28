@@ -166,7 +166,7 @@ impl BeatmapSelectMenu {
                     autoplay: true,
                     ..Default::default()
                 });
-                manager.menu_background = true;
+                manager.make_menu_background();
                 manager.gamemode.fit_to_area(pos, size).await;
                 manager.start().await;
                 trace!("beatmapselect manager started");
