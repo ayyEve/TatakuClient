@@ -744,9 +744,6 @@ impl HitObject for StandardSlider {
 
         // find out if a slide has been completed
         let pos = (beatmap_time - self.time) / (self.curve.length() / self.def.slides as f32);
-
-
-
         let current_moving_forwards = pos % 2.0 <= 1.0;
         if current_moving_forwards != self.moving_forward {
             // direction changed
@@ -788,7 +785,7 @@ impl HitObject for StandardSlider {
 
         let mut dots = std::mem::take(&mut self.hit_dots);
         for dot in dots.iter_mut() {
-            if let Some(was_hit) = dot.update(beatmap_time, self.holding) {
+            if let Some(was_hit) = dot.update(beatmap_time, self.holding, self.mouse_pos, self.radius) {
                 if was_hit {
                     self.add_ripple(beatmap_time, dot.pos, true);
                     
@@ -829,7 +826,7 @@ impl HitObject for StandardSlider {
 
         if self.time > self.map_time {
             // timing circle
-            let approach_circle_color = if self.standard_settings.approach_combo_color {self.color} else {Color::WHITE};
+            let approach_circle_color = if self.standard_settings.approach_combo_color { self.color } else { Color::WHITE };
             list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
 
             // combo number
@@ -902,7 +899,7 @@ impl HitObject for StandardSlider {
                 self.visual_end_pos,
                 self.radius,
                 Some(Border::new(
-                    if end_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
+                    if end_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
                     self.scaling_helper.border_scaled
                 ))
             )));
@@ -1041,11 +1038,11 @@ impl StandardHitObject for StandardSlider {
                 self.add_ripple(time, self.visual_end_pos, false);
             }
         }
+        let distance = self.mouse_pos.distance(self.time_end_pos); //((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
 
         match self.start_judgment {
             OsuHitJudgments::Miss => {
                 if self.dot_count == 0 {
-                    let distance = ((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
                     if distance > self.radius * 2.0 || !self.holding {
                         OsuHitJudgments::Miss
                     } else {
@@ -1065,7 +1062,7 @@ impl StandardHitObject for StandardSlider {
             }
 
             _ => {
-                if self.dots_missed == 0 {
+                if self.dots_missed == 0 && self.holding && distance < self.radius * 2.0 {
                     ripple!();
                     OsuHitJudgments::X300
                 } else {
@@ -1184,10 +1181,10 @@ impl SliderDot {
         }
     }
     /// returns true if the hitsound should play
-    pub fn update(&mut self, beatmap_time:f32, mouse_down: bool) -> Option<bool> {
+    pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f64) -> Option<bool> {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
-            self.hit = mouse_down;
+            self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * 2.0;
             Some(self.hit)
         } else {
             None
@@ -1195,7 +1192,7 @@ impl SliderDot {
     }
     
     pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
-        if self.hit {return}
+        if self.checked{ return }
 
         if let Some(image) = &self.dot_image {
             let mut image = image.clone();

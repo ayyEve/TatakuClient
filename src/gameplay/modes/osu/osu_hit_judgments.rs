@@ -23,6 +23,7 @@ impl OsuHitJudgments {
             | X50
             | Miss
             | SliderEndMiss
+            | SliderDotMiss
             => true,
 
             _ => false
@@ -107,7 +108,7 @@ impl HitJudgments for OsuHitJudgments {
             X300 => Color::new(0.0, 0.7647, 1.0, 1.0),
             X100 => Color::new(0.3411, 0.8901, 0.0745, 1.0),
             X50  => Color::new(0.8549, 0.6823, 0.2745, 1.0),
-            Miss | SliderEndMiss => Color::new(0.9, 0.05, 0.05, 1.0),
+            Miss | SliderEndMiss | SliderDotMiss => Color::new(0.9, 0.05, 0.05, 1.0),
             _ => Color::default(),
         }
     }
