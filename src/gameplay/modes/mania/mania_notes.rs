@@ -491,6 +491,7 @@ pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_in
         });
     // warn!("time: {time}");
     *current_index = index;
+    if index == 0 { return 0.0 }; // bad fix while neb fixes this
     let a = &position_function[index - 1];
 
     f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
