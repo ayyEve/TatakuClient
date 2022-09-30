@@ -176,20 +176,20 @@ impl Default for Settings {
 
             // window settings
             fps_target: 144,
-            update_target: 10000,
+            update_target: 10_000,
             window_size: [1280.0, 720.0],
             ui_scale: 1.0,
             background_dim: 0.8,
             raw_mouse_input: false,
 
             // cursor
-            cursor_scale: 3.0,
+            cursor_scale: 1.0,
             cursor_border: 1.5,
             cursor_color: "#ffff32".to_owned(),
             cursor_border_color: "#000".to_owned(),
             cursor_ripples: true,
             cursor_ripple_color: "#000".to_owned(),
-            cursor_ripple_final_scale: 4.0,
+            cursor_ripple_final_scale: 1.5,
             
 
             // keys

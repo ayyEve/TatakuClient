@@ -89,7 +89,6 @@ impl Game {
             cursor_manager: CursorManager::new().await
         };
 
-        CursorManager::init().await;
         g.init().await;
 
         g

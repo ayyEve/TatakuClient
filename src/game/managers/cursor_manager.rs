@@ -15,16 +15,11 @@ const TRAIL_CREATE_TIMER_IF_MIDDLE:f64 = 0.1;
 const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
 const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
 
-const DEFAULT_CURSOR_SIZE:f64 = 5.0;
+const DEFAULT_CURSOR_SIZE:f64 = 40.0;
 const PRESSED_CURSOR_SCALE:f64 = 1.2;
 
 
 static CURSOR_EVENT_QUEUE:OnceCell<Sender<CursorEvent>> = OnceCell::const_new();
-
-
-
-// pub static CURSOR_RENDER_QUEUE: OnceCell<Mutex<TripleBufferReceiver<Vec<Box<dyn Renderable>>>>> = OnceCell::const_new();
-
 
 pub struct CursorManager {
     /// position of the visible cursor
@@ -35,6 +30,7 @@ pub struct CursorManager {
     pub border_color: Color,
     ripple_color: Color,
     ripple_radius_override: Option<f64>,
+    // ripple_image: Option<Image>,
 
     pub cursor_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
@@ -53,13 +49,10 @@ pub struct CursorManager {
 
     /// should the cursor be visible?
     visible: bool,
+    show_system_cursor: bool,
 
     left_pressed: bool,
     right_pressed: bool,
-
-    show_system_cursor: bool,
-
-    // cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>,
 
     settings: SettingsHelper,
 
@@ -68,30 +61,6 @@ pub struct CursorManager {
 }
 
 impl CursorManager {
-    pub async fn init() {
-        // tokio::spawn(async move {
-            // let (cursor_render_sender, receiver) = TripleBuffer::default().split();
-            // CURSOR_RENDER_QUEUE.set(Mutex::new(receiver)).ok().expect("no");
-
-            // let mut s = Self::new(cursor_render_sender).await;
-            // let timer = Instant::now();
-
-            // loop {
-            //     let diff = timer.as_millis64();
-            //     s.update(diff).await;
-
-
-            //     let mut list = Vec::new();
-            //     s.draw(&mut list).await;
-            //     s.cursor_render_sender.write(list);
-
-            //     // timer = now;
-            //     // tokio::time::sleep(Duration::from_millis(1)).await;
-            // }
-        // });
-    }
-
-    // pub async fn new(cursor_render_sender: TripleBufferSender<Vec<Box<dyn Renderable>>>) -> Self {
     pub async fn new() -> Self {
         let mut cursor_image = SkinManager::get_texture("cursor", true).await;
         if let Some(cursor) = &mut cursor_image {
@@ -112,11 +81,15 @@ impl CursorManager {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
         };
 
+        // let mut ripple_image = SkinManager::get_texture("cursor-ripple", true).await;
+        // if let Some(r) = &mut ripple_image {
+        //     r.depth = 1_000.0;
+        // }
+
         let (sender, event_receiver) = channel(1000);
         if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) { panic!("Cursor event queue already exists") }
 
         let settings = SettingsHelper::new().await;
-
         Self {
             pos: Vector2::zero(),
             color: Color::from_hex(&settings.cursor_color),
@@ -129,13 +102,13 @@ impl CursorManager {
             cursor_image,
             cursor_trail_image,
             last_trail_time: 0.0,
+            // ripple_image,
 
             trail_create_timer, 
             trail_fadeout_timer_start,
             trail_fadeout_timer_duration,
 
             event_receiver,
-            // cursor_render_sender,
 
             left_pressed: false,
             right_pressed: false,
@@ -293,7 +266,7 @@ impl CursorManager {
             cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
-                cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE;
+                cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
             }
             
             list.push(Box::new(cursor.clone()));
@@ -319,23 +292,50 @@ impl CursorManager {
         let duration = 500.0;
         let time = self.time.elapsed().as_secs_f64() * 1000.0;
 
-        let radius = if let Some(img) = &self.cursor_image {
-            img.size().x / 2.0
-        } else {
-            DEFAULT_CURSOR_SIZE * self.settings.cursor_scale
-        } * PRESSED_CURSOR_SCALE;
+        // if let Some(mut ripple) = self.ripple_image.clone() {
 
+        //     // set alpha
+        //     ripple.initial_color.a = self.ripple_color.a;
+        //     ripple.current_color.a = self.ripple_color.a;
 
-        let end_scale = self.ripple_radius_override.map(|r|r/radius).unwrap_or(self.settings.cursor_ripple_final_scale);
+        //     // set pos
+        //     ripple.initial_pos = self.pos;
+        //     ripple.current_pos = self.pos;
 
-        group.items.push(DrawItem::Circle(Circle::new(
-            Color::WHITE,
-            1_000.0,
-            self.pos,
-            radius,
-            Some(Border::new(Color::WHITE, 2.0))
-        )));
-        group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
+        //     // set scale
+        //     const SCALE:f64 = 0.25;
+        //     ripple.initial_scale = Vector2::one() * SCALE;
+        //     ripple.current_scale = ripple.initial_scale;
+
+        //     let end_scale = self
+        //         .ripple_radius_override
+        //         .map(|r|r / ripple.size().x / 2.0)
+        //         .unwrap_or(self.settings.cursor_ripple_final_scale)
+        //         * SCALE;
+
+        //     // add to transform group and make it ripple
+        //     group.items.push(DrawItem::Image(ripple));
+        //     group.ripple_scale_range(0.0, duration, time, end_scale..SCALE, Some(2.0..0.0), Some(0.2));
+        // } else {
+
+            // primitive ripple, not always correct
+            let radius = DEFAULT_CURSOR_SIZE / 2.0 * self.settings.cursor_scale * PRESSED_CURSOR_SCALE;
+            let end_radius = self.ripple_radius_override.unwrap_or(radius * self.settings.cursor_ripple_final_scale);
+
+            let end_scale = end_radius / radius;
+
+            // let end_scale = self.settings.cursor_ripple_final_scale * self.ripple_radius_override.map(|r| DEFAULT_CURSOR_SIZE / r).unwrap_or(1.0);
+
+            group.items.push(DrawItem::Circle(Circle::new(
+                Color::WHITE,
+                1_000.0,
+                self.pos,
+                radius,
+                Some(Border::new(Color::WHITE, 2.0))
+            )));
+            group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
+        // }
+
 
         self.ripples.push(group);
     }

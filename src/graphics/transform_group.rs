@@ -42,10 +42,10 @@ impl TransformGroup {
 }
 // premade transforms
 impl TransformGroup {
-    pub fn ripple(&mut self, offset:f64, duration:f64, time: f64, end_scale: f64, do_border_size: bool, do_inner_transparency: Option<f32>) {
+    pub fn ripple(&mut self, offset:f64, duration:f64, time: f64, end_scale: f64, do_border_size: bool, do_transparency: Option<f32>) {
         
-        // border transparency
-        if let Some(start_a) = do_inner_transparency {
+        // transparency
+        if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
                 offset,
                 duration,
@@ -79,6 +79,50 @@ impl TransformGroup {
                 0.0,
                 duration * 1.1,
                 TransformType::BorderSize {start: 2.0, end: 0.0},
+                TransformEasing::EaseInSine,
+                time
+            ));
+        }
+    }
+
+    #[allow(unused)] // will be used eventually probably
+    pub fn ripple_scale_range(&mut self, offset:f64, duration:f64, time: f64, scale: Range<f64>, border_size: Option<Range<f64>>, do_transparency: Option<f32>) {
+        
+        // border transparency
+        if let Some(start_a) = do_transparency {
+            self.transforms.push(Transformation::new(
+                offset,
+                duration,
+                TransformType::Transparency { start: start_a as f64, end: 0.0 },
+                TransformEasing::EaseOutSine,
+                time
+            ));
+        }
+
+        // border transparency
+        self.transforms.push(Transformation::new(
+            offset,
+            duration,
+            TransformType::BorderTransparency { start: 1.0, end: 0.0 },
+            TransformEasing::EaseOutSine,
+            time
+        ));
+
+        // scale
+        self.transforms.push(Transformation::new(
+            0.0,
+            duration * 1.1,
+            TransformType::Scale {start: scale.start, end: scale.end},
+            TransformEasing::Linear,
+            time
+        ));
+
+        // border size
+        if let Some(b) = border_size {
+            self.transforms.push(Transformation::new(
+                0.0,
+                duration * 1.1,
+                TransformType::BorderSize {start: b.start, end: b.end},
                 TransformEasing::EaseInSine,
                 time
             ));
