@@ -23,8 +23,10 @@ pub struct StandardSettings {
 
     // special effects
     pub hit_ripples: bool,
+    pub ripple_hitcircles: bool,
     pub ripple_scale: f64,
     pub slider_tick_ripples: bool,
+    pub slider_tick_ripples_above: bool,
     pub approach_combo_color: bool,
 
     pub use_beatmap_combo_colors: bool,
@@ -59,8 +61,10 @@ impl Default for StandardSettings {
             ],
 
             hit_ripples: true,
+            ripple_hitcircles: false,
             ripple_scale: 2.0,
             slider_tick_ripples: true,
+            slider_tick_ripples_above: true,
             approach_combo_color: true,
 
             use_beatmap_combo_colors: true,

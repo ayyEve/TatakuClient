@@ -28,6 +28,7 @@ impl TransformGroup {
 
             game_time < start_time + transform.duration
         });
+
         self.transforms = transforms;
     }
 
@@ -35,11 +36,12 @@ impl TransformGroup {
     pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
         list.reserve(self.items.len());
         for i in self.items.iter() {
-            if !i.visible() {continue}
+            if !i.visible() { continue }
             list.push(i.to_renderable());
         }
     }
 }
+
 // premade transforms
 impl TransformGroup {
     pub fn ripple(&mut self, offset:f64, duration:f64, time: f64, end_scale: f64, do_border_size: bool, do_transparency: Option<f32>) {
@@ -112,7 +114,7 @@ impl TransformGroup {
         self.transforms.push(Transformation::new(
             0.0,
             duration * 1.1,
-            TransformType::Scale {start: scale.start, end: scale.end},
+            TransformType::Scale { start: scale.start, end: scale.end },
             TransformEasing::Linear,
             time
         ));
@@ -122,7 +124,7 @@ impl TransformGroup {
             self.transforms.push(Transformation::new(
                 0.0,
                 duration * 1.1,
-                TransformType::BorderSize {start: b.start, end: b.end},
+                TransformType::BorderSize { start: b.start, end: b.end },
                 TransformEasing::EaseInSine,
                 time
             ));
@@ -138,6 +140,7 @@ pub enum DrawItem {
     Circle(Circle),
     Rectangle(Rectangle),
     HalfCircle(HalfCircle),
+    SkinnedNumber(SkinnedNumber)
 }
 impl DrawItem {
     pub fn get_pos(&self) -> Vector2 {
@@ -147,6 +150,7 @@ impl DrawItem {
             DrawItem::Image(a) => a.current_pos,
             DrawItem::Circle(a) => a.current_pos,
             DrawItem::Rectangle(a) => a.current_pos,
+            DrawItem::SkinnedNumber(a) => a.current_pos,
             // DrawItem::HalfCircle(a) => a.current_pos,
             _ => Vector2::zero()
         }
@@ -159,6 +163,7 @@ impl DrawItem {
             DrawItem::Image(a) => a.apply_transform(transform, trans_val),
             DrawItem::Circle(a) => a.apply_transform(transform, trans_val),
             DrawItem::Rectangle(a) => a.apply_transform(transform, trans_val),
+            DrawItem::SkinnedNumber(a) => a.apply_transform(transform, trans_val),
             // DrawItem::HalfCircle(a) => a.apply_transform(transform, trans_val),
             _ => {}
         };
@@ -172,6 +177,7 @@ impl DrawItem {
             DrawItem::Circle(a) => Box::new(a.clone()),
             DrawItem::Rectangle(a) => Box::new(a.clone()),
             DrawItem::HalfCircle(a) => Box::new(a.clone()),
+            DrawItem::SkinnedNumber(a) => Box::new(a.clone()),
         };
 
         new_item
@@ -184,8 +190,9 @@ impl DrawItem {
             DrawItem::Image(a) => a.visible(),
             DrawItem::Circle(a) => a.visible(),
             DrawItem::Rectangle(a) => a.visible(),
+            DrawItem::SkinnedNumber(a) => a.visible(),
             // DrawItem::HalfCircle(a) => a.visible(),
-            _ => {true}
+            _ => { true }
         }
     }
 }

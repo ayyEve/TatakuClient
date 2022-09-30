@@ -173,10 +173,51 @@ impl StandardNote {
             combo_image
         }
     }
+
+    fn ripple_start(&mut self) {
+        if !self.standard_settings.ripple_hitcircles { return }
+        let scale = 0.0..1.3;
+
+        // broken
+        // // combo text
+        // let mut combo_group = TransformGroup::new();
+        // if let Some(mut c) = self.combo_image.clone() {
+        //     c.origin = c.measure_text() / 2.0;
+        //     c.current_pos -= c.origin;
+        //     combo_group.items.push(DrawItem::SkinnedNumber(c));
+        // } else {
+        //     combo_group.items.push(DrawItem::Text(*self.combo_text.as_ref().unwrap().clone()));
+        // }
+        // combo_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale.clone(), None, Some(0.8));
+        // self.shapes.push(combo_group);
+
+
+        // hitcircle
+        let mut circle_group = TransformGroup::new();
+        if let Some(circle) = &self.circle_image {
+            circle_group.items.push(DrawItem::Image(circle.circle.clone()));
+            circle_group.items.push(DrawItem::Image(circle.overlay.clone()));
+        } else {
+            circle_group.items.push(DrawItem::Circle(Circle::new(
+                self.color,
+                self.base_depth, // should be above curves but below slider ball
+                self.pos,
+                self.radius,
+                Some(Border::new(
+                    Color::BLACK,
+                    self.scaling_helper.border_scaled
+                ))
+            )));
+        }
+
+        // make it ripple and add it to the list
+        circle_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale, None, Some(0.5));
+        self.shapes.push(circle_group);
+    }
 }
 #[async_trait]
 impl HitObject for StandardNote {
-    fn note_type(&self) -> NoteType {NoteType::Note}
+    fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
     async fn update(&mut self, beatmap_time: f32) {
@@ -260,6 +301,7 @@ impl HitObject for StandardNote {
         }
     }
 }
+
 #[async_trait]
 impl StandardHitObject for StandardNote {
     fn miss(&mut self) { self.missed = true }
@@ -298,6 +340,8 @@ impl StandardHitObject for StandardNote {
 
             self.shapes.push(group);
         }
+
+        self.ripple_start();
     }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
@@ -543,90 +587,69 @@ impl StandardSlider {
 
     async fn make_body(&mut self) {
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-        let alpha = 1.0;
         let window_size = WindowSize::get().0;
         
-        let mut color = self.color.alpha(alpha);
+        let mut color = self.color;
         const DARKER:f32 = 2.0/3.0;
         color.r *= DARKER;
         color.g *= DARKER;
         color.b *= DARKER;
 
         const BORDER_RADIUS: f64 = 6.0;
-        // border
-        for line in self.curve.curve_lines.iter() {
-            let mut p1 = self.scaling_helper.scale_coords(line.p1);
-            let mut p2 = self.scaling_helper.scale_coords(line.p2);
+        const BORDER_COLOR:Color = Color::WHITE;
 
-            p1.y = window_size.y - p1.y;
-            p2.y = window_size.y - p2.y;
-
-            let border = Line::new(
-                p1,
-                p2,
-                self.radius,
-                self.slider_depth,
-                Color::WHITE.alpha(alpha)
-            );
-            list.push(Box::new(border));
-
-            // add a circle to smooth out the corners
-            // border
-            list.push(Box::new(Circle::new(
-                Color::WHITE.alpha(alpha),
-                self.slider_depth,
-                p2,
-                self.radius,
-                None
-            )));
-        }
-
-        for line in self.curve.curve_lines.iter() {
-            let mut p1 = self.scaling_helper.scale_coords(line.p1);
-            let mut p2 = self.scaling_helper.scale_coords(line.p2);
-
-            p1.y = window_size.y - p1.y;
-            p2.y = window_size.y - p2.y;
-
-            let l = Line::new(
-                p1,
-                p2,
-                self.radius - BORDER_RADIUS,
-                self.slider_depth,
-                color
-            );
-            list.push(Box::new(l));
-
-
-            // add a circle to smooth out the corners
-            list.push(Box::new(Circle::new(
-                color,
-                self.slider_depth,
-                p2,
-                self.radius - BORDER_RADIUS,
-                None
-            )));
-            
-        }
-
+        // starting point
         let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
-        
-        // add extra circle to start of slider as well
-        list.push(Box::new(Circle::new(
-            color,
-            self.slider_depth,
-            p,
-            self.radius,
-            None
-        )));
 
+        // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
+        // border is first, body is 2nd, since the body must be drawn on top of the border (which created the border)
+        for (radius, color) in [(self.radius, BORDER_COLOR), (self.radius - BORDER_RADIUS, color)] {
+
+            // add starting circle manually
+            list.push(Box::new(Circle::new(
+                color,
+                0.0,
+                p,
+                radius,
+                None
+            )));
+
+            // add all lines
+            for line in self.curve.curve_lines.iter() {
+                let mut p1 = self.scaling_helper.scale_coords(line.p1);
+                let mut p2 = self.scaling_helper.scale_coords(line.p2);
+
+                p1.y = window_size.y - p1.y;
+                p2.y = window_size.y - p2.y;
+
+                // add a line to connect the points
+                list.push(Box::new(Line::new(
+                    p1,
+                    p2,
+                    radius,
+                    0.0,
+                    color
+                )));
+
+                // add a circle to smooth out the corners
+                // border
+                list.push(Box::new(Circle::new(
+                    color,
+                    0.0,
+                    p2,
+                    radius,
+                    None
+                )));
+            }
+            
+        }
         
+        // draw it to the render texture
         let mut slider_body_render_target = RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await.expect("error creating slider body");
         slider_body_render_target.image.origin = Vector2::zero();
         slider_body_render_target.image.depth = self.slider_depth;
         self.slider_body_render_target = Some(slider_body_render_target);
-
 
         if let Some(rt) = &mut self.slider_body_render_target {
             rt.update(move |rt, g| {
@@ -681,11 +704,12 @@ impl StandardSlider {
             let mut group = TransformGroup::new();
 
             // border is white if ripple caused by slider tick
-            let border_color = if is_tick {Color::WHITE} else {self.color};
+            let border_color = if is_tick { Color::WHITE } else { self.color };
+            let depth = if is_tick && self.standard_settings.slider_tick_ripples_above { self.slider_depth - 0.000001 } else { self.slider_depth };
 
             group.items.push(DrawItem::Circle(Circle::new(
                 Color::TRANSPARENT_WHITE,
-                self.slider_depth, // slider depth?
+                depth,
                 pos,
                 self.radius,
                 Some(Border::new(border_color, 2.0))
@@ -706,12 +730,55 @@ impl StandardSlider {
         alpha
     }
 
+    fn ripple_start(&mut self) {
+        if !self.standard_settings.ripple_hitcircles { return }
+
+        let scale = 0.0..1.3;
+
+        // broken
+        // // combo text
+        // let mut combo_group = TransformGroup::new();
+        // if let Some(mut c) = self.combo_image.clone() {
+        //     c.origin = c.measure_text() / 2.0;
+        //     c.current_pos -= c.origin;
+        //     combo_group.items.push(DrawItem::SkinnedNumber(c));
+        // } else {
+        //     combo_group.items.push(DrawItem::Text(*self.combo_text.as_ref().unwrap().clone()));
+        // }
+        // combo_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale.clone(), None, Some(0.8));
+        // self.shapes.push(combo_group);
+
+
+        // hitcircle
+        let mut circle_group = TransformGroup::new();
+        if let Some(start_circle) = &self.start_circle_image {
+            circle_group.items.push(DrawItem::Image(start_circle.circle.clone()));
+            circle_group.items.push(DrawItem::Image(start_circle.overlay.clone()));
+        } else {
+            circle_group.items.push(DrawItem::Circle(Circle::new(
+                self.color,
+                self.circle_depth, // should be above curves but below slider ball
+                self.pos,
+                self.radius,
+                Some(Border::new(
+                    Color::BLACK,
+                    self.scaling_helper.border_scaled
+                ))
+            )));
+        }
+
+        // make it ripple and add it to the list
+        circle_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale, None, Some(0.5));
+        self.shapes.push(circle_group);
+    }
+
 }
+
 #[async_trait]
 impl HitObject for StandardSlider {
-    fn note_type(&self) -> NoteType {NoteType::Slider}
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self,_:f32) -> f32 {self.curve.end_time}
+    fn note_type(&self) -> NoteType { NoteType::Slider }
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self,_:f32) -> f32 { self.curve.end_time }
 
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
@@ -744,6 +811,7 @@ impl HitObject for StandardSlider {
             self.start_checked = true;
             self.start_judgment = OsuHitJudgments::Miss;
             self.pending_combo.insert(0, (OsuHitJudgments::Miss, self.pos));
+            self.ripple_start();
         }
 
         // find out if a slide has been completed
@@ -824,11 +892,11 @@ impl HitObject for StandardSlider {
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss { return list }
         
-        
+        // color
         let alpha = self.get_alpha();
         let color = self.color.alpha(alpha);
 
-        if self.time > self.map_time {
+        if self.map_time < self.time {
             // timing circle
             let approach_circle_color = if self.standard_settings.approach_combo_color { self.color } else { Color::WHITE };
             list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
@@ -841,6 +909,7 @@ impl HitObject for StandardSlider {
                 self.combo_text.as_mut().unwrap().current_color.a = alpha;
                 list.push(self.combo_text.clone().unwrap());
             }
+
         } else if self.map_time < self.curve.end_time {
             // slider ball
             // inner
@@ -861,7 +930,7 @@ impl HitObject for StandardSlider {
             ))));
         }
 
-
+        // slider body
         if let Some(rt) = &self.slider_body_render_target {
             let mut b = rt.image.clone();
             b.current_color.a = alpha;
@@ -873,6 +942,64 @@ impl HitObject for StandardSlider {
         let slides_remaining = self.def.slides - self.slides_complete;
         let end_repeat = slides_remaining > self.def.slides % 2 + 1;
         let start_repeat = slides_remaining > 2 - self.def.slides % 2;
+
+
+        // start pos
+        if self.map_time < self.time {
+
+            // draw the starting circle as a hitcircle
+            if let Some(start_circle) = &mut self.start_circle_image {
+                start_circle.set_alpha(alpha);
+                start_circle.draw(&mut list);
+            } else {
+                list.push(Box::new(Circle::new(
+                    self.color.alpha(alpha),
+                    self.circle_depth, // should be above curves but below slider ball
+                    self.pos,
+                    self.radius,
+                    Some(Border::new(
+                        Color::BLACK.alpha(alpha),
+                        self.scaling_helper.border_scaled
+                    ))
+                )));
+            }
+
+        } else {
+            // draw it as a slider end
+            if let Some(end_circle) = &self.end_circle_image {
+                let mut end_circle = end_circle.clone();
+                end_circle.current_color.a = alpha;
+                end_circle.current_pos = self.pos;
+                list.push(Box::new(end_circle));
+                
+                if start_repeat {
+                    if let Some(reverse_arrow) = &self.slider_reverse_image {
+                        let mut im = reverse_arrow.clone();
+                        im.current_pos = self.pos;
+                        im.depth = self.circle_depth;
+                        im.current_color.a = alpha;
+                        im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+
+                        let l = self.curve.curve_lines[0];
+                        im.current_rotation = Vector2::atan2(l.p2 - l.p1);
+
+                        list.push(Box::new(im));
+                    }
+                }
+            } else {
+                list.push(Box::new(Circle::new(
+                    self.color.alpha(alpha),
+                    self.circle_depth, // should be above curves but below slider ball
+                    self.pos,
+                    self.radius,
+                    Some(Border::new(
+                        if start_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
+                        self.scaling_helper.border_scaled
+                    ))
+                )));
+            }
+
+        }
 
 
         // end pos
@@ -909,65 +1036,14 @@ impl HitObject for StandardSlider {
             )));
         }
 
-        // start pos
-        if let Some(start_circle) = &mut self.start_circle_image {
-            start_circle.set_alpha(alpha);
-            start_circle.draw(&mut list);
-            
-            if start_repeat {
-                if let Some(reverse_arrow) = &self.slider_reverse_image {
-                    let mut im = reverse_arrow.clone();
-                    im.current_pos = self.pos;
-                    im.depth = self.circle_depth;
-                    im.current_color.a = alpha;
-                    im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-
-                    let l = self.curve.curve_lines[0];
-                    im.current_rotation = Vector2::atan2(l.p2 - l.p1);
-
-                    list.push(Box::new(im));
-                }
-            }
-        } else {
-            list.push(Box::new(Circle::new(
-                self.color.alpha(alpha),
-                self.circle_depth, // should be above curves but below slider ball
-                self.pos,
-                self.radius,
-                Some(Border::new(
-                    if start_repeat {Color::RED} else {Color::BLACK}.alpha(alpha),
-                    self.scaling_helper.border_scaled
-                ))
-            )));
-        }
 
         // draw hit dots
-        // for dot in self.hit_dots.as_slice() {
-        //     if dot.done {continue}
-        //     renderables.extend(dot.draw());
-        // }
-
-        for dot in self.hit_dots.iter_mut() {
+        for dot in self.hit_dots.iter() {
             if dot.slide_layer == self.slides_complete {
                 dot.draw(&mut list)
             }
         }
 
-        // for t in self.curve.score_times.iter() {
-        //     let pos = self.scaling_helper.scale_coords(self.curve.position_at_time(*t));
-
-        //     let mut c = Circle::new(
-        //         Color::WHITE.alpha(alpha),
-        //         self.circle_depth, // should be above curves but below slider ball
-        //         pos,
-        //         SLIDER_DOT_RADIUS * self.scaling_helper.scale
-        //     );
-        //     c.border = Some(Border::new(
-        //         Color::BLACK.alpha(alpha),
-        //         self.scaling_helper.border_scaled / 2.0
-        //     ));
-        //     list.push(Box::new(c))
-        // }
         list
     }
 
@@ -1036,6 +1112,8 @@ impl StandardHitObject for StandardSlider {
     fn set_judgment(&mut self, j: &OsuHitJudgments) {
         self.start_checked = true;
         self.start_judgment = *j;
+        
+        self.ripple_start();
     }
 
     fn hit(&mut self, time: f32) {

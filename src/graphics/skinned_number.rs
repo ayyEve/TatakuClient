@@ -177,6 +177,7 @@ impl Renderable for SkinnedNumber {
                 let mut t = t.clone();
                 t.current_pos = current_pos;
                 t.current_scale = self.current_scale;
+                t.current_color = self.current_color;
                 current_pos.x += t.size().x;
 
                 t.draw(g, context);
@@ -225,11 +226,11 @@ impl Transformable for SkinnedNumber {
             TransformType::Position { .. } => {
                 let val:Vector2 = val.into();
                 self.current_pos = self.initial_pos + val;
-            },
+            }
             TransformType::Scale { .. } => {
                 let val:f64 = val.into();
                 self.current_scale = self.initial_scale + val;
-            },
+            }
             TransformType::Rotation { .. } => {
                 let val:f64 = val.into();
                 self.current_rotation = self.initial_rotation + val;
@@ -239,11 +240,11 @@ impl Transformable for SkinnedNumber {
             TransformType::Transparency { .. } => {
                 let val:f64 = val.into();
                 self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
-            },
+            }
             TransformType::Color { .. } => {
                 let col = val.into();
                 self.current_color = col;
-            },
+            }
 
             // border
             // TransformType::BorderTransparency { .. } => if let Some(border) = self.border.as_mut() {
