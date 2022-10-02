@@ -41,7 +41,7 @@ impl<'a> DerefMut for MutSettingsHelper<'a> {
 }
 impl<'a> Drop for MutSettingsHelper<'a> {
     fn drop(&mut self) {
-        info!("mut settings dropped");
+        trace!("mut settings dropped");
         // assume something was changed for now
         let a = Arc::new(self.guard.clone());
         SETTINGS_CHECK.0.lock().ignite(a);

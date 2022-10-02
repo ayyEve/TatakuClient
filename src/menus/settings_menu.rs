@@ -40,7 +40,7 @@ impl SettingsMenu {
         // done button
         let mut done_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Done", font.clone());
         done_button.set_tag("done");
-        
+
         scroll_area.add_item(Box::new(revert_button));
         scroll_area.add_item(Box::new(done_button));
 
@@ -55,13 +55,11 @@ impl SettingsMenu {
     }
 
     pub async fn update_settings(&mut self) {
-        println!("update settings");
         // write settings to settings
         let mut settings = get_settings_mut!();
         settings.from_menu(&self.scroll_area);
 
         settings.check_hashes();
-        // settings.save().await;
         // drop to make sure changes propogate correctly
         drop(settings);
 
@@ -70,9 +68,13 @@ impl SettingsMenu {
         }
     }
     pub async fn revert(&mut self, game:&mut Game) {
-        info!("revert settings");
         *(*get_settings_mut!()) = self.old_settings.clone();
-        get_settings_mut!().skip_autosaveing = false;
+        
+        {
+            let s = get_settings_mut!();
+            s.skip_autosaveing = false;
+            s.save()
+        }
         
         let menu = game.menus.get("main").unwrap().clone();
         game.queue_state_change(GameState::InMenu(menu));
