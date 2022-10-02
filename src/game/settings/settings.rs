@@ -125,7 +125,10 @@ pub struct Settings {
     pub current_skin: String,
 
     pub logging_settings: LoggingSettings,
-    pub external_games_folders: Vec<String>
+    pub external_games_folders: Vec<String>,
+
+    #[serde(skip)]
+    pub skip_autosaveing: bool,
 }
 impl Settings {
     pub async fn load() -> Settings {
@@ -244,7 +247,9 @@ impl Default for Settings {
             current_skin: "None".to_owned(),
             logging_settings: LoggingSettings::new(),
 
-            external_games_folders: Vec::new()
+            external_games_folders: Vec::new(),
+
+            skip_autosaveing: false
         }
     }
 }

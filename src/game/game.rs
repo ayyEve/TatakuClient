@@ -189,7 +189,7 @@ impl Game {
                     || last_effect_vol != self.settings.effect_vol;
 
                 // dont save when audio is changed, that would spam too hard
-                if !audio_changed {
+                if !audio_changed && !self.settings.skip_autosaveing {
                     // save the settings
                     self.settings.save().await;
                 }

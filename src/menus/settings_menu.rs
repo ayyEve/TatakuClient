@@ -32,15 +32,18 @@ impl SettingsMenu {
         let font = get_font();
 
         //TODO: make these not part of the scrollable?!?!
-        // done button
-        let mut done_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Done", font.clone());
-        done_button.set_tag("done");
-        scroll_area.add_item(Box::new(done_button));
 
         // revert button
         let mut revert_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Revert", font.clone());
         revert_button.set_tag("revert");
+
+        // done button
+        let mut done_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Done", font.clone());
+        done_button.set_tag("done");
+        
         scroll_area.add_item(Box::new(revert_button));
+        scroll_area.add_item(Box::new(done_button));
+
 
         SettingsMenu {
             scroll_area,
@@ -66,12 +69,17 @@ impl SettingsMenu {
             manager.force_update_settings().await;
         }
     }
-    pub async fn revert(&mut self) {
-        println!("revert");
+    pub async fn revert(&mut self, game:&mut Game) {
+        info!("revert settings");
         *(*get_settings_mut!()) = self.old_settings.clone();
+        get_settings_mut!().skip_autosaveing = false;
+        
+        let menu = game.menus.get("main").unwrap().clone();
+        game.queue_state_change(GameState::InMenu(menu));
     }
     pub async fn finalize(&mut self, game:&mut Game) {
         self.update_settings().await;
+        get_settings_mut!().skip_autosaveing = false;
 
         let menu = game.menus.get("main").unwrap().clone();
         game.queue_state_change(GameState::InMenu(menu));
@@ -126,6 +134,7 @@ impl AsyncMenu<Game> for SettingsMenu {
     
     async fn on_change(&mut self, into:bool) {
         if into {
+            get_settings_mut!().skip_autosaveing = true;
 
             // update our window size
             self.window_size_changed(WindowSize::get()).await;
@@ -176,7 +185,7 @@ impl AsyncMenu<Game> for SettingsMenu {
         if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, mods) {
             match tag.as_str() {
                 "done" => self.finalize(game).await,
-                "revert" => self.revert().await,
+                "revert" => self.revert(game).await,
                 _ => {}
             }
         }
@@ -239,4 +248,3 @@ impl AsyncMenu<Game> for SettingsMenu {
 impl ControllerInputMenu<Game> for SettingsMenu {
     
 }
-
