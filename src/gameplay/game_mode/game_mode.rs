@@ -23,6 +23,8 @@ pub trait GameMode: GameModeInput + GameModeInfo + Send + Sync {
     async fn time_jump(&mut self, _new_time: f32) {}
 
     async fn force_update_settings(&mut self, settings: &Settings);
+    
+    async fn reload_skin(&mut self);
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {

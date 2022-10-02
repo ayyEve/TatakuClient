@@ -16,7 +16,7 @@ fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
 }
 
 pub struct SkinManager {
-    // current_skin: String,
+    last_skin: String,
     current_skin_config: Arc<SkinSettings>,
 
     texture_cache: HashMap<String, Option<Image>>,
@@ -30,6 +30,7 @@ impl SkinManager {
     pub async fn init() {
         let mut s = SKIN_MANAGER.write().await;
         s.settings = SettingsHelper::new().await;
+        s.last_skin = s.settings.current_skin.clone();
     }
 
     pub async fn get_texture<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool) -> Option<Image> {
@@ -57,11 +58,14 @@ impl SkinManager {
         SKIN_MANAGER.read().await.current_skin_config.clone()
     }
 
-    pub async fn change_skin(new_skin:String) {
+    pub async fn change_skin(new_skin:String, set_settings: bool) {
         let mut s = SKIN_MANAGER.write().await;
-        
-        get_settings_mut!().current_skin = new_skin.clone();
-        // self.current_skin = new_skin.clone();
+        if s.last_skin == new_skin { return }
+        if set_settings {
+            let mut s = get_settings_mut!();
+            s.current_skin = new_skin.clone();
+        }
+        s.last_skin = new_skin.clone();
         s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
         s.texture_cache.clear();
     }
@@ -76,7 +80,7 @@ impl SkinManager {
         let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
         
         Self {
-            // current_skin,
+            last_skin: String::new(),
             current_skin_config,
             texture_cache: HashMap::new(),
             settings: Default::default(), // default because this fn isnt async

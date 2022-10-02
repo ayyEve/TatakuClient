@@ -17,4 +17,6 @@ pub trait HitObject: Send + Sync {
     async fn reset(&mut self);
 
     async fn time_jump(&mut self, _new_time: f32) {}
+
+    async fn reload_skin(&mut self) {}
 }

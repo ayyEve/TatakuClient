@@ -184,7 +184,7 @@ impl GameMode for StandardGame {
         ];
         let miss_window = w_miss;
 
-        match map {
+        let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
                 let std_settings = Arc::new(settings);
@@ -350,14 +350,22 @@ impl GameMode for StandardGame {
                     counter += 1;
                 }
         
-                // wait an extra sec
-                s.end_time += 1000.0;
-        
-                Ok(s)
+                s
             },
             
-            _ => Err(crate::errors::BeatmapError::UnsupportedMode.into()),
+            _ => return Err(crate::errors::BeatmapError::UnsupportedMode.into()),
+        };
+
+        // wait an extra sec
+        s.end_time += 1000.0;
+
+        if !diff_calc_only {
+            for n in s.notes.iter_mut() {
+                n.reload_skin().await;
+            }
         }
+
+        Ok(s)
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
@@ -776,12 +784,18 @@ impl GameMode for StandardGame {
     }
     
     async fn force_update_settings(&mut self, settings: &Settings) {
-        let mut settings = settings.standard_settings.clone();
+        let settings = settings.standard_settings.clone();
         let settings = Arc::new(settings);
 
         self.game_settings = settings.clone();
         for n in self.notes.iter_mut() {
             n.set_settings(settings.clone());
+        }
+    }
+
+    async fn reload_skin(&mut self) {
+        for n in self.notes.iter_mut() {
+            n.reload_skin().await;
         }
     }
 }

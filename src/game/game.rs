@@ -53,6 +53,7 @@ pub struct Game {
     settings: SettingsHelper,
     window_size: WindowSizeHelper,
     cursor_manager: CursorManager,
+    last_skin: String,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>) -> Game {
@@ -86,7 +87,8 @@ impl Game {
             // register_timings: (0.0,0.0,0.0),
             game_event_receiver,
             render_queue_sender,
-            cursor_manager: CursorManager::new().await
+            cursor_manager: CursorManager::new().await,
+            last_skin: String::new()
         };
 
         g.init().await;
@@ -107,6 +109,7 @@ impl Game {
         // this is here so it happens before anything else
         let settings = SettingsHelper::new().await;
         SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
+        self.last_skin = settings.current_skin.clone();
 
         // beatmap manager loop
         BeatmapManager::download_check_loop();
@@ -201,6 +204,11 @@ impl Game {
                 if self.settings.update_target as f64 != update_target {
                     last_update_target = self.settings.update_target as f64;
                     update_target = 1.0 / last_update_target;
+                }
+
+                if self.settings.current_skin != self.last_skin {
+                    SkinManager::change_skin(self.settings.current_skin.clone(), false).await;
+                    self.last_skin = self.settings.current_skin.clone();
                 }
 
             }

@@ -15,6 +15,7 @@ pub trait ManiaHitObject: HitObject {
     fn set_sv_mult(&mut self, sv: f64);
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
+    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>);
 }
 
 // note
@@ -37,6 +38,7 @@ pub struct ManiaNote {
 
     playfield: Arc<ManiaPlayfield>,
     note_image: Option<Image>,
+    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
 
     hitsound: u8,
@@ -53,21 +55,6 @@ impl ManiaNote {
         hitsound: u8,
         hitsamples: HitSamples,
     ) -> Self {
-        let mut note_image = None;
-        if let Some(settings) = &mania_skin_settings {
-            let map = &settings.note_image;
-            
-            if let Some(path) = map.get(&column) {
-                if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    let mut img = img.clone();
-                    img.current_color = color;
-                    img.origin = Vector2::zero();
-                    img.depth = MANIA_NOTE_DEPTH;
-                    note_image = Some(img);
-                }
-            }
-        }
-
         Self {
             time,
             position_function: Arc::new(Vec::new()),
@@ -82,11 +69,12 @@ impl ManiaNote {
             pos: Vector2::x_only(x),
 
             playfield,
-            note_image,
+            note_image:None,
             position_function_index: 0,
 
             hitsound,
-            hitsamples
+            hitsamples, 
+            mania_skin_settings,
         }
     }
 
@@ -137,6 +125,25 @@ impl HitObject for ManiaNote {
         self.missed = false;
         self.position_function_index = 0;
     }
+
+    async fn reload_skin(&mut self) {
+        let mut note_image = None;
+        if let Some(settings) = &self.mania_skin_settings {
+            let map = &settings.note_image;
+            
+            if let Some(path) = map.get(&self.column) {
+                if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                    let mut img = img.clone();
+                    img.current_color = self.color;
+                    img.origin = Vector2::zero();
+                    img.depth = MANIA_NOTE_DEPTH;
+                    note_image = Some(img);
+                }
+            }
+        }
+
+        self.note_image = note_image;
+    }
 }
 impl ManiaHitObject for ManiaNote {
     fn hit(&mut self, time:f32) {
@@ -164,6 +171,10 @@ impl ManiaHitObject for ManiaNote {
 
     fn get_hitsound(&self) -> (u8, HitSamples) {
         (self.hitsound, self.hitsamples.clone())
+    }
+    
+    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
+        self.mania_skin_settings = settings;
     }
 }
 
@@ -200,6 +211,7 @@ pub struct ManiaHold {
 
     hitsound: u8,
     hitsamples: HitSamples,
+    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaHold {
     pub async fn new(
@@ -212,50 +224,6 @@ impl ManiaHold {
         hitsound: u8,
         hitsamples: HitSamples,
     ) -> Self {
-        let mut start_image = None;
-        if let Some(settings) = &mania_skin_settings {
-            let map = &settings.note_image_h;
-            
-            if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.current_color = color;
-                    img.origin = Vector2::zero();
-                    img.depth = MANIA_NOTE_DEPTH;
-
-                    start_image = Some(img);
-                }
-            }
-        }
-
-        let mut middle_image = None;
-        if let Some(settings) = &mania_skin_settings {
-            let map = &settings.note_image_l;
-            
-            if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::zero();
-                    img.current_color = Color::WHITE;
-                    img.depth = MANIA_NOTE_DEPTH;
-
-                    middle_image = Some(img);
-                }
-            }
-        }
-        
-        let mut end_image = None;
-        if let Some(settings) = &mania_skin_settings {
-            let map = &settings.note_image_t;
-            
-            if let Some(path) = map.get(&column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::zero();
-                    img.current_color = Color::WHITE;
-                    img.current_scale.y *= -1.0;
-                    img.depth = MANIA_NOTE_DEPTH;
-                    end_image = Some(img)
-                }
-            }
-        }
 
         Self {
             time, 
@@ -276,9 +244,10 @@ impl ManiaHold {
             end_y: 0.0,
 
             playfield,
-            start_image,
-            end_image,
-            middle_image,
+            start_image: None,
+            end_image: None,
+            middle_image: None,
+            mania_skin_settings,
 
             hitsound,
             hitsamples,
@@ -443,6 +412,58 @@ impl HitObject for ManiaHold {
         self.hold_ends.clear();
         self.position_function_index = 0;
     }
+
+    async fn reload_skin(&mut self) {
+        
+        let mut start_image = None;
+        if let Some(settings) = &self.mania_skin_settings {
+            let map = &settings.note_image_h;
+            
+            if let Some(path) = map.get(&self.column) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                    img.current_color = self.color;
+                    img.origin = Vector2::zero();
+                    img.depth = MANIA_NOTE_DEPTH;
+
+                    start_image = Some(img);
+                }
+            }
+        }
+
+        let mut middle_image = None;
+        if let Some(settings) = &self.mania_skin_settings {
+            let map = &settings.note_image_l;
+            
+            if let Some(path) = map.get(&self.column) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                    img.origin = Vector2::zero();
+                    img.current_color = Color::WHITE;
+                    img.depth = MANIA_NOTE_DEPTH;
+
+                    middle_image = Some(img);
+                }
+            }
+        }
+        
+        let mut end_image = None;
+        if let Some(settings) = &self.mania_skin_settings {
+            let map = &settings.note_image_t;
+            
+            if let Some(path) = map.get(&self.column) {
+                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                    img.origin = Vector2::zero();
+                    img.current_color = Color::WHITE;
+                    img.current_scale.y *= -1.0;
+                    img.depth = MANIA_NOTE_DEPTH;
+                    end_image = Some(img)
+                }
+            }
+        }
+
+        self.start_image = start_image;
+        self.middle_image = middle_image;
+        self.end_image = end_image;
+    }
 }
 impl ManiaHitObject for ManiaHold {
     fn was_hit(&self) -> bool {
@@ -481,6 +502,10 @@ impl ManiaHitObject for ManiaHold {
 
     fn get_hitsound(&self) -> (u8, HitSamples) {
         (self.hitsound, self.hitsamples.clone())
+    }
+    
+    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
+        self.mania_skin_settings = settings;
     }
 }
 

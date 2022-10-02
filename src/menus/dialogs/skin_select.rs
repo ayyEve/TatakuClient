@@ -42,7 +42,7 @@ impl SkinSelect {
                 trace!("skin changing to {}", s);
                 self.current_skin = s.clone();
                 tokio::spawn(async move {
-                    SkinManager::change_skin(s).await;
+                    SkinManager::change_skin(s, true).await;
                 });
             }
         }
@@ -130,6 +130,9 @@ pub struct SkinChangeHelper {
     current_skin: String,
 }
 impl SkinChangeHelper {
+    pub fn new_empty() -> Self {
+        Self { current_skin: String::new() }
+    }
     pub async fn new() -> Self {
         let current_skin = get_settings!().current_skin.clone();
         Self {
@@ -144,6 +147,7 @@ impl SkinChangeHelper {
         if &self.current_skin != current_skin {
             changed = true;
             self.current_skin = current_skin.clone();
+            // println!("skin changed");
         }
         changed
     }

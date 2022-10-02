@@ -86,7 +86,7 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
-    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
@@ -106,7 +106,7 @@ impl TaikoNote {
             hit: false,
             missed: false,
             pos: Vector2::zero(),
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth, hit_type, finisher).await},
+            image: None,
             settings,
             playfield,
             bounce_factor
@@ -167,6 +167,10 @@ impl HitObject for TaikoNote {
         self.hit = false;
         self.missed = false;
         self.hit_time = 0.0;
+    }
+
+    async fn reload_skin(&mut self) {
+        self.image = HitCircleImageHelper::new(&self.settings, self.depth, self.hit_type, self.finisher).await;
     }
 }
 impl TaikoHitObject for TaikoNote {
@@ -232,34 +236,12 @@ pub struct TaikoSlider {
     end_image: Option<Image>,
 }
 impl TaikoSlider {
-    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
         let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
         let depth = get_depth(time);
 
-        let mut middle_image = if diff_calc_only { None } else { SkinManager::get_texture("taiko-roll-middle", true).await };
-        if let Some(image) = &mut middle_image {
-            image.depth = depth;
-            image.origin.x = 0.0;
-            image.current_color = Color::YELLOW;
-
-            let radius = settings.note_radius * if finisher {settings.big_note_multiplier} else {1.0};
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            image.initial_scale = scale;
-            image.current_scale = scale;
-        }
-
-        let mut end_image = if diff_calc_only { None } else { SkinManager::get_texture("taiko-roll-end", true).await };
-        if let Some(image) = &mut end_image {
-            image.depth = depth;
-            image.origin.x = 0.0;
-            image.current_color = Color::YELLOW;
-
-            let radius = settings.note_radius * if finisher {settings.big_note_multiplier} else {1.0};
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            image.initial_scale = scale;
-            image.current_scale = scale;
-        }
-
+        let middle_image = None;
+        let end_image = None;
 
         Self {
             time, 
@@ -386,6 +368,35 @@ impl HitObject for TaikoSlider {
         self.pos.x = 0.0;
         self.end_x = 0.0;
     }
+    
+    async fn reload_skin(&mut self) {
+        let mut middle_image = SkinManager::get_texture("taiko-roll-middle", true).await;
+        if let Some(image) = &mut middle_image {
+            image.depth = self.depth;
+            image.origin.x = 0.0;
+            image.current_color = Color::YELLOW;
+
+            let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.initial_scale = scale;
+            image.current_scale = scale;
+        }
+        self.middle_image = middle_image;
+
+        let mut end_image = SkinManager::get_texture("taiko-roll-end", true).await;
+        if let Some(image) = &mut end_image {
+            image.depth = self.depth;
+            image.origin.x = 0.0;
+            image.current_color = Color::YELLOW;
+
+            let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.initial_scale = scale;
+            image.current_scale = scale;
+        }
+        self.end_image = end_image;
+
+    }
 }
 impl TaikoHitObject for TaikoSlider {
     fn was_hit(&self) -> bool { false }
@@ -444,17 +455,10 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, diff_calc_only: bool) -> Self {
-        let mut spinner_image = if diff_calc_only {None} else {SkinManager::get_texture("spinner-warning", true).await};
-
-        let depth = get_depth(time);
-
-        if let Some(image) = &mut spinner_image {
-            image.depth = depth;
-        }
-
+    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
         let don_color = settings.don_color;
         let kat_color = settings.kat_color;
+        let depth = get_depth(time);
 
         Self {
             time, 
@@ -470,7 +474,7 @@ impl TaikoSpinner {
             settings,
             playfield,
             
-            spinner_image,
+            spinner_image: None,
             don_color,
             kat_color
         }
@@ -551,6 +555,16 @@ impl HitObject for TaikoSpinner {
         self.pos.x = 0.0;
         self.hit_count = 0;
         self.complete = false;
+    }
+    
+    async fn reload_skin(&mut self) {
+        let mut spinner_image = SkinManager::get_texture("spinner-warning", true).await;
+        
+        if let Some(image) = &mut spinner_image {
+            image.depth = self.depth;
+        }
+
+        self.spinner_image = spinner_image;
     }
 }
 impl TaikoHitObject for TaikoSpinner {

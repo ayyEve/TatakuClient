@@ -128,23 +128,7 @@ impl StandardNote {
             Some(combo_text)
         };
 
-        
-        let mut combo_image = if diff_calc_only {None} else {
-            SkinnedNumber::new(
-            Color::WHITE,  // TODO: setting: colored same as note or just white?
-            combo_text.as_ref().unwrap().depth, 
-            combo_text.as_ref().unwrap().current_pos, 
-            combo_num as f64,
-            "default",
-            None,
-            0
-        ).await.ok()};
-        if let Some(combo) = &mut combo_image {
-            combo.center_text(Rectangle::bounds_only(
-                pos - Vector2::one() * radius / 2.0,
-                Vector2::one() * radius,
-            ));
-        }
+        let combo_image = None;
 
 
         Self {
@@ -160,8 +144,7 @@ impl StandardNote {
 
             map_time: 0.0,
             mouse_pos: Vector2::zero(),
-            circle_image: if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, base_depth, color).await},
-
+            circle_image: None,
             time_preempt,
             hitwindow_miss: 0.0,
             radius,
@@ -300,6 +283,28 @@ impl HitObject for StandardNote {
             self.hit = false;
             self.missed = false;
         }
+    }
+
+    
+    async fn reload_skin(&mut self) {
+        self.circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.base_depth, self.color).await;
+
+        let mut combo_image = SkinnedNumber::new(
+            Color::WHITE,  // TODO: setting: colored same as note or just white?
+            self.base_depth - 0.0000001, 
+            self.pos, 
+            self.combo_num as f64,
+            "default",
+            None,
+            0
+        ).await.ok();
+        if let Some(combo) = &mut combo_image {
+            combo.center_text(Rectangle::bounds_only(
+                self.pos - Vector2::one() * self.radius / 2.0,
+                Vector2::one() * self.radius,
+            ));
+        }
+        self.combo_image = combo_image;
     }
 }
 
@@ -514,28 +519,6 @@ impl StandardSlider {
             Some(combo_text)
         };
 
-        let start_circle_image = if diff_calc_only {None} else {HitCircleImageHelper::new(pos, &scaling_helper, circle_depth, color).await};
-        let end_circle_image = if diff_calc_only {None} else {SkinManager::get_texture("sliderendcircle", true).await};
-
-        let mut combo_image = if diff_calc_only {None} else {SkinnedNumber::new(
-            Color::WHITE,  // TODO: setting: colored same as note or just white?
-            combo_text.as_ref().unwrap().depth, 
-            combo_text.as_ref().unwrap().current_pos, 
-            combo_num as f64,
-            "default",
-            None,
-            0
-        ).await.ok()};
-        if let Some(combo) = &mut combo_image {
-            combo.center_text(Rectangle::bounds_only(
-                pos - Vector2::one() * radius / 2.0,
-                Vector2::one() * radius,
-            ));
-        }
-
-        
-        let slider_reverse_image = if diff_calc_only { None } else { SkinManager::get_texture("reversearrow", true).await };
-
         let mut slider = Self {
             def,
             curve,
@@ -568,7 +551,7 @@ impl StandardSlider {
             start_judgment: OsuHitJudgments::Miss,
 
             combo_text,
-            combo_image,
+            combo_image: None,
             sound_queue: Vec::new(),
 
             scaling_helper,
@@ -580,9 +563,9 @@ impl StandardSlider {
             shapes: Vec::new(),
             hitwindow_miss: 0.0,
 
-            start_circle_image,
-            end_circle_image,
-            slider_reverse_image,
+            start_circle_image: None,
+            end_circle_image: None,
+            slider_reverse_image: None,
             slider_body_render_target: None
         };
     
@@ -1085,6 +1068,34 @@ impl HitObject for StandardSlider {
         }
     }
 
+    async fn reload_skin(&mut self) {
+        self.start_circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.circle_depth, self.color).await;
+        self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
+        self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
+
+        let mut combo_image = SkinnedNumber::new(
+            Color::WHITE, // TODO: setting: colored same as note or just white?
+            self.circle_depth - 0.0000001, 
+            Vector2::zero(), 
+            self.combo_num as f64,
+            "default",
+            None,
+            0
+        ).await.ok();
+        if let Some(combo) = &mut combo_image {
+            combo.center_text(Rectangle::bounds_only(
+                self.pos - Vector2::one() * self.radius / 2.0,
+                Vector2::one() * self.radius,
+            ));
+        };
+        self.combo_image = combo_image;
+
+        for dot in self.hit_dots.iter_mut() {
+            dot.reload_skin().await;
+        }
+
+        
+    }
 }
 
 #[async_trait]
@@ -1271,7 +1282,6 @@ struct SliderDot {
 }
 impl SliderDot {
     pub async fn new(time:f32, pos:Vector2, depth: f64, scale: f64, slide_layer: u64) -> SliderDot {
-
         SliderDot {
             time,
             pos,
@@ -1313,6 +1323,10 @@ impl SliderDot {
             )));
         }
 
+    }
+
+    pub async fn reload_skin(&mut self) {
+        self.dot_image = SkinManager::get_texture("sliderscorepoint", true).await;
     }
 }
 
@@ -1464,6 +1478,10 @@ impl HitObject for StandardSpinner {
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
     }
+
+    async fn reload_skin(&mut self) {
+
+    }
 }
 #[async_trait]
 impl StandardHitObject for StandardSpinner {
@@ -1514,7 +1532,7 @@ impl StandardHitObject for StandardSpinner {
     fn hit(&mut self, _time: f32) {}
     fn check_distance(&self, _:Vector2) -> bool { true }
 
-    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+    fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
         // self.standard_settings = settings;
     }
 }

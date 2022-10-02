@@ -66,11 +66,6 @@ pub struct ManiaGame {
     /// true if held
     column_states: Vec<bool>,
 
-    // // hit timing bar stuff
-    // hitwindow_300: f32,
-    // hitwindow_100: f32,
-    // hitwindow_miss: f32,
-
     end_time: f32,
     sv_mult: f64,
     column_count: u8,
@@ -231,7 +226,7 @@ impl ManiaGame {
 }
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap:&Beatmap, _diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
+    async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = get_settings!().mania_settings.clone();
@@ -324,7 +319,7 @@ impl GameMode for ManiaGame {
             DEFAULT_SNAP
         };
 
-        match beatmap {
+        let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
                 let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
@@ -426,23 +421,12 @@ impl GameMode for ManiaGame {
                     //TODO
                 }
 
-                // get end time
-                for col in s.columns.iter_mut() {
-                    col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-                    if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.end_time(0.0));
-                    }
-                }
-                s.end_time += 1000.0;
-
                 s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
                     time: b.time,
                     slider_velocity: 100.0 / (-b.beat_length as f64) 
                 }).collect());
 
-                s.load_col_images().await;
-
-                Ok(s)
+                s
             }
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
@@ -529,21 +513,9 @@ impl GameMode for ManiaGame {
                         ).await));
                     }
                 }
-        
-                // get end time
-                for col in s.columns.iter_mut() {
-                    col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-                    if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.end_time(0.0));
-                    }
-                }
-                s.end_time += 1000.0;
-
                 s.integrate_velocity(beatmap.slider_velocities.iter().map(|&x| x.into()).collect());
 
-                s.load_col_images().await;
-        
-                Ok(s)
+                s
             }
             Beatmap::Stepmania(beatmap) => {
                 // stepmania maps are always 4k
@@ -631,25 +603,28 @@ impl GameMode for ManiaGame {
                         ).await));
                     }
                 }
-        
-                // get end time
-                for col in s.columns.iter_mut() {
-                    col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-                    if let Some(last_note) = col.iter().last() {
-                        s.end_time = s.end_time.max(last_note.end_time(0.0));
-                    }
-                }
-                s.end_time += 1000.0;
 
                 s.integrate_velocity(Vec::new());
 
-                s.load_col_images().await;
-                
-                Ok(s)
+                s
             }
             
-            _ => Err(BeatmapError::UnsupportedBeatmap.into()),
+            _ => return Err(BeatmapError::UnsupportedBeatmap.into()),
+        };
+
+        // get end time
+        for col in s.columns.iter_mut() {
+            col.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
+            if let Some(last_note) = col.iter().last() {
+                s.end_time = s.end_time.max(last_note.end_time(0.0));
+            }
         }
+        s.end_time += 1000.0;
+        if diff_calc_only {
+            s.reload_skin().await;
+        }
+
+        Ok(s)
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
@@ -1003,6 +978,25 @@ impl GameMode for ManiaGame {
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {
+    }
+    
+    async fn reload_skin(&mut self) {
+        // reload skin settings
+        let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
+        for i in all_mania_skin_settings.iter() {
+            if i.keys == self.column_count {
+                self.mania_skin_settings = Some(Arc::new(i.clone()));
+                break;
+            }
+        }
+        
+        for c in self.columns.iter_mut() {
+            for n in c.iter_mut() {
+                n.reload_skin().await;
+            }
+        }
+        
+        self.load_col_images().await;
     }
 }
 

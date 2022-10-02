@@ -105,6 +105,7 @@ pub struct IngameManager {
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
+    skin_helper: SkinChangeHelper,
 }
 
 impl IngameManager {
@@ -180,6 +181,7 @@ impl IngameManager {
             beatmap_preferences,
 
             common_game_settings,
+            skin_helper: SkinChangeHelper::new().await,
 
             gamemode,
             score_list: Vec::new(),
@@ -395,7 +397,12 @@ impl IngameManager {
     pub async fn update(&mut self) {
         // update settings
         self.settings.update();
-
+        if self.skin_helper.check().await {
+            SkinManager::change_skin(self.settings.current_skin.clone(), true).await;
+            self.gamemode.reload_skin().await;
+            info!("reloading skin");
+        }
+        
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
             self.gamemode.time_jump(time).await;
@@ -1142,6 +1149,10 @@ impl IngameManager {
         self.settings.update();
         self.gamemode.force_update_settings(&self.settings).await;
     }
+
+    pub async fn reload_skin(&mut self) {
+        self.gamemode.reload_skin().await;
+    }
 }
 
 // Spectator Stuff
@@ -1213,6 +1224,7 @@ impl Default for IngameManager {
             settings: Default::default(),
             window_size: Default::default(),
             pending_time_jump: None,
+            skin_helper: SkinChangeHelper::new_empty()
         }
     }
 }

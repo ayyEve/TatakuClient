@@ -175,7 +175,7 @@ impl GameMode for TaikoGame {
         });
 
 
-        match beatmap {
+        let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
                     notes: Vec::new(),
@@ -300,12 +300,7 @@ impl GameMode for TaikoGame {
                     ).await);
                     s.notes.push(spinner);
                 }
-
-                if s.notes.len() == 0 {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
-                s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-                s.end_time = s.notes.iter().last().unwrap().time();
-
-                Ok(s)
+                s
             }
             Beatmap::Adofai(beatmap) => {
                 let settings = Arc::new(get_settings!().taiko_settings.clone());
@@ -344,17 +339,27 @@ impl GameMode for TaikoGame {
                         playfield.clone(),
                         diff_calc_only,
                     ).await);
+
                     s.notes.push(note);
                 }
 
-                s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-                s.end_time = s.notes.iter().last().unwrap().time();
-
-                Ok(s)
+                s
             }
 
-            _ => Err(BeatmapError::UnsupportedMode.into()),
+            _ => return Err(BeatmapError::UnsupportedMode.into()),
+        };
+
+        if s.notes.len() == 0 {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
+        s.end_time = s.notes.iter().last().unwrap().time();
+
+        if !diff_calc_only {
+            for n in s.notes.iter_mut() {
+                n.reload_skin().await;
+            }
         }
+
+        Ok(s)
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
@@ -783,6 +788,13 @@ impl GameMode for TaikoGame {
 
 
 
+    }
+
+    
+    async fn reload_skin(&mut self) {
+        for n in self.notes.iter_mut() {
+            n.reload_skin().await;
+        }
     }
 }
 
