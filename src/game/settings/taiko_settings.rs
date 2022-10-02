@@ -1,25 +1,37 @@
 use crate::prelude::*;
+use tataku_client_proc_macros::Settings;
 
 // TODO: TaikoPlayfield, TaikoNote::playfield_changed(&mut self, playfield:Arc<TaikoPlayfield>)
 
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Settings)]
+#[Setting(prefix="taiko_settings")]
 pub struct TaikoSettings {
     // input
+    #[Setting(text="Left Kat")]
     pub left_kat: Key,
+    #[Setting(text="Left Don")]
     pub left_don: Key,
+    #[Setting(text="Right Don")]
     pub right_don: Key,
+    #[Setting(text="Right Kat")]
     pub right_kat: Key,
+    #[Setting(text="Ignore Mouse Buttons")]
     pub ignore_mouse_buttons: bool,
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
     // sv
+    #[Setting(text="Static SV")]
     pub static_sv: bool,
+    #[Setting(text="SV Multiplier", min=1, max=2)]
     pub sv_multiplier: f32,
 
     // size stuff
+    #[Setting(text="Note Radius", min=1, max=100)]
     pub note_radius: f64,
+    #[Setting(text="Big Note Scale", min=1, max=5)]
     pub big_note_multiplier: f64,
 
     /// hit area, but calculated before use
@@ -30,11 +42,15 @@ pub struct TaikoSettings {
     pub hit_position_offset: [f64; 2],
 
     /// hit area raidus multiplier, 1.0 = note radius
+    #[Setting(text="Hit Area Radius Scale", min=1, max=5)]
     pub hit_area_radius_mult: f64,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
+    #[Setting(text="Playfield Vertical Padding", min=0, max=20)]
     pub playfield_height_padding: f64,
 
+    #[Setting(text="Don Color")]
     pub don_color_hex: String,
+    #[Setting(text="Kat Color")]
     pub kat_color_hex: String,
 
     #[serde(skip)]
@@ -44,6 +60,7 @@ pub struct TaikoSettings {
 
     
     /// how far above the hit position should hit indicators be?
+    #[Setting(text="Hit Judgment Y-Offset", min=0, max=100)]
     pub judgement_indicator_offset: f64,
 }
 impl TaikoSettings {

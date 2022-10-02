@@ -24,6 +24,8 @@ pub struct BeatmapsetItem {
     // diff_calc_bombs: Vec<Bomb<(String, f32)>>,
 
     display_text: String,
+
+    double_clicked: bool
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String, mods: Arc<ModManager>) -> BeatmapsetItem {
@@ -36,7 +38,8 @@ impl BeatmapsetItem {
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
-            current_mod_manager: mods
+            current_mod_manager: mods,
+            double_clicked: false
         }
     }
 
@@ -86,16 +89,18 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 }
 impl ScrollableItem for BeatmapsetItem {
-    fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.beatmaps[self.selected_index].clone())}
+    fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.double_clicked)}
 
     fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
         if self.selected && self.hover {
+            let last_index = self.selected_index;
             // find the clicked item
             // we only care about y pos, because we know we were clicked
             let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
             let index = (((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
 
             self.selected_index = index;
+            self.double_clicked = index == last_index;
 
             return true;
         }

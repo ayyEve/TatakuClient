@@ -1,9 +1,11 @@
 use crate::prelude::*;
-use serde::{Serialize, Deserialize};
+use tataku_client_proc_macros::Settings;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Settings)]
+#[Setting(prefix="mania_settings")]
 pub struct ManiaSettings {
     // sv
     pub static_sv: bool,

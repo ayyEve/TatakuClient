@@ -27,6 +27,8 @@ pub struct SkinnedNumber {
     pub number: f64,
     pub floating_precision: usize,
     context: Option<Context>,
+
+    cache: Arc<parking_lot::RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
@@ -87,26 +89,24 @@ impl SkinnedNumber {
             depth,
             number,
 
+            cache: Arc::new(parking_lot::RwLock::new((number, number_as_text(number, floating_precision, &symbol)))),
             number_textures: textures,
             symbol_textures,
             symbol,
             floating_precision,
 
-            context: None
+            context: None,
         })
     }
 
     pub fn number_as_text(&self) -> String {
-        let mut s = crate::format_float(self.number, self.floating_precision);
+        let last = self.cache.read();
+        if last.0 == self.number { return last.1.clone(); }
+        drop(last);
+        
 
-        if self.floating_precision == 0 {
-            s = s.split(".").next().unwrap().to_owned();
-        }
-
-        if let Some(symb) = self.symbol {
-            s.push(symb);
-        }
-
+        let s = number_as_text(self.number, self.floating_precision, &self.symbol);
+        *self.cache.write() = (self.number, s.clone());
         s
     }
 
@@ -271,3 +271,17 @@ impl Transformable for SkinnedNumber {
     }
 }
 
+
+fn number_as_text(num: f64, precision: usize, symbol: &Option<char>) -> String {
+        let mut s = crate::format_float(num, precision);
+
+        if precision == 0 {
+            s = s.split(".").next().unwrap().to_owned();
+        }
+
+        if let Some(symb) = symbol {
+            s.push(*symb);
+        }
+
+        s
+}

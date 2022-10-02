@@ -1,9 +1,14 @@
 use crate::prelude::*;
+use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Settings)]
+#[Setting(prefix="common_game_settings")]
 pub struct CommonGameplaySettings {
+    #[Setting(text="Increase Offset")]
     pub key_offset_up: Key,
+    #[Setting(text="Decrease Offset")]
     pub key_offset_down: Key,
 
     // duration bar settings
@@ -37,9 +42,9 @@ pub struct CommonGameplaySettings {
     pub healthbar_border_color: Color,
 
 
-
     // hit indicators
     /// how long should a hit indicator be drawn for?
+    #[Setting(text="Hit Indicator Draw Time", min=100, max=500)]
     pub hit_indicator_draw_duration: f32,
 }
 impl CommonGameplaySettings {

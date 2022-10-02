@@ -34,6 +34,7 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn check_finisher(&mut self, _hit_type:HitType, _time:f32, _game_speed: f32) -> bool { false }
 
     fn get_playfield(&self) -> Arc<TaikoPlayfield>;
+    fn set_settings(&mut self, settings: Arc<TaikoSettings>);
 
 
     fn x_at(&self, time:f32) -> f32 {
@@ -59,7 +60,6 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn miss(&mut self, _time: f32) {}
 
     fn hits_to_complete(&self) -> u32 { 1 }
-
 
     fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
 }
@@ -199,6 +199,13 @@ impl TaikoHitObject for TaikoNote {
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
     }
+    
+    fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
+        self.settings = settings.clone();
+        if let Some(i) = &mut self.image{
+            i.update_settings(settings, self.finisher)
+        }
+    }
 }
 
 
@@ -211,7 +218,7 @@ pub struct TaikoSlider {
     time: f32, // ms
     end_time: f32, // ms
     current_time: f32, 
-    // finisher: bool,
+    finisher: bool,
     speed: f32,
     radius: f64,
     // TODO: figure out how to pre-calc this
@@ -221,7 +228,7 @@ pub struct TaikoSlider {
     settings: Arc<TaikoSettings>,
     playfield: Arc<TaikoPlayfield>,
 
-    middle_image:Option<Image>,
+    middle_image: Option<Image>,
     end_image: Option<Image>,
 }
 impl TaikoSlider {
@@ -258,7 +265,7 @@ impl TaikoSlider {
             time, 
             end_time,
             current_time: 0.0,
-            // finisher,
+            finisher,
             radius,
             speed: 0.0,
             depth,
@@ -398,6 +405,19 @@ impl TaikoHitObject for TaikoSlider {
     }
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
+    }
+    
+    fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
+        self.settings = settings.clone();
+
+        for i in [&mut self.middle_image, &mut self.end_image] {
+            if let Some(i) = i {
+                let radius = settings.note_radius * if self.finisher {settings.big_note_multiplier} else {1.0};
+                let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+                i.initial_scale = scale;
+                i.current_scale = scale;
+            }
+        }
     }
 }
 
@@ -562,6 +582,17 @@ impl TaikoHitObject for TaikoSpinner {
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
     }
+    
+    fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
+        self.settings = settings.clone();
+
+        if let Some(i) = &mut self.spinner_image {
+            let radius = settings.note_radius;
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            i.initial_scale = scale;
+            i.current_scale = scale;
+        }
+    }
 }
 
 
@@ -648,5 +679,21 @@ impl HitCircleImageHelper {
     fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
         list.push(Box::new(self.circle.clone()));
         list.push(Box::new(self.overlay.clone()));
+    }
+
+    fn update_settings(&mut self, settings: Arc<TaikoSettings>, finisher: bool) {
+        let radius = if finisher {
+            settings.note_radius * settings.big_note_multiplier
+        } else {
+            settings.note_radius
+        };
+
+        let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+        
+        self.circle.initial_scale = scale;
+        self.circle.current_scale = self.circle.initial_scale;
+        
+        self.overlay.initial_scale = scale;
+        self.overlay.current_scale = self.overlay.initial_scale;
     }
 }

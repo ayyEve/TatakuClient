@@ -1,12 +1,17 @@
 use crate::prelude::*;
+use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Settings)]
+#[Setting(prefix="standard_settings")]
 pub struct StandardSettings {
     // input
-    // #[setting(name="Left Key", input_type="KeyInput")]
+    #[Setting(text="Osu Key 1")]
     pub left_key: Key,
+    #[Setting(text="Osu Key 2")]
     pub right_key: Key,
+    #[Setting(text="Ignore Mouse Buttons")]
     pub ignore_mouse_buttons: bool,
 
     // playfield
@@ -17,18 +22,27 @@ pub struct StandardSettings {
     pub playfield_movelines_thickness: f64,
 
     // display
+    #[Setting(text="Follow Points")]
     pub draw_follow_points: bool,
     pub combo_colors: Vec<String>,
+    #[Setting(text="Show x300s")]
     pub show_300s: bool,
 
     // special effects
+    #[Setting(text="Hit Ripples")]
     pub hit_ripples: bool,
-    pub ripple_hitcircles: bool,
-    pub ripple_scale: f64,
+    #[Setting(text="Slider Tick Ripples")]
     pub slider_tick_ripples: bool,
+    #[Setting(text="Ripple HitCircles")]
+    pub ripple_hitcircles: bool,
+    #[Setting(text="Ripple Scale", min=0.1, max=5.0)]
+    pub ripple_scale: f64,
+    #[Setting(text="Slider Tick Ripples Above")]
     pub slider_tick_ripples_above: bool,
+    #[Setting(text="Combo Color Approach Circles")]
     pub approach_combo_color: bool,
 
+    #[Setting(text="Beatmap Combo Colors")]
     pub use_beatmap_combo_colors: bool,
 }
 impl StandardSettings {

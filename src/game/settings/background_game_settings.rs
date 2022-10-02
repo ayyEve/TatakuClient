@@ -1,14 +1,23 @@
 use crate::prelude::*;
+use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Settings)]
+#[Setting(prefix="background_game_settings")]
 pub struct BackgroundGameSettings {
     /// whether to have gameplay in the main menu bg or not
     #[serde(alias="enabled")]
+    #[Setting(text="Main Menu Background Gameplay")]
     pub main_menu_enabled: bool,
 
     /// whether to have gameplay in the beatmap select menu bg or not
+    #[Setting(text="Map Select Background Gameplay")]
     pub beatmap_select_enabled: bool,
+
+    /// whether to have gameplay in the settings menu bg or not
+    #[Setting(text="Settings Background Gameplay")]
+    pub settings_menu_enabled: bool,
 
     /// gameplay alpha multiplier
     pub opacity: f32,
@@ -22,6 +31,7 @@ impl Default for BackgroundGameSettings {
         Self { 
             main_menu_enabled: true,
             beatmap_select_enabled: true,
+            settings_menu_enabled: true,
             opacity: 0.5,
             hitsound_volume: 0.3,
             mode: "osu".to_owned()

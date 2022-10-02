@@ -700,7 +700,8 @@ impl GameMode for TaikoGame {
         }
     }
 
-    async fn fit_to_area(&mut self, pos:Vector2, size:Vector2) {
+    async fn fit_to_area(&mut self, pos:Vector2, mut size:Vector2) {
+        size.x = self.playfield.size.x;
         self.playfield = Arc::new(TaikoPlayfield { pos, size });
         
         // update notes
@@ -711,6 +712,77 @@ impl GameMode for TaikoGame {
         for tb in self.timing_bars.iter_mut() {
             tb.playfield_changed(self.playfield.clone());
         }
+    }
+
+    
+    async fn force_update_settings(&mut self, settings: &Settings) {
+        let old_sv_mult = self.taiko_settings.sv_multiplier;
+        let old_sv_static = self.taiko_settings.static_sv;
+        
+        let mut settings = settings.taiko_settings.clone();
+        // calculate the hit area
+        settings.init_settings().await;
+        let settings = Arc::new(settings);
+        self.taiko_settings = settings.clone();
+
+
+        // update notes
+        for n in self.notes.iter_mut() {
+            n.set_settings(settings.clone());
+
+            // set note svs
+            if self.taiko_settings.static_sv {
+                n.set_sv(self.taiko_settings.sv_multiplier);
+            } else {
+                let sv = if old_sv_static {
+                    n.get_sv()
+                } else {
+                    n.get_sv() / old_sv_mult
+                } * self.taiko_settings.sv_multiplier;
+                n.set_sv(sv);
+            }
+        }
+
+
+        // update bars
+        for bar in self.timing_bars.iter_mut() {
+            bar.set_settings(settings.clone());
+
+            if self.taiko_settings.static_sv {
+                bar.speed = self.taiko_settings.sv_multiplier;
+            } else {
+                let sv = if old_sv_static {
+                    bar.speed
+                } else {
+                    bar.speed / old_sv_mult
+                } * self.taiko_settings.sv_multiplier;
+                bar.speed = sv;
+            }
+        }
+
+
+        // update images
+        let radius = settings.note_radius * settings.hit_area_radius_mult;
+        let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+
+        for i in [ &mut self.left_don_image, &mut self.right_kat_image ] {
+            if let Some(i) = i {
+                i.initial_scale = scale;
+                i.current_scale = scale;
+            }
+        }
+        
+        for i in [ &mut self.left_kat_image, &mut self.right_don_image] {
+            let scale = scale * Vector2::new(-1.0, 1.0);
+            if let Some(i) = i {
+                i.initial_scale = scale;
+                i.current_scale = scale;
+            }
+        }
+        
+
+
+
     }
 }
 
@@ -1024,6 +1096,12 @@ impl TimingBar {
         self.playfield = new;
     }
 
+    fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
+        self.settings = settings;
+        self.size = Vector2::new(BAR_WIDTH, self.settings.get_playfield(0.0, false).size.y);
+        self.pos = Vector2::new(0.0, self.settings.hit_position.y - self.size.y/2.0);
+    }
+
 }
 
 
@@ -1158,8 +1236,6 @@ pub enum TaikoHit {
     RightDon,
     RightKat
 }
-
-
 
 pub struct TaikoPlayfield {
     pub pos: Vector2,

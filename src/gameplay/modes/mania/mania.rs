@@ -1000,6 +1000,10 @@ impl GameMode for ManiaGame {
 
         self.apply_new_playfield(Arc::new(playfield));
     }
+
+    
+    async fn force_update_settings(&mut self, _settings: &Settings) {
+    }
 }
 
 

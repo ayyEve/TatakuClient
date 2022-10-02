@@ -156,8 +156,11 @@ impl Game {
         let game_start = std::time::Instant::now();
 
 
-        let render_rate   = 1.0 / (self.settings.fps_target as f64);
-        let update_target = 1.0 / self.settings.update_target as f64;
+        let mut last_render_target = self.settings.fps_target as f64;
+        let mut last_update_target = self.settings.update_target as f64;
+
+        let mut render_rate   = 1.0 / last_render_target;
+        let mut update_target = 1.0 / last_update_target;
 
         loop {
             while let Some(e) = self.game_event_receiver.exploded() {
@@ -172,6 +175,36 @@ impl Game {
                     }
                 }
             }
+
+            
+            // update our settings
+            let last_master_vol = self.settings.master_vol;
+            let last_music_vol = self.settings.music_vol;
+            let last_effect_vol = self.settings.effect_vol;
+            
+            if self.settings.update() {
+                let audio_changed = 
+                    last_master_vol != self.settings.master_vol
+                    || last_music_vol != self.settings.music_vol
+                    || last_effect_vol != self.settings.effect_vol;
+
+                // dont save when audio is changed, that would spam too hard
+                if !audio_changed {
+                    // save the settings
+                    self.settings.save().await;
+                }
+
+                if self.settings.fps_target as f64 != last_render_target {
+                    last_render_target = self.settings.fps_target as f64;
+                    render_rate = 1.0 / last_render_target;
+                }
+                if self.settings.update_target as f64 != update_target {
+                    last_update_target = self.settings.update_target as f64;
+                    update_target = 1.0 / last_update_target;
+                }
+
+            }
+
 
             // update our instant's time
             set_time(game_start.elapsed());
@@ -217,23 +250,6 @@ impl Game {
         // update the cursor
         self.cursor_manager.update(elapsed as f64).await;
 
-        // update our settings
-        let last_master_vol = self.settings.master_vol;
-        let last_music_vol = self.settings.music_vol;
-        let last_effect_vol = self.settings.effect_vol;
-
-        if self.settings.update() {
-            let audio_changed = 
-                last_master_vol != self.settings.master_vol
-                || last_music_vol != self.settings.music_vol
-                || last_effect_vol != self.settings.effect_vol;
-
-            // dont save when audio is changed, that would spam too hard
-            if !audio_changed {
-                // save the settings
-                self.settings.save().await;
-            }
-        }
 
         // check window size
         let window_size_updated = self.window_size.update();
@@ -364,7 +380,7 @@ impl Game {
                         // save as png
                         let w = &mut std::io::BufWriter::new(file);
                         let mut encoder = png::Encoder::new(w, *width, *height);
-                        encoder.set_color(png::ColorType::RGB);
+                        encoder.set_color(png::ColorType::Rgb);
 
                         let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
                         check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));

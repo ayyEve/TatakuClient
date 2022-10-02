@@ -25,6 +25,7 @@ pub trait StandardHitObject: HitObject {
     fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {Vec::new()}
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
+    fn set_settings(&mut self, settings: Arc<StandardSettings>);
 
     fn press(&mut self, _time:f32) {}
     fn release(&mut self, _time:f32) {}
@@ -383,6 +384,10 @@ impl StandardHitObject for StandardNote {
     
     fn pos_at(&self, _time: f32) -> Vector2 {
         self.pos
+    }
+
+    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+        self.standard_settings = settings;
     }
 }
 
@@ -1243,6 +1248,10 @@ impl StandardHitObject for StandardSlider {
             self.scaling_helper.scale_coords(self.curve.position_at_time(time))
         }
     }
+
+    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+        self.standard_settings = settings;
+    }
 }
 
 
@@ -1335,7 +1344,6 @@ pub struct StandardSpinner {
     holding: bool,
 
     scaling_helper: Arc<ScalingHelper>,
-
 
     /// alpha multiplier, used for background game
     alpha_mult: f32,
@@ -1505,6 +1513,10 @@ impl StandardHitObject for StandardSpinner {
 
     fn hit(&mut self, _time: f32) {}
     fn check_distance(&self, _:Vector2) -> bool { true }
+
+    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+        // self.standard_settings = settings;
+    }
 }
 
 

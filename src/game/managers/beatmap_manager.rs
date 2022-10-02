@@ -359,7 +359,7 @@ impl BeatmapManager {
         self.on_diffcalc_started.0.ignite(calc_info.clone());
 
         tokio::spawn(async move {
-            DIFF_CALC_LOCK.lock().await;
+            let _ = DIFF_CALC_LOCK.lock().await;
 
             let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
             let mut to_insert = HashMap::new();

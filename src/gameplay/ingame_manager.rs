@@ -87,7 +87,6 @@ pub struct IngameManager {
     /// if in replay mode, what replay frame are we at?
     replay_frame: u64,
 
-    pub background_game_settings: BackgroundGameSettings,
     pub common_game_settings: Arc<CommonGameplaySettings>,
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
@@ -180,7 +179,6 @@ impl IngameManager {
             center_text_helper,
             beatmap_preferences,
 
-            background_game_settings: settings.background_game_settings.clone(),
             common_game_settings,
 
             gamemode,
@@ -304,7 +302,7 @@ impl IngameManager {
 
         // get volume
         let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * self.settings.get_effect_vol();
-        if self.menu_background {vol *= self.background_game_settings.hitsound_volume};
+        if self.menu_background {vol *= self.settings.background_game_settings.hitsound_volume};
 
         self.hitsound_manager.play_sound(note_hitsound, note_hitsamples, vol, normal_by_default);
     }
@@ -815,8 +813,7 @@ impl IngameManager {
         self.judgement_indicators.clear();
 
         if self.menu_background {
-            self.background_game_settings = self.settings.background_game_settings.clone();
-            self.gamemode.apply_auto(&self.background_game_settings)
+            self.gamemode.apply_auto(&self.settings.background_game_settings)
         } else {
             // reset song
             #[cfg(feature="bass_audio")] {
@@ -1141,6 +1138,10 @@ impl IngameManager {
         }
     }
 
+    pub async fn force_update_settings(&mut self) {
+        self.settings.update();
+        self.gamemode.force_update_settings(&self.settings).await;
+    }
 }
 
 // Spectator Stuff
@@ -1189,7 +1190,6 @@ impl Default for IngameManager {
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),
-            background_game_settings: Default::default(), 
             spectator_cache: Default::default(),
             last_spectator_score_sync: 0.0,
             on_start: Box::new(|_|{}),

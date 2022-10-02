@@ -774,6 +774,16 @@ impl GameMode for StandardGame {
             n.time_jump(new_time).await;
         }
     }
+    
+    async fn force_update_settings(&mut self, settings: &Settings) {
+        let mut settings = settings.standard_settings.clone();
+        let settings = Arc::new(settings);
+
+        self.game_settings = settings.clone();
+        for n in self.notes.iter_mut() {
+            n.set_settings(settings.clone());
+        }
+    }
 }
 
 #[async_trait]

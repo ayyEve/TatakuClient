@@ -1,4 +1,6 @@
 use crate::prelude::*;
+use tataku_client_proc_macros::Settings;
+
 
 const SETTINGS_FILE:&str = "settings.json";
 
@@ -23,68 +25,106 @@ macro_rules! get_settings_mut {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+#[derive(Settings)]
 #[serde(default)]
 pub struct Settings {
     // audio
+    // #[Setting(text="Master Volume", category="Audio Settings")]
     pub master_vol: f32,
+    // #[Setting(text="Music Volume")]
     pub music_vol: f32,
+    // #[Setting(text="Effect Volume")]
     pub effect_vol: f32,
+    #[Setting(text="Global Offset", min=-100.0, max=100.0, category="Audio Settings")]
     pub global_offset: f32,
     
     // login
+    #[Setting(text="Tataku Username", category="Tataku Server Settings")]
     pub username: String,
+    #[Setting(text="Tataku Password", password=true)]
     pub password: String,
+    #[Setting(text="Tataku Server Url")]
     pub server_url: String,
+    #[Setting(text="Tataku Score Url")]
     pub score_url: String,
     
     // osu login (for direct)
+    #[Setting(text="Osu Username", category="Osu Integration")]
     pub osu_username: String,
+    #[Setting(text="Osu Password", password=true)]
     pub osu_password: String,
+    #[Setting(text="Osu Api Key", password=true)]
     pub osu_api_key: String,
     
     // game settings
+    #[Subsetting(category="Osu Settings")]
     pub standard_settings: StandardSettings,
+    #[Subsetting(category="Taiko Settings")]
     pub taiko_settings: TaikoSettings,
+    // #[Subsetting(category="Catch Settings")]
     pub catch_settings: CatchSettings,
+    #[Subsetting(category="Mania Settings")]
     pub mania_settings: ManiaSettings,
+    #[Subsetting(category="Background Game Settings")]
     pub background_game_settings: BackgroundGameSettings,
+    #[Subsetting(category="Common Game Settings")]
     pub common_game_settings: CommonGameplaySettings,
-    pub last_played_mode: PlayMode,
+
+    pub last_played_mode: String,
     pub last_score_retreival_method: ScoreRetreivalMethod,
     pub last_sort_by: SortBy,
+    
+    #[Setting(text="Gamemode Ripple Override")]
     pub allow_gamemode_cursor_ripple_override: bool,
+    #[Setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
 
     // window settings
-    pub fps_target: u64,
-    pub update_target: u64,
     pub window_size: [f64; 2],
+    #[Setting(text="FPS Limit", min=15, max=240, category="Window Settings")]
+    pub fps_target: u64,
+    #[Setting(text="Update Limit", min=500, max=10_000)]
+    pub update_target: u64,
+    // #[Setting(text="UI Scale")] // not ready yet
     pub ui_scale: f64,
+    #[Setting(text="Background Dim", min=0, max=1)]
     pub background_dim: f32,
     /// should the game pause when focus is lost?
+    #[Setting(text="Pause on Focus Loss")]
     pub pause_on_focus_lost: bool,
+    #[Setting(text="Raw Mouse Input (requires restart)")]
     pub raw_mouse_input: bool,
 
     // cursor
+    #[Setting(text="Cursor Color", category="Cursor Settings")]
     pub cursor_color: String,
+    #[Setting(text="Cursor Scale", min=0.1, max=10.0)]
     pub cursor_scale: f64,
+    #[Setting(text="Cursor Border", min=0.1, max=5.0)]
     pub cursor_border: f32,
+    #[Setting(text="Cursor Border Color")]
     pub cursor_border_color: String,
 
+    #[Setting(text="Cursor Ripples")]
     pub cursor_ripples: bool,
+    #[Setting(text="Cursor Ripple Color")]
     pub cursor_ripple_color: String,
+    #[Setting(text="Cursor Ripple Scale")]
     pub cursor_ripple_final_scale: f64,
 
-    
+
 
     // misc keybinds
+    #[Setting(text="User Panel Key", category="Common Keybinds")]
     pub key_user_panel: Key,
 
     // other misc
     pub last_git_hash: String,
+    
+    #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
     pub current_skin: String,
-    pub logging_settings: LoggingSettings,
 
+    pub logging_settings: LoggingSettings,
     pub external_games_folders: Vec<String>
 }
 impl Settings {
