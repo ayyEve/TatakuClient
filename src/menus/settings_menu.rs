@@ -67,13 +67,11 @@ impl SettingsMenu {
             manager.force_update_settings().await;
         }
     }
-    pub async fn revert(&mut self, game:&mut Game) {
-        *(*get_settings_mut!()) = self.old_settings.clone();
-
+    pub async fn revert(&mut self, game:&mut Game) { 
         {
             let mut s = get_settings_mut!();
+            **s = self.old_settings.clone();
             s.skip_autosaveing = false;
-            s.save().await;
         }
         
         let menu = game.menus.get("main").unwrap().clone();
