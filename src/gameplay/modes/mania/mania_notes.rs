@@ -502,7 +502,7 @@ impl ManiaHitObject for ManiaHold {
 
     fn get_hitsound(&self) -> (u8, HitSamples) {
         (self.hitsound, self.hitsamples.clone())
-    }
+    } 
     
     fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
         self.mania_skin_settings = settings;

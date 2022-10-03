@@ -106,51 +106,15 @@ impl GameMode for TaikoGame {
         settings.init_settings().await;
         let settings = Arc::new(settings);
 
-
         let mut hit_cache = HashMap::new();
-        let mut left_kat_image = None;
-        let mut left_don_image = None;
-        let mut right_don_image = None;
-        let mut right_kat_image = None;
-        let judgement_helper;
+        let left_kat_image = None;
+        let left_don_image = None;
+        let right_don_image = None;
+        let right_kat_image = None;
+        let judgement_helper= JudgmentImageHelper::new(DefaultHitJudgments::None).await;
 
-        if !diff_calc_only {
-            for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
-                hit_cache.insert(i, -999.9);
-            }
-
-            if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
-                don.depth = -1.0;
-                don.origin.x = don.tex_size().x;
-                don.current_pos = settings.hit_position;
-                
-                let radius = settings.note_radius * settings.hit_area_radius_mult;
-                let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-
-                left_don_image = Some(don.clone());
-                left_don_image.as_mut().unwrap().current_scale = scale;
-
-                right_don_image = Some(don.clone());
-                right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
-            }
-            if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
-                kat.depth = -1.0;
-                kat.origin.x = 0.0;
-                kat.current_pos = settings.hit_position;
-                
-                let radius = settings.note_radius * settings.hit_area_radius_mult;
-                let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-                
-                left_kat_image = Some(kat.clone());
-                left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
-
-                right_kat_image = Some(kat.clone());
-                right_kat_image.as_mut().unwrap().current_scale = scale;
-            }
-
-            judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
-        } else {
-            judgement_helper = JudgmentImageHelper::new(DefaultHitJudgments::None).await;
+        for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
+            hit_cache.insert(i, -999.9);
         }
 
         let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
@@ -354,9 +318,7 @@ impl GameMode for TaikoGame {
         s.end_time = s.notes.iter().last().unwrap().time();
 
         if !diff_calc_only {
-            for n in s.notes.iter_mut() {
-                n.reload_skin().await;
-            }
+            s.reload_skin().await;
         }
 
         Ok(s)
@@ -792,6 +754,38 @@ impl GameMode for TaikoGame {
 
     
     async fn reload_skin(&mut self) {
+
+        if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
+            don.depth = -1.0;
+            don.origin.x = don.tex_size().x;
+            don.current_pos = self.taiko_settings.hit_position;
+            
+            let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+
+            self.left_don_image = Some(don.clone());
+            self.left_don_image.as_mut().unwrap().current_scale = scale;
+
+            self.right_don_image = Some(don.clone());
+            self.right_don_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
+        }
+        if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
+            kat.depth = -1.0;
+            kat.origin.x = 0.0;
+            kat.current_pos = self.taiko_settings.hit_position;
+            
+            let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+            
+            self.left_kat_image = Some(kat.clone());
+            self.left_kat_image.as_mut().unwrap().current_scale = Vector2::new(-1.0, 1.0) * scale;
+
+            self.right_kat_image = Some(kat.clone());
+            self.right_kat_image.as_mut().unwrap().current_scale = scale;
+        }
+
+        self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
+
         for n in self.notes.iter_mut() {
             n.reload_skin().await;
         }
