@@ -88,7 +88,11 @@ impl RenderTarget {
         //Check if FrameBuffer created successfully, and unbind it
         unsafe {
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
+                let err = gl::GetError();
+                error!("error creating render target: {err:#}");
+
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+                
                 return Err(TatakuError::GlError(GlError::RenderBuffer))
             }
             

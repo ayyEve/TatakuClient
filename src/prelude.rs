@@ -15,9 +15,6 @@ pub use std::sync::{Arc, Weak};
 pub use std::sync::atomic::{*, Ordering::SeqCst};
 pub use std::sync::mpsc::{Sender, SyncSender, Receiver, sync_channel, channel};
 
-// rayon imports
-pub use rayon::prelude::*;
-
 // bomb imports
 pub use bombs::*;
 
@@ -42,6 +39,8 @@ pub use graphics::rectangle::Shape;
 pub use tokio::sync::{OnceCell, Mutex, RwLock};
 // serde imports
 pub use serde::{Serialize, Deserialize};
+
+// pub use crossbeam_channel::{ Sender as CrossbeamSender, Receiver as CrossbeamReceiver };
 
 // ui imports
 // pub use ayyeve_piston_ui::menu::*;

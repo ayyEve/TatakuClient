@@ -31,9 +31,9 @@ tokio = { version = "1.16", features = ["full"] }
 rusqlite = { version = "0.27", features = ["bundled"] }
 futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 async-trait = "0.1"
-rayon = "1.5.1"
 bombs = "0.1.5"
 triple_buffer = "6.0"
+# crossbeam-channel = "*"
 
 # gl/piston etc
 # careful when verison bumping these
@@ -41,7 +41,6 @@ gl = "0.13"
 glfw = { version = "0.43.0", features = ["image"] }
 image = "0.23"
 piston = "0.53.0"
-lyon_tessellation = "0.17"
 
 pistoncore-glfw_window = { version = "0.74" }
 ayyeve-piston-ui = { version = "0.6", registry = "tataku" }
@@ -53,7 +52,7 @@ fontdue = "0.7"
 
 
 # bass audio
-bass-rs = { version="0.1", optional = true }
+bass-rs = { version="0.2", optional = true }
 
 # neb audio
 cpal = { version = "0.13.3", optional = true }

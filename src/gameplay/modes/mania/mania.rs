@@ -482,7 +482,7 @@ impl GameMode for ManiaGame {
                         normal_set: 1,
                         addition_set: 0,
                         index: 1,
-                        volume: 100,
+                        volume: 50,
                         filename: None
                     };
 

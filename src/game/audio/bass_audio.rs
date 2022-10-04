@@ -120,7 +120,7 @@ impl Audio {
         Self::load_song_raw(bytes)
     }
     pub fn load_song_raw(bytes: Vec<u8>) -> TatakuResult<StreamChannel> {
-        Ok(StreamChannel::create_from_memory(bytes, 0i32)?)
+        Ok(StreamChannel::load_from_memory(bytes, 0i32)?)
     }
     
     pub fn load(path: impl AsRef<str>) -> TatakuResult<SampleChannel> {

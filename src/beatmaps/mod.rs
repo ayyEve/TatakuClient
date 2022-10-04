@@ -18,15 +18,15 @@ pub enum Beatmap {
     /// used for defaults
     None,
     /// osu file
-    Osu(osu::OsuBeatmap),
+    Osu(Box<osu::OsuBeatmap>),
     /// quaver file
-    Quaver(quaver::QuaverBeatmap),
+    Quaver(Box<quaver::QuaverBeatmap>),
     /// adofai file
-    Adofai(adofai::AdofaiBeatmap),
+    Adofai(Box<adofai::AdofaiBeatmap>),
     /// uTyping beatmap
-    UTyping(u_typing::UTypingBeatmap),
+    UTyping(Box<u_typing::UTypingBeatmap>),
 
-    Stepmania(stepmania::StepmaniaBeatmap),
+    Stepmania(Box<stepmania::StepmaniaBeatmap>),
 }
 impl Beatmap {
     pub fn load_multiple<F:AsRef<Path>>(path: F) -> TatakuResult<Vec<Beatmap>> {
@@ -34,11 +34,11 @@ impl Beatmap {
         if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(vec![Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned())?)]),
-            "qua" => Ok(vec![Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?)]),
-            "adofai" => Ok(vec![Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))]),
-            "txt" => Ok(vec![Beatmap::UTyping(UTypingBeatmap::load(path)?)]),
-            "ssc" | "sm" => Ok(StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(b)).collect()),
+            "osu" => Ok(vec![Beatmap::Osu(Box::new(OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
+            "qua" => Ok(vec![Beatmap::Quaver(Box::new(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))]),
+            "adofai" => Ok(vec![Beatmap::Adofai(Box::new(AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))]),
+            "txt" => Ok(vec![Beatmap::UTyping(Box::new(UTypingBeatmap::load(path)?))]),
+            "ssc" | "sm" => Ok(StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
 
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -48,11 +48,11 @@ impl Beatmap {
         if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(Beatmap::Osu(OsuBeatmap::load(path.to_str().unwrap().to_owned())?)),
-            "qua" => Ok(Beatmap::Quaver(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?)),
-            "adofai" => Ok(Beatmap::Adofai(AdofaiBeatmap::load(path.to_str().unwrap().to_owned()))),
-            "txt" => Ok(Beatmap::UTyping(UTypingBeatmap::load(path.to_str().unwrap().to_owned())?)),
-            "ssc" | "sm" => Ok(Beatmap::Stepmania(StepmaniaBeatmap::load_single(path, meta)?)),
+            "osu" => Ok(Beatmap::Osu(Box::new(OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "qua" => Ok(Beatmap::Quaver(Box::new(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "adofai" => Ok(Beatmap::Adofai(Box::new(AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
+            "txt" => Ok(Beatmap::UTyping(Box::new(UTypingBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(StepmaniaBeatmap::load_single(path, meta)?))),
             
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }

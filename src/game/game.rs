@@ -749,6 +749,8 @@ impl Game {
         
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
+
+        // drain_settings_queue();
     }
 
     async fn draw(&mut self, args: RenderArgs) {

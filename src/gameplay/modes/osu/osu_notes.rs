@@ -634,7 +634,12 @@ impl StandardSlider {
         }
         
         // draw it to the render texture
-        let mut slider_body_render_target = RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await.expect("error creating slider body");
+        let mut slider_body_render_target = loop {
+            match RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await {
+                Ok(r) => break r,
+                Err(e) => error!("error creating render target: {e}"),
+            }
+        };
         slider_body_render_target.image.origin = Vector2::zero();
         slider_body_render_target.image.depth = self.slider_depth;
         self.slider_body_render_target = Some(slider_body_render_target);
