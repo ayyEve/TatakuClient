@@ -5,28 +5,23 @@ pub struct EventHandler<T> {
     /// cached settings
     value: Arc<T>,
 
-    /// what checks for new settings updates
-    receiver: MultiBomb<Arc<T>>,
-
     /// has the value been set yet?
     initialized: bool,
 }
-impl<T> EventHandler<T> {
+impl<T:EventHandlerInitial+PartialEq> EventHandler<T> {
     pub fn update(&mut self) -> bool {
-        let mut changed = false;
-        // while to get the most up-to-date settings
-        while let Some(value) = self.receiver.exploded() {
-            self.value = value;
-            changed |= true;
+        let v = T::get_current();
+        if &self.value != &v {
+            self.value = v;
+            return true;
         }
-        changed
+        false
     }
 }
-impl<T> EventHandler<T> where T:EventHandlerInitial+EventHandlerReceiver {
+impl<T> EventHandler<T> where T:EventHandlerInitial {
     pub async fn new() -> Self {
         Self {
             value: T::get_initial().await,
-            receiver: T::get_receiver(),
             initialized: true
         }
     }
@@ -48,23 +43,17 @@ impl<T> Deref for EventHandler<T> {
     }
 }
 
-impl<T> Default for EventHandler<T> where T:Default+EventHandlerReceiver {
+impl<T> Default for EventHandler<T> where T:Default {
     fn default() -> Self {
         Self { 
             value: Arc::new(T::default()), 
-            receiver: T::get_receiver(),
             initialized: false,
         }
     }
 }
 
-
-
-pub trait EventHandlerReceiver:Sized {
-    fn get_receiver() -> MultiBomb<Arc<Self>>;
-}
-
 #[async_trait]
 pub trait EventHandlerInitial:Sized {
     async fn get_initial() -> Arc<Self>;
+    fn get_current() -> Arc<Self>;
 }

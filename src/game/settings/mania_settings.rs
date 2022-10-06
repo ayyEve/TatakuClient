@@ -2,7 +2,7 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
 #[Setting(prefix="mania_settings")]
@@ -69,7 +69,7 @@ impl Default for ManiaSettings {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct ManiaPlayfieldSettings {
     /// name of this config

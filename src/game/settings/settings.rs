@@ -6,8 +6,6 @@ const SETTINGS_FILE:&str = "settings.json";
 
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Arc<OnceCell<RwLock<Settings>>> = Arc::new(OnceCell::const_new());
-    // static ref WINDOW_SIZE: OnceCell<Vector2> = OnceCell::const_new();
-    // pub static ref LAST_CALLER:Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 }
 
 #[macro_export]
@@ -24,7 +22,7 @@ macro_rules! get_settings_mut {
     }}
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[derive(Settings)]
 #[serde(default)]
 pub struct Settings {
@@ -149,6 +147,7 @@ impl Settings {
         // WINDOW_SIZE.set(s.window_size.into()).unwrap();
         
         SETTINGS.set(RwLock::new(s.clone())).ok().unwrap();
+        *super::SETTINGS_CHECK.write().unwrap() = Arc::new(s.clone());
 
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates

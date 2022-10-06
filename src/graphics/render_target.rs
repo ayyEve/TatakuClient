@@ -89,7 +89,7 @@ impl RenderTarget {
         unsafe {
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
                 let err = gl::GetError();
-                error!("error creating render target: {err:#}");
+                error!("error creating render target: {err}");
 
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
                 

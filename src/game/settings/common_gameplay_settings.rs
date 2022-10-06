@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
 #[Setting(prefix="common_game_settings")]

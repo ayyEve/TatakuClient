@@ -4,7 +4,7 @@ use tataku_client_proc_macros::Settings;
 // TODO: TaikoPlayfield, TaikoNote::playfield_changed(&mut self, playfield:Arc<TaikoPlayfield>)
 
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
 #[Setting(prefix="taiko_settings")]
@@ -132,7 +132,7 @@ impl Default for TaikoSettings {
 }
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TaikoControllerConfig {
     pub left_kat: ControllerInputConfig,
     pub left_don: ControllerInputConfig,

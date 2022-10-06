@@ -337,14 +337,14 @@ impl InputManager {
 
 
 
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct AxisConfig {
     pub axis_id: u8,
     pub threshhold: f64
 }
 
 
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ControllerInputConfig {
     pub button: Option<u8>,
     pub axis: Option<AxisConfig>

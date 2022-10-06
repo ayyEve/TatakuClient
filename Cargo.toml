@@ -33,7 +33,7 @@ futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 async-trait = "0.1"
 bombs = "0.1.5"
 triple_buffer = "6.0"
-# crossbeam-channel = "*"
+crossbeam = "*"
 
 # gl/piston etc
 # careful when verison bumping these

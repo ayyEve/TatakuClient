@@ -3,15 +3,9 @@ use std::ops::{ Deref, DerefMut };
 use tokio::sync::RwLockWriteGuard;
 
 lazy_static::lazy_static! {
-    static ref SETTINGS_CHECK: (Arc<parking_lot::Mutex<MultiFuze<Arc<Settings>>>>, MultiBomb<Arc<Settings>>) = {
-        let (f, b) = MultiBomb::new();
-        (Arc::new(parking_lot::Mutex::new(f)), b)
-    };
+    pub(super) static ref SETTINGS_CHECK: ShardedLock<Arc<Settings>> = ShardedLock::new(Default::default());
     
-    static ref WINDOW_SIZE_CHECK: (Arc<parking_lot::Mutex<MultiFuze<Arc<WindowSize>>>>, MultiBomb<Arc<WindowSize>>) = {
-        let (f, b) = MultiBomb::new();
-        (Arc::new(parking_lot::Mutex::new(f)), b)
-    };
+    static ref WINDOW_SIZE_CHECK: ShardedLock<Arc<WindowSize>> = ShardedLock::new(Arc::new(WindowSize(Vector2::zero())));
 
     static ref CURRENT_WINDOW_SIZE: Arc<parking_lot::RwLock<Arc<WindowSize>>> = Arc::new(parking_lot::RwLock::new(Arc::new(WindowSize(Vector2::zero()))));
 }
@@ -44,22 +38,20 @@ impl<'a> Drop for MutSettingsHelper<'a> {
         trace!("mut settings dropped");
         // assume something was changed for now
         let a = Arc::new(self.guard.clone());
-        SETTINGS_CHECK.0.lock().ignite(a);
+        *SETTINGS_CHECK.write().unwrap() = a
     }
 }
 
 
 // settings helper
 pub type SettingsHelper = EventHandler<Settings>;
-impl EventHandlerReceiver for Settings {
-    fn get_receiver() -> MultiBomb<Arc<Self>> {
-        SETTINGS_CHECK.1.clone() 
-    }
-}
 #[async_trait]
 impl EventHandlerInitial for Settings {
     async fn get_initial() -> Arc<Self> {
         Arc::new(get_settings!().clone())
+    }
+    fn get_current() -> Arc<Self> {
+        SETTINGS_CHECK.read().unwrap().clone()
     }
 }
 
@@ -67,7 +59,7 @@ impl EventHandlerInitial for Settings {
 // window size helper
 pub type WindowSizeHelper = EventHandler<WindowSize>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct WindowSize(pub Vector2);
 impl WindowSize {
     pub fn get() -> Arc<WindowSize> {
@@ -83,15 +75,14 @@ impl Deref for WindowSize {
         &self.0
     }
 }
-impl EventHandlerReceiver for WindowSize {
-    fn get_receiver() -> MultiBomb<Arc<Self>> {
-        WINDOW_SIZE_CHECK.1.clone() 
-    }
-}
 #[async_trait]
 impl EventHandlerInitial for WindowSize {
     async fn get_initial() -> Arc<Self> {
         Self::get()
+    }
+
+    fn get_current() -> Arc<Self> {
+        WINDOW_SIZE_CHECK.read().unwrap().clone()
     }
 }
 impl Default for WindowSize {
@@ -104,5 +95,5 @@ impl Default for WindowSize {
 pub fn set_window_size(new_size: Vector2) {
     let a = Arc::new(WindowSize(new_size));
     *CURRENT_WINDOW_SIZE.write() = a.clone();
-    WINDOW_SIZE_CHECK.0.lock().light(a);
+    *WINDOW_SIZE_CHECK.write().unwrap() = a;
 }
