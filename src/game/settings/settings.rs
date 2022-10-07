@@ -116,6 +116,13 @@ pub struct Settings {
     #[Setting(text="User Panel Key", category="Common Keybinds")]
     pub key_user_panel: Key,
 
+    // double tap protection
+    #[Setting(text="Enable DoubleTap Protection", category="DoubleTap Protection")]
+    pub enable_double_tap_protection: bool,
+    #[Setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0)]
+    pub double_tap_protection_duration: f32,
+
+
     // other misc
     pub last_git_hash: String,
     
@@ -236,6 +243,10 @@ impl Default for Settings {
 
             // keys
             key_user_panel: Key::F8,
+
+            // doubletap protection
+            enable_double_tap_protection: false,
+            double_tap_protection_duration: 80.0,
             
 
             // other

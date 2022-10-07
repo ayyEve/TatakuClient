@@ -111,6 +111,9 @@ impl Game {
         SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
         self.last_skin = settings.current_skin.clone();
 
+        // setup double tap protection
+        self.input_manager.set_double_tap_protection(settings.enable_double_tap_protection.then(|| settings.double_tap_protection_duration));
+
         // beatmap manager loop
         BeatmapManager::download_check_loop();
         
@@ -211,6 +214,8 @@ impl Game {
                     self.last_skin = self.settings.current_skin.clone();
                 }
 
+                // update doubletap protection
+                self.input_manager.set_double_tap_protection(self.settings.enable_double_tap_protection.then(|| self.settings.double_tap_protection_duration));
             }
 
 

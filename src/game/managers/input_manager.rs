@@ -1,8 +1,8 @@
 use piston::Event;
-use piston::ResizeEvent;
 use piston::TextEvent;
 use piston::FocusEvent;
 use piston::ButtonEvent;
+use piston::ResizeEvent;
 use piston::input::Button;
 use piston::MouseScrollEvent;
 use piston::MouseCursorEvent;
@@ -58,7 +58,15 @@ pub struct InputManager {
     window_change_focus: Option<bool>,
     register_times: Vec<f32>,
 
-    pub raw_input: bool
+    /// do we try to protect against double taps? if so, whats the duration we should check for?
+    pub double_tap_protection: Option<f32>,
+    
+    /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
+    last_key_press: HashMap<Key, (Instant, bool)>,
+
+
+
+    pub raw_input: bool,
 }
 impl InputManager {
     pub fn new() -> InputManager {
@@ -86,6 +94,9 @@ impl InputManager {
 
             text_cache: String::new(),
             window_change_focus: None,
+
+            double_tap_protection: None,
+            last_key_press: HashMap::new(),
 
             raw_input: false
         }
@@ -116,17 +127,52 @@ impl InputManager {
         }
     }
 
+    pub fn set_double_tap_protection(&mut self, protection: Option<f32>) {
+        self.double_tap_protection = protection;
+    }
 
     pub fn handle_events(&mut self, e:Event) {
         if let Some(button) = e.button_args() {
             match (button.button, button.state) {
                 (Button::Keyboard(key), ButtonState::Press) => {
-                    self.keys.insert(key);
-                    self.keys_down.insert((key, Instant::now()));
+                    let mut ok_to_continue = true;
+
+                    if let Some(check) = self.double_tap_protection {
+                        if let Some((press_time, is_double_tap)) = self.last_key_press.get_mut(&key) {
+                            let since = press_time.as_millis();
+                            if since <= check {
+                                warn!("stopped a doubletap of duration {since:.4}ms");
+                                ok_to_continue = false;
+                                *is_double_tap = false;
+                            }
+                        }
+                    }
+
+                    if ok_to_continue {
+                        self.keys.insert(key);
+                        self.keys_down.insert((key, Instant::now()));
+                        self.last_key_press.insert(key, (Instant::now(), false));
+                    }
                 }
                 (Button::Keyboard(key), ButtonState::Release) => {
-                    self.keys.remove(&key);
-                    self.keys_up.insert((key, Instant::now()));
+                    let mut ok_to_continue = true;
+
+                    if self.double_tap_protection.is_some() {
+                        if let Some((_, is_double_tap)) = self.last_key_press.get(&key) {
+                            if *is_double_tap {
+                                ok_to_continue = false;
+                            }
+                        }
+                    }
+                    
+
+                    if ok_to_continue {
+                        self.keys.remove(&key);
+                        self.keys_up.insert((key, Instant::now()));
+                        // self.last_key_press.remove(&key);
+                    } else {
+                        self.last_key_press.remove(&key);
+                    }
                 }
                 (Button::Mouse(mb), ButtonState::Press) => {
                     self.mouse_buttons.insert(mb);
