@@ -110,7 +110,7 @@ impl OsuDifficultyCalculator {
     }
 }
 #[async_trait]
-impl DiffCalc<super::super::Game> for OsuDifficultyCalculator {
+impl DiffCalc for OsuDifficultyCalculator {
     async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = StandardGame::new(&g, true).await?;

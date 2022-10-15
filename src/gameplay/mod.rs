@@ -13,7 +13,7 @@ pub use gameplay_helpers::*;
 
 use crate::prelude::*;
 #[async_trait]
-pub trait DiffCalc<G:GameMode> where Self:Sized {
-    async fn new(g: &BeatmapMeta) -> TatakuResult<Self>;
+pub trait DiffCalc: Send + Sync {
+    async fn new(g: &BeatmapMeta) -> TatakuResult<Self> where Self:Sized;
     async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32>;
 }

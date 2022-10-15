@@ -57,7 +57,7 @@ pub fn build_gamemodes() {
         mods.push(format!("mod {};", mode_folder));
         build_gamemode_lines.push(format!("        \"{internal_name}\" => Box::new({mode_folder}::Game::new(&beatmap, false).await?),"));
         acc_calc_lines.push(      format!("        \"{internal_name}\" => {mode_folder}::calc_acc(score),"));
-        diff_calc_lines.push(     format!("        \"{internal_name}\" => {mode_folder}::DiffCalc::new(map).await?.calc(mods).await,"));
+        diff_calc_lines.push(     format!("        \"{internal_name}\" => Ok(Box::new({mode_folder}::DiffCalc::new(map).await?)),"));
         display_lines.push(       format!("        \"{internal_name}\" => \"{display_name}\","));
         mode_list.push(           format!("        \"{internal_name}\","));
         hit_judgment_list.push(   format!("        \"{internal_name}\" => Box::new({mode_folder}::DefaultHitJudgment),"))
@@ -93,12 +93,10 @@ pub fn calc_acc(score: &Score) -> f64 {{
     .normal_or(1.0)
 }}
 
-pub async fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode, mods: &ModManager) -> TatakuResult<f32> {{
-    Ok(match &*map.check_mode_override(mode_override) {{{diff_calc_lines}
-        _ => Ok(0.0)
-    }}?
-    // if the number is nan,infinity, etc, replace it with 0.0
-    .normal_or(0.0))
+pub async fn calc_diff(map: &BeatmapMeta, mode_override: PlayMode) -> TatakuResult<Box<dyn DiffCalc>> {{
+    match &*map.check_mode_override(mode_override) {{{diff_calc_lines}
+        _ => Err(TatakuError::Beatmap(BeatmapError::UnsupportedMode))
+    }}
 }}
 
 pub fn gamemode_display_name(mode: &PlayMode) -> &'static str {{

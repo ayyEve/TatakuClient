@@ -1,8 +1,8 @@
 use rand::Rng;
-use std::fs::read_dir;
 use crate::prelude::*;
-use crate::{DOWNLOADS_DIR, SONGS_DIR};
+use std::fs::read_dir;
 pub use diff_calc_stuff::*;
+use crate::{ DOWNLOADS_DIR, SONGS_DIR };
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
@@ -340,58 +340,58 @@ impl BeatmapManager {
     }
 
     
-    // changers
-    pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
-        if !DO_DIFF_CALC { return }
+    // // changers
+    // pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
+    //     if !DO_DIFF_CALC { return }
 
-        warn!("Diff calc start");
-        // this will be what we access and perform diff cals on
-        // it will cause a momentary lagspike, 
-        // but shouldnt lock everything until all diff calcs are complete
-        let maps = self.beatmaps.clone();
-        let mods = mods.clone();
+    //     warn!("Diff calc start");
+    //     // this will be what we access and perform diff cals on
+    //     // it will cause a momentary lagspike, 
+    //     // but shouldnt lock everything until all diff calcs are complete
+    //     let maps = self.beatmaps.clone();
+    //     let mods = mods.clone();
 
-        let calc_info = Arc::new(CalcInfo {
-            playmode: Arc::new(playmode.clone()),
-            mods: Arc::new(mods.clone()),
-        });
+    //     let calc_info = Arc::new(CalcInfo {
+    //         playmode: Arc::new(playmode.clone()),
+    //         mods: Arc::new(mods.clone()),
+    //     });
 
-        self.on_diffcalc_started.0.ignite(calc_info.clone());
+    //     self.on_diffcalc_started.0.ignite(calc_info.clone());
 
-        tokio::spawn(async move {
-            let _ = DIFF_CALC_LOCK.lock().await;
+    //     tokio::spawn(async move {
+    //         let _ = DIFF_CALC_LOCK.lock().await;
 
-            let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
-            let mut to_insert = HashMap::new();
+    //         let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
+    //         let mut to_insert = HashMap::new();
 
-            // perform calc
-            // trace!("Starting Diff Calc");
-            for i in maps {
-                let hash = &i.beatmap_hash;
-                if !existing.contains_key(hash) {
-                    let diff = calc_diff(&i, playmode.clone(), &mods).await.unwrap_or_default();
-                    existing.insert(hash.clone(), diff);
-                    to_insert.insert(hash.clone(), diff);
-                }
-            }
+    //         // perform calc
+    //         // trace!("Starting Diff Calc");
+    //         for i in maps {
+    //             let hash = &i.beatmap_hash;
+    //             if !existing.contains_key(hash) {
+    //                 let diff = calc_diff(&i, playmode.clone(), &mods).await.unwrap_or_default();
+    //                 existing.insert(hash.clone(), diff);
+    //                 to_insert.insert(hash.clone(), diff);
+    //             }
+    //         }
 
-            // insert diffs
-            if to_insert.len() > 0 {
-                DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.into_iter()).await;
-            }
+    //         // insert diffs
+    //         if to_insert.len() > 0 {
+    //             DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.into_iter()).await;
+    //         }
             
             
-            BEATMAP_MANAGER
-                .write()
-                .await
-                .on_diffcalc_completed
-                .0
-                .ignite(Arc::new(DiffCalcCompleteInner::new(existing, calc_info)));
+    //         BEATMAP_MANAGER
+    //             .write()
+    //             .await
+    //             .on_diffcalc_completed
+    //             .0
+    //             .ignite(Arc::new(DiffCalcCompleteInner::new(existing, calc_info)));
             
 
-            warn!("Diff calc done");
-        });
-    }
+    //         warn!("Diff calc done");
+    //     });
+    // }
 }
 
 

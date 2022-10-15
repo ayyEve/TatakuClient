@@ -4,7 +4,7 @@ lazy_static::lazy_static! {
     static ref MOD_MANAGER: Arc<Mutex<ModManager>> = Arc::new(Mutex::new(ModManager::new()));
 }
 
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Hash)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
@@ -37,7 +37,7 @@ impl ModManager {
     }
     pub fn set_speed(&mut self, speed: f32) {
         self.speed = (speed * 100.0).round() as u16;
-        error!("set speed: {speed} -> {}", self.speed);
+        // error!("set speed: {speed} -> {}", self.speed);
     }
 
     fn mods_list(&self, include_speed: bool) -> String {

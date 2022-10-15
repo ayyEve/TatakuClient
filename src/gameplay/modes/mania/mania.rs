@@ -365,7 +365,7 @@ impl GameMode for ManiaGame {
                 // add notes
                 for note in beatmap.notes.iter() {
                     // if metadata.mode == "mania" {
-                        let column = (note.pos.x * s.column_count as f64 / 512.0).floor() as u8;
+                        let column = ((note.pos.x * s.column_count as f64 / 512.0).floor() as u8).min(column_count - 1);
                         let x = s.playfield.col_pos(column);
                         // warn!("{}, {:?}", note.hitsound, note.hitsamples);
 

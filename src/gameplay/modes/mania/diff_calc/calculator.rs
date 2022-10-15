@@ -10,7 +10,7 @@ pub struct ManiaDifficultyCalculator {
 }
 
 #[async_trait]
-impl DiffCalc<super::super::Game> for ManiaDifficultyCalculator {
+impl DiffCalc for ManiaDifficultyCalculator {
     async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = super::super::Game::new(&g, true).await?;

@@ -62,7 +62,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
                 map.mode.clone()
             };
 
-            let diff = calc_diff(&map, playmode, &ModManager::new()).await;
+            let diff = calc_diff(&map, playmode,).await.unwrap().calc(&ModManager::new()).await;
             println!("got diff {diff:?}");
         } else {
             panic!("could not find or load map specified")
@@ -91,7 +91,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
                 i.mode.clone()
             };
 
-            let diff = calc_diff(&i, playmode, &ModManager::new()).await;
+            let diff = calc_diff(&i, playmode).await.unwrap().calc(&ModManager::new()).await;
             data.add(&i, diff.unwrap_or(-1.0));
         }
 

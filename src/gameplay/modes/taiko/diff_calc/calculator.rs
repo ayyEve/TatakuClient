@@ -148,7 +148,7 @@ impl TaikoDifficultyCalculator {
 const WRITE_DEBUG_FILES:bool = false;
 
 #[async_trait]
-impl DiffCalc<TaikoGame> for TaikoDifficultyCalculator {
+impl DiffCalc for TaikoDifficultyCalculator {
     async fn new(g: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(g)?;
         let g = TaikoGame::new(&g, true).await?;

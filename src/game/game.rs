@@ -116,11 +116,15 @@ impl Game {
 
         // beatmap manager loop
         BeatmapManager::download_check_loop();
+
+        // init diff manager
+        init_diffs().await;
         
+        // region == menu setup ==
+
         let mut loading_menu = LoadingMenu::new().await;
         loading_menu.load().await;
 
-        // region == menu setup ==
         let mut menu_init_benchmark = BenchmarkHelper::new("Game::init");
         // main menu
         let main_menu = Arc::new(Mutex::new(MainMenu::new().await));

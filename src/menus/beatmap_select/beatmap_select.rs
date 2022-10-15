@@ -139,7 +139,7 @@ impl BeatmapSelectMenu {
         // recalc diffs
         let mod_manager = ModManager::get().await.clone();
         // self.diff_calc_start_helper.0.ignite(());
-        BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
+        // BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
 
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
@@ -189,10 +189,10 @@ impl BeatmapSelectMenu {
         self.apply_filter(beatmap_manager).await;
 
         // update diffs
-        let mode_clone = self.mode.clone();
-        tokio::spawn(async {
-            BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
-        });
+        // let mode_clone = self.mode.clone();
+        // tokio::spawn(async {
+        //     BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
+        // });
     }
 
 
@@ -876,6 +876,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 self.select_map(game, hash, false).await;
                 self.beatmap_scroll.scroll_to_selection();
             }
+        }
+
+        if key == F7 && mods.ctrl {
+            let playmode = self.mode.clone();
+            tokio::spawn(async move {
+                do_diffcalc(playmode).await;
+            });
         }
 
 
