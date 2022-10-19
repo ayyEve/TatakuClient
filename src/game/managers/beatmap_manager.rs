@@ -1,7 +1,6 @@
 use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
-pub use diff_calc_stuff::*;
 use crate::{ DOWNLOADS_DIR, SONGS_DIR };
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
@@ -29,9 +28,6 @@ pub struct BeatmapManager {
     /// helpful when a map is deleted
     pub(crate) force_beatmap_list_refresh: bool,
 
-    pub on_diffcalc_started: (MultiFuse<DiffCalcStart>, MultiBomb<DiffCalcStart>),
-    pub on_diffcalc_completed: (MultiFuse<DiffCalcComplete>, MultiBomb<DiffCalcComplete>),
-
     pub new_map_added: (MultiFuse<Arc<BeatmapMeta>>, MultiBomb<Arc<BeatmapMeta>>),
 }
 impl BeatmapManager {
@@ -49,8 +45,6 @@ impl BeatmapManager {
 
             force_beatmap_list_refresh: false,
 
-            on_diffcalc_started: MultiBomb::new(),
-            on_diffcalc_completed: MultiBomb::new(),
             new_map_added: MultiBomb::new()
         }
     }
@@ -403,50 +397,4 @@ pub enum GroupBy {
     Creator,
     // Difficulty,
     Collections,
-}
-
-
-pub mod diff_calc_stuff {
-    use crate::prelude::*;
-
-    pub type DiffCalcStart = Arc<CalcInfo>;
-    pub type DiffCalcComplete = Arc<DiffCalcCompleteInner>;
-
-    pub(super) const DO_DIFF_CALC:bool = false;
-
-    #[derive(Clone)]
-    pub struct CalcInfo {
-        pub mods: Arc<ModManager>,
-        pub playmode: Arc<String>,
-    }
-
-    pub struct DiffCalcCompleteInner {
-        diffs: HashMap<String, f32>,
-        pub mods: Arc<ModManager>,
-        pub playmode: Arc<String>,
-    }
-    impl DiffCalcCompleteInner {
-        pub fn new(diffs: HashMap<String, f32>, calc_info: Arc<CalcInfo>) -> Self {
-            Self {
-                diffs, 
-                mods: calc_info.mods.clone(), 
-                playmode: calc_info.playmode.clone()
-            }
-        }
-
-        pub fn get_mods(&self) -> Arc<ModManager> {
-            self.mods.clone()
-        }
-        pub fn get_mode(&self) -> Arc<String> {
-            self.playmode.clone()
-        }
-    }
-    impl core::ops::Deref for DiffCalcCompleteInner {
-        type Target = HashMap<String, f32>;
-
-        fn deref(&self) -> &Self::Target {
-            &self.diffs
-        }
-    }
-
 }

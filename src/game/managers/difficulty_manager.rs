@@ -1,21 +1,28 @@
 use crate::prelude::*;
 
+const DIFF_FILE:&str = "diffs.db";
+
 lazy_static::lazy_static! {
     static ref BEATMAP_DIFFICULTIES: Arc<ShardedLock<HashMap<DifficultyEntry, f32>>> = Arc::new(ShardedLock::new(HashMap::new()));
 }
 
 
 pub async fn init_diffs() {
-    let all_diffs = DifficultyDatabase::get_all_diffs().await;
+    let all_diffs = match load_all_diffs() {
+        Ok(d) => d,
+        Err(e) => {
+            println!("error loading diffs: {e}");
+            Default::default()
+        }
+    };
     *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;
 }
 
 
-pub async fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Option<f32> {
+pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Option<f32> {
     let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
     BEATMAP_DIFFICULTIES.read().unwrap().get(&diff_key).cloned()
 }
-
 
 
 pub async fn do_diffcalc(playmode: PlayMode) {
@@ -52,8 +59,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
         }
     }
 
-    info!("diffcalc complete for mode {playmode}, adding {} entries", data.len());
-    DifficultyDatabase::insert_many_diffs(&data).await;
+    info!("diffcalc complete for mode {playmode}, added {} entries", data.len());
 
     let mut r = BEATMAP_DIFFICULTIES.write().unwrap();
     for (k, v) in data {
@@ -61,8 +67,31 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     }
 
     info!("diffcalc fully complete for mode {playmode}, total len is {}", r.len());
+    drop(r);
+    
+    if let Err(e) = save_all_diffs() {
+        // TODO: notification?
+        println!("error saving diffs: {e}");
+    }
 }
 
+
+
+fn load_all_diffs() -> TatakuResult<HashMap<DifficultyEntry, f32>> {
+    if exists(DIFF_FILE) {
+        let data = std::fs::read(DIFF_FILE)?;
+        let mut reader = SerializationReader::new(data);
+        Ok(reader.read()?)
+    } else {
+        Ok(Default::default())
+    }
+}
+
+fn save_all_diffs() -> TatakuResult<()> {
+    let entries = &*BEATMAP_DIFFICULTIES.read().unwrap();
+    let bytes = SimpleWriter::new().write(entries.clone()).done();
+    Ok(std::fs::write(DIFF_FILE, bytes)?)
+}
 
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -80,8 +109,27 @@ impl DifficultyEntry {
             mods
         }
     }
+}
 
-    pub fn to_string(&self) -> String {
-        format!(" ")
+impl Serializable for DifficultyEntry {
+    fn read(sr:&mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
+        let map_hash = sr.read()?;
+        let playmode = sr.read()?;
+        let speed = sr.read()?;
+
+        let mut mods = ModManager::default();
+        mods.speed = speed;
+
+        Ok(Self {
+            map_hash,
+            playmode,
+            mods
+        })
+    }
+
+    fn write(&self, sw:&mut SerializationWriter) {
+        sw.write(self.map_hash.clone());
+        sw.write(self.playmode.clone());
+        sw.write(self.mods.speed);
     }
 }

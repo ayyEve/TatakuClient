@@ -45,8 +45,9 @@ pub struct BeatmapSelectMenu {
     settings: SettingsHelper,
 
     background_game: Option<IngameManager>,
+    cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
 
-    cached_maps: Vec<Vec<Arc<BeatmapMeta>>>
+    diffcalc_complete: Option<Bomb<()>>
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
@@ -123,6 +124,8 @@ impl BeatmapSelectMenu {
             background_game: None,
             settings,
             cached_maps: Vec::new(),
+
+            diffcalc_complete: None
         };
 
         // reposition things
@@ -137,9 +140,7 @@ impl BeatmapSelectMenu {
         get_settings_mut!().last_played_mode = new_mode.clone();
 
         // recalc diffs
-        let mod_manager = ModManager::get().await.clone();
-        // self.diff_calc_start_helper.0.ignite(());
-        // BEATMAP_MANAGER.write().await.update_diffs(new_mode.clone(), &mod_manager);
+        self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
 
         // set modes and update diffs
         self.beatmap_scroll.on_text(new_mode.clone());
@@ -199,24 +200,24 @@ impl BeatmapSelectMenu {
     pub async fn apply_filter(&mut self, beatmap_manager:&mut BeatmapManager) {
         self.beatmap_scroll.clear();
         let filter_text = self.search_text.get_text().to_ascii_lowercase();
-        let mut full_list = Vec::new();
         let mods = Arc::new(ModManager::get().await.clone());
         let mode = Arc::new(self.mode.clone());
+        let mut diffcalc = false;
 
+        // temp list which will need to be sorted before adding to the scrollable
+        let mut full_list = Vec::new();
+        
         // used to select the current map in the list
         let current_hash = if let Some(map) = &beatmap_manager.current_beatmap {map.beatmap_hash.clone()} else {String::new()};
-        
+
         for maps in self.cached_maps.iter() {
-            let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| 
-                BeatmapMetaWithDiff::new(
-                    m.clone(),
-                    mods.clone(),
-                    mode.clone(),
-                    Arc::new(HashMap::new()),
-                    beatmap_manager.on_diffcalc_started.1.clone(),
-                    beatmap_manager.on_diffcalc_completed.1.clone(),
-                )
-            ).collect();
+            let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| {
+                let mode = m.check_mode_override((*mode).clone());
+                let diff = get_diff(&m, &mode, &mods);
+                if diff.is_none() { diffcalc = true }
+                
+                BeatmapMetaWithDiff::new(m.clone(), diff)
+            }).collect();
 
             if !filter_text.is_empty() {
                 let filters = filter_text.split(" ");
@@ -235,6 +236,7 @@ impl BeatmapSelectMenu {
             full_list.push(Box::new(i));
         }
 
+        // sort
         macro_rules! sort {
             ($property:tt, String) => {
                 full_list.sort_by(|a, b| a.beatmaps[0].$property.to_lowercase().cmp(&b.beatmaps[0].$property.to_lowercase()))
@@ -243,7 +245,6 @@ impl BeatmapSelectMenu {
                 full_list.sort_by(|a, b| a.beatmaps[0].$property.partial_cmp(&b.beatmaps[0].$property).unwrap())
             }
         }
-
         match self.sort_method {
             SortBy::Title => sort!(title, String),
             SortBy::Artist => sort!(artist, String),
@@ -251,11 +252,20 @@ impl BeatmapSelectMenu {
             SortBy::Difficulty => sort!(diff, Float),
         }
 
-        // sort by artist
-        // full_list.sort_by(|a, b| a.beatmaps[0].artist.to_lowercase().cmp(&b.beatmaps[0].artist.to_lowercase()));
-        for i in full_list {self.beatmap_scroll.add_item(i)}
-
+        for i in full_list { self.beatmap_scroll.add_item(i) }
         self.beatmap_scroll.scroll_to_selection();
+
+        if diffcalc && self.diffcalc_complete.is_none() {
+            let (fuze, bomb) = Bomb::new();
+            self.diffcalc_complete = Some(bomb);
+            
+            let playmode = self.mode.clone();
+            tokio::spawn(async move {
+                do_diffcalc(playmode).await;
+                fuze.ignite(());
+            });
+        }
+
     }
 
 
@@ -500,6 +510,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
 
+        if let Some(_) = self.diffcalc_complete.as_ref().and_then(|b| b.exploded()) {
+            println!("diffcalc done, reload maps");
+            self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
+            self.diffcalc_complete = None;
+        }
+
+
         {
             let mut lock = BEATMAP_MANAGER.write().await;
 
@@ -507,7 +524,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 self.refresh_maps(&mut lock).await;
             }
 
-            let maps = lock.get_new_maps();
+            let maps = lock.get_new_maps(); //TODO: use the multibomb instead
             if maps.len() > 0  {
                 lock.set_current_beatmap(game, &maps[maps.len() - 1], false, true).await;
                 self.refresh_maps(&mut lock).await;
@@ -732,7 +749,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
 
-        // update bg game
+        // draw bg game
         if let Some(manager) = &mut self.background_game {
             manager.draw(args, &mut items).await;
         }

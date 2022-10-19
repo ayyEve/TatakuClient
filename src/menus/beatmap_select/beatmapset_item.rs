@@ -141,7 +141,6 @@ impl ScrollableItem for BeatmapsetItem {
     fn update(&mut self) {
         let mut needs_sort = false;
         for b in self.beatmaps.iter_mut() {
-            b.update();
             needs_sort |= b.sort_pending;
             b.sort_pending = false;
         }

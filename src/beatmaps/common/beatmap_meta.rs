@@ -122,61 +122,22 @@ pub struct BeatmapMetaWithDiff {
     meta: Arc<BeatmapMeta>,
     pub sort_pending: bool,
     
-    playmode: Arc<String>,
-    mods: Arc<ModManager>,
-    pub diff: f32,
-    
-    diffcalc_start: MultiBomb<DiffCalcStart>,
-    diffcalc_complete: MultiBomb<DiffCalcComplete>,
+    pub diff: Option<f32>,
 }
 impl BeatmapMetaWithDiff {
 
     pub fn new(
-        meta: Arc<BeatmapMeta>, 
-        mods: Arc<ModManager>,
-        playmode: Arc<String>, 
-        diffs: Arc<HashMap<String, f32>>,
-        diffcalc_start: MultiBomb<DiffCalcStart>,
-        diffcalc_complete: MultiBomb<DiffCalcComplete>,
+        meta: Arc<BeatmapMeta>,
+        diff: Option<f32>
     ) -> Self {
         Self { 
-            diff: diffs.get(&meta.beatmap_hash).map(|d|*d).unwrap_or(-1.0), 
+            diff, 
             meta, 
-            mods,
-            playmode,
-            diffcalc_start,
-            diffcalc_complete,
             sort_pending: true,
         }
     }
-
-    pub fn update(&mut self) {
-        while let Some(data) = self.diffcalc_start.exploded() {
-            // info!("got calc start");
-            
-            if &self.playmode != &data.playmode {
-                let p2 = Arc::new(self.meta.check_mode_override(data.playmode.as_ref().clone()));
-                if self.playmode != p2 {
-                    self.diff = -1.0;
-                    self.playmode = data.playmode.clone();
-                }
-            }
-            if &self.mods != &data.mods {
-                self.diff = -1.0;
-            }
-
-            self.mods = data.mods.clone();
-        }
-
-        while let Some(data) = self.diffcalc_complete.exploded() {
-            // info!("got calc complete");
-
-            if &data.get_mode() == &self.playmode && &data.get_mods() == &self.mods {
-                self.diff = data.get(&self.meta.beatmap_hash).map(|d|*d).unwrap_or(-1.0);
-                self.sort_pending = true;
-            }
-
-        }
+    pub fn set_diff(&mut self, new_diff: Option<f32>) {
+        self.diff = new_diff
     }
 
     pub fn filter(&self, filter_str: &str) -> bool {
@@ -211,7 +172,7 @@ impl BeatmapMetaWithDiff {
             return match key {
                 // numbers
                 "bpm" => do_comp!(self.bpm_min),
-                "diff"|"stars" => do_comp!(self.diff),
+                "diff"|"stars" => do_comp!(self.diff.unwrap_or_default()),
 
                 // strings
                 "game" => format!("{:?}", self.beatmap_type).to_lowercase() == val.to_lowercase(),
@@ -258,8 +219,11 @@ impl BeatmapMetaWithDiff {
             }
         }
 
-        let diff = if self.diff < 0.0 {"...".to_owned()} else {format!("{:.2}", self.diff)};
-        txt += &format!(", Diff: {}", diff);
+        if let Some(diff) = &self.diff {
+            txt += &format!(", Diff: {:.2}", diff);
+        } else {
+            txt += &format!(", Diff: ...");
+        }
 
         txt
     }
