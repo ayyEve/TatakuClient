@@ -850,7 +850,7 @@ impl IngameManager {
         self.completed = false;
         self.started = false;
         self.failed = false;
-        self.lead_in_time = LEAD_IN_TIME;
+        self.lead_in_time = LEAD_IN_TIME / self.current_mods.get_speed();
         self.lead_in_timer = Instant::now();
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.mods_string = Some(self.current_mods.as_json());
