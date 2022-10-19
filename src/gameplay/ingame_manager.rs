@@ -1118,7 +1118,9 @@ impl IngameManager {
         self.center_text_helper.set_value(format!("Offset: {:.2}ms", self.beatmap_preferences.audio_offset), time);
 
         // update the beatmap offset
-        Database::save_beatmap_prefs(&self.beatmap.hash(), &self.beatmap_preferences);
+        let new_prefs = self.beatmap_preferences.clone();
+        let hash = self.beatmap.hash();
+        tokio::spawn(async move { Database::save_beatmap_prefs(&hash, &new_prefs); });
     }
     
     pub async fn increment_global_offset(&mut self, delta:f32) {
@@ -1197,7 +1199,6 @@ impl Default for IngameManager {
             lead_in_timer: Instant::now(),
             timing_points: Default::default(),
             timing_point_index: Default::default(),
-            // hitsound_cache: Default::default(),
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),
@@ -1231,10 +1232,8 @@ impl Default for IngameManager {
 
 #[cfg(feature="bass_audio")]
 lazy_static::lazy_static! {
-    static ref EMPTY_STREAM:StreamChannel = {
-        // wave file bytes with ~1 sample
-        StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0i32).expect("error creating empty StreamChannel")
-    };
+    // wave file bytes with ~1 sample
+    static ref EMPTY_STREAM:StreamChannel = StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0i32).expect("error creating empty StreamChannel");
 }
 #[cfg(feature="bass_audio")]
 fn create_empty_stream() -> StreamChannel {
