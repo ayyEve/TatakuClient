@@ -20,7 +20,13 @@ pub async fn init_diffs() {
 
 
 pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Option<f32> {
-    let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
+    let mut mods = mods.clone();
+    mods.easy = false;
+    mods.hard_rock = false;
+    mods.nofail = false;
+    mods.autoplay = false;
+
+    let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods);
     BEATMAP_DIFFICULTIES.read().unwrap().get(&diff_key).cloned()
 }
 
