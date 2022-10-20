@@ -78,22 +78,43 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
             )
         ).expect("unknown file export type");
 
-        // perform diff calc on every 
-        for i in maps.iter() {
-            let playmode = if let Some(mode) = &args.gamemode {
-                let new_mode = i.check_mode_override(mode.clone());
+        // // perform diff calc on every 
+        // for i in maps.iter() {
+        //     let playmode = if let Some(mode) = &args.gamemode {
+        //         let new_mode = i.check_mode_override(mode.clone());
+        //         // if a mode is specified, and its not the same as the map (and can't be converted), dont run diffcalc for this map
+        //         if &new_mode != mode { continue }
+        //         new_mode
+        //     } else {
+        //         i.mode.clone()
+        //     };
+        //     let diff = calc_diff(&i, playmode).await.unwrap().calc(&ModManager::new()).await;
+        //     data.add(&i, diff.unwrap_or(-1.0));
+        // }
 
-                // if a mode is specified, and its not the same as the map (and can't be converted), dont run diffcalc for this map
-                if &new_mode != mode { continue }
+        // load existing diffs
+        init_diffs().await;
 
-                new_mode
-            } else {
-                i.mode.clone()
-            };
-
-            let diff = calc_diff(&i, playmode).await.unwrap().calc(&ModManager::new()).await;
-            data.add(&i, diff.unwrap_or(-1.0));
+        // make sure everythings updated
+        for mode in AVAILABLE_PLAYMODES {
+            do_diffcalc(mode.to_owned().to_owned()).await;
         }
+
+        // do the thing
+        let diffs = BEATMAP_DIFFICULTIES.read().unwrap();
+
+        
+        let mut manager = BEATMAP_MANAGER.write().await;
+        for map in Database::get_all_beatmaps().await {
+            manager.add_beatmap(&map);
+        }
+
+        for (a, b) in &*diffs {
+            if let Some(map) = manager.get_by_hash(&a.map_hash) {
+                data.add(&map, a.mods.speed as u32, *b, a.playmode.clone());
+            }
+        }
+
 
         let file_data = data.export(export_type);
         std::fs::write(args.export_file.clone().unwrap_or(format!("diff_calc.{}", export_type.ext())), file_data).expect("error writing test.csv");
@@ -126,26 +147,28 @@ impl DiffCalcExportType {
 
 
 #[derive(Default, Clone)]
-struct DiffCalcData(Vec<(Arc<BeatmapMeta>, f32)>);
+struct DiffCalcData(Vec<(Arc<BeatmapMeta>, u32, f32, String)>);
 impl DiffCalcData {
-    pub fn add(&mut self, map: &Arc<BeatmapMeta>, diff: f32) {
-        self.0.push((map.clone(), diff))
+    pub fn add(&mut self, map: &Arc<BeatmapMeta>, speed: u32, diff: f32, playmode: String) {
+        self.0.push((map.clone(), speed, diff, playmode))
     }
 
     pub fn export(&self, export_type: DiffCalcExportType) -> String {
         match export_type {
             DiffCalcExportType::Csv => {
                 let mut lines = Vec::new();
-                lines.push(format!("Hash,Title,Artist,Version,Diff"));
+                lines.push(format!("Hash,Title,Artist,Version,Speed,Diff,Playmode"));
 
-                for (i, diff) in &self.0 {
+                for (i, speed, diff, mode) in &self.0 {
                     lines.push(format!(
-                        "\"{}\",\"{}\",\"{}\",\"{}\",{}",
+                        "\"{}\",\"{}\",\"{}\",\"{}\",{},{},\"{}\"",
                         i.beatmap_hash,
                         i.title,
                         i.artist,
                         i.version,
-                        diff
+                        speed, 
+                        diff,
+                        mode
                     ));
                 }
 
@@ -160,16 +183,20 @@ impl DiffCalcData {
                     title: String,
                     artist: String,
                     version: String,
-                    diff: f32
+                    speed: u32,
+                    diff: f32,
+                    playmode: String
                 }
 
-                let data: Vec<Data> = self.0.iter().map(|(b, d)| {
+                let data: Vec<Data> = self.0.iter().map(|(b, s, d, m)| {
                     Data {
                         hash: b.beatmap_hash.clone(),
                         title: b.title.clone(),
                         artist: b.artist.clone(),
                         version: b.version.clone(),
-                        diff: *d
+                        speed: *s,
+                        diff: *d,
+                        playmode: m.clone()
                     }
                 }).collect();
 
@@ -180,7 +207,7 @@ impl DiffCalcData {
     }
 }
 impl Deref for DiffCalcData {
-    type Target = Vec<(Arc<BeatmapMeta>, f32)>;
+    type Target = Vec<(Arc<BeatmapMeta>, u32, f32, String)>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

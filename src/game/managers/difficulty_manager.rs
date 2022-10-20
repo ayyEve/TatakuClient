@@ -3,7 +3,7 @@ use crate::prelude::*;
 const DIFF_FILE:&str = "diffs.db";
 
 lazy_static::lazy_static! {
-    static ref BEATMAP_DIFFICULTIES: Arc<ShardedLock<HashMap<DifficultyEntry, f32>>> = Arc::new(ShardedLock::new(HashMap::new()));
+    pub static ref BEATMAP_DIFFICULTIES: Arc<ShardedLock<HashMap<DifficultyEntry, f32>>> = Arc::new(ShardedLock::new(HashMap::new()));
 }
 
 
