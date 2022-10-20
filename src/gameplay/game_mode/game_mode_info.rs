@@ -29,4 +29,9 @@ pub trait GameModeInfo: Send + Sync {
 
     /// get the type of judgments for this game mode
     fn judgment_type(&self) -> Box<dyn HitJudgments>;
+
+    
+    fn get_perf_calc(&self) -> PerformanceCalc {
+        Box::new(|diff, acc| diff * (acc / 0.99).powi(6))
+    }
 }

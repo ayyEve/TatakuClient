@@ -1137,6 +1137,10 @@ impl GameModeInfo for ManiaGame {
         ).await);
         
     }
+
+    fn get_perf_calc(&self) -> PerformanceCalc {
+        Box::new(|diff, acc| diff * (acc / 0.98).powi(6))
+    }
 }
 
 // when the game is dropped, save settings

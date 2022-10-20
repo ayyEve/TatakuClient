@@ -215,6 +215,15 @@ impl IngameManager {
             AccuracyElement::new().await
         ).await);
 
+        // Performance
+        // TODO: calc diff before starting somehow?
+        let diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
+        self.ui_elements.push(UIElement::new(
+            &get_name("perf"),
+            Vector2::new(self.window_size.x, 80.0),
+            PerformanceElement::new(diff, self.gamemode.get_perf_calc()).await
+        ).await);
+
         // Healthbar
         self.ui_elements.push(UIElement::new(
             &get_name("healthbar"),
@@ -988,21 +997,19 @@ impl IngameManager {
         }
 
         // check for offset changing keys
-        {
-            if mods.shift {
-                let mut t = 0.0;
-                if key == self.common_game_settings.key_offset_up {t = 5.0}
-                if key == self.common_game_settings.key_offset_down {t = -5.0}
+        if mods.shift {
+            let mut t = 0.0;
+            if key == self.common_game_settings.key_offset_up { t = 5.0 }
+            if key == self.common_game_settings.key_offset_down { t = -5.0 }
 
-                if t != 0.0 {
-                    self.increment_global_offset(t).await;
-                }
-            } else {
-                if key == self.common_game_settings.key_offset_up {self.increment_offset(5.0).await}
-                if key == self.common_game_settings.key_offset_down {self.increment_offset(-5.0).await}
+            if t != 0.0 {
+                self.increment_global_offset(t).await;
             }
+        } else {
+            if key == self.common_game_settings.key_offset_up { self.increment_offset(5.0).await; }
+            if key == self.common_game_settings.key_offset_down { self.increment_offset(-5.0).await; }
         }
-
+        
 
         gamemode.key_down(key, self).await;
         self.gamemode = gamemode;
