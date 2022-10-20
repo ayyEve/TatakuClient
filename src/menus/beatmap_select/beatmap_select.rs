@@ -93,6 +93,7 @@ impl BeatmapSelectMenu {
             true
         );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
+        beatmap_scroll.set_item_margin(7.0);
 
         let mut m = BeatmapSelectMenu {
             no_maps_notif_sent: false,
