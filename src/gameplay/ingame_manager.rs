@@ -218,10 +218,11 @@ impl IngameManager {
         // Performance
         // TODO: calc diff before starting somehow?
         let diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
+        let perf_fn = perfcalc_for_playmode(self.gamemode.playmode()).await;
         self.ui_elements.push(UIElement::new(
             &get_name("perf"),
             Vector2::new(self.window_size.x, 80.0),
-            PerformanceElement::new(diff, self.gamemode.get_perf_calc()).await
+            PerformanceElement::new(diff, perf_fn).await
         ).await);
 
         // Healthbar

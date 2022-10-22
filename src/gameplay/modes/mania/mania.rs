@@ -1138,7 +1138,7 @@ impl GameModeInfo for ManiaGame {
         
     }
 
-    fn get_perf_calc(&self) -> PerformanceCalc {
+    fn get_perf_calc() -> PerformanceCalc where Self:Sized {
         Box::new(|diff, acc| diff * (acc / 0.98).powi(6))
     }
 }

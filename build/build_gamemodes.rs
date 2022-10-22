@@ -26,6 +26,7 @@ pub fn build_gamemodes() {
     let mut display_lines = vec![String::new()];
     let mut mode_list = Vec::new();
     let mut hit_judgment_list:Vec<String> = Vec::new();
+    let mut perf_calc_lines = vec![String::new()];
 
     for f in files {
         if !f.path().is_dir() {continue}
@@ -60,7 +61,8 @@ pub fn build_gamemodes() {
         diff_calc_lines.push(     format!("        \"{internal_name}\" => Ok(Box::new({mode_folder}::DiffCalc::new(map).await?)),"));
         display_lines.push(       format!("        \"{internal_name}\" => \"{display_name}\","));
         mode_list.push(           format!("        \"{internal_name}\","));
-        hit_judgment_list.push(   format!("        \"{internal_name}\" => Box::new({mode_folder}::DefaultHitJudgment),"))
+        hit_judgment_list.push(   format!("        \"{internal_name}\" => Box::new({mode_folder}::DefaultHitJudgment),"));
+        perf_calc_lines.push(   format!("        \"{internal_name}\" => {mode_folder}::Game::get_perf_calc(),"));
     }
 
     let mods = mods.join("\n");
@@ -70,6 +72,7 @@ pub fn build_gamemodes() {
     let display_lines = display_lines.join("\n");
     let mode_list = format!("\n{}\n", mode_list.join("\n"));
     let hit_judgment_lines = format!("\n{}\n", hit_judgment_list.join("\n"));
+    let perf_calc_lines = format!("\n{}\n", perf_calc_lines.join("\n"));
 
     let output_file = format!(r#"use crate::prelude::*;
 {mods}
@@ -83,6 +86,21 @@ pub async fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) ->
     }};
 
     Ok(IngameManager::new(beatmap, gamemode).await)
+}}
+
+pub async fn gamemode_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<Box<dyn GameMode>> {{
+    let beatmap = Beatmap::from_metadata(beatmap)?;
+    let gamemode:Box<dyn GameMode> = match &*beatmap.playmode(playmode) {{{gamemode_lines}
+        _ => return Err(TatakuError::GameMode(GameModeError::UnknownGameMode))
+    }};
+    
+    Ok(gamemode)
+}}
+
+pub async fn perfcalc_for_playmode(playmode: PlayMode) -> PerformanceCalc {{
+    match &*playmode {{ {perf_calc_lines}
+        _ => return NoMode::get_perf_calc()
+    }}
 }}
 
 pub fn calc_acc(score: &Score) -> f64 {{

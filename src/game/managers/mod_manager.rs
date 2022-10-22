@@ -4,7 +4,7 @@ lazy_static::lazy_static! {
     static ref MOD_MANAGER: Arc<Mutex<ModManager>> = Arc::new(Mutex::new(ModManager::new()));
 }
 
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Hash)]
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this

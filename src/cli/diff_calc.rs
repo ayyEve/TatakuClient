@@ -1,32 +1,5 @@
 use crate::prelude::*;
 
-#[derive(Default)]
-pub struct DiffCalcArgs {
-    pub gamemode: Option<String>,
-    pub map: Option<String>,
-    pub mods: Option<String>,
-    pub export_file: Option<String>,
-    pub export_type: Option<String>
-}
-impl DiffCalcArgs {
-    pub fn from_args(args: &mut impl Iterator<Item = String>) -> Self {
-        let mut data = Self::default();
-
-        while let Some(other_arg) = args.next() {
-            match &*other_arg {
-                "--mode" => data.gamemode = args.next(),
-                "--map"  => data.map = args.next(),
-                "--mods" => data.mods = args.next(),
-                "--export_file" => data.export_file = args.next(),
-                "--export_type" => data.export_type = args.next(),
-
-                _ => {}
-            }
-        }
-
-        data
-    }
-}
 
 // entry point for this command
 // TODO!: implement mods
@@ -35,10 +8,79 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
 
     // parse cli args
     let args = DiffCalcArgs::from_args(args);
-    
+
     // load maps from db
     let maps = Database::get_all_beatmaps().await;
 
+    if let Some(replay_path) = args.replay_file {
+        // load the replay file
+        let bytes = std::fs::read(&replay_path).expect("error reading replay file provided");
+        let mut reader = SerializationReader::new(bytes);
+        let replay:Replay = reader.read().expect("error parsing replay file provided");
+        let score = replay.score_data.expect("This replay has no score data");
+        println!("got score playmode {}", score.playmode);
+
+        // load the map
+        let mut map = None;
+        if let Some(map_hash_or_path) = args.map.as_ref().or_else(||Some(&score.beatmap_hash)) {
+            // try to find by hash or path
+            for i in maps.iter() {
+                if &i.beatmap_hash == map_hash_or_path {
+                    map = Some(i.clone())
+                }
+            }
+            if map.is_none() {
+                match Beatmap::load_multiple(map_hash_or_path) {
+                    Ok(maps) => {
+                        map = maps.get(0).map(|m|m.get_beatmap_meta());
+                        if let Some(map) = &map {
+                            // add it to the beatmap manager
+                            BEATMAP_MANAGER.write().await.add_beatmap(map);
+                        }
+                    },
+                    Err(e) => panic!("error loading beatmap '{}': {}", map_hash_or_path, e),
+                }
+            }
+        }
+        let map = map.expect("no beatmap?");
+
+        // get the diff
+
+        // load existing diffs
+        init_diffs().await;
+
+        // make sure everythings updated
+        for mode in AVAILABLE_PLAYMODES {
+            do_diffcalc(mode.to_owned().to_owned()).await;
+        }
+
+        let mut mods = ModManager::default();
+        mods.set_speed(score.speed);
+
+        let diff = get_diff(&map, &score.playmode, &mods).unwrap_or_default();
+
+        // calc the performance
+        let perf_fn = perfcalc_for_playmode(score.playmode.clone()).await;
+        let perf = (perf_fn)(diff, score.accuracy as f32);
+        println!("got perf: {perf}");
+        return;
+    }
+
+
+    // get the export type
+
+    // do this here so we dont waste time calcing everything just to error later
+    let export_type = DiffCalcExportType::get_type(
+        args.export_type.clone().unwrap_or(
+            args.export_file.clone().unwrap_or("csv".to_owned()).split(".").last().unwrap_or("csv").to_string()
+        )
+    ).expect("unknown file export type");
+
+    // setup data to export
+    let mut data = DiffCalcData::default();
+
+
+    // calc the data
     if let Some(map_hash_or_path) = &args.map {
         let mut map = None;
         
@@ -55,28 +97,26 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
             }
         }
 
-        if let Some(map) = map {
-            let playmode = if let Some(mode) = &args.gamemode {
-                map.check_mode_override(mode.clone())
-            } else {
-                map.mode.clone()
-            };
-
-            let diff = calc_diff(&map, playmode,).await.unwrap().calc(&ModManager::new()).await;
-            println!("got diff {diff:?}");
+        let map = map.expect("could not find or load map specified");
+        let playmode = if let Some(mode) = &args.gamemode {
+            map.check_mode_override(mode.clone())
         } else {
-            panic!("could not find or load map specified")
+            map.mode.clone()
+        };
+
+        let mut calc = calc_diff(&map, playmode.clone()).await.expect("error creating diffcalc");
+        let mod_mutations = vec![ModManager::default()];
+        
+        for speed in (50..200).step_by(5) {
+            for mut mods in mod_mutations.clone() {
+                mods.set_speed(speed as f32 / 100.0);
+
+                let diff = calc.calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
+                data.add(&map, mods.speed as u32, diff, playmode.clone());
+            }
         }
 
     } else {
-        let mut data = DiffCalcData::default();
-
-        // do this here so we dont waste time calcing everything just to error later
-        let export_type = DiffCalcExportType::get_type(
-            args.export_type.clone().unwrap_or(
-                args.export_file.clone().unwrap_or("csv".to_owned()).split(".").last().unwrap_or("csv").to_string()
-            )
-        ).expect("unknown file export type");
 
         // // perform diff calc on every 
         // for i in maps.iter() {
@@ -114,26 +154,58 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
                 data.add(&map, a.mods.speed as u32, *b, a.playmode.clone());
             }
         }
-
-
-        let file_data = data.export(export_type);
-        std::fs::write(args.export_file.clone().unwrap_or(format!("diff_calc.{}", export_type.ext())), file_data).expect("error writing test.csv");
     }
 
+    let file_data = data.export(export_type);
+    std::fs::write(args.export_file.clone().unwrap_or(format!("diff_calc.{}", export_type.ext())), file_data).expect("error writing test.csv");
 
+    println!("calc done");
 }
 
+#[derive(Default)]
+pub struct DiffCalcArgs {
+    pub gamemode: Option<String>,
+    pub map: Option<String>,
+    pub mods: Option<String>,
+    pub export_file: Option<String>,
+    pub export_type: Option<String>,
+
+    pub replay_file: Option<String>,
+}
+impl DiffCalcArgs {
+    pub fn from_args(args: &mut impl Iterator<Item = String>) -> Self {
+        let mut data = Self::default();
+
+        while let Some(other_arg) = args.next() {
+            match &*other_arg {
+                "--mode" => data.gamemode = args.next(),
+                "--map"  => data.map = args.next(),
+                "--mods" => data.mods = args.next(),
+                "--export_file" => data.export_file = args.next(),
+                "--export_type" => data.export_type = args.next(),
+
+                "--replay_file" => data.replay_file = args.next(),
+
+                _ => {}
+            }
+        }
+
+        data
+    }
+}
 
 #[derive(Copy, Clone)]
 enum DiffCalcExportType {
     Csv,
     Json,
+    Db
 }
 impl DiffCalcExportType {
     pub fn get_type(s: String) -> Option<DiffCalcExportType> {
         match &*s.to_lowercase() {
             "csv" => Some(DiffCalcExportType::Csv),
             "json" => Some(DiffCalcExportType::Json),
+            "db" => Some(DiffCalcExportType::Db),
             _ => None
         }
     }
@@ -141,6 +213,7 @@ impl DiffCalcExportType {
         match self {
             DiffCalcExportType::Csv  => "csv",
             DiffCalcExportType::Json => "json",
+            DiffCalcExportType::Db => "db",
         }
     }
 }
@@ -153,7 +226,7 @@ impl DiffCalcData {
         self.0.push((map.clone(), speed, diff, playmode))
     }
 
-    pub fn export(&self, export_type: DiffCalcExportType) -> String {
+    pub fn export(&self, export_type: DiffCalcExportType) -> Vec<u8> {
         match export_type {
             DiffCalcExportType::Csv => {
                 let mut lines = Vec::new();
@@ -172,11 +245,10 @@ impl DiffCalcData {
                     ));
                 }
 
-                lines.join("\n")
+                lines.join("\n").into_bytes()
             }
 
             DiffCalcExportType::Json => {
-
                 #[derive(Serialize)]
                 struct Data {
                     hash: String,
@@ -200,7 +272,21 @@ impl DiffCalcData {
                     }
                 }).collect();
 
-                serde_json::to_string_pretty(&data).expect("Error serializing data. please report this.")
+                serde_json::to_string_pretty(&data).expect("Error serializing data. please report this.").into_bytes()
+            }
+
+            DiffCalcExportType::Db => {
+                let mut db = SerializationWriter::new();
+                db.write(self.0.len());
+
+                for (map, speed, diff, playmode) in &self.0 {
+                    db.write(map.beatmap_hash.clone());
+                    db.write(playmode.clone());
+                    db.write(*speed);
+                    db.write(*diff);
+                }
+
+                db.data()
             }
         }
 

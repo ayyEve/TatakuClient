@@ -94,12 +94,11 @@ async fn main() {
 
     if play_game {
         start_game().await;
+
+        // game.await.ok().expect("error finishing game?");
+        info!("byebye!");
     }
 
-
-    
-    // game.await.ok().expect("error finishing game?");
-    info!("byebye!");
 }
 
 async fn start_game() {

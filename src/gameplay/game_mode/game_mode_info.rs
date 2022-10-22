@@ -31,7 +31,7 @@ pub trait GameModeInfo: Send + Sync {
     fn judgment_type(&self) -> Box<dyn HitJudgments>;
 
     
-    fn get_perf_calc(&self) -> PerformanceCalc {
+    fn get_perf_calc() -> PerformanceCalc where Self:Sized {
         Box::new(|diff, acc| diff * (acc / 0.99).powi(6))
     }
 }

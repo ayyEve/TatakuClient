@@ -5,6 +5,9 @@ use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
+fn get_texture_load_queue<'a>() -> TatakuResult<&'a UnboundedSender<LoadImage>> {
+    TEXTURE_LOAD_QUEUE.get().ok_or(TatakuError::String("texture load queue not set".to_owned()))
+}
 
 pub async fn texture_load_loop() {
     let (texture_load_sender, mut texture_load_receiver) = unbounded_channel();
@@ -226,7 +229,7 @@ pub async fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<Arc<Texture>>
     trace!("loading tex {}", path);
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Path(path, sender)).ok().expect("no?");
+    get_texture_load_queue()?.send(LoadImage::Path(path, sender)).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -239,7 +242,7 @@ pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<Arc<Texture>> {
     trace!("loading tex data");
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Image(data, sender)).ok().expect("no?");
+    get_texture_load_queue()?.send(LoadImage::Image(data, sender)).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -251,7 +254,7 @@ pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<Arc<Texture>> {
 pub fn load_font_data(font: Font2, size:FontSize) -> TatakuResult<()> {
     // info!("loading font char ('{ch}',{size})");
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::Font(font, size, sender)).ok().expect("no?");
+    get_texture_load_queue()?.send(LoadImage::Font(font, size, sender)).ok().expect("no?");
 
     loop {
         match receiver.try_recv() {
@@ -268,7 +271,7 @@ pub async fn create_render_target(size: (f64, f64), callback: impl FnOnce(&mut R
     trace!("create render target");
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
+    get_texture_load_queue()?.send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t
@@ -281,7 +284,7 @@ pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut Re
     trace!("update render target");
 
     let (sender, mut receiver) = unbounded_channel();
-    TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+    get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
 
     if let Some(t) = receiver.recv().await {
         t

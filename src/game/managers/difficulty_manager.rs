@@ -41,7 +41,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
         .clone();
     let maps = maps
         .iter()
-        .filter(|m|m.check_mode_override(playmode.clone()) == playmode);
+        .filter(|m| m.check_mode_override(playmode.clone()) == playmode);
 
 
     let mod_mutations = vec![ModManager::default()];
@@ -58,6 +58,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
                     let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
                     if existing.contains_key(&diff_key) { continue }
 
+                    
                     let diff = calc.calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
                     data.insert(diff_key, diff);
                 }
@@ -100,7 +101,7 @@ fn save_all_diffs() -> TatakuResult<()> {
 }
 
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DifficultyEntry {
     pub map_hash: String,
     pub playmode: String,
