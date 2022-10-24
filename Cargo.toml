@@ -18,6 +18,7 @@ discord = ["discord-rich-presence"]
 debug_sliders = []
 debug_hitsounds = []
 snipping = []
+debug_perf_rating = []
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }

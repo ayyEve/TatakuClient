@@ -14,7 +14,7 @@ pub struct PerformanceElement {
 impl PerformanceElement {
     pub async fn new(diff: f32, calc: PerformanceCalc) -> Self {
         let number:u32 = 1_000_000_000;
-        let mut perf_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "combo", None, 2).await.ok();
+        let mut perf_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 2).await.ok();
         
         // get the bounds
         // TODO: make it not rely on this shit

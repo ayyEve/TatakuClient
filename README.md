@@ -13,16 +13,16 @@ required deps:
    - pkg-config
    - libssl-dev
    - xorg-dev
-   - libxcb-shape0
-   - libxcb-render0
-   - libxcb-fixes0
+   - libxcb-shape0-dev
+   - libxcb-render0-dev
+   - libxcb-xfixes0-dev
 
 How to build:
  - install rust (https://rustup.rs/)
 
  - build and run
   - cargo run --release
-   
+
 
 TODO:
 - // Gameplay

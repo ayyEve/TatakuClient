@@ -32,6 +32,11 @@ pub trait GameModeInfo: Send + Sync {
 
     
     fn get_perf_calc() -> PerformanceCalc where Self:Sized {
-        Box::new(|diff, acc| diff * (acc / 0.99).powi(6))
+        Box::new(|diff, acc| {
+            let perf = diff * (acc / 0.99).powi(6);
+            #[cfg(feature="debug_perf_rating")]
+            println!("diff:{diff}, acc: {acc} = perf {perf}");
+            perf
+        })
     }
 }
