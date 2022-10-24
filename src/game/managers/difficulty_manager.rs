@@ -11,10 +11,16 @@ pub async fn init_diffs() {
     let all_diffs = match load_all_diffs() {
         Ok(d) => d,
         Err(e) => {
-            println!("error loading diffs: {e}");
+            error!("error loading diffs: {e}");
             Default::default()
         }
     };
+
+    #[cfg(feature="debug_perf_rating")]
+    for (k, v) in &all_diffs {
+        info!("{k:?} -> {v}")
+    }
+
     *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;
 }
 
@@ -51,15 +57,17 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     info!("diffcalc starting for mode {playmode}");
     for map in maps {
         if let Ok(mut calc) = calc_diff(map, playmode.clone()).await {
-            for speed in (50..200).step_by(5) {
+            for speed in (50..200).step_by(5) { // 0.5..2.0
                 for mut mods in mod_mutations.clone() {
-                    mods.set_speed(speed as f32 / 100.0);
+                    mods.speed = speed;
 
                     let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
                     if existing.contains_key(&diff_key) { continue }
-
                     
                     let diff = calc.calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
+                    
+                    #[cfg(feature="debug_perf_rating")]
+                    info!("[calc] {diff_key:?} -> {diff}");
                     data.insert(diff_key, diff);
                 }
             }
@@ -78,7 +86,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     
     if let Err(e) = save_all_diffs() {
         // TODO: notification?
-        println!("error saving diffs: {e}");
+        error!("error saving diffs: {e}");
     }
 }
 
