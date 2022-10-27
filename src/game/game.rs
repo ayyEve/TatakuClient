@@ -994,6 +994,22 @@ impl Game {
             let mut replay = manager.replay.clone();
             replay.score_data = Some(score.score.clone());
 
+
+            let mut score_submit = None;
+            if manager.should_save_score() {
+                // save score
+                Database::save_score(&score).await;
+                match save_replay(&replay, &score) {
+                    Ok(_)=> trace!("replay saved ok"),
+                    Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
+                }
+
+                // submit score
+                let submit = ScoreSubmitHelper::new(replay.clone(), &self.settings);
+                submit.clone().submit();
+                score_submit = Some(submit);
+            }
+
             // used to indicate user stopped watching a replay
             if manager.replaying && !manager.started {
                 // go back to beatmap select
@@ -1004,76 +1020,10 @@ impl Game {
                 // show score menu
                 let mut menu = ScoreMenu::new(&score, manager.metadata.clone());
                 menu.replay = Some(replay.clone());
+                menu.score_submit = score_submit;
                 self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
             }
 
-            if manager.should_save_score() {
-                // save score
-                Database::save_score(&score).await;
-                match save_replay(&replay, &score) {
-                    Ok(_)=> trace!("replay saved ok"),
-                    Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
-                }
-
-                // submit score
-                let settings = self.settings.clone();
-                tokio::spawn(async move {
-                    trace!("submitting score");
-
-                    let username = settings.username.clone();
-                    let password = settings.password.clone();
-                    if username.is_empty() || password.is_empty() { 
-                        warn!("no user or pass, not submitting score");
-                        return 
-                    }
-
-
-                    let map = match BEATMAP_MANAGER.read().await.beatmaps_by_hash.get(&score.beatmap_hash){
-                        None => { return } // what
-                        Some(map) => map.clone()
-                    };
-                    let game = match &map.beatmap_type {
-                        BeatmapType::Osu => MapGame::Osu,
-                        BeatmapType::Quaver => MapGame::Quaver,
-                        other => MapGame::Other(format!("{other:?}").to_lowercase())
-                    };
-                    let map_info = ScoreMapInfo {
-                        game,
-                        map_hash: score.beatmap_hash.clone(),
-                        playmode: score.playmode.clone(),
-                    };
-                    let score_submit = ScoreSubmit {
-                        username,
-                        password,
-                        game: "tataku".to_owned(),
-                        replay,
-                        map_info
-                    };
-
-                    if let Ok(replay_data) = serde_json::to_string(&score_submit) {
-                        let url = format!("{}/score_submit", settings.score_url);
-                        
-                        let c = reqwest::Client::new();
-                        let res = c
-                            .post(url)
-                            .header("Content-Type", "application/json")
-                            .body(replay_data)
-                            .send()
-                            .await;
-
-                        match res {
-                            Ok(is_good) => {
-                                // TODO: do something with the response?
-                                trace!("score submitted successfully");
-                                let data = is_good.text().await;
-                                info!("{data:?}");
-                            },
-                            Err(e) => NotificationManager::add_error_notification("error submitting score", format!("{e}")).await,
-                        }
-                    }
-                });
-                
-            }
 
         }
     }

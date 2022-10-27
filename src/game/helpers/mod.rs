@@ -13,6 +13,7 @@ pub mod instant;
 pub mod key_counter;
 pub mod score_helper;
 pub mod event_handler;
+mod score_submit_helper;
 pub mod centered_text_helper;
 
 pub use instant::*;
@@ -22,6 +23,7 @@ pub use event_handler::*;
 pub use volume_control::*;
 pub use replay_helpers::*;
 pub use benchmark_helper::*;
+pub use score_submit_helper::*;
 
 
 

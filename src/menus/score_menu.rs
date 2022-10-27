@@ -35,6 +35,9 @@ pub struct ScoreMenu {
     selected_index: usize,
 
     window_size: Arc<WindowSize>,
+    pub score_submit: Option<Arc<ScoreSubmitHelper>>,
+
+    score_submit_response: Option<SubmitResponse>,
 }
 impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
@@ -86,6 +89,8 @@ impl ScoreMenu {
             selected_index: 99,
             hit_counts,
             window_size,
+            score_submit: None,
+            score_submit_response: None,
         }
     }
 
@@ -130,6 +135,17 @@ impl ScoreMenu {
 
 #[async_trait]
 impl AsyncMenu<Game> for ScoreMenu {
+
+    async fn update(&mut self, _game:&mut Game) {
+        if self.score_submit_response.is_none() {
+            if let Some(t) = &self.score_submit {
+                if let Some(r) = t.response.read().await.as_ref() {
+                    self.score_submit_response = Some(r.clone());
+                }
+            }
+        }
+    }
+
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let font = get_font();
@@ -179,6 +195,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             format!("Mean: {:.2}ms", self.hit_error.mean),
             format!("Error: {:.2}ms - {:.2}ms avg", self.hit_error.early, self.hit_error.late),
             format!("Deviance: {:.2}ms", self.hit_error.deviance),
+            // format!("Expected Performance: {:.2}pr", self.score.score.performance),
             self.score_mods.clone(),
         ] {
             if !str.is_empty() {
@@ -194,6 +211,40 @@ impl AsyncMenu<Game> for ScoreMenu {
                 current_pos += size;
             } else {
                 current_pos += size / 2.0;
+            }
+        }
+
+        if let Some(sub) = &self.score_submit_response {
+            current_pos += size / 2.0;
+
+            match sub {
+                SubmitResponse::NotSubmitted(_, str) => {
+                    list.push(Box::new(Text::new(
+                        Color::BLACK,
+                        depth + 1.0,
+                        current_pos,
+                        30,
+                        format!("Score not submitted: {str}"),
+                        font.clone()
+                    )));
+                }
+
+                SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
+                    for str in [
+                        format!("Map Ranking: #{}", format_number(*placing)),
+                        format!("Performance: {}pr", format_float(performance_rating, 2)),
+                    ] {
+                        list.push(Box::new(Text::new(
+                            Color::BLACK,
+                            depth + 1.0,
+                            current_pos,
+                            30,
+                            str,
+                            font.clone()
+                        )));
+                        current_pos += size;
+                    }
+                }
             }
         }
 
