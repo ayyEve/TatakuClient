@@ -11,6 +11,11 @@ pub struct CommonGameplaySettings {
     #[Setting(text="Decrease Offset")]
     pub key_offset_down: Key,
 
+    #[Setting(text="Restart Map Key")]
+    pub map_restart_key: Key,
+    #[Setting(text="Restart Map Hold Time", min=0, max=1000)]
+    pub map_restart_delay: f32,
+
     // duration bar settings
     /// color of duration to go (bg)
     pub duration_color_hex: String, 
@@ -69,6 +74,8 @@ impl Default for CommonGameplaySettings {
         Self { 
             key_offset_up: Key::Equals,
             key_offset_down: Key::Minus,
+            map_restart_key: Key::Backquote,
+            map_restart_delay: 200.0,
 
             // duration bar
             duration_color_hex: "#66666680".to_owned(),

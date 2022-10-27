@@ -106,6 +106,8 @@ pub struct IngameManager {
 
     pending_time_jump: Option<f32>,
     skin_helper: SkinChangeHelper,
+
+    restart_key_hold_start: Option<Instant>,
 }
 
 impl IngameManager {
@@ -418,6 +420,15 @@ impl IngameManager {
             self.gamemode.time_jump(time).await;
             self.pending_time_jump = None;
         }
+
+        // check map restart
+        if let Some(press_time) = self.restart_key_hold_start {
+            if press_time.as_millis() >= self.common_game_settings.map_restart_delay {
+                self.reset().await;
+                return;
+            }
+        }
+
 
         // update ui elements
         let mut ui_elements = std::mem::take(&mut self.ui_elements);
@@ -828,6 +839,7 @@ impl IngameManager {
         self.key_counter.reset();
         self.hitbar_timings.clear();
         self.judgement_indicators.clear();
+        self.restart_key_hold_start = None;
 
         if self.menu_background {
             self.gamemode.apply_auto(&self.settings.background_game_settings)
@@ -943,16 +955,23 @@ impl IngameManager {
             }
         }
 
+        // check map restart key
+        if key == self.common_game_settings.map_restart_key {
+            self.restart_key_hold_start = Some(Instant::now());
+            return;
+        }
+
         if self.failed && key == piston::Key::Escape {
             // set the failed time to negative, so it triggers the end
             self.failed_time = -1000.0;
         }
-        if self.failed {return}
+        if self.failed { return }
         
 
         if key == Key::Escape && self.can_pause() {
             self.should_pause = true;
         }
+
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
@@ -1016,7 +1035,13 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
     pub async fn key_up(&mut self, key:piston::Key) {
-        if self.failed {return}
+        if self.failed { return }
+        
+        // check map restart key
+        if key == self.common_game_settings.map_restart_key {
+            self.restart_key_hold_start = None;
+            return;
+        }
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.key_up(key, self).await;
@@ -1233,14 +1258,19 @@ impl Default for IngameManager {
             settings: Default::default(),
             window_size: Default::default(),
             pending_time_jump: None,
-            skin_helper: SkinChangeHelper::new_empty()
+            skin_helper: SkinChangeHelper::new_empty(),
+
+            restart_key_hold_start: None,
         }
     }
 }
 
+
+// TODO: move this?
 #[cfg(feature="bass_audio")]
 lazy_static::lazy_static! {
     // wave file bytes with ~1 sample
+    // TODO: shouldnt it be possible to make an empty stream directly from bass? should maybe add that to the lib
     static ref EMPTY_STREAM:StreamChannel = StreamChannel::load_from_memory(vec![0x52,0x49,0x46,0x46,0x28,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,0x10,0x00,0x00,0x00,0x01,0x00,0x02,0x00,0x44,0xAC,0x00,0x00,0x88,0x58,0x01,0x00,0x02,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x04,0x00,0x00,0x00,0x80,0x80,0x80,0x80], 0i32).expect("error creating empty StreamChannel");
 }
 #[cfg(feature="bass_audio")]

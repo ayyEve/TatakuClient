@@ -17,7 +17,6 @@ add "local" perf and "server" perf to score menu, include ranking
 // misc
 notification list -> see past notifications (and dismiss them)
 ignore hitsound audio errors -> replace with empty audio stream?
-tilde to restart map -> hold for a bit before going?
 scores from server arent listing mods/speed
 
 last.fm integration (pain)
