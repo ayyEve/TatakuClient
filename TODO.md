@@ -12,9 +12,14 @@ skin osu hit indicators
 hire someone to fix osu spinners
 perf calc should take a score not an acc
 keep best perf score, not best score score
-add "local" perf and "server" perf to score menu, include ranking
+
+// beatmap manager
+improve map loading times
+actually use the map ignore list
+if deleting a map from an external songs folder, add it to the ignore list, dont actually delete the file
 
 // misc
+on first start -> menu to load osu settings
 notification list -> see past notifications (and dismiss them)
 ignore hitsound audio errors -> replace with empty audio stream?
 scores from server arent listing mods/speed
