@@ -47,10 +47,6 @@ impl ModDialog {
 
 #[async_trait]
 impl Dialog<Game> for ModDialog {
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
-
     fn name(&self) -> &'static str { "mod_menu" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Rectangle { 
@@ -92,6 +88,10 @@ impl Dialog<Game> for ModDialog {
     async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         self.scroll.on_click_release(*pos, *button);
         true
+    }
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
     }
 }
 

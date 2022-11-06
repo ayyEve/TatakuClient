@@ -881,6 +881,31 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         use piston::Key::*;
 
+        if key == Key::M && mods.ctrl { 
+            let mut found = false;
+            for d in game.dialogs.iter_mut() {
+                if d.name() == "mod_menu" {
+                    found = true;
+                    break;
+                }
+            }
+
+            if !found {
+                let mut groups = Vec::new();
+                if let Some(man) = &self.background_game {
+                    groups = man.gamemode.get_mods();
+                } else if let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() {
+                    let playmode = map.check_mode_override(self.mode.clone());
+                    // this is really shit
+                    if let Ok(m) = gamemode_from_playmode(playmode, &map).await {
+                        groups = m.get_mods();
+                    }
+                }
+
+                game.add_dialog(Box::new(ModDialog::new(groups).await)) 
+            }
+        }
+
         if key == Left && !mods.alt {
             if let Some(hash) = self.beatmap_scroll.select_previous_item() {
                 self.select_map(game, hash, false).await;

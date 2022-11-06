@@ -67,12 +67,14 @@ pub struct TaikoGame {
     right_kat_image: Option<Image>,
     judgement_helper: JudgmentImageHelper,
 
+    counter: FullAltCounter,
     
     hit_windows: Vec<(TaikoHitJudgments, Range<f32>)>,
     hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
 
     last_judgment: TaikoHitJudgments,
+
 }
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
@@ -163,6 +165,7 @@ impl GameMode for TaikoGame {
                     miss_window,
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
+                    counter: FullAltCounter::new(),
                 };
 
                 // add notes
@@ -289,6 +292,7 @@ impl GameMode for TaikoGame {
                     miss_window,
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
+                    counter: FullAltCounter::new(),
                 };
 
                 // add notes
@@ -336,19 +340,31 @@ impl GameMode for TaikoGame {
             },
             ReplayFrame::Release(k) => {
                 manager.key_counter.key_up(k);
+                // should probably return here lol
                 k
             },
             _ => return,
         };
 
-        // draw drum
-        match key {
-            KeyPress::LeftKat => *self.hit_cache.get_mut(&TaikoHit::LeftKat).unwrap() = time,
-            KeyPress::LeftDon => *self.hit_cache.get_mut(&TaikoHit::LeftDon).unwrap() = time,
-            KeyPress::RightDon => *self.hit_cache.get_mut(&TaikoHit::RightDon).unwrap() = time,
-            KeyPress::RightKat => *self.hit_cache.get_mut(&TaikoHit::RightKat).unwrap() = time,
-            _=> {}
+
+        // turn the keypress into a hit type
+        let hit_type = match key {
+            KeyPress::LeftKat  => TaikoHit::LeftKat,
+            KeyPress::LeftDon  => TaikoHit::LeftDon,
+            KeyPress::RightDon => TaikoHit::RightDon,
+            KeyPress::RightKat => TaikoHit::RightKat,
+            _ => TaikoHit::LeftKat
+        };
+
+        // check fullalt
+        if manager.current_mods.has_mod(FullAlt.name()) {
+            if !self.counter.add_hit(hit_type) {
+                return;
+            }
         }
+
+        // draw drum
+        *self.hit_cache.get_mut(&hit_type).unwrap() = time;
 
         let hit_type:HitType = key.into();
         let mut finisher_sound = false;
@@ -575,6 +591,7 @@ impl GameMode for TaikoGame {
         
         self.note_index = 0;
         self.last_judgment = TaikoHitJudgments::Miss;
+        self.counter = FullAltCounter::new();
 
         // setup timing bars
         if self.timing_bars.len() == 0 {
@@ -1016,6 +1033,15 @@ impl GameModeInfo for TaikoGame {
             DonChan::new().await
         ).await);
     }
+
+
+    fn get_mods(&self) -> Vec<GameplayModGroup> { 
+        vec![
+            GameplayModGroup::new("Skill")
+                .with_mod(super::FullAlt)
+            ,
+        ]
+    }
 }
 
 
@@ -1246,4 +1272,39 @@ pub enum TaikoHit {
 pub struct TaikoPlayfield {
     pub pos: Vector2,
     pub size: Vector2,
+}
+
+
+#[derive(Default)]
+pub struct FullAltCounter {
+    // hits: HashMap<TaikoHit, usize>,
+    last_hit: Option<TaikoHit>,
+    // playmode: TaikoPlaymode
+}
+impl FullAltCounter {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn add_hit(&mut self, hit: TaikoHit) -> bool {
+
+        if self.last_hit.is_none() {
+            self.last_hit = Some(hit);
+            return true;
+        }
+
+        let is_left = Self::hit_is_left(hit);
+        let last_is_left = Self::hit_is_left(self.last_hit.unwrap());
+        self.last_hit = Some(hit);
+        
+        is_left != last_is_left
+    }
+
+    fn hit_is_left(hit: TaikoHit) -> bool {
+        match hit {
+            TaikoHit::LeftKat | TaikoHit::LeftDon => true,
+            TaikoHit::RightDon | TaikoHit::RightKat => false,
+        }
+    }
+
 }

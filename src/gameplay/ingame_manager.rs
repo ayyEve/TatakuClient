@@ -889,8 +889,23 @@ impl IngameManager {
         self.lead_in_timer = Instant::now();
         
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
-        *self.score.mods_mut() = self.current_mods.mods.clone();
         self.score.speed = self.current_mods.get_speed();
+        {
+            *self.score.mods_mut() = self.current_mods.mods.clone();
+
+            // clean out any mods that dont belong
+            let ok_mods:Vec<String> = default_mod_groups()
+                .into_iter()
+                .chain(self.gamemode.get_mods().into_iter())
+                .map(|m|
+                    m.mods
+                    .into_iter()
+                    .map(|m|m.name().to_owned())
+                ).flatten()
+                .collect();
+            self.score.mods_mut().retain(|m|ok_mods.contains(m));
+        }
+
 
 
         self.replay_frame = 0;

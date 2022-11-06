@@ -591,10 +591,8 @@ impl Game {
 
 
                 // TODO: this is temp
-                if keys_up.contains(&Key::M) && mods.ctrl { self.add_dialog(Box::new(ModDialog::new(Vec::new()).await)) }
-                // TODO: this too
                 if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await)) }
-                // TODO: and this
+                // TODO: this too
                 if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await)) }
 
                 // check keys down

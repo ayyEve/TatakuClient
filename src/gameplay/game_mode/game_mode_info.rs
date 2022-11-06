@@ -39,4 +39,6 @@ pub trait GameModeInfo: Send + Sync {
             perf
         })
     }
+
+    fn get_mods(&self) -> Vec<GameplayModGroup> { Vec::new() }
 }
