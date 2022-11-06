@@ -24,11 +24,11 @@ build-linux:
     - apt update
     - apt install -y libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev
     - cargo build --release
-    - ./release/linux.sh
+    - # copy somehow
   tags:
     - linux
     - local
-    - never
+    - never #TODO: remove this when ready
 
 
 # TODO: build-mac
