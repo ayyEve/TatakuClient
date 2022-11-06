@@ -54,7 +54,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     info!("diffcalc starting for mode {playmode}");
     for map in maps {
         if let Ok(mut calc) = calc_diff(map, playmode.clone()).await {
-            for speed in (50..200).step_by(5) { // 0.5..2.0
+            for speed in (50..=1000).step_by(5) { // 0.5..=10.0
                 for mut mods in mod_mutations.clone() {
                     mods.speed = speed;
 
