@@ -60,7 +60,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         let diff = get_diff(&map, &score.playmode, &mods).unwrap_or_default();
 
         // calc the performance
-        let perf_fn = perfcalc_for_playmode(score.playmode.clone()).await;
+        let perf_fn = perfcalc_for_playmode(score.playmode.clone());
         let perf = (perf_fn)(diff, score.accuracy as f32);
         println!("got perf: {perf}");
         return;

@@ -5,8 +5,8 @@ const WHITE_TEXT:bool = true;
 
 pub struct PerformanceElement {
     perf_image: Option<SkinnedNumber>,
-    calc: PerformanceCalc,
-    diff: f32,
+    // calc: PerformanceCalc,
+    // diff: f32,
     perf: f32,
 
     bounds_size: Vector2,
@@ -36,8 +36,8 @@ impl PerformanceElement {
             bounds_size,
             perf_image,
             perf: 0.0,
-            diff, 
-            calc,
+            // diff, 
+            // calc,
         }
     }
 }
@@ -53,8 +53,7 @@ impl InnerUIElement for PerformanceElement {
     }
 
     fn update(&mut self, manager: &mut IngameManager) {
-        let acc = calc_acc(&manager.score) as f32;
-        self.perf = (self.calc)(self.diff, acc);
+        self.perf = manager.score.performance;
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
@@ -64,7 +63,6 @@ impl InnerUIElement for PerformanceElement {
             perf.number = self.perf as f64;
             perf.current_scale = scale;
 
-            
             let mut perf = perf.clone();
             perf.current_scale = scale;
 

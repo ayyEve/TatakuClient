@@ -97,7 +97,7 @@ pub async fn gamemode_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -
     Ok(gamemode)
 }}
 
-pub async fn perfcalc_for_playmode(playmode: PlayMode) -> PerformanceCalc {{
+pub fn perfcalc_for_playmode(playmode: PlayMode) -> PerformanceCalc {{
     match &*playmode {{ {perf_calc_lines}
         _ => return NoMode::get_perf_calc()
     }}

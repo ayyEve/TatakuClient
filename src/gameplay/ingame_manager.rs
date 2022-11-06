@@ -108,6 +108,8 @@ pub struct IngameManager {
     skin_helper: SkinChangeHelper,
 
     restart_key_hold_start: Option<Instant>,
+
+    map_diff: f32,
 }
 
 impl IngameManager {
@@ -220,7 +222,7 @@ impl IngameManager {
         // Performance
         // TODO: calc diff before starting somehow?
         let diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
-        let perf_fn = perfcalc_for_playmode(self.gamemode.playmode()).await;
+        let perf_fn = perfcalc_for_playmode(self.gamemode.playmode());
         self.ui_elements.push(UIElement::new(
             &get_name("perf"),
             Vector2::new(self.window_size.x, 80.0),
@@ -422,6 +424,10 @@ impl IngameManager {
             self.completed = true;
         }
 
+        // update score stuff now that gamemode has been updated
+        self.score.accuracy = calc_acc(&self.score);
+        self.score.performance = perfcalc_for_playmode(self.gamemode.playmode())(self.map_diff, self.score.accuracy as f32);
+        self.score.take_snapshot(time, self.health.get_ratio());
 
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
@@ -887,6 +893,7 @@ impl IngameManager {
         self.failed = false;
         self.lead_in_time = LEAD_IN_TIME / self.current_mods.get_speed();
         self.lead_in_timer = Instant::now();
+        self.map_diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
         
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.speed = self.current_mods.get_speed();
@@ -1293,6 +1300,7 @@ impl Default for IngameManager {
             skin_helper: SkinChangeHelper::new_empty(),
 
             restart_key_hold_start: None,
+            map_diff: 0.0
         }
     }
 }

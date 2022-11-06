@@ -48,7 +48,7 @@ impl InnerUIElement for AccuracyElement {
     }
 
     fn update(&mut self, manager: &mut IngameManager) {
-        self.acc = calc_acc(&manager.score) * 100.0;    
+        self.acc = manager.score.accuracy * 100.0;    
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {

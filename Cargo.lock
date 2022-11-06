@@ -2533,8 +2533,8 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.6.4"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#9a50630163b9d548feebfa7ec46ce12a8ddf9ba4"
+version = "0.6.5"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#52104e54edbde1e1f3ade153e499cf32cfa25e3c"
 dependencies = [
  "serde",
  "serde_json",
