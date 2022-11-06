@@ -24,12 +24,12 @@ impl HitJudgments for ManiaHitJudgments {
 
     fn get_health(&self) -> f32 {
         match self {
-            ManiaHitJudgments::Marvelous => 3.0,
-            ManiaHitJudgments::Perfect   => 2.0,
-            ManiaHitJudgments::Great     => 1.0,
-            ManiaHitJudgments::Good      => -2.0,
-            ManiaHitJudgments::Okay      => -5.0,
-            ManiaHitJudgments::Miss      => -10.0,
+            Self::Marvelous => 3.0,
+            Self::Perfect   => 2.0,
+            Self::Great     => 1.0,
+            Self::Good      => -2.0,
+            Self::Okay      => -5.0,
+            Self::Miss      => -10.0,
         }
     }
 
@@ -44,46 +44,61 @@ impl HitJudgments for ManiaHitJudgments {
         let combo = (combo.clamp(0, 80) / 10).max(1) as i32;
 
         combo * match self {
-            ManiaHitJudgments::Marvelous => 330,
-            ManiaHitJudgments::Perfect   => 300,
-            ManiaHitJudgments::Great     => 200,
-            ManiaHitJudgments::Good      => 100,
-            ManiaHitJudgments::Okay      => 50,
-            ManiaHitJudgments::Miss      => 0,
+            Self::Marvelous => 330,
+            Self::Perfect   => 300,
+            Self::Great     => 200,
+            Self::Good      => 100,
+            Self::Okay      => 50,
+            Self::Miss      => 0,
         }
     }
 
     fn as_str_internal(&self) -> &'static str {
         match self {
-            ManiaHitJudgments::Marvelous => "xgeki",
-            ManiaHitJudgments::Perfect   => "x300",
-            ManiaHitJudgments::Great     => "xkatu",
-            ManiaHitJudgments::Good      => "x100",
-            ManiaHitJudgments::Okay      => "x50",
-            ManiaHitJudgments::Miss      => "xmiss",
+           Self::Marvelous => "xgeki",
+           Self::Perfect   => "x300",
+           Self::Great     => "xkatu",
+           Self::Good      => "x100",
+           Self::Okay      => "x50",
+           Self::Miss      => "xmiss",
         }
     }
 
     fn as_str_display(&self) -> &'static str {
         match self {
-            ManiaHitJudgments::Marvelous => "Marvelous",
-            ManiaHitJudgments::Perfect   => "Perfect",
-            ManiaHitJudgments::Great     => "Great",
-            ManiaHitJudgments::Good      => "Good",
-            ManiaHitJudgments::Okay      => "Okay",
-            ManiaHitJudgments::Miss      => "Miss",
+            Self::Marvelous => "Marvelous",
+            Self::Perfect   => "Perfect",
+            Self::Great     => "Great",
+            Self::Good      => "Good",
+            Self::Okay      => "Okay",
+            Self::Miss      => "Miss",
         }
     }
 
     // stolen from quaver
     fn color(&self) -> Color {
         match self {
-            ManiaHitJudgments::Marvelous => color_from_byte(250, 254, 181),
-            ManiaHitJudgments::Perfect   => color_from_byte(245, 222, 104),
-            ManiaHitJudgments::Great     => color_from_byte(86, 253, 110),
-            ManiaHitJudgments::Good      => color_from_byte(0, 208, 254),
-            ManiaHitJudgments::Okay      => color_from_byte(190, 95, 181),
-            ManiaHitJudgments::Miss      => color_from_byte(248, 100, 93),
+            Self::Marvelous => color_from_byte(250, 254, 181),
+            Self::Perfect   => color_from_byte(245, 222, 104),
+            Self::Great     => color_from_byte(86, 253, 110),
+            Self::Good      => color_from_byte(0, 208, 254),
+            Self::Okay      => color_from_byte(190, 95, 181),
+            Self::Miss      => color_from_byte(248, 100, 93),
+        }
+    }
+
+    
+    fn fails_perfect(&self) -> bool {
+        match self {
+            Self::Marvelous | Self::Perfect => false,
+            _ => true
+        }
+    }
+
+    fn fails_sudden_death(&self) -> bool {
+        match self {
+            Self::Okay | Self::Miss => true,
+            _ => false
         }
     }
 }

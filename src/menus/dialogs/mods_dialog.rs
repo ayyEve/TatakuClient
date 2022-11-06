@@ -1,38 +1,46 @@
 use crate::prelude::*;
 
-const MODS: &[&[&'static str]] = &[
-    &["easy"], &["hardrock"],
-    &["nofail"], &["autoplay"],
-];
-
 pub struct ModDialog {
     should_close: bool,
-
-    buttons: Vec<ModButton>,
+    scroll: ScrollableArea,
 
     window_size: Arc<WindowSize>
 }
 impl ModDialog {
-    pub async fn new() -> Self {
+    pub async fn new(groups: Vec<GameplayModGroup>) -> Self {
+        let mut new_groups = default_mod_groups();
 
-        let mut buttons = Vec::new();
-        let mut current_pos = Vector2::new(100.0, 100.0);
+        // see if any groups are named the same and merge them
+        'outer: for g in groups {
+            for n in new_groups.iter_mut() {
+                if n.name == g.name {
+                    n.mods.extend(g.mods.into_iter());
+                    continue 'outer;
+                }
+            }
+
+            new_groups.push(g);
+        }
+
+        // create the scrollable and add the mod buttons to it
         let window_size = WindowSize::get();
+        let mut scroll = ScrollableArea::new(Vector2::zero(), window_size.0, true);
+        let pos = Vector2::new(50.0, 0.0);
 
-        //TODO: properly implement rows
-        for m in MODS.iter() {
-            let b = ModButton::new(
-                current_pos,
-                m.iter().map(|a|a.to_owned().to_owned()).collect()
-            ).await;
-            current_pos += Vector2::x_only(200.0);
-            buttons.push(b);
+        let font = get_font();
+        let manager = ModManager::get().await;
+        for group in new_groups {
+            scroll.add_item(Box::new(MenuSection::<Font2, Text>::new(pos, 30.0, &group.name, font.clone())));
+            
+            for m in group.mods {
+                scroll.add_item(Box::new(ModButton::new(pos, m, &manager)));
+            }
         }
 
         Self {
             should_close: false,
-            buttons,
-            window_size
+            scroll,
+            window_size,
         }
     }
 }
@@ -43,18 +51,19 @@ impl Dialog<Game> for ModDialog {
         self.window_size = window_size;
     }
 
-
-    fn name(&self) -> &'static str {"mod_menu"}
-    fn should_close(&self) -> bool {self.should_close}
+    fn name(&self) -> &'static str { "mod_menu" }
+    fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Rectangle { 
         Rectangle::bounds_only(Vector2::zero(), self.window_size.0) 
     }
+
+    async fn update(&mut self, _g: &mut Game) {
+        self.scroll.update();
+    }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
-        self.draw_background(depth + 0.00000001, Color::BLACK, list);
-        for b in self.buttons.iter_mut() {
-            b.draw(*args, Vector2::zero(), *depth, list)
-        }
+        self.draw_background(depth + 1.00000001, Color::BLACK, list);
+        self.scroll.draw(*args, Vector2::zero(), *depth, list);
     }
 
     async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
@@ -66,26 +75,24 @@ impl Dialog<Game> for ModDialog {
         false
     }
 
-
     async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
-        for b in self.buttons.iter_mut() {
-            b.on_mouse_move(*pos)
-        }
+        self.scroll.on_mouse_move(*pos);
     }
 
-    async fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut Game) -> bool {
-        
+    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
+        self.scroll.on_scroll(*delta);
         false
     }
 
     async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        for b in self.buttons.iter_mut() {
-            b.on_click(*pos, *button, *mods);
-        }
+        self.scroll.on_click(*pos, *button, *mods);
         true
     }
 
-    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {false}
+    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.scroll.on_click_release(*pos, *button);
+        true
+    }
 }
 
 #[derive(ScrollableGettersSetters)]
@@ -94,123 +101,93 @@ struct ModButton {
     pos: Vector2,
     hover: bool,
 
-    mod_names: Vec<String>,
-    mod_images: Vec<Option<Image>>,
+    gameplay_mod: Box<dyn GameplayMod>,
+    mod_name: String,
+    enabled: bool,
 
-    /// index of selected mod + 1
-    /// 0 means none selected
-    selected_mod: usize,
+    bomb: Option<Bomb<bool>>,
+    updates_since_refresh: usize,
 }
 impl ModButton {
-    async fn new(pos: Vector2, mod_names: Vec<String>) -> Self {
-
-        let mut mod_images = Vec::new();
-        for m in mod_names.iter() {
-            mod_images.push(SkinManager::get_texture(format!("selection-mod-{}", m), true).await)
-        }
-
-        let mut selected_mod = 0;
-        let mut manager = ModManager::get().await;
-        for (i, name) in mod_names.iter().enumerate() {
-            if *str_2_modval(name, &mut manager) {
-                selected_mod = i + 1
-            }
-        }
+    fn new(pos: Vector2, gameplay_mod: Box<dyn GameplayMod>, current_mods: &ModManager) -> Self {
+        let enabled = current_mods.has_mod(gameplay_mod.name());
+        let mod_name = mod_name_fixed(gameplay_mod.name());
 
         Self {
-            size: Vector2::new(100.0, 100.0),
+            size: Vector2::new(500.0, 50.0),
             pos, 
-            mod_names,
-            mod_images,
-            selected_mod,
-            hover: false
+            hover: false,
+
+            gameplay_mod,
+            mod_name,
+
+            enabled,
+            bomb: None,
+            updates_since_refresh: 0,
         }
     }
 
-    fn apply_mod(&self) {
-        let mut list = HashMap::new();
-        for (i, name) in self.mod_names.iter().enumerate() {
-            let use_val = i+1 == self.selected_mod && self.selected_mod > 0;
-            trace!("set: {}, name:{}", use_val, name);
-            list.insert(name.clone(), use_val);
-        }
-
-        tokio::spawn(async move {
-            let mut manager = ModManager::get().await;
-            
-            for (name, use_val) in list {
-                *str_2_modval(&name, &mut manager) = use_val;
-            }
-        });
-    }
 }
 impl ScrollableItem for ModButton {
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
-        let is_selected = self.selected_mod > 0;
-        let selected_mod = if is_selected {self.selected_mod - 1} else {0};
+    fn update(&mut self) {
+        let mut reset = false;
 
-        // draw image
-        if let Some(Some(mod_img)) = self.mod_images.get(selected_mod) {
-            let mut img = mod_img.clone();
-            // offset by size/2 because image origin is center (required for rotation)
-            img.current_pos = self.pos + pos_offset + self.size/2.0;
-            img.current_scale = self.size / img.tex_size();
-            img.depth = parent_depth;
-            if is_selected {
-                img.current_scale *= 1.1;
-                img.current_rotation = PI / 12.0;
+        if let Some(bomb) = &self.bomb {
+            if let Some(new_val) = bomb.exploded() {
+                self.enabled = *new_val;
+                reset = true;
             }
-            list.push(Box::new(img));
-        } else {
-            // draw bounding box
-            let mut rect = Rectangle::new(
-                Color::GREEN, // TODO: customizable per-mod?
-                parent_depth,
-                self.pos + pos_offset,
-                self.size,
-                Some(Border::new(Color::BLACK, 2.0))
-            );
-            if is_selected {
-                rect.current_scale *= 1.1;
-                rect.current_rotation = PI / 3.0; // 60 degrees
-            }
-
-            // add text to lower third of bounding box
-            let mut text = Text::new(
-                Color::BLACK,
-                parent_depth - 0.0000001,
-                Vector2::zero(),
-                32,
-                self.mod_names[selected_mod].clone(),
-                get_font()
-            );
-            text.center_text(Rectangle::bounds_only(
-                self.pos + pos_offset + Vector2::new(0.0, self.size.y * (2.0/3.0)), 
-                Vector2::new(self.size.x, self.size.y / 3.0)
-            ))
         }
 
+        if reset {
+            self.bomb = None;
+        }
+    }
+
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
+        let pos_offset = self.pos + pos_offset;
+        
+        let font = get_font();
+        let cb_size = Vector2::new(200.0, 50.0);
+
+        let mut checkbox = Checkbox::<Font2, Text>::new(Vector2::zero(), cb_size, &self.mod_name, self.enabled, font.clone());
+        checkbox.set_hover(self.hover);
+
+        let font_size = 30;
+        let desc_pos = pos_offset + cb_size.x() + Vector2::new(10.0, (cb_size.y - font_size as f64) / 2.0);
+        let desc_text = Text::new(Color::WHITE, parent_depth, desc_pos, font_size, self.gameplay_mod.description().to_owned(), font);
+
+        checkbox.draw(args, pos_offset, parent_depth, list);
+        list.push(Box::new(desc_text));
     }
 
     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
+
         if self.hover {
-           self.selected_mod = (self.selected_mod + 1) % (self.mod_names.len() + 1);
-           self.apply_mod()
+            let (fuse, bomb) = Bomb::new();
+            self.bomb = Some(bomb);
+
+            let name = self.gameplay_mod.name();
+            tokio::spawn(async move {
+                let mut manager = ModManager::get().await;
+                let val = manager.toggle_mod(name);
+                fuse.ignite(val);
+            });
         }
 
         self.hover
     }
 }
 
-// this is dumb but i dont care
-fn str_2_modval<'a>(name: &String, manager: &'a mut ModManager) -> &'a mut bool {
-    match &**name {
-        "easy" => &mut manager.easy,
-        "hardrock" => &mut manager.hard_rock,
 
-        "nofail" => &mut manager.nofail,
-        "autoplay" => &mut manager.autoplay,
-        
-        other => panic!("Unknown mod name: {}", other)
-    }
+fn mod_name_fixed(m: &str) -> String {
+    m
+    .split("_")
+    .map(|s| {
+        let mut chars = s.chars();
+        let first = chars.next().unwrap().to_uppercase().to_string();
+        first + &chars.map(|c|c.to_string()).collect::<Vec<String>>().join("")
+    })
+    .collect::<Vec<String>>()
+    .join(" ")
 }

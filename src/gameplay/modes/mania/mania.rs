@@ -760,7 +760,7 @@ impl GameMode for ManiaGame {
 
 
     async fn update(&mut self, manager:&mut IngameManager, time: f32) {
-        if manager.current_mods.autoplay {
+        if manager.current_mods.has_autoplay() {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
             for frame in frames {
@@ -1020,7 +1020,7 @@ impl GameModeInput for ManiaGame {
         }
 
         // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -1044,7 +1044,7 @@ impl GameModeInput for ManiaGame {
     
     async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
         // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 

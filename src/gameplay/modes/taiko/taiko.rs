@@ -414,7 +414,7 @@ impl GameMode for TaikoGame {
     async fn update(&mut self, manager:&mut IngameManager, time: f32) {
 
         // do autoplay things
-        if manager.current_mods.autoplay {
+        if manager.current_mods.has_autoplay() {
             let mut pending_frames = Vec::new();
             let notes = &mut self.notes;
 
@@ -797,7 +797,7 @@ impl GameModeInput for TaikoGame {
 
     async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -823,7 +823,7 @@ impl GameModeInput for TaikoGame {
     async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
+        if manager.current_mods.has_autoplay() || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
             return;
         }
         
@@ -853,7 +853,7 @@ impl GameModeInput for TaikoGame {
 
     async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -906,7 +906,7 @@ impl GameModeInput for TaikoGame {
 
     async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 

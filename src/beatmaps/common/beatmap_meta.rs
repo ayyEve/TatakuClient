@@ -104,7 +104,7 @@ impl BeatmapMeta {
 
 #[inline]
 fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.easy {val * ez_scale} else if mods.hard_rock {val * hr_scale} else {val}
+    if mods.mods.contains("easy") {val * ez_scale} else if mods.mods.contains("hard_rock") {val * hr_scale} else {val}
 }
 
 // might use this later idk

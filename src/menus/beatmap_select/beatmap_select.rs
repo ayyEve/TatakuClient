@@ -164,10 +164,8 @@ impl BeatmapSelectMenu {
 
         match manager_from_playmode(self.mode.clone(), &map).await {
             Ok(mut manager) => {
-                manager.current_mods = Arc::new(ModManager {
-                    autoplay: true,
-                    ..Default::default()
-                });
+                manager.current_mods = Arc::new(ModManager::new().with_mod("autoplay"));
+
                 manager.make_menu_background();
                 manager.gamemode.fit_to_area(pos, size).await;
                 manager.start().await;
@@ -951,18 +949,15 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 // autoplay enable/disable
                 A => {
                     let mut manager = ModManager::get().await;
-                    manager.autoplay = !manager.autoplay;
-
-                    let state = if manager.autoplay {"on"} else {"off"};
+                    let state = if manager.toggle_mod("autoplay") {"on"} else {"off"};
                     NotificationManager::add_text_notification(&format!("Autoplay {}", state), 2000.0, Color::BLUE).await;
                 }
 
                 // nofail enable/disable
                 N => {
                     let mut manager = ModManager::get().await;
-                    manager.nofail = !manager.nofail;
 
-                    let state = if manager.nofail {"on"} else {"off"};
+                    let state = if manager.toggle_mod("no_fail") {"on"} else {"off"};
                     NotificationManager::add_text_notification(&format!("Nofail {}", state), 2000.0, Color::BLUE).await;
                 }
 

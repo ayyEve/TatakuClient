@@ -39,22 +39,29 @@ impl Database {
                 }
             }
 
+            let mut score = Score::default();
+            score.version = r.get("version").unwrap_or(1); // v1 didnt include version in the table
+            score.username = r.get("username")?;
+            score.playmode = r.get("playmode")?;
+            score.time = r.get("time").unwrap_or(0);
+            score.score = r.get("score")?;
+            score.combo = r.get("combo")?;
+            score.max_combo = r.get("max_combo")?;
+            score.accuracy = r.get("accuracy").unwrap_or_default();
+            score.beatmap_hash = r.get("map_hash")?;
+            score.speed = r.get("speed").unwrap_or(1.0);
+            score.hit_timings = Vec::new();
+            score.judgments = judgments;
+            
+            if let Some(mods_string) = mods_string {
+                // old mods format, json
+                if mods_string.contains("{") {
+                    *score.mods_mut() = Score::mods_from_old_string(mods_string);
+                } else {
+                    *score.mods_mut() = Score::mods_from_string(mods_string);
+                }
+            }
 
-            let score = Score {
-                version: r.get("version").unwrap_or(1), // v1 didnt include version in the table
-                username: r.get("username")?,
-                playmode: r.get("playmode")?,
-                time: r.get("time").unwrap_or(0),
-                score: r.get("score")?,
-                combo: r.get("combo")?,
-                max_combo: r.get("max_combo")?,
-                accuracy: r.get("accuracy").unwrap_or_default(),
-                beatmap_hash: r.get("map_hash")?,
-                speed: r.get("speed").unwrap_or(1.0),
-                hit_timings: Vec::new(),
-                mods_string,
-                judgments
-            };
 
             Ok(score)
         })
@@ -103,7 +110,7 @@ impl Database {
             // s.x50, s.x100, s.x300, s.xgeki, s.xkatu, s.xmiss, 
             s.speed,
             s.version,
-            s.mods_string.clone().unwrap_or_default(),
+            s.mods_string_sorted(),
             s.judgment_string()
         );
 

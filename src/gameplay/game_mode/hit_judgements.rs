@@ -25,6 +25,12 @@ pub trait HitJudgments: Send + Sync {
 
     /// what is the texture name for this judgment?
     fn tex_name(&self) -> &'static str { "" }
+
+    /// does this judgment fail a perfect score?
+    fn fails_perfect(&self) -> bool { false }
+
+    /// does this judgment fail a sudden death score?
+    fn fails_sudden_death(&self) -> bool { false }
 }
 
 

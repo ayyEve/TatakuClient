@@ -395,8 +395,9 @@ impl OnlineManager {
                             user_id: *user_id,
                             beatmap_hash: manager.beatmap.hash(),
                             mode: manager.gamemode.playmode(),
-                            mods: serde_json::to_string(&(*manager.current_mods)).unwrap(),
-                            current_time: manager.time()
+                            mods: manager.score.mods_string_sorted(),
+                            current_time: manager.time(),
+                            speed: manager.current_mods.speed
                         };
 
                         let clone = self.writer.clone();

@@ -1,19 +1,18 @@
+use std::hash::Hash;
+
 use crate::prelude::*;
 
 lazy_static::lazy_static! {
     static ref MOD_MANAGER: Arc<Mutex<ModManager>> = Arc::new(Mutex::new(ModManager::new()));
 }
 
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Hash, Debug)]
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
     pub speed: u16,
     
-    pub easy: bool,
-    pub hard_rock: bool,
-    pub autoplay: bool,
-    pub nofail: bool,
+    pub mods: HashSet<String>
 }
 
 // static 
@@ -28,6 +27,36 @@ impl ModManager {
     pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Self> {
         MOD_MANAGER.lock().await
     }
+
+    pub fn short_mods_string(mods: HashSet<String>, none_if_empty: bool) -> String {
+        if mods.len() == 0 {
+            if none_if_empty { return "None".to_owned() }
+            return String::new();
+        }
+
+        //TODO: sort this somehow?
+        let mut list = Vec::new();
+
+        for m in mods.iter() {
+            match &**m {
+                "easy" => list.push("EZ".to_owned()),
+                "autoplay" => list.push("AT".to_owned()),
+
+                // ignore empty
+                _ if m.trim().is_empty() => {}
+
+                // split by _, and capitalize the first letter in each split, and join without spaces
+                // no_fail -> NF (No_Fail)
+                // this_is_a_mod -> TIAM
+                m => {
+                    list.push(m.split("_").map(|s|s.chars().next().unwrap().to_uppercase().to_string()).collect::<Vec<String>>().join(""))
+                },
+            }
+        }
+
+        list.join(" ")
+    }
+
 }
 
 // instance
@@ -42,12 +71,15 @@ impl ModManager {
 
     fn mods_list(&self, include_speed: bool) -> String {
         let mut list = Vec::new();
-        
-        if self.easy { list.push("EZ".to_owned()) }
-        if self.hard_rock { list.push("HR".to_owned()) }
 
-        if self.nofail { list.push("NF".to_owned()) }
-        if self.autoplay { list.push("AT".to_owned()) }
+        for m in self.mods.iter() {
+            match &**m {
+                "easy" => list.push("EZ".to_owned()),
+                "autoplay" => list.push("AT".to_owned()),
+
+                m => list.push(m.split("_").map(|s|s.chars().next().unwrap().to_uppercase().to_string()).collect::<Vec<String>>().join("")),
+            }
+        }
 
         let speed = self.get_speed();
         if include_speed && speed != 1.0 { list.push(format!("({:.2}x)", speed)) }
@@ -62,17 +94,76 @@ impl ModManager {
         self.mods_list(false)
     }
 
-    pub fn as_json(&self) -> String {
-        serde_json::to_string(self).expect("error converting mods to json string")
+    // inline helper
+    pub fn with_mod(mut self, m: impl AsRef<str>) -> Self {
+        self.add_mod(m);
+        self
+    }
+    pub fn with_speed(mut self, speed: u16) -> Self {
+        self.speed = speed;
+        self
+    }
+    pub fn with_speed_f32(mut self, speed: f32) -> Self {
+        self.set_speed(speed);
+        self
+    }
+
+
+    pub fn add_mod(&mut self, m: impl AsRef<str>) -> bool {
+        self.mods.insert(m.as_ref().to_owned())
+    }
+    pub fn remove_mod(&mut self, m: impl AsRef<str>) {
+        self.mods.remove(&m.as_ref().to_owned());
+    }
+    pub fn toggle_mod(&mut self, m: impl AsRef<str>) -> bool {
+        let m = m.as_ref().to_owned();
+        if self.has_mod(&m) {
+            self.remove_mod(&m);
+            false
+        } else {
+            self.add_mod(&m);
+            true
+        }
+    }
+    
+    pub fn has_mod(&self, m: impl AsRef<str>) -> bool {
+        self.mods.contains(m.as_ref())
+    }
+
+
+    // common mods
+    pub fn has_nofail(&self) -> bool {
+        self.has_mod(NoFail.name())
+    }
+    pub fn has_sudden_death(&self) -> bool {
+        self.has_mod(SuddenDeath.name())
+    }
+    pub fn has_perfect(&self) -> bool {
+        self.has_mod(Perfect.name())
+    }
+    pub fn has_autoplay(&self) -> bool {
+        self.has_mod(Autoplay.name())
+    }
+
+
+}
+
+// lets pretend this is correct for now
+impl Hash for ModManager {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.speed.hash(state);
+        for m in self.mods.iter() {
+            m.hash(state)
+        }
     }
 }
 
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ModManagerOld {
+pub struct OldModManager {
     /// use get/set_speed instead of direct access to this
-    pub speed: u16,
+    pub speed: Option<u16>,
     
     pub easy: bool,
     pub hard_rock: bool,

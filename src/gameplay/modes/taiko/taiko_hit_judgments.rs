@@ -104,4 +104,20 @@ impl HitJudgments for TaikoHitJudgments {
         }
     }
 
+    /// does this judgment fail a perfect score?
+    fn fails_perfect(&self) -> bool { 
+        match self {
+            Geki | X300 | SliderPoint | SpinnerPoint => false,
+            _ => true
+        }
+    }
+
+    /// does this judgment fail a sudden death score?
+    fn fails_sudden_death(&self) -> bool {
+        match self {
+            Miss => true,
+            _ => false
+        }
+     }
+
 }

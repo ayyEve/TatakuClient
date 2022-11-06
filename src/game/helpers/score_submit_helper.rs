@@ -17,6 +17,8 @@ impl ScoreSubmitHelper {
             let replay = &self.replay;
             let score = replay.score_data.as_ref().unwrap();
 
+            println!("submitting mods: {:#?}", score.mods());
+
             let username = self.settings.username.clone();
             let password = self.settings.password.clone();
             if username.is_empty() || password.is_empty() { 

@@ -33,8 +33,8 @@ pub struct ScoreMenu {
     pub should_close: bool,
 
     selected_index: usize,
-
     window_size: Arc<WindowSize>,
+
     pub score_submit: Option<Arc<ScoreSubmitHelper>>,
 
     score_submit_response: Option<SubmitResponse>,
@@ -70,7 +70,7 @@ impl ScoreMenu {
         }
 
         // extract mods
-        let mut score_mods = (score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
+        let mut score_mods = ModManager::short_mods_string(score.mods(), false); //(score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
         if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
 
         ScoreMenu {
@@ -110,7 +110,7 @@ impl ScoreMenu {
         } else if let Some(replay) = self.score.get_replay().await {
             self.do_replay(game, replay).await;
         } else {
-
+            println!("no replay")
         }
     }
 
@@ -129,6 +129,9 @@ impl ScoreMenu {
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
     }
+
+
+
 
 
 }
@@ -195,6 +198,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             format!("Mean: {:.2}ms", self.hit_error.mean),
             format!("Error: {:.2}ms - {:.2}ms avg", self.hit_error.early, self.hit_error.late),
             format!("Deviance: {:.2}ms", self.hit_error.deviance),
+            if self.score.speed != 1.0 {format!("Speed: {:.2}x", self.score.speed)} else { String::new() },
             // format!("Expected Performance: {:.2}pr", self.score.score.performance),
             self.score_mods.clone(),
         ] {
@@ -332,6 +336,7 @@ impl AsyncMenu<Game> for ScoreMenu {
         
     }
 }
+
 #[async_trait]
 impl ControllerInputMenu<Game> for ScoreMenu {
     async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {

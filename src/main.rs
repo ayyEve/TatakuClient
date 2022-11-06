@@ -59,15 +59,15 @@ const FIRST_MAPS: &[u32] = &[
 // main fn
 #[tokio::main]
 async fn main() {
-    tataku_logging::init("logs/").unwrap();
-
-
     // enter game dir
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
-            error!("error changing current dir: {}", e);
+            println!("error changing current dir: {}", e);
         }
     }
+
+    tataku_logging::init("logs/").unwrap();
+
 
     // finish setting up
     setup().await;

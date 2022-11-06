@@ -105,10 +105,7 @@ impl SettingsMenu {
 
         match manager_from_playmode(settings.background_game_settings.mode, &map).await {
             Ok(mut manager) => {
-                manager.current_mods = Arc::new(ModManager {
-                    autoplay: true,
-                    ..Default::default()
-                });
+                manager.current_mods = Arc::new(ModManager::new().with_mod("autoplay"));
                 manager.make_menu_background();
                 manager.gamemode.fit_to_area(pos, size).await;
                 manager.start().await;

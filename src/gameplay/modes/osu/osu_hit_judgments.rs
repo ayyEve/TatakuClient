@@ -112,4 +112,19 @@ impl HitJudgments for OsuHitJudgments {
             _ => Color::default(),
         }
     }
+
+    fn fails_perfect(&self) -> bool {
+        match self {
+            X300 | SliderDot | SliderEnd => false,
+            _ => true
+        }
+    }
+
+    fn fails_sudden_death(&self) -> bool {
+        match self {
+            X50 | Miss | SliderEndMiss | SliderDotMiss => true,
+            _ => false
+        }
+    }
+
 }

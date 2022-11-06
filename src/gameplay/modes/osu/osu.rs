@@ -510,7 +510,7 @@ impl GameMode for StandardGame {
 
     async fn update(&mut self, manager:&mut IngameManager, time:f32) {
         // do autoplay things
-        if manager.current_mods.autoplay {
+        if manager.current_mods.has_autoplay() {
             let mut pending_frames = Vec::new();
 
             self.auto_helper.update(time, &mut self.notes, &self.scaling_helper, &mut pending_frames);
@@ -608,7 +608,7 @@ impl GameMode for StandardGame {
         // required because autoplay frames are checked after the frame is processed
         // so if the key is released on the same frame its checked, it will count as not held
         // which makes sense, but we dont want that
-        if manager.current_mods.autoplay {
+        if manager.current_mods.has_autoplay() {
             for frame in self.auto_helper.get_release_queue().iter() {
                 self.handle_replay_frame(*frame, time, manager).await;
             }
@@ -670,7 +670,7 @@ impl GameMode for StandardGame {
 
 
         // if this is a replay, we need to draw the replay curser
-        if manager.replaying || manager.current_mods.autoplay || self.use_controller_cursor {
+        if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
             CursorManager::set_pos(self.mouse_pos, true)
         }
 
@@ -811,7 +811,7 @@ impl GameModeInput for StandardGame {
         }
         
         // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -832,7 +832,7 @@ impl GameModeInput for StandardGame {
 
         
         // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -878,7 +878,7 @@ impl GameModeInput for StandardGame {
         }
 
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -892,7 +892,7 @@ impl GameModeInput for StandardGame {
         if self.game_settings.ignore_mouse_buttons {return}
         
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -909,7 +909,7 @@ impl GameModeInput for StandardGame {
         if self.game_settings.ignore_mouse_buttons {return}
 
         // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -936,7 +936,7 @@ impl GameModeInput for StandardGame {
 
     async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -953,7 +953,7 @@ impl GameModeInput for StandardGame {
     
     async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 
@@ -970,7 +970,7 @@ impl GameModeInput for StandardGame {
     
     async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
         // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.autoplay || manager.replaying {
+        if manager.current_mods.has_autoplay() || manager.replaying {
             return;
         }
 

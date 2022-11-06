@@ -21,7 +21,7 @@ pub struct SpectatorManager {
 
     /// what is the current map's hash? 
     /// if this is Some and game_manager is None, we dont have the map
-    pub current_map: Option<(String, PlayMode, String)>,
+    pub current_map: Option<(String, PlayMode, String, u16)>,
 
     /// list of id,username for specs
     pub spectator_cache: HashMap<u32, String>,
@@ -67,11 +67,11 @@ impl SpectatorManager {
             info!("got new map: {new_map:?}");
             
             let current_time = self.good_until;
-            if let (true, Some((current_map, mode, mods))) = (self.game_manager.is_none(), self.current_map.clone()) {
+            if let (true, Some((current_map, mode, mods, speed))) = (self.game_manager.is_none(), self.current_map.clone()) {
                 info!("good state to start map");
                 if &new_map.beatmap_hash == &current_map {
                     info!("starting map");
-                    self.start_game(game, current_map, mode, mods, current_time).await;
+                    self.start_game(game, current_map, mode, mods, current_time, speed).await;
                 }
             }
         }
@@ -83,9 +83,9 @@ impl SpectatorManager {
 
             trace!("Packet: {:?}", frame);
             match frame {
-                SpectatorFrameData::Play { beatmap_hash, mode, mods } => {
+                SpectatorFrameData::Play { beatmap_hash, mode, mods, speed} => {
                     println!("got play: {beatmap_hash}, {mode}, {mods}");
-                    self.start_game(game, beatmap_hash, mode, mods, 0.0).await;
+                    self.start_game(game, beatmap_hash, mode, mods, 0.0, speed).await;
                 }
 
                 SpectatorFrameData::MapInfo { beatmap_hash, game, download_link: _ } => {
@@ -168,13 +168,13 @@ impl SpectatorManager {
                     }
                 }
 
-                SpectatorFrameData::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time } => {
+                SpectatorFrameData::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time, speed } => {
                     warn!("got playing response: {user_id}, {beatmap_hash}, {mode}, {mods}, {current_time}");
 
                     let self_id = ONLINE_MANAGER.read().await.user_id;
 
                     if user_id == self_id {
-                        self.start_game(game, beatmap_hash, mode, mods, current_time).await
+                        self.start_game(game, beatmap_hash, mode, mods, current_time, speed).await
                     }
                 }
                 SpectatorFrameData::Unknown => {
@@ -255,8 +255,8 @@ impl SpectatorManager {
         }
     }
 
-    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods_str:String, current_time:f32) {
-        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone()));
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods_str:String, current_time:f32, speed: u16) {
+        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
 
         self.good_until = 0.0;
         self.map_length = 0.0;
@@ -264,7 +264,9 @@ impl SpectatorManager {
         // user started playing a map
         trace!("Host started playing map");
 
-        let mods:ModManager = serde_json::from_str(&mods_str).unwrap();
+        let mut mods = ModManager::new().with_speed(speed);
+        mods.mods = Score::mods_from_string(mods_str);
+
         // find the map
         let mut beatmap_manager = BEATMAP_MANAGER.write().await;
         match beatmap_manager.get_by_hash(&beatmap_hash) {

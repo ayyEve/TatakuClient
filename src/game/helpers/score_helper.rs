@@ -34,10 +34,10 @@ impl ScoreHelper {
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().await.clone();
-                        let mods_string = Some(serde_json::to_string(&mods).unwrap());
-                        local_scores.retain(|s| s.mods_string == mods_string);
+                        let mods = ModManager::get().await.mods.clone();
+                        local_scores.retain(|s| s.mods() == mods);
                     }
+                    
                     let mut thing = scores_clone.write().await;
                     thing.scores = local_scores.into_iter().map(|s|IngameScore::new(s, false, false)).collect();
                     thing.done = true;
@@ -54,9 +54,8 @@ impl ScoreHelper {
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().await.clone();
-                        let mods_string = Some(serde_json::to_string(&mods).unwrap());
-                        online_scores.retain(|s| s.mods_string == mods_string);
+                        let mods = ModManager::get().await.mods.clone();
+                        online_scores.retain(|s| s.mods() == mods);
                     }
 
                     let mut thing = scores_clone.write().await;
@@ -154,6 +153,7 @@ impl ScoreRetreivalMethod {
 }
 
 
+//TODO: use the api crates?
 
 mod osu {
     use crate::prelude::*;
@@ -186,6 +186,44 @@ mod osu {
         // dont care about anything else for this
     }
     
+    struct Mods;
+    #[allow(non_upper_case_globals, unused)]
+    impl Mods {
+        const None:u64        = 0;
+        const NoFail:u64      = 1;
+        const Easy:u64        = 2;
+        const TouchDevice:u64 = 4;
+        const Hidden:u64      = 8;
+        const HardRock:u64    = 16;
+        const SuddenDeath:u64 = 32;
+        const DoubleTime:u64  = 64;
+        const Relax:u64       = 128;
+        const HalfTime:u64    = 256;
+        const Nightcore:u64   = 512;
+        const Flashlight:u64  = 1024;
+        const Autoplay:u64    = 2048;
+        const SpunOut:u64     = 4096;
+        const Autopilot:u64   = 8192;
+        const Perfect:u64     = 16384;
+        const Key4:u64        = 32768;
+        const Key5:u64        = 65536;
+        const Key6:u64        = 131072;
+        const Key7:u64        = 262144;
+        const Key8:u64        = 524288;
+        const FadeIn:u64      = 1048576;
+        const Random:u64      = 2097152;
+        const Cinema:u64      = 4194304;
+        const Target:u64      = 8388608;
+        const Key9:u64        = 16777216;
+        const KeyCoop:u64     = 33554432;
+        const Key1:u64        = 67108864;
+        const Key3:u64        = 134217728;
+        const Key2:u64        = 268435456;
+        const ScoreV2:u64     = 536870912;
+        const Mirror:u64      = 1073741824;
+    }
+
+
     pub async fn fetch_beatmap_id(api_key: &String, map_hash: &String) -> Option<String> {
         let url = format!("https://osu.ppy.sh/api/get_beatmaps?k={api_key}&h={map_hash}");
         trace!("osu beatmap id lookup");
@@ -240,25 +278,45 @@ mod osu {
                     judgments.insert("xkatu".to_owned(), s.countkatu.parse().unwrap_or_default());
                     judgments.insert("xmiss".to_owned(), s.countmiss.parse().unwrap_or_default());
 
-                    let time = 0;
 
-                    let mut score = Score { 
-                        version: 0, 
-                        username: s.username.clone(), 
-                        beatmap_hash: String::new(), 
-                        playmode: playmode.clone(), 
-                        time,
-                        score: s.score.parse().unwrap_or_default(), 
-                        combo: s.maxcombo.parse().unwrap_or_default(), 
-                        max_combo: s.maxcombo.parse().unwrap_or_default(), 
-                        judgments,
-                        accuracy: 1.0,
-                        speed: 1.0, 
-                        mods_string: None, // TODO: 
-                        hit_timings: Vec::new(), 
-                    };
-                    
+                    let mut score = Score::default();
+                    score.username = s.username.clone();
+                    score.playmode = playmode.clone();
+                    score.score = s.score.parse().unwrap_or_default();
+                    score.combo = s.maxcombo.parse().unwrap_or_default();
+                    score.max_combo = s.maxcombo.parse().unwrap_or_default();
+                    score.judgments = judgments;
+                    score.speed = 1.0;
                     score.accuracy = calc_acc(&score);
+
+                    // mods
+                    {
+                        let peppy_fuck = s.enabled_mods.parse::<u64>().unwrap_or_default();
+                        macro_rules! check { 
+                            ($i: ident, $n: expr) => { 
+                                if (peppy_fuck & Mods::$i) > 0 { score.mods_mut().insert($n.to_owned()); } 
+                            }; 
+                        }
+
+                        check!(NoFail, "no_fail");
+                        check!(Easy, "easy");
+                        check!(Hidden, "hidden");
+                        check!(HardRock, "hard_rock");
+                        check!(SuddenDeath, "sudden_death");
+                        check!(Relax, "relax");
+                        check!(Flashlight, "flash_light");
+                        check!(Autoplay, "autoplay");
+                        check!(Autopilot, "auto_pilot");
+                        check!(SpunOut, "spun_out");
+                        check!(Perfect, "perfect");
+                        // mania mods
+                        check!(FadeIn, "fade_in");
+                        check!(Random, "random");
+                        check!(Mirror, "mirror");
+
+                        if (peppy_fuck & Mods::DoubleTime) > 0 { score.speed = 1.5; }
+                        if (peppy_fuck & Mods::HalfTime) > 0 { score.speed = 0.75; }
+                    }
 
                     let mut score = IngameScore::new(score, false, false);
                     // error!("{}", s.replay_available);
@@ -325,23 +383,27 @@ mod quaver {
                 judgments.insert("xkatu".to_owned(), s.count_great as u16);
                 judgments.insert("xmiss".to_owned(), s.count_miss as u16);
 
-                let time = 0;
 
-                let score = Score { 
-                    version: 0, 
-                    username: s.user.username.clone(), 
-                    beatmap_hash: String::new(), 
-                    playmode: String::new(), 
-                    time,
-                    score: s.total_score, 
-                    combo: s.max_combo as u16, 
-                    max_combo: s.max_combo as u16, 
-                    judgments,
-                    accuracy: s.accuracy as f64 / 100.0,
-                    speed: 1.0, 
-                    mods_string: Some(s.mods_string.clone()),
-                    hit_timings: Vec::new(), 
-                };
+                let mut score = Score::default();
+                score.username = s.user.username.clone();
+                score.score = s.total_score;
+                score.combo = s.max_combo as u16;
+                score.max_combo = s.max_combo as u16;
+                score.judgments = judgments;
+                score.speed = 1.0;
+                score.accuracy = s.accuracy as f64 / 100.0;
+                // check mods
+                for m in s.mods_string.split(", ") {
+                    if m.ends_with("x") {
+                        if let Ok(speed) = m.trim_end_matches("x").parse() {
+                            score.speed = speed;
+                            continue;
+                        }
+                    }
+
+                    score.mods_mut().insert(m.to_lowercase());
+                }
+                
 
                 let mut score = IngameScore::new(score, false, false);
                 score.replay_location = ReplayLocation::Online(Arc::new(QuaverReplayDownloader::new(score.score.clone(), s.id)));

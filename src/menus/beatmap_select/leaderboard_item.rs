@@ -17,7 +17,7 @@ pub struct LeaderboardItem {
     score: IngameScore,
     font: Font2,
 
-    score_mods: ModManager,
+    score_mods: String,
 
     ui_scale: Vector2,
 }
@@ -25,12 +25,7 @@ impl LeaderboardItem {
     pub fn new(score:IngameScore) -> LeaderboardItem {
         let tag = score.hash(); //username.clone();
         let font = get_font();
-
-        let mods = if let Some(mods) = &score.mods_string {
-            serde_json::from_str(mods).unwrap_or(ModManager::new())
-        } else {
-            ModManager::new()
-        };
+        let score_mods = ModManager::short_mods_string(score.mods(), false);
 
         LeaderboardItem {
             pos: Vector2::zero(),
@@ -40,7 +35,7 @@ impl LeaderboardItem {
             hover: false,
             selected: false,
             font,
-            score_mods: mods,
+            score_mods,
             ui_scale: Vector2::one()
         }
     }
@@ -86,7 +81,7 @@ impl ScrollableItem for LeaderboardItem {
             parent_depth + 4.0,
             self.pos + pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * self.ui_scale,
             (12.0 * self.ui_scale.y) as u32,
-            format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods.mods_list_string()),
+            format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods),
             self.font.clone()
         )));
     }
