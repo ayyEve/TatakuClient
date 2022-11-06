@@ -6,8 +6,9 @@ build-windows:
   stage: build-client
   image: rust:latest
   script:
-    - cargo build --release --verbose
-    - ./release/windows.ps1
+    - cargo build --release
+    - cp ./target/release/tataku-client.exe Y:/cdn/tataku/releases/windows/tataku-client.exe
+    # - ./release/windows.ps1
   tags:
     - windows
     - local
@@ -22,11 +23,12 @@ build-linux:
   script:
     - apt update
     - apt install -y libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev
-    - cargo build --release --verbose
+    - cargo build --release
     - ./release/linux.sh
   tags:
     - linux
     - local
+    - never
 
 
 # TODO: build-mac
