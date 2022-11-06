@@ -188,6 +188,10 @@ impl AsyncMenu<Game> for SettingsMenu {
         }
     }
 
+    async fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _g:&mut Game) {
+        self.scroll_area.on_click_release(pos, button);
+    }
+
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         self.scroll_area.on_key_press(key, mods);
 
@@ -199,8 +203,8 @@ impl AsyncMenu<Game> for SettingsMenu {
         }
     }
 
-    async fn on_click_release(&mut self, pos:Vector2, button:MouseButton, _g:&mut Game) {
-        self.scroll_area.on_click_release(pos, button);
+    async fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
+        self.scroll_area.on_key_release(key);
     }
 
     async fn update(&mut self, game: &mut Game) {
