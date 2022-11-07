@@ -427,7 +427,7 @@ impl IngameManager {
         // update score stuff now that gamemode has been updated
         self.score.accuracy = calc_acc(&self.score);
         self.score.performance = perfcalc_for_playmode(self.gamemode.playmode())(self.map_diff, self.score.accuracy as f32);
-        self.score.take_snapshot(time, self.health.get_ratio());
+        // self.score.take_snapshot(time, self.health.get_ratio());
 
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
