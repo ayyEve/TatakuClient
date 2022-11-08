@@ -29,12 +29,6 @@ pub struct StandardGame {
     pub notes: Vec<Box<dyn StandardHitObject>>,
 
     // hit timing bar stuff
-    // hitwindow_50: f32,
-    // hitwindow_100: f32,
-    // hitwindow_300: f32,
-    // hitwindow_miss: f32,
-    end_time: f32,
-    
     hit_windows: Vec<(OsuHitJudgments, Range<f32>)>,
     miss_window: f32,
 
@@ -65,6 +59,9 @@ pub struct StandardGame {
 
     use_controller_cursor: bool,
     window_size: Arc<WindowSize>,
+    end_time: f32,
+
+    slider_dot_image: Option<Image>
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
@@ -184,6 +181,8 @@ impl GameMode for StandardGame {
         ];
         let miss_window = w_miss;
 
+        let slider_dot_image = SkinManager::get_texture("followpoint", true).await;
+
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
@@ -213,7 +212,8 @@ impl GameMode for StandardGame {
                     auto_helper: StandardAutoHelper::new(),
                     new_combos: Vec::new(),
                     stack_leniency,
-                    window_size
+                    window_size,
+                    slider_dot_image,
                 };
                 
                 // join notes and sliders into a single array
@@ -688,16 +688,15 @@ impl GameMode for StandardGame {
                     let n1 = &self.notes[i];
                     let n2 = &self.notes[i + 1];
 
-                    if n1.note_type() == NoteType::Spinner {continue}
-                    if n2.note_type() == NoteType::Spinner {continue}
+                    if n1.note_type() == NoteType::Spinner { continue }
+                    if n2.note_type() == NoteType::Spinner { continue }
 
                     let preempt = n2.get_preempt();
                     let n1_time = n1.time();
-                    if time < n1_time - preempt {continue} //|| time > n2.end_time(0.0) {continue}
+                    if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
                     let n2_time = n2.time();
-                    if time >= n2_time {continue}//|| time <= n1_time {continue}
+                    if time >= n2_time { continue }//|| time <= n1_time {continue}
 
-                    // let bar_size = Vector2::new(7.0, 3.0) * self.scaling_helper.scale;
                     let follow_dot_size = 3.0 * self.scaling_helper.scale;
                     let follow_dot_distance = 20.0 * self.scaling_helper.scale;
 
@@ -713,21 +712,31 @@ impl GameMode for StandardGame {
                         let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
                         let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
                         
+                        // get the alpha
                         let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
                         let mut alpha = 1.0 - f64::easeinout_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32;
                         if time < n1_time {
                             // TODO!
                             alpha = 0.1;
                         }
-                        if alpha == 0.0 {continue}
+                        if alpha == 0.0 { continue }
 
-                        list.push(Box::new(Circle::new(
-                            Color::WHITE.alpha(alpha),
-                            100_000.0,
-                            point,
-                            follow_dot_size,
-                            None
-                        )));
+                        // add point
+                        if let Some(mut i) = self.slider_dot_image.clone() {
+                            const FOLLOW_DOT_TEX_SIZE: Vector2 = Vector2::new(128.0, 128.0);
+                            i.current_pos = point;
+                            i.current_scale = Vector2::one() * (follow_dot_size * 2.0) / FOLLOW_DOT_TEX_SIZE;
+                            list.push(Box::new(i));
+                        } else {
+                            list.push(Box::new(Circle::new(
+                                Color::WHITE.alpha(alpha),
+                                100_000.0,
+                                point,
+                                follow_dot_size,
+                                None
+                            )));
+                        }
+
                     }
                 }
             }

@@ -620,7 +620,7 @@ impl Into<HitType> for KeyPress {
         match self {
             KeyPress::LeftKat|KeyPress::RightKat => HitType::Kat,
             KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
-            _ => {panic!("mania key while playing taiko")}
+            _ => { panic!("non-taiko key while playing taiko") }
         }
     }
 }
