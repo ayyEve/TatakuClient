@@ -263,7 +263,7 @@ impl CursorManager {
         if let Some(cursor) = &self.cursor_image {
             let mut cursor = cursor.clone();
             cursor.current_pos = self.pos;
-            cursor.current_color = self.color;
+            // cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
                 cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;

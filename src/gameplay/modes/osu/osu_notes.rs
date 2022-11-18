@@ -111,7 +111,7 @@ impl StandardNote {
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let combo_text = if diff_calc_only {None} else {
+        let combo_text = if diff_calc_only { None } else {
             let mut combo_text =  Box::new(Text::new(
                 Color::BLACK,
                 base_depth - 0.0000001,
@@ -503,7 +503,7 @@ impl StandardSlider {
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let combo_text = if diff_calc_only {None} else {
+        let combo_text = if diff_calc_only { None } else {
             let mut combo_text =  Box::new(Text::new(
                 Color::BLACK,
                 circle_depth - 0.0000001,
@@ -519,7 +519,7 @@ impl StandardSlider {
             Some(combo_text)
         };
 
-        let mut slider = Self {
+        Self {
             def,
             curve,
             color,
@@ -567,10 +567,7 @@ impl StandardSlider {
             end_circle_image: None,
             slider_reverse_image: None,
             slider_body_render_target: None
-        };
-    
-        slider.make_dots().await;
-        slider
+        }
     }
 
     async fn make_body(&mut self) {

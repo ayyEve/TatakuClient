@@ -38,10 +38,6 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow {
     pub window: glfw_window::GlfwWindow,
-    // pub graphics: GlGraphics,
-
-    // game_event_sender: MultiFuze<GameEvent>,
-    // render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
     window_event_receiver: Receiver<WindowEvent>,
 
     #[cfg(feature="bass_audio")]
@@ -86,12 +82,9 @@ impl GameWindow {
         
         #[cfg(feature="bass_audio")] 
         let bass = {
-            #[cfg(target_os = "windows")]
-            let window_ptr = window.window.get_win32_window();
-            #[cfg(target_os = "linux")]
-            let window_ptr = window.window.get_x11_window();
-            #[cfg(target_os = "macos")]
-            let window_ptr = window.window.get_cocoa_window();
+            #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
+            #[cfg(target_os = "linux")] let window_ptr = window.window.get_x11_window();
+            #[cfg(target_os = "macos")] let window_ptr = window.window.get_cocoa_window();
 
             // initialize bass
             bass_rs::Bass::init_default_with_ptr(window_ptr).expect("Error initializing bass")
@@ -116,18 +109,14 @@ impl GameWindow {
             glfw::ffi::glfwSetWindowPosCallback(window.window.window_ptr(), Some(REPOSITION_WINDOW));
 
 
-            // extern "system" fn gl_callback(src:u32, t:u32, id:u32, severity:u32, len:i32, msg: *const i8, p: *mut c_void) {
-            //     let e = unsafe { std::ffi::CStr::from_ptr(msg).to_string_lossy().to_string() };
-
-            //     error!(
-            //         "gl error! {e}\nsrc:{src}\ntype:{t:x}\nid:{id}\nseverity:{severity}"
-            //     )
-
-            // }
             gl::Enable(gl::DEBUG_OUTPUT);
-            // gl::DebugMessageCallback(gl_callback, 0u8 as *const c_void);
-
-
+            gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
+            extern "system" fn gl_callback(_src:u32, _t:u32, _id:u32, _severity:u32, _len:i32, msg: *const i8, _p: *mut std::ffi::c_void) {
+                let e = unsafe { std::ffi::CStr::from_ptr(msg).to_string_lossy().to_string() };
+                if e.starts_with("Buffer detailed info") { return }
+                error!("gl: {e}")
+            }
+            gl::DebugMessageCallback(gl_callback, 0u8 as *const std::ffi::c_void);
         }
 
         Self {
@@ -160,7 +149,6 @@ impl GameWindow {
         if settings.raw_mouse_input {
             self.window.window.set_raw_mouse_motion(true);
         }
-
 
         macro_rules! close_window {
             (self) => {
@@ -327,7 +315,7 @@ fn render(window: *mut glfw::ffi::GLFWwindow, args: RenderArgs, frametime: &mut 
 
                     #[cfg(not(feature="snipping"))] {
 
-                        // TODO: dont use this for snipping
+
                         let c = graphics.draw_begin(args.viewport());
                         graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
                         

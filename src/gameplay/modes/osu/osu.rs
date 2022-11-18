@@ -152,9 +152,10 @@ impl GameMode for StandardGame {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get().await.clone();
         let window_size = WindowSize::get();
+        let effective_window_size = if diff_calc_only { Vector2::new(1280.0, 720.0) } else { window_size.0 };
         
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), window_size.0).await);
+        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), effective_window_size).await);
         let ar = metadata.get_ar(&mods);
 
         // TODO: beatmap combo colors
@@ -173,13 +174,13 @@ impl GameMode for StandardGame {
         let w_100  = map_difficulty(od, 140.0, 100.0, 60.0);
         let w_300  = map_difficulty(od, 80.0, 50.0, 20.0);
 
+        let miss_window = w_miss;
         let hit_windows = vec![
             (OsuHitJudgments::X300, 0.0..w_300),
             (OsuHitJudgments::X100, w_300..w_100),
             (OsuHitJudgments::X50, w_100..w_50),
             (OsuHitJudgments::Miss, w_50..w_miss),
         ];
-        let miss_window = w_miss;
 
         let slider_dot_image = SkinManager::get_texture("followpoint", true).await;
 
@@ -194,8 +195,8 @@ impl GameMode for StandardGame {
 
                 let mut s = Self {
                     notes: Vec::new(),
-                    mouse_pos:Vector2::zero(),
-                    window_mouse_pos:Vector2::zero(),
+                    mouse_pos: Vector2::zero(),
+                    window_mouse_pos: Vector2::zero(),
                     hit_windows,
                     miss_window,
         
@@ -268,9 +269,9 @@ impl GameMode for StandardGame {
         
                 for (note, slider, spinner) in all_items {
                     // check for new combo
-                    if let Some(note) = note {if note.new_combo {combo_num = 0}}
-                    if let Some(slider) = slider {if slider.new_combo {combo_num = 0}}
-                    if let Some(_spinner) = spinner {combo_num = 0}
+                    if let Some(note) = note { if note.new_combo { combo_num = 0 } }
+                    if let Some(slider) = slider { if slider.new_combo { combo_num = 0 } }
+                    if let Some(_spinner) = spinner { combo_num = 0 }
         
                     // if new combo, increment new combo counter
                     if combo_num == 0 {
@@ -298,7 +299,7 @@ impl GameMode for StandardGame {
                     if let Some(slider) = slider {
                         // invisible note
                         if slider.curve_points.len() == 0 || slider.length == 0.0 {
-                            let note = &NoteDef {
+                            let note = NoteDef {
                                 pos: slider.pos,
                                 time: slider.time,
                                 hitsound: slider.hitsound,
@@ -309,7 +310,7 @@ impl GameMode for StandardGame {
         
                             let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
                             s.notes.push(Box::new(StandardNote::new(
-                                note.clone(),
+                                note,
                                 ar,
 
                                 Color::new(0.0, 0.0, 0.0, 1.0),
@@ -351,7 +352,7 @@ impl GameMode for StandardGame {
                 }
         
                 s
-            },
+            }
             
             _ => return Err(crate::errors::BeatmapError::UnsupportedMode.into()),
         };

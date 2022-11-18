@@ -21,23 +21,7 @@ pub fn get_fallback_font() -> Font2 {
 }
 
 fn load_font(name: &str) -> Font2 {
-    // info!("loading font {}, main thread {}", name, on_main_thread());
-    // let mut glyphs = opengl_graphics::GlyphCache::new(format!("resources/fonts/{}", name), (), opengl_graphics::TextureSettings::new()).unwrap();
-    // for i in [10, 11, 12, 14, 15, 18, 20, 32] {
-    //     for c in (0x20u8..0x7F).map(|ch| ch as char) {
-    //         info!("{name} -> loading ('{c}', {i})");
-    //         if let Err(e) = glyphs.character(i, c) {
-    //             error!("font: {}", e)
-    //         }
-
-    //         info!("{name} -> ('{c}', {i}) exists {}", glyphs.opt_character(i, c).is_some())
-    //     }
-    // }
-    // Arc::new(Mutex::new(glyphs))
-
-
-    let font = Font2::load(format!("resources/fonts/{}", name)).expect(&format!("error loading font {name}"));
-    font
+    Font2::load(format!("resources/fonts/{}", name)).expect(&format!("error loading font {name}"))
 }
 
 /// list of points for font awesome font
@@ -68,7 +52,10 @@ impl FontAwesome {
 
 #[derive(Clone)]
 pub struct Font2 {
+    pub name: Arc<String>,
     pub font: Arc<fontdue::Font>,
+    // if the size is loaded but the char isnt found, dont try to load the font
+    pub loaded_sizes: Arc<RwLock<HashSet<FontSize>>>,
     pub textures: Arc<parking_lot::RwLock<HashMap<FontSize, Arc<Texture>>>>,
     pub characters: Arc<parking_lot::RwLock<HashMap<(FontSize, char), CharData>>>,
 }
@@ -76,27 +63,27 @@ pub struct Font2 {
 impl Font2 {
     pub fn load<P:AsRef<Path>>(path:P) -> Option<Self> {
         let data = std::fs::read(path.as_ref()).ok()?;
+        let name = path.as_ref().file_name().unwrap().to_string_lossy().to_string();
 
         let font_settings = fontdue::FontSettings::default();
         let font = fontdue::Font::from_bytes(data, font_settings).ok()?;
 
         Some(Self {
+            name: Arc::new(name),
             font: Arc::new(font),
+            loaded_sizes: Arc::new(RwLock::new(HashSet::new())),
             textures:   Arc::new(RwLock::new(HashMap::new())),
             characters: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
     pub fn load_font_size(&self, font_size: FontSize) {
+        if self.loaded_sizes.read().contains(&font_size) { return }
 
+        println!("loading font {} with size {}", self.name, font_size.0);
+        
         // send tex load request to main thread, and wait for it to complete
         if let Err(e) = load_font_data(self.clone(), font_size) {
-            if let TatakuError::String(s) = &e {
-                if s.is_empty() {
-                    return;
-                }
-            }
-
             error!("error loading font {}", e);
         }
     
@@ -156,6 +143,7 @@ impl std::hash::Hash for FontSize {
 impl FontRender for Font2 {
     type Size = FontSize;
 
+    fn get_name(&self) -> String { self.name.to_string() }
     fn size_from_u32(font_size: u32) -> Self::Size {
         FontSize::new(font_size as f32).unwrap()
     }
@@ -177,7 +165,8 @@ impl FontRender for Font2 {
     }
 
     fn draw_character_image(&self, font_size: Self::Size, ch: char, [x, y]: [&mut f64; 2], color: Color, draw_state: &graphics::DrawState, transform: graphics::types::Matrix2d, graphics: &mut GlGraphics) {
-        let character = self.get_char(font_size.0, ch).unwrap();
+        let Some(character) = self.get_char(font_size.0, ch) else { return; };
+        // println!("attempting to draw {ch} with tex id {}", character.texture.get_id());
         
         let ch_x = *x + character.metrics.xmin as f64;
         let ch_y = *y - (character.metrics.height as f64 + character.metrics.ymin as f64); // y = -metrics.bounds.height - metrics.bounds.ymin

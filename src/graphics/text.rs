@@ -75,6 +75,7 @@ impl Text {
     }
 }
 impl Renderable for Text {
+    fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size.0) }
     fn get_depth(&self) -> f64 { self.depth }
     fn get_context(&self) -> Option<Context> { self.context }
     fn set_context(&mut self, c:Option<Context>) { self.context = c }
@@ -221,6 +222,7 @@ pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
     let mut x = 0.0;
     let mut y = font_size.0 as f64;
 
+    // println!("attempting to draw text");
     for (ch, color) in text.char_colors() {
         if ch == '\n' {
             // move the line down
@@ -230,6 +232,7 @@ pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
             x = 0.0;
             continue;
         }
+
 
         for i in font_caches {
             if i.has_character(ch) {
@@ -245,5 +248,8 @@ pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
                 break;
             }
         }
+
     }
+
+    // println!("done drawing text");
 }

@@ -88,10 +88,11 @@ impl Image {
     }
 }
 impl Renderable for Image {
-    fn get_depth(&self) -> f64 {self.depth}
+    fn get_name(&self) -> String { format!("Texture with id {}", self.tex.get_id()) }
+    fn get_depth(&self) -> f64 { self.depth }
 
-    fn get_context(&self) -> Option<Context> {self.context}
-    fn set_context(&mut self, c:Option<Context>) {self.context = c}
+    fn get_context(&self) -> Option<Context> { self.context }
+    fn set_context(&mut self, c:Option<Context>) { self.context = c }
     fn draw(&self, g: &mut GlGraphics, c: Context) {
         let pre_rotation = self.current_pos / self.current_scale;
 
@@ -112,7 +113,7 @@ impl Renderable for Image {
 
         graphics::Image::new()
             .color(self.current_color.into())
-            .draw(self.tex.as_ref(), &self.context.unwrap_or(c).draw_state, transform, g)
+            .draw(self.tex.as_ref(), &self.context.unwrap_or(c).draw_state, transform, g);
     }
 }
 impl Transformable for Image {

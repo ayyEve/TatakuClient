@@ -22,6 +22,7 @@ impl HalfCircle {
     }
 }
 impl Renderable for HalfCircle {
+    fn get_name(&self) -> String { "Half Circle".to_owned() }
     fn get_depth(&self) -> f64 {self.depth}
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}

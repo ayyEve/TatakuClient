@@ -113,17 +113,8 @@ impl OsuDifficultyCalculator {
 impl DiffCalc for OsuDifficultyCalculator {
     async fn new(meta: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(meta)?;
-        let mut g = StandardGame::new(&g, true).await?;
+        let g = StandardGame::new(&g, true).await?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
-
-        
-        let window_size = Vector2::new(1280.0, 720.0);
-        let window_size = Arc::new(WindowSize(window_size));
-        // let scaling_helper = Arc::new(ScalingHelper::new(meta.get_cs(&ModManager::default()), window_size.0).await);
-
-
-        // make sure we use the same window size for all calcs (this is really dumb but so is this calc)
-        g.window_size_changed(window_size).await;
 
         let mut notes = Vec::new();
         for n in g.notes.iter() {

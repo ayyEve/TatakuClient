@@ -211,6 +211,7 @@ impl BeatmapManager {
 
     // setters
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, _do_async:bool, use_preview_time:bool) {
+        trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
         self.play_index += 1;

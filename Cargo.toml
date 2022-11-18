@@ -49,6 +49,7 @@ ayyeve-piston-ui = { version = "0.6", registry = "tataku" }
 piston2d-graphics = { version = "0.41.0", registry = "tataku" }
 piston2d-opengl_graphics = { version = "0.79.1", registry = "tataku" }
 fontdue = "0.7"
+rectangle-pack = "0.4"
 
 
 

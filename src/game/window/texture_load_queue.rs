@@ -1,7 +1,9 @@
 use crate::prelude::*;
 use image::RgbaImage;
+use rectangle_pack::*;
+use std::{collections::BTreeMap, ffi::c_void};
 
-use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::mpsc::{ UnboundedSender, unbounded_channel };
 
 pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
@@ -18,6 +20,13 @@ pub async fn texture_load_loop() {
     let mut image_data = Vec::new();
     let mut render_targets = Vec::new();
 
+    let mut texture_size = 0;
+    unsafe { gl::GetIntegerv(gl::MAX_TEXTURE_SIZE, &mut texture_size); }
+    let texture_size = texture_size.min(4096) as u32;
+
+    let mut font_bins = BTreeMap::new();
+    let mut font_textures = HashMap::new();
+
     loop {
         if let Ok(method) = texture_load_receiver.try_recv() {
             let settings = opengl_graphics::TextureSettings::new();
@@ -33,6 +42,7 @@ pub async fn texture_load_loop() {
             match method {
                 LoadImage::GameClose => {
                     image_data.clear();
+                    font_textures.clear();
                     return;
                 }
                 LoadImage::Path(path, on_done) => {
@@ -44,141 +54,104 @@ pub async fn texture_load_loop() {
                 LoadImage::Image(data, on_done) => {
                     send_tex!(Texture::from_image(&data, &settings), on_done)
                 }
-                LoadImage::Font(font, size, on_done) => {
-                    let px = size.0;
-                    // TODO: store rows in their own image maybe?
-                    // or just fix the trash code lol
+                LoadImage::Font(font, font_size, on_done) => {
+                    let mut rects_to_place = GroupedRectsToPlace::<char>::new();
+                    let mut char_data = HashMap::new();
 
-                    // let mut textures = font.textures.write();
-                    let mut characters = font.characters.write();
+                    for (&char, _codepoint) in font.font.chars() {
+                        // generate glyph data
+                        let (metrics, bitmap) = font.font.rasterize(char, font_size.0);
 
-                    let count = font.font.chars().len();
+                        // bitmap is a vec of grayscale pixels
+                        // we need to turn that into rgba bytes
+                        let mut data = Vec::new();
+                        bitmap.into_iter().for_each(|gray| {
+                            data.push(255); // r
+                            data.push(255); // g
+                            data.push(255); // b
+                            data.push(gray); // a
+                        });
 
-                    // println!("count: {count}");
+                        rects_to_place.push_rect(
+                            char,
+                            None,
+                            RectToInsert::new(metrics.width as u32, metrics.height as u32, 1)
+                        );
 
-                    if count < 1000 {
-                        let count_width = count; //(count as f32 / 2.0).ceil() as usize; // keep as 1 row for now because this code sucks balls
-                        
-                        // generate all datas
-                        #[derive(Default)]
-                        struct RowData {
-                            char_datas: Vec<(fontdue::Metrics, Vec<u8>, char)>,
-                            max_height: usize,
-                            total_width: usize
-                        }
-                        let mut rows = Vec::new();
-
-                        for (n, (&char, _codepoint)) in font.font.chars().iter().enumerate() {
-                            if n % count_width == 0 { rows.push(RowData::default()) }
-
-                            // generate glyph data
-                            let (metrics, bitmap) = font.font.rasterize(char, px);
-
-                            let r = rows.last_mut().unwrap();
-                            r.char_datas.push((metrics, bitmap, char));
-                            r.max_height = r.max_height.max(metrics.height);
-                            r.total_width += metrics.width;
-                        }
-
-                        let mut image_data:Vec<u8> = Vec::new();
-                        let mut char_data = Vec::new(); // (pos, size)
-
-                        let mut overall_width = 0;
-                        let mut overall_height = 0;
-
-                        for data in rows.into_iter() {
-                            for y in 0..data.max_height {
-                                let mut progressive_x = 0;
-
-                                for (m, image, char) in data.char_datas.iter() {
-                                    let y_start = y * m.width;
-                                    let x_start = y_start + m.width;
-
-                                    for i in y_start..x_start {
-                                        image_data.push(255); // r
-                                        image_data.push(255); // g
-                                        image_data.push(255); // b
-                                        image_data.push(*image.get(i).unwrap_or(&0)); // a
-                                    }
-
-                                    if y == 0 {
-                                        char_data.push((
-                                            Vector2::new(progressive_x as f64, overall_height as f64), 
-                                            Vector2::new(m.width as f64, m.height as f64),
-                                            *m,
-                                            *char
-                                        ));
-                                    }
-
-                                    progressive_x += m.width;
-                                }
-                            }
-
-                            overall_width += data.total_width;
-                            overall_height += data.max_height;
-                        }
-
-                        // pad with 0s until we get to the correct length
-                        let required = overall_width * overall_height * 4;
-                        for _ in 0..(required - image_data.len()) {
-                            image_data.push(0);
-                        }
-
-
-                        let i = image::RgbaImage::from_vec(overall_width as u32, overall_height as u32, image_data).unwrap();
-                        let texture = Arc::new(Texture::from_image(&i, &settings));
-
-                        for (pos, size2, metrics, char) in char_data {
-                            
-                            // setup data
-                            let char_data = CharData {
-                                texture: texture.clone(),
-                                pos,
-                                size: size2,
-                                metrics,
-                            };
-
-                            // insert data
-                            characters.insert((size, char), char_data);
-                        }
-                    } else {
-                        for (&char, _codepoint) in font.font.chars() {
-                            // TODO: load as one big image per-font
-                            
-                            // generate glyph data
-                            let (metrics, bitmap) = font.font.rasterize(char, px);
-
-                            // bitmap is a vec of grayscale pixels
-                            // we need to turn that into rgba bytes
-                            let mut data = Vec::new();
-                            bitmap.into_iter().for_each(|gray| {
-                                data.push(255); // r
-                                data.push(255); // g
-                                data.push(255); // b
-                                data.push(gray); // a
-                            });
-
-                            // convert to image
-                            let data = image::RgbaImage::from_vec(metrics.width as u32, metrics.height as u32, data).unwrap();
-
-                            // load in opengl
-                            let texture = Arc::new(Texture::from_image(&data, &settings));
-
-                            // setup data
-                            let char_data = CharData {
-                                texture,
-                                pos: Vector2::zero(),
-                                size: Vector2::new(metrics.width as f64, metrics.height as f64),
-                                metrics,
-                            };
-
-                            // insert data
-                            characters.insert((size, char), char_data);
-                        }
+                        char_data.insert(char, (metrics, data));
                     }
 
+                    let rect_info = loop {
+                        let info = pack_rects(
+                            &rects_to_place,
+                            &mut font_bins,
+                            &volume_heuristic,
+                            &contains_smallest_box
+                        );
 
-                    on_done.send(Err(TatakuError::String(String::new()))).ok().expect("uh oh");
+                        match info {
+                            Ok(info) => break info,
+                            Err(_) => {
+                                // insert new rect
+                                let id = font_bins.len();
+                                font_bins.insert(id, TargetBin::new(texture_size, texture_size, 1));
+
+                                // make tex
+                                let tex_data = image::RgbaImage::new(texture_size, texture_size);
+                                let tex = Arc::new(Texture::from_image(&tex_data, &settings));
+                                image_data.push(tex.clone());
+                                font_textures.insert(id, tex);
+                            }
+                        }
+                    };
+
+                    let mut characters = font.characters.write();
+                    for (char, (font_bin, data)) in rect_info.packed_locations().iter() {
+                        let (metrics, char_data) = char_data.get(char).unwrap();
+                        let texture = font_textures.get(font_bin).unwrap().clone();
+
+                        let x = data.x();
+                        let y = data.y();
+                        let w = data.width();
+                        let h = data.height();
+
+                        let pos = Vector2::new(x as f64, y as f64);
+                        let size = Vector2::new(w as f64, h as f64);
+
+                        unsafe {
+                            gl::TextureSubImage2D(
+                                texture.get_id(),
+                                0,
+                                x as i32, y as i32,
+                                w as i32, h as i32,
+                                gl::BGRA,
+                                gl::UNSIGNED_BYTE,
+                                char_data.as_ptr() as *const c_void
+                            );
+                        }
+
+                        
+                        // setup data
+                        let char_data = CharData {
+                            texture,
+                            pos,
+                            size,
+                            metrics: *metrics,
+                        };
+
+                        // insert data
+                        characters.insert((font_size, *char), char_data);
+                    }
+                    
+                    // make sure gl loads everything before the data vecs are dropped
+                    unsafe {
+                        gl::Flush();
+                        gl::Finish();
+                    }
+
+                    trace!("done creating font");
+                    font.loaded_sizes.write().insert(font_size.clone());
+                    on_done.send(Ok(())).ok().expect("uh oh");
                 }
 
                 LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
@@ -304,4 +277,3 @@ pub enum LoadImage {
     CreateRenderTarget((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
     UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
 }
-
