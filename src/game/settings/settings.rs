@@ -94,6 +94,7 @@ pub struct Settings {
     pub raw_mouse_input: bool,
     #[Setting(text="Scroll Sensitivity", min=0.1, max=5.0)]
     pub scroll_sensitivity: f64,
+    
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
@@ -112,6 +113,9 @@ pub struct Settings {
     #[Setting(text="Cursor Ripple Scale")]
     pub cursor_ripple_final_scale: f64,
 
+    // skin settings
+    #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
+    pub current_skin: String,
 
 
     // misc keybinds
@@ -125,12 +129,13 @@ pub struct Settings {
     pub double_tap_protection_duration: f32,
 
 
+    // integrations
+    #[Setting(text="Last.fm Integration", category="Integration")]
+    pub lastfm_enabled: bool,
+
+
     // other misc
     pub last_git_hash: String,
-    
-    #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
-    pub current_skin: String,
-
     pub logging_settings: LoggingSettings,
     pub external_games_folders: Vec<String>,
 
@@ -180,10 +185,6 @@ impl Settings {
     pub async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Settings> {
         SETTINGS.get().unwrap().write().await
     }
-
-    // pub fn window_size() -> Vector2 {
-    //     *WINDOW_SIZE.get().unwrap()
-    // }
 
     pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}
     pub fn get_music_vol(&self) -> f32 {self.music_vol * self.master_vol}
@@ -251,6 +252,8 @@ impl Default for Settings {
             enable_double_tap_protection: false,
             double_tap_protection_duration: 80.0,
             
+            // integrations
+            lastfm_enabled: false,
 
             // other
             last_git_hash: String::new(),

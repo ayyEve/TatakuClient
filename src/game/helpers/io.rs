@@ -266,3 +266,14 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
         // explorer.exe /select,"C:\Folder\subfolder\file.txt"
     }
 }
+
+pub fn open_link(url: String) {
+    #[cfg(windows)] {
+        let mut cmd = std::process::Command::new("explorer");
+        cmd.arg(url);
+
+        if let Err(e) = cmd.spawn() {
+            error!("error running cmd: {e}")
+        }
+    }
+}

@@ -119,6 +119,13 @@ impl Game {
 
         // init diff manager
         init_diffs().await;
+
+
+        // init integrations
+        if settings.lastfm_enabled {
+            LastFmIntegration::check().await;
+        }
+
         
         // region == menu setup ==
 
@@ -683,12 +690,15 @@ impl Game {
                         };
 
                         self.set_background_beatmap(&m).await;
-                        let text = format!("Playing {}-{}[{}]", m.artist, m.title, m.version);
+                        let action = SetAction::Playing { 
+                            artist: m.artist.clone(),
+                            title: m.title.clone(),
+                            version: m.version.clone(),
+                            creator: m.creator.clone(),
+                            multiplayer_lobby_name: None
+                        };
 
-                        let discord_desc = format!("{} - {}", m.title, m.artist);
-                        let discord_state = format!("{} by {}", m.version, m.creator);
-
-                        OnlineManager::set_action(UserAction::Ingame, text, Some(m.mode.clone()), (discord_state, discord_desc));
+                        OnlineManager::set_action(action, Some(m.mode.clone()));
                     },
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
@@ -702,20 +712,27 @@ impl Game {
                             }
                         }
 
-                        let discord = (
-                            format!(""),
-                            format!("Idle")
-                        );
-
-                        OnlineManager::set_action(UserAction::Idle, "Idle".to_owned(), None, discord);
+                        OnlineManager::set_action(SetAction::Idle, None);
                     },
                     GameState::Closing => {
                         // send logoff
-                        let discord = (
-                            format!(""),
-                            format!("Closing")
-                        );
-                        OnlineManager::set_action(UserAction::Leaving, "Closing".to_owned(), None, discord);
+                        OnlineManager::set_action(SetAction::Closing, None);
+                    }
+                    GameState::Spectating(manager) => {
+                        if let Some(gm) = &manager.game_manager {
+                            let m = gm.beatmap.get_beatmap_meta();
+                            let action = SetAction::Spectating { 
+                                artist: m.artist.clone(),
+                                title: m.title.clone(),
+                                version: m.version.clone(),
+                                creator: m.creator.clone(),
+                                player: String::new()
+                            };
+
+                            OnlineManager::set_action(action, None);
+                        } else {
+                            OnlineManager::set_action(SetAction::Idle, None);
+                        }
                     }
                     _ => {}
                 }

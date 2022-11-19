@@ -357,19 +357,44 @@ impl OnlineManager {
         Ok(())
     }
 
-    pub fn set_action(action:UserAction, action_text:String, incoming_mode: Option<PlayMode>, (discord_state, discord_desc): (String, String)) {
+    pub fn set_action(action_info: SetAction, incoming_mode: Option<PlayMode>) {
         tokio::spawn(async move {
             let s = ONLINE_MANAGER.read().await;
-
             let mode = incoming_mode.clone().unwrap_or(String::new());
-            send_packet!(s.writer, create_packet!(Client_StatusUpdate {action, action_text: action_text.clone(), mode}));
+
+
+            let action = action_info.get_action();
+            let action_text = match &action_info {
+                SetAction::Idle => format!("Idle"),
+                SetAction::Closing => format!("Closing"),
+
+                SetAction::Listening { artist, title } => format!("Listening to {artist} - {title}"),
+                SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
+                SetAction::Playing { artist, title, version, multiplayer_lobby_name:_, creator:_ } => format!("Playing {artist} - {title}[{version}]"),
+            };
+
+
+            send_packet!(s.writer, create_packet!(Client_StatusUpdate { action, action_text: action_text.clone(), mode }));
             if action == UserAction::Leaving {
                 send_packet!(s.writer, create_packet!(Client_LogOut));
             }
 
+
             if let Some(discord) = &s.discord {
-                discord.change_status(discord_state, discord_desc, incoming_mode).await;
+                discord.change_status(&action_info, incoming_mode).await;
             }
+
+            if get_settings!().lastfm_enabled {
+                match &action_info {
+                    SetAction::Listening { artist, title } 
+                    | SetAction::Playing { artist, title, .. } 
+                    | SetAction::Spectating { artist, title, .. } => {
+                        LastFmIntegration::update(title.clone(), artist.clone()).await;
+                    }
+                    _ => {}
+                }
+            }
+
         });
     }
 
@@ -513,6 +538,42 @@ fn ping_handler() {
 }
 
 
+pub enum SetAction {
+    Idle,
+    Closing,
+
+    Listening {
+        artist: String,
+        title: String,
+    },
+
+    Playing {
+        artist: String,
+        title: String,
+        version: String,
+        creator: String,
+        multiplayer_lobby_name: Option<String>
+    },
+
+    Spectating {
+        player: String,
+        artist: String,
+        title: String,
+        creator: String,
+        version: String
+    }
+}
+impl SetAction {
+    pub fn get_action(&self) -> UserAction {
+        match self {
+            Self::Idle => UserAction::Idle,
+            Self::Closing => UserAction::Leaving,
+            Self::Playing { .. } => UserAction::Ingame,
+            Self::Listening { .. } => UserAction::Idle,
+            Self::Spectating { .. } => UserAction::Ingame,
+        }
+    }
+}
 
 // tests
 #[allow(unused_imports, dead_code)]
