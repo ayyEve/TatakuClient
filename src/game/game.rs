@@ -289,7 +289,8 @@ impl Game {
         let mut mouse_down = self.input_manager.get_mouse_down();
         let mut mouse_up = self.input_manager.get_mouse_up();
         let mouse_moved = self.input_manager.get_mouse_moved();
-        let mut scroll_delta = self.input_manager.get_scroll_delta();
+        // TODO: do we want this here or only in menus?
+        let mut scroll_delta = self.input_manager.get_scroll_delta() * self.settings.scroll_sensitivity;
 
         let mut keys_down = self.input_manager.get_keys_down();
         let mut keys_up = self.input_manager.get_keys_up();
@@ -323,7 +324,7 @@ impl Game {
 
         // check for volume change
         if mouse_moved {self.volume_controller.on_mouse_move(mouse_pos)}
-        if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta, mods).await {scroll_delta = 0.0}
+        if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await {scroll_delta = 0.0}
         self.volume_controller.on_key_press(&mut keys_down, mods).await;
         
         // check user panel

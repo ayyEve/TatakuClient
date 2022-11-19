@@ -92,6 +92,8 @@ pub struct Settings {
     pub pause_on_focus_lost: bool,
     #[Setting(text="Raw Mouse Input (requires restart)")]
     pub raw_mouse_input: bool,
+    #[Setting(text="Scroll Sensitivity", min=0.1, max=5.0)]
+    pub scroll_sensitivity: f64,
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
@@ -230,6 +232,7 @@ impl Default for Settings {
             ui_scale: 1.0,
             background_dim: 0.8,
             raw_mouse_input: false,
+            scroll_sensitivity: 1.0,
 
             // cursor
             cursor_scale: 1.0,

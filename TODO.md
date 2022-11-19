@@ -22,4 +22,3 @@ ignore hitsound audio errors -> replace with empty audio stream?
 last.fm integration (pain)
 
 fix bass settings to fix audio latency
-add setting to adjust mouse scroll sensitivity
