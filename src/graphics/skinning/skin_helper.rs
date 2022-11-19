@@ -101,10 +101,10 @@ impl SkinManager {
 
         if !self.texture_cache.contains_key(&name) {
             let tex_path = get_tex_path(&name, &self.settings.current_skin);
-            let mut maybe_img = load_image(tex_path, grayscale).await;
+            let mut maybe_img = load_image(&tex_path, grayscale).await;
 
             if maybe_img.is_none() && allow_default {
-                trace!("Skin missing tex {}", name);
+                trace!("Skin missing tex {tex_path}/{name}");
                 maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale).await;
             }
 

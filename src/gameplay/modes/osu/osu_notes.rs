@@ -1342,6 +1342,7 @@ pub struct StandardSpinner {
     time: f32, // ms
     end_time: f32, // ms
     last_update: f32,
+    current_time: f32,
 
     /// current angle of the spinner
     rotation: f64,
@@ -1361,18 +1362,26 @@ pub struct StandardSpinner {
 
     scaling_helper: Arc<ScalingHelper>,
 
-    /// alpha multiplier, used for background game
-    alpha_mult: f32,
+    /// main spinny
+    spinner_circle: Option<Image>,
+    /// bg, no spin
+    spinner_background: Option<Image>,
+    /// also bg, no spin
+    spinner_bottom: Option<Image>,
+    /// gets smaller towards end of spinner, from 100% to 0%
+    spinner_approach: Option<Image>,
 }
 impl StandardSpinner {
-    pub fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, _diff_calc_only: bool) -> Self {
+    pub async fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, _diffcalc_only: bool) -> Self {
         let time = def.time;
         let end_time = def.end_time;
+
         Self {
-            pos: scaling_helper.window_size / 2.0,
+            pos: scaling_helper.scale_coords(super::osu::FIELD_SIZE / 2.0),
             def,
             time, 
             end_time,
+            current_time: 0.0,
 
             holding: false,
             rotation: 0.0,
@@ -1385,15 +1394,19 @@ impl StandardSpinner {
             mouse_pos: Vector2::zero(),
 
             last_update: 0.0,
-            alpha_mult: 1.0,
+
+            spinner_circle: None,
+            spinner_bottom: None,
+            spinner_approach: None,
+            spinner_background: None,
         }
     }
 }
 #[async_trait]
 impl HitObject for StandardSpinner {
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self,_:f32) -> f32 {self.end_time}
-    fn note_type(&self) -> NoteType {NoteType::Spinner}
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self,_:f32) -> f32 { self.end_time }
+    fn note_type(&self) -> NoteType { NoteType::Spinner }
 
     async fn update(&mut self, beatmap_time: f32) {
         let mut diff = 0.0;
@@ -1418,47 +1431,70 @@ impl HitObject for StandardSpinner {
 
         self.last_rotation_val = mouse_angle;
         self.last_update = beatmap_time;
+        self.current_time = beatmap_time;
     }
     async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
         let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         if !(self.last_update >= self.time && self.last_update <= self.end_time) {return list}
 
-        let border = Some(Border::new(Color::BLACK.alpha(self.alpha_mult), NOTE_BORDER_SIZE));
+        let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
 
         // bg circle
-        list.push(Box::new(Circle::new(
-            Color::YELLOW.alpha(self.alpha_mult),
-            -10.0,
-            self.pos,
-            SPINNER_RADIUS,
-            border.clone()
-        )));
+        if let Some(i) = self.spinner_background.clone() {
+            list.push(Box::new(i))
+        } else {}
+
+        // bottom circle
+        if let Some(i) = self.spinner_bottom.clone() {
+            list.push(Box::new(i))
+        } else {
+            if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
+                list.push(Box::new(Circle::new(
+                    Color::YELLOW,
+                    -10.0,
+                    self.pos,
+                    SPINNER_RADIUS,
+                    border.clone()
+                )));
+            }
+        }
+
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
-        list.push(Box::new(Circle::new(
-            Color::WHITE.alpha(self.alpha_mult),
-            -11.0,
-            self.pos,
-            SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64),
-            border.clone()
-        )));
+        if let Some(mut i) = self.spinner_approach.clone() {
+            i.current_scale = Vector2::one() * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
+            list.push(Box::new(i))
+        } else {
+            list.push(Box::new(Circle::new(
+                Color::WHITE,
+                -11.0,
+                self.pos,
+                SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64),
+                border.clone()
+            )));
+        }
+
 
         // draw line to show rotation
-        {
+        if let Some(mut i) = self.spinner_circle.clone() {
+            i.current_scale = Vector2::one() * self.scaling_helper.scale;
+            i.current_rotation = self.rotation;
+            list.push(Box::new(i))
+        } else {
             let p2 = self.pos + Vector2::new(self.rotation.cos(), self.rotation.sin()) * SPINNER_RADIUS;
             list.push(Box::new(Line::new(
                 self.pos,
                 p2,
                 5.0,
                 -20.0,
-                Color::GREEN.alpha(self.alpha_mult)
+                Color::GREEN
             )));
         }
         
         // draw a counter
         let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
         let mut txt = Text::new(
-            Color::BLACK.alpha(self.alpha_mult),
+            Color::BLACK,
             -999.9,
             Vector2::zero(),
             30,
@@ -1482,13 +1518,47 @@ impl HitObject for StandardSpinner {
     }
 
     async fn reload_skin(&mut self) {
+        let pos = self.scaling_helper.scale_coords(super::osu::FIELD_SIZE / 2.0);
+        let scale = Vector2::one() * self.scaling_helper.scale;
+        println!("reload skin with pos: {pos:?}");
+
+        self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, |i| {
+            // const SIZE:f64 = 700.0;
+            i.initial_pos = pos;
+            i.current_pos = pos;
+            i.initial_scale = scale;
+            i.current_scale = scale;
+        }).await;
+
+        self.spinner_background = IngameManager::load_texture_maybe("spinner-background", false, |i| {
+            // const SIZE:f64 = 667.0; 
+            i.initial_pos = pos;
+            i.current_pos = pos;
+            i.initial_scale = scale;
+            i.current_scale = scale;
+        }).await;
+
+        self.spinner_bottom = IngameManager::load_texture_maybe("spinner-bottom", false, |i| {
+            i.initial_pos = pos;
+            i.current_pos = pos;
+            i.initial_scale = scale;
+            i.current_scale = scale;
+        }).await;
+
+        self.spinner_approach = IngameManager::load_texture_maybe("spinner-approachcircle", false, |i| {
+            // const SIZE:f64 = 320.0;
+            i.initial_pos = pos;
+            i.current_pos = pos;
+            i.initial_scale = scale;
+            i.current_scale = scale;
+        }).await;
 
     }
 }
 #[async_trait]
 impl StandardHitObject for StandardSpinner {
     fn miss(&mut self) {}
-    fn was_hit(&self) -> bool {self.last_update >= self.end_time} 
+    fn was_hit(&self) -> bool { self.last_update >= self.end_time } 
     fn get_hitsamples(&self) -> HitSamples {self.def.hitsamples.clone()}
     fn get_hitsound(&self) -> u8 {self.def.hitsound}
     fn get_preempt(&self) -> f32 {0.0}
@@ -1496,23 +1566,32 @@ impl StandardHitObject for StandardSpinner {
     fn causes_miss(&self) -> bool {self.rotations_completed < self.rotations_required} // if the spinner wasnt completed in time, cause a miss
     fn set_hitwindow_miss(&mut self, _window: f32) {}
 
-    // fn get_points(&mut self, _is_press:bool, _:f32, _:(f32,f32,f32,f32)) -> ScoreHit {
-    //     ScoreHit::Other(100, false)
-    // }
-
-    fn press(&mut self, _time:f32) {
-        self.holding = true;
-    }
-    fn release(&mut self, _time:f32) {
-        self.holding = false;
-    }
-    fn mouse_move(&mut self, pos:Vector2) {
-        self.mouse_pos = pos;
-    }
+    fn press(&mut self, _time:f32) { self.holding = true; }
+    fn release(&mut self, _time:f32) { self.holding = false; }
+    fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos; }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
+        let scale = Vector2::one() * new_scale.scale;
+
+        self.pos = new_scale.scale_coords(super::osu::FIELD_SIZE / 2.0);
         self.scaling_helper = new_scale;
-        self.pos =  self.scaling_helper.window_size / 2.0
+        println!("set pos: {:?}", self.pos);
+
+        for i in [
+            &mut self.spinner_circle, 
+            &mut self.spinner_bottom,
+            &mut self.spinner_background,
+            &mut self.spinner_approach,
+        ] {
+            if let Some(i) = i {
+                i.initial_pos = self.pos;
+                i.current_pos = self.pos;
+
+                i.initial_scale = scale;
+                i.current_scale = scale;
+            }
+        }
+
     } 
 
     fn pos_at(&self, time: f32) -> Vector2 {
@@ -1544,6 +1623,7 @@ async fn approach_circle(pos:Vector2, radius:f64, time_diff:f32, time_preempt:f3
 
     if let Some(mut tex) = SkinManager::get_texture("approachcircle", true).await {
         tex.depth = depth - 100.0;
+        // i think this is incorrect
         let scale = 1.0 + (time_diff as f64 / time_preempt as f64) * (APPROACH_CIRCLE_MULT - 1.0);
 
         tex.initial_pos = pos;

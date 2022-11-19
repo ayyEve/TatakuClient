@@ -1227,6 +1227,14 @@ impl IngameManager {
     pub async fn reload_skin(&mut self) {
         self.gamemode.reload_skin().await;
     }
+
+
+    /// helper since most texture loads will look something like this
+    pub async fn load_texture_maybe(name: impl AsRef<str> + Send + Sync, grayscale:bool, mut on_loaded: impl FnMut(&mut Image)) -> Option<Image> {
+        SkinManager::get_texture_grayscale(name, true, grayscale).await.map(|mut i| {on_loaded(&mut i); i})
+    }
+
+
 }
 
 // Spectator Stuff

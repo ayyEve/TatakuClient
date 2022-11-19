@@ -253,7 +253,7 @@ impl Default for Settings {
             last_git_hash: String::new(),
 
             server_url: "wss://server.tataku.ca".to_owned(),
-            score_url: "https://scores.tataku.ca".to_owned(),
+            score_url: "https://tataku.ca".to_owned(),
             current_skin: "None".to_owned(),
             logging_settings: LoggingSettings::new(),
 

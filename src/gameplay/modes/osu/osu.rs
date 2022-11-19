@@ -345,7 +345,7 @@ impl GameMode for StandardGame {
                             spinner.clone(),
                             scaling_helper.clone(),
                             diff_calc_only,
-                        )))
+                        ).await))
                     }
                     
                     counter += 1;
