@@ -1,14 +1,10 @@
 TODO!
 
 // builds
-build on commit (artifacts? copy built files to webserver?)
 update check, in-game notification
 remember to check features!!
 
 // gamemodes
-fix taiko spinner scale
-skin osu spinners
-skin osu hit indicators
 hire someone to fix osu spinners
 perf calc should take a score not an acc
 keep best perf score, not best score score
@@ -22,8 +18,8 @@ if deleting a map from an external songs folder, add it to the ignore list, dont
 on first start -> menu to load osu settings
 notification list -> see past notifications (and dismiss them)
 ignore hitsound audio errors -> replace with empty audio stream?
-scores from server arent listing mods/speed
 
 last.fm integration (pain)
 
-better settings (will need another proc macro)
+fix bass settings to fix audio latency
+add setting to adjust mouse scroll sensitivity
