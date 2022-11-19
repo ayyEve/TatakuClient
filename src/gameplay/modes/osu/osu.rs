@@ -61,7 +61,9 @@ pub struct StandardGame {
     window_size: Arc<WindowSize>,
     end_time: f32,
 
-    slider_dot_image: Option<Image>
+    slider_dot_image: Option<Image>,
+    
+    judgment_helper: JudgmentImageHelper,
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
@@ -182,6 +184,7 @@ impl GameMode for StandardGame {
             (OsuHitJudgments::Miss, w_50..w_miss),
         ];
 
+        let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
         let slider_dot_image = SkinManager::get_texture("followpoint", true).await;
 
         let mut s = match map {
@@ -215,6 +218,7 @@ impl GameMode for StandardGame {
                     stack_leniency,
                     window_size,
                     slider_dot_image,
+                    judgment_helper,
                 };
                 
                 // join notes and sliders into a single array
@@ -416,7 +420,7 @@ impl GameMode for StandardGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, manager);
+                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -540,7 +544,7 @@ impl GameMode for StandardGame {
 
             for (add_combo, pos) in note.pending_combo() {
                 manager.add_judgment(&add_combo).await;
-                add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, manager);
+                add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, manager);
             }
 
             // check if note was missed
@@ -561,7 +565,7 @@ impl GameMode for StandardGame {
                         let j = OsuHitJudgments::Miss;
                         manager.add_judgment(&j).await;
 
-                        add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, manager);
+                        add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
                     }
                     NoteType::Slider => {
                         let note_time = note.end_time(0.0);
@@ -576,7 +580,7 @@ impl GameMode for StandardGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, manager);
+                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -804,6 +808,8 @@ impl GameMode for StandardGame {
     }
 
     async fn reload_skin(&mut self) {
+        self.judgment_helper.reload_skin().await;
+
         for n in self.notes.iter_mut() {
             n.reload_skin().await;
         }
@@ -1087,11 +1093,19 @@ impl GameModeInfo for StandardGame {
     }
 }
 
-fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, manager: &mut IngameManager) {
+fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
     if !hit_value.should_draw() { return }
 
     let color = hit_value.color();
-    let image = None;
+    let mut image = judgment_helper.get_from_scorehit(hit_value);
+    if let Some(image) = &mut image {
+        image.current_pos = pos;
+        image.depth = -2.0;
+
+        let scale = Vector2::one() * scaling_helper.scale;
+        image.initial_scale = scale;
+        image.current_scale = scale;
+    }
 
     manager.add_judgement_indicator(BasicJudgementIndicator::new(
         pos, 

@@ -127,4 +127,19 @@ impl HitJudgments for OsuHitJudgments {
         }
     }
 
+    fn tex_name(&self) -> &'static str {
+        match self {
+            X300 => "hit300",
+            X100 => "hit100",
+            X50 => "hit50",
+            Miss => "hit0",
+            
+            SliderDotMiss 
+            | SliderEndMiss => "hit0",
+
+            SliderDot 
+            |  SliderEnd => "",
+        }
+    }
+
 }

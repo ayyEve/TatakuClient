@@ -1520,7 +1520,6 @@ impl HitObject for StandardSpinner {
     async fn reload_skin(&mut self) {
         let pos = self.scaling_helper.scale_coords(super::osu::FIELD_SIZE / 2.0);
         let scale = Vector2::one() * self.scaling_helper.scale;
-        println!("reload skin with pos: {pos:?}");
 
         self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, |i| {
             // const SIZE:f64 = 700.0;
@@ -1575,7 +1574,6 @@ impl StandardHitObject for StandardSpinner {
 
         self.pos = new_scale.scale_coords(super::osu::FIELD_SIZE / 2.0);
         self.scaling_helper = new_scale;
-        println!("set pos: {:?}", self.pos);
 
         for i in [
             &mut self.spinner_circle, 

@@ -58,7 +58,6 @@ impl JudgementIndicator for BasicJudgementIndicator {
                 self.color.alpha(alpha),
                 self.depth,
                 self.pos,
-                // CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs * (1.0/3.0),
                 self.radius,
                 None
             )))

@@ -74,7 +74,6 @@ pub struct TaikoGame {
     miss_window: f32,
 
     last_judgment: TaikoHitJudgments,
-
 }
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
@@ -113,7 +112,7 @@ impl GameMode for TaikoGame {
         let left_don_image = None;
         let right_don_image = None;
         let right_kat_image = None;
-        let judgement_helper= JudgmentImageHelper::new(DefaultHitJudgments::None).await;
+        let judgement_helper = JudgmentImageHelper::new(DefaultHitJudgments::None).await;
 
         for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
             hit_cache.insert(i, -999.9);
@@ -771,7 +770,6 @@ impl GameMode for TaikoGame {
 
     
     async fn reload_skin(&mut self) {
-
         if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
             don.depth = -1.0;
             don.origin.x = don.tex_size().x;

@@ -6,25 +6,17 @@ pub struct JudgmentImageHelper {
 }
 impl JudgmentImageHelper {
     pub async fn new<J:HitJudgments>(judge: J) -> Self {
-        let mut images = HashMap::new();
+        let mut s = Self {
+            images: HashMap::new(),
+            variants: judge.variants()
+        };
 
-        let variants = judge.variants();
-        for i in variants.iter() {
-            let k = i.as_str_internal().to_owned();
-            let img = i.tex_name();
-            if img.is_empty() { continue }
-
-            images.insert(k, SkinManager::get_texture(img, true).await);
-        }
-
-        Self {
-            images,
-            variants
-        }
+        s.reload_skin().await;
+        s
     }
 
     pub fn get_from_scorehit<J:HitJudgments>(&self, judge: &J) -> Option<Image> {
-        self.images.get(judge.as_str_internal()).unwrap().clone()
+        self.images.get(judge.as_str_internal()).cloned().flatten()
     }
 
     pub async fn reload_skin(&mut self) {
@@ -34,8 +26,9 @@ impl JudgmentImageHelper {
             let k = i.as_str_internal().to_owned();
             let img = i.tex_name();
             if img.is_empty() { continue }
-
-            self.images.insert(k, SkinManager::get_texture(img, true).await);
+            let tex = SkinManager::get_texture(img, true).await;
+            // println!("trying to load tex {img}, got? {}", tex.is_some());
+            self.images.insert(k, tex);
         }
     }
 }
