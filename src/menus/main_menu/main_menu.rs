@@ -30,9 +30,6 @@ pub struct MainMenu {
 
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
-
-    #[cfg(feature="render_target_test")]
-    render_target:RenderTarget,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -53,29 +50,7 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
-        let visualization = MenuVisualizationNew::new().await;
-
-        #[cfg(feature="render_target_test")]
-        fn callback(render_target: &mut RenderTarget, graphics: &mut GlGraphics) {
-            let circle = Circle::new(Color::BLUE, 1.0, Vector2::one() * 200.0, 50.0, None);
-
-            let viewport = render_target.viewport();
-            
-            render_target.bind();
-
-            let c = graphics.draw_begin(viewport);
-
-            circle.draw(graphics, c);
-
-            graphics.draw_end();
-            render_target.unbind();
-
-            render_target.image.current_pos = Vector2::one() * 500.0;
-        }
-
-        #[cfg(feature="render_target_test")]
-        let render_target = RenderTarget::new(500.0, 500.0, callback).await.expect("error creating render target");
-    
+        let visualization = MenuVisualizationNew::new().await;    
 
         MainMenu {
             play_button,
@@ -92,15 +67,24 @@ impl MainMenu {
             settings: SettingsHelper::new().await,
             window_size,
             last_input: Instant::now(),
-
-            #[cfg(feature="render_target_test")]
-            render_target
         }
     }
 
     async fn setup_manager(&mut self, called_by: &str) {
         trace!("setup manager called by {}", called_by);
         self.settings.update();
+
+        
+        #[cfg(feature = "bass_audio")]
+        match Audio::get_song().await {
+            Some(song) => self.music_box.update_song_duration(song.get_length_seconds().unwrap_or_default() as f32 * 1000.0),
+            _ => {}
+        }
+        #[cfg(feature = "neb_audio")]
+        if let Some(a) = Audio::get_song() {
+            // self.music_box.update_song_duration(a);
+        }
+
 
         let settings = self.settings.background_game_settings.clone();
         if !settings.main_menu_enabled { return }
@@ -251,6 +235,8 @@ impl AsyncMenu<Game> for MainMenu {
         #[cfg(feature = "bass_audio")]
         match Audio::get_song().await {
             Some(song) => {
+                self.music_box.update_song_time(song.get_position().unwrap_or_default() as f32);
+
                 match song.get_playback_state() {
                     Ok(PlaybackState::Playing) | Ok(PlaybackState::Paused) => {},
                     _ => song_done = true,

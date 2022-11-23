@@ -19,3 +19,5 @@ if map exists in both local maps and external maps, use the local maps file, and
 on first start -> menu to load osu settings
 notification list -> see past notifications (and dismiss them)
 ignore hitsound audio errors -> replace with empty audio stream?
+
+ditch piston

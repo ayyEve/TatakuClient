@@ -29,14 +29,8 @@ fn download_url<T:AsRef<str>>(file:T) -> String {
     format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
 }
 
-// https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
-
     // default audio
-    // "resources/audio/don.wav",
-    // "resources/audio/kat.wav",
-    // "resources/audio/bigdon.wav",
-    // "resources/audio/bigkat.wav",
     "resources/audio/combobreak.mp3",
 
     // icons
@@ -66,7 +60,7 @@ async fn main() {
         }
     }
 
-    tataku_logging::init("logs/").unwrap();
+    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
 
 
     // finish setting up
@@ -80,6 +74,9 @@ async fn main() {
 
     let mut args = std::env::args().map(|s|s.to_string());
     args.next(); // skip the file param
+
+    // let path = std::env::current_exe().unwrap();
+    // println!("file hash: {}", get_file_hash(&path).unwrap());
 
     if let Some(param1) = args.next() {
         match &*param1 {

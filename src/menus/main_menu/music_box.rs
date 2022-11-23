@@ -23,12 +23,21 @@ const X_PADDING:f64 = 0.0;
 
 const SKIP_AMOUNT:f64 = 500.0; // half a second?
 
+const PROGRESSBAR_HEIGHT:f64 = 5.0;
+const PROGRESSBAR_YPAD:f64 = 2.0;
+
+const PRIMARY_COLOR:Color = Color::WHITE;
+const SECONDARY_COLOR:Color = Color::new(1.0, 1.0, 1.0, 0.1);
+
 #[derive(ScrollableGettersSetters)]
 pub struct MusicBox {
     pos: Vector2, // should be bottom right
     size: Vector2,
     hover: bool,
     mouse_pos: Vector2,
+
+    song_time: f32,
+    song_duration: f32,
 
     texts: Vec<Text>,
     actions: Vec<FontAwesome>,
@@ -53,7 +62,7 @@ impl MusicBox {
                 actions.push(*c);
 
                 let text = Text::new(
-                    Color::WHITE,
+                    PRIMARY_COLOR,
                     0.0,
                     btn_pos + MUSIC_BOX_PADDING,
                     CONTROL_BUTTON_SIZE,
@@ -78,21 +87,24 @@ impl MusicBox {
             ;
 
         // update text's y pos
-        pos.y -= size.y + Y_BOTTOM_PADDING; // bottom padding;
+        pos.y -= size.y + Y_BOTTOM_PADDING + PROGRESSBAR_HEIGHT * 2.0; // bottom padding;
         for i in texts.iter_mut() {
             i.current_pos.y = pos.y + MUSIC_BOX_PADDING.y + CONTROL_BUTTON_PADDING.y;
         }
 
         Self {
+            pos, 
             size, 
-            pos,
-            hover: false,
-            mouse_pos: Vector2::zero(),
-            actions,
-            texts,
+            hover: false, 
+            mouse_pos: Vector2::zero(), 
+            actions, 
+            texts, 
 
-            next_pending: AtomicBool::new(false),
-            prev_pending: AtomicBool::new(false),
+            song_time: 0.0, 
+            song_duration: 0.0, 
+
+            next_pending: AtomicBool::new(false), 
+            prev_pending: AtomicBool::new(false), 
         }
     }
     pub fn get_next_pending(&self) -> bool {
@@ -115,6 +127,12 @@ impl MusicBox {
         }
     }
 
+    pub fn update_song_time(&mut self, time: f32) {
+        self.song_time = time;
+    }
+    pub fn update_song_duration(&mut self, time: f32) {
+        self.song_duration = time;
+    }
 
     fn pause_or_resume() {
         tokio::spawn(async {
@@ -200,28 +218,31 @@ impl ScrollableItem for MusicBox {
             }
         }
         
+        if Rectangle::bounds_only(
+            self.pos + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD), 
+            Vector2::new(self.size.x, PROGRESSBAR_HEIGHT)
+        ).contains(pos) {
+            let rel_x = (pos - self.pos).x;
+            let pos = (rel_x / self.size.x) * self.song_duration as f64;
+            
+            tokio::spawn(async move {
+                #[cfg(feature = "bass_audio")]
+                if let Some(song) = Audio::get_song().await {
+                    let _ = song.set_position(pos);
+                }
+            });
+        }
+
         self.hover
     }
 
-    fn update(&mut self) {
+    fn update(&mut self) {}
 
-    }
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
         // let draw_pos = self.pos + pos_offset;
 
-        // // draw bg
-        // list.push(Box::new(Rectangle::new(
-        //     Color::HOT_PINK.alpha(0.1),
-        //     parent_depth,
-        //     draw_pos,
-        //     self.size,
-        //     None, // Some(Border::new(Color::LIGHT_BLUE, 2.0))
-        // ).shape(Shape::Round(5.0, 10))));
-
-
         // draw buttons
-        for text in self.texts.iter() {
-            let mut text = text.clone();
+        for mut text in self.texts.clone() {
             text.depth = parent_depth;
             text.current_pos += pos_offset;
             
@@ -229,7 +250,7 @@ impl ScrollableItem for MusicBox {
             
             // make bounding box
             let mut rect = Rectangle::new(
-                Color::new(1.0, 1.0, 1.0, 0.1),
+                SECONDARY_COLOR.alpha(0.1),
                 parent_depth,
                 text.current_pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
@@ -247,5 +268,24 @@ impl ScrollableItem for MusicBox {
             // add text after rect
             list.push(Box::new(text));
         }
+
+
+        // draw progress bar
+        list.push(Box::new(Rectangle::new(
+            PRIMARY_COLOR,
+            parent_depth,
+            self.pos + pos_offset + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD),
+            Vector2::new(self.size.x * (self.song_time / self.song_duration) as f64, PROGRESSBAR_HEIGHT),
+            None
+        ).shape(Shape::Round(2.0, 5))));
+        // draw border after
+        list.push(Box::new(Rectangle::new(
+            Color::TRANSPARENT_WHITE,
+            parent_depth,
+            self.pos + pos_offset + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD),
+            Vector2::new(self.size.x, PROGRESSBAR_HEIGHT),
+            Some(Border::new(SECONDARY_COLOR, 1.2))
+        ).shape(Shape::Round(2.0, 5))));
+
     }
 }
