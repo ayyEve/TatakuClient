@@ -61,7 +61,7 @@ pub struct StandardGame {
     window_size: Arc<WindowSize>,
     end_time: f32,
 
-    slider_dot_image: Option<Image>,
+    follow_point_image: Option<Image>,
     
     judgment_helper: JudgmentImageHelper,
 }
@@ -185,7 +185,7 @@ impl GameMode for StandardGame {
         ];
 
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
-        let slider_dot_image = SkinManager::get_texture("followpoint", true).await;
+        let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
@@ -217,7 +217,7 @@ impl GameMode for StandardGame {
                     new_combos: Vec::new(),
                     stack_leniency,
                     window_size,
-                    slider_dot_image,
+                    follow_point_image,
                     judgment_helper,
                 };
                 
@@ -688,11 +688,16 @@ impl GameMode for StandardGame {
         let time = manager.time();
         if self.game_settings.draw_follow_points {
             if self.notes.len() == 0 { return }
+
+            let follow_dot_size = 3.0 * self.scaling_helper.scale;
+            let follow_dot_distance = 20.0 * self.scaling_helper.scale;
+
             for i in 0..self.notes.len() - 1 {
                 if !self.new_combos.contains(&(i + 1)) {
                     let n1 = &self.notes[i];
                     let n2 = &self.notes[i + 1];
 
+                    // skip if either note is a spinner
                     if n1.note_type() == NoteType::Spinner { continue }
                     if n2.note_type() == NoteType::Spinner { continue }
 
@@ -702,17 +707,15 @@ impl GameMode for StandardGame {
                     let n2_time = n2.time();
                     if time >= n2_time { continue }//|| time <= n1_time {continue}
 
-                    let follow_dot_size = 3.0 * self.scaling_helper.scale;
-                    let follow_dot_distance = 20.0 * self.scaling_helper.scale;
 
                     // setup follow points and the time they should exist at
-
                     let n1_pos = n1.pos_at(n2_time);
                     let n2_pos = n2.pos_at(n2_time);
-
                     let distance = n1_pos.distance(n2_pos);
+                    let direction = PI * 2.0 - Vector2::atan2(n1_pos - n2_pos);
+                    
                     let follow_dot_count = distance/follow_dot_distance;
-                    for i in 0..follow_dot_count as u64 {
+                    for i in 1..(follow_dot_count - 1.0) as u64 {
                         let lerp_amount = i as f64 / follow_dot_count as f64;
                         let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
                         let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
@@ -727,10 +730,11 @@ impl GameMode for StandardGame {
                         if alpha == 0.0 { continue }
 
                         // add point
-                        if let Some(mut i) = self.slider_dot_image.clone() {
+                        if let Some(mut i) = self.follow_point_image.clone() {
                             const FOLLOW_DOT_TEX_SIZE: Vector2 = Vector2::new(128.0, 128.0);
                             i.current_pos = point;
-                            i.current_scale = Vector2::one() * (follow_dot_size * 2.0) / FOLLOW_DOT_TEX_SIZE;
+                            i.current_rotation = direction;
+                            // i.current_scale = Vector2::one() * self.scaling_helper.scale;
                             list.push(Box::new(i));
                         } else {
                             list.push(Box::new(Circle::new(

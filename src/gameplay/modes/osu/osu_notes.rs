@@ -971,7 +971,7 @@ impl HitObject for StandardSlider {
                         im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
                         let l = self.curve.curve_lines[0];
-                        im.current_rotation = Vector2::atan2(l.p2 - l.p1);
+                        im.current_rotation = Vector2::atan2((l.p2 - l.p1) * Vector2::new(1.0, -1.0));
 
                         list.push(Box::new(im));
                     }
@@ -1007,7 +1007,7 @@ impl HitObject for StandardSlider {
                     im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
                     let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
-                    im.current_rotation = Vector2::atan2(l.p1 - l.p2);
+                    im.current_rotation = Vector2::atan2((l.p1 - l.p2) * Vector2::new(1.0, -1.0));
 
                     list.push(Box::new(im));
                 }

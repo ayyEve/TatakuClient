@@ -94,21 +94,18 @@ impl Renderable for Image {
     fn get_context(&self) -> Option<Context> { self.context }
     fn set_context(&mut self, c:Option<Context>) { self.context = c }
     fn draw(&self, g: &mut GlGraphics, c: Context) {
-        let pre_rotation = self.current_pos / self.current_scale;
-
-        let transform = c
-            .transform
-            // scale to size
-            .scale(self.current_scale.x, self.current_scale.y)
-
+        let transform = c.transform
             // move to pos
-            .trans(pre_rotation.x, pre_rotation.y)
+            .trans_pos(self.current_pos)
+
+            // scale to size
+            .scale_pos(self.current_scale)
 
             // rotate to rotate
             .rot_rad(self.current_rotation)
             
             // apply origin
-            .trans(-self.origin.x, -self.origin.y)
+            .trans_pos(-self.origin)
         ;
 
         graphics::Image::new()

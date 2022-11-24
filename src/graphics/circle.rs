@@ -58,7 +58,7 @@ impl Renderable for Circle {
             resolution: 128
         }.draw(
             graphics::ellipse::circle(self.current_pos.x, self.current_pos.y, self.current_radius),
-            &DrawState::default(),
+            &self.context.unwrap_or(c).draw_state,
             c.transform,
             g
         );

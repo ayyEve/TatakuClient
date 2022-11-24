@@ -324,7 +324,7 @@ impl<T> Interpolation for T where T: Copy + std::ops::Add<Output=T> + std::ops::
 
 pub trait VectorHelpers {
     fn atan2(v:Vector2) -> f64 {
-        v.y.atan2(v.x)
+        (-v.y).atan2(v.x)
     }
 
     fn from_angle(a:f64) -> Vector2 {
@@ -342,6 +342,7 @@ pub trait VectorHelpers {
     }
 
     fn distance(&self, v2: Vector2) -> f64;
+    fn direction(&self, v2: Vector2) -> f64;
 
     fn x(self) -> Vector2;
     fn y(self) -> Vector2;
@@ -349,6 +350,10 @@ pub trait VectorHelpers {
 impl VectorHelpers for Vector2 {
     fn distance(&self, v2: Vector2) -> f64 {
         distance(*self, v2)
+    }
+    fn direction(&self, v2: Vector2) -> f64 {
+        let direction = v2 - *self;
+        (direction.x / Self::magnitude(direction)).acos()
     }
 
     // get only this vector's x value

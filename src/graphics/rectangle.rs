@@ -84,23 +84,23 @@ impl Renderable for Rectangle {
         let mut r = graphics::Rectangle::new(self.current_color.into());
         r.shape = self.shape;
 
-        if let Some(b) = self.border {r.border = Some(b.into())}
-
-        let pre_rotation = self.current_pos / self.current_scale + self.origin;
+        if let Some(b) = self.border { r.border = Some(b.into())}
         
-        let transform = c
-            .transform
-            // scale to size
-            .scale(self.current_scale.x, self.current_scale.y)
-
+        let transform = c.transform
             // move to pos
-            .trans(pre_rotation.x, pre_rotation.y)
+            .trans_pos(self.current_pos)
+
+            // scale to size
+            .scale_pos(self.current_scale)
+
+            // undo origin
+            .trans_pos(self.origin)
 
             // rotate to rotate
             .rot_rad(self.current_rotation)
 
             // apply origin
-            .trans(-self.origin.x, -self.origin.y)
+            .trans_pos(-self.origin)
         ;
 
 

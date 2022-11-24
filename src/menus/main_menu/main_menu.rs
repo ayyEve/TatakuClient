@@ -316,9 +316,6 @@ impl AsyncMenu<Game> for MainMenu {
             None
         )));
 
-        #[cfg(feature="render_target_test")]
-        list.push(Box::new(self.render_target.image.clone()));
-
         list
     }
 
