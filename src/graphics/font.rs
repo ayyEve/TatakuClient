@@ -186,7 +186,7 @@ impl FontRender for Font2 {
         );
 
         *x += character.metrics.advance_width as f64;
-        *y += character.metrics.advance_height as f64;
+        // *y += character.metrics.advance_height as f64;
     }
 
 }
