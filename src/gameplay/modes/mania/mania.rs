@@ -21,38 +21,6 @@ const BAR_HEIGHT:f64 = 4.0; // how tall is a timing bar
 const BAR_SPACING:f32 = 4.0; // how many beats between timing bars
 const BAR_DEPTH:f64 = -90.0;
 
-/// calculate the mania acc for `score`
-/// from https://wiki.quavergame.com/docs/gameplay#accuracy
-pub fn calc_acc(score: &Score) -> f64 {
-    let marv = score.judgments.get("geki").copy_or_default() as f64;
-    let perf = score.judgments.get("x300").copy_or_default() as f64;
-    let great = score.judgments.get("katu").copy_or_default() as f64;
-    let good = score.judgments.get("x100").copy_or_default() as f64;
-    let okay  = score.judgments.get("x50").copy_or_default() as f64;
-    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
-
-    let top = [
-        marv * 1.0, // 100%
-        perf * 0.9825, // 98.25%
-        great * 0.65, // 65%
-        good * 0.25, // 25%
-        okay * -0.100, // -100%
-        miss * -0.50, // -50%
-    ].sum();
-
-    let bottom = [
-        marv, 
-        perf, 
-        great, 
-        good, 
-        okay, 
-        miss
-    ].sum();
-
-    top.max(0.0) / bottom
-}
-
-
 pub struct ManiaGame {
     map_meta: Arc<BeatmapMeta>,
     // lists
@@ -882,15 +850,6 @@ impl GameMode for ManiaGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
-        // for c in self.columns.iter_mut() {
-        //     for note in c.iter_mut() {
-        //         note.set_alpha(settings.opacity)
-        //     }
-        // }
-    }
-
-
     async fn reset(&mut self, beatmap:&Beatmap) {
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() {
@@ -977,8 +936,7 @@ impl GameMode for ManiaGame {
     }
 
     
-    async fn force_update_settings(&mut self, _settings: &Settings) {
-    }
+    async fn force_update_settings(&mut self, _settings: &Settings) {}
     
     async fn reload_skin(&mut self) {
         // reload skin settings
@@ -997,6 +955,10 @@ impl GameMode for ManiaGame {
         }
         
         self.load_col_images().await;
+    }
+
+    async fn apply_mods(&mut self, _mods: Arc<ModManager>) {
+
     }
 }
 
@@ -1069,7 +1031,7 @@ impl GameModeInput for ManiaGame {
 }
 
 #[async_trait]
-impl GameModeInfo for ManiaGame {
+impl GameModeProperties for ManiaGame {
     fn playmode(&self) -> PlayMode { "mania".to_owned() }
 
     fn end_time(&self) -> f32 { self.end_time }
@@ -1103,10 +1065,6 @@ impl GameModeInfo for ManiaGame {
             .collect()
     }
 
-    fn judgment_type(&self) -> Box<dyn HitJudgments> {
-        Box::new(ManiaHitJudgments::Miss)
-    }
-
     async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
         let playmode = self.playmode();
         let get_name = |name| {
@@ -1138,9 +1096,6 @@ impl GameModeInfo for ManiaGame {
         
     }
 
-    fn get_perf_calc() -> PerformanceCalc where Self:Sized {
-        Box::new(|diff, acc| diff * (acc / 0.98).powi(6))
-    }
 }
 
 // when the game is dropped, save settings

@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::REPLAY_EXPORTS_DIR;
-use crate::gameplay::modes::manager_from_playmode;
 
 use chrono::{ 
     NaiveDateTime,
@@ -54,10 +53,12 @@ impl ScoreMenu {
             50.0,
             font.clone()
         );
+
+        let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
         
         // map hit types to a display string
         let mut hit_counts = Vec::new();
-        for judge in get_judgments(&score.playmode).variants().iter() {
+        for judge in judgments.iter() {
             let txt = judge.as_str_display();
             if txt.is_empty() {continue}
 

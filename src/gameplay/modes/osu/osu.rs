@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use super::*;
 use crate::prelude::*;
 use super::osu_notes::*;
 use super::OsuHitJudgments;
@@ -9,20 +10,6 @@ const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
 const STACK_LENIENCY:u32 = 3;
-
-
-/// calculate the standard acc for `score`
-pub fn calc_acc(score: &Score) -> f64 {
-    let x50  = score.judgments.get("x50").copy_or_default()  as f64;
-    let x100 = score.judgments.get("x100").copy_or_default() as f64;
-    let x300 = score.judgments.get("x300").copy_or_default() as f64;
-    let geki = score.judgments.get("geki").copy_or_default() as f64;
-    let katu = score.judgments.get("katu").copy_or_default() as f64;
-    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
-
-    (50.0 * x50 + 100.0 * (x100 + katu) + 300.0 * (x300 + geki)) 
-    / (300.0 * (miss + x50 + x100 + x300 + katu + geki))
-}
 
 pub struct StandardGame {
     // lists
@@ -64,6 +51,9 @@ pub struct StandardGame {
     follow_point_image: Option<Image>,
     
     judgment_helper: JudgmentImageHelper,
+
+    metadata: Arc<BeatmapMeta>,
+    mods: Arc<ModManager>
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
@@ -146,6 +136,23 @@ impl StandardGame {
 
     }
 
+    fn setup_hitwindows(&mut self) {
+        // windows
+        let od = scale_by_mods(self.metadata.od, 0.5, 1.4, &self.mods).clamp(1.0, 10.0);
+        let w_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
+        let w_50   = map_difficulty(od, 200.0, 150.0, 100.0);
+        let w_100  = map_difficulty(od, 140.0, 100.0, 60.0);
+        let w_300  = map_difficulty(od, 80.0, 50.0, 20.0);
+        self.miss_window = w_miss;
+
+        self.hit_windows = vec![
+            (OsuHitJudgments::X300, 0.0..w_300),
+            (OsuHitJudgments::X100, w_300..w_100),
+            (OsuHitJudgments::X50, w_100..w_50),
+            (OsuHitJudgments::Miss, w_50..w_miss),
+        ];
+    }
+
 }
 
 #[async_trait]
@@ -157,8 +164,11 @@ impl GameMode for StandardGame {
         let effective_window_size = if diff_calc_only { Vector2::new(1280.0, 720.0) } else { window_size.0 };
         
         let settings = get_settings!().standard_settings.clone();
-        let scaling_helper = Arc::new(ScalingHelper::new(metadata.get_cs(&mods), effective_window_size).await);
-        let ar = metadata.get_ar(&mods);
+
+        let cs = scale_by_mods(metadata.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0);
+        let ar = scale_by_mods(metadata.ar, 0.5, 1.4, &mods).clamp(1.0, 11.0);
+        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size).await);
+
 
         // TODO: beatmap combo colors
         let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
@@ -167,22 +177,6 @@ impl GameMode for StandardGame {
         } else {
             settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect()
         };
-
-        
-        // windows
-        let od = map.get_beatmap_meta().get_od(&*ModManager::get().await);
-        let w_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
-        let w_50   = map_difficulty(od, 200.0, 150.0, 100.0);
-        let w_100  = map_difficulty(od, 140.0, 100.0, 60.0);
-        let w_300  = map_difficulty(od, 80.0, 50.0, 20.0);
-
-        let miss_window = w_miss;
-        let hit_windows = vec![
-            (OsuHitJudgments::X300, 0.0..w_300),
-            (OsuHitJudgments::X100, w_300..w_100),
-            (OsuHitJudgments::X50, w_100..w_50),
-            (OsuHitJudgments::Miss, w_50..w_miss),
-        ];
 
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
         let follow_point_image = SkinManager::get_texture("followpoint", true).await;
@@ -200,15 +194,15 @@ impl GameMode for StandardGame {
                     notes: Vec::new(),
                     mouse_pos: Vector2::zero(),
                     window_mouse_pos: Vector2::zero(),
-                    hit_windows,
-                    miss_window,
+                    hit_windows: Vec::new(),
+                    miss_window: 0.0,
         
                     hold_count: 0,
                     end_time: 0.0,
         
                     move_playfield: None,
                     scaling_helper: scaling_helper.clone(),
-                    cs: beatmap.metadata.get_cs(&mods),
+                    cs,
 
                     use_controller_cursor: false,
         
@@ -219,6 +213,8 @@ impl GameMode for StandardGame {
                     window_size,
                     follow_point_image,
                     judgment_helper,
+                    metadata,
+                    mods: Arc::new(mods)
                 };
                 
                 // join notes and sliders into a single array
@@ -363,6 +359,8 @@ impl GameMode for StandardGame {
 
         // wait an extra sec
         s.end_time += 1000.0;
+
+        s.setup_hitwindows();
 
         if !diff_calc_only {
             for n in s.notes.iter_mut() {
@@ -715,18 +713,21 @@ impl GameMode for StandardGame {
                     let direction = PI * 2.0 - Vector2::atan2(n1_pos - n2_pos);
                     
                     let follow_dot_count = distance/follow_dot_distance;
-                    for i in 1..(follow_dot_count - 1.0) as u64 {
+                    for i in 1..follow_dot_count as u64 {
                         let lerp_amount = i as f64 / follow_dot_count as f64;
                         let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
                         let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
                         
                         // get the alpha
                         let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
-                        let mut alpha = 1.0 - f64::easeinout_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32;
-                        if time < n1_time {
-                            // TODO!
-                            alpha = 0.1;
-                        }
+                        let alpha = if alpha_lerp_amount > 2.0 || alpha_lerp_amount < 0.0 {
+                            0.0
+                        } else if alpha_lerp_amount > 1.0 {
+                            f64::easeout_sine(1.0, 0.0, alpha_lerp_amount as f64 - 1.0) as f32
+                        } else {
+                            f64::easein_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32
+                        };
+
                         if alpha == 0.0 { continue }
 
                         // add point
@@ -775,13 +776,6 @@ impl GameMode for StandardGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
-        // for note in self.notes.iter_mut() {
-        //     note.set_alpha(settings.opacity)
-        // }
-    }
-
-
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
         self.playfield_changed().await;
@@ -816,6 +810,24 @@ impl GameMode for StandardGame {
 
         for n in self.notes.iter_mut() {
             n.reload_skin().await;
+        }
+    }
+
+    async fn apply_mods(&mut self, mods: Arc<ModManager>) {
+        let has_easy = mods.has_mod(Easy.name());
+        let has_hr = mods.has_mod(HardRock.name());
+        self.mods = mods;
+
+        if has_easy || has_hr {
+            let cs = get_cs(&self.metadata, &self.mods);
+            let ar = get_ar(&self.metadata, &self.mods);
+
+            self.apply_playfield(Arc::new(ScalingHelper::new(cs, self.window_size.0).await)).await;
+            self.setup_hitwindows();
+            
+            for note in self.notes.iter_mut() {
+                note.set_ar(ar);
+            }
         }
     }
 }
@@ -1024,7 +1036,7 @@ impl GameModeInput for StandardGame {
 }
 
 #[async_trait]
-impl GameModeInfo for StandardGame {
+impl GameModeProperties for StandardGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
     fn show_cursor(&self) -> bool {true}
@@ -1044,9 +1056,9 @@ impl GameModeInfo for StandardGame {
     fn timing_bar_things(&self) -> Vec<(f32, Color)> {
         self.hit_windows
             .iter()
-            .map(|(j, w) | {
+            .map(|(j, w) | 
                 (w.end, j.color())
-            })
+            )
             .collect()
     }
 
@@ -1077,24 +1089,7 @@ impl GameModeInfo for StandardGame {
         ).await);
         
     }
-
-    // fn score_hit_string(hit:&ScoreHit) -> String where Self: Sized {
-    //     match hit {
-    //         ScoreHit::Miss  => "Miss".to_owned(),
-    //         ScoreHit::X50   => "x50".to_owned(),
-    //         ScoreHit::X100  => "x100".to_owned(),
-    //         ScoreHit::X300  => "x300".to_owned(),
-    //         ScoreHit::Xgeki => "Geki".to_owned(),
-    //         ScoreHit::Xkatu => "Katu".to_owned(),
-
-    //         ScoreHit::None  => String::new(),
-    //         ScoreHit::Other(_, _) => String::new(),
-    //     }
-    // }
-
-    fn judgment_type(&self) -> Box<dyn HitJudgments> {
-        Box::new(OsuHitJudgments::Miss)
-    }
+    
 }
 
 fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
@@ -1359,4 +1354,33 @@ impl ScalingHelper {
     pub fn descale_coords(&self, window_coords: Vector2) -> Vector2 {
         (window_coords - self.scaled_pos_offset) / self.scale
     }
+}
+
+
+
+
+#[inline]
+fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    if mods.mods.contains(Easy.name()) {
+        val * ez_scale
+    } else if mods.mods.contains(HardRock.name()) {
+        val * hr_scale
+    } else {
+        val
+    }
+}
+
+#[inline]
+pub fn get_ar(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    scale_by_mods(meta.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
+}
+
+#[inline]
+pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
+}
+
+#[inline]
+pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
 }

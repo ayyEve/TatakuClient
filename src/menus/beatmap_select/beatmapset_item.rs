@@ -25,13 +25,15 @@ pub struct BeatmapsetItem {
 
     display_text: String,
 
-    double_clicked: bool
+    double_clicked: bool,
+
+    button_image: Option<SkinnedButton>
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String, mods: Arc<ModManager>) -> BeatmapsetItem {
         BeatmapsetItem {
             beatmaps, 
-            pos: Vector2::new(0.0, 0.0),
+            pos: Vector2::zero(),
             hover: false,
             selected: false,
             display_text,
@@ -39,7 +41,8 @@ impl BeatmapsetItem {
             selected_index: 0,
             mouse_pos: Vector2::zero(),
             current_mod_manager: mods,
-            double_clicked: false
+            double_clicked: false,
+            button_image: SkinnedButton::new(Vector2::zero(), BEATMAPSET_ITEM_SIZE, 5.0).await,
         }
     }
 
@@ -164,25 +167,30 @@ impl ScrollableItem for BeatmapsetItem {
         let font = get_font();
 
         // draw rectangle
-        list.push(Box::new(Rectangle::new(
-            [0.2, 0.2, 0.2, 1.0].into(),
-            parent_depth + 5.0,
-            self.pos + pos_offset,
-            BEATMAPSET_ITEM_SIZE,
-            if self.hover {
-                Some(Border::new(Color::BLUE, 1.0))
-            } else if self.selected {
-                Some(Border::new(Color::RED, 1.0))
-            } else {
-                Some(Border::new(Color::WHITE * 0.8, 1.0))
-            }
-        ).shape(Shape::Round(5.0, 10))));
+        if let Some(mut button_image) = self.button_image.clone() {
+            button_image.pos = self.pos;
+            button_image.draw(_args, pos_offset, list);
+        } else {
+            list.push(Box::new(Rectangle::new(
+                [0.2, 0.2, 0.2, 1.0].into(),
+                parent_depth + 5.0,
+                self.pos + pos_offset,
+                BEATMAPSET_ITEM_SIZE,
+                if self.hover {
+                    Some(Border::new(Color::BLUE, 1.0))
+                } else if self.selected {
+                    Some(Border::new(Color::RED, 1.0))
+                } else {
+                    Some(Border::new(Color::WHITE * 0.8, 1.0))
+                }
+            ).shape(Shape::Round(5.0, 10))));
+        }
 
         // line 1
         let title_line = Text::new(
             Color::WHITE,
             parent_depth + 4.0,
-            self.pos + pos_offset + Vector2::new(5.0, 5.0),
+            self.pos + pos_offset + Vector2::new(15.0, 5.0),
             15,
             self.display_text.clone(),
             font.clone()
@@ -251,13 +259,19 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
+                let Some(info) = get_gamemode_info(&meta.mode) else { 
+                    pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING;
+                    continue 
+                };
+                let info_str = info.get_diff_string(meta, &self.current_mod_manager);
+
                 // diff text
                 list.push(Box::new(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
                     pos + Vector2::new(5.0, 5.0 + 20.0),
                     12,
-                    meta.diff_string(&self.current_mod_manager),
+                    info_str,
                     font.clone()
                 )));
 

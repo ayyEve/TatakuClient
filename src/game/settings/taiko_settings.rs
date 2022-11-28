@@ -23,8 +23,6 @@ pub struct TaikoSettings {
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
     // sv
-    #[Setting(text="Static SV")]
-    pub static_sv: bool,
     #[Setting(text="SV Multiplier", min=1, max=2)]
     pub sv_multiplier: f32,
 
@@ -104,7 +102,6 @@ impl Default for TaikoSettings {
             controller_config: HashMap::new(),
 
             // sv
-            static_sv: false,
             sv_multiplier: 1.1,
             
             // size stuff

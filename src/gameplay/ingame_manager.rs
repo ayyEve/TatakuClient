@@ -156,6 +156,8 @@ impl IngameManager {
         let mut hitsound_manager = HitsoundManager::new(audio_playmode_prefix);
         hitsound_manager.init(&metadata).await;
 
+        let gamemode_info = get_gamemode_info(&score.playmode).unwrap();
+
         Self {
             metadata,
             timing_points,
@@ -165,8 +167,8 @@ impl IngameManager {
             key_counter,
 
             lead_in_timer: Instant::now(),
+            judgment_type: gamemode_info.get_judgments(),
             score: IngameScore::new(score, true, false),
-            judgment_type: gamemode.judgment_type(),
 
             replay: Replay::new(),
             beatmap,
@@ -221,8 +223,9 @@ impl IngameManager {
 
         // Performance
         // TODO: calc diff before starting somehow?
-        let diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
-        let perf_fn = perfcalc_for_playmode(self.gamemode.playmode());
+        let playmode = self.gamemode.playmode();
+        let diff = get_diff(&self.beatmap.get_beatmap_meta(), &playmode, &self.current_mods).unwrap_or_default();
+        let perf_fn = perfcalc_for_playmode(&playmode);
         self.ui_elements.push(UIElement::new(
             &get_name("perf"),
             Vector2::new(self.window_size.x, 80.0),
@@ -293,12 +296,13 @@ impl IngameManager {
         self.gamemode.get_ui_elements(self.window_size.0, &mut self.ui_elements).await;
     }
 
-    pub async fn apply_mods(&mut self, mods: ModManager) {
-        if self.started {
-            NotificationManager::add_text_notification("Error applying mods to IngameManager\nmap already started", 2000.0, Color::RED).await;
-        } else {
-            self.current_mods = Arc::new(mods);
+    pub async fn apply_mods(&mut self, mut mods: ModManager) {
+        if self.menu_background {
+            mods.add_mod(Autoplay.name());
         }
+
+        self.current_mods = Arc::new(mods);
+        self.gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
     pub async fn update(&mut self) {
@@ -426,7 +430,7 @@ impl IngameManager {
 
         // update score stuff now that gamemode has been updated
         self.score.accuracy = calc_acc(&self.score);
-        self.score.performance = perfcalc_for_playmode(self.gamemode.playmode())(self.map_diff, self.score.accuracy as f32);
+        self.score.performance = perfcalc_for_playmode(&self.gamemode.playmode())(self.map_diff, self.score.accuracy as f32);
         // self.score.take_snapshot(time, self.health.get_ratio());
 
         // do fail things
@@ -861,7 +865,7 @@ impl IngameManager {
         self.restart_key_hold_start = None;
 
         if self.menu_background {
-            self.gamemode.apply_auto(&self.settings.background_game_settings)
+            self.gamemode.apply_mods(self.current_mods.clone()).await;
         } else {
             // reset song
             #[cfg(feature="bass_audio")] {
@@ -899,11 +903,13 @@ impl IngameManager {
         self.score.speed = self.current_mods.get_speed();
         {
             *self.score.mods_mut() = self.current_mods.mods.clone();
+            let playmode = self.gamemode.playmode();
+            let info = get_gamemode_info(&playmode).unwrap();
 
             // clean out any mods that dont belong
             let ok_mods:Vec<String> = default_mod_groups()
                 .into_iter()
-                .chain(self.gamemode.get_mods().into_iter())
+                .chain(info.get_mods().into_iter())
                 .map(|m|
                     m.mods
                     .into_iter()
@@ -979,6 +985,10 @@ impl IngameManager {
 
         self.lead_in_time = 0.0;
         self.pending_time_jump = Some(self.time());
+
+        let mut mods = self.current_mods.as_ref().clone();
+        mods.add_mod("autoplay");
+        self.current_mods = Arc::new(mods);
     }
 }
 

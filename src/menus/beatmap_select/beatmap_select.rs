@@ -892,14 +892,16 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
             if !found {
                 let mut groups = Vec::new();
+                let mut playmode = self.mode.clone();
+
                 if let Some(man) = &self.background_game {
-                    groups = man.gamemode.get_mods();
+                    playmode = man.gamemode.playmode();
                 } else if let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() {
-                    let playmode = map.check_mode_override(self.mode.clone());
-                    // this is really shit
-                    if let Ok(m) = gamemode_from_playmode(playmode, &map).await {
-                        groups = m.get_mods();
-                    }
+                    playmode = map.check_mode_override(self.mode.clone());
+                }
+
+                if let Some(info) = get_gamemode_info(&playmode) {
+                    groups = info.get_mods();
                 }
 
                 game.add_dialog(Box::new(ModDialog::new(groups).await)) 

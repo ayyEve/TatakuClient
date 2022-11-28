@@ -1005,7 +1005,7 @@ impl Game {
             
         } else {
             let mut score = manager.score.clone();
-            score.accuracy = calc_acc(&score);
+            score.accuracy = get_gamemode_info(&score.playmode).unwrap().calc_acc(&score);
 
             let mut replay = manager.replay.clone();
             replay.score_data = Some(score.score.clone());

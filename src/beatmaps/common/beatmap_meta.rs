@@ -77,34 +77,30 @@ impl BeatmapMeta {
 
 // getter helpers
 impl BeatmapMeta {
-    fn mins(&self, speed:f32) -> f32 {
+    pub fn mins(&self, speed:f32) -> f32 {
         ((self.duration / speed) / 60000.0).floor() 
     }
-    fn secs(&self, speed:f32) -> f32 {
+    pub fn secs(&self, speed:f32) -> f32 {
         let mins = self.mins(speed);
         let remaining_ms = (self.duration / speed) - mins * 60000.0;
         (remaining_ms / 1000.0).floor()
     }
-
-
+    
     pub fn get_hp(&self, mods: &ModManager) -> f32 {
         scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
-    }
-    pub fn get_od(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
-    }
-    pub fn get_cs(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.cs, 0.5, 1.3, mods).clamp(1.0, 10.0)
-    }
-    pub fn get_ar(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
     }
 
 }
 
 #[inline]
-fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.mods.contains("easy") {val * ez_scale} else if mods.mods.contains("hard_rock") {val * hr_scale} else {val}
+pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    if mods.mods.contains("easy") {
+        val * ez_scale
+    } else if mods.mods.contains("hard_rock") {
+        val * hr_scale
+    } else {
+        val
+    }
 }
 
 // might use this later idk
@@ -125,18 +121,14 @@ pub struct BeatmapMetaWithDiff {
     pub diff: Option<f32>,
 }
 impl BeatmapMetaWithDiff {
-
-    pub fn new(
-        meta: Arc<BeatmapMeta>,
-        diff: Option<f32>
-    ) -> Self {
+    pub fn new(meta: Arc<BeatmapMeta>, diff: Option<f32>) -> Self {
         Self { 
             diff, 
             meta, 
             sort_pending: true,
         }
     }
-    pub fn set_diff(&mut self, new_diff: Option<f32>) {
+    pub fn _set_diff(&mut self, new_diff: Option<f32>) {
         self.diff = new_diff
     }
 
@@ -191,42 +183,6 @@ impl BeatmapMetaWithDiff {
         || self.version.to_ascii_lowercase().contains(filter_str) 
     }
 
-    /// get the difficulty string (od, hp, sr, bpm, len)
-    pub fn diff_string(&self, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
-
-        let mut secs = format!("{}", self.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
-
-        let mut txt = format!(
-            "OD: {:.2}{} HP: {:.2}{}, Len: {}:{}", 
-            self.get_od(mods), symb,
-            self.get_hp(mods), symb,
-            self.mins(speed), secs
-        );
-
-        // make sure at least one has a value
-        if self.bpm_min != 0.0 || self.bpm_max != 0.0 {
-            // one bpm
-            if self.bpm_min == self.bpm_max {
-                txt += &format!(" BPM: {:.2}", self.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = self.bpm_min.min(self.bpm_max);
-                let max = self.bpm_max.max(self.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
-        }
-
-        if let Some(diff) = &self.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += &format!(", Diff: ...");
-        }
-
-        txt
-    }
 }
 
 impl Deref for BeatmapMetaWithDiff {

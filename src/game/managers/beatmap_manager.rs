@@ -49,7 +49,7 @@ impl BeatmapManager {
         }
     }
 
-    fn log_played(&self) {
+    fn _log_played(&self) {
         for (n, i) in self.played.iter().enumerate() {
             println!("{n}. {}", i.beatmap_hash)
         }

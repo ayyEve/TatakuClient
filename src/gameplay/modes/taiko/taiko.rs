@@ -38,16 +38,6 @@ pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
 pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
 pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
 
-/// calculate the taiko acc for `score`
-pub fn calc_acc(score: &Score) -> f64 {
-    let x100 = score.judgments.get("x100").copy_or_default() as f64;
-    let x300 = score.judgments.get("x300").copy_or_default() as f64;
-    let miss = score.judgments.get("xmiss").copy_or_default() as f64;
-
-    (x100 / 2.0 + x300) 
-    / (miss + x100 + x300)
-}
-
 pub struct TaikoGame {
     // lists
     pub notes: Vec<Box<dyn TaikoHitObject>>,
@@ -74,6 +64,7 @@ pub struct TaikoGame {
     miss_window: f32,
 
     last_judgment: TaikoHitJudgments,
+    current_mods: Arc<ModManager>
 }
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
@@ -103,6 +94,7 @@ impl TaikoGame {
 impl GameMode for TaikoGame {
     async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> Result<Self, crate::errors::TatakuError> {
         let mut settings = get_settings!().taiko_settings.clone();
+        let metadata = beatmap.get_beatmap_meta();
         // calculate the hit area
         settings.init_settings().await;
         let settings = Arc::new(settings);
@@ -118,7 +110,8 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
-        let od = beatmap.get_beatmap_meta().get_od(&*ModManager::get().await);
+        let current_mods = Arc::new(ModManager::get().await.clone());
+        let od = get_od(&metadata, &current_mods);
 
         // windows
         let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
@@ -165,6 +158,7 @@ impl GameMode for TaikoGame {
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
+                    current_mods,
                 };
 
                 // add notes
@@ -292,6 +286,7 @@ impl GameMode for TaikoGame {
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
+                    current_mods,
                 };
 
                 // add notes
@@ -580,7 +575,7 @@ impl GameMode for TaikoGame {
             note.reset().await;
 
             // set note svs
-            if self.taiko_settings.static_sv {
+            if self.current_mods.has_mod("no_sv") {
                 note.set_sv(self.taiko_settings.sv_multiplier);
             } else {
                 let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
@@ -604,7 +599,7 @@ impl GameMode for TaikoGame {
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !self.taiko_settings.static_sv {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
+                if !self.current_mods.has_mod("no_sv") {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
@@ -663,13 +658,6 @@ impl GameMode for TaikoGame {
         manager.song.upgrade().unwrap().set_position(time);
     }
 
-    fn apply_auto(&mut self, _settings: &crate::game::BackgroundGameSettings) {
-        // for note in self.notes.iter_mut() {
-        //     note.set_alpha(settings.opacity)
-        // }
-    }
-
-    
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.playfield = Arc::new(TaikoPlayfield { pos: Vector2::zero(), size: window_size.0 });
         
@@ -697,10 +685,10 @@ impl GameMode for TaikoGame {
         }
     }
 
-    
+
     async fn force_update_settings(&mut self, settings: &Settings) {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let old_sv_static = self.taiko_settings.static_sv;
+        let sv_static = self.current_mods.has_mod("no_sv");
         
         let mut settings = settings.taiko_settings.clone();
         // calculate the hit area
@@ -714,11 +702,11 @@ impl GameMode for TaikoGame {
             n.set_settings(settings.clone());
 
             // set note svs
-            if self.taiko_settings.static_sv {
+            if sv_static {
                 n.set_sv(self.taiko_settings.sv_multiplier);
             } else {
-                let sv = if old_sv_static {
-                    n.get_sv()
+                let sv = if sv_static {
+                    1.0
                 } else {
                     n.get_sv() / old_sv_mult
                 } * self.taiko_settings.sv_multiplier;
@@ -731,11 +719,11 @@ impl GameMode for TaikoGame {
         for bar in self.timing_bars.iter_mut() {
             bar.set_settings(settings.clone());
 
-            if self.taiko_settings.static_sv {
+            if sv_static {
                 bar.speed = self.taiko_settings.sv_multiplier;
             } else {
-                let sv = if old_sv_static {
-                    bar.speed
+                let sv = if sv_static {
+                    1.0
                 } else {
                     bar.speed / old_sv_mult
                 } * self.taiko_settings.sv_multiplier;
@@ -767,8 +755,6 @@ impl GameMode for TaikoGame {
 
 
     }
-
-    
     async fn reload_skin(&mut self) {
         if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
             don.depth = -1.0;
@@ -804,6 +790,47 @@ impl GameMode for TaikoGame {
         for n in self.notes.iter_mut() {
             n.reload_skin().await;
         }
+    }
+
+    
+    async fn apply_mods(&mut self, mods: Arc<ModManager>) {
+        let old_sv_mult = self.taiko_settings.sv_multiplier;
+        let old_sv_static = self.current_mods.has_mod("no_sv");
+        let current_sv_static = mods.has_mod("no_sv");
+        self.current_mods = mods;
+        
+        if current_sv_static != old_sv_static {
+            for n in self.notes.iter_mut() {
+
+                // set note svs
+                if current_sv_static {
+                    n.set_sv(self.taiko_settings.sv_multiplier);
+                } else {
+                    let sv = if old_sv_static {
+                        n.get_sv()
+                    } else {
+                        n.get_sv() / old_sv_mult
+                    } * self.taiko_settings.sv_multiplier;
+                    n.set_sv(sv);
+                }
+            }
+
+
+            // update bars
+            for bar in self.timing_bars.iter_mut() {
+                if current_sv_static {
+                    bar.speed = self.taiko_settings.sv_multiplier;
+                } else {
+                    let sv = if old_sv_static {
+                        bar.speed
+                    } else {
+                        bar.speed / old_sv_mult
+                    } * self.taiko_settings.sv_multiplier;
+                    bar.speed = sv;
+                }
+            }
+        }
+
     }
 }
 
@@ -974,12 +1001,9 @@ impl GameModeInput for TaikoGame {
 
 }
 #[async_trait]
-impl GameModeInfo for TaikoGame {
+impl GameModeProperties for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
-    fn judgment_type(&self) -> Box<dyn HitJudgments> {
-        Box::new(TaikoHitJudgments::Miss)
-    }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![
@@ -1032,14 +1056,6 @@ impl GameModeInfo for TaikoGame {
         ).await);
     }
 
-
-    fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![
-            GameplayModGroup::new("Skill")
-                .with_mod(super::FullAlt)
-            ,
-        ]
-    }
 }
 
 
@@ -1305,4 +1321,22 @@ impl FullAltCounter {
         }
     }
 
+}
+
+
+#[inline]
+pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+    if mods.mods.contains("easy") {
+        val * ez_scale
+    } else if mods.mods.contains("hardrock") {
+        val * hr_scale
+    } else {
+        val
+    }
+}
+
+
+#[inline]
+pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+    scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
 }

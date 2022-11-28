@@ -60,7 +60,8 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         let diff = get_diff(&map, &score.playmode, &mods).unwrap_or_default();
 
         // calc the performance
-        let perf_fn = perfcalc_for_playmode(score.playmode.clone());
+        let info = get_gamemode_info(&score.playmode).unwrap();
+        let perf_fn = info.get_perf_calc();
         let perf = (perf_fn)(diff, score.accuracy as f32);
         println!("got perf: {perf}");
         return;
@@ -104,7 +105,8 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
             map.mode.clone()
         };
 
-        let mut calc = calc_diff(&map, playmode.clone()).await.expect("error creating diffcalc");
+        let info = get_gamemode_info(&playmode).unwrap();
+        let mut calc = info.create_diffcalc(&map).await.expect("error creating diffcalc");
         let mod_mutations = vec![ModManager::default()];
         
         for speed in (50..200).step_by(5) {

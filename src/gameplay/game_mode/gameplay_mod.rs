@@ -3,6 +3,8 @@ pub trait GameplayMod: Send + Sync {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str { "No description provided :c" }
     fn texture_name(&self) -> &'static str { self.name() }
+    
+    fn score_multiplier(&self) -> f32 { 1.0 }
 
     fn removes(&self) -> &'static [&'static str] { &[] }
 }

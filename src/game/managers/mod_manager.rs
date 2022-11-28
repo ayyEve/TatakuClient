@@ -1,5 +1,4 @@
 use std::hash::Hash;
-
 use crate::prelude::*;
 
 lazy_static::lazy_static! {

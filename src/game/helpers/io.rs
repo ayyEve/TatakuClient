@@ -110,7 +110,7 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Im
 }
 
 /// download a file from `url` to `download_path`
-pub async fn download_file(url: impl reqwest::IntoUrl, download_path: impl AsRef<Path>) -> TatakuResult<()> {
+pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRef<Path>) -> TatakuResult<()> {
     let bytes = reqwest::get(url).await?.bytes().await?;
     
     // check if the received data 

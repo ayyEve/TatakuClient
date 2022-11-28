@@ -47,6 +47,7 @@ pub trait StandardHitObject: HitObject {
     fn miss(&mut self);
     fn hit(&mut self, time: f32);
     fn set_judgment(&mut self, _j:&OsuHitJudgments) {}
+    fn set_ar(&mut self, ar: f32);
 
     fn check_distance(&self, mouse_pos: Vector2) -> bool;
     fn check_release_points(&mut self, _time: f32) -> OsuHitJudgments { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
@@ -393,6 +394,10 @@ impl StandardHitObject for StandardNote {
 
     fn set_settings(&mut self, settings: Arc<StandardSettings>) {
         self.standard_settings = settings;
+    }
+
+    fn set_ar(&mut self, ar: f32) {
+        self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 }
 
@@ -1265,6 +1270,12 @@ impl StandardHitObject for StandardSlider {
     fn set_settings(&mut self, settings: Arc<StandardSettings>) {
         self.standard_settings = settings;
     }
+
+    
+
+    fn set_ar(&mut self, ar: f32) {
+        self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
+    }
 }
 
 
@@ -1310,10 +1321,10 @@ impl SliderDot {
     pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
         if self.checked{ return }
 
-        if let Some(image) = &self.dot_image {
-            let mut image = image.clone();
-            image.current_pos = self.pos;
+        if let Some(mut image) = self.dot_image.clone() {
             image.depth = self.depth;
+            image.current_pos = self.pos;
+            image.current_scale = Vector2::one() * self.scale * 0.8;
             list.push(Box::new(image));
         } else {
             list.push(Box::new(Circle::new(
@@ -1351,7 +1362,7 @@ pub struct StandardSpinner {
     mouse_pos: Vector2,
 
     /// what was the last rotation value?
-    last_rotation_val: f64,
+    last_mouse_angle: f64,
     /// how many rotations is needed to pass this spinner
     rotations_required: u16,
     /// how many rotations have been completed?
@@ -1386,7 +1397,7 @@ impl StandardSpinner {
             holding: false,
             rotation: 0.0,
             rotation_velocity: 0.0,
-            last_rotation_val: 0.0,
+            last_mouse_angle: 0.0,
             scaling_helper,
 
             rotations_required: 0,
@@ -1414,22 +1425,25 @@ impl HitObject for StandardSpinner {
         let mouse_angle = pos_diff.y.atan2(pos_diff.x);
 
         if beatmap_time >= self.time && beatmap_time <= self.end_time {
+            // if the mouse is being held, use the mouse angle.
+            // otherwise, it should be 0 since the user's spins do not count
             if self.holding {
-                diff = mouse_angle - self.last_rotation_val;
+                diff = mouse_angle - self.last_mouse_angle;
             }
+            // fix diff (this is stupid)
             if diff > PI {diff -= 2.0 * PI}
             else if diff < -PI {diff += 2.0 * PI}
-            // debug!("diff: {:.2}", diff / PI);
             
-            // self.rotation_velocity = f64::lerp(-diff, self.rotation_velocity, 0.005 * (beatmap_time - self.last_update) as f64);
-            self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
+            self.rotation_velocity = diff / (beatmap_time - self.last_update) as f64;
             self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+            // self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
+            // self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
             // debug!("vel: {}", self.rotation_velocity);
 
             // debug!("rotation: {}, diff: {}", self.rotation, diff);
         }
 
-        self.last_rotation_val = mouse_angle;
+        self.last_mouse_angle = mouse_angle;
         self.last_update = beatmap_time;
         self.current_time = beatmap_time;
     }
@@ -1600,7 +1614,7 @@ impl StandardHitObject for StandardSpinner {
             return self.pos
         }
 
-        let r = self.last_rotation_val + (time - self.last_update) as f64 / (4.0*PI);
+        let r = self.last_mouse_angle + (time - self.last_update) as f64 / (4.0*PI);
         self.pos + Vector2::new(
             r.cos(),
             r.sin()
@@ -1613,6 +1627,12 @@ impl StandardHitObject for StandardSpinner {
 
     fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
         // self.standard_settings = settings;
+    }
+
+    
+
+    fn set_ar(&mut self, _ar: f32) {
+        // self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 }
 
