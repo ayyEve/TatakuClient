@@ -1,4 +1,5 @@
 pub fn interleave(input: &Vec<Vec<f32>>) -> Vec<f32> {
+    if input.len() == 0 { return Vec::new() }
     let samples = input[0].len();
     let channels = input.len();
 

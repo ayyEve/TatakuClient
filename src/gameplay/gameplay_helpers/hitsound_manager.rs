@@ -1,13 +1,13 @@
 use crate::prelude::*;
 
-async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut HashMap<String, SampleChannel>) -> bool {
+async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut HashMap<String, Arc<dyn AudioInstance>>) -> bool {
     let path = path.as_ref();
 
     for ext in &["wav", "mp3"] {
         let path2 = format!("{path}.{ext}");
         if !Path::new(&path2).exists() { continue }
 
-        match Audio::load(path2) {
+        match AudioManager::load(path2) {
             Ok(sound) => {
                 // filename without extention
                 // let filename = Path::new(&filename).file_stem().unwrap().to_string_lossy().to_string();
@@ -15,8 +15,7 @@ async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut H
                 sounds_list.insert(filename, sound); 
                 return true
             },
-            Err(TatakuError::Audio(AudioError::BassError(BassError::Empty))) 
-            | Err(TatakuError::Audio(AudioError::BassError(BassError::Fileform))) => {
+            Err(TatakuError::Audio(AudioError::Empty)) => {
                 // ignore these errors, just means the file provided was empty (probably)
             }
             Err(e) => NotificationManager::add_error_notification(&format!("Error loading sound {}", path), e).await,
@@ -30,7 +29,7 @@ pub struct HitsoundManager {
     /// source, sound_name, sound
     sounds: HashMap<
         HitsoundSource,
-        HashMap<String, SampleChannel>
+        HashMap<String, Arc<dyn AudioInstance>>
     >,
     playmode_prefix: String,
 }
@@ -246,19 +245,10 @@ impl HitsoundManager {
         }
 
         if let Some(sound) = play_sound {
-            #[cfg(feature="bass_audio")] {
-                sound.set_volume(vol).unwrap();
-                sound.set_position(0.0).unwrap();
-                sound.play(true).unwrap();
-            }
-            #[cfg(feature="neb_audio")] {
-                let sound = Audio::play_sound(sound.clone());
-                if let Some(sound) = sound.upgrade() {
-                    sound.set_volume(vol);
-                    sound.set_position(0.0);
-                    sound.play();
-                }
-            }
+            sound.set_volume(vol);
+            sound.set_position(0.0);
+            sound.play(true);
+            
             true
         } else {
             false

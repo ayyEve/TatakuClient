@@ -79,7 +79,7 @@ pub fn fft(buf: &mut [f32], size: FFT) -> Vec<(f32, f32)> {
 
 
     for (i, amp) in amplitudes.iter().enumerate() {
-        let freq = (i as f32 * super::AUDIO.sample_rate as f32) / len as f32;
+        let freq = (i as f32 * unsafe{super::SAMPLE_RATE} as f32) / len as f32;
         if freq > 22050.0 {
             // no freqency images above nyquist...
             continue;

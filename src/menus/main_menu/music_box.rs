@@ -21,7 +21,7 @@ const CONTROL_BUTTON_PADDING:Vector2 = Vector2::new(15.0, 15.0);
 const Y_BOTTOM_PADDING:f64 = 0.0;
 const X_PADDING:f64 = 0.0;
 
-const SKIP_AMOUNT:f64 = 500.0; // half a second?
+const SKIP_AMOUNT:f32 = 500.0; // half a second?
 
 const PROGRESSBAR_HEIGHT:f64 = 5.0;
 const PROGRESSBAR_YPAD:f64 = 2.0;
@@ -136,44 +136,37 @@ impl MusicBox {
 
     fn pause_or_resume() {
         tokio::spawn(async {
-            #[cfg(feature = "bass_audio")] {
-                if let Some(s) = Audio::get_song().await {
-                    if let Ok(state) = s.get_playback_state() {
-                        match state {
-                            PlaybackState::Stopped | PlaybackState::Stalled => if let Err(_) = s.play(true) {
-                                // self.next()
-                            },
-                            PlaybackState::Playing => s.pause().expect("unable to pause?"),
-                            PlaybackState::Paused | PlaybackState::PausedDevice => s.play(false).expect("unable to play?"),
-                        }
-                    }
+            if let Some(s) = AudioManager::get_song().await {
+                if s.is_stopped() { 
+                    s.play(true); 
+                } else if s.is_playing() {
+                    s.pause()
+                } else if s.is_paused() {
+                    s.play(false);
                 }
             }
         });
     }
     fn stop() {
         tokio::spawn(async {
-            #[cfg(feature = "bass_audio")]
-            if let Some(s) = Audio::get_song().await {
-                let _ = s.stop();
+            if let Some(s) = AudioManager::get_song().await {
+                s.stop();
             }
         });
     }
     fn skip_ahead() {
         tokio::spawn(async {
-            #[cfg(feature = "bass_audio")]
-            if let Some(s) = Audio::get_song().await {
-                let current_pos = s.get_position().unwrap_or_default();
-                let _ = s.set_position(current_pos + SKIP_AMOUNT);
+            if let Some(s) = AudioManager::get_song().await {
+                let current_pos = s.get_position();
+                s.set_position(current_pos + SKIP_AMOUNT);
             }
         });
     }
     fn skip_behind() {
         tokio::spawn(async {
-            #[cfg(feature = "bass_audio")]
-            if let Some(s) = Audio::get_song().await {
-                let current_pos = s.get_position().unwrap_or_default();
-                let _ = s.set_position((current_pos - SKIP_AMOUNT).max(0.0));
+            if let Some(s) = AudioManager::get_song().await {
+                let current_pos = s.get_position();
+                s.set_position((current_pos - SKIP_AMOUNT).max(0.0));
             }
         });
     }
@@ -226,9 +219,8 @@ impl ScrollableItem for MusicBox {
             let pos = (rel_x / self.size.x) * self.song_duration as f64;
             
             tokio::spawn(async move {
-                #[cfg(feature = "bass_audio")]
-                if let Some(song) = Audio::get_song().await {
-                    let _ = song.set_position(pos);
+                if let Some(song) = AudioManager::get_song().await {
+                    song.set_position(pos as f32);
                 }
             });
         }

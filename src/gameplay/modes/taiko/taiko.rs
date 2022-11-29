@@ -664,10 +664,7 @@ impl GameMode for TaikoGame {
         }
         
         if time < 0.0 { return }
-        #[cfg(feature="bass_audio")]
-        manager.song.set_position(time as f64).unwrap();
-        #[cfg(feature="neb_audio")]
-        manager.song.upgrade().unwrap().set_position(time);
+        manager.song.set_position(time);
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {

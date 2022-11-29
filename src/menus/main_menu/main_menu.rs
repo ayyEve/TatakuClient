@@ -75,14 +75,9 @@ impl MainMenu {
         self.settings.update();
 
         
-        #[cfg(feature = "bass_audio")]
-        match Audio::get_song().await {
-            Some(song) => self.music_box.update_song_duration(song.get_length_seconds().unwrap_or_default() as f32 * 1000.0),
+        match AudioManager::get_song().await {
+            Some(song) => self.music_box.update_song_duration(song.get_duration()),
             _ => {}
-        }
-        #[cfg(feature = "neb_audio")]
-        if let Some(a) = Audio::get_song() {
-            // self.music_box.update_song_duration(a);
         }
 
 
@@ -201,13 +196,9 @@ impl AsyncMenu<Game> for MainMenu {
             self.visualization.reset();
 
             // play song if it exists
-            if let Some(song) = Audio::get_song().await {
+            if let Some(song) = AudioManager::get_song().await {
                 // reset any time mods
-
-                #[cfg(feature="bass_audio")]
-                song.set_rate(1.0).unwrap();
-                #[cfg(feature="neb_audio")]
-                song.set_playback_speed(1.0);
+                song.set_rate(1.0);
                 // // play
                 // song.play(true).unwrap();
             }
@@ -232,21 +223,15 @@ impl AsyncMenu<Game> for MainMenu {
             i.update()
         }
 
-        #[cfg(feature = "bass_audio")]
-        match Audio::get_song().await {
+        match AudioManager::get_song().await {
             Some(song) => {
-                self.music_box.update_song_time(song.get_position().unwrap_or_default() as f32);
+                self.music_box.update_song_time(song.get_position());
 
-                match song.get_playback_state() {
-                    Ok(PlaybackState::Playing) | Ok(PlaybackState::Paused) => {},
-                    _ => song_done = true,
+                if !song.is_playing() && !song.is_paused() {
+                    song_done = true;
                 }
             }
             _ => song_done = true,
-        }
-        #[cfg(feature = "neb_audio")]
-        if let None = Audio::get_song() {
-            song_done = true;
         }
 
         if song_done {
@@ -255,14 +240,14 @@ impl AsyncMenu<Game> for MainMenu {
 
             // it should?
             if let Some(map) = map {
-                BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false, false).await;
+                BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
                 self.setup_manager("update song done").await;
             }
         }
 
         let maps = BEATMAP_MANAGER.write().await.get_new_maps();
         if maps.len() > 0 {
-            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &maps[maps.len() - 1], true, false).await;
+            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &maps[maps.len() - 1], false).await;
             self.setup_manager("update new map").await;
         }
 

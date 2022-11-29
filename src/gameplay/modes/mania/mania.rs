@@ -844,10 +844,7 @@ impl GameMode for ManiaGame {
             }
         }
 
-        #[cfg(feature="bass_audio")]
-        manager.song.set_position(time as f64).unwrap();
-        #[cfg(feature="neb_audio")]
-        manager.song.upgrade().unwrap().set_position(time);
+        manager.song.set_position(time);
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {

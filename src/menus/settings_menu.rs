@@ -138,15 +138,12 @@ impl AsyncMenu<Game> for SettingsMenu {
 
 
             // play song if it exists
-            if let Some(song) = Audio::get_song().await {
+            if let Some(song) = AudioManager::get_song().await {
                 // reset any time mods
 
-                #[cfg(feature="bass_audio")]
-                song.set_rate(1.0).unwrap();
-                #[cfg(feature="neb_audio")]
-                song.set_playback_speed(1.0);
+                song.set_rate(1.0);
                 // // play
-                // song.play(true).unwrap();
+                // song.play(true);
             }
 
             self.bg_game().await;
@@ -218,19 +215,13 @@ impl AsyncMenu<Game> for SettingsMenu {
         
         
         let mut song_done = false;
-        #[cfg(feature = "bass_audio")]
-        match Audio::get_song().await {
+        match AudioManager::get_song().await {
             Some(song) => {
-                match song.get_playback_state() {
-                    Ok(PlaybackState::Playing) | Ok(PlaybackState::Paused) => {},
-                    _ => song_done = true,
+                if !song.is_playing() && !song.is_paused() {
+                    song_done = true;
                 }
             }
             _ => song_done = true,
-        }
-        #[cfg(feature = "neb_audio")]
-        if let None = Audio::get_song() {
-            song_done = true;
         }
 
         if song_done {

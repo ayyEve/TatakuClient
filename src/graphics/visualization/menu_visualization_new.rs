@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use super::{FFTEntry, Visualization};
+use super::Visualization;
 
 const CUTOFF:f32 = 0.1;
 const VISUALIZATION_SIZE_FACTOR:f64 = 1.2;
@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 
 
 pub struct MenuVisualizationNew {
-    data: Vec<FFTEntry>,
+    data: Vec<FFTData>,
     timer: Instant, // external use only
 
     bar_height: f64,
@@ -110,7 +110,7 @@ impl MenuVisualizationNew {
         if self.data.len() >= self.index {
 
             // current bass
-            let current_bass = self.data[self.index];
+            let current_bass = self.data[self.index].amplitude();
             let time = self.other_timer.as_millis();
 
             // we've fallen below the amplitude threshold from the previous ripple to now, where we can reset the created flag
@@ -161,8 +161,8 @@ impl MenuVisualizationNew {
 #[async_trait]
 impl Visualization for MenuVisualizationNew {
     fn lerp_factor(&self) -> f32 {10.0} // 15
-    fn data(&mut self) -> &mut Vec<FFTEntry> {&mut self.data}
-    fn timer(&mut self) -> &mut Instant {&mut self.timer}
+    fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
+    fn timer(&mut self) -> &mut Instant { &mut self.timer }
 
     async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
         let since_last = self.timer.elapsed().as_secs_f64(); // not ms
@@ -174,11 +174,7 @@ impl Visualization for MenuVisualizationNew {
         if self.data.len() < 3 { return }
 
         
-        #[cfg(feature="bass_audio")]
-        let val = self.data[self.index] as f64 / 500.0;
-        
-        #[cfg(feature="neb_audio")]
-        let val = self.data[self.index].1 as f64 / 500.0;
+        let val = self.data[self.index].amplitude() as f64 / 500.0;
         self.current_inner_radius = f64::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;
@@ -220,11 +216,7 @@ impl Visualization for MenuVisualizationNew {
         const BAR_MULT:f64 = 1.5;
 
         for i in 1..self.data.len() {
-            #[cfg(feature="bass_audio")]
-            let val = self.data[i];
-            #[cfg(feature="neb_audio")]
-            let val = self.data[i].1;
-
+            let val = self.data[i].amplitude();
 
             if val <= CUTOFF { continue }
 

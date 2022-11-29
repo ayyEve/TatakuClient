@@ -309,7 +309,7 @@ impl BeatmapSelectMenu {
         self.map_changing = (true, false, 0);
         match lock.get_by_hash(&map) {
             Some(clicked) => {
-                lock.set_current_beatmap(game, &clicked, true, true).await;
+                lock.set_current_beatmap(game, &clicked, true).await;
 
                 self.setup_manager(clicked).await;
             }
@@ -322,11 +322,8 @@ impl BeatmapSelectMenu {
         drop(lock);
 
         // set any time mods
-        if let Some(song) = Audio::get_song().await {
-            #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().await.get_speed()).unwrap();
-            #[cfg(feature="neb_audio")]
-            song.set_playback_speed(ModManager::get().get_speed() as f64);
+        if let Some(song) = AudioManager::get_song().await {
+            song.set_rate(ModManager::get().await.get_speed());
         }
 
         self.beatmap_scroll.refresh_layout();
@@ -525,7 +522,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
             let maps = lock.get_new_maps(); //TODO: use the multibomb instead
             if maps.len() > 0  {
-                lock.set_current_beatmap(game, &maps[maps.len() - 1], false, true).await;
+                lock.set_current_beatmap(game, &maps[maps.len() - 1], true).await;
                 self.refresh_maps(&mut lock).await;
             }
             if lock.force_beatmap_list_refresh {
@@ -553,21 +550,20 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             }
         }
     
-        #[cfg(feature="bass_audio")]
-        match Audio::get_song().await {
+        match AudioManager::get_song().await {
             Some(song) => {
-                match song.get_playback_state() {
-                    Ok(PlaybackState::Playing) => {},
-                    _ => {
-                        // restart the song at the preview point
-                        let lock = BEATMAP_MANAGER.read().await;
-                        let map = lock.current_beatmap.as_ref().unwrap();
-                        let _ = song.set_position(map.audio_preview as f64);
-                        song.set_rate(ModManager::get().await.get_speed()).unwrap();
+                if !song.is_playing() {
+                    
+                    // restart the song at the preview point
+                    let lock = BEATMAP_MANAGER.read().await;
+                    let map = lock.current_beatmap.as_ref();
+                    if let Some(map) = map {
+                        let _ = song.set_position(map.audio_preview);
+                        song.set_rate(ModManager::get().await.get_speed());
                         
-                        song.play(false).unwrap();
+                        song.play(false);
                         self.setup_manager(map.clone()).await;
-                    },
+                    }
                 }
             }
 
@@ -576,8 +572,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 let lock = BEATMAP_MANAGER.read().await;
                 match &lock.current_beatmap {
                     Some(map) => {
-                        let audio = Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
-                        audio.set_rate(ModManager::get().await.get_speed()).unwrap();
+                        let audio = AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
+                        audio.set_rate(ModManager::get().await.get_speed());
                     }
                     None => if !self.no_maps_notif_sent {
                         NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN).await;
@@ -587,111 +583,6 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             },
         }
 
-        #[cfg(feature="neb_audio")] {
-            self.map_changing.2 += 1;
-            match self.map_changing {
-                // we know its changing but havent detected the previous song stop yet
-                (true, false, n) => {
-                    // give it up to 1s before assuming its already loaded
-                    if Audio::get_song().is_none() || n > 1000 {
-                        // trace!("song loading");
-                        self.map_changing = (true, true, 0);
-                    }
-                }
-                // we know its changing, and the previous song has ended
-                (true, true, _) => {
-                    if Audio::get_song().is_some() {
-                        // trace!("song loaded");
-                        self.map_changing = (false, false, 0);
-                    }
-                }
-    
-                // the song hasnt ended and we arent changing
-                (false, false, _) | (false, true, _) => {
-                    if Audio::get_song().is_none() {
-                        // trace!("song done");
-                        self.map_changing = (true, false, 0);
-                        tokio::spawn(async move {
-                            let lock = BEATMAP_MANAGER.read();
-                            let map = lock.current_beatmap.as_ref().unwrap();
-                            Audio::play_song(map.audio_filename.clone(), true, map.audio_preview);
-                        });
-                    }
-                }
-            }
-    
-        }
-
-        // old audio shenanigans
-        /*
-        // self.map_changing.2 += 1;
-        // let mut song_done = false;
-        // match Audio::get_song() {
-        //     Some(song) => {
-        //         match song.get_playback_state() {
-        //             Ok(PlaybackState::Playing) | Ok(PlaybackState::Paused) => {},
-        //             _ => song_done = true,
-        //         }
-        //     }
-        //     _ => song_done = true,
-        // }
-        // i wonder if this can be simplified now
-        // match self.map_changing {
-        //     // we know its changing but havent detected the previous song stop yet
-        //     (true, false, n) => {
-        //         // give it up to 1s before assuming its already loaded
-        //         if song_done || n > 1000 {
-        //             // trace!("song loading");
-        //             self.map_changing = (true, true, 0);
-        //         }
-        //     }
-        //     // we know its changing, and the previous song has ended
-        //     (true, true, _) => {
-        //         if !song_done {
-        //             // trace!("song loaded");
-        //             self.map_changing = (false, false, 0);
-        //         }
-        //     }
-
-        //     // the song hasnt ended and we arent changing
-        //     (false, false, _) | (false, true, _) => {
-        //         if song_done {
-        //             // trace!("song done");
-        //             self.map_changing = (true, false, 0);
-        //             tokio::spawn(async move {
-        //                 let lock = BEATMAP_MANAGER.lock();
-        //                 let map = lock.current_beatmap.as_ref().unwrap();
-        //                 Audio::play_song(map.audio_filename.clone(), true, map.audio_preview).unwrap();
-        //             });
-        //         }
-        //     }
-        // }
-
-
-        // if self.mouse_down {
-
-        // } else {
-        //     if self.drag.is_some() {
-        //         let data = self.drag.as_ref().unwrap();
-
-        //     }
-        // }
-
-        // if game.input_manager.mouse_buttons.contains(&MouseButton::Left) && game.input_manager.mouse_moved {
-        //     if self.drag.is_none() {
-        //         self.drag = Some(DragData {
-        //             start_pos: game.input_manager.mouse_pos.y,
-        //             current_pos: game.input_manager.mouse_pos.y,
-        //             start_time: Instant::now()
-        //         });
-        //     }
-
-        //     if let Some(data) = self.drag.as_mut() {
-        //         data.current_pos = game.input_manager.mouse_pos.y
-        //     }
-        // }
-
-        */
     }
 
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
@@ -765,12 +656,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         OnlineManager::send_spec_frames(vec![(0.0, SpectatorFrameData::ChangingMap)], true);
 
         // play song if it exists
-        if let Some(song) = Audio::get_song().await {
+        if let Some(song) = AudioManager::get_song().await {
             // set any time mods
-            #[cfg(feature="bass_audio")]
-            song.set_rate(ModManager::get().await.get_speed()).unwrap();
-            #[cfg(feature="neb_audio")]
-            song.set_playback_speed(ModManager::get().speed as f64);
+            song.set_rate(ModManager::get().await.get_speed());
         }
 
         // load maps
@@ -996,11 +884,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 ModManager::get().await.set_speed(speed);
 
                 // update audio speed
-                if let Some(song) = Audio::get_song().await {
-                    #[cfg(feature="bass_audio")]
-                    song.set_rate(speed).unwrap();
-                    #[cfg(feature="neb_audio")]
-                    song.set_playback_speed(speed as f64);
+                if let Some(song) = AudioManager::get_song().await {
+                    song.set_rate(speed);
                 }
 
                 // force diff recalc

@@ -61,12 +61,7 @@ pub use crate::get_settings;
 pub use crate::get_settings_mut;
 
 // audio imports
-#[cfg(feature="bass_audio")]
-pub use bass_rs::prelude::*;
-#[cfg(feature="neb_audio")]
-pub use crate::game::{AudioHandle, Sound};
-#[cfg(feature="neb_audio")]
-pub use crate::game::audio::fft::*;
+pub use crate::audio::*;
 
 // game and helper imports
 pub use crate::game::*;

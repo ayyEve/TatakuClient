@@ -46,10 +46,7 @@ impl VolumeControl {
         }
 
         
-        if let Some(song) = Audio::get_song().await {
-            #[cfg(feature="bass_audio")]
-            song.set_volume(settings.get_music_vol()).unwrap();
-            #[cfg(feature="neb_audio")]
+        if let Some(song) = AudioManager::get_song().await {
             song.set_volume(settings.get_music_vol());
         }
 

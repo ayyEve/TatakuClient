@@ -271,7 +271,7 @@ impl SpectatorManager {
         let mut beatmap_manager = BEATMAP_MANAGER.write().await;
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
-                beatmap_manager.set_current_beatmap(game, &map, false, false).await;
+                beatmap_manager.set_current_beatmap(game, &map, false).await;
                 match manager_from_playmode(mode.clone(), &map).await {
                     Ok(mut manager) => {
                         // remove score menu
@@ -373,10 +373,9 @@ impl SpectatorManager {
             game.queue_state_change(GameState::InMenu(menu));
             // resume song if paused
 
-            #[cfg(feature="bass_audio")]
-            if let Some(song) = Audio::get_song().await {
-                if song.get_playback_state() == Ok(PlaybackState::Paused) {
-                    let _ = song.play(false);
+            if let Some(song) = AudioManager::get_song().await {
+                if song.is_paused() {
+                    song.play(false);
                 }
             }
         }

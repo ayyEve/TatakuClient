@@ -281,10 +281,7 @@ impl GameMode for CatchGame {
                     }
                     _ => {}
                 }
-                #[cfg(feature="bass_audio")]
-                Audio::play_preloaded("don").unwrap();
-                #[cfg(feature="neb_audio")]
-                Audio::play_preloaded("don");
+                // play audio
             } else {
                 if note.causes_miss() {
                     let s = &mut manager.score;
@@ -443,10 +440,7 @@ impl GameMode for CatchGame {
 
         if time < 0.0 {return}
         
-        #[cfg(feature="bass_audio")]
-        manager.song.set_position(time as f64).unwrap();
-        #[cfg(feature="neb_audio")]
-        manager.song.upgrade().unwrap().set_position(time);
+        manager.song.set_position(time);
     }
 
     fn timing_bar_things(&self) -> (Vec<(f32,Color)>, (f32,Color)) {

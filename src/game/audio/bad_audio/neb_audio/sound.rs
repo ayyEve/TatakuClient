@@ -14,12 +14,6 @@ pub struct Sound {
 }
 
 impl Sound {
-    // todo: make not crash
-    pub fn load(path: impl AsRef<str>) -> TatakuResult<Self> {
-        let file = std::fs::File::open(path.as_ref()).expect(&format!("Failed to open file. {:?}", path.as_ref()));
-        Sound::decode(file)
-    }
-
     pub fn load_raw(bytes: Vec<u8>) -> TatakuResult<Self> {
         Sound::decode(Cursor::new(bytes))
     }

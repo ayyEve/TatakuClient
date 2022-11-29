@@ -703,11 +703,8 @@ impl Game {
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
                             if menu.lock().await.get_name() == "pause" {
-                                if let Some(song) = Audio::get_song().await {
-                                    #[cfg(feature="bass_audio")]
-                                    song.play(false).unwrap();
-                                    #[cfg(feature="neb_audio")]
-                                    song.play();
+                                if let Some(song) = AudioManager::get_song().await {
+                                    song.play(false);
                                 }
                             }
                         }
@@ -977,7 +974,7 @@ impl Game {
             let mut manager = BEATMAP_MANAGER.write().await;
 
             if let Some(map) = manager.get_by_hash(&score.beatmap_hash) {
-                manager.set_current_beatmap(self, &map, false, true).await;
+                manager.set_current_beatmap(self, &map, true).await;
 
                 // move to a score menu with this as the score
                 let score = IngameScore::new(score.clone(), false, false);

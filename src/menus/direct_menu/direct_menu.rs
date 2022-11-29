@@ -118,13 +118,8 @@ impl DirectMenu {
 
                 // store last playing audio if needed
                 if self.old_audio.is_none() {
-                    #[cfg(feature="bass_audio")]
-                    if let Some((key, a)) = Audio::get_song_raw().await {
-                        self.old_audio = Some(Some((key, a.get_position().unwrap() as f32)));
-                    }
-                    #[cfg(feature="neb_audio")]
-                    if let Some((key, a)) = Audio::get_song_raw() {
-                        self.old_audio = Some(Some((key, a.upgrade().unwrap().current_time())));
+                    if let Some((key, a)) = AudioManager::get_song_raw().await {
+                        self.old_audio = Some(Some((key, a.get_position())));
                     }
 
                     // need to store that we made an attempt
@@ -133,10 +128,7 @@ impl DirectMenu {
                     }
                 }
 
-                #[cfg(feature="bass_audio")]
-                Audio::play_song_raw(url, data2).await.unwrap();
-                #[cfg(feature="neb_audio")]
-                Audio::play_song_raw(url, data2);
+                AudioManager::play_song_raw(url, data2).await.unwrap();
                 
             } else if let Err(oof) = req {
                 warn!("Error with preview: {}", oof);
@@ -149,15 +141,11 @@ impl DirectMenu {
 
         if let Some(old_audio) = &self.old_audio {
             // stop the song thats playing, because its a preview
-            Audio::stop_song().await;
+            AudioManager::stop_song().await;
 
             // restore previous audio
             if let Some((path, pos)) = old_audio.clone() {
-                #[cfg(feature="bass_audio")]
-                Audio::play_song(path, false, pos).await.unwrap();
-                
-                #[cfg(feature="neb_audio")]
-                Audio::play_song(path, false, pos);
+                AudioManager::play_song(path, false, pos).await.unwrap();
             }
         }
 

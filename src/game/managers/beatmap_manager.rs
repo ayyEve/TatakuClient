@@ -210,7 +210,7 @@ impl BeatmapManager {
     }
 
     // setters
-    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, _do_async:bool, use_preview_time:bool) {
+    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
@@ -220,20 +220,9 @@ impl BeatmapManager {
         let audio_filename = beatmap.audio_filename.clone();
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
-        // dont async with bass, causes race conditions + double audio bugs
-        #[cfg(feature="neb_audio")]
-        if _do_async {
-            tokio::spawn(async move {
-                Audio::play_song(audio_filename, false, time);
-            });
-        } else {
-            Audio::play_song(audio_filename, false, time);
-        }
-        #[cfg(feature="bass_audio")]
-        if let Err(e) = Audio::play_song(audio_filename, false, time).await {
+        if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
             error!("Error playing song: {:?}", e);
             NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
-            // Audio::stop_song();
         }
 
         // set bg
@@ -288,7 +277,7 @@ impl BeatmapManager {
 
         match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false, false).await;
+                self.set_current_beatmap(game, &map, false).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
 
@@ -298,7 +287,7 @@ impl BeatmapManager {
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(game, &map, false, false).await;
+                self.set_current_beatmap(game, &map, false).await;
 
                 true
             } else {
@@ -320,7 +309,7 @@ impl BeatmapManager {
         
         match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false, false).await;
+                self.set_current_beatmap(game, &map, false).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap

@@ -1,13 +1,13 @@
 #![allow(unused)]
 use crate::prelude::*;
-use super::{FFTEntry, Visualization};
+use super::Visualization;
 
 const CUTOFF:f32 = 0.1;
 pub const VISUALIZATION_SIZE_FACTOR:f64 = 1.2;
 
 
 pub struct MenuVisualization {
-    data: Vec<FFTEntry>,
+    data: Vec<FFTData>,
     timer: Instant,
 
     bar_height: f64,
@@ -99,14 +99,8 @@ impl MenuVisualization {
             }
             
             self.check_ripple(time);
-        } else if let Some(song) = Audio::get_song().await {
-            #[cfg(feature="bass_audio")]
-            if let Ok(pos) = song.get_position() {
-                self.check_ripple(pos as f32)
-            }
-            
-            #[cfg(feature="neb_audio")] 
-            self.check_ripple(song.current_time())
+        } else if let Some(song) = AudioManager::get_song().await {
+            self.check_ripple(song.get_position());
         }
     }
 
@@ -123,7 +117,7 @@ impl MenuVisualization {
 #[async_trait]
 impl Visualization for MenuVisualization {
     fn lerp_factor(&self) -> f32 {10.0} // 15
-    fn data(&mut self) -> &mut Vec<FFTEntry> {&mut self.data}
+    fn data(&mut self) -> &mut Vec<FFTData> {&mut self.data}
     fn timer(&mut self) -> &mut Instant {&mut self.timer}
 
     async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
@@ -135,12 +129,7 @@ impl Visualization for MenuVisualization {
 
         if self.data.len() < 3 {return}
 
-        
-        #[cfg(feature="bass_audio")]
-        let val = self.data[3] as f64 / 500.0;
-        
-        #[cfg(feature="neb_audio")]
-        let val = self.data[3].1 as f64 / 500.0;
+        let val = self.data[3].amplitude() as f64 / 500.0;
         self.current_inner_radius = f64::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;
@@ -190,13 +179,10 @@ impl Visualization for MenuVisualization {
         const BAR_MULT:f64 = 1.5;
 
         for i in 0..self.data.len() {
-            #[cfg(feature="bass_audio")]
-            let val = self.data[i];
-            #[cfg(feature="neb_audio")]
-            let val = self.data[i].1;
+            let val = self.data[i].amplitude();
 
 
-            if val <= CUTOFF {continue}
+            if val <= CUTOFF { continue }
 
             let factor = (i as f64 + 2.0).log10();
             let l = self.current_inner_radius + val as f64 * factor * self.bar_height * BAR_MULT;

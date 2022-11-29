@@ -40,11 +40,6 @@ pub struct GameWindow {
     pub window: glfw_window::GlfwWindow,
     window_event_receiver: Receiver<WindowEvent>,
 
-    #[cfg(feature="bass_audio")]
-    #[allow(dead_code)]
-    /// needed to prevent bass from deinitializing
-    bass: bass_rs::Bass,
-
     frametime_timer: Instant,
     input_timer: Instant,
 
@@ -79,16 +74,10 @@ impl GameWindow {
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
         info!("done texture load queue");
         
-        
-        #[cfg(feature="bass_audio")] 
-        let bass = {
-            #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
-            #[cfg(target_os = "linux")] let window_ptr = window.window.get_x11_window();
-            #[cfg(target_os = "macos")] let window_ptr = window.window.get_cocoa_window();
-
-            // initialize bass
-            bass_rs::Bass::init_default_with_ptr(window_ptr).expect("Error initializing bass")
-        };
+        #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
+        #[cfg(target_os = "linux")] let window_ptr = window.window.get_x11_window();
+        #[cfg(target_os = "macos")] let window_ptr = window.window.get_cocoa_window();
+        AudioManager::init_audio(window_ptr).expect("error initializing audio");
 
         // set window icon
         match image::open("resources/icon-small.png") {
@@ -126,10 +115,6 @@ impl GameWindow {
             window_event_receiver,
             // game_event_sender: gane_event_sender, 
             window_size: WindowSizeHelper::default(),
-
-            
-            #[cfg(feature="bass_audio")] 
-            bass,
 
             frametime_timer: now,
             input_timer: now,

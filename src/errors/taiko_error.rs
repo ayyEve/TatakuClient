@@ -2,8 +2,6 @@ use std::{fmt::Display, io::Error as IOError};
 
 use image::ImageError;
 
-#[cfg(feature="bass_audio")]
-use bass_rs::prelude::BassError;
 use serde_json::Error as JsonError;
 use tataku_common::SerializationError;
 
@@ -63,10 +61,6 @@ impl From<ImageError> for TatakuError {
 }
 impl From<AudioError> for TatakuError {
     fn from(e: AudioError) -> Self {TatakuError::Audio(e)}
-}
-#[cfg(feature="bass_audio")]
-impl From<BassError> for TatakuError {
-    fn from(e: BassError) -> Self {TatakuError::Audio(AudioError::BassError(e))}
 }
 
 impl From<BeatmapError> for TatakuError {
