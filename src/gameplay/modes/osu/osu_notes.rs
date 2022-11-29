@@ -211,7 +211,7 @@ impl HitObject for StandardNote {
         let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
             shape.update(time);
-            shape.items.find(|di|di.visible()).is_some()
+            shape.items.iter().find(|di|di.visible()).is_some()
         });
     }
 
@@ -782,7 +782,7 @@ impl HitObject for StandardSlider {
         let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
             shape.update(time);
-            shape.items.find(|di|di.visible()).is_some()
+            shape.items.iter().find(|di|di.visible()).is_some()
         });
 
         // check sliding ok

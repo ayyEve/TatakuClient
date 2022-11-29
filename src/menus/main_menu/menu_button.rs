@@ -270,7 +270,7 @@ impl ScrollableItem for MainMenuButton {
 
         self.disposable_shapes.retain_mut(|i|{
             i.update(time);
-            i.items.find(|s|s.visible()).is_some()
+            i.items.iter().find(|s|s.visible()).is_some()
         });
 
 

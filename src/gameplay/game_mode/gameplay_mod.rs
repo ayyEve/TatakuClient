@@ -5,7 +5,6 @@ pub trait GameplayMod: Send + Sync {
     fn texture_name(&self) -> &'static str { self.name() }
     
     fn score_multiplier(&self) -> f32 { 1.0 }
-
     fn removes(&self) -> &'static [&'static str] { &[] }
 }
 
@@ -35,6 +34,7 @@ pub struct Autoplay;
 impl GameplayMod for Autoplay {
     fn name(&self) -> &'static str { "autoplay" }
     fn description(&self) -> &'static str { "Let the game play for you!" }
+    fn score_multiplier(&self) -> f32 { 0.0 }
 }
 
 pub struct NoFail;

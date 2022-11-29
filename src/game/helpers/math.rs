@@ -55,7 +55,7 @@ pub fn circle_through_points(a:Vector2, b:Vector2, c:Vector2) -> (Vector2, f64, 
     let c_mag_sq = length_squared(c);
 
     let center = Vector2::new(
-        (a_mag_sq * (b.y - c.y) + b_mag_sq * (c.y - a.y) + c_mag_sq * (a.y - b.y)) / d, 
+        (a_mag_sq * (b.y - c.y) + b_mag_sq * (c.y - a.y) + c_mag_sq * (a.y - b.y)) / d,
         (a_mag_sq * (c.x - b.x) + b_mag_sq * (a.x - c.x) + c_mag_sq * (b.x - a.x)) / d
     );
     let radius = distance(center, a);
@@ -136,7 +136,7 @@ pub trait Interpolation {
     fn easeout_circular(current:Self, target: Self, amount: f64) -> Self;
     fn easeinout_circular(current:Self, target: Self, amount: f64) -> Self;
 
-    // back 
+    // back
     // todo! come up with better names than c1 and c3
     fn easein_back(current:Self, target: Self, amount: f64, c1:f64, c3: f64) -> Self;
     fn easeout_back(current:Self, target: Self, amount: f64, c1:f64, c3: f64) -> Self;
@@ -255,7 +255,7 @@ impl<T> Interpolation for T where T: Copy + std::ops::Add<Output=T> + std::ops::
     }
     fn easeinout_exponential(current:T, target:T, amount:f64) -> T {
         check_bounds!(current, target, amount);
-        let amount = 
+        let amount =
             if amount == 0.0 {0.0}
             else if amount == 1.0 {1.0}
             else if amount < 0.5 {
@@ -298,19 +298,19 @@ impl<T> Interpolation for T where T: Copy + std::ops::Add<Output=T> + std::ops::
         check_bounds!(current, target, amount);
         let amount = if amount < 0.5 {
             (
-                (2.0 * amount).powi(2) 
+                (2.0 * amount).powi(2)
                 * (
-                    (c2 + 1.0) 
-                    * 2.0 
-                    * amount 
+                    (c2 + 1.0)
+                    * 2.0
+                    * amount
                     - c2
                 )
             ) / 2.0
         } else {
             (
-                (2.0 * amount - 2.0).powi(2) 
+                (2.0 * amount - 2.0).powi(2)
                 * (
-                    (c2 + 1.0) 
+                    (c2 + 1.0)
                     * (amount * 2.0 - 2.0) + c2
                 ) + 2.0
             ) / 2.0
@@ -334,7 +334,7 @@ pub trait VectorHelpers {
     fn magnitude(v: Vector2) -> f64 {
         (v.x * v.x + v.y * v.y).sqrt()
     }
-    
+
     fn normalize(v: Vector2) -> Vector2 {
         let magnitude = Vector2::magnitude(v);
         if magnitude == 0.0 { v }
@@ -346,6 +346,9 @@ pub trait VectorHelpers {
 
     fn x(self) -> Vector2;
     fn y(self) -> Vector2;
+
+    fn cross(self, other: Vector2) -> f64;
+    fn dot(self, other: Vector2) -> f64;
 }
 impl VectorHelpers for Vector2 {
     fn distance(&self, v2: Vector2) -> f64 {
@@ -365,6 +368,13 @@ impl VectorHelpers for Vector2 {
     fn y(mut self) -> Vector2 {
         self.x = 0.0;
         self
+    }
+
+    fn cross(self, other: Vector2) -> f64 {
+        self.x * other.y - self.y * other.x
+    }
+    fn dot(self, other: Vector2) -> f64 {
+        self.x * other.x + self.y * other.y
     }
 }
 

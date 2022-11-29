@@ -49,6 +49,7 @@ pub struct TaikoGame {
     auto_helper: TaikoAutoHelper,
 
     taiko_settings: Arc<TaikoSettings>,
+    metadata: Arc<BeatmapMeta>,
     playfield: Arc<TaikoPlayfield>,
 
     left_kat_image: Option<Image>,
@@ -89,6 +90,32 @@ impl TaikoGame {
 
         manager.play_note_sound(note_time, hitsound, samples, false).await;
     }
+
+    async fn setup_hitwindows(&mut self) {
+        let od = get_od(&self.metadata, &self.current_mods);
+
+        // windows
+        let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
+        let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
+        let w_300 = map_difficulty(od, 50.0, 35.0, 20.0);
+
+        use TaikoHitJudgments::*;
+        self.hit_windows = vec![
+            (X300, 0.0..w_300),
+            (X100, w_300..w_100),
+            (Miss, w_100..w_miss),
+        ];
+        self.miss_window = w_miss;
+
+        for note in self.notes.iter_mut() {
+            if note.note_type() == NoteType::Spinner {
+                let length = note.end_time(0.0) - note.time();
+                let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
+                let required_hits = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; 
+                note.set_required_hits(required_hits);
+            }
+        }
+    }
 }
 #[async_trait]
 impl GameMode for TaikoGame {
@@ -111,20 +138,6 @@ impl GameMode for TaikoGame {
         }
 
         let current_mods = Arc::new(ModManager::get().await.clone());
-        let od = get_od(&metadata, &current_mods);
-
-        // windows
-        let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
-        let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
-        let w_300 = map_difficulty(od, 50.0, 35.0, 20.0);
-
-        use TaikoHitJudgments::*;
-        let hit_windows = vec![
-            (X300, 0.0..w_300),
-            (X100, w_300..w_100),
-            (Miss, w_100..w_miss),
-        ];
-        let miss_window = w_miss;
 
 
         let playfield = Arc::new(TaikoPlayfield {
@@ -145,6 +158,7 @@ impl GameMode for TaikoGame {
                     auto_helper: TaikoAutoHelper::new(),
                     taiko_settings: settings.clone(),
                     playfield: playfield.clone(),
+                    metadata,
                     
 
                     left_kat_image,
@@ -153,8 +167,8 @@ impl GameMode for TaikoGame {
                     right_kat_image,
                     judgement_helper,
 
-                    hit_windows,
-                    miss_window,
+                    hit_windows: Vec::new(),
+                    miss_window: 0.0,
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
@@ -244,16 +258,11 @@ impl GameMode for TaikoGame {
                     }
                 }
                 for spinner in beatmap.spinners.iter() {
-                    let SpinnerDef {time, end_time, ..} = spinner;
-
-                    let length = end_time - time;
-                    let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
-                    let hits_required:u16 = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; 
 
                     let spinner = Box::new(TaikoSpinner::new(
-                        *time, 
-                        *end_time, 
-                        hits_required, 
+                        spinner.time,
+                        spinner.end_time, 
+                        0, 
                         settings.clone(),
                         playfield.clone(),
                         diff_calc_only,
@@ -274,6 +283,7 @@ impl GameMode for TaikoGame {
                     auto_helper: TaikoAutoHelper::new(),
                     taiko_settings: settings.clone(),
                     playfield: playfield.clone(),
+                    metadata,
 
                     left_kat_image,
                     left_don_image,
@@ -281,8 +291,8 @@ impl GameMode for TaikoGame {
                     right_kat_image,
                     judgement_helper,
 
-                    hit_windows,
-                    miss_window,
+                    hit_windows: Vec::new(),
+                    miss_window: 0.0,
                     hit_cache,
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
@@ -318,6 +328,8 @@ impl GameMode for TaikoGame {
         if !diff_calc_only {
             s.reload_skin().await;
         }
+
+        s.setup_hitwindows().await;
 
         Ok(s)
     }
@@ -1326,9 +1338,9 @@ impl FullAltCounter {
 
 #[inline]
 pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.mods.contains("easy") {
+    if mods.mods.contains(Easy.name()) {
         val * ez_scale
-    } else if mods.mods.contains("hardrock") {
+    } else if mods.mods.contains(HardRock.name()) {
         val * hr_scale
     } else {
         val

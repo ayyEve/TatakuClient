@@ -62,6 +62,9 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     fn hits_to_complete(&self) -> u32 { 1 }
 
     fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
+
+    // only used by spinners
+    fn set_required_hits(&mut self, _required_hits:u16) {}
 }
 
 
@@ -455,7 +458,7 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time:f32, end_time:f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
+    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
         let don_color = settings.don_color;
         let kat_color = settings.kat_color;
         let depth = get_depth(time);
@@ -607,6 +610,10 @@ impl TaikoHitObject for TaikoSpinner {
             i.current_scale = scale;
         }
     }
+
+    fn set_required_hits(&mut self, required_hits:u16) {
+        self.hits_required = required_hits
+    }
 }
 
 
@@ -639,16 +646,11 @@ impl HitCircleImageHelper {
             HitType::Kat => settings.kat_color,
         };
 
-
-        let radius;
-        let hitcircle = if finisher {
-            radius = settings.note_radius * settings.big_note_multiplier;
-            "taikobigcircle"
+        let (radius, hitcircle) = if finisher {
+            (settings.note_radius * settings.big_note_multiplier, "taikobigcircle")
         } else {
-            radius = settings.note_radius;
-            "taikohitcircle"
+            (settings.note_radius, "taikohitcircle")
         };
-
 
         let mut circle = SkinManager::get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {

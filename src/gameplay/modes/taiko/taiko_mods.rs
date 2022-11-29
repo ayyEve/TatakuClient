@@ -15,11 +15,13 @@ impl GameplayMod for NoSV {
 pub struct HardRock;
 impl GameplayMod for HardRock {
     fn name(&self) -> &'static str { "hardrock" }
+    fn score_multiplier(&self) -> f32 { 1.4 }
     fn description(&self) -> &'static str { "Timing is tigher >:3" }
 }
 
 pub struct Easy;
 impl GameplayMod for Easy {
     fn name(&self) -> &'static str { "easy" }
+    fn score_multiplier(&self) -> f32 { 0.6 }
     fn description(&self) -> &'static str { "Timing is looser :3" }
 }

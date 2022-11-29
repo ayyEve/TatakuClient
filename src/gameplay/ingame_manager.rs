@@ -32,6 +32,7 @@ pub struct IngameManager {
 
     pub score: IngameScore,
     pub replay: Replay,
+    pub score_multiplier: f32,
 
     pub health: HealthHelper,
     pub judgment_type: Box<dyn HitJudgments>,
@@ -901,22 +902,30 @@ impl IngameManager {
         
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.speed = self.current_mods.get_speed();
+        self.score_multiplier = 1.0;
+
         {
             *self.score.mods_mut() = self.current_mods.mods.clone();
             let playmode = self.gamemode.playmode();
             let info = get_gamemode_info(&playmode).unwrap();
 
-            // clean out any mods that dont belong
-            let ok_mods:Vec<String> = default_mod_groups()
+            // get all available mods for this 
+            let ok_mods = default_mod_groups()
                 .into_iter()
                 .chain(info.get_mods().into_iter())
-                .map(|m|
-                    m.mods
-                    .into_iter()
-                    .map(|m|m.name().to_owned())
-                ).flatten()
-                .collect();
-            self.score.mods_mut().retain(|m|ok_mods.contains(m));
+                .map(|m|m.mods)
+                .flatten()
+                .collect::<Vec<_>>();
+            
+            // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
+            self.score.mods_mut().retain(|m| {
+                if let Some(m) = ok_mods.iter().find(|o| o.name() == m) {
+                    self.score_multiplier *= m.score_multiplier();
+                    true
+                } else {
+                    false
+                }
+            });
         }
 
 
@@ -987,7 +996,7 @@ impl IngameManager {
         self.pending_time_jump = Some(self.time());
 
         let mut mods = self.current_mods.as_ref().clone();
-        mods.add_mod("autoplay");
+        mods.add_mod(Autoplay.name());
         self.current_mods = Arc::new(mods);
     }
 }
@@ -1043,7 +1052,7 @@ impl IngameManager {
                 self.replaying = true;
 
                 let mut new_mods = self.current_mods.as_ref().clone();
-                new_mods.add_mod("autoplay");
+                new_mods.add_mod(Autoplay.name());
                 self.current_mods = Arc::new(new_mods);
             }
             
@@ -1279,6 +1288,7 @@ impl Default for IngameManager {
             gamemode: Default::default(),
             current_mods: Default::default(),
             score: IngameScore::new(Default::default(), true, false),
+            score_multiplier: 1.0,
             replay: Default::default(),
             started: Default::default(),
             completed: Default::default(),
