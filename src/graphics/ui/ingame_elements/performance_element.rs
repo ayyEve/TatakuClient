@@ -12,7 +12,7 @@ pub struct PerformanceElement {
     bounds_size: Vector2,
 }
 impl PerformanceElement {
-    pub async fn new(diff: f32, calc: PerformanceCalc) -> Self {
+    pub async fn new() -> Self {
         let number:u32 = 1_000_000_000;
         let mut perf_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 2).await.ok();
         

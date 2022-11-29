@@ -323,57 +323,66 @@ impl<T> Interpolation for T where T: Copy + std::ops::Add<Output=T> + std::ops::
 
 
 pub trait VectorHelpers {
-    fn atan2(v:Vector2) -> f64 {
-        (-v.y).atan2(v.x)
-    }
+    fn atan2(self) -> f64;
+    fn atan2_wrong(self) -> f64;
+    fn from_angle(a:f64) -> Self where Self:Sized;
 
-    fn from_angle(a:f64) -> Vector2 {
-        Vector2::new(a.cos(), a.sin())
-    }
+    fn magnitude(self) -> f64;
+    fn normalize(self) -> Self;
 
-    fn magnitude(v: Vector2) -> f64 {
-        (v.x * v.x + v.y * v.y).sqrt()
-    }
+    fn distance(&self, v2: Self) -> f64;
+    fn direction(&self, v2: Self) -> f64;
 
-    fn normalize(v: Vector2) -> Vector2 {
-        let magnitude = Vector2::magnitude(v);
-        if magnitude == 0.0 { v }
-        else { v / magnitude }
-    }
+    fn x(self) -> Self;
+    fn y(self) -> Self;
 
-    fn distance(&self, v2: Vector2) -> f64;
-    fn direction(&self, v2: Vector2) -> f64;
-
-    fn x(self) -> Vector2;
-    fn y(self) -> Vector2;
-
-    fn cross(self, other: Vector2) -> f64;
-    fn dot(self, other: Vector2) -> f64;
+    fn cross(self, other: Self) -> f64;
+    fn dot(self, other: Self) -> f64;
 }
 impl VectorHelpers for Vector2 {
-    fn distance(&self, v2: Vector2) -> f64 {
+    fn atan2(self) -> f64 {
+        (-self.y).atan2(self.x)
+    }
+    fn atan2_wrong(self) -> f64 {
+        self.y.atan2(self.x)
+    }
+
+    fn from_angle(a:f64) -> Self where Self:Sized {
+        Vector2::new(a.cos(), a.sin())
+    }
+    
+    fn magnitude(self) -> f64 {
+        (self.x * self.x + self.y * self.y).sqrt()
+    }
+    fn normalize(self) -> Self {
+        let magnitude = self.magnitude();
+        if magnitude == 0.0 { self }
+        else { self / magnitude }
+    }
+
+    fn distance(&self, v2: Self) -> f64 {
         distance(*self, v2)
     }
-    fn direction(&self, v2: Vector2) -> f64 {
+    fn direction(&self, v2: Self) -> f64 {
         let direction = v2 - *self;
-        (direction.x / Self::magnitude(direction)).acos()
+        (direction.x / direction.magnitude()).acos()
     }
 
     // get only this vector's x value
-    fn x(mut self) -> Vector2 {
+    fn x(mut self) -> Self {
         self.y = 0.0;
         self
     }
     // get only this vector's y value
-    fn y(mut self) -> Vector2 {
+    fn y(mut self) -> Self {
         self.x = 0.0;
         self
     }
 
-    fn cross(self, other: Vector2) -> f64 {
+    fn cross(self, other: Self) -> f64 {
         self.x * other.y - self.y * other.x
     }
-    fn dot(self, other: Vector2) -> f64 {
+    fn dot(self, other: Self) -> f64 {
         self.x * other.x + self.y * other.y
     }
 }
