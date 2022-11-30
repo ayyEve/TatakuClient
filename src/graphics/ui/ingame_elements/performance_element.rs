@@ -5,8 +5,6 @@ const WHITE_TEXT:bool = true;
 
 pub struct PerformanceElement {
     perf_image: Option<SkinnedNumber>,
-    // calc: PerformanceCalc,
-    // diff: f32,
     perf: f32,
 
     bounds_size: Vector2,
@@ -36,8 +34,6 @@ impl PerformanceElement {
             bounds_size,
             perf_image,
             perf: 0.0,
-            // diff, 
-            // calc,
         }
     }
 }

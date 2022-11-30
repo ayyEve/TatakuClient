@@ -28,9 +28,10 @@ impl InnerUIElement for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
     fn get_bounds(&self) -> Rectangle {
+        let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE);
         Rectangle::bounds_only(
-            -BOX_SIZE,
-            Vector2::new(BOX_SIZE.x, BOX_SIZE.y * self.hit_counts.len() as f64)
+            -box_size,
+            Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f64)
         )
     }
     
@@ -43,7 +44,7 @@ impl InnerUIElement for JudgementCounterElement {
 
         for judge in manager.judgment_type.variants().iter() {
             let txt = judge.as_str_display();
-            if txt.is_empty() {continue}
+            if txt.is_empty() { continue }
 
             let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
             self.hit_counts.push((txt.to_owned(), count as u32));
@@ -56,7 +57,7 @@ impl InnerUIElement for JudgementCounterElement {
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
         let font = get_font();
-        let box_size = BOX_SIZE * scale;
+        let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE) * scale;
         
         let base_pos = pos_offset - BOX_SIZE;
 

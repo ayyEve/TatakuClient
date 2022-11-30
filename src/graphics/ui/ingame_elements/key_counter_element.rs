@@ -35,9 +35,10 @@ impl InnerUIElement for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
     fn get_bounds(&self) -> Rectangle {
+        let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE);
         Rectangle::bounds_only(
-            -BOX_SIZE,
-            Vector2::new(BOX_SIZE.x, BOX_SIZE.y * self.counter.key_order.len() as f64)
+            -box_size,
+            Vector2::new(box_size.x, box_size.y * self.counter.key_order.len() as f64)
         )
     }
     
@@ -58,7 +59,7 @@ impl InnerUIElement for KeyCounterElement {
         // } else {
         //     BOX_SIZE
         // };
-        let box_size = BOX_SIZE * scale;
+        let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE) * scale;
         
         let base_pos = pos_offset - BOX_SIZE;
 
