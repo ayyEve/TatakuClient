@@ -34,7 +34,7 @@ pub trait StandardHitObject: HitObject {
     fn was_hit(&self) -> bool;
 
     fn get_hitsound(&self) -> Vec<Hitsound>;
-    fn get_sound_queue(&mut self) -> Vec<(f32, Vec<Hitsound>)> { vec![] }
+    fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> { vec![] }
 
     fn set_hitwindow_miss(&mut self, window: f32);
 
@@ -470,7 +470,7 @@ pub struct StandardSlider {
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
     /// (time, hitsound)
-    sound_queue: Vec<(f32, Vec<Hitsound>)>,
+    sound_queue: Vec<Vec<Hitsound>>,
 
     /// scaling helper, should greatly improve rendering speed due to locking
     scaling_helper: Arc<ScalingHelper>,
@@ -845,7 +845,7 @@ impl HitObject for StandardSlider {
             // check cursor
             if self.sliding_ok {
                 self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
-                self.sound_queue.push(( beatmap_time, self.get_hitsound() ));
+                self.sound_queue.push(self.get_hitsound());
                 self.add_ripple(beatmap_time, pos, false);
             } else {
                 // we broke combo
@@ -861,7 +861,7 @@ impl HitObject for StandardSlider {
                     self.add_ripple(beatmap_time, dot.pos, true);
                     
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
-                    self.sound_queue.push(( beatmap_time, vec![self.sliderdot_hitsound.clone()] ));
+                    self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);
                 } else {
                     self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
                     self.dots_missed += 1
@@ -1280,7 +1280,7 @@ impl StandardHitObject for StandardSlider {
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }
-    fn get_sound_queue(&mut self) -> Vec<(f32, Vec<Hitsound>)> {
+    fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }
 }
@@ -1355,7 +1355,7 @@ impl SliderDot {
 // spinner
 #[derive(Clone)]
 pub struct StandardSpinner {
-    def: SpinnerDef,
+    // def: SpinnerDef,
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
@@ -1396,7 +1396,7 @@ impl StandardSpinner {
 
         Self {
             pos: scaling_helper.scale_coords(super::osu::FIELD_SIZE / 2.0),
-            def,
+            // def,
             time, 
             end_time,
             current_time: 0.0,

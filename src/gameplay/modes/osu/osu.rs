@@ -545,7 +545,7 @@ impl GameMode for StandardGame {
             note.update(time).await;
 
             // play queued sounds
-            for (time, hitsound) in note.get_sound_queue() {
+            for hitsound in note.get_sound_queue() {
                 manager.play_note_sound(&hitsound).await;
             }
 
