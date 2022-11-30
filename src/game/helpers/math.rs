@@ -27,17 +27,6 @@ pub(crate) fn create_bezier(input: Vec<Vector2>, wrong: bool) -> Vec<Vector2> {
     output
 }
 
-fn length_squared(p:Vector2) -> f64 {
-    p.x * p.x + p.y * p.y
-}
-
-fn distance(p1:Vector2, p2:Vector2) -> f64 {
-    let num = p1.x - p2.x;
-    let num2 = p1.y - p2.y;
-    let num3 = num * num + num2 * num2;
-    num3.sqrt()
-}
-
 pub fn is_straight_line(a:Vector2, b:Vector2, c:Vector2) -> bool {
     (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y) == 0.0
 }
@@ -50,15 +39,15 @@ pub fn circle_t_at(p:Vector2, c:Vector2) -> f64 {
 /// http://en.wikipedia.org/wiki/Circumscribed_circle#Cartesian_coordinates
 pub fn circle_through_points(a:Vector2, b:Vector2, c:Vector2) -> (Vector2, f64, f64, f64) {
     let d = (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)) * 2.0;
-    let a_mag_sq = length_squared(a);
-    let b_mag_sq = length_squared(b);
-    let c_mag_sq = length_squared(c);
+    let a_mag_sq = a.length_squared();
+    let b_mag_sq = b.length_squared();
+    let c_mag_sq = c.length_squared();
 
     let center = Vector2::new(
         (a_mag_sq * (b.y - c.y) + b_mag_sq * (c.y - a.y) + c_mag_sq * (a.y - b.y)) / d,
         (a_mag_sq * (c.x - b.x) + b_mag_sq * (a.x - c.x) + c_mag_sq * (b.x - a.x)) / d
     );
-    let radius = distance(center, a);
+    let radius = center. distance(a);
 
     let t_initial = circle_t_at(a, center);
     let mut t_mid = circle_t_at(b, center);
@@ -327,10 +316,12 @@ pub trait VectorHelpers {
     fn atan2_wrong(self) -> f64;
     fn from_angle(a:f64) -> Self where Self:Sized;
 
-    fn magnitude(self) -> f64;
+    fn length(self) -> f64;
+    fn length_squared(self) -> f64;
     fn normalize(self) -> Self;
 
     fn distance(&self, v2: Self) -> f64;
+    fn distance_squared(&self, v2: Self) -> f64;
     fn direction(&self, v2: Self) -> f64;
 
     fn x(self) -> Self;
@@ -351,21 +342,28 @@ impl VectorHelpers for Vector2 {
         Vector2::new(a.cos(), a.sin())
     }
     
-    fn magnitude(self) -> f64 {
-        (self.x * self.x + self.y * self.y).sqrt()
+    fn length(self) -> f64 {
+        self.length_squared().sqrt()
     }
+    fn length_squared(self) -> f64 {
+        self.x * self.x + self.y * self.y
+    }
+
     fn normalize(self) -> Self {
-        let magnitude = self.magnitude();
+        let magnitude = self.length();
         if magnitude == 0.0 { self }
         else { self / magnitude }
     }
 
-    fn distance(&self, v2: Self) -> f64 {
-        distance(*self, v2)
+    fn distance(&self, p2: Self) -> f64 {
+        self.distance_squared(p2).sqrt()
+    }
+    fn distance_squared(&self, p2: Self) -> f64 {
+        (self.x - p2.x).powi(2) + (self.y - p2.y).powi(2)
     }
     fn direction(&self, v2: Self) -> f64 {
         let direction = v2 - *self;
-        (direction.x / direction.magnitude()).acos()
+        (direction.x / direction.length()).acos()
     }
 
     // get only this vector's x value
