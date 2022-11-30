@@ -219,7 +219,6 @@ impl GameMode for ManiaGame {
         let miss_window = hit_windows.last().unwrap().1.end;
 
         const DEFAULT_SNAP: Color = Color::SILVER;
-
         const SNAP_COLORS:&[(f32, Color)] = &[
             (0.0,        Color::RED),
             (1.0,        Color::RED),
@@ -249,15 +248,7 @@ impl GameMode for ManiaGame {
         ];
         let timing_points = beatmap.get_timing_points();
         let get_color = |time| {
-            let mut tp = &timing_points[0];
-            for t in timing_points.iter() {
-                if t.is_inherited() { continue }
-
-                if t.time <= time {
-                    tp = t
-                }
-                else { break }
-            }
+            let tp = timing_points.control_point_at(time);
         
             let offset = tp.time;
             let length = tp.beat_length;
@@ -287,10 +278,16 @@ impl GameMode for ManiaGame {
             DEFAULT_SNAP
         };
 
+
         let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
                 let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
+                
+                let get_hitsounds = |time, hitsound, hitsamples| {
+                    let tp = timing_points.timing_point_at(time);
+                    Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
+                };
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -345,8 +342,7 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
-                            note.hitsound,
-                            note.hitsamples.clone()
+                            get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
                         ).await));
                     // }
                 }
@@ -362,8 +358,7 @@ impl GameMode for ManiaGame {
                         s.sv_mult,
                         s.playfield.clone(),
                         s.mania_skin_settings.clone(),
-                        hold.hitsound,
-                        hold.hitsamples.clone()
+                        get_hitsounds(hold.time, hold.hitsound, hold.hitsamples.clone())
                     ).await));
                 }
 
@@ -406,6 +401,10 @@ impl GameMode for ManiaGame {
 
                 let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
 
+                let get_hitsounds = || {
+                    vec![Hitsound::new_simple("normal-hitnormal")]
+                };
+
                 let mut s = Self {
                     map_meta: metadata.clone(),
                     columns: Vec::new(),
@@ -445,15 +444,6 @@ impl GameMode for ManiaGame {
                     let time = note.start_time;
                     let x = s.playfield.col_pos(column);
 
-                    let hitsound = 1;
-                    let hitsamples = HitSamples {
-                        normal_set: 1,
-                        addition_set: 0,
-                        index: 1,
-                        volume: 50,
-                        filename: None
-                    };
-
                     if let Some(end_time) = note.end_time {
                         s.columns[column as usize].push(Box::new(ManiaHold::new(
                             time,
@@ -464,8 +454,7 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
-                            hitsound,
-                            hitsamples
+                            get_hitsounds()
                         ).await));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
@@ -476,8 +465,7 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
-                            hitsound,
-                            hitsamples
+                            get_hitsounds()
                         ).await));
                     }
                 }
@@ -495,6 +483,10 @@ impl GameMode for ManiaGame {
                 }
 
                 let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), window_size.0, column_count));
+
+                let get_hitsounds = || {
+                    vec![Hitsound::new_simple("normal-hitnormal")]
+                };
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -535,15 +527,6 @@ impl GameMode for ManiaGame {
                     let time = note.start;
                     let x = s.playfield.col_pos(column);
 
-                    let hitsound = 1;
-                    let hitsamples = HitSamples {
-                        normal_set: 1,
-                        addition_set: 0,
-                        index: 1,
-                        volume: 100,
-                        filename: None
-                    };
-
                     if let Some(end_time) = note.end {
                         s.columns[column as usize].push(Box::new(ManiaHold::new(
                             time,
@@ -554,8 +537,7 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
-                            hitsound,
-                            hitsamples
+                            get_hitsounds()
                         ).await));
                     } else {
                         s.columns[column as usize].push(Box::new(ManiaNote::new(
@@ -566,8 +548,7 @@ impl GameMode for ManiaGame {
                             s.sv_mult,
                             s.playfield.clone(),
                             s.mania_skin_settings.clone(),
-                            hitsound,
-                            hitsamples,
+                            get_hitsounds()
                         ).await));
                     }
                 }
@@ -622,9 +603,8 @@ impl GameMode for ManiaGame {
                 if self.column_indices[col] >= self.columns[col].len() {
                     // we need a hitsound though
                     let thing = self.columns[col].iter().last().unwrap();
-                    let (sound, samples) = thing.get_hitsound();
 
-                    manager.play_note_sound(thing.time(), sound, samples, true).await;
+                    manager.play_note_sound(thing.get_hitsound()).await;
                     // play_sound!(sound);
                     return;
                 }
@@ -644,8 +624,7 @@ impl GameMode for ManiaGame {
                     // play the hit sound
 
                     // we need a hitsound though
-                    let (sound, samples) = note.get_hitsound();
-                    manager.play_note_sound(note.time(), sound, samples, true).await;
+                    manager.play_note_sound(note.get_hitsound()).await;
                     // play_sound!(sound);
 
                     // incrememnt note index if this is not a slider
@@ -660,10 +639,9 @@ impl GameMode for ManiaGame {
                 } else { // outside of any window, ignore
                     // play sound
                     let thing = &self.columns[col][self.column_indices[col]];
-                    let (sound, samples) = thing.get_hitsound();
 
                     // play_sound!(sound);
-                    manager.play_note_sound(thing.time(), sound, samples, true).await;
+                    manager.play_note_sound(thing.get_hitsound()).await;
                 }
             }
             ReplayFrame::Release(key) => {
@@ -714,10 +692,9 @@ impl GameMode for ManiaGame {
                     } else { // outside of any window, ignore
                         // play sound
                         let thing = &self.columns[col][self.column_indices[col]];
-                        let (sound, samples) = thing.get_hitsound();
 
                         // play_sound!(sound);
-                        manager.play_note_sound(thing.time(), sound, samples, true).await;
+                        manager.play_note_sound(thing.get_hitsound()).await;
                     }
                 }
             }

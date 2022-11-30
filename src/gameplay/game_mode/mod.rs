@@ -1,3 +1,4 @@
+mod hitsound;
 mod game_mode;
 mod gameplay_mod;
 mod hit_judgements;
@@ -6,6 +7,7 @@ mod game_mode_input;
 mod default_game_mode;
 mod game_mode_properties;
 
+pub use hitsound::*;
 pub use game_mode::*;
 pub use gameplay_mod::*;
 pub use hit_judgements::*;

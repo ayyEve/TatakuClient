@@ -306,9 +306,11 @@ impl AsyncMenu<Game> for ScoreMenu {
                         let Score { playmode, username, time, .. } = &self.score.score;
                         let playmode = gamemode_display_name(playmode);
 
-                        let datetime = NaiveDateTime::from_timestamp(*time as i64, 0);
-                        let score_time = DateTime::<Utc>::from_utc(datetime, Utc).with_timezone(&Local);
-                        let date = score_time.date().format("%d-%m-%Y").to_string();
+                        let mut date = String::new();
+                        if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
+                            let score_time = DateTime::<Utc>::from_utc(datetime, Utc).with_timezone(&Local);
+                            date = score_time.date_naive().format("%d-%m-%Y").to_string();
+                        }
 
                         let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
                         let export_path = Path::new(&export_path);

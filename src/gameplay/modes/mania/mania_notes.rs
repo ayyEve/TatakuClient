@@ -10,7 +10,7 @@ pub trait ManiaHitObject: HitObject {
     fn release(&mut self, _time:f32) {}
     fn miss(&mut self, time:f32);
     fn was_hit(&self) -> bool { false }
-    fn get_hitsound(&self) -> (u8, HitSamples);
+    fn get_hitsound(&self) -> &Vec<Hitsound>;
 
     fn set_sv_mult(&mut self, sv: f64);
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
@@ -19,7 +19,6 @@ pub trait ManiaHitObject: HitObject {
 }
 
 // note
-#[derive(Clone)]
 pub struct ManiaNote {
     pos: Vector2,
     relative_y: f64,
@@ -40,9 +39,7 @@ pub struct ManiaNote {
     note_image: Option<Image>,
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
-
-    hitsound: u8,
-    hitsamples: HitSamples,
+    hitsounds: Vec<Hitsound>
 }
 impl ManiaNote {
     pub async fn new(
@@ -52,8 +49,7 @@ impl ManiaNote {
 
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
-        hitsound: u8,
-        hitsamples: HitSamples,
+        hitsounds: Vec<Hitsound>,
     ) -> Self {
         Self {
             time,
@@ -72,9 +68,9 @@ impl ManiaNote {
             note_image:None,
             position_function_index: 0,
 
-            hitsound,
-            hitsamples, 
             mania_skin_settings,
+
+            hitsounds,
         }
     }
 
@@ -169,8 +165,8 @@ impl ManiaHitObject for ManiaNote {
         self.pos.x = self.playfield.col_pos(self.column);
     }
 
-    fn get_hitsound(&self) -> (u8, HitSamples) {
-        (self.hitsound, self.hitsamples.clone())
+    fn get_hitsound(&self) -> &Vec<Hitsound> {
+        &self.hitsounds
     }
     
     fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
@@ -179,7 +175,6 @@ impl ManiaHitObject for ManiaNote {
 }
 
 // slider
-#[derive(Clone)]
 pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
@@ -208,9 +203,8 @@ pub struct ManiaHold {
     end_image: Option<Image>,
     middle_image: Option<Image>,
 
+    hitsounds: Vec<Hitsound>,
 
-    hitsound: u8,
-    hitsamples: HitSamples,
     mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 }
 impl ManiaHold {
@@ -221,8 +215,7 @@ impl ManiaHold {
         
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
-        hitsound: u8,
-        hitsamples: HitSamples,
+        hitsounds: Vec<Hitsound>,
     ) -> Self {
 
         Self {
@@ -249,8 +242,7 @@ impl ManiaHold {
             middle_image: None,
             mania_skin_settings,
 
-            hitsound,
-            hitsamples,
+            hitsounds
         }
     }
 
@@ -500,8 +492,8 @@ impl ManiaHitObject for ManiaHold {
         self.pos.x = self.playfield.col_pos(self.column);
     }
 
-    fn get_hitsound(&self) -> (u8, HitSamples) {
-        (self.hitsound, self.hitsamples.clone())
+    fn get_hitsound(&self) -> &Vec<Hitsound> {
+        &self.hitsounds
     } 
     
     fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {

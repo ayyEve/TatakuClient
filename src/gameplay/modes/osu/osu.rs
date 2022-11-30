@@ -180,6 +180,8 @@ impl GameMode for StandardGame {
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
         let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
+        let timing_points = map.get_timing_points();
+
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
@@ -188,6 +190,11 @@ impl GameMode for StandardGame {
                 if std_settings.use_beatmap_combo_colors && beatmap.combo_colors.len() > 0 {
                     combo_colors = beatmap.combo_colors.clone();
                 }
+                
+                let get_hitsounds = |time, hitsound, hitsamples| {
+                    let tp = timing_points.timing_point_at(time);
+                    Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
+                };
 
                 let mut s = Self {
                     notes: Vec::new(),
@@ -293,6 +300,7 @@ impl GameMode for StandardGame {
                             depth,
                             std_settings.clone(),
                             diff_calc_only,
+                            get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
                         ).await));
                     }
                     if let Some(slider) = slider {
@@ -308,6 +316,7 @@ impl GameMode for StandardGame {
                             };
         
                             let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
+                            let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
                             s.notes.push(Box::new(StandardNote::new(
                                 note,
                                 ar,
@@ -318,6 +327,7 @@ impl GameMode for StandardGame {
                                 depth,
                                 std_settings.clone(),
                                 diff_calc_only,
+                                hitsounds,
                             ).await));
                         } else {
                             let slider_depth = SLIDER_DEPTH.start + (slider.time as f64 / end_time) * SLIDER_DEPTH.end;
@@ -335,6 +345,7 @@ impl GameMode for StandardGame {
                                 depth,
                                 std_settings.clone(),
                                 diff_calc_only,
+                                get_hitsounds
                             ).await))
                         }
                         
@@ -429,8 +440,7 @@ impl GameMode for StandardGame {
 
                             // play the sound
                             let hitsound = note.get_hitsound();
-                            let hitsamples = note.get_hitsamples().clone();
-                            manager.play_note_sound(note_time, hitsound, hitsamples, true).await;
+                            manager.play_note_sound(&hitsound).await;
                         }
 
                     }
@@ -535,8 +545,8 @@ impl GameMode for StandardGame {
             note.update(time).await;
 
             // play queued sounds
-            for (time, hitsound, samples) in note.get_sound_queue() {
-                manager.play_note_sound(time, hitsound, samples, true).await;
+            for (time, hitsound) in note.get_sound_queue() {
+                manager.play_note_sound(&hitsound).await;
             }
 
             for (add_combo, pos) in note.pending_combo() {
@@ -565,7 +575,7 @@ impl GameMode for StandardGame {
                         add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
                     }
                     NoteType::Slider => {
-                        let note_time = note.end_time(0.0);
+                        // let note_time = note.end_time(0.0);
 
                         // check slider release points
                         // internally checks distance
@@ -591,8 +601,8 @@ impl GameMode for StandardGame {
 
                             // play the sound
                             let hitsound = note.get_hitsound();
-                            let hitsamples = note.get_hitsamples().clone();
-                            manager.play_note_sound(note_time, hitsound, hitsamples, true).await;
+                            // let hitsamples = note.get_hitsamples().clone();
+                            manager.play_note_sound(&hitsound).await;
                         }
                     }
 

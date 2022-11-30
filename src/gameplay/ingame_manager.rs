@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::beatmaps::osu::hitobject_defs::HitSamples;
 use prelude::helpers::score_helper::ScoreLoaderHelper;
 
 
@@ -496,22 +495,15 @@ impl IngameManager {
 
     // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
     // essentially the same thing as judgments
-    pub async fn play_note_sound(&mut self, note_time:f32, note_hitsound: u8, mut note_hitsamples:HitSamples, normal_by_default: bool) {
-        let timing_point = self.beatmap.control_point_at(note_time);
+    pub async fn play_note_sound(&mut self, hitsounds: &Vec<Hitsound>) {
+        // let timing_point = self.beatmap.control_point_at(note_time);
 
-        if note_hitsamples.normal_set == 0 {
-            note_hitsamples.normal_set = timing_point.sample_set;
-            note_hitsamples.index = timing_point.sample_index;
-        }
-        if note_hitsamples.addition_set == 0 {
-            note_hitsamples.addition_set = note_hitsamples.normal_set;
-        }
 
         // get volume
-        let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * self.settings.get_effect_vol();
-        if self.menu_background {vol *= self.settings.background_game_settings.hitsound_volume};
+        let mut vol = self.settings.get_effect_vol();
+        if self.menu_background { vol *= self.settings.background_game_settings.hitsound_volume };
 
-        self.hitsound_manager.play_sound(note_hitsound, note_hitsamples, vol, normal_by_default);
+        self.hitsound_manager.play_sound(hitsounds, vol);
     }
 
     /// add judgment, affects health and score, but not hit timings
@@ -661,7 +653,7 @@ impl IngameManager {
         let mut tp = &self.timing_points[0];
 
         for i in self.timing_points.iter() {
-            if i.is_inherited() && !allow_inherited {continue}
+            if i.is_inherited() && !allow_inherited { continue }
             if i.time <= time {
                 tp = i
             }
@@ -846,8 +838,9 @@ impl IngameManager {
     pub async fn combo_break(&mut self) {
         // play hitsound
         if self.score.combo >= 20 && !self.menu_background {
+            let combobreak = Hitsound::new_simple("combobreak");
             // index of 1 because we want to try beatmap sounds
-            self.hitsound_manager.play_sound_single(&"combobreak".to_owned(), 1, self.settings.get_effect_vol());
+            self.hitsound_manager.play_sound_single(&combobreak, None, self.settings.get_effect_vol());
         }
 
         // reset combo to 0

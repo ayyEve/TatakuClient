@@ -33,10 +33,8 @@ pub trait StandardHitObject: HitObject {
 
     fn was_hit(&self) -> bool;
 
-
-    fn get_hitsound(&self) -> u8;
-    fn get_hitsamples(&self) -> HitSamples;
-    fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {vec![]}
+    fn get_hitsound(&self) -> Vec<Hitsound>;
+    fn get_sound_queue(&mut self) -> Vec<(f32, Vec<Hitsound>)> { vec![] }
 
     fn set_hitwindow_miss(&mut self, window: f32);
 
@@ -53,7 +51,6 @@ pub trait StandardHitObject: HitObject {
 
 
 // note
-#[derive(Clone)]
 pub struct StandardNote {
     /// note definition
     def: NoteDef,
@@ -100,9 +97,10 @@ pub struct StandardNote {
 
     circle_image: Option<HitCircleImageHelper>,
     combo_image: Option<SkinnedNumber>,
+    hitsounds: Vec<Hitsound>,
 }
 impl StandardNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -152,7 +150,8 @@ impl StandardNote {
 
             standard_settings,
             shapes: Vec::new(),
-            combo_image
+            combo_image,
+            hitsounds
         }
     }
 
@@ -310,8 +309,6 @@ impl HitObject for StandardNote {
 impl StandardHitObject for StandardNote {
     fn miss(&mut self) { self.missed = true }
     fn was_hit(&self) -> bool { self.hit || self.missed }
-    fn get_hitsamples(&self) -> HitSamples { self.def.hitsamples.clone() }
-    fn get_hitsound(&self) -> u8 { self.def.hitsound }
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn causes_miss(&self) -> bool { true }
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
@@ -396,13 +393,16 @@ impl StandardHitObject for StandardNote {
     fn set_ar(&mut self, ar: f32) {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
+
+    fn get_hitsound(&self) -> Vec<Hitsound> {
+        self.hitsounds.clone()
+    }
 }
 
 
 
 
 // slider
-#[derive(Clone)]
 pub struct StandardSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -469,8 +469,8 @@ pub struct StandardSlider {
     combo_image: Option<SkinnedNumber>,
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
-    /// (time, hitsound, samples, override sample name)
-    sound_queue: Vec<(f32, u8, HitSamples)>,
+    /// (time, hitsound)
+    sound_queue: Vec<(f32, Vec<Hitsound>)>,
 
     /// scaling helper, should greatly improve rendering speed due to locking
     scaling_helper: Arc<ScalingHelper>,
@@ -495,9 +495,12 @@ pub struct StandardSlider {
 
     slider_body_render_target: Option<RenderTarget>,
     slider_body_render_target_failed: Option<f32>,
+    
+    hitsounds: Vec<Vec<Hitsound>>,
+    sliderdot_hitsound: Hitsound
 }
 impl StandardSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -521,6 +524,22 @@ impl StandardSlider {
             ));
             Some(combo_text)
         };
+
+        const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
+        let mut sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
+        sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
+
+
+        let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
+            let mut samples = def.hitsamples.clone();
+            samples.normal_set = normal_set;
+            samples.addition_set = addition_set;
+
+            let hitsound = def.edge_sounds[n.min(def.edge_sounds.len() - 1)];
+            
+            hitsound_fn(def.time, hitsound, samples)
+        }).collect();
+
 
         Self {
             def,
@@ -571,6 +590,9 @@ impl StandardSlider {
             slider_reverse_image: None,
             slider_body_render_target: None,
             slider_body_render_target_failed: None,
+
+            hitsounds,
+            sliderdot_hitsound,
         }
     }
 
@@ -823,11 +845,7 @@ impl HitObject for StandardSlider {
             // check cursor
             if self.sliding_ok {
                 self.pending_combo.push((OsuHitJudgments::SliderEnd, pos));
-                self.sound_queue.push((
-                    beatmap_time,
-                    self.get_hitsound(),
-                    self.get_hitsamples().clone()
-                ));
+                self.sound_queue.push(( beatmap_time, self.get_hitsound() ));
                 self.add_ripple(beatmap_time, pos, false);
             } else {
                 // we broke combo
@@ -835,15 +853,6 @@ impl HitObject for StandardSlider {
             }
         }
 
-        const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
-        let hitsamples = self.get_hitsamples();
-        let hitsamples = HitSamples {
-            normal_set: 0,
-            addition_set: 0,
-            index: 0,
-            volume: 0,
-            filename: Some(format!("{}-slidertick", SAMPLE_SETS[hitsamples.addition_set as usize]))
-        };
 
         let mut dots = std::mem::take(&mut self.hit_dots);
         for dot in dots.iter_mut() {
@@ -852,11 +861,7 @@ impl HitObject for StandardSlider {
                     self.add_ripple(beatmap_time, dot.pos, true);
                     
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
-                    self.sound_queue.push((
-                        beatmap_time,
-                        0,
-                        hitsamples.clone()
-                    ));
+                    self.sound_queue.push(( beatmap_time, vec![self.sliderdot_hitsound.clone()] ));
                 } else {
                     self.pending_combo.push((OsuHitJudgments::SliderDotMiss, dot.pos));
                     self.dots_missed += 1
@@ -1104,18 +1109,6 @@ impl HitObject for StandardSlider {
 impl StandardHitObject for StandardSlider {
     fn miss(&mut self) { self.end_checked = true }
     fn was_hit(&self) -> bool { self.end_checked }
-    fn get_hitsamples(&self) -> HitSamples {
-        let mut samples = self.def.hitsamples.clone();
-        let [normal_set, addition_set] = self.def.edge_sets[self.sound_index.min(self.def.edge_sets.len() - 1)];
-        samples.normal_set = normal_set;
-        samples.addition_set = addition_set;
-
-        samples
-    }
-    fn get_hitsound(&self) -> u8 {
-        // trace!("{}: getting hitsound at index {}/{}", self.time, self.sound_index, self.def.edge_sounds.len() - 1);
-        self.def.edge_sounds[self.sound_index.min(self.def.edge_sounds.len() - 1)]
-    }
     fn causes_miss(&self) -> bool {false}
     fn point_draw_pos(&self, time: f32) -> Vector2 {self.pos_at(time)}
 
@@ -1197,9 +1190,7 @@ impl StandardHitObject for StandardSlider {
         distance <= self.radius.powi(2)
     }
 
-    fn get_sound_queue(&mut self) -> Vec<(f32, u8, HitSamples)> {
-        std::mem::take(&mut self.sound_queue)
-    }
+    
     fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
         std::mem::take(&mut self.pending_combo)
     }
@@ -1270,6 +1261,27 @@ impl StandardHitObject for StandardSlider {
 
     fn set_ar(&mut self, ar: f32) {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
+    }
+
+
+    // fn get_hitsamples(&self) -> HitSamples {
+    //     let mut samples = self.def.hitsamples.clone();
+    //     let [normal_set, addition_set] = self.def.edge_sets[self.sound_index.min(self.def.edge_sets.len() - 1)];
+    //     samples.normal_set = normal_set;
+    //     samples.addition_set = addition_set;
+
+    //     samples
+    // }
+    // fn get_hitsound(&self) -> u8 {
+    //     // trace!("{}: getting hitsound at index {}/{}", self.time, self.sound_index, self.def.edge_sounds.len() - 1);
+    //     self.def.edge_sounds[self.sound_index.min(self.def.edge_sounds.len() - 1)]
+    // }
+    fn get_hitsound(&self) -> Vec<Hitsound> {
+        let index = self.sound_index.min(self.def.edge_sets.len() - 1);
+        self.hitsounds[index].clone()
+    }
+    fn get_sound_queue(&mut self) -> Vec<(f32, Vec<Hitsound>)> {
+        std::mem::take(&mut self.sound_queue)
     }
 }
 
@@ -1567,11 +1579,9 @@ impl HitObject for StandardSpinner {
 impl StandardHitObject for StandardSpinner {
     fn miss(&mut self) {}
     fn was_hit(&self) -> bool { self.last_update >= self.end_time } 
-    fn get_hitsamples(&self) -> HitSamples {self.def.hitsamples.clone()}
-    fn get_hitsound(&self) -> u8 {self.def.hitsound}
-    fn get_preempt(&self) -> f32 {0.0}
-    fn point_draw_pos(&self, _: f32) -> Vector2 {Vector2::zero()} //TODO
-    fn causes_miss(&self) -> bool {self.rotations_completed < self.rotations_required} // if the spinner wasnt completed in time, cause a miss
+    fn get_preempt(&self) -> f32 { 0.0 }
+    fn point_draw_pos(&self, _: f32) -> Vector2 { Vector2::zero() } //TODO
+    fn causes_miss(&self) -> bool { self.rotations_completed < self.rotations_required } // if the spinner wasnt completed in time, cause a miss
     fn set_hitwindow_miss(&mut self, _window: f32) {}
 
     fn press(&mut self, _time:f32) { self.holding = true; }
@@ -1628,6 +1638,10 @@ impl StandardHitObject for StandardSpinner {
 
     fn set_ar(&mut self, _ar: f32) {
         // self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
+    }
+
+    fn get_hitsound(&self) -> Vec<Hitsound> {
+        vec![]
     }
 }
 

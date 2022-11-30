@@ -88,7 +88,9 @@ impl TaikoGame {
             filename: None,
         };
 
-        manager.play_note_sound(note_time, hitsound, samples, false).await;
+        let hitsound = Hitsound::from_hitsamples(hitsound, samples, false, manager.timing_point_at(note_time, true));
+
+        manager.play_note_sound(&hitsound).await;
     }
 
     async fn setup_hitwindows(&mut self) {

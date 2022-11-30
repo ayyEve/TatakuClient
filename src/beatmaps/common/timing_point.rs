@@ -50,3 +50,37 @@ impl Default for TimingPoint {
         }
     }
 }
+
+
+pub trait TimingPointSearch {
+    fn control_point_at(&self, time: f32) -> &TimingPoint;
+    fn timing_point_at(&self, time: f32) -> &TimingPoint;
+}
+
+impl TimingPointSearch for Vec<TimingPoint> {
+    fn control_point_at(&self, time: f32) -> &TimingPoint {
+        let mut tp = &self[0];
+        for t in self.iter() {
+            if t.is_inherited() { continue }
+
+            if t.time <= time {
+                tp = t
+            } else { 
+                break 
+            }
+        }
+        tp
+    }
+    fn timing_point_at(&self, time: f32) -> &TimingPoint {
+        let mut tp = &self[0];
+        for t in self.iter() {
+
+            if t.time <= time {
+                tp = t
+            } else { 
+                break 
+            }
+        }
+        tp
+    }
+}

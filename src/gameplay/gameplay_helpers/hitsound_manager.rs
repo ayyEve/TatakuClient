@@ -114,81 +114,7 @@ impl HitsoundManager {
     }
 
     // TODO: completely redo this
-    pub fn play_sound(&self, note_hitsound: u8, note_hitsamples:HitSamples, vol: f32, normal_by_default: bool) {
-        let mut play_normal = normal_by_default || (note_hitsound & 1) > 0; // 0: Normal
-        let mut play_whistle = (note_hitsound & 2) > 0; // 1: Whistle
-        let mut play_finish = (note_hitsound & 4) > 0; // 2: Finish
-        let mut play_clap = (note_hitsound & 8) > 0; // 3: Clap
-
-        // get volume
-        // let mut vol = (if note_hitsamples.volume == 0 {timing_point.volume} else {note_hitsamples.volume} as f32 / 100.0) * self.settings.get_effect_vol();
-        // if self.menu_background {vol *= self.background_game_settings.hitsound_volume};
-
-
-        // https://osu.ppy.sh/wiki/en/osu%21_File_Formats/Osu_%28file_format%29#hitsounds
-
-        // normalSet and additionSet can be any of the following:
-        // 0: No custom sample set
-        // For normal sounds, the set is determined by the timing point's sample set.
-        // For additions, the set is determined by the normal sound's sample set.
-        // 1: Normal set
-        // 2: Soft set
-        // 3: Drum set
-
-        // The filename is <sampleSet>-hit<hitSound><index>.wav, where:
-
-        // sampleSet is normal, soft, or drum, determined by either normalSet or additionSet depending on which hitsound is playing
-        const SAMPLE_SETS:&[&str] = &["normal", "normal", "soft", "drum"];
-        // hitSound is normal, whistle, finish, or clap
-        // index is the same index as above, except it is not written if the value is 0 or 1
-
-        // (filename, index)
-        let mut play_list = Vec::new();
-
-        // if the hitsound is being overridden
-        if let Some(name) = note_hitsamples.filename {
-            if name.len() > 0 {
-                #[cfg(feature="debug_hitsounds")]
-                debug!("got custom sound: {}", name);
-                if exists(format!("resources/audio/{}", name)) {
-                    play_normal = (note_hitsound & 1) > 0;
-                    play_whistle = false;
-                    play_clap = false;
-                    play_finish = false;
-                    #[cfg(feature="debug_hitsounds")]
-                    warn!("playing custom sound {name}");
-
-                    play_list.push(name)
-                } else {
-                    #[cfg(feature="debug_hitsounds")]
-                    warn!("doesnt exist");
-                }
-            }
-        }
-
-
-        if play_normal {
-            let sample_set = SAMPLE_SETS[note_hitsamples.normal_set as usize];
-            let hitsound = format!("{sample_set}-hitnormal");
-            play_list.push(hitsound)
-        }
-
-        if play_whistle {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{sample_set}-hitwhistle");
-            play_list.push(hitsound)
-        }
-        if play_finish {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{sample_set}-hitfinish");
-            play_list.push(hitsound)
-        }
-        if play_clap {
-            let sample_set = SAMPLE_SETS[note_hitsamples.addition_set as usize];
-            let hitsound = format!("{sample_set}-hitclap");
-            play_list.push(hitsound)
-        }
-
+    pub fn play_sound(&self, hitsounds: &Vec<Hitsound>, vol: f32) {
 
         // The sound file is loaded from the first of the following directories that contains a matching filename:
         // Beatmap, if index is not 0
@@ -197,17 +123,20 @@ impl HitsoundManager {
         // When filename is given, no addition sounds will be played, and this file in the beatmap directory is played instead.
 
 
-        for sound in play_list {
+        for sound in hitsounds.iter() {
+            let vol = sound.volume * vol;
+            let name = &sound.filename;
+
             // if theres no playmode prefix, dont try to play a prefixed sound first
             if self.playmode_prefix.is_empty() {
-                if !self.play_sound_single(&sound, note_hitsamples.index, vol) {
-                    warn!("unable to play sound {sound}");
+                if !self.play_sound_single(sound, None, vol) {
+                    warn!("unable to play sound {name}");
                 }
             } else {
                 // if there is a prefix, try to play that first, otherwise try without the prefix
-                if !self.play_sound_single(&format!("{}-{sound}", self.playmode_prefix), note_hitsamples.index, vol) {
-                    if !self.play_sound_single(&sound, note_hitsamples.index, vol) {
-                        warn!("unable to play sound {sound}");
+                if !self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
+                    if !self.play_sound_single(sound, None, vol) {
+                        warn!("unable to play sound {name}");
                     }
                 }
             }
@@ -215,41 +144,56 @@ impl HitsoundManager {
 
     }
 
-    pub fn play_sound_single(&self, sound: &String, index: u8, vol:f32) -> bool {
+    pub fn play_sound_single(&self, sound: &Hitsound, prefix: Option<&String>, vol:f32) -> bool {
         let mut play_sound = None;
-        
-        // check beatmap if index is not 0
-        if index != 0 {
-            let sound = if index > 1 {
-                format!("{sound}{index}")
-            } else {
-                sound.clone()
-            };
+        let name = if let Some(prefix) = prefix {
+            format!("{prefix}-{}", sound.filename)
+        } else {
+            sound.filename.clone()
+        };
 
-            // let sound = format!("{sound}");
-            play_sound = self.sounds[&HitsoundSource::Beatmap].get(&sound);
-            // if play_sound.is_some() {warn!("playing {sound} from beatmap")}
-        }
-        // let sound = format!("{sound}");
-
-        // try skin
-        if play_sound.is_none() {
-            play_sound = self.sounds[&HitsoundSource::Skin].get(sound);
-            // if play_sound.is_some() {warn!("playing {sound} from skin")}
-        }
-
-        // try default
-        if play_sound.is_none() {
-            play_sound = self.sounds[&HitsoundSource::Default].get(sound);
-            // if play_sound.is_some() {warn!("playing {sound} from resources")}
+        for source in [
+            HitsoundSource::Beatmap,
+            HitsoundSource::Skin,
+            HitsoundSource::Default
+        ] {
+            if play_sound.is_none() && sound.allowed_sources.contains(&source) {
+                play_sound = self.sounds[&source].get(&name);
+            }
         }
 
         if let Some(sound) = play_sound {
             sound.set_volume(vol);
             sound.set_position(0.0);
             sound.play(true);
-            
             true
+        } else if let Some(backup) = &sound.filename_backup {
+            
+            let name = if let Some(prefix) = prefix {
+                format!("{prefix}-{backup}")
+            } else {
+                backup.clone()
+            };
+            
+            for source in [
+                HitsoundSource::Beatmap,
+                HitsoundSource::Skin,
+                HitsoundSource::Default
+            ] {
+                if play_sound.is_none() && sound.allowed_sources.contains(&source) {
+                    play_sound = self.sounds[&source].get(&name);
+                }
+            }
+            
+            if let Some(sound) = play_sound {
+                sound.set_volume(vol);
+                sound.set_position(0.0);
+                sound.play(true);
+                true
+            } else {
+                false
+            }
+
         } else {
             false
         }
@@ -258,7 +202,7 @@ impl HitsoundManager {
 
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum HitsoundSource {
     Skin,
     Beatmap,
