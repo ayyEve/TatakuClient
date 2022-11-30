@@ -5,7 +5,6 @@ use crate::prelude::*;
 use super::osu_notes::*;
 use super::OsuHitJudgments;
 
-
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
@@ -1312,14 +1311,6 @@ impl ScalingHelper {
 
         let border_scaled = border_size * scale;
 
-        // let playfield_scaled = Rectangle::new(
-        //     [0.2, 0.2, 0.2, 0.5].into(),
-        //     f64::MAX-4.0,
-        //     scaled_pos_offset,
-        //     FIELD_SIZE * scale,
-        //     None
-        // );
-
         let playfield_scaled_with_cs_border = Rectangle::new(
             [0.2, 0.2, 0.2, 0.5].into(),
             f64::MAX-4.0,
@@ -1337,8 +1328,6 @@ impl ScalingHelper {
             scaled_cs,
             border_scaled,
             scaled_circle_size: circle_size,
-
-            // playfield_scaled,
             playfield_scaled_with_cs_border
         }
     }

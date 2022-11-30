@@ -522,8 +522,10 @@ impl IngameManager {
         }
 
         // do score 
+        let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
+        
         // TODO: theres a way to do this with a match
-        let score_add = judgment.get_score(self.score.combo);
+        let score_add = judgment.get_score(combo_mult);
         if score_add < 0 {
             self.score.score.score -= score_add.abs() as u64;
         } else {
@@ -1140,11 +1142,11 @@ impl IngameManager {
 // Spectator Stuff
 impl IngameManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
-        if self.menu_background || self.replaying {return}
+        if self.menu_background || self.replaying { return }
         OnlineManager::send_spec_frames(vec![frame], false)
     }
     pub fn outgoing_spectator_frame_force(&mut self, frame: SpectatorFrame) {
-        if self.menu_background || self.replaying {return}
+        if self.menu_background || self.replaying { return }
         OnlineManager::send_spec_frames(vec![frame], true);
     }
 
