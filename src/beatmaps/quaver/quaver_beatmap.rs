@@ -70,7 +70,7 @@ impl QuaverBeatmap {
 
         // fix bpms
         // skip any NaN bpms before a valid point, as we need a valid bpm to base any future bpms off of
-        while s.timing_points.len() > 0 && s.timing_points[0].bpm.is_nan() {s.timing_points.pop();}
+        while s.timing_points.len() > 0 && s.timing_points[0].bpm.is_nan() { s.timing_points.remove(0); }
         if s.timing_points.len() == 0 {return Err(BeatmapError::NoTimingPoints.into())}
 
         let first_bpm = s.timing_points.get(0).unwrap().bpm;
