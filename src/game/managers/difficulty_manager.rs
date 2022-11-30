@@ -35,7 +35,7 @@ pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Opti
 
 
 pub async fn do_diffcalc(playmode: PlayMode) {
-    info!("diffcalc initiated for mode {playmode}");
+    debug!("diffcalc initiated for mode {playmode}");
 
     let maps = BEATMAP_MANAGER
         .read()
@@ -51,7 +51,7 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     let existing = BEATMAP_DIFFICULTIES.read().unwrap().clone();
     let mut data = HashMap::new();
 
-    info!("diffcalc starting for mode {playmode}");
+    debug!("diffcalc starting for mode {playmode}");
     for map in maps {
         if let Ok(mut calc) = calc_diff(map, playmode.clone()).await {
             for speed in (50..=1000).step_by(5) { // 0.5..=10.0
@@ -71,14 +71,14 @@ pub async fn do_diffcalc(playmode: PlayMode) {
         }
     }
 
-    info!("diffcalc complete for mode {playmode}, added {} entries", data.len());
+    debug!("diffcalc complete for mode {playmode}, added {} entries", data.len());
 
     let mut r = BEATMAP_DIFFICULTIES.write().unwrap();
     for (k, v) in data {
         r.insert(k, v);
     }
 
-    info!("diffcalc fully complete for mode {playmode}, total len is {}", r.len());
+    debug!("diffcalc fully complete for mode {playmode}, total len is {}", r.len());
     drop(r);
     
     if let Err(e) = save_all_diffs() {

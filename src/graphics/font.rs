@@ -80,7 +80,7 @@ impl Font2 {
     pub fn load_font_size(&self, font_size: FontSize) {
         if self.loaded_sizes.read().contains(&font_size) { return }
 
-        println!("loading font {} with size {}", self.name, font_size.0);
+        trace!("loading font {} with size {}", self.name, font_size.0);
         
         // send tex load request to main thread, and wait for it to complete
         if let Err(e) = load_font_data(self.clone(), font_size) {

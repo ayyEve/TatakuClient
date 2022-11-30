@@ -507,7 +507,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
 
         if let Some(_) = self.diffcalc_complete.as_ref().and_then(|b| b.exploded()) {
-            println!("diffcalc done, reload maps");
+            debug!("diffcalc done, reload maps");
             self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
             self.diffcalc_complete = None;
         }

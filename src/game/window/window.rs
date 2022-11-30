@@ -60,19 +60,19 @@ impl GameWindow {
 
 
         let graphics = GlGraphics::new(opengl);
-        info!("done graphics");
+        debug!("done graphics");
 
 
         // pre-load fonts
         get_font();
         get_fallback_font();
         get_font_awesome();
-        info!("done fonts");
+        debug!("done fonts");
 
         
         let (window_event_sender, window_event_receiver) = sync_channel(10);
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
-        info!("done texture load queue");
+        debug!("done texture load queue");
         
         #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
         #[cfg(target_os = "linux")] let window_ptr = window.window.get_x11_window();

@@ -156,7 +156,7 @@ async fn setup() {
     check_folder("resources/audio");
     check_folder("resources/fonts");
 
-    info!("Folder check done, downloading files");
+    debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
@@ -184,7 +184,7 @@ async fn setup() {
     // check bass lib
     check_bass().await;
 
-    info!("File check done");
+    debug!("File check done");
 }
 
 

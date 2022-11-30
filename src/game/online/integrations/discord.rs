@@ -10,7 +10,7 @@ pub struct Discord {
 
 impl Discord {
     pub fn new() -> TatakuResult<Self> {
-        info!("Setting up Discord RPC");
+        debug!("Setting up Discord RPC");
         macro_rules! map_err {
             ($e:expr) => {
                 $e.map_err(|e|TatakuError::String(format!("Discord Error: {e}")))?
@@ -21,7 +21,7 @@ impl Discord {
         let mut client = map_err!(DiscordIpcClient::new(APP_ID));
         
         // connect
-        info!("Connecting to Discord");
+        debug!("Connecting to Discord");
         map_err!(client.connect());
 
         // set initial status
@@ -31,7 +31,7 @@ impl Discord {
             .assets(Assets::new().large_image("icon"))
         ));
 
-        info!("Done");
+        debug!("Done");
         Ok(Self {
             client: Arc::new(Mutex::new(client)),
             last_status: Arc::new(Mutex::new((String::new(), String::new())))
@@ -77,7 +77,7 @@ impl Discord {
             *lock = (state.clone(), desc.clone());
         }
 
-        info!("Setting Discord State to '{state},{desc}'");
+        debug!("Setting Discord State to '{state},{desc}'");
         let mut client = self.client.lock().await;
 
         let mut activity = activity::Activity::new();
