@@ -28,7 +28,9 @@ const MIGRATIONS:&[(&str, &[(&str, &str)])] = &[
         ("beatmap_type", "INTEGER"),
     ]),
     ("ui_elements", &[
-        ("visible", "BOOL")
+        ("visible", "BOOL"),
+        ("window_size_x", "REAL"),
+        ("window_size_y", "REAL"),
     ]),
     ("beatmap_preferences", &[
         ("audio_offset", "REAL")

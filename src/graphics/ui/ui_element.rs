@@ -17,10 +17,16 @@ impl UIElement {
         let mut scale = Vector2::one();
         let mut visible = true;
         
-        if let Some((pos, scale2, visible2)) = Database::get_element_info(&element_name).await {
-            pos_offset = pos;
-            scale = scale2;
-            visible = visible2;
+        if let Some((stored_pos, stored_scale, stored_window_size, stored_visible)) = Database::get_element_info(&element_name).await {
+            pos_offset = stored_pos;
+            scale = stored_scale;
+            visible = stored_visible;
+            
+            if stored_window_size.length() > 0.0 {
+                // println!("got stored window size {stored_window_size:?}");
+                do_scale(&mut pos_offset, &mut scale, stored_window_size, WindowSize::get().0);
+            }
+
         }
 
         if scale.x.abs() < 0.01 { scale.x = 1.0 }
@@ -72,4 +78,14 @@ pub trait InnerUIElement: Send + Sync {
     fn get_bounds(&self) -> Rectangle;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;
+}
+
+#[allow(unused)]
+fn do_scale(pos: &mut Vector2, scale: &mut Vector2, old_window_size: Vector2, new_window_size: Vector2) {
+    // TODO:
+    // let new_scale = new_window_size / old_window_size;
+    // let scaled_pos_offset = new_window_size - old_window_size * new_scale;
+
+    // *pos = scaled_pos_offset + *pos * new_scale;
+    // *scale *= new_scale
 }
