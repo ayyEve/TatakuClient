@@ -1,7 +1,4 @@
-use graphics::Graphics;
-
 use crate::prelude::*;
-
 use super::{ OsuHitJudgments, osu::ScalingHelper };
 
 const SPINNER_RADIUS:f64 = 200.0;
@@ -497,6 +494,7 @@ pub struct StandardSlider {
     hitwindow_miss: f32,
 
     slider_body_render_target: Option<RenderTarget>,
+    slider_body_render_target_failed: Option<f32>,
 }
 impl StandardSlider {
     pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool) -> Self {
@@ -571,11 +569,17 @@ impl StandardSlider {
             start_circle_image: None,
             end_circle_image: None,
             slider_reverse_image: None,
-            slider_body_render_target: None
+            slider_body_render_target: None,
+            slider_body_render_target_failed: None,
         }
     }
 
     async fn make_body(&mut self) {
+        // TODO: check if we should try again
+        if self.slider_body_render_target_failed.is_some() {
+            return
+        }
+
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         let window_size = WindowSize::get().0;
         
@@ -636,27 +640,18 @@ impl StandardSlider {
         }
         
         // draw it to the render texture
-        let mut slider_body_render_target = loop {
-            match RenderTarget::new(window_size.x, window_size.y, |_,_| {}).await {
-                Ok(r) => break r,
-                Err(e) => error!("error creating render target: {e}"),
-            }
-        };
-        slider_body_render_target.image.origin = Vector2::zero();
-        slider_body_render_target.image.depth = self.slider_depth;
-        self.slider_body_render_target = Some(slider_body_render_target);
-
-        if let Some(rt) = &mut self.slider_body_render_target {
-            rt.update(move |rt, g| {
-                let c = g.draw_begin(rt.viewport());
-                g.clear_color(Color::TRANSPARENT_WHITE.into());
-
-                for i in list {
-                    i.draw(g, c);
-                }
-
-                g.draw_end();
-            }).await;
+        if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x, window_size.y, |rt, g| {
+            use graphics::Graphics;
+            let c = g.draw_begin(rt.viewport());
+            g.clear_color(Color::TRANSPARENT_WHITE.into());
+            for i in list { i.draw(g, c); }
+            g.draw_end();
+        }).await {
+            slider_body_render_target.image.origin = Vector2::zero();
+            slider_body_render_target.image.depth = self.slider_depth;
+            self.slider_body_render_target = Some(slider_body_render_target);
+        } else {
+            self.slider_body_render_target_failed = Some(self.map_time);
         }
     }
 
