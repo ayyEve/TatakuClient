@@ -70,7 +70,7 @@ impl SettingsMenu {
     pub async fn revert(&mut self, game:&mut Game) { 
         {
             let mut s = get_settings_mut!();
-            **s = self.old_settings.clone();
+            *s = self.old_settings.clone();
             s.skip_autosaveing = false;
         }
         

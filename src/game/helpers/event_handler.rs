@@ -19,7 +19,6 @@ impl GlobalObjectManager {
         if let Some(entry) = lock.get(&id) {
             entry.counter.fetch_add(1, SeqCst);
             *entry.value.write() = new_value;
-
         } else {
             drop(lock);
             let mut lock = THINGY.write().unwrap();
@@ -40,6 +39,10 @@ impl GlobalObjectManager {
             .and_then(|i|i.value.read().clone().downcast::<T>().ok())
     }
 
+    pub fn get_mut<T:'static + Send + Sync + Clone>() -> Option<GlobalObjectMutValue<T>> {
+        Self::get().map(|v|GlobalObjectMutValue::new(v))
+    }
+    
     pub fn check<T:'static + Send + Sync>(last: &mut usize) -> Option<Arc<T>> {
         let id = TypeId::of::<T>();
 
@@ -51,7 +54,6 @@ impl GlobalObjectManager {
         let current = entry.counter.load(SeqCst);
         if current > *last {
             *last = current;
-
             entry.value.read().clone().downcast::<T>().ok()
         } else {
             None
@@ -59,11 +61,11 @@ impl GlobalObjectManager {
     }
 }
 
-pub struct GlobalObjectInstance<T: Send + Sync> {
+pub struct GlobalObjectValue<T: Send + Sync> {
     counter: usize,
     value: Arc<T>
 }
-impl<T:'static + Send + Sync> GlobalObjectInstance<T> {
+impl<T:'static + Send + Sync> GlobalObjectValue<T> {
     pub fn new() -> Self {
         let id = TypeId::of::<T>();
         let entry = THINGY
@@ -92,9 +94,8 @@ impl<T:'static + Send + Sync> GlobalObjectInstance<T> {
             false
         }
     }
-
 }
-impl<T:Send + Sync> Deref for GlobalObjectInstance<T> {
+impl<T:Send + Sync> Deref for GlobalObjectValue<T> {
     type Target = Arc<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -103,21 +104,42 @@ impl<T:Send + Sync> Deref for GlobalObjectInstance<T> {
 }
 
 
+pub struct GlobalObjectMutValue<T:'static + Send + Sync + Clone>(T);
+impl<T:'static + Send + Sync + Clone> GlobalObjectMutValue<T> {
+    fn new(val: Arc<T>) -> Self { Self(val.as_ref().clone()) }
+}
+
+impl<T:'static + Send + Sync + Clone> Deref for GlobalObjectMutValue<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl<T:'static + Send + Sync + Clone> DerefMut for GlobalObjectMutValue<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+impl<T:'static + Send + Sync + Clone> Drop for GlobalObjectMutValue<T> {
+    fn drop(&mut self) { GlobalObjectManager::update(Arc::new(self.0.clone())) }
+}
+
+
 
 #[test]
 fn test() {
-    // struct A;
+    #[derive(Clone)]
     struct B(i32);
     
     GlobalObjectManager::update(Arc::new(B(21)));
-
-    let mut instance = GlobalObjectInstance::<B>::new();
-
-    println!("b: {}", instance.0);
+    let mut instance = GlobalObjectValue::<B>::new();
+    assert_eq!(instance.0, 21);
 
     GlobalObjectManager::update(Arc::new(B(55)));
+    instance.update();
+    assert_eq!(instance.0, 55);
+
+    {
+        let mut b = GlobalObjectManager::get_mut::<B>().unwrap();
+        b.0.0 = 500;
+    }
 
     instance.update();
-    
-    println!("b2: {}", instance.0);
+    assert_eq!(instance.0, 500);
 }

@@ -18,7 +18,8 @@ macro_rules! get_settings {
 #[macro_export]
 macro_rules! get_settings_mut {
     () => {{
-        MutSettingsHelper::new(Settings::get_mut().await)
+        GlobalObjectManager::get_mut::<Settings>().unwrap()
+        // MutSettingsHelper::new(Settings::get_mut().await)
     }}
 }
 
