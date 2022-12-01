@@ -43,6 +43,7 @@ impl LeaderboardItem {
 impl ScrollableItem for LeaderboardItem {
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
+        self.size = LEADERBOARD_ITEM_SIZE * scale;
     }
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {

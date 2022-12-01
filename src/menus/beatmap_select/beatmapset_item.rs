@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 
-pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
+pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(700.0, 50.0);
 pub const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
 const BEATMAP_ITEM_Y_PADDING:f64 = 5.0;
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
@@ -11,6 +11,7 @@ pub struct BeatmapsetItem {
     pos: Vector2,
     hover: bool,
     selected: bool,
+    scale: Vector2,
     
     pub beatmaps: Vec<BeatmapMetaWithDiff>,
     selected_index: usize,
@@ -32,6 +33,7 @@ impl BeatmapsetItem {
             hover: false,
             selected: false,
             display_text,
+            scale: Vector2::one(),
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
@@ -53,13 +55,28 @@ impl BeatmapsetItem {
 
         false
     }
+
+    fn index_at(&self, pos: Vector2) -> usize {
+        let index = self.beatmaps.len() + 20;
+        if pos.y < self.pos.y { return index }
+
+        let set_item_size = BEATMAPSET_ITEM_SIZE * self.scale;
+        let item_size = BEATMAP_ITEM_SIZE * self.scale;
+        let padding = BEATMAP_ITEM_Y_PADDING * self.scale.y;
+
+        if pos.x < self.pos.x + (set_item_size.x - item_size.x) { return index }
+
+        let rel_y = (pos.y - self.pos.y).abs() - set_item_size.y;
+        (((rel_y + padding/2.0) / (item_size.y + padding)).floor() as usize).clamp(0, self.beatmaps.len() - 1)
+    }
+
 }
 impl ScrollableItemGettersSetters for BeatmapsetItem {
     fn size(&self) -> Vector2 {
         if !self.selected {
-            BEATMAPSET_ITEM_SIZE
+            BEATMAPSET_ITEM_SIZE * self.scale
         } else {
-            Vector2::new(BEATMAPSET_ITEM_SIZE.x, (BEATMAPSET_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * (self.beatmaps.len()+1) as f64)
+            Vector2::new(BEATMAPSET_ITEM_SIZE.x, (BEATMAPSET_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * (self.beatmaps.len()+1) as f64) * self.scale
         }
     }
     fn get_tag(&self) -> String {self.beatmaps[self.selected_index].beatmap_hash.clone()}
@@ -74,17 +91,19 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
 }
 impl ScrollableItem for BeatmapsetItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.double_clicked)}
+    fn ui_scale_changed(&mut self, scale: Vector2) {
+        self.scale = scale;
+    }
 
     fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
         if self.selected && self.hover {
             let last_index = self.selected_index;
             // find the clicked item
             // we only care about y pos, because we know we were clicked
-            let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
-            let index = (((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
-
-            self.selected_index = index;
-            self.double_clicked = index == last_index;
+            // let rel_y2 = (pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
+            // let index = (((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize).clamp(0, self.beatmaps.len() - 1);
+            self.selected_index = self.index_at(pos);
+            self.double_clicked = self.selected_index == last_index;
 
             return true;
         }
@@ -150,13 +169,14 @@ impl ScrollableItem for BeatmapsetItem {
         // draw rectangle
         if let Some(mut button_image) = self.button_image.clone() {
             button_image.pos = self.pos;
+            // button_image
             button_image.draw(_args, pos_offset, list);
         } else {
             list.push(Box::new(Rectangle::new(
                 [0.2, 0.2, 0.2, 1.0].into(),
                 parent_depth + 5.0,
                 self.pos + pos_offset,
-                BEATMAPSET_ITEM_SIZE,
+                BEATMAPSET_ITEM_SIZE * self.scale,
                 if self.hover {
                     Some(Border::new(Color::BLUE, 1.0))
                 } else if self.selected {
@@ -172,7 +192,7 @@ impl ScrollableItem for BeatmapsetItem {
             Color::WHITE,
             parent_depth + 4.0,
             self.pos + pos_offset + Vector2::new(15.0, 5.0),
-            15,
+            (15.0 * self.scale.y) as u32,
             self.display_text.clone(),
             font.clone()
         );
@@ -196,21 +216,26 @@ impl ScrollableItem for BeatmapsetItem {
 
         // if selected, draw map items
         if self.selected {
-            let mut pos = self.pos+pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING);
+            let mut pos = self.pos + pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale;
             
             // try to find the clicked item
             // // we only care about y pos, because we know we were clicked
-            let mut index:usize = 999;
+            // let mut index:usize = 999;
 
-            // if x is in correct area to hover over beatmap items
-            if self.mouse_pos.x >= self.pos.x + (BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x) {
-                let rel_y2 = (self.mouse_pos.y - self.pos.y).abs() - BEATMAPSET_ITEM_SIZE.y;
-                index = ((rel_y2 + BEATMAP_ITEM_Y_PADDING/2.0) / (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING)).floor() as usize;
-            }
+            // // if x is in correct area to hover over beatmap items
+            // let set_item_size = BEATMAPSET_ITEM_SIZE * self.scale;
+            // let item_size = BEATMAP_ITEM_SIZE * self.scale;
+            // let padding = BEATMAP_ITEM_Y_PADDING * self.scale.y;
 
-            if self.mouse_pos.y < self.pos.y {
-                index = 999;
-            }
+            // if self.mouse_pos.x >= self.pos.x + (set_item_size.x - item_size.x) {
+            //     let rel_y2 = (self.mouse_pos.y - self.pos.y).abs() - set_item_size.y;
+            //     index = ((rel_y2 + padding/2.0) / (item_size.y + padding)).floor() as usize;
+            // }
+
+            // if self.mouse_pos.y < self.pos.y {
+            //     index = 999;
+            // }
+            let index = self.index_at(self.mouse_pos);
 
             for i in 0..self.beatmaps.len() {
                 let meta = &mut self.beatmaps[i];
@@ -220,7 +245,7 @@ impl ScrollableItem for BeatmapsetItem {
                     [0.2, 0.2, 0.2, 1.0].into(),
                     parent_depth + 5.0,
                     pos,
-                    BEATMAP_ITEM_SIZE,
+                    BEATMAP_ITEM_SIZE * self.scale,
                     if i == index { // hover
                         Some(Border::new(Color::BLUE, 1.0))
                     } else if i == self.selected_index { // selected
@@ -234,29 +259,29 @@ impl ScrollableItem for BeatmapsetItem {
                 list.push(Box::new(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0),
-                    12,
+                    pos + Vector2::new(5.0, 5.0) * self.scale,
+                    (12.0 * self.scale.y) as u32,
                     format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     font.clone()
                 )));
 
+                let y_increase = (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale.y;
                 let Some(info) = get_gamemode_info(&meta.mode) else { 
-                    pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING;
+                    pos.y +=  y_increase;
                     continue 
                 };
-                let info_str = info.get_diff_string(meta, &self.current_mod_manager);
 
                 // diff text
                 list.push(Box::new(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0 + 20.0),
-                    12,
-                    info_str,
+                    pos + Vector2::new(5.0, 5.0 + 20.0) * self.scale,
+                    (12.0 * self.scale.y) as u32,
+                    info.get_diff_string(meta, &self.current_mod_manager),
                     font.clone()
                 )));
 
-                pos.y += BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING;
+                pos.y += y_increase;
             }
         }
     }

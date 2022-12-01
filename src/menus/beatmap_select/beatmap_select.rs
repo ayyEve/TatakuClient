@@ -6,6 +6,9 @@ const DRAG_THRESHOLD:f64 = 50.0;
 const DRAG_FACTOR:f64 = 10.0;
 
 
+const DEFAULT_HEIGHT: f64 = 768.0;
+
+
 pub struct BeatmapSelectMenu {
     current_scores: HashMap<String, Arc<Mutex<IngameScore>>>,
     beatmap_scroll: ScrollableArea,
@@ -52,6 +55,7 @@ impl BeatmapSelectMenu {
         let font = get_font();
         let window_size = WindowSize::get();
         let settings = SettingsHelper::new();
+        let scale = window_size.y / DEFAULT_HEIGHT;
 
         let sort_by = settings.last_sort_by;
         let sort_by_dropdown = Dropdown::new(
@@ -92,6 +96,7 @@ impl BeatmapSelectMenu {
         );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
         beatmap_scroll.set_item_margin(7.0);
+        beatmap_scroll.ui_scale_changed(Vector2::one() * scale);
 
         let mut m = BeatmapSelectMenu {
             no_maps_notif_sent: false,
@@ -455,20 +460,23 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size.clone();
         let size = self.window_size.0;
-
+        let scale = size.y / DEFAULT_HEIGHT;
         
-        self.beatmap_scroll.set_pos(Vector2::new(size.x - (BEATMAPSET_ITEM_SIZE.x + BEATMAPSET_PAD_RIGHT), INFO_BAR_HEIGHT));
-        self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x, size.y - INFO_BAR_HEIGHT));
+        
+        self.beatmap_scroll.set_pos(Vector2::new(self.window_size.x - BEATMAPSET_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT));
+        self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
         self.beatmap_scroll.window_size_changed(size);
+        self.beatmap_scroll.ui_scale_changed(Vector2::one() * scale);
+        self.beatmap_scroll.scroll_to_selection();
 
         
-        self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
+        self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
         self.leaderboard_scroll.window_size_changed(size);
+        self.leaderboard_scroll.ui_scale_changed(Vector2::one() * scale);
 
 
         self.search_text.set_pos(Vector2::new(size.x - (size.x / 4.0), 0.0));
         self.search_text.set_size(Vector2::new(size.x / 4.0, INFO_BAR_HEIGHT));
-
 
         self.back_button.set_pos(Vector2::new(10.0, size.y - (50.0 + 10.0)));
 
@@ -476,13 +484,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         if let Some(m) = &mut self.background_game {
             m.window_size_changed(window_size).await;
 
-            let pos = Vector2::new(LEADERBOARD_ITEM_SIZE.x, INFO_BAR_HEIGHT);
-            let window_size = self.window_size.0;
-            let size = Vector2::new(
-                window_size.x - (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x),
-                window_size.y - INFO_BAR_HEIGHT
-            );
-            m.gamemode.fit_to_area(pos, size).await;
+            m.gamemode.fit_to_area(
+                Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
+                self.window_size.0 - Vector2::new(
+                    (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
+                    INFO_BAR_HEIGHT
+                )
+            ).await;
         }
     }
 
@@ -817,7 +825,6 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 do_diffcalc(playmode).await;
             });
         }
-
 
         if key == Escape {
             let menu = game.menus.get("main").unwrap().clone();

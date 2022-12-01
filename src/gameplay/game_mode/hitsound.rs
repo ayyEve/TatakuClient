@@ -95,7 +95,7 @@ impl Hitsound {
             (play_clap, hitsamples.addition_set, "-hitclap"),
         ] {
             if check {
-                let sample_set = SAMPLE_SETS[set as usize];
+                let sample_set = SAMPLE_SETS[set as usize % 4]; // % 4 to un-break broken maps
                 let backup = if suffix.is_empty() { None } else { Some(format!("{sample_set}{infix}")) };
                 list.push(Hitsound::new(format!("{sample_set}{infix}{suffix}"), backup, vol, allowed_sources.clone()));
             }

@@ -12,6 +12,7 @@ pub struct GameUIEditorDialog {
 
     window_size: Arc<WindowSize>,
 
+    #[allow(unused)]
     event_sender: Arc<parking_lot::Mutex<MultiFuze<UIElementEvent>>>,
     event_receiver: MultiBomb<UIElementEvent>,
 
@@ -308,6 +309,7 @@ impl ScrollableItem for UISideBarElement {
 struct UIElementEvent(String, UIEditorAction);
 
 
+#[allow(unused)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum UIEditorAction {
     ToggleVisible,

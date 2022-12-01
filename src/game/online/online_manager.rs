@@ -537,7 +537,7 @@ fn ping_handler() {
     });
 }
 
-
+#[allow(unused)]
 pub enum SetAction {
     Idle,
     Closing,

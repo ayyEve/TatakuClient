@@ -59,9 +59,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "ayyeve-piston-ui"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
-checksum = "defb60b87f464d91251495b250dda482323b623b4719ae10526413f5abca09a6"
+checksum = "51fadfa8d0d126aa89e2c91d2f7435caec5a50cb75228882407d049852612ac3"
 dependencies = [
  "ayyeve-ui-proc-macros",
  "clipboard",
@@ -1874,9 +1874,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.104"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ae548ec36cf198c0ef7710d3c230987c2d6d7bd98ad6edc0274462724c585ce"
+checksum = "60b9b43d45702de4c839cb9b51d9f529c5dd26a4aff255b42b1ebc03e88ee908"
 dependencies = [
  "proc-macro2",
  "quote",
