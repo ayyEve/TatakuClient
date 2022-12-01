@@ -92,8 +92,6 @@ impl MainMenu {
 
         match manager_from_playmode(settings.mode.clone(), &map).await {
             Ok(mut manager) => {
-               manager.current_mods = Arc::new(ModManager::new().with_mod("autoplay"));
-
                 manager.make_menu_background();
                 manager.start().await;
                 trace!("manager started");

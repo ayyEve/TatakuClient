@@ -23,7 +23,7 @@ impl UIElement {
             visible = stored_visible;
             
             if stored_window_size.length() > 0.0 {
-                // println!("got stored window size {stored_window_size:?}");
+                // debug!("got stored window size {stored_window_size:?}");
                 do_scale(&mut pos_offset, &mut scale, stored_window_size, WindowSize::get().0);
             }
 

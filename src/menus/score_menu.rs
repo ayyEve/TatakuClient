@@ -111,7 +111,7 @@ impl ScoreMenu {
         } else if let Some(replay) = self.score.get_replay().await {
             self.do_replay(game, replay).await;
         } else {
-            println!("no replay")
+            warn!("no replay")
         }
     }
 

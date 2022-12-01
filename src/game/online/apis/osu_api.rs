@@ -17,7 +17,7 @@ impl OsuApi {
         let data = api_resp.text().await.map_err(|e|TatakuError::String(format!("error getting text for osu api beatmap request: {e}")))?;
         
         // we got a response, return it
-        println!("{data}");
+        debug!("osu get_beatmaps response: {data}");
         let raw:Vec<RawOsuApiBeatmap> = serde_json::from_str(&data)?;
         let mut raw = raw.into_iter();
         Ok(raw.next().map(|a|a.into()))
@@ -95,7 +95,6 @@ fn test() {
     let r = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
 
     r.block_on(async {
-        
         Settings::load().await;
 
         let x = OsuApi::get_beatmap_by_hash("b512dc9b054db498689150556bce5533").await;

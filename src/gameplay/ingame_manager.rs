@@ -120,7 +120,7 @@ impl IngameManager {
         // let hitsound_cache = HashMap::new();
 
 
-        let mut current_mods = ModManager::get().await.clone();
+        let mut current_mods = ModManager::get_cloned();
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 

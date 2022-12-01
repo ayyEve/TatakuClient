@@ -56,7 +56,7 @@ pub struct StandardGame {
 }
 impl StandardGame {
     async fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0).await);
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock.name())).await);
         self.apply_playfield(new_scale).await
     }
     async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
@@ -158,7 +158,7 @@ impl StandardGame {
 impl GameMode for StandardGame {
     async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
-        let mods = ModManager::get().await.clone();
+        let mods = ModManager::get();
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { Vector2::new(1280.0, 720.0) } else { window_size.0 };
         
@@ -166,10 +166,8 @@ impl GameMode for StandardGame {
 
         let cs = scale_by_mods(metadata.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0);
         let ar = scale_by_mods(metadata.ar, 0.5, 1.4, &mods).clamp(1.0, 11.0);
-        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size).await);
+        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock.name())).await);
 
-
-        // TODO: beatmap combo colors
         let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
         let mut combo_colors = if skin_combo_colors.len() > 0 {
             skin_combo_colors.clone()
@@ -220,7 +218,7 @@ impl GameMode for StandardGame {
                     follow_point_image,
                     judgment_helper,
                     metadata,
-                    mods: Arc::new(mods)
+                    mods
                 };
                 
                 // join notes and sliders into a single array
@@ -764,11 +762,14 @@ impl GameMode for StandardGame {
 
     
     async fn reset(&mut self, _beatmap:&Beatmap) {
+        // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);
+
         // reset notes
         let hwm = self.miss_window;
         for note in self.notes.iter_mut() {
             note.reset().await;
             note.set_hitwindow_miss(hwm);
+            // note.set_ar(ar)
         }
     }
 
@@ -791,7 +792,7 @@ impl GameMode for StandardGame {
     async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
         let pos = pos;
         let size = size;
-        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5);
+        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5, self.mods.has_mod(HardRock.name()));
         self.apply_playfield(Arc::new(playfield)).await;
     }
 
@@ -820,15 +821,22 @@ impl GameMode for StandardGame {
     }
 
     async fn apply_mods(&mut self, mods: Arc<ModManager>) {
-        let has_easy = mods.has_mod(Easy.name());
+        let had_easy_or_hr = self.mods.has_mod(Easy.name()) || self.mods.has_mod(HardRock.name());
+
         let has_hr = mods.has_mod(HardRock.name());
+        let has_easy_or_hr = mods.has_mod(Easy.name()) || has_hr;
         self.mods = mods;
 
-        if has_easy || has_hr {
+        if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
             let cs = get_cs(&self.metadata, &self.mods);
             let ar = get_ar(&self.metadata, &self.mods);
+            
+            // use existing settings, we only want to change the cs
+            let pos = self.scaling_helper.settings_offset;
+            let size = self.scaling_helper.window_size;
+            let scale = self.scaling_helper.settings_scale;
 
-            self.apply_playfield(Arc::new(ScalingHelper::new(cs, self.window_size.0).await)).await;
+            self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
             self.setup_hitwindows();
             
             for note in self.notes.iter_mut() {
@@ -1133,9 +1141,9 @@ struct StandardAutoHelper {
     /// list of notes currently being held, and what key was held for that note
     holding: HashMap<usize, KeyPress>,
 
-    release_queue:Vec<ReplayFrame>,
+    release_queue: Vec<ReplayFrame>,
 
-    press_counter:usize,
+    press_counter: usize,
 }
 impl StandardAutoHelper {
     fn new() -> Self {
@@ -1294,20 +1302,22 @@ pub struct ScalingHelper {
 
     pub scaled_circle_size: Vector2,
 
+    pub flip_vertical: bool,
+
     // /// scaled playfield
     // playfield_scaled: Rectangle,
     /// scaled playfield
     playfield_scaled_with_cs_border: Rectangle,
 }
 impl ScalingHelper {
-    pub async fn new(cs:f32, window_size: Vector2) -> Self {
+    pub async fn new(cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
         let things = get_settings!().standard_settings.get_playfield();
         let settings_scale = things.0;
         let settings_offset = things.1;
-        Self::new_offset_scale(cs, window_size, settings_offset, settings_scale)
+        Self::new_offset_scale(cs, window_size, settings_offset, settings_scale, flip_vertical)
     }
 
-    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64) -> Self {
+    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool) -> Self {
         let circle_size = CIRCLE_RADIUS_BASE;
         let border_size = NOTE_BORDER_SIZE;
         
@@ -1338,17 +1348,24 @@ impl ScalingHelper {
             scaled_cs,
             border_scaled,
             scaled_circle_size: circle_size,
-            playfield_scaled_with_cs_border
+            playfield_scaled_with_cs_border,
+            flip_vertical
         }
     }
 
     /// turn playfield (osu) coords into window coords
-    pub fn scale_coords(&self, osu_coords:Vector2) -> Vector2 {
+    pub fn scale_coords(&self, mut osu_coords:Vector2) -> Vector2 {
+        if self.flip_vertical {
+            osu_coords.y = FIELD_SIZE.y - osu_coords.y
+        }
+
         self.scaled_pos_offset + osu_coords * self.scale
     }
     /// turn window coords into playfield coords
     pub fn descale_coords(&self, window_coords: Vector2) -> Vector2 {
-        (window_coords - self.scaled_pos_offset) / self.scale
+        let mut v = (window_coords - self.scaled_pos_offset) / self.scale;
+        if self.flip_vertical { v.y = FIELD_SIZE.y - v.y }
+        v
     }
 }
 
@@ -1357,9 +1374,9 @@ impl ScalingHelper {
 
 #[inline]
 fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.mods.contains(Easy.name()) {
+    if mods.has_mod(Easy.name()) {
         val * ez_scale
-    } else if mods.mods.contains(HardRock.name()) {
+    } else if mods.has_mod(HardRock.name()) {
         val * hr_scale
     } else {
         val

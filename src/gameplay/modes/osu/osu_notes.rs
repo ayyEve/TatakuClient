@@ -107,26 +107,6 @@ impl StandardNote {
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let combo_text = if diff_calc_only { None } else {
-            let mut combo_text =  Box::new(Text::new(
-                Color::BLACK,
-                base_depth - 0.0000001,
-                pos,
-                radius as u32,
-                format!("{}", combo_num),
-                get_font()
-            ));
-            combo_text.center_text(Rectangle::bounds_only(
-                pos - Vector2::one() * radius / 2.0,
-                Vector2::one() * radius,
-            ));
-
-            Some(combo_text)
-        };
-
-        let combo_image = None;
-
-
         Self {
             def,
             pos,
@@ -146,11 +126,11 @@ impl StandardNote {
             radius,
             scaling_helper,
             
-            combo_text,
+            combo_text: None,
 
             standard_settings,
             shapes: Vec::new(),
-            combo_image,
+            combo_image: None,
             hitsounds
         }
     }
@@ -285,6 +265,19 @@ impl HitObject for StandardNote {
     
     async fn reload_skin(&mut self) {
         self.circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.base_depth, self.color).await;
+    
+        self.combo_text = Some(Box::new(Text::new(
+            Color::BLACK,
+            self.base_depth - 0.0000001,
+            self.pos,
+            self.radius as u32,
+            format!("{}", self.combo_num),
+            get_font()
+        )));
+        self.combo_text.as_mut().unwrap().center_text(Rectangle::bounds_only(
+            self.pos - Vector2::one() * self.radius / 2.0,
+            Vector2::one() * self.radius,
+        ));
 
         let mut combo_image = SkinnedNumber::new(
             Color::WHITE,  // TODO: setting: colored same as note or just white?

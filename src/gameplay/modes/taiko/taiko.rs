@@ -139,7 +139,7 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
-        let current_mods = Arc::new(ModManager::get().await.clone());
+        let current_mods = ModManager::get();
 
 
         let playfield = Arc::new(TaikoPlayfield {

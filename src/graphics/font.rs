@@ -166,7 +166,7 @@ impl FontRender for Font2 {
 
     fn draw_character_image(&self, font_size: Self::Size, ch: char, [x, y]: [&mut f64; 2], color: Color, draw_state: &graphics::DrawState, transform: graphics::types::Matrix2d, graphics: &mut GlGraphics) {
         let Some(character) = self.get_char(font_size.0, ch) else { return; };
-        // println!("attempting to draw {ch} with tex id {}", character.texture.get_id());
+        // debug!("attempting to draw {ch} with tex id {}", character.texture.get_id());
         
         let ch_x = *x + character.metrics.xmin as f64;
         let ch_y = *y - (character.metrics.height as f64 + character.metrics.ymin as f64); // y = -metrics.bounds.height - metrics.bounds.ymin

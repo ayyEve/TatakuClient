@@ -129,10 +129,10 @@ impl Dialog<Game> for GameImportDialog {
                     if !path.is_empty() {
                         settings.external_games_folders.push(path.clone());
                     } else {
-                        println!("empty path")
+                        warn!("empty path")
                     }
                 } else {
-                    println!("bad cast")
+                    warn!("bad cast")
                 }
             }
             self.should_close = true;

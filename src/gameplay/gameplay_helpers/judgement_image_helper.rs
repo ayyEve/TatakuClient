@@ -27,7 +27,7 @@ impl JudgmentImageHelper {
             let img = i.tex_name();
             if img.is_empty() { continue }
             let tex = SkinManager::get_texture(img, true).await;
-            // println!("trying to load tex {img}, got? {}", tex.is_some());
+            // debug!("trying to load tex {img}, got? {}", tex.is_some());
             self.images.insert(k, tex);
         }
     }

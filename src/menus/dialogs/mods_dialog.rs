@@ -28,7 +28,7 @@ impl ModDialog {
         let pos = Vector2::new(50.0, 0.0);
 
         let font = get_font();
-        let manager = ModManager::get().await;
+        let manager = ModManager::get();
         for group in new_groups {
             scroll.add_item(Box::new(MenuSection::<Font2, Text>::new(pos, 30.0, &group.name, font.clone())));
             
@@ -105,8 +105,7 @@ struct ModButton {
     mod_name: String,
     enabled: bool,
 
-    bomb: Option<Bomb<bool>>,
-    updates_since_refresh: usize,
+    mods: ModManagerHelper
 }
 impl ModButton {
     fn new(pos: Vector2, gameplay_mod: Box<dyn GameplayMod>, current_mods: &ModManager) -> Self {
@@ -122,25 +121,15 @@ impl ModButton {
             mod_name,
 
             enabled,
-            bomb: None,
-            updates_since_refresh: 0,
+            mods: ModManagerHelper::new()
         }
     }
 
 }
 impl ScrollableItem for ModButton {
     fn update(&mut self) {
-        let mut reset = false;
-
-        if let Some(bomb) = &self.bomb {
-            if let Some(new_val) = bomb.exploded() {
-                self.enabled = *new_val;
-                reset = true;
-            }
-        }
-
-        if reset {
-            self.bomb = None;
+        if self.mods.update() {
+            self.enabled = self.mods.has_mod(self.gameplay_mod.name())
         }
     }
 
@@ -164,14 +153,12 @@ impl ScrollableItem for ModButton {
     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
 
         if self.hover {
-            let (fuse, bomb) = Bomb::new();
-            self.bomb = Some(bomb);
-
             let name = self.gameplay_mod.name();
+            let removes:HashSet<String> = self.gameplay_mod.removes().iter().map(|m|(*m).to_owned()).collect();
             tokio::spawn(async move {
-                let mut manager = ModManager::get().await;
-                let val = manager.toggle_mod(name);
-                fuse.ignite(val);
+                let mut manager = ModManager::get_mut();
+                manager.toggle_mod(name);
+                manager.mods.retain(|m|!removes.contains(m));
             });
         }
 

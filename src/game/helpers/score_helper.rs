@@ -34,7 +34,7 @@ impl ScoreHelper {
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().await.mods.clone();
+                        let mods = ModManager::get().mods.clone();
                         local_scores.retain(|s| s.mods() == mods);
                     }
                     
@@ -54,7 +54,7 @@ impl ScoreHelper {
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().await.mods.clone();
+                        let mods = ModManager::get().mods.clone();
                         online_scores.retain(|s| s.mods() == mods);
                     }
 

@@ -222,7 +222,7 @@ pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
     let mut x = 0.0;
     let mut y = font_size.0 as f64;
 
-    // println!("attempting to draw text");
+    // debug!("attempting to draw text");
     for (ch, color) in text.char_colors() {
         if ch == '\n' {
             // move the line down
@@ -251,5 +251,5 @@ pub fn draw_text<T: ayyeve_piston_ui::prelude::DrawableText> (
 
     }
 
-    // println!("done drawing text");
+    // debug!("done drawing text");
 }

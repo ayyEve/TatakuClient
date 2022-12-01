@@ -105,6 +105,9 @@ impl Game {
             }
         });
 
+        // make sure we have a value in the mod manager global store
+        GlobalObjectManager::update(Arc::new(ModManager::new()));
+
         // set the current leaderboard filter
         // this is here so it happens before anything else
         let settings = SettingsHelper::new();
@@ -929,7 +932,6 @@ impl Game {
     pub async fn handle_file_drop(&mut self, path: PathBuf) {
         let path = path.as_path();
         let filename = path.file_name();
-
 
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap();

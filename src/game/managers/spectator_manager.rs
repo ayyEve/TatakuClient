@@ -84,7 +84,7 @@ impl SpectatorManager {
             trace!("Packet: {:?}", frame);
             match frame {
                 SpectatorFrameData::Play { beatmap_hash, mode, mods, speed} => {
-                    println!("got play: {beatmap_hash}, {mode}, {mods}");
+                    info!("got play: {beatmap_hash}, {mode}, {mods}");
                     self.start_game(game, beatmap_hash, mode, mods, 0.0, speed).await;
                 }
 

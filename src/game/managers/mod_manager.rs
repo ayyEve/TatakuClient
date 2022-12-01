@@ -1,9 +1,7 @@
 use std::hash::Hash;
 use crate::prelude::*;
 
-lazy_static::lazy_static! {
-    static ref MOD_MANAGER: Arc<Mutex<ModManager>> = Arc::new(Mutex::new(ModManager::new()));
-}
+pub type ModManagerHelper = GlobalObjectValue<ModManager>;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
@@ -23,8 +21,14 @@ impl ModManager {
         }
     }
     
-    pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Self> {
-        MOD_MANAGER.lock().await
+    pub fn get_mut() -> GlobalObjectMutValue<Self> {
+        GlobalObjectManager::get_mut::<Self>().unwrap()
+    }
+    pub fn get() -> Arc<Self> {
+        GlobalObjectManager::get::<Self>().unwrap()
+    }
+    pub fn get_cloned() -> Self {
+        GlobalObjectManager::get::<Self>().unwrap().as_ref().clone()
     }
 
     pub fn short_mods_string(mods: HashSet<String>, none_if_empty: bool) -> String {
@@ -156,6 +160,7 @@ impl Hash for ModManager {
         }
     }
 }
+
 
 
 

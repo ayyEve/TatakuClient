@@ -43,6 +43,7 @@ pub struct BeatmapSelectMenu {
 
     window_size: Arc<WindowSize>,
     settings: SettingsHelper,
+    mods: ModManagerHelper,
 
     background_game: Option<IngameManager>,
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
@@ -111,6 +112,7 @@ impl BeatmapSelectMenu {
             search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
 
             mode,
+            mods: ModManagerHelper::new(),
             sort_method: sort_by,
 
             score_loader: None,
@@ -164,8 +166,6 @@ impl BeatmapSelectMenu {
 
         match manager_from_playmode(self.mode.clone(), &map).await {
             Ok(mut manager) => {
-                manager.current_mods = Arc::new(ModManager::new().with_mod("autoplay"));
-
                 manager.make_menu_background();
                 manager.gamemode.fit_to_area(pos, size).await;
                 manager.start().await;
@@ -199,7 +199,7 @@ impl BeatmapSelectMenu {
     pub async fn apply_filter(&mut self, beatmap_manager:&mut BeatmapManager) {
         self.beatmap_scroll.clear();
         let filter_text = self.search_text.get_text().to_ascii_lowercase();
-        let mods = Arc::new(ModManager::get().await.clone());
+        let mods = self.mods.clone();
         let mode = Arc::new(self.mode.clone());
         let mut diffcalc = false;
 
@@ -323,7 +323,7 @@ impl BeatmapSelectMenu {
 
         // set any time mods
         if let Some(song) = AudioManager::get_song().await {
-            song.set_rate(ModManager::get().await.get_speed());
+            song.set_rate(self.mods.get_speed());
         }
 
         self.beatmap_scroll.refresh_layout();
@@ -495,6 +495,11 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.update();
         self.leaderboard_scroll.update();
         self.settings.update();
+        if self.mods.update() {
+            if let Some(manager) = &mut self.background_game {
+                manager.apply_mods(self.mods.as_ref().clone()).await;
+            }
+        }
 
         for i in self.interactables() {
             i.update();
@@ -559,7 +564,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                     let map = lock.current_beatmap.as_ref();
                     if let Some(map) = map {
                         let _ = song.set_position(map.audio_preview);
-                        song.set_rate(ModManager::get().await.get_speed());
+                        song.set_rate(self.mods.get_speed());
                         
                         song.play(false);
                         self.setup_manager(map.clone()).await;
@@ -573,7 +578,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 match &lock.current_beatmap {
                     Some(map) => {
                         let audio = AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
-                        audio.set_rate(ModManager::get().await.get_speed());
+                        audio.set_rate(self.mods.get_speed());
                     }
                     None => if !self.no_maps_notif_sent {
                         NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN).await;
@@ -658,7 +663,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // play song if it exists
         if let Some(song) = AudioManager::get_song().await {
             // set any time mods
-            song.set_rate(ModManager::get().await.get_speed());
+            song.set_rate(self.mods.get_speed());
         }
 
         // load maps
@@ -853,7 +858,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         // mods and speed
         if mods.ctrl {
-            let mut speed = ModManager::get().await.get_speed();
+            let mut speed = self.mods.get_speed();
             let prev_speed = speed;
             const SPEED_DIFF:f32 = 0.05;
 
@@ -863,14 +868,14 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                  
                 // autoplay enable/disable
                 A => {
-                    let mut manager = ModManager::get().await;
+                    let mut manager = ModManager::get_mut();
                     let state = if manager.toggle_mod("autoplay") {"on"} else {"off"};
                     NotificationManager::add_text_notification(&format!("Autoplay {}", state), 2000.0, Color::BLUE).await;
                 }
 
                 // nofail enable/disable
                 N => {
-                    let mut manager = ModManager::get().await;
+                    let mut manager = ModManager::get_mut();
 
                     let state = if manager.toggle_mod("no_fail") {"on"} else {"off"};
                     NotificationManager::add_text_notification(&format!("Nofail {}", state), 2000.0, Color::BLUE).await;
@@ -881,7 +886,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
             speed = speed.clamp(SPEED_DIFF, 10.0);
             if speed != prev_speed {
-                ModManager::get().await.set_speed(speed);
+                ModManager::get_mut().set_speed(speed);
 
                 // update audio speed
                 if let Some(song) = AudioManager::get_song().await {
