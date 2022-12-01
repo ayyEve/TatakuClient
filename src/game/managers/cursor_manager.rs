@@ -87,7 +87,7 @@ impl CursorManager {
         // }
 
         let (sender, event_receiver) = channel(1000);
-        if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) { panic!("Cursor event queue already exists") }
+        CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
 
         let settings = SettingsHelper::new();
         Self {
@@ -169,7 +169,7 @@ impl CursorManager {
                             self.add_ripple()
                         }
                     }
-                },
+                }
                 CursorEvent::SetRightDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.right_pressed = down;
@@ -177,7 +177,7 @@ impl CursorManager {
                             self.add_ripple()
                         }
                     }
-                },
+                }
 
                 CursorEvent::SetPos(pos, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
@@ -345,13 +345,9 @@ impl CursorManager {
     fn add_event(event: CursorEvent) {
         // should always be okay
         if let Some(q) = CURSOR_EVENT_QUEUE.get() {
-            match q.try_send(event) {
-                Ok(_) => {},
-                Err(e) => {
-                    error!("cursor channel error: {e}")
-                }
+            if let Err(e) = q.try_send(event) {
+                error!("cursor channel error: {e}")
             }
-            // q.send().expect("cursor channel dead?");
         }
     }
 

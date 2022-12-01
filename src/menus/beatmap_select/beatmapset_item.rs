@@ -18,11 +18,6 @@ pub struct BeatmapsetItem {
     // playmode: String,
     current_mod_manager: Arc<ModManager>,
 
-    // diff_calc_start_helper: MultiBomb<Arc<ModManager>>,
-    // diff_calc_helper: MultiBomb<DiffCalcComplete>,
-    // diff_calc_helper: CalcNotifyHelper
-    // diff_calc_bombs: Vec<Bomb<(String, f32)>>,
-
     display_text: String,
 
     double_clicked: bool,
@@ -45,20 +40,6 @@ impl BeatmapsetItem {
             button_image: SkinnedButton::new(Vector2::zero(), BEATMAPSET_ITEM_SIZE, 5.0).await,
         }
     }
-
-    // fn recalc_with_vals(&mut self, diffs: &DiffCalcComplete) {
-    //     // warn!("doing recalc with vals");
-
-    //     // get the diff values from the beatmap manager
-    //     self.current_mod_manager = diffs.get_mods();
-    //     for i in self.beatmaps.iter_mut() {
-    //         let diff = diffs.get(&i.beatmap_hash).unwrap_or(&-2.0);
-            
-    //         let (fuse, bomb) = Bomb::new();
-    //         self.diff_calc_bombs.push(bomb);
-    //         fuse.ignite((i.beatmap_hash.clone(), *diff));
-    //     }
-    // }
 
     /// set the currently selected map
     pub fn check_selected(&mut self, current_hash: &String) -> bool {

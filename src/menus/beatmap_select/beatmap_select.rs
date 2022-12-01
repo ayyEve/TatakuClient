@@ -37,9 +37,6 @@ pub struct BeatmapSelectMenu {
     /// drag_start is where the original click occurred
     /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
     mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>,
-    
-    // info_changed: (MultiFuse<CalcInfo>, MultiBomb<CalcInfo>),
-    // diff_calc_started: (MultiFuse<()>, MultiBomb<()>),
 
     window_size: Arc<WindowSize>,
     settings: SettingsHelper,
