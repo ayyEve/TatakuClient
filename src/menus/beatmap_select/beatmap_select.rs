@@ -26,7 +26,6 @@ pub struct BeatmapSelectMenu {
 
     /// internal search box
     search_text: TextInput<Font2, Text>,
-    no_maps_notif_sent: bool,
 
     sort_method: SortBy,
     mode: PlayMode,
@@ -45,7 +44,7 @@ pub struct BeatmapSelectMenu {
     settings: SettingsHelper,
     mods: ModManagerHelper,
 
-    background_game: Option<IngameManager>,
+    menu_game: MenuGameHelper,
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
 
     diffcalc_complete: Option<Bomb<()>>
@@ -99,11 +98,6 @@ impl BeatmapSelectMenu {
         beatmap_scroll.ui_scale_changed(Vector2::one() * scale);
 
         let mut m = BeatmapSelectMenu {
-            no_maps_notif_sent: false,
-
-            // mouse_down: false,
-            // drag: None,
-
             // pending_refresh: false,
             map_changing: (false, false, 0),
             current_scores: HashMap::new(),
@@ -126,7 +120,7 @@ impl BeatmapSelectMenu {
             mouse_down: None,
             // diff_calc_start_helper: MultiBomb::new()
             window_size: window_size.clone(),
-            background_game: None,
+            menu_game: MenuGameHelper::new(true, true),
             settings,
             cached_maps: Vec::new(),
 
@@ -141,6 +135,8 @@ impl BeatmapSelectMenu {
     async fn set_selected_mode(&mut self, new_mode: PlayMode) {
         // update values
         self.mode = new_mode.clone();
+        GlobalObjectManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
+
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
         get_settings_mut!().last_played_mode = new_mode.clone();
 
@@ -151,36 +147,9 @@ impl BeatmapSelectMenu {
         self.beatmap_scroll.on_text(new_mode.clone());
 
         // change manager
-        if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
-            self.setup_manager(map.clone()).await;
-        }
+        self.menu_game.setup().await;
     }
 
-    async fn setup_manager(&mut self, map: Arc<BeatmapMeta>) {
-        if !self.settings.background_game_settings.beatmap_select_enabled { return }
-
-        let pos = Vector2::new(LEADERBOARD_ITEM_SIZE.x, INFO_BAR_HEIGHT);
-        let window_size = self.window_size.0;
-        let size = Vector2::new(
-            window_size.x - (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x),
-            window_size.y - INFO_BAR_HEIGHT
-        );
-
-        match manager_from_playmode(self.mode.clone(), &map).await {
-            Ok(mut manager) => {
-                manager.make_menu_background();
-                manager.gamemode.fit_to_area(pos, size).await;
-                manager.start().await;
-                trace!("beatmapselect manager started");
-
-                self.background_game = Some(manager);
-            },
-            Err(e) => {
-                NotificationManager::add_error_notification("Error loading beatmap", e).await;
-            }
-        }
-
-    }
 
     pub async fn refresh_maps(&mut self, beatmap_manager:&mut BeatmapManager) {
         //TODO: allow grouping by not just map set
@@ -290,8 +259,6 @@ impl BeatmapSelectMenu {
     }
 
     async fn select_map(&mut self, game: &mut Game, map: String, can_start: bool) {
-        self.background_game = None;
-
         let mut lock = BEATMAP_MANAGER.write().await;
 
         // compare last clicked map hash with the new hash.
@@ -313,7 +280,8 @@ impl BeatmapSelectMenu {
             Some(clicked) => {
                 lock.set_current_beatmap(game, &clicked, true).await;
 
-                self.setup_manager(clicked).await;
+                // self.setup_manager(clicked).await;
+                self.menu_game.setup().await;
             }
             None => {
                 trace!("no map?");
@@ -481,17 +449,14 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.back_button.set_pos(Vector2::new(10.0, size.y - (50.0 + 10.0)));
 
 
-        if let Some(m) = &mut self.background_game {
-            m.window_size_changed(window_size).await;
-
-            m.gamemode.fit_to_area(
-                Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
-                self.window_size.0 - Vector2::new(
-                    (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
-                    INFO_BAR_HEIGHT
-                )
-            ).await;
-        }
+        self.menu_game.window_size_changed(window_size).await;
+        self.menu_game.fit_to_area(
+            Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
+            self.window_size.0 - Vector2::new(
+                (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
+                INFO_BAR_HEIGHT
+            )
+        ).await;
     }
 
     async fn update(&mut self, game:&mut Game) {
@@ -500,20 +465,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.update();
         self.leaderboard_scroll.update();
         self.settings.update();
-        if self.mods.update() {
-            if let Some(manager) = &mut self.background_game {
-                manager.apply_mods(self.mods.as_ref().clone()).await;
-            }
-        }
 
         for i in self.interactables() {
             i.update();
         }
 
         // update bg game
-        if let Some(manager) = &mut self.background_game {
-            manager.update().await;
-        }
+        self.menu_game.update().await;
 
 
         if let Some(_) = self.diffcalc_complete.as_ref().and_then(|b| b.exploded()) {
@@ -560,39 +518,6 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             }
         }
     
-        match AudioManager::get_song().await {
-            Some(song) => {
-                if !song.is_playing() {
-                    
-                    // restart the song at the preview point
-                    let lock = BEATMAP_MANAGER.read().await;
-                    let map = lock.current_beatmap.as_ref();
-                    if let Some(map) = map {
-                        let _ = song.set_position(map.audio_preview);
-                        song.set_rate(self.mods.get_speed());
-                        
-                        song.play(false);
-                        self.setup_manager(map.clone()).await;
-                    }
-                }
-            }
-
-            // no value, set it to something
-            _ => {
-                let lock = BEATMAP_MANAGER.read().await;
-                match &lock.current_beatmap {
-                    Some(map) => {
-                        let audio = AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
-                        audio.set_rate(self.mods.get_speed());
-                    }
-                    None => if !self.no_maps_notif_sent {
-                        NotificationManager::add_text_notification("No beatmaps\nHold on...", 5000.0, Color::GREEN).await;
-                        self.no_maps_notif_sent = true;
-                    }
-                }
-            },
-        }
-
     }
 
     async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
@@ -650,15 +575,15 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
 
         // draw bg game
-        if let Some(manager) = &mut self.background_game {
-            manager.draw(args, &mut items).await;
-        }
+        self.menu_game.draw(args, &mut items).await;
 
         items
     }
 
     async fn on_change(&mut self, into:bool) {
         if !into { return }
+
+        self.menu_game.setup().await;
         
         // update our window size
         self.window_size_changed(WindowSize::get()).await;
@@ -675,10 +600,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.refresh_maps(&mut *BEATMAP_MANAGER.write().await).await;
         self.beatmap_scroll.refresh_layout();
 
-        if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
+        // if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
             self.load_scores().await;
-            self.setup_manager(map.clone()).await;
-        }
+        // }
 
     }
 
@@ -792,7 +716,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 let mut groups = Vec::new();
                 let mut playmode = self.mode.clone();
 
-                if let Some(man) = &self.background_game {
+                if let Some(man) = &self.menu_game.manager {
                     playmode = man.gamemode.playmode();
                 } else if let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() {
                     playmode = map.check_mode_override(self.mode.clone());

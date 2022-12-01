@@ -4,14 +4,10 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-lazy_static::lazy_static! {
-    pub static ref SETTINGS: Arc<OnceCell<RwLock<Settings>>> = Arc::new(OnceCell::const_new());
-}
-
 #[macro_export]
 macro_rules! get_settings {
     () => {{
-        Settings::get().await
+        GlobalObjectManager::get::<Settings>().unwrap()
     }}
 }
 
@@ -161,7 +157,6 @@ impl Settings {
         // // set window size const
         // WINDOW_SIZE.set(s.window_size.into()).unwrap();
         
-        SETTINGS.set(RwLock::new(s.clone())).ok().unwrap();
         GlobalObjectManager::update(Arc::new(s.clone()));
         // *super::SETTINGS_CHECK.write().unwrap() = Arc::new(s.clone());
 
@@ -177,15 +172,6 @@ impl Settings {
             Ok(_) => trace!("settings saved successfully"),
             Err(e) => NotificationManager::add_error_notification("Error saving settings", e).await,
         }
-    }
-
-    pub async fn get<'a>() -> tokio::sync::RwLockReadGuard<'a, Settings> {
-        SETTINGS.get().unwrap().read().await
-    }
-
-    /// more performant, but can double lock if you arent careful
-    pub async fn get_mut<'a>() -> tokio::sync::RwLockWriteGuard<'a, Settings> {
-        SETTINGS.get().unwrap().write().await
     }
 
     pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}

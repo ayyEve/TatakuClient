@@ -21,7 +21,7 @@ pub struct MainMenu {
     pub exit_button: MainMenuButton,
 
     visualization: MenuVisualizationNew,
-    background_game: Option<IngameManager>,
+    menu_game: MenuGameHelper,
     music_box: MusicBox,
 
     selected_index: usize,
@@ -59,7 +59,7 @@ impl MainMenu {
             exit_button,
 
             visualization,
-            background_game: None,
+            menu_game: MenuGameHelper::new(false, false),
             selected_index: 99,
             menu_visible: false,
             music_box: MusicBox::new().await,
@@ -74,36 +74,16 @@ impl MainMenu {
         trace!("setup manager called by {}", called_by);
         self.settings.update();
 
-        
-        match AudioManager::get_song().await {
-            Some(song) => self.music_box.update_song_duration(song.get_duration()),
-            _ => {}
+        if let Some(song) = AudioManager::get_song().await {
+            self.music_box.update_song_duration(song.get_duration())
         }
-
 
         let settings = self.settings.background_game_settings.clone();
         if !settings.main_menu_enabled { return }
 
-        let lock = BEATMAP_MANAGER.read().await;
-        let map = match &lock.current_beatmap {
-            Some(map) => map,
-            None => return trace!("manager no map")
-        };
+        self.menu_game.setup().await;
+        self.visualization.song_changed(&mut self.menu_game.manager);
 
-        match manager_from_playmode(settings.mode.clone(), &map).await {
-            Ok(mut manager) => {
-                manager.make_menu_background();
-                manager.start().await;
-                trace!("manager started");
-
-                self.background_game = Some(manager);
-                self.visualization.song_changed(&mut self.background_game);
-            },
-            Err(e) => {
-                self.visualization.song_changed(&mut None);
-                NotificationManager::add_error_notification("Error loading beatmap", e).await;
-            }
-        }
         trace!("manager setup");
     }
 
@@ -204,10 +184,6 @@ impl AsyncMenu<Game> for MainMenu {
             self.setup_manager("on_change").await;
         } else {
             debug!("leaving main menu");
-            
-            if let Some(manager) = &mut self.background_game {
-                manager.on_complete()
-            }
         }
     }
 
@@ -249,17 +225,8 @@ impl AsyncMenu<Game> for MainMenu {
             self.setup_manager("update new map").await;
         }
 
-        self.visualization.update(&mut self.background_game).await;
-
-        if let Some(manager) = &mut self.background_game {
-            manager.update().await;
-
-            if manager.completed {
-                manager.on_complete();
-                self.background_game = None;
-            }
-        }
-    
+        self.visualization.update(&mut self.menu_game.manager).await;
+        self.menu_game.update().await;
     
         // check last input timer
         let last_input = self.last_input.as_millis();
@@ -286,9 +253,7 @@ impl AsyncMenu<Game> for MainMenu {
         let mid = self.window_size.0 / 2.0;
         self.visualization.draw(args, mid, depth + 10.0, &mut list).await;
 
-        if let Some(manager) = self.background_game.as_mut() {
-            manager.draw(args, &mut list).await;
-        }
+        self.menu_game.draw(args, &mut list).await;
         
         // draw dim
         list.push(Box::new(Rectangle::new(
@@ -387,9 +352,7 @@ impl AsyncMenu<Game> for MainMenu {
         
 
         // check offset keys
-        if let Some(manager) = self.background_game.as_mut() {
-            manager.key_down(key, mods).await;
-        }
+        self.menu_game.key_down(key, mods).await;
 
         if !mods.alt {
             match key {
@@ -434,9 +397,7 @@ impl AsyncMenu<Game> for MainMenu {
         self.window_size = window_size.clone();
         self.music_box = MusicBox::new().await;
 
-        if let Some(m) = &mut self.background_game {
-            m.window_size_changed(window_size).await
-        }
+        self.menu_game.window_size_changed(window_size).await;
     }
 }
 #[async_trait]

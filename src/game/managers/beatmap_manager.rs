@@ -32,6 +32,9 @@ pub struct BeatmapManager {
 }
 impl BeatmapManager {
     pub fn new() -> Self {
+        GlobalObjectManager::update(Arc::new(CurrentBeatmap::default()));
+        GlobalObjectManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
+
         Self {
             initialized: false,
 
@@ -212,6 +215,7 @@ impl BeatmapManager {
     // setters
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
+        GlobalObjectManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
         self.play_index += 1;
@@ -255,10 +259,7 @@ impl BeatmapManager {
 
     }
     pub fn get_by_hash(&self, hash:&String) -> Option<Arc<BeatmapMeta>> {
-        match self.beatmaps_by_hash.get(hash) {
-            Some(b) => Some(b.clone()),
-            None => None
-        }
+        self.beatmaps_by_hash.get(hash).cloned()
     }
 
 
@@ -323,59 +324,6 @@ impl BeatmapManager {
         }
     }
 
-    
-    // // changers
-    // pub fn update_diffs(&mut self, playmode: PlayMode, mods:&ModManager) {
-    //     if !DO_DIFF_CALC { return }
-
-    //     warn!("Diff calc start");
-    //     // this will be what we access and perform diff cals on
-    //     // it will cause a momentary lagspike, 
-    //     // but shouldnt lock everything until all diff calcs are complete
-    //     let maps = self.beatmaps.clone();
-    //     let mods = mods.clone();
-
-    //     let calc_info = Arc::new(CalcInfo {
-    //         playmode: Arc::new(playmode.clone()),
-    //         mods: Arc::new(mods.clone()),
-    //     });
-
-    //     self.on_diffcalc_started.0.ignite(calc_info.clone());
-
-    //     tokio::spawn(async move {
-    //         let _ = DIFF_CALC_LOCK.lock().await;
-
-    //         let mut existing = DifficultyDatabase::get_all_diffs(&playmode, &mods).await;
-    //         let mut to_insert = HashMap::new();
-
-    //         // perform calc
-    //         // trace!("Starting Diff Calc");
-    //         for i in maps {
-    //             let hash = &i.beatmap_hash;
-    //             if !existing.contains_key(hash) {
-    //                 let diff = calc_diff(&i, playmode.clone(), &mods).await.unwrap_or_default();
-    //                 existing.insert(hash.clone(), diff);
-    //                 to_insert.insert(hash.clone(), diff);
-    //             }
-    //         }
-
-    //         // insert diffs
-    //         if to_insert.len() > 0 {
-    //             DifficultyDatabase::insert_many_diffs(&playmode, &mods, to_insert.into_iter()).await;
-    //         }
-            
-            
-    //         BEATMAP_MANAGER
-    //             .write()
-    //             .await
-    //             .on_diffcalc_completed
-    //             .0
-    //             .ignite(Arc::new(DiffCalcCompleteInner::new(existing, calc_info)));
-            
-
-    //         warn!("Diff calc done");
-    //     });
-    // }
 }
 
 
@@ -388,3 +336,8 @@ pub enum GroupBy {
     // Difficulty,
     Collections,
 }
+
+
+crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBeatmapHelper);
+crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
+

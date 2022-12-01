@@ -12,7 +12,7 @@ pub struct SettingsMenu {
     window_size: Arc<WindowSize>,
 
     change_receiver: Mutex<Receiver<()>>,
-    background_game: Option<IngameManager>,
+    menu_game: MenuGameHelper,
 }
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
@@ -47,10 +47,10 @@ impl SettingsMenu {
 
         SettingsMenu {
             scroll_area,
-            old_settings: settings,
+            old_settings: settings.as_ref().clone(),
             window_size,
             change_receiver: Mutex::new(change_receiver),
-            background_game: None
+            menu_game: MenuGameHelper::new(true, false)
         }
     }
 
@@ -63,9 +63,7 @@ impl SettingsMenu {
         // drop to make sure changes propogate correctly
         drop(settings);
 
-        if let Some(manager) = &mut self.background_game {
-            manager.force_update_settings().await;
-        }
+        self.menu_game.force_update_settings().await;
     }
     pub async fn revert(&mut self, game:&mut Game) { 
         {
@@ -85,15 +83,14 @@ impl SettingsMenu {
         game.queue_state_change(GameState::InMenu(menu));
     }
 
-    pub async fn bg_game(&mut self) {
-        if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
-            self.setup_manager(map.clone()).await;
-        }
-    }
+}
 
-    async fn setup_manager(&mut self, map: Arc<BeatmapMeta>) {
-        let settings = get_settings!().clone();
-        if !settings.background_game_settings.settings_menu_enabled { return }
+#[async_trait]
+impl AsyncMenu<Game> for SettingsMenu {
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.scroll_area.set_size(Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0));
+        self.window_size = window_size.clone();
+        self.menu_game.window_size_changed(window_size).await;
 
 
         let pos = Vector2::new(WIDTH, 0.0);
@@ -103,29 +100,7 @@ impl SettingsMenu {
             window_size.y
         );
 
-        match manager_from_playmode(settings.background_game_settings.mode, &map).await {
-            Ok(mut manager) => {
-                manager.make_menu_background();
-                manager.gamemode.fit_to_area(pos, size).await;
-                manager.start().await;
-                trace!("settings ingame manager started");
-
-                self.background_game = Some(manager);
-            },
-            Err(e) => {
-                NotificationManager::add_error_notification("Error loading beatmap", e).await;
-            }
-        }
-
-    }
-
-}
-
-#[async_trait]
-impl AsyncMenu<Game> for SettingsMenu {
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.scroll_area.set_size(Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0));
-        self.window_size = window_size;
+        self.menu_game.fit_to_area(pos, size).await;
     }
     
     async fn on_change(&mut self, into:bool) {
@@ -134,7 +109,6 @@ impl AsyncMenu<Game> for SettingsMenu {
 
             // update our window size
             self.window_size_changed(WindowSize::get()).await;
-
 
             // play song if it exists
             if let Some(song) = AudioManager::get_song().await {
@@ -145,13 +119,9 @@ impl AsyncMenu<Game> for SettingsMenu {
                 // song.play(true);
             }
 
-            self.bg_game().await;
+            self.menu_game.setup().await;
         } else {
             debug!("leaving settings menu");
-            
-            if let Some(manager) = &mut self.background_game {
-                manager.on_complete()
-            }
         }
     }
 
@@ -167,9 +137,7 @@ impl AsyncMenu<Game> for SettingsMenu {
             10.0
         ));
         
-        if let Some(manager) = &mut self.background_game {
-            manager.draw(args, &mut list).await;
-        }
+        self.menu_game.draw(args, &mut list).await;
 
         list
     }
@@ -208,9 +176,7 @@ impl AsyncMenu<Game> for SettingsMenu {
             self.update_settings().await;
         }
 
-        if let Some(manager) = &mut self.background_game {
-            manager.update().await;
-        }
+        self.menu_game.update().await;
         
         
         let mut song_done = false;
@@ -226,7 +192,7 @@ impl AsyncMenu<Game> for SettingsMenu {
         if song_done {
             trace!("song done");
             BEATMAP_MANAGER.write().await.next_beatmap(game).await;
-            self.bg_game().await;
+            self.menu_game.setup().await;
         }
 
 

@@ -108,7 +108,6 @@ pub struct GlobalObjectMutValue<T:'static + Send + Sync + Clone>(T);
 impl<T:'static + Send + Sync + Clone> GlobalObjectMutValue<T> {
     fn new(val: Arc<T>) -> Self { Self(val.as_ref().clone()) }
 }
-
 impl<T:'static + Send + Sync + Clone> Deref for GlobalObjectMutValue<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target { &self.0 }
@@ -120,6 +119,20 @@ impl<T:'static + Send + Sync + Clone> Drop for GlobalObjectMutValue<T> {
     fn drop(&mut self) { GlobalObjectManager::update(Arc::new(self.0.clone())) }
 }
 
+
+#[macro_export]
+macro_rules! create_value_helper {
+    ($struct: ident, $type: ty, $helper_name: ident) => {
+        #[derive(Default)]
+        pub struct $struct(pub $type);
+        impl Deref for $struct {
+            type Target = $type;
+            fn deref(&self) -> &Self::Target { &self.0 }
+        }
+        
+        pub type $helper_name = GlobalObjectValue<$struct>;
+    }
+}
 
 
 #[test]

@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 
 pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(700.0, 50.0);
-pub const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
+// pub const BEATMAPSET_PAD_RIGHT:f64 = 5.0;
 const BEATMAP_ITEM_Y_PADDING:f64 = 5.0;
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
 
