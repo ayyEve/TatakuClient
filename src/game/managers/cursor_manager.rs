@@ -89,7 +89,7 @@ impl CursorManager {
         let (sender, event_receiver) = channel(1000);
         if let Err(_) = CURSOR_EVENT_QUEUE.set(sender) { panic!("Cursor event queue already exists") }
 
-        let settings = SettingsHelper::new().await;
+        let settings = SettingsHelper::new();
         Self {
             pos: Vector2::zero(),
             color: Color::from_hex(&settings.cursor_color),

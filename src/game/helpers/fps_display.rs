@@ -22,7 +22,7 @@ pub struct FpsDisplay {
 impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
     pub async fn new(name:&str, pos_count:u8) -> Self {
-        let window_size = WindowSizeHelper::new().await;
+        let window_size = WindowSizeHelper::new();
 
         Self {
             count: 0,
@@ -102,7 +102,7 @@ pub struct AsyncFpsDisplay {
 impl AsyncFpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
     pub async fn new(name:&str, pos_count:u8, count: Arc<AtomicU32>, frametime_last: Arc<AtomicU32>) -> Self {
-        let window_size = WindowSizeHelper::new().await;
+        let window_size = WindowSizeHelper::new();
 
         Self {
             count,

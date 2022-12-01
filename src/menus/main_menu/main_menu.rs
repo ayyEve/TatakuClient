@@ -64,7 +64,7 @@ impl MainMenu {
             menu_visible: false,
             music_box: MusicBox::new().await,
 
-            settings: SettingsHelper::new().await,
+            settings: SettingsHelper::new(),
             window_size,
             last_input: Instant::now(),
         }

@@ -20,8 +20,8 @@ impl VolumeControl {
             vol_selected_index: 0,
             vol_selected_time: 0,
             timer: Instant::now(),
-            settings: SettingsHelper::new().await,
-            window_size: WindowSizeHelper::new().await,
+            settings: SettingsHelper::new(),
+            window_size: WindowSizeHelper::new(),
         }
     }
 

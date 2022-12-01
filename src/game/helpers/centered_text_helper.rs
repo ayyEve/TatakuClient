@@ -22,7 +22,7 @@ impl CenteredTextHelper {
             changed_time: 0.0,
 
             font,
-            window_size: WindowSizeHelper::new().await,
+            window_size: WindowSizeHelper::new(),
         }
     }
 
@@ -69,7 +69,7 @@ impl Default for CenteredTextHelper {
             depth: Default::default(),
             changed_time: Default::default(),
             draw_time: Default::default(),
-            window_size: Default::default(),
+            window_size: WindowSizeHelper::new(),
         }
     }
 }

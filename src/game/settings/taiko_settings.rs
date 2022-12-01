@@ -65,7 +65,7 @@ impl TaikoSettings {
     pub async fn init_settings(&mut self) {
         // load hit_position
         let base = if self.hit_position_relative_to_window_size {
-            let window_size = **WindowSize::get_initial().await;
+            let window_size = **WindowSize::get();
             window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
         } else {
             Vector2::zero()

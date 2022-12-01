@@ -211,7 +211,7 @@ impl InputManager {
         if let Some(e) = e.text_args() { self.text_cache += &e; }
         if let Some(has_focus) = e.focus_args() { self.window_change_focus = Some(has_focus); }
         if let Some(thing) = e.resize_args() { 
-            set_window_size(thing.window_size.into());
+            GlobalObjectManager::update(Arc::new(WindowSize(thing.window_size.into())));
         }
 
         // e.text(|text| debug!("Typed '{}'", text));

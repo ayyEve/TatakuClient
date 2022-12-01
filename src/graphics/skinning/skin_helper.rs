@@ -29,7 +29,7 @@ impl SkinManager {
 
     pub async fn init() {
         let mut s = SKIN_MANAGER.write().await;
-        s.settings = SettingsHelper::new().await;
+        s.settings = SettingsHelper::new();
         s.last_skin = s.settings.current_skin.clone();
     }
 
@@ -83,7 +83,7 @@ impl SkinManager {
             last_skin: String::new(),
             current_skin_config,
             texture_cache: HashMap::new(),
-            settings: Default::default(), // default because this fn isnt async
+            settings: SettingsHelper::new(), 
         }
     }
 

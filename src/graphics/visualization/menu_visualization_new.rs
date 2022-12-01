@@ -43,7 +43,7 @@ pub struct MenuVisualizationNew {
 }
 impl MenuVisualizationNew {
     pub async fn new() -> Self {
-        let window_size = WindowSizeHelper::new().await;
+        let window_size = WindowSizeHelper::new();
         let initial_inner_radius = window_size.y / 6.0;
 
         Self {

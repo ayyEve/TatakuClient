@@ -53,7 +53,7 @@ impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
         let font = get_font();
         let window_size = WindowSize::get();
-        let settings = SettingsHelper::new().await;
+        let settings = SettingsHelper::new();
 
         let sort_by = settings.last_sort_by;
         let sort_by_dropdown = Dropdown::new(

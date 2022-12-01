@@ -44,7 +44,7 @@ impl SpectatorManager {
             buffered_score_frames: Vec::new(),
             current_map: None,
             new_map_check: BEATMAP_MANAGER.read().await.new_map_added.1.clone(),
-            window_size: WindowSizeHelper::new().await,
+            window_size: WindowSizeHelper::new(),
         }
     }
 

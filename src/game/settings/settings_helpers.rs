@@ -2,14 +2,6 @@ use crate::prelude::*;
 use std::ops::{ Deref, DerefMut };
 use tokio::sync::RwLockWriteGuard;
 
-lazy_static::lazy_static! {
-    pub(super) static ref SETTINGS_CHECK: ShardedLock<Arc<Settings>> = ShardedLock::new(Default::default());
-    
-    static ref WINDOW_SIZE_CHECK: ShardedLock<Arc<WindowSize>> = ShardedLock::new(Arc::new(WindowSize(Vector2::zero())));
-
-    static ref CURRENT_WINDOW_SIZE: Arc<parking_lot::RwLock<Arc<WindowSize>>> = Arc::new(parking_lot::RwLock::new(Arc::new(WindowSize(Vector2::zero()))));
-}
-
 /// helper so when a mutable reference to settings is dropped, it sends out an update with the new info
 pub struct MutSettingsHelper<'a> {
     guard: RwLockWriteGuard<'a, Settings>
@@ -38,62 +30,28 @@ impl<'a> Drop for MutSettingsHelper<'a> {
         trace!("mut settings dropped");
         // assume something was changed for now
         let a = Arc::new(self.guard.clone());
-        *SETTINGS_CHECK.write().unwrap() = a
+        GlobalObjectManager::update(a)
     }
 }
 
 
 // settings helper
-pub type SettingsHelper = EventHandler<Settings>;
-#[async_trait]
-impl EventHandlerInitial for Settings {
-    async fn get_initial() -> Arc<Self> {
-        Arc::new(get_settings!().clone())
-    }
-    fn get_current() -> Arc<Self> {
-        SETTINGS_CHECK.read().unwrap().clone()
-    }
-}
-
+pub type SettingsHelper = GlobalObjectInstance<Settings>;
 
 // window size helper
-pub type WindowSizeHelper = EventHandler<WindowSize>;
+pub type WindowSizeHelper = GlobalObjectInstance<WindowSize>;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Default)]
 pub struct WindowSize(pub Vector2);
 impl WindowSize {
     pub fn get() -> Arc<WindowSize> {
-        CURRENT_WINDOW_SIZE.read().clone()
+        GlobalObjectManager::get().unwrap_or_default()
     }
 }
-
-
 impl Deref for WindowSize {
     type Target = Vector2;
     
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-#[async_trait]
-impl EventHandlerInitial for WindowSize {
-    async fn get_initial() -> Arc<Self> {
-        Self::get()
-    }
-
-    fn get_current() -> Arc<Self> {
-        WINDOW_SIZE_CHECK.read().unwrap().clone()
-    }
-}
-impl Default for WindowSize {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-
-pub fn set_window_size(new_size: Vector2) {
-    let a = Arc::new(WindowSize(new_size));
-    *CURRENT_WINDOW_SIZE.write() = a.clone();
-    *WINDOW_SIZE_CHECK.write().unwrap() = a;
 }

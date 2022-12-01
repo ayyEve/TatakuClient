@@ -113,7 +113,7 @@ impl IngameManager {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = SettingsHelper::new().await;
+        let settings = SettingsHelper::new();
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
@@ -1195,8 +1195,8 @@ impl Default for IngameManager {
 
             judgment_type: Box::new(DefaultHitJudgments::None),
 
-            settings: Default::default(),
-            window_size: Default::default(),
+            settings: SettingsHelper::new(),
+            window_size: WindowSize::get(),
             pending_time_jump: None,
             skin_helper: SkinChangeHelper::new_empty(),
 

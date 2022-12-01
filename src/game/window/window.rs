@@ -58,6 +58,8 @@ impl GameWindow {
             .expect("Error creating window");
         // window.window.set_cursor_mode(glfw::CursorMode::Hidden);
 
+        GlobalObjectManager::update(Arc::new(WindowSize(Vector2::one() * 20.0)));
+
 
         let graphics = GlGraphics::new(opengl);
         debug!("done graphics");
@@ -114,7 +116,7 @@ impl GameWindow {
             // render_event_receiver,
             window_event_receiver,
             // game_event_sender: gane_event_sender, 
-            window_size: WindowSizeHelper::default(),
+            window_size: WindowSizeHelper::new(),
 
             frametime_timer: now,
             input_timer: now,
@@ -124,9 +126,9 @@ impl GameWindow {
     pub async fn run(&mut self) {
         // fire event so things get moved around correctly
         let settings = get_settings!().clone();
-        set_window_size(settings.window_size.into());
+        GlobalObjectManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
-        self.window_size.init().await;
+        self.window_size.update();
 
         // resize window
         self.window.window.set_size(self.window_size.x as i32, self.window_size.y as i32);

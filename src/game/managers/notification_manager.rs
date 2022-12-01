@@ -61,12 +61,11 @@ impl NotificationManager { // non-static
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
             
-            window_size: WindowSizeHelper::default(),
+            window_size: WindowSizeHelper::new(),
         }
     }
 
     pub async fn update(&mut self) {
-        self.window_size.init().await;
         self.window_size.update();
 
         for notif in std::mem::take(&mut self.pending_notifs) {

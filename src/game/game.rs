@@ -64,8 +64,8 @@ impl Game {
             dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
-            settings: SettingsHelper::new().await,
-            window_size: WindowSizeHelper::new().await,
+            settings: SettingsHelper::new(),
+            window_size: WindowSizeHelper::new(),
 
             menus: HashMap::new(),
             current_state: GameState::None,
@@ -107,7 +107,7 @@ impl Game {
 
         // set the current leaderboard filter
         // this is here so it happens before anything else
-        let settings = SettingsHelper::new().await;
+        let settings = SettingsHelper::new();
         SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
         self.last_skin = settings.current_skin.clone();
 
@@ -423,7 +423,7 @@ impl Game {
                         if mods.shift {
                             NotificationManager::add_text_notification("uploading screenshot", 5000.0, Color::YELLOW).await;
 
-                            let settings = SettingsHelper::new().await;
+                            let settings = SettingsHelper::new();
                             let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
 
                             let mut err:Option<(&str, TatakuError)> = None;

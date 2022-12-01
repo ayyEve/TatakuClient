@@ -161,7 +161,8 @@ impl Settings {
         // WINDOW_SIZE.set(s.window_size.into()).unwrap();
         
         SETTINGS.set(RwLock::new(s.clone())).ok().unwrap();
-        *super::SETTINGS_CHECK.write().unwrap() = Arc::new(s.clone());
+        GlobalObjectManager::update(Arc::new(s.clone()));
+        // *super::SETTINGS_CHECK.write().unwrap() = Arc::new(s.clone());
 
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
