@@ -14,11 +14,11 @@ const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
 // pain and suffering
 static mut GRAPHICS: OnceCell<GlGraphics> = OnceCell::const_new();
-static mut GAME_EVENT_SENDER: OnceCell<MultiFuze<GameEvent>> = OnceCell::const_new();
+static GAME_EVENT_SENDER: OnceCell<tokio::sync::mpsc::Sender<GameEvent>> = OnceCell::const_new();
 
-pub static WINDOW_EVENT_QUEUE: OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
+pub static WINDOW_EVENT_QUEUE:OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
 static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
-pub static NEW_RENDER_DATA_AVAILABLE: AtomicBool = AtomicBool::new(true);
+pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
 
 pub fn graphics() -> &'static mut GlGraphics {
     unsafe {
@@ -47,7 +47,7 @@ pub struct GameWindow {
 }
 
 impl GameWindow {
-    pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: MultiFuze<GameEvent>) -> Self {
+    pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: tokio::sync::mpsc::Sender<GameEvent>) -> Self {
         let opengl = OpenGL::V4_5;
         let mut window: glfw_window::GlfwWindow = WindowSettings::new("Tataku!", [20, 20])
             .graphics_api(opengl)
@@ -140,9 +140,7 @@ impl GameWindow {
         macro_rules! close_window {
             (self) => {
                 self.window.window.set_should_close(true);
-                unsafe {
-                    GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::WindowClosed);
-                }
+                let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowClosed);
                 return;
             }
         }
@@ -156,9 +154,7 @@ impl GameWindow {
                 if let Some(axis) = e.controller_axis_args() {
                     let j_id = get_joystick_id(axis.id);
                     let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                    unsafe {
-                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::ControllerEvent(e, name));
-                    }
+                    let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::ControllerEvent(e, name));
                     continue
                 }
                 
@@ -167,22 +163,17 @@ impl GameWindow {
 
                     let j_id = get_joystick_id(cb.id);
                     let name = self.window.glfw.get_joystick(j_id).get_name().unwrap_or("Unknown Name".to_owned());
-                    unsafe {
-                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::ControllerEvent(e, name));
-                    }
+                    let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::ControllerEvent(e, name));
+                    
                     continue;
                 }
 
                 if let Event::Input(Input::FileDrag(FileDrag::Drop(d)), _) = e {
-                    unsafe {
-                        GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::DragAndDrop(d));
-                    }
+                    let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::DragAndDrop(d));
                     continue
                 }
 
-                unsafe {
-                    GAME_EVENT_SENDER.get_mut().unwrap().ignite(GameEvent::WindowEvent(e));
-                }
+                let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowEvent(e));
             }
 
             // check render-side events
@@ -395,19 +386,17 @@ pub static RESIZE_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, 
         };
         let window_size = [w as f64, h as f64];
 
-        unsafe {
-            GAME_EVENT_SENDER.get_mut().unwrap().ignite(
-                GameEvent::WindowEvent(
-                    Event::Input(
-                        Input::Resize(ResizeArgs {
-                            window_size,
-                            draw_size,
-                        }), 
-                        None
-                    )
+        let _ = GAME_EVENT_SENDER.get().unwrap().try_send(
+            GameEvent::WindowEvent(
+                Event::Input(
+                    Input::Resize(ResizeArgs {
+                        window_size,
+                        draw_size,
+                    }), 
+                    None
                 )
-            );
-        }
+            )
+        );
 
         let args = RenderArgs { 
             ext_dt: 0.0, 

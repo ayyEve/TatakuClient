@@ -297,7 +297,6 @@ impl GameMode for StandardGame {
                             scaling_helper.clone(),
                             depth,
                             std_settings.clone(),
-                            diff_calc_only,
                             get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
                         ).await));
                     }
@@ -324,7 +323,6 @@ impl GameMode for StandardGame {
                                 scaling_helper.clone(),
                                 depth,
                                 std_settings.clone(),
-                                diff_calc_only,
                                 hitsounds,
                             ).await));
                         } else {
@@ -342,7 +340,6 @@ impl GameMode for StandardGame {
                                 slider_depth,
                                 depth,
                                 std_settings.clone(),
-                                diff_calc_only,
                                 get_hitsounds
                             ).await))
                         }

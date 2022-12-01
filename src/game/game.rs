@@ -47,7 +47,7 @@ pub struct Game {
     pub background_image: Option<Image>,
     // register_timings: (f32,f32,f32),
 
-    game_event_receiver: MultiBomb<GameEvent>,
+    game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
     render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
 
     settings: SettingsHelper,
@@ -56,7 +56,7 @@ pub struct Game {
     last_skin: String,
 }
 impl Game {
-    pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: MultiBomb<GameEvent>) -> Game {
+    pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
         let mut g = Game {
             // engine
             input_manager: InputManager::new(),
@@ -183,7 +183,7 @@ impl Game {
         let mut update_target = 1.0 / last_update_target;
 
         loop {
-            while let Some(e) = self.game_event_receiver.exploded() {
+            while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),

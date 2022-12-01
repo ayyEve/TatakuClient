@@ -102,7 +102,7 @@ async fn start_game() {
     let main_thread = tokio::task::LocalSet::new();
 
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
-    let (game_event_sender, game_event_receiver) = MultiBomb::new();
+    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
 
     // setup window
     trace!("creating window");

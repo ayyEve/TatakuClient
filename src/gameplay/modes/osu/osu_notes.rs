@@ -100,7 +100,7 @@ pub struct StandardNote {
     hitsounds: Vec<Hitsound>,
 }
 impl StandardNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only:bool, hitsounds: Vec<Hitsound>) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -493,7 +493,7 @@ pub struct StandardSlider {
     sliderdot_hitsound: Hitsound
 }
 impl StandardSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, diff_calc_only: bool, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -502,26 +502,9 @@ impl StandardSlider {
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
-        let combo_text = if diff_calc_only { None } else {
-            let mut combo_text =  Box::new(Text::new(
-                Color::BLACK,
-                circle_depth - 0.0000001,
-                pos,
-                radius as u32,
-                format!("{}", combo_num),
-                get_font()
-            ));
-            combo_text.center_text(Rectangle::bounds_only(
-                pos - Vector2::one() * radius / 2.0,
-                Vector2::one() * radius,
-            ));
-            Some(combo_text)
-        };
-
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         let mut sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
         sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
-
 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
@@ -532,7 +515,6 @@ impl StandardSlider {
             
             hitsound_fn(def.time, hitsound, samples)
         }).collect();
-
 
         Self {
             def,
@@ -565,7 +547,7 @@ impl StandardSlider {
             dot_count: 0,
             start_judgment: OsuHitJudgments::Miss,
 
-            combo_text,
+            combo_text: None,
             combo_image: None,
             sound_queue: Vec::new(),
 
@@ -1072,6 +1054,22 @@ impl HitObject for StandardSlider {
         self.start_circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.circle_depth, self.color).await;
         self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
         self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
+
+        
+        
+        let mut combo_text =  Box::new(Text::new(
+            Color::BLACK,
+            self.circle_depth - 0.0000001,
+            self.pos,
+            self.radius as u32,
+            self.combo_num.to_string(),
+            get_font()
+        ));
+        combo_text.center_text(Rectangle::bounds_only(
+            self.pos - Vector2::one() * self.radius / 2.0,
+            Vector2::one() * self.radius,
+        ));
+        self.combo_text = Some(combo_text);
 
         let mut combo_image = SkinnedNumber::new(
             Color::WHITE, // TODO: setting: colored same as note or just white?
