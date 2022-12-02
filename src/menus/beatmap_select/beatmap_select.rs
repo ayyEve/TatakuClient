@@ -140,11 +140,11 @@ impl BeatmapSelectMenu {
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
         get_settings_mut!().last_played_mode = new_mode.clone();
 
-        // recalc diffs
-        self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
+        // // recalc diffs
+        // self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
 
-        // set modes and update diffs
-        self.beatmap_scroll.on_text(new_mode.clone());
+        // // set modes and update diffs
+        // self.beatmap_scroll.on_text(new_mode.clone());
 
         // change manager
         self.menu_game.setup().await;
@@ -201,7 +201,7 @@ impl BeatmapSelectMenu {
 
             let meta = &maps[0];
             let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
-            let mut i = BeatmapsetItem::new(maps, display_text, mods.clone()).await;
+            let mut i = BeatmapsetItem::new(maps, display_text).await;
             i.check_selected(&current_hash);
             full_list.push(Box::new(i));
         }
@@ -298,9 +298,6 @@ impl BeatmapSelectMenu {
 
         self.beatmap_scroll.refresh_layout();
         self.load_scores().await;
-
-        // load gamemode maybe
-
     }
 
     fn interactables(&mut self) -> Vec<&mut dyn ScrollableItem> {

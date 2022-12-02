@@ -17,16 +17,17 @@ pub struct BeatmapsetItem {
     selected_index: usize,
     mouse_pos: Vector2,
     // playmode: String,
-    current_mod_manager: Arc<ModManager>,
+    mods: ModManagerHelper,
+    playmode: CurrentPlaymodeHelper,
+
 
     display_text: String,
-
     double_clicked: bool,
 
     button_image: Option<SkinnedButton>
 }
 impl BeatmapsetItem {
-    pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String, mods: Arc<ModManager>) -> BeatmapsetItem {
+    pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
         BeatmapsetItem {
             beatmaps, 
             pos: Vector2::zero(),
@@ -37,7 +38,8 @@ impl BeatmapsetItem {
 
             selected_index: 0,
             mouse_pos: Vector2::zero(),
-            current_mod_manager: mods,
+            mods: ModManagerHelper::new(),
+            playmode: CurrentPlaymodeHelper::new(),
             double_clicked: false,
             button_image: SkinnedButton::new(Vector2::zero(), BEATMAPSET_ITEM_SIZE, 5.0).await,
         }
@@ -216,6 +218,17 @@ impl ScrollableItem for BeatmapsetItem {
 
         // if selected, draw map items
         if self.selected {
+            let mut updated = self.mods.update();
+            updated |= self.playmode.update();
+            if updated {
+                let playmode = self.playmode.0.clone();
+                for i in self.beatmaps.iter_mut() {
+                    let playmode = i.check_mode_override(playmode.clone());
+                    i.diff = get_diff(&i, &playmode, &self.mods);
+                }
+            }
+            
+
             let mut pos = self.pos + pos_offset + Vector2::new(BEATMAPSET_ITEM_SIZE.x - BEATMAP_ITEM_SIZE.x, BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale;
             
             // try to find the clicked item
@@ -265,23 +278,22 @@ impl ScrollableItem for BeatmapsetItem {
                     font.clone()
                 )));
 
-                let y_increase = (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale.y;
-                let Some(info) = get_gamemode_info(&meta.mode) else { 
-                    pos.y +=  y_increase;
-                    continue 
-                };
 
                 // diff text
-                list.push(Box::new(Text::new(
-                    Color::WHITE,
-                    parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0 + 20.0) * self.scale,
-                    (12.0 * self.scale.y) as u32,
-                    info.get_diff_string(meta, &self.current_mod_manager),
-                    font.clone()
-                )));
+                let playmode = self.playmode.0.clone();
+                if let Some(info) = get_gamemode_info(&meta.check_mode_override(playmode)) { 
+                    list.push(Box::new(Text::new(
+                        Color::WHITE,
+                        parent_depth + 4.0,
+                        pos + Vector2::new(5.0, 5.0 + 20.0) * self.scale,
+                        (12.0 * self.scale.y) as u32,
+                        info.get_diff_string(meta, &self.mods),
+                        font.clone()
+                    )));
+                };
 
-                pos.y += y_increase;
+
+                pos.y += (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale.y;
             }
         }
     }

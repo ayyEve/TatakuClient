@@ -503,7 +503,7 @@ impl StandardSlider {
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
-        let mut sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
+        let sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
         // sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
