@@ -225,7 +225,9 @@ impl ScrollableItem for BeatmapsetItem {
                 for i in self.beatmaps.iter_mut() {
                     let playmode = i.check_mode_override(playmode.clone());
                     i.diff = get_diff(&i, &playmode, &self.mods);
+                    i.sort_pending = true;
                 }
+
             }
             
 
