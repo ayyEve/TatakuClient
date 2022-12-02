@@ -504,7 +504,7 @@ impl StandardSlider {
 
         const SAMPLE_SETS:[&str; 4] = ["normal", "normal", "soft", "drum"];
         let mut sliderdot_hitsound = Hitsound::new_simple(format!("{}-slidertick", SAMPLE_SETS[def.hitsamples.addition_set as usize]));
-        sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
+        // sliderdot_hitsound.volume = def.hitsamples.volume as f32 / 100.0;
 
         let hitsounds = def.edge_sets.iter().enumerate().map(|(n, &[normal_set, addition_set])| {
             let mut samples = def.hitsamples.clone();
@@ -834,6 +834,7 @@ impl HitObject for StandardSlider {
             if let Some(was_hit) = dot.update(beatmap_time, self.holding, self.mouse_pos, self.radius) {
                 if was_hit {
                     self.add_ripple(beatmap_time, dot.pos, true);
+
                     
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
                     self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);

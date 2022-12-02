@@ -465,6 +465,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.update();
         self.leaderboard_scroll.update();
         self.settings.update();
+        self.mods.update();
 
         for i in self.interactables() {
             i.update();

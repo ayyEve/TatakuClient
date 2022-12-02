@@ -113,7 +113,6 @@ impl HitsoundManager {
         }
     }
 
-    // TODO: completely redo this
     pub fn play_sound(&self, hitsounds: &Vec<Hitsound>, vol: f32) {
 
         // The sound file is loaded from the first of the following directories that contains a matching filename:
@@ -151,6 +150,7 @@ impl HitsoundManager {
         } else {
             sound.filename.clone()
         };
+        // info!("attempting to play sound {name} with volume {vol}");
 
         for source in [
             HitsoundSource::Beatmap,
@@ -168,7 +168,6 @@ impl HitsoundManager {
             sound.play(true);
             true
         } else if let Some(backup) = &sound.filename_backup {
-            
             let name = if let Some(prefix) = prefix {
                 format!("{prefix}-{backup}")
             } else {

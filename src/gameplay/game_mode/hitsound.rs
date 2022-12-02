@@ -10,7 +10,7 @@ pub struct Hitsound {
 impl Hitsound {
     pub fn new(filename: String, filename_backup: Option<String>, volume: f32, allowed_sources: Vec<HitsoundSource>) -> Self {
         Self {
-            filename,
+            filename: filename.trim_end_matches(".wav").trim_end_matches(".mp3").to_owned(),
             filename_backup,
             volume,
             allowed_sources
@@ -18,12 +18,12 @@ impl Hitsound {
     }
     
     pub fn new_simple(filename: impl ToString) -> Self {
-        Self {
-            filename: filename.to_string(),
-            filename_backup: None,
-            volume: 1.0,
-            allowed_sources: all_allowed_sources()
-        }
+        Self::new(
+            filename.to_string().trim_end_matches(".wav").trim_end_matches(".mp3").to_owned(),
+            None,
+            1.0,
+            all_allowed_sources()
+        )
     }
 
     
