@@ -67,6 +67,8 @@ impl BeatmapSelectMenu {
         );
 
         let mode = settings.last_played_mode.clone();
+        GlobalObjectManager::update(Arc::new(CurrentPlaymode(mode.clone())));
+        
         let playmode_dropdown = Dropdown::new(
             Vector2::new(205.0, 5.0),
             200.0,
