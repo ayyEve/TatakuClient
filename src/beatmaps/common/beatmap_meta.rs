@@ -86,32 +86,12 @@ impl BeatmapMeta {
         (remaining_ms / 1000.0).floor()
     }
     
-    pub fn get_hp(&self, mods: &ModManager) -> f32 {
-        scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    pub fn get_hp(&self, _mods: &ModManager) -> f32 {
+        self.hp
+        // scale_by_mods(self.hp, 0.5, 1.4, mods).clamp(1.0, 10.0)
     }
 
 }
-
-#[inline]
-pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.mods.contains("easy") {
-        val * ez_scale
-    } else if mods.mods.contains("hard_rock") {
-        val * hr_scale
-    } else {
-        val
-    }
-}
-
-// might use this later idk
-// pub trait IntoSets {
-//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>>;
-// }
-// impl IntoSets for Vec<BeatmapMeta> {
-//     fn sort_into_sets(&self) -> Vec<Vec<BeatmapMeta>> {
-//         todo!()
-//     }
-// }
 
 
 pub struct BeatmapMetaWithDiff {

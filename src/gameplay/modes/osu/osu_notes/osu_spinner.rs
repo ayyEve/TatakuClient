@@ -1,17 +1,17 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-
 const SPINNER_RADIUS:f64 = 200.0;
 
 #[derive(Clone)]
-pub struct StandardSpinner {
+pub struct OsuSpinner {
     // def: SpinnerDef,
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
     last_update: f32,
     current_time: f32,
+    missed: bool,
 
     /// display rotation of the spinner (for display only)
     display_rotation: f64,
@@ -45,9 +45,11 @@ pub struct StandardSpinner {
     spinner_bottom: Option<Image>,
     /// gets smaller towards end of spinner, from 100% to 0%
     spinner_approach: Option<Image>,
+
+    points_queue: Vec<(OsuHitJudgments, Vector2)>
 }
-impl StandardSpinner {
-    pub async fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, _diffcalc_only: bool) -> Self {
+impl OsuSpinner {
+    pub async fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, rotations_required: u16) -> Self {
         let time = def.time;
         let end_time = def.end_time;
 
@@ -57,6 +59,7 @@ impl StandardSpinner {
             time,
             end_time,
             current_time: 0.0,
+            missed: false,
 
             holding: false,
             display_rotation: 0.0,
@@ -67,9 +70,10 @@ impl StandardSpinner {
             last_mouse_angle: 0.0,
             scaling_helper,
 
-            rotations_required: 0,
+            rotations_required,
             rotations_completed: 0,
             mouse_pos: Vector2::zero(),
+            points_queue: Vec::new(),
 
             last_update: 0.0,
 
@@ -81,7 +85,7 @@ impl StandardSpinner {
     }
 }
 #[async_trait]
-impl HitObject for StandardSpinner {
+impl HitObject for OsuSpinner {
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.end_time }
     fn note_type(&self) -> NoteType { NoteType::Spinner }
@@ -136,10 +140,17 @@ impl HitObject for StandardSpinner {
 
             // update display rotation
             self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+            if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 { 
+                self.rotations_completed += 1; 
+                if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
+                    self.points_queue.push((OsuHitJudgments::SpinnerPoint, self.pos));
+                }
+            }
             self.display_rotation %= PI * 2.0;
 
             // update calc rotation
             self.rotation += diff;
+            // if self.rotation >= PI * 2.0 || self.rotation <= -PI * 2.0 { self.rotations_completed += 1; }
             self.rotation %= PI * 2.0;
         }
 
@@ -147,6 +158,7 @@ impl HitObject for StandardSpinner {
         self.last_update = beatmap_time;
         self.current_time = beatmap_time;
     }
+
     async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
 
@@ -211,7 +223,7 @@ impl HitObject for StandardSpinner {
             -999.9,
             Vector2::zero(),
             30,
-            format!("{:.0}rpm", rpm.abs()), // format!("{:.0}rpm", rpm.abs()),
+            format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
             get_font()
         );
         txt.center_text(Rectangle::bounds_only(
@@ -222,10 +234,13 @@ impl HitObject for StandardSpinner {
     }
 
     async fn reset(&mut self) {
+        self.missed = false;
         self.holding = false;
+        self.rotation = 0.0;
         self.display_rotation = 0.0;
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
+        self.points_queue.clear();
     }
 
     async fn reload_skin(&mut self) {
@@ -266,12 +281,11 @@ impl HitObject for StandardSpinner {
     }
 }
 #[async_trait]
-impl StandardHitObject for StandardSpinner {
-    fn miss(&mut self) {}
-    fn was_hit(&self) -> bool { self.last_update >= self.end_time }
+impl OsuHitObject for OsuSpinner {
+    fn miss(&mut self) { self.missed = true }
+    fn was_hit(&self) -> bool { self.missed || self.rotations_completed >= self.rotations_required } //{ self.last_update >= self.end_time }
     fn get_preempt(&self) -> f32 { 0.0 }
-    fn point_draw_pos(&self, _: f32) -> Vector2 { Vector2::zero() } //TODO
-    fn causes_miss(&self) -> bool { self.rotations_completed < self.rotations_required } // if the spinner wasnt completed in time, cause a miss
+    fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, _window: f32) {}
 
     fn press(&mut self, _time:f32) { self.holding = true; }
@@ -302,12 +316,7 @@ impl StandardHitObject for StandardSpinner {
     }
 
     fn pos_at(&self, time: f32) -> Vector2 {
-        // debug!("time: {}, {}, {}", time, self.time, self.end_time);
-
-        if time < self.time || time >= self.end_time {
-
-            return self.pos
-        }
+        if time < self.time || time >= self.end_time { return self.pos }
 
         let r = self.last_mouse_angle + (time - self.last_update) as f64 / (4.0*PI);
         self.pos + Vector2::new(
@@ -324,13 +333,15 @@ impl StandardHitObject for StandardSpinner {
         // self.standard_settings = settings;
     }
 
-
-
     fn set_ar(&mut self, _ar: f32) {
         // self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 
     fn get_hitsound(&self) -> Vec<Hitsound> {
         vec![]
+    }
+
+    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
+        std::mem::take(&mut self.points_queue)
     }
 }

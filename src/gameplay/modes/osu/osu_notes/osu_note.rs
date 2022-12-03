@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-pub struct StandardNote {
+pub struct OsuNote {
     /// note definition
     def: NoteDef,
     /// note position
@@ -51,7 +51,7 @@ pub struct StandardNote {
 
     hitsounds: Vec<Hitsound>,
 }
-impl StandardNote {
+impl OsuNote {
     pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
@@ -145,7 +145,7 @@ impl StandardNote {
     }
 }
 #[async_trait]
-impl HitObject for StandardNote {
+impl HitObject for OsuNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
@@ -259,11 +259,10 @@ impl HitObject for StandardNote {
 }
 
 #[async_trait]
-impl StandardHitObject for StandardNote {
+impl OsuHitObject for OsuNote {
     fn miss(&mut self) { self.missed = true }
     fn was_hit(&self) -> bool { self.hit || self.missed }
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
-    fn causes_miss(&self) -> bool { true }
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
     fn get_preempt(&self) -> f32 { self.time_preempt }
     fn set_hitwindow_miss(&mut self, window: f32) {

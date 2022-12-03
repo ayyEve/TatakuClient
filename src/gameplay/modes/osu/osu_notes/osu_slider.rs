@@ -4,7 +4,7 @@ use super::super::prelude::*;
 
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 
-pub struct StandardSlider {
+pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
     /// curve that defines the slider
@@ -99,7 +99,7 @@ pub struct StandardSlider {
     hitsounds: Vec<Vec<Hitsound>>,
     sliderdot_hitsound: Hitsound
 }
-impl StandardSlider {
+impl OsuSlider {
     pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
@@ -372,7 +372,7 @@ impl StandardSlider {
 }
 
 #[async_trait]
-impl HitObject for StandardSlider {
+impl HitObject for OsuSlider {
     fn note_type(&self) -> NoteType { NoteType::Slider }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.curve.end_time }
@@ -709,10 +709,9 @@ impl HitObject for StandardSlider {
 }
 
 #[async_trait]
-impl StandardHitObject for StandardSlider {
+impl OsuHitObject for OsuSlider {
     fn miss(&mut self) { self.end_checked = true }
     fn was_hit(&self) -> bool { self.end_checked }
-    fn causes_miss(&self) -> bool {false}
     fn point_draw_pos(&self, time: f32) -> Vector2 {self.pos_at(time)}
 
     fn get_preempt(&self) -> f32 {self.time_preempt}

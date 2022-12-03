@@ -12,6 +12,9 @@ pub enum OsuHitJudgments {
 
     SliderEnd,
     SliderEndMiss,
+
+    SpinnerMiss,
+    SpinnerPoint,
 }
 
 use OsuHitJudgments::*;
@@ -24,6 +27,7 @@ impl OsuHitJudgments {
             | Miss
             | SliderEndMiss
             | SliderDotMiss
+            | SpinnerMiss
             => true,
 
             _ => false
@@ -52,22 +56,26 @@ impl HitJudgments for OsuHitJudgments {
             SliderDotMiss => -2.0,
 
             SliderEnd => 1.0,
-            SliderEndMiss => -5.0
+            SliderEndMiss => -5.0,
+
+            SpinnerMiss => -5.0,
+            SpinnerPoint => 1.0,
         }
     }
 
     fn affects_combo(&self) -> AffectsCombo {
         match self {
-            Miss | SliderDotMiss | SliderEndMiss => AffectsCombo::Reset,
-            SliderDot => AffectsCombo::Ignore,
+            Miss | SliderDotMiss | SliderEndMiss | SpinnerMiss => AffectsCombo::Reset,
+            SliderDot | SpinnerPoint => AffectsCombo::Ignore,
             
             _ => AffectsCombo::Increment,
         }
     }
 
     fn get_score(&self, combo: u16) -> i32 {
-        // slider dot not affected by combo
+        // slider dot and spinner point not affected by combo
         if let SliderDot = self { return 100; }
+        if let SpinnerPoint = self { return 1000; }
 
         let combo = (combo.clamp(0, 80) / 10).max(1) as i32;
         combo * match self {
@@ -86,9 +94,13 @@ impl HitJudgments for OsuHitJudgments {
             Miss => "xmiss",
             SliderDot => "slider_dot",
             SliderDotMiss => "slider_dot_miss",
+            
 
             SliderEnd => "slider_end",
             SliderEndMiss => "xmiss", // alias to miss, so it counts as misses when added
+
+            SpinnerMiss => "xmiss",
+            SpinnerPoint => "spinner_point"
         }
     }
 
@@ -134,10 +146,13 @@ impl HitJudgments for OsuHitJudgments {
             Miss => "hit0",
             
             SliderDotMiss 
+            | SpinnerMiss
             | SliderEndMiss => "hit0",
 
             SliderDot 
             |  SliderEnd => "",
+            
+            _ => ""
         }
     }
 

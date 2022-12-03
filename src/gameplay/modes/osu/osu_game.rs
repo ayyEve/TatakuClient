@@ -18,7 +18,7 @@ pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 pub struct OsuGame {
     // lists
-    pub notes: Vec<Box<dyn StandardHitObject>>,
+    pub notes: Vec<Box<dyn OsuHitObject>>,
 
     // hit timing bar stuff
     hit_windows: Vec<(OsuHitJudgments, Range<f32>)>,
@@ -96,10 +96,10 @@ impl OsuGame {
         loop {
             for n in (stack_base_index + 1)..self.notes.len() {
                 let obj = &self.notes[stack_base_index];
-                if obj.note_type() == NoteType::Spinner {break}
+                if obj.note_type() == NoteType::Spinner { break }
 
                 let obj_n = &self.notes[n];
-                if obj_n.note_type() == NoteType::Spinner {break}
+                if obj_n.note_type() == NoteType::Spinner { break }
 
                 let stack_threshhold = obj_n.get_preempt() * self.stack_leniency;
 
@@ -143,7 +143,7 @@ impl OsuGame {
 
     fn setup_hitwindows(&mut self) {
         // windows
-        let od = scale_by_mods(self.metadata.od, 0.5, 1.4, &self.mods).clamp(1.0, 10.0);
+        let od = Self::get_od(&self.metadata, &self.mods);
         let w_miss = map_difficulty(od, 225.0, 175.0, 125.0); // idk
         let w_50   = map_difficulty(od, 200.0, 150.0, 100.0);
         let w_100  = map_difficulty(od, 140.0, 100.0, 60.0);
@@ -183,7 +183,7 @@ impl OsuGame {
         ))
     }
 
-        
+
     #[inline]
     fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
         if mods.has_mod(Easy.name()) {
@@ -221,8 +221,9 @@ impl GameMode for OsuGame {
         
         let settings = get_settings!().standard_settings.clone();
 
-        let cs = scale_by_mods(metadata.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0);
-        let ar = scale_by_mods(metadata.ar, 0.5, 1.4, &mods).clamp(1.0, 11.0);
+        let cs = Self::get_cs(&metadata, &mods);
+        let ar = Self::get_ar(&metadata, &mods);
+        let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock.name())).await);
 
         let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
@@ -346,7 +347,7 @@ impl GameMode for OsuGame {
         
                     if let Some(note) = note {
                         let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
-                        s.notes.push(Box::new(StandardNote::new(
+                        s.notes.push(Box::new(OsuNote::new(
                             note.clone(),
                             ar,
                             color,
@@ -371,7 +372,7 @@ impl GameMode for OsuGame {
         
                             let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
                             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
-                            s.notes.push(Box::new(StandardNote::new(
+                            s.notes.push(Box::new(OsuNote::new(
                                 note,
                                 ar,
 
@@ -387,7 +388,7 @@ impl GameMode for OsuGame {
                             let depth = NOTE_DEPTH.start + (slider.time as f64 / end_time) * NOTE_DEPTH.end;
         
                             let curve = get_curve(slider, &map);
-                            s.notes.push(Box::new(StandardSlider::new(
+                            s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
                                 curve,
                                 ar,
@@ -403,10 +404,13 @@ impl GameMode for OsuGame {
                         
                     }
                     if let Some(spinner) = spinner {
-                        s.notes.push(Box::new(StandardSpinner::new(
+                        let duration = spinner.end_time - spinner.time;
+                        let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+                        
+                        s.notes.push(Box::new(OsuSpinner::new(
                             spinner.clone(),
                             scaling_helper.clone(),
-                            diff_calc_only,
+                            (duration / 1000.0 * min_rps) as u16
                         ).await))
                     }
                     
@@ -619,21 +623,15 @@ impl GameMode for OsuGame {
                 // check if we missed the current note
                 match note.note_type() {
                     NoteType::Note => {
-                        trace!("note missed: {}-{}", time, end_time);
-
                         let j = OsuHitJudgments::Miss;
                         manager.add_judgment(&j).await;
 
                         Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
                     }
                     NoteType::Slider => {
-                        // let note_time = note.end_time(0.0);
-
                         // check slider release points
                         // internally checks distance
                         let judge = &note.check_release_points(time);
-
-                        // info!("slider end check: {:?}", judge);
                         manager.add_judgment(judge).await;
                         
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
@@ -658,7 +656,12 @@ impl GameMode for OsuGame {
                         }
                     }
 
-                    NoteType::Spinner => {}
+                    NoteType::Spinner => {
+                        let j = OsuHitJudgments::SpinnerMiss;
+                        manager.add_judgment(&j).await;
+
+                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
+                    }
 
                     _ => {},
                 }
@@ -1203,7 +1206,7 @@ impl StandardAutoHelper {
         }
     }
 
-    fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn StandardHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
+    fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
         let mut any_checked = false;
 
         let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);

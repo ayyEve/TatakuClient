@@ -515,13 +515,9 @@ impl IngameManager {
 
         // do score 
         let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
-        
-        // TODO: theres a way to do this with a match
-        let score_add = judgment.get_score(combo_mult);
-        if score_add < 0 {
-            self.score.score.score -= score_add.abs() as u64;
-        } else {
-            self.score.score.score += score_add as u64;
+        match judgment.get_score(combo_mult) {
+            score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
+            score @ 1.. => self.score.score.score += score as u64,
         }
 
         // do combo

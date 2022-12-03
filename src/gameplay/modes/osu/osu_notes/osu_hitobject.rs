@@ -2,15 +2,10 @@ use crate::prelude::*;
 use super::super::prelude::*;
 
 #[async_trait]
-pub trait StandardHitObject: HitObject {
+pub trait OsuHitObject: HitObject {
     /// return the window-scaled coords of this object at time
     fn pos_at(&self, time:f32) -> Vector2;
-    /// does this object count as a miss if it is not hit?
-    fn causes_miss(&self) -> bool; //TODO: might change this to return an enum of "no", "yes". "yes_combo_only" 
-    // fn get_points(&mut self, is_press:bool, time:f32, hit_windows:(f32,f32,f32,f32)) -> ScoreHit;
 
-
-    /// return negative for combo break
     fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {Vec::new()}
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
