@@ -54,11 +54,11 @@ pub struct GameWindow {
 
 impl GameWindow {
     pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: tokio::sync::mpsc::Sender<GameEvent>) -> Self {
-        GlobalObjectManager::update(Arc::new(WindowSize(Vector2::one() * 20.0)));
         let opengl = OpenGL::V4_5;
+        let window_size = WindowSizeHelper::new();
         
         // #[cfg(feature="desktop")] {
-            let mut window:InnerWindow = WindowSettings::new("Tataku!", [20, 20])
+            let mut window:InnerWindow = WindowSettings::new("Tataku!", [window_size.x as u32, window_size.y as u32])
                 .graphics_api(opengl)
                 // .resizable(false)
                 // .fullscreen(true) // this doesnt work?
@@ -133,7 +133,7 @@ impl GameWindow {
             window,
 
             window_event_receiver,
-            window_size: WindowSizeHelper::new(),
+            window_size,
 
             frametime_timer: now,
             input_timer: now,

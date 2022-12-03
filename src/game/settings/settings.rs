@@ -153,12 +153,9 @@ impl Settings {
 
         // check password hashes
         s.check_hashes();
-
-        // // set window size const
-        // WINDOW_SIZE.set(s.window_size.into()).unwrap();
         
         GlobalObjectManager::update(Arc::new(s.clone()));
-        // *super::SETTINGS_CHECK.write().unwrap() = Arc::new(s.clone());
+        GlobalObjectManager::update(Arc::new(WindowSize(s.window_size.into())));
 
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
