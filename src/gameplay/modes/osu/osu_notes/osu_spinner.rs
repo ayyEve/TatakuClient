@@ -15,6 +15,10 @@ pub struct StandardSpinner {
 
     /// current angle of the spinner
     rotation: f64,
+    /// Current and previous rotation windows.
+    rotation_windows: [f64; 2],
+    /// time start of current window
+    window_start: f32,
     /// how fast the spinner is spinning
     rotation_velocity: f64,
     mouse_pos: Vector2,
@@ -48,12 +52,14 @@ impl StandardSpinner {
         Self {
             pos: scaling_helper.scale_coords(FIELD_SIZE / 2.0),
             // def,
-            time, 
+            time,
             end_time,
             current_time: 0.0,
 
             holding: false,
             rotation: 0.0,
+            rotation_windows: [0.0; 2],
+            window_start: 0.0,
             rotation_velocity: 0.0,
             last_mouse_angle: 0.0,
             scaling_helper,
@@ -78,6 +84,8 @@ impl HitObject for StandardSpinner {
     fn note_type(&self) -> NoteType { NoteType::Spinner }
 
     async fn update(&mut self, beatmap_time: f32) {
+        const WINDOW_PERIOD_MILLIS: f64 = 1000.0;
+
         let mut diff = 0.0;
         let pos_diff = self.mouse_pos - self.pos;
         let mouse_angle = pos_diff.y.atan2(pos_diff.x);
@@ -91,9 +99,38 @@ impl HitObject for StandardSpinner {
             // fix diff (this is stupid)
             if diff > PI {diff -= 2.0 * PI}
             else if diff < -PI {diff += 2.0 * PI}
-            
-            self.rotation_velocity = diff / (beatmap_time - self.last_update) as f64;
-            self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+
+            // Sliding window algorithm
+            // Used to approximate rotation delta over
+            // longer time, without needing to store
+            // a queue of frame data.
+
+            let time_delta = (beatmap_time - self.window_start) as f64;
+            let ratio = time_delta / WINDOW_PERIOD_MILLIS;
+
+            if ratio >= 1.0 {
+                if ratio >= 2.0 {
+                    // Blank windows
+                    self.rotation_windows = [0.0; 2];
+                }
+                else {
+                    // Left shift
+                    self.rotation_windows[0] = self.rotation_windows[1];
+                    self.rotation_windows[1] = 0.0;
+                }
+            }
+
+            self.rotation_windows[1] += diff;
+
+            let current_window_proportion = ratio.fract();
+            let previous_window_proportion = 1.0 - current_window_proportion;
+
+            self.window_start = beatmap_time - WINDOW_PERIOD_MILLIS as f32 * current_window_proportion as f32;
+
+            let amount = self.rotation_windows[0] * previous_window_proportion + self.rotation_windows[1];
+
+            self.rotation_velocity = amount / WINDOW_PERIOD_MILLIS;
+            self.rotation += diff;
             // self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
             // self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
             // debug!("vel: {}", self.rotation_velocity);
@@ -161,7 +198,7 @@ impl HitObject for StandardSpinner {
                 Color::GREEN
             )));
         }
-        
+
         // draw a counter
         let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
         let mut txt = Text::new(
@@ -199,7 +236,7 @@ impl HitObject for StandardSpinner {
         }).await;
 
         self.spinner_background = IngameManager::load_texture_maybe("spinner-background", false, |i| {
-            // const SIZE:f64 = 667.0; 
+            // const SIZE:f64 = 667.0;
             i.initial_pos = pos;
             i.current_pos = pos;
             i.initial_scale = scale;
@@ -226,7 +263,7 @@ impl HitObject for StandardSpinner {
 #[async_trait]
 impl StandardHitObject for StandardSpinner {
     fn miss(&mut self) {}
-    fn was_hit(&self) -> bool { self.last_update >= self.end_time } 
+    fn was_hit(&self) -> bool { self.last_update >= self.end_time }
     fn get_preempt(&self) -> f32 { 0.0 }
     fn point_draw_pos(&self, _: f32) -> Vector2 { Vector2::zero() } //TODO
     fn causes_miss(&self) -> bool { self.rotations_completed < self.rotations_required } // if the spinner wasnt completed in time, cause a miss
@@ -243,7 +280,7 @@ impl StandardHitObject for StandardSpinner {
         self.scaling_helper = new_scale;
 
         for i in [
-            &mut self.spinner_circle, 
+            &mut self.spinner_circle,
             &mut self.spinner_bottom,
             &mut self.spinner_background,
             &mut self.spinner_approach,
@@ -257,13 +294,13 @@ impl StandardHitObject for StandardSpinner {
             }
         }
 
-    } 
+    }
 
     fn pos_at(&self, time: f32) -> Vector2 {
         // debug!("time: {}, {}, {}", time, self.time, self.end_time);
 
         if time < self.time || time >= self.end_time {
-            
+
             return self.pos
         }
 
@@ -282,7 +319,7 @@ impl StandardHitObject for StandardSpinner {
         // self.standard_settings = settings;
     }
 
-    
+
 
     fn set_ar(&mut self, _ar: f32) {
         // self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
