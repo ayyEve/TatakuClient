@@ -2,10 +2,8 @@ TODO!
 
 // builds
 update check, in-game notification
-remember to check features!!
 
 // gamemodes
-hire someone to fix osu spinners
 perf calc should take a score not an acc
 keep best perf score, not best score score
 
