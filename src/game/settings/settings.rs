@@ -145,7 +145,8 @@ impl Settings {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
                 // warn!("error reading settings.json, loading defaults");
-                NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
+                // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
+                warn!("Error reading settings.json\nLoading defaults, {e}");
                 backup_settings().await;
                 Settings::default()
             }
