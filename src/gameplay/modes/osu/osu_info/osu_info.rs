@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use super::*;
+use super::super::prelude::*;
 
 pub struct OsuGameInfo;
 #[async_trait]
@@ -38,9 +38,9 @@ impl GameModeInfo for OsuGameInfo {
 
         let mut txt = format!(
             "OD: {:.2}{symb} CS: {:.2}{symb} AR: {:.2}{symb} HP: {:.2}{symb}, Len: {}:{}", 
-            super::osu::get_od(info, mods),
-            super::osu::get_cs(info, mods),
-            super::osu::get_ar(info, mods),
+            OsuGame::get_od(info, mods),
+            OsuGame::get_cs(info, mods),
+            OsuGame::get_ar(info, mods),
             info.get_hp(mods),
             info.mins(speed), secs
         );
@@ -68,14 +68,14 @@ impl GameModeInfo for OsuGameInfo {
     }
 
     fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments> {
-        Box::new(super::OsuHitJudgments::Miss)
+        Box::new(OsuHitJudgments::Miss)
     }
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = super::osu::StandardGame::new(beatmap, false).await?;
+        let game = OsuGame::new(beatmap, false).await?;
         Ok(Box::new(game))
     }
     async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = super::diff_calc::OsuDifficultyCalculator::new(map).await?;
+        let calc = OsuDifficultyCalculator::new(map).await?;
         Ok(Box::new(calc))
     }
 

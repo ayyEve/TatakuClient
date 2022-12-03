@@ -1,9 +1,8 @@
 
-use super::super::TaikoGame;
 
 use crate::prelude::*;
+use super::super::prelude::*;
 use super::difficulty_hit_object::DifficultyHitObject;
-use super::super::FINISHER_LENIENCY;
 
 // how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;

@@ -4,6 +4,10 @@ use crate::prelude::*;
 pub trait GameModeInfo {
     fn new() -> Self where Self:Sized;
     fn display_name(&self) -> &str;
+    fn about(&self) -> &str { "No description" }
+    fn author(&self) -> &str { "No author?" }
+    fn author_contact(&self) -> &str { "No author contact" }
+    fn bug_report_url(&self) -> &str { "No bug report url" }
 
     
     fn calc_acc(&self, score: &Score) -> f64;

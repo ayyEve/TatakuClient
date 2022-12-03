@@ -1,11 +1,14 @@
-mod osu;
-mod osu_mods;
+mod osu_game;
 mod osu_info;
 mod osu_notes;
 mod diff_calc;
-mod osu_hit_judgments;
 
-pub use osu_mods::*;
 pub use osu_info::OsuGameInfo as GameInfo;
 
-pub(self) use osu_hit_judgments::OsuHitJudgments;
+/// import helper
+pub(self) mod prelude {
+    pub use super::osu_game::*;
+    pub use super::osu_info::*;
+    pub use super::osu_notes::*;
+    pub use super::diff_calc::OsuDifficultyCalculator;
+}

@@ -31,7 +31,6 @@ impl OsuHitJudgments {
     }
 }
 
-
 impl HitJudgments for OsuHitJudgments {
     fn variants(&self) -> Vec<Box<dyn HitJudgments>> {
         vec![

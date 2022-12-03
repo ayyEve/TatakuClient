@@ -1,7 +1,5 @@
 use std::{path::Path, fs::DirEntry};
 
-use serde::Deserialize;
-
 pub fn build_gamemodes() {
     // get all gamemodes in the folder
     let cd = std::env::current_dir().unwrap();
@@ -29,30 +27,13 @@ pub fn build_gamemodes() {
         let mode_folder = f.file_name().to_string_lossy().to_string();
         // eprintln!("adding gamemode {:?}", mode_folder);
 
-        let mut config = GameModeInfo::default();
-        let config_path = f.path().join(Path::new("./config.json"));
-        if config_path.exists() {
-            let f = std::fs::read(config_path).unwrap();
-            let conf:Option<GameModeInfo> = serde_json::from_slice(f.as_slice()).ok();
-            if let Some(conf) = conf {
-                config = conf
-            }
-        }
-
-        if let Some(true) = config.ignore { continue }
-
-
-        // used for identification
-        let internal_name = config.internal_name.unwrap_or(mode_folder.clone());
-
-        // // used when the user will see the mode string
-        // let display_name = config.display_name.unwrap_or(mode_folder.clone());
+        if mode_folder.starts_with("_") { continue }
 
         mods.push(format!("mod {};", mode_folder));
-        mode_list.push(format!("    \"{internal_name}\","));
+        mode_list.push(format!("    \"{mode_folder}\","));
 
         info_lines.push(
-            format!("        map.insert(\"{internal_name}\".to_owned(), Box::new({mode_folder}::GameInfo::new()));")
+            format!("        map.insert(\"{mode_folder}\".to_owned(), Box::new({mode_folder}::GameInfo::new()));")
         );
     }
 
@@ -92,30 +73,4 @@ pub fn get_gamemode_info(playmode: &String) -> Option<&Box<dyn GameModeInfo + Se
     }
 
     std::fs::write(path, output_file).unwrap();
-}
-
-
-#[allow(unused)]
-#[derive(Clone, Debug, Deserialize, Default)]
-struct GameModeInfo {
-    // internal stuff
-
-    /// name to use as identifier (ie osu, catch, taiko)
-    internal_name: Option<String>,
-    /// name to display to end user (ie Osu, Catch the Beat, Taiko)
-    display_name: Option<String>,
-    /// skip this gamemode? (helpful if mode is not ready to be shipped lol)
-    ignore: Option<bool>,
-
-    // meta about gamemode (to be implemented)
-
-    /// about this gamemode
-    about: Option<String>,
-
-    /// who made this gamemode
-    author: Option<String>,
-    /// how to contact this author
-    author_contact: Option<String>,
-    /// where to report bugs
-    bug_report_url: Option<String>,
 }

@@ -1,180 +1,8 @@
 use crate::prelude::*;
-use super::mania::PositionPoint;
-use super::mania::ManiaPlayfield;
+use super::super::prelude::*;
 
-const MANIA_NOTE_DEPTH: f64 = 100.0;
 const MANIA_SLIDER_DEPTH: f64 = 100.1;
 
-pub trait ManiaHitObject: HitObject {
-    fn hit(&mut self, time:f32);
-    fn release(&mut self, _time:f32) {}
-    fn miss(&mut self, time:f32);
-    fn was_hit(&self) -> bool { false }
-    fn get_hitsound(&self) -> &Vec<Hitsound>;
-
-    fn set_sv_mult(&mut self, sv: f64);
-    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>);
-    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>);
-    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>);
-}
-
-// note
-pub struct ManiaNote {
-    pos: Vector2,
-    relative_y: f64,
-    time: f32, // ms
-    column: u8,
-    color: Color,
-
-    hit_time: f32,
-    hit: bool,
-    missed: bool,
-    
-    position_function: Arc<Vec<PositionPoint>>,
-    position_function_index: usize,
-
-    sv_mult: f64,
-
-    playfield: Arc<ManiaPlayfield>,
-    note_image: Option<Image>,
-    mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-
-    hitsounds: Vec<Hitsound>
-}
-impl ManiaNote {
-    pub async fn new(
-        time:f32, column:u8, color: Color, x:f64, 
-        
-        sv_mult: f64,
-
-        playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
-
-        hitsounds: Vec<Hitsound>,
-    ) -> Self {
-        Self {
-            time,
-            position_function: Arc::new(Vec::new()),
-            relative_y: 0.0,
-            sv_mult,
-            column,
-            color,
-
-            hit_time: 0.0,
-            hit: false,
-            missed: false,
-            pos: Vector2::x_only(x),
-
-            playfield,
-            note_image:None,
-            position_function_index: 0,
-
-            mania_skin_settings,
-
-            hitsounds,
-        }
-    }
-
-    fn y_at(&mut self, time: f32) -> f64 {
-        let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
-
-        self.playfield.hit_y() - (self.relative_y - pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
-    }
-}
-#[async_trait]
-impl HitObject for ManiaNote {
-    fn note_type(&self) -> NoteType { NoteType::Note }
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
-
-    async fn update(&mut self, beatmap_time: f32) {
-        self.pos.y = self.y_at(beatmap_time);
-    }
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 {return list}
-        if self.hit {return list}
-        
-        
-        if let Some(img) = &self.note_image {
-            let mut img = img.clone();
-            
-            img.current_pos = self.pos;
-            img.current_scale = self.playfield.note_size() / img.tex_size();
-            list.push(Box::new(img));
-        } else {
-            list.push(Box::new(Rectangle::new(
-                self.color,
-                MANIA_NOTE_DEPTH,
-                self.pos,
-                self.playfield.note_size(),
-                Some(Border::new(Color::BLACK, self.playfield.note_border_width))
-            )));
-        }
-
-        list
-    }
-
-    async fn reset(&mut self) {
-        self.pos.y = 0.0;
-        self.hit_time = 0.0;
-        self.hit = false;
-        self.missed = false;
-        self.position_function_index = 0;
-    }
-
-    async fn reload_skin(&mut self) {
-        let mut note_image = None;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image;
-            
-            if let Some(path) = map.get(&self.column) {
-                if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    let mut img = img.clone();
-                    img.current_color = self.color;
-                    img.origin = Vector2::zero();
-                    img.depth = MANIA_NOTE_DEPTH;
-                    note_image = Some(img);
-                }
-            }
-        }
-
-        self.note_image = note_image;
-    }
-}
-impl ManiaHitObject for ManiaNote {
-    fn hit(&mut self, time:f32) {
-        self.hit = true;
-        self.hit_time = time;
-    }
-    fn miss(&mut self, time:f32) {
-        self.missed = true;
-        self.hit_time = time;
-    }
-
-    fn set_sv_mult(&mut self, sv: f64) {
-        self.sv_mult = sv;
-    }
-
-    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
-        self.position_function = p;
-
-        self.relative_y = pos_at(&self.position_function, self.time, &mut 0);
-    }
-    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
-        self.playfield = playfield;
-        self.pos.x = self.playfield.col_pos(self.column);
-    }
-
-    fn get_hitsound(&self) -> &Vec<Hitsound> {
-        &self.hitsounds
-    }
-    
-    fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
-        self.mania_skin_settings = settings;
-    }
-}
-
-// slider
 pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
@@ -252,7 +80,7 @@ impl ManiaHold {
         let rel_start = self.start_relative_pos;
         let rel_end = self.end_relative_pos;
 
-        let mut a = |y| self.playfield.hit_y() - (y - pos_at(&self.position_function, beatmap_time, &mut self.position_function_index)) * speed;
+        let mut a = |y| self.playfield.hit_y() - (y - ManiaGame::pos_at(&self.position_function, beatmap_time, &mut self.position_function_index)) * speed;
 
         (a(rel_start), a(rel_end))
     }
@@ -295,8 +123,7 @@ impl HitObject for ManiaHold {
         }
 
     }
-    async fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -394,7 +221,6 @@ impl HitObject for ManiaHold {
         //     )));
         // }
 
-        list
     }
 
     async fn reset(&mut self) {
@@ -482,8 +308,8 @@ impl ManiaHitObject for ManiaHold {
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.start_relative_pos = pos_at(&self.position_function, self.time, &mut 0);
-        self.end_relative_pos = pos_at(&self.position_function, self.end_time, &mut 0);
+        self.start_relative_pos = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
+        self.end_relative_pos = ManiaGame::pos_at(&self.position_function, self.end_time, &mut 0);
     }
     
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
@@ -499,17 +325,4 @@ impl ManiaHitObject for ManiaHold {
     fn set_skin_settings(&mut self, settings: Option<Arc<ManiaSkinSettings>>) {
         self.mania_skin_settings = settings;
     }
-}
-
-pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
-    let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
-        .unwrap_or_else(|| {
-            (position_function.len() - 1, position_function.last().unwrap())
-        });
-    // warn!("time: {time}");
-    *current_index = index;
-    if index == 0 { return 0.0 }; // bad fix while neb fixes this
-    let a = &position_function[index - 1];
-
-    f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
 }

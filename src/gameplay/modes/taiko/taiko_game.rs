@@ -14,10 +14,10 @@
  *  hit indicators: -1
  *  judgement indicators: -2
  *  spinners: -5
- */
+*/
 
-use super::*;
 use crate::prelude::*;
+use super::prelude::*;
 
 /// timing bar color
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -37,6 +37,17 @@ const DRUM_LIFETIME_TIME:f32 = 100.0;
 pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
 pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
 pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
+
+
+const NOTE_DEPTH_RANGE:std::ops::Range<f64> = 0.0..1000.0;
+
+
+pub const FINISHER_LENIENCY:f32 = 20.0; // ms
+pub const NOTE_BORDER_SIZE:f64 = 2.0;
+
+pub const GRAVITY_SCALING:f32 = 400.0;
+
+
 
 pub struct TaikoGame {
     // lists
@@ -70,7 +81,6 @@ pub struct TaikoGame {
 impl TaikoGame {
     pub fn next_note(&mut self) { self.note_index += 1 }
 
-
     async fn play_sound(&self, manager: &mut IngameManager, note_time:f32,  hit_type: HitType, finisher: bool) {
         let hitsound;
         match (hit_type, finisher) {
@@ -94,7 +104,7 @@ impl TaikoGame {
     }
 
     async fn setup_hitwindows(&mut self) {
-        let od = get_od(&self.metadata, &self.current_mods);
+        let od = Self::get_od(&self.metadata, &self.current_mods);
 
         // windows
         let w_miss = map_difficulty(od, 135.0, 95.0, 70.0);
@@ -118,6 +128,64 @@ impl TaikoGame {
             }
         }
     }
+
+
+    fn add_hit_indicator(time: f32, mut hit_value: &TaikoHitJudgments, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
+        let pos = game_settings.hit_position + Vector2::y_only(game_settings.judgement_indicator_offset);
+
+        // if finisher, upgrade to geki or katu
+        if finisher_hit {
+            if let &TaikoHitJudgments::X100 = hit_value {
+                hit_value = &TaikoHitJudgments::Katu;
+            } else if let &TaikoHitJudgments::X300 = hit_value {
+                hit_value = &TaikoHitJudgments::Geki;
+            }
+        }
+
+        let color = hit_value.color();
+        let mut image = judgment_helper.get_from_scorehit(hit_value);
+        if let Some(image) = &mut image {
+            image.current_pos = pos;
+            image.depth = -2.0;
+
+            let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
+            let scale = Vector2::one() * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
+            image.initial_scale = scale;
+            image.current_scale = scale;
+        }
+
+        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+            pos, 
+            time,
+            -2.0,
+            game_settings.note_radius * 0.5 * if finisher_hit {game_settings.big_note_multiplier} else {1.0},
+            color,
+            image
+        ))
+    }
+
+    #[inline]
+    pub fn get_depth(time: f32) -> f64 {
+        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time as f64)
+    }
+
+    #[inline]
+    pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+        if mods.mods.contains(Easy.name()) {
+            val * ez_scale
+        } else if mods.mods.contains(HardRock.name()) {
+            val * hr_scale
+        } else {
+            val
+        }
+    }
+
+
+    #[inline]
+    pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+        Self::scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+
 }
 #[async_trait]
 impl GameMode for TaikoGame {
@@ -179,7 +247,7 @@ impl GameMode for TaikoGame {
 
                 // add notes
                 for note in beatmap.notes.iter() {
-                    let hit_type = if (note.hitsound & (2 | 8)) > 0 {super::HitType::Kat} else {super::HitType::Don};
+                    let hit_type = if (note.hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
                     let finisher = (note.hitsound & 4) > 0;
 
                     let note = Box::new(TaikoNote::new(
@@ -218,7 +286,7 @@ impl GameMode for TaikoGame {
                         let mut sound_types:Vec<(HitType, bool)> = Vec::new();
 
                         for hitsound in slider.edge_sounds.iter() {
-                            let hit_type = if (hitsound & (2 | 8)) > 0 {super::HitType::Kat} else {super::HitType::Don};
+                            let hit_type = if (hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
                             let finisher = (hitsound & 4) > 0;
                             sound_types.push((hit_type, finisher));
                         }
@@ -248,7 +316,7 @@ impl GameMode for TaikoGame {
                             if !(j < end_time + skip_period / 8.0) {break}
                         }
                     } else {
-                        let slider = Box::new(TaikoSlider::new(
+                        let slider = Box::new(TaikoDrumroll::new(
                             time, 
                             end_time, 
                             finisher, 
@@ -303,7 +371,7 @@ impl GameMode for TaikoGame {
 
                 // add notes
                 for note in beatmap.notes.iter() {
-                    let hit_type = super::HitType::Don;
+                    let hit_type = HitType::Don;
 
                     let note = Box::new(TaikoNote::new(
                         note.time,
@@ -396,7 +464,7 @@ impl GameMode for TaikoGame {
                 
                 // add whatever the last judgment was as a finisher score
                 manager.add_judgment(j).await;
-                add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
+                Self::add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
                 return;
             }
         }
@@ -418,7 +486,7 @@ impl GameMode for TaikoGame {
                         note.hit(time);
                     }
 
-                    add_hit_indicator(time, judge, false, &self.taiko_settings, &self.judgement_helper, manager);
+                    Self::add_hit_indicator(time, judge, false, &self.taiko_settings, &self.judgement_helper, manager);
                     
                     self.last_judgment = *judge;
                     self.next_note();
@@ -485,7 +553,7 @@ impl GameMode for TaikoGame {
 
                 let j = &TaikoHitJudgments::Miss;
                 manager.add_judgment(j).await;
-                add_hit_indicator(time, j, false, &self.taiko_settings, &self.judgement_helper, manager);
+                Self::add_hit_indicator(time, j, false, &self.taiko_settings, &self.judgement_helper, manager);
             }
 
             self.next_note();
@@ -579,7 +647,7 @@ impl GameMode for TaikoGame {
         )));
 
         // draw notes
-        for note in self.notes.iter_mut() { list.extend(note.draw(args).await) }
+        for note in self.notes.iter_mut() { note.draw(args, list).await }
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }
@@ -1091,40 +1159,6 @@ impl GameModeProperties for TaikoGame {
 }
 
 
-fn add_hit_indicator(time: f32, mut hit_value: &TaikoHitJudgments, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
-    let pos = game_settings.hit_position + Vector2::y_only(game_settings.judgement_indicator_offset);
-
-    // if finisher, upgrade to geki or katu
-    if finisher_hit {
-        if let &TaikoHitJudgments::X100 = hit_value {
-            hit_value = &TaikoHitJudgments::Katu;
-        } else if let &TaikoHitJudgments::X300 = hit_value {
-            hit_value = &TaikoHitJudgments::Geki;
-        }
-    }
-
-    let color = hit_value.color();
-    let mut image = judgment_helper.get_from_scorehit(hit_value);
-    if let Some(image) = &mut image {
-        image.current_pos = pos;
-        image.depth = -2.0;
-
-        let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
-        let scale = Vector2::one() * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
-        image.initial_scale = scale;
-        image.current_scale = scale;
-    }
-
-    manager.add_judgement_indicator(BasicJudgementIndicator::new(
-        pos, 
-        time,
-        -2.0,
-        game_settings.note_radius * 0.5 * if finisher_hit {game_settings.big_note_multiplier} else {1.0},
-        color,
-        image
-    ))
-}
-
 
 // timing bar struct
 //TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
@@ -1315,6 +1349,23 @@ pub enum TaikoHit {
     RightKat
 }
 
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HitType {
+    Don,
+    Kat
+}
+impl Into<HitType> for KeyPress {
+    fn into(self) -> HitType {
+        match self {
+            KeyPress::LeftKat|KeyPress::RightKat => HitType::Kat,
+            KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
+            _ => { panic!("non-taiko key while playing taiko") }
+        }
+    }
+}
+
+
 pub struct TaikoPlayfield {
     pub pos: Vector2,
     pub size: Vector2,
@@ -1356,19 +1407,3 @@ impl FullAltCounter {
 }
 
 
-#[inline]
-pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.mods.contains(Easy.name()) {
-        val * ez_scale
-    } else if mods.mods.contains(HardRock.name()) {
-        val * hr_scale
-    } else {
-        val
-    }
-}
-
-
-#[inline]
-pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-    scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
-}

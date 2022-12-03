@@ -1,16 +1,22 @@
 use std::ops::Range;
 
-use super::*;
 use crate::prelude::*;
-use super::osu_notes::*;
-use super::OsuHitJudgments;
+use super::prelude::*;
 
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
-pub const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
+const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
 const STACK_LENIENCY:u32 = 3;
 
-pub struct StandardGame {
+pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
+pub const NOTE_BORDER_SIZE:f64 = 2.0;
+pub const APPROACH_CIRCLE_MULT:f64 = 4.0;
+pub const PREEMPT_MIN:f32 = 450.0;
+
+pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
+
+
+pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn StandardHitObject>>,
 
@@ -54,7 +60,7 @@ pub struct StandardGame {
     metadata: Arc<BeatmapMeta>,
     mods: Arc<ModManager>
 }
-impl StandardGame {
+impl OsuGame {
     async fn playfield_changed(&mut self) {
         let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock.name())).await);
         self.apply_playfield(new_scale).await
@@ -152,10 +158,61 @@ impl StandardGame {
         ];
     }
 
+    
+    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
+        if !hit_value.should_draw() { return }
+
+        let color = hit_value.color();
+        let mut image = judgment_helper.get_from_scorehit(hit_value);
+        if let Some(image) = &mut image {
+            image.current_pos = pos;
+            image.depth = -2.0;
+
+            let scale = Vector2::one() * scaling_helper.scale;
+            image.initial_scale = scale;
+            image.current_scale = scale;
+        }
+
+        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+            pos, 
+            time,
+            -99999.99, // TODO: do this properly
+            CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
+            color,
+            image
+        ))
+    }
+
+        
+    #[inline]
+    fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
+        if mods.has_mod(Easy.name()) {
+            val * ez_scale
+        } else if mods.has_mod(HardRock.name()) {
+            val * hr_scale
+        } else {
+            val
+        }
+    }
+
+    #[inline]
+    pub fn get_ar(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+        Self::scale_by_mods(meta.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
+    }
+
+    #[inline]
+    pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+        Self::scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
+    }
+
+    #[inline]
+    pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
+        Self::scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
+    }
 }
 
 #[async_trait]
-impl GameMode for StandardGame {
+impl GameMode for OsuGame {
     async fn new(map:&Beatmap, diff_calc_only: bool) -> Result<Self, crate::errors::TatakuError> {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get();
@@ -423,7 +480,7 @@ impl GameMode for StandardGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
+                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -546,7 +603,7 @@ impl GameMode for StandardGame {
 
             for (add_combo, pos) in note.pending_combo() {
                 manager.add_judgment(&add_combo).await;
-                add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, manager);
+                Self::add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, manager);
             }
 
             // check if note was missed
@@ -567,7 +624,7 @@ impl GameMode for StandardGame {
                         let j = OsuHitJudgments::Miss;
                         manager.add_judgment(&j).await;
 
-                        add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
+                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
                     }
                     NoteType::Slider => {
                         // let note_time = note.end_time(0.0);
@@ -582,7 +639,7 @@ impl GameMode for StandardGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
+                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -683,7 +740,7 @@ impl GameMode for StandardGame {
 
         // draw notes
         for note in self.notes.iter_mut() {
-            list.extend(note.draw(args).await);
+            note.draw(args, list).await;
         }
 
         // draw follow points
@@ -825,8 +882,8 @@ impl GameMode for StandardGame {
         self.mods = mods;
 
         if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
-            let cs = get_cs(&self.metadata, &self.mods);
-            let ar = get_ar(&self.metadata, &self.mods);
+            let cs = Self::get_cs(&self.metadata, &self.mods);
+            let ar = Self::get_ar(&self.metadata, &self.mods);
             
             // use existing settings, we only want to change the cs
             let pos = self.scaling_helper.settings_offset;
@@ -844,7 +901,7 @@ impl GameMode for StandardGame {
 }
 
 #[async_trait]
-impl GameModeInput for StandardGame {
+impl GameModeInput for OsuGame {
 
     async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         if key == piston::Key::LCtrl {
@@ -1047,7 +1104,7 @@ impl GameModeInput for StandardGame {
 }
 
 #[async_trait]
-impl GameModeProperties for StandardGame {
+impl GameModeProperties for OsuGame {
     fn playmode(&self) -> PlayMode {"osu".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
     fn show_cursor(&self) -> bool {true}
@@ -1103,29 +1160,6 @@ impl GameModeProperties for StandardGame {
     
 }
 
-fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
-    if !hit_value.should_draw() { return }
-
-    let color = hit_value.color();
-    let mut image = judgment_helper.get_from_scorehit(hit_value);
-    if let Some(image) = &mut image {
-        image.current_pos = pos;
-        image.depth = -2.0;
-
-        let scale = Vector2::one() * scaling_helper.scale;
-        image.initial_scale = scale;
-        image.current_scale = scale;
-    }
-
-    manager.add_judgement_indicator(BasicJudgementIndicator::new(
-        pos, 
-        time,
-        -99999.99, // TODO: do this properly
-        CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
-        color,
-        image
-    ))
-}
 
 
 struct StandardAutoHelper {
@@ -1270,11 +1304,6 @@ impl StandardAutoHelper {
 
 
 
-const CIRCLE_RADIUS_BASE:f64 = 64.0;
-const NOTE_BORDER_SIZE:f64 = 2.0;
-
-pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
-
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
     /// scale setting in settings
@@ -1364,33 +1393,4 @@ impl ScalingHelper {
         if self.flip_vertical { v.y = FIELD_SIZE.y - v.y }
         v
     }
-}
-
-
-
-
-#[inline]
-fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-    if mods.has_mod(Easy.name()) {
-        val * ez_scale
-    } else if mods.has_mod(HardRock.name()) {
-        val * hr_scale
-    } else {
-        val
-    }
-}
-
-#[inline]
-pub fn get_ar(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-    scale_by_mods(meta.ar, 0.5, 1.4, mods).clamp(1.0, 11.0)
-}
-
-#[inline]
-pub fn get_od(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-    scale_by_mods(meta.od, 0.5, 1.4, mods).clamp(1.0, 10.0)
-}
-
-#[inline]
-pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
-    scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
 }

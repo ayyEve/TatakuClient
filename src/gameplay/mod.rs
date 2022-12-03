@@ -3,21 +3,19 @@ pub mod modes;
 // pub mod diff_calc;
 mod game_mode;
 mod ingame_manager;
-mod beatmap_structs;
 mod gameplay_helpers;
 
 pub use game_mode::*;
 pub use ingame_manager::*;
-pub use beatmap_structs::*;
 pub use gameplay_helpers::*;
 
 use crate::prelude::*;
+
 #[async_trait]
 pub trait DiffCalc: Send + Sync {
     async fn new(g: &BeatmapMeta) -> TatakuResult<Self> where Self:Sized;
     async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32>;
 }
-
 
 
 pub fn calc_acc(score: &Score) -> f64 {
@@ -26,6 +24,7 @@ pub fn calc_acc(score: &Score) -> f64 {
         .unwrap_or_default()
         .normal_or(1.0)
 }
+
 pub fn gamemode_display_name(playmode: &String) -> &str {
     get_gamemode_info(playmode)
         .map(|i|i.display_name())
@@ -64,3 +63,4 @@ pub async fn calc_diff(map: &BeatmapMeta, mode_override: String) -> TatakuResult
         .ok_or_else(||TatakuError::GameMode(GameModeError::UnknownGameMode))?
         .create_diffcalc(map).await
 }}
+

@@ -9,11 +9,12 @@
  */
 
 use crate::prelude::*;
-use super::mania_notes::*;
-use super::ManiaHitJudgments;
+use super::prelude::*;
 
 const FIELD_DEPTH:f64 = 110.0;
 const HIT_AREA_DEPTH: f64 = 99.9;
+
+pub const MANIA_NOTE_DEPTH: f64 = 100.0;
 
 // timing bar consts
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
@@ -191,6 +192,21 @@ impl ManiaGame {
             timing_bar.playfield_changed(playfield.clone());
         }
     }
+
+    
+    pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
+        let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
+            .unwrap_or_else(|| {
+                (position_function.len() - 1, position_function.last().unwrap())
+            });
+        // warn!("time: {time}");
+        *current_index = index;
+        if index == 0 { return 0.0 }; // bad fix while neb fixes this
+        let a = &position_function[index - 1];
+
+        f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
+    }
+
 }
 #[async_trait]
 impl GameMode for ManiaGame {
@@ -791,7 +807,7 @@ impl GameMode for ManiaGame {
 
         // draw notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() {list.extend(note.draw(args).await)}
+            for note in col.iter_mut() { note.draw(args, list).await}
         }
         // draw timing lines
         for tb in self.timing_bars.iter_mut() {list.extend(tb.draw(args))}
@@ -1156,14 +1172,14 @@ impl TimingBar {
     fn y_at(&mut self, time: f32) -> f64 {
         let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
 
-        self.playfield.hit_y() - (self.relative_y - super::mania_notes::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
+        self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
     }
 
     
     fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
         self.position_function = p;
 
-        self.relative_y = super::mania_notes::pos_at(&self.position_function, self.time, &mut 0);
+        self.relative_y = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
     }
 
     pub fn update(&mut self, time:f32) {
@@ -1259,6 +1275,7 @@ impl ManiaAutoHelper {
         }
     }
 }
+
 #[derive(Default, Copy, Clone)]
 struct AutoplayColumnState {
     pressed: bool,

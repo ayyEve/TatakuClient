@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use super::super::osu::*;
+use super::super::osu_game::*;
 
 
 const BUCKET_LENGTH:f32 = 500.0;
@@ -113,7 +113,7 @@ impl OsuDifficultyCalculator {
 impl DiffCalc for OsuDifficultyCalculator {
     async fn new(meta: &BeatmapMeta) -> TatakuResult<Self> {
         let g = Beatmap::from_metadata(meta)?;
-        let g = StandardGame::new(&g, true).await?;
+        let g = OsuGame::new(&g, true).await?;
         if g.notes.is_empty() { return Err(BeatmapError::InvalidFile.into()) }
 
         let mut notes = Vec::new();

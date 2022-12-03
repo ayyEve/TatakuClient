@@ -1,58 +1,47 @@
 use crate::prelude::*;
+use super::super::prelude::*;
 
-pub struct ManiaGameInfo;
+pub struct TaikoGameInfo;
 #[async_trait]
-impl GameModeInfo for ManiaGameInfo {
+impl GameModeInfo for TaikoGameInfo {
     fn new() -> Self { Self }
-    fn display_name(&self) -> &str { "Mania" }
+    fn display_name(&self) -> &str { "Taiko" }
 
-    /// from https://wiki.quavergame.com/docs/gameplay#accuracy
     fn calc_acc(&self, score: &Score) -> f64 {
-        let marv = score.judgments.get("geki").copy_or_default() as f64;
-        let perf = score.judgments.get("x300").copy_or_default() as f64;
-        let great = score.judgments.get("katu").copy_or_default() as f64;
-        let good = score.judgments.get("x100").copy_or_default() as f64;
-        let okay  = score.judgments.get("x50").copy_or_default() as f64;
+        let x100 = score.judgments.get("x100").copy_or_default() as f64;
+        let x300 = score.judgments.get("x300").copy_or_default() as f64;
         let miss = score.judgments.get("xmiss").copy_or_default() as f64;
-    
-        let top = [
-            marv * 1.0, // 100%
-            perf * 0.9825, // 98.25%
-            great * 0.65, // 65%
-            good * 0.25, // 25%
-            okay * -1.00, // -100%
-            miss * -0.50, // -50%
-        ].sum();
-    
-        let bottom = [
-            marv, 
-            perf, 
-            great, 
-            good, 
-            okay, 
-            miss
-        ].sum();
-    
-        top.max(0.0) / bottom
+
+        (x100 / 2.0 + x300) 
+        / (miss + x100 + x300)
     }
 
     fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![]
+        vec![
+            GameplayModGroup::new("Skill")
+                .with_mod(super::FullAlt)
+            ,
+            GameplayModGroup::new("Difficulty")
+                .with_mod(super::HardRock)
+                .with_mod(super::Easy)
+            ,
+        ]
     }
 
-
-    fn get_perf_calc(&self) -> PerformanceCalc where Self:Sized {
-        Box::new(|diff, acc| diff * (acc / 0.98).powi(6))
-    }
 
     fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
-        // let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
+        let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
         let mut secs = format!("{}", info.secs(speed));
         if secs.len() == 1 {secs = format!("0{}", secs)}
 
-        let mut txt = format!("Keys: {:0} Len: {}:{}", info.cs, info.mins(speed), secs);
+        let mut txt = format!(
+            "OD: {:.2}{symb} HP: {:.2}{symb}, Len: {}:{}", 
+            TaikoGame::get_od(info, mods),
+            info.get_hp(mods),
+            info.mins(speed), secs
+        );
 
         // make sure at least one has a value
         if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
@@ -77,14 +66,14 @@ impl GameModeInfo for ManiaGameInfo {
     }
 
     fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments> {
-        Box::new(super::ManiaHitJudgments::Miss)
+        Box::new(super::TaikoHitJudgments::Miss)
     }
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = super::mania::ManiaGame::new(beatmap, false).await?;
+        let game = TaikoGame::new(beatmap, false).await?;
         Ok(Box::new(game))
     }
     async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = super::diff_calc::ManiaDifficultyCalculator::new(map).await?;
+        let calc = TaikoDifficultyCalculator::new(map).await?;
         Ok(Box::new(calc))
     }
 

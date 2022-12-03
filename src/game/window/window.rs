@@ -73,7 +73,6 @@ impl GameWindow {
         // }
 
 
-
         let graphics = GlGraphics::new(opengl);
         debug!("done graphics");
 
