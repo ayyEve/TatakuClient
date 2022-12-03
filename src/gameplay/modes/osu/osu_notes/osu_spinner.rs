@@ -13,7 +13,9 @@ pub struct StandardSpinner {
     last_update: f32,
     current_time: f32,
 
-    /// current angle of the spinner
+    /// display rotation of the spinner (for display only)
+    display_rotation: f64,
+    /// current rotation of the spinner (for calc only)
     rotation: f64,
     /// Current and previous rotation windows.
     rotation_windows: [f64; 2],
@@ -57,6 +59,7 @@ impl StandardSpinner {
             current_time: 0.0,
 
             holding: false,
+            display_rotation: 0.0,
             rotation: 0.0,
             rotation_windows: [0.0; 2],
             window_start: 0.0,
@@ -97,8 +100,8 @@ impl HitObject for StandardSpinner {
                 diff = mouse_angle - self.last_mouse_angle;
             }
             // fix diff (this is stupid)
-            if diff > PI {diff -= 2.0 * PI}
-            else if diff < -PI {diff += 2.0 * PI}
+            if diff > PI { diff -= 2.0 * PI }
+            else if diff < -PI { diff += 2.0 * PI }
 
             // Sliding window algorithm
             // Used to approximate rotation delta over
@@ -130,12 +133,14 @@ impl HitObject for StandardSpinner {
             let amount = self.rotation_windows[0] * previous_window_proportion + self.rotation_windows[1];
 
             self.rotation_velocity = amount / WINDOW_PERIOD_MILLIS;
-            self.rotation += diff;
-            // self.rotation_velocity = f64::lerp(self.rotation_velocity, diff, 0.005 * (beatmap_time - self.last_update) as f64);
-            // self.rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
-            // debug!("vel: {}", self.rotation_velocity);
 
-            // debug!("rotation: {}, diff: {}", self.rotation, diff);
+            // update display rotation
+            self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+            self.display_rotation %= PI * 2.0;
+
+            // update calc rotation
+            self.rotation += diff;
+            self.rotation %= PI * 2.0;
         }
 
         self.last_mouse_angle = mouse_angle;
@@ -186,10 +191,10 @@ impl HitObject for StandardSpinner {
         // draw line to show rotation
         if let Some(mut i) = self.spinner_circle.clone() {
             i.current_scale = Vector2::one() * self.scaling_helper.scale;
-            i.current_rotation = self.rotation;
+            i.current_rotation = self.display_rotation;
             list.push(Box::new(i))
         } else {
-            let p2 = self.pos + Vector2::new(self.rotation.cos(), self.rotation.sin()) * SPINNER_RADIUS;
+            let p2 = self.pos + Vector2::new(self.display_rotation.cos(), self.display_rotation.sin()) * SPINNER_RADIUS;
             list.push(Box::new(Line::new(
                 self.pos,
                 p2,
@@ -218,7 +223,7 @@ impl HitObject for StandardSpinner {
 
     async fn reset(&mut self) {
         self.holding = false;
-        self.rotation = 0.0;
+        self.display_rotation = 0.0;
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
     }
