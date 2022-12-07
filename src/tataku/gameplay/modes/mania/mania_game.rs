@@ -16,11 +16,6 @@ const HIT_AREA_DEPTH: f64 = 99.9;
 
 pub const MANIA_NOTE_DEPTH: f64 = 100.0;
 
-// timing bar consts
-pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
-const BAR_HEIGHT:f64 = 4.0; // how tall is a timing bar
-const BAR_SPACING:f32 = 4.0; // how many beats between timing bars
-const BAR_DEPTH:f64 = -90.0;
 
 pub struct ManiaGame {
     map_meta: Arc<BeatmapMeta>,
@@ -207,7 +202,62 @@ impl ManiaGame {
         f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
     }
 
+
+
+    fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut IngameManager) {
+        let color = hit_value.color();
+        let image = None;
+        // let (color, image) = match hit_value {
+        //     Miss => (Color::RED, None),
+        //     Okay | Good => (Color::LIME, None),
+        //     Great | Marvelous => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
+        //     Perfect => Color::new(),
+        // };
+
+        let window_size = playfield.window_size;
+        
+        let total_width =column_count as f64 * playfield.column_width;
+        let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
+
+        let pos = Vector2::new(
+            x_offset + playfield.x_offset + if game_settings.judgements_per_column {
+                (playfield.column_width + playfield.column_spacing) * column as f64 + playfield.column_width / 2.0
+            } else {
+            ((playfield.column_width + playfield.column_spacing) * column_count as f64) / 2.0
+            },
+
+            if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {window_size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
+        );
+
+
+        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+            pos, 
+            time,
+            -2.0,
+            playfield.column_width / 2.0 * (2.0 / 3.0),
+            color,
+            image
+        ))
+    }
+
+
+    fn keypress2col(key: KeyPress) -> Option<usize> {
+        match key {
+            KeyPress::Mania1 => Some(0),
+            KeyPress::Mania2 => Some(1),
+            KeyPress::Mania3 => Some(2),
+            KeyPress::Mania4 => Some(3),
+            KeyPress::Mania5 => Some(4),
+            KeyPress::Mania6 => Some(5),
+            KeyPress::Mania7 => Some(6),
+            KeyPress::Mania8 => Some(7),
+            KeyPress::Mania9 => Some(8),
+            _ => None
+        }
+    }
+
 }
+
 #[async_trait]
 impl GameMode for ManiaGame {
     async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
@@ -333,6 +383,7 @@ impl GameMode for ManiaGame {
                 for i in all_mania_skin_settings.iter() {
                     if i.keys == s.column_count {
                         s.mania_skin_settings = Some(Arc::new(i.clone()));
+                        break;
                     }
                 }
 
@@ -585,7 +636,7 @@ impl GameMode for ManiaGame {
             }
         }
         s.end_time += 1000.0;
-        if diff_calc_only {
+        if !diff_calc_only {
             s.reload_skin().await;
         }
 
@@ -601,18 +652,7 @@ impl GameMode for ManiaGame {
         match frame {
             ReplayFrame::Press(key) => {
                 manager.key_counter.key_down(key);
-                let col:usize = match key {
-                    KeyPress::Mania1 => 0,
-                    KeyPress::Mania2 => 1,
-                    KeyPress::Mania3 => 2,
-                    KeyPress::Mania4 => 3,
-                    KeyPress::Mania5 => 4,
-                    KeyPress::Mania6 => 5,
-                    KeyPress::Mania7 => 6,
-                    KeyPress::Mania8 => 7,
-                    KeyPress::Mania9 => 8,
-                    _ => return
-                };
+                let Some(col) = Self::keypress2col(key) else { return };
                 // let hit_volume = get_settings!().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
@@ -635,7 +675,7 @@ impl GameMode for ManiaGame {
                     note.hit(time);
 
                     // add the judgment
-                    add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
+                    Self::add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
                     
                     // play the hit sound
 
@@ -662,23 +702,13 @@ impl GameMode for ManiaGame {
             }
             ReplayFrame::Release(key) => {
                 manager.key_counter.key_up(key);
-                let col:usize = match key {
-                    KeyPress::Mania1 => 0,
-                    KeyPress::Mania2 => 1,
-                    KeyPress::Mania3 => 2,
-                    KeyPress::Mania4 => 3,
-                    KeyPress::Mania5 => 4,
-                    KeyPress::Mania6 => 5,
-                    KeyPress::Mania7 => 6,
-                    KeyPress::Mania8 => 7,
-                    KeyPress::Mania9 => 8,
-                    _ => return
-                };
+                let Some(col) = Self::keypress2col(key) else { return };
+
                 *self.column_states.get_mut(col).unwrap() = false;
-                if self.column_indices[col] >= self.columns[col].len() {return}
+                if self.column_indices[col] >= self.columns[col].len() { return }
 
                 let note = &mut self.columns[col][self.column_indices[col]];
-                if time < note.time() - self.miss_window || time > note.end_time(self.miss_window) {return}
+                if time < note.time() - self.miss_window || time > note.end_time(self.miss_window) { return }
                 note.release(time);
 
                 if note.note_type() == NoteType::Hold {
@@ -691,7 +721,7 @@ impl GameMode for ManiaGame {
                         note.hit(time);
     
                         // add the judgment
-                        add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
+                        Self::add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
                         
                         // // play the hit sound
                         // play_sound!(sound);
@@ -751,7 +781,7 @@ impl GameMode for ManiaGame {
 
                 let j = &ManiaHitJudgments::Miss;
                 manager.add_judgment(j).await;
-                add_hit_indicator(time, col, j, self.column_count, &self.game_settings, &self.playfield, manager);
+                Self::add_hit_indicator(time, col, j, self.column_count, &self.game_settings, &self.playfield, manager);
                 self.next_note(col);
             }
         }   
@@ -759,6 +789,7 @@ impl GameMode for ManiaGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
+    
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
         let window_size = self.playfield.window_size;
 
@@ -867,7 +898,8 @@ impl GameMode for ManiaGame {
 
             loop {
                 // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
+                let measure = if tp_index < parent_tps.len() { parent_tps[tp_index].meter } else { 4 };
+                let next_bar_time = beatmap.beat_length_at(time, false) * measure as f32;
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 {
@@ -1096,122 +1128,6 @@ impl Drop for ManiaGame {
     }
 }
 
-
-fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut IngameManager) {
-    let color = hit_value.color();
-    let image = None;
-    // let (color, image) = match hit_value {
-    //     Miss => (Color::RED, None),
-    //     Okay | Good => (Color::LIME, None),
-    //     Great | Marvelous => (Color::new(0.0, 0.7647, 1.0, 1.0), None),
-    //     Perfect => Color::new(),
-    // };
-
-    let window_size = playfield.window_size;
-    
-    let total_width =column_count as f64 * playfield.column_width;
-    let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
-
-    let pos = Vector2::new(
-        x_offset + playfield.x_offset + if game_settings.judgements_per_column {
-            (playfield.column_width + playfield.column_spacing) * column as f64 + playfield.column_width / 2.0
-        } else {
-           ((playfield.column_width + playfield.column_spacing) * column_count as f64) / 2.0
-        },
-
-        if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {window_size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
-    );
-
-
-    manager.add_judgement_indicator(BasicJudgementIndicator::new(
-        pos, 
-        time,
-        -2.0,
-        playfield.column_width / 2.0 * (2.0 / 3.0),
-        color,
-        image
-    ))
-}
-
-
-// timing bar struct
-//TODO: might be able to reduce this to a (time, speed) and just calc pos on draw
-#[derive(Clone)]
-struct TimingBar {
-    time: f32,
-    speed: f64,
-    pos: Vector2,
-    size: Vector2,
-
-    playfield: Arc<ManiaPlayfield>,
-
-    relative_y: f64,
-    position_function: Arc<Vec<PositionPoint>>,
-    position_function_index: usize,
-}
-impl TimingBar {
-    pub fn new(time:f32, width:f64, x:f64, playfield: Arc<ManiaPlayfield>) -> TimingBar {
-        TimingBar {
-            time, 
-            size: Vector2::new(width, BAR_HEIGHT),
-            speed: 1.0,
-            pos: Vector2::new(x, 0.0),
-            relative_y: 0.0,
-
-            position_function: Arc::new(Vec::new()),
-            position_function_index: 0,
-
-            playfield
-        }
-    }
-
-    pub fn set_sv(&mut self, sv:f64) {
-        self.speed = sv;
-    }
-
-    fn y_at(&mut self, time: f32) -> f64 {
-        let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
-
-        self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
-    }
-
-    
-    fn set_position_function(&mut self, p: Arc<Vec<PositionPoint>>) {
-        self.position_function = p;
-
-        self.relative_y = ManiaGame::pos_at(&self.position_function, self.time, &mut 0);
-    }
-
-    pub fn update(&mut self, time:f32) {
-        self.pos.y = self.y_at(time);
-        
-        // (self.playfield.hit_y() + self.playfield.note_size().y-self.size.y) - ((self.time - time) * self.speed) as f64;
-        // self.pos = HIT_POSITION + Vector2::new(( - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
-    }
-
-    fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut renderables: Vec<Box<dyn Renderable>> = Vec::new();
-        if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return renderables }
-
-        renderables.push(Box::new(Rectangle::new(
-            BAR_COLOR,
-            BAR_DEPTH,
-            self.pos + Vector2::y_only(self.playfield.note_size().y),
-            self.size,
-            None
-        )));
-
-        renderables
-    }
-
-    fn reset(&mut self) {
-        self.position_function_index = 0;
-    }
-    
-    fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
-        self.playfield = playfield;
-    }
-}
 
 
 // TODO: document whatever the hell is happening here
