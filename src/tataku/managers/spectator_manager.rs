@@ -240,7 +240,7 @@ impl SpectatorManager {
                         if self.buffered_score_frames.len() > 0 {
                             manager.score = IngameScore::new(self.buffered_score_frames.last().unwrap().clone().1, true, false);
                         }
-                        let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone());
+                        let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
                         score_menu.dont_do_menu = true;
                         self.score_menu = Some(score_menu);
 

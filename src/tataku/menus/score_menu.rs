@@ -19,8 +19,11 @@ pub struct ScoreMenu {
     score_mods: String,
 
     beatmap: Arc<BeatmapMeta>,
-    back_button: MenuButton<Font2, Text>,
-    replay_button: MenuButton<Font2, Text>,
+
+    buttons: Vec<MenuButton<Font2, Text>>,
+    // back_button: MenuButton<Font2, Text>,
+    // replay_button: MenuButton<Font2, Text>,
+
     graph: Graph<Font2, Text>,
 
     // cached
@@ -39,11 +42,10 @@ pub struct ScoreMenu {
     score_submit_response: Option<SubmitResponse>,
 }
 impl ScoreMenu {
-    pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>) -> ScoreMenu {
+    pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
         let window_size = WindowSize::get();
         let hit_error = score.hit_error();
         let font = get_font();
-        let back_button = MenuButton::back_button(window_size.0, font.clone());
 
         let graph = Graph::new(
             Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
@@ -60,7 +62,7 @@ impl ScoreMenu {
         let mut hit_counts = Vec::new();
         for judge in judgments.iter() {
             let txt = judge.as_str_display();
-            if txt.is_empty() {continue}
+            if txt.is_empty() { continue }
 
             let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
 
@@ -71,8 +73,26 @@ impl ScoreMenu {
         }
 
         // extract mods
-        let mut score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode); //(score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
+        let mut score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
         if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
+
+        let mut buttons = Vec::new();
+
+        let mut back_button = MenuButton::back_button(window_size.0, font.clone());
+        back_button.set_tag("back");
+
+        let mut replay_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", font.clone());
+        replay_button.set_tag("replay");
+        
+        if allow_retry {
+            let mut retry_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0)*2.0, back_button.size(), "Retry", font.clone());
+            retry_button.set_tag("retry");
+            buttons.push(retry_button);
+        }
+
+        buttons.push(replay_button);
+        buttons.push(back_button);
+
 
         ScoreMenu {
             score: score.clone(),
@@ -81,8 +101,7 @@ impl ScoreMenu {
             beatmap,
             hit_error,
             graph,
-            replay_button: MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", font.clone()),
-            back_button,
+            buttons,
 
             dont_do_menu: false,
             should_close: false,
@@ -116,7 +135,6 @@ impl ScoreMenu {
     }
 
     async fn do_replay(&mut self, game: &mut Game, mut replay: Replay) {
-
         // game.menus.get("beatmap").unwrap().lock().on_change(false);
         // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
         match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
@@ -131,6 +149,15 @@ impl ScoreMenu {
         }
     }
 
+    async fn retry(&mut self, game: &mut Game) {
+        match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
+            Ok(manager) => {
+                game.queue_state_change(GameState::Ingame(manager));
+            },
+            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+        }
+    }
+ 
 }
 
 #[async_trait]
@@ -200,14 +227,16 @@ impl AsyncMenu<Game> for ScoreMenu {
             self.score_mods.clone(),
         ] {
             if !str.is_empty() {
-                list.push(Box::new(Text::new(
-                    Color::BLACK,
-                    depth + 1.0,
-                    current_pos,
-                    30,
-                    str,
-                    font.clone()
-                )));
+                if !str.contains("NaN") {
+                    list.push(Box::new(Text::new(
+                        Color::BLACK,
+                        depth + 1.0,
+                        current_pos,
+                        30,
+                        str,
+                        font.clone()
+                    )));
+                }
 
                 current_pos += size;
             } else {
@@ -251,8 +280,9 @@ impl AsyncMenu<Game> for ScoreMenu {
 
 
         // draw buttons
-        self.back_button.draw(args, Vector2::zero(), depth, &mut list);
-        self.replay_button.draw(args, Vector2::zero(), depth, &mut list);
+        for b in self.buttons.iter_mut() {
+            b.draw(args, Vector2::zero(), depth, &mut list)
+        }
 
 
         // graph
@@ -269,21 +299,25 @@ impl AsyncMenu<Game> for ScoreMenu {
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
-        if self.replay_button.on_click(pos, button, mods) {
-            // self.beatmap.lock().reset();
-            self.replay(game).await;
-            return;
-        }
 
-        if self.back_button.on_click(pos, button, mods) {
-            self.close(game)
+        for b in self.buttons.iter_mut() {
+            if b.on_click(pos, button, mods) {
+                match &*b.get_tag() {
+                    "back" => self.close(game),
+                    "replay" => self.replay(game).await,
+                    "retry" => self.retry(game).await,
+                    _ => {}
+                }
+
+                break;
+            }
         }
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
-        self.replay_button.on_mouse_move(pos);
-        self.back_button.on_mouse_move(pos);
-        self.graph.on_mouse_move(pos);
+        for b in self.buttons.iter_mut() {
+            b.on_mouse_move(pos);
+        }
     }
 
     async fn on_key_press(&mut self, key:piston::Key, game: &mut Game, _mods:KeyModifiers) {
@@ -363,8 +397,9 @@ impl ControllerInputMenu<Game> for ScoreMenu {
         }
 
         if changed {
-            self.replay_button.set_selected(self.selected_index == 0);
-            self.back_button.set_selected(self.selected_index == 1);
+            for (n, button) in self.buttons.iter_mut().enumerate() {
+                button.set_selected(self.selected_index == n);
+            }
         }
 
         if let Some(ControllerButton::A) = controller.map_button(button) {
@@ -376,6 +411,10 @@ impl ControllerInputMenu<Game> for ScoreMenu {
                 1 => {
                     // back
                     self.close(game);
+                },
+                2 => {
+                    // retry
+                    self.retry(game).await;
                 },
                 _ => {}
             }

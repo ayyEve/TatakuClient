@@ -978,7 +978,7 @@ impl Game {
 
                 // move to a score menu with this as the score
                 let score = IngameScore::new(score.clone(), false, false);
-                let mut menu = ScoreMenu::new(&score, map);
+                let mut menu = ScoreMenu::new(&score, map, false);
                 menu.replay = Some(replay);
                 self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
             } else {
@@ -1031,7 +1031,7 @@ impl Game {
                 self.queue_state_change(GameState::InMenu(menu));
             } else {
                 // show score menu
-                let mut menu = ScoreMenu::new(&score, manager.metadata.clone());
+                let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
                 menu.replay = Some(replay.clone());
                 menu.score_submit = score_submit;
                 self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));

@@ -379,7 +379,7 @@ impl BeatmapSelectMenu {
                 let score = score.lock().await.clone();
 
                 if let Some(selected) = &BEATMAP_MANAGER.read().await.current_beatmap {
-                    let menu = ScoreMenu::new(&score, selected.clone());
+                    let menu = ScoreMenu::new(&score, selected.clone(), false);
                     game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                 }
             }
