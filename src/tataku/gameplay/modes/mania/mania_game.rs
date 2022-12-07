@@ -10,7 +10,6 @@
 
 use crate::prelude::*;
 use super::prelude::*;
-use crate::tataku::beatmaps::quaver::QuaverSliderVelocity;
 
 const FIELD_DEPTH:f64 = 110.0;
 const HIT_AREA_DEPTH: f64 = 99.9;

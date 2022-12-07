@@ -2,7 +2,6 @@ use std::ops::Range;
 
 use crate::prelude::*;
 use super::prelude::*;
-use crate::osu::get_curve;
 
 const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 const SLIDER_DEPTH:Range<f64> = 200.0..300.0;

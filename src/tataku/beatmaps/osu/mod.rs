@@ -1,8 +1,12 @@
 mod curve;
+mod osu_replay;
 mod osu_beatmap;
 pub mod storyboard;
-pub mod hitobject_defs;
-pub mod replay_converter;
+mod hitobject_defs;
+mod osu_replay_converter;
 
 pub use curve::*;
+pub use osu_replay::*;
 pub use osu_beatmap::*;
+pub use hitobject_defs::*;
+pub use osu_replay_converter::*;

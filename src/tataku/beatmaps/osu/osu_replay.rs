@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::tataku::beatmaps::osu::replay_converter::OsuReplay;
 
 #[derive(Debug)]
 pub struct OsuReplayDownloader(Score, u64);
@@ -42,3 +41,5 @@ impl ReplayDownloader for OsuReplayDownloader {
         }
     }
 }
+
+

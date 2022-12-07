@@ -237,7 +237,7 @@ pub async fn read_other_game_replay(path: impl AsRef<Path>) -> TatakuResult<Repl
         Some("ttkr") => Ok(open_database(path.to_str().unwrap())?.read::<Replay>()?),
 
         // osu replay
-        Some("osr") => Ok(crate::tataku::beatmaps::osu::replay_converter::convert_osu_replay(path)?),
+        Some("osr") => Ok(convert_osu_replay(path)?),
 
         _ => Err(TatakuError::String("Unknown replay file".to_owned()))
     }

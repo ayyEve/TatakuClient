@@ -1,13 +1,12 @@
 use crate::prelude::*;
 
 mod common;
-mod replay_helpers;
 
-pub mod osu;
-pub mod quaver;
-pub mod adofai;
-pub mod u_typing;
-pub mod stepmania;
+mod osu;
+mod quaver;
+mod adofai;
+mod u_typing;
+mod stepmania;
 
 use osu::OsuBeatmap;
 use quaver::QuaverBeatmap;
@@ -15,9 +14,13 @@ use adofai::AdofaiBeatmap;
 use u_typing::UTypingBeatmap;
 use stepmania::StepmaniaBeatmap;
 
+
+pub use osu::*;
 pub use common::*;
-pub use replay_helpers::*;
-pub use osu::hitobject_defs::*;
+pub use quaver::*;
+pub use adofai::*;
+pub use u_typing::*;
+pub use stepmania::*;
 
 pub enum Beatmap {
     /// used for defaults

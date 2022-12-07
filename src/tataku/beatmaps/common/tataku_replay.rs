@@ -1,5 +1,11 @@
 use crate::prelude::*;
 
+
+#[async_trait]
+pub trait ReplayDownloader: Send + Sync + std::fmt::Debug {
+    async fn get_replay(&self) -> TatakuResult<Replay>;
+}
+
 #[derive(Debug)]
 pub struct TatakuReplayDownloader(u64, Option<String>);
 

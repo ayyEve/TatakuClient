@@ -1,5 +1,4 @@
 use crate::prelude::*;
-// use crate::beatmaps::osu::hitobject_defs::{CurveType, SliderDef};
 
 #[derive(Copy, Clone, Debug)]
 pub struct CurveLine {
