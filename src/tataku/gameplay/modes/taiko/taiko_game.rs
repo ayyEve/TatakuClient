@@ -432,6 +432,11 @@ impl GameMode for TaikoGame {
             KeyPress::RightKat => TaikoHit::RightKat,
             _ => TaikoHit::LeftKat
         };
+        
+        match hit_type {
+            TaikoHit::LeftDon | TaikoHit::LeftKat => manager.add_stat(TaikoStatLeftPresses, 1.0),
+            TaikoHit::RightDon | TaikoHit::RightKat => manager.add_stat(TaikoStatRightPresses, 1.0),
+        }
 
         // check fullalt
         if manager.current_mods.has_mod(FullAlt.name()) {
@@ -439,6 +444,7 @@ impl GameMode for TaikoGame {
                 return;
             }
         }
+
 
         // draw drum
         *self.hit_cache.get_mut(&hit_type).unwrap() = time;

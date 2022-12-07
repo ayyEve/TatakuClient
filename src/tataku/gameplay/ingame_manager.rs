@@ -597,6 +597,11 @@ impl IngameManager {
         self.judgement_indicators.push(Box::new(indicator))
     }
 
+
+    pub fn add_stat(&mut self, stat: impl GameModeStat, value: f32) {
+        self.score.stats.insert(stat, value)
+    }
+
 }
 
 // getters, setters, properties
@@ -852,6 +857,10 @@ impl IngameManager {
         CursorManager::set_visible(true);
         CursorManager::show_system_cursor(false);
         CursorManager::set_ripple_override(None);
+
+        // let info = get_gamemode_info(&self.score.playmode).unwrap();
+        // let groups = self.score.stats.into_groups(&info.get_stat_groups());
+        // println!("{groups:#?}")
     }
     
     pub fn make_menu_background(&mut self) {

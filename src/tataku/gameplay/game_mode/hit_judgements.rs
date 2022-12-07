@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 
 pub trait HitJudgments: Send + Sync {

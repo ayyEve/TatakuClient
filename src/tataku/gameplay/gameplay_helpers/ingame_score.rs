@@ -14,12 +14,7 @@ pub struct IngameScore {
     pub replay_location: ReplayLocation,
 
     // snapshots
-    /// time, acc
-    pub accs: Vec<(f32, f32)>,
-    /// time, health
-    pub healths: Vec<(f32, f32)>,
-    /// time, perf
-    pub perfs: Vec<(f32, f32)>,
+    pub stats: GameplayStats,
 }
 impl IngameScore {
     pub fn new(score: Score, is_current: bool, is_previous: bool) -> Self {
@@ -28,10 +23,7 @@ impl IngameScore {
             is_current,
             is_previous,
             replay_location: ReplayLocation::Local,
-
-            accs: Vec::new(),
-            healths: Vec::new(),
-            perfs: Vec::new()
+            stats: GameplayStats::default(),
         }
     }
 
@@ -60,11 +52,6 @@ impl IngameScore {
         None
     }
 
-    pub fn take_snapshot(&mut self, time: f32, health: f32) {
-        self.accs.push((time, self.score.accuracy as f32));
-        self.healths.push((time, health));
-        self.perfs.push((time, self.score.performance));
-    }
 }
 
 #[derive(Clone, Debug)]

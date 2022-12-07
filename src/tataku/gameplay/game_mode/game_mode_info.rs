@@ -20,6 +20,7 @@ pub trait GameModeInfo {
         })
     }
     fn get_mods(&self) -> Vec<GameplayModGroup> { Vec::new() }
+    fn get_stat_groups(&self) -> Vec<StatGroup> { Vec::new() }
     fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments>;
     fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String;
     

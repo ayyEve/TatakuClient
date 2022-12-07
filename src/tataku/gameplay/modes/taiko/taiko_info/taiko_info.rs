@@ -28,6 +28,13 @@ impl GameModeInfo for TaikoGameInfo {
         ]
     }
 
+    fn get_stat_groups(&self) -> Vec<StatGroup> {
+        vec![
+            StatGroup::new("press_counters")
+                .with_stat(TaikoStatLeftPresses)
+                .with_stat(TaikoStatRightPresses)
+        ]
+    }
 
     fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
