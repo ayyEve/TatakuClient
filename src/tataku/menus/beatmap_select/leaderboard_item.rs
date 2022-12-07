@@ -25,7 +25,7 @@ impl LeaderboardItem {
     pub fn new(score:IngameScore) -> LeaderboardItem {
         let tag = score.hash(); //username.clone();
         let font = get_font();
-        let score_mods = ModManager::short_mods_string(score.mods(), false);
+        let score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
 
         LeaderboardItem {
             pos: Vector2::zero(),

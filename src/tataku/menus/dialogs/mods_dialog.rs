@@ -110,7 +110,7 @@ struct ModButton {
 impl ModButton {
     fn new(pos: Vector2, gameplay_mod: Box<dyn GameplayMod>, current_mods: &ModManager) -> Self {
         let enabled = current_mods.has_mod(gameplay_mod.name());
-        let mod_name = mod_name_fixed(gameplay_mod.name());
+        let mod_name = gameplay_mod.display_name().to_owned();
 
         Self {
             size: Vector2::new(500.0, 50.0),
@@ -164,17 +164,4 @@ impl ScrollableItem for ModButton {
 
         self.hover
     }
-}
-
-
-fn mod_name_fixed(m: &str) -> String {
-    m
-    .split("_")
-    .map(|s| {
-        let mut chars = s.chars();
-        let first = chars.next().unwrap().to_uppercase().to_string();
-        first + &chars.map(|c|c.to_string()).collect::<Vec<String>>().join("")
-    })
-    .collect::<Vec<String>>()
-    .join(" ")
 }

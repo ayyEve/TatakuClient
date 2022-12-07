@@ -71,7 +71,7 @@ impl ScoreMenu {
         }
 
         // extract mods
-        let mut score_mods = ModManager::short_mods_string(score.mods(), false); //(score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
+        let mut score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode); //(score.mods_string.as_ref()).map(|s| serde_json::from_str::<ModManager>(s).unwrap_or_default().mods_list_string_no_speed()).unwrap_or_default();
         if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
 
         ScoreMenu {

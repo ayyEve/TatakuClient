@@ -1,6 +1,9 @@
 
 pub trait GameplayMod: Send + Sync {
     fn name(&self) -> &'static str;
+    fn short_name(&self) -> &'static str;
+    fn display_name(&self) -> &'static str;
+
     fn description(&self) -> &'static str { "No description provided :c" }
     fn texture_name(&self) -> &'static str { self.name() }
     
@@ -33,6 +36,9 @@ impl GameplayModGroup {
 pub struct Autoplay;
 impl GameplayMod for Autoplay {
     fn name(&self) -> &'static str { "autoplay" }
+    fn short_name(&self) -> &'static str {"AT" }
+    fn display_name(&self) -> &'static str { "Autoplay" }
+
     fn description(&self) -> &'static str { "Let the game play for you!" }
     fn score_multiplier(&self) -> f32 { 0.0 }
 }
@@ -40,6 +46,8 @@ impl GameplayMod for Autoplay {
 pub struct NoFail;
 impl GameplayMod for NoFail {
     fn name(&self) -> &'static str { "no_fail" }
+    fn short_name(&self) -> &'static str { "NF" }
+    fn display_name(&self) -> &'static str { "No Fail" }
     fn description(&self) -> &'static str { "Even if you fail, you don't!" }
 
     fn removes(&self) -> &'static [&'static str] {
@@ -52,7 +60,10 @@ impl GameplayMod for NoFail {
 pub struct SuddenDeath;
 impl GameplayMod for SuddenDeath {
     fn name(&self) -> &'static str { "sudden_death" }
+    fn short_name(&self) -> &'static str { "SD" }
+    fn display_name(&self) -> &'static str { "Sudden Death" }
     fn description(&self) -> &'static str { "Insta-fail if you miss" }
+
     fn removes(&self) -> &'static [&'static str] {
         &[
             "no_fail",
@@ -63,7 +74,10 @@ impl GameplayMod for SuddenDeath {
 pub struct Perfect;
 impl GameplayMod for Perfect {
     fn name(&self) -> &'static str { "perfect" }
+    fn short_name(&self) -> &'static str { "PF" }
+    fn display_name(&self) -> &'static str { "Perfect" }
     fn description(&self) -> &'static str { "Insta-fail if you do any less than perfect" }
+
     fn removes(&self) -> &'static [&'static str] {
         &[
             "no_fail",

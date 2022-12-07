@@ -31,31 +31,63 @@ impl ModManager {
         GlobalObjectManager::get::<Self>().unwrap().as_ref().clone()
     }
 
-    pub fn short_mods_string(mods: HashSet<String>, none_if_empty: bool) -> String {
+    pub fn mods_for_playmode(playmode: &String) -> Vec<Box<dyn GameplayMod>> {
+        let Some(info) = get_gamemode_info(playmode) else { return Vec::new() };
+
+        default_mod_groups()
+            .into_iter()
+            .chain(info.get_mods().into_iter())
+            .map(|m|m.mods)
+            .flatten()
+            .collect::<Vec<_>>()
+    }
+    pub fn mods_for_playmode_as_hashmap(playmode: &String) -> HashMap<String, Box<dyn GameplayMod>> {
+        let Some(info) = get_gamemode_info(playmode) else { return HashMap::new() };
+
+        default_mod_groups()
+            .into_iter()
+            .chain(info.get_mods().into_iter())
+            .map(|m|m.mods)
+            .flatten()
+            .map(|m|(m.name().to_owned(), m))
+            .collect()
+    }
+
+    pub fn short_mods_string(mods: HashSet<String>, none_if_empty: bool, playmode: &String) -> String {
         if mods.len() == 0 {
             if none_if_empty { return "None".to_owned() }
             return String::new();
         }
 
-        //TODO: sort this somehow?
+        let ok_mods = Self::mods_for_playmode_as_hashmap(playmode);
+
         let mut list = Vec::new();
-
         for m in mods.iter() {
-            match &**m {
-                "easy" => list.push("EZ".to_owned()),
-                "autoplay" => list.push("AT".to_owned()),
-
-                // ignore empty
-                _ if m.trim().is_empty() => {}
-
-                // split by _, and capitalize the first letter in each split, and join without spaces
-                // no_fail -> NF (No_Fail)
-                // this_is_a_mod -> TIAM
-                m => {
-                    list.push(m.split("_").map(|s|s.chars().next().unwrap().to_uppercase().to_string()).collect::<Vec<String>>().join(""))
-                },
+            if let Some(m) = ok_mods.get(m) {
+                list.push(m.short_name())
             }
         }
+
+
+        // //TODO: sort this somehow?
+        // let mut list = Vec::new();
+
+        // for m in mods.iter() {
+        //     match &**m {
+        //         "easy" => list.push("EZ".to_owned()),
+        //         "autoplay" => list.push("AT".to_owned()),
+
+        //         // ignore empty
+        //         _ if m.trim().is_empty() => {}
+
+        //         // split by _, and capitalize the first letter in each split, and join without spaces
+        //         // no_fail -> NF (No_Fail)
+        //         // this_is_a_mod -> TIAM
+        //         m => {
+        //             list.push(m.split("_").map(|s|s.chars().next().unwrap().to_uppercase().to_string()).collect::<Vec<String>>().join(""))
+        //         },
+        //     }
+        // }
 
         list.join(" ")
     }

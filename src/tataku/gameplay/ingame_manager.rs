@@ -783,19 +783,13 @@ impl IngameManager {
         {
             *self.score.mods_mut() = self.current_mods.mods.clone();
             let playmode = self.gamemode.playmode();
-            let info = get_gamemode_info(&playmode).unwrap();
 
-            // get all available mods for this 
-            let ok_mods = default_mod_groups()
-                .into_iter()
-                .chain(info.get_mods().into_iter())
-                .map(|m|m.mods)
-                .flatten()
-                .collect::<Vec<_>>();
+            // get all available mods for this playmode
+            let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
             
             // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
             self.score.mods_mut().retain(|m| {
-                if let Some(m) = ok_mods.iter().find(|o| o.name() == m) {
+                if let Some(m) = ok_mods.get(m) {
                     self.score_multiplier *= m.score_multiplier();
                     true
                 } else {

@@ -187,6 +187,7 @@ impl TaikoGame {
     }
 
 }
+
 #[async_trait]
 impl GameMode for TaikoGame {
     async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> TatakuResult<Self> {
@@ -1100,6 +1101,7 @@ impl GameModeInput for TaikoGame {
     }
 
 }
+
 #[async_trait]
 impl GameModeProperties for TaikoGame {
     fn playmode(&self) -> PlayMode {"taiko".to_owned()}
