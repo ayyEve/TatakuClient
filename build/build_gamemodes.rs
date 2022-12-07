@@ -1,9 +1,11 @@
 use std::{path::Path, fs::DirEntry};
 
+const GAMEMODE_FOLDER: &str = "src/tataku/gameplay/modes";
+
 pub fn build_gamemodes() {
     // get all gamemodes in the folder
     let cd = std::env::current_dir().unwrap();
-    let gamemode_path = cd.as_path().join("src/gameplay/modes/");
+    let gamemode_path = cd.as_path().join(GAMEMODE_FOLDER);
 
     // eprintln!("dir: {:?}", gamemode_path);
 

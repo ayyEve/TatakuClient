@@ -1,19 +1,12 @@
-// #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
 #[macro_use]
 extern crate log;
 
 // include files
-mod cli;
-mod game;
-mod menus;
-mod errors;
+mod engine;
+mod tataku;
 mod prelude;
-mod graphics;
-mod beatmaps;
-mod gameplay;
-mod databases;
 pub mod commits;
 
 // folders
@@ -82,7 +75,7 @@ async fn main() {
         match &*param1 {
             "--diff_calc" | "--diffcalc" | "-d" => {
                 play_game = false;
-                cli::diff_calc_cli(&mut args).await;
+                diff_calc_cli(&mut args).await;
             }
 
             _ => {}
