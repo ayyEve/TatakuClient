@@ -53,6 +53,8 @@ pub struct Game {
     window_size: WindowSizeHelper,
     cursor_manager: CursorManager,
     last_skin: String,
+
+    background_loader: Option<AsyncLoader<Option<Image>>>
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
@@ -87,7 +89,8 @@ impl Game {
             game_event_receiver,
             render_queue_sender,
             cursor_manager: CursorManager::new().await,
-            last_skin: String::new()
+            last_skin: String::new(),
+            background_loader: None
         };
 
         g.init().await;
@@ -275,6 +278,19 @@ impl Game {
         // update the cursor
         self.cursor_manager.update(elapsed as f64).await;
 
+        // check bg loaded
+        if let Some(loader) = self.background_loader.clone() {
+            if let Some(image) = loader.check().await {
+                self.background_loader = None;
+                self.background_image = image;
+                
+                if self.background_image.is_none() && self.wallpapers.len() > 0 {
+                    self.background_image = Some(self.wallpapers[0].clone());
+                }
+
+                self.resize_bg();
+            }
+        }
 
         // check window size
         let window_size_updated = self.window_size.update();
@@ -888,14 +904,17 @@ impl Game {
     /// shortcut for setting the game's background texture to a beatmap's image
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // let mut helper = BenchmarkHelper::new("loaad image");
+        let filename = beatmap.image_filename.clone();
+        let f = async move {load_image(filename, false).await};
+        self.background_loader = Some(AsyncLoader::new(f));
 
-        self.background_image = load_image(&beatmap.image_filename, false).await;
+        // self.background_image = load_image(&beatmap.image_filename, false).await;
 
-        if self.background_image.is_none() && self.wallpapers.len() > 0 {
-            self.background_image = Some(self.wallpapers[0].clone());
-        }
+        // if self.background_image.is_none() && self.wallpapers.len() > 0 {
+        //     self.background_image = Some(self.wallpapers[0].clone());
+        // }
 
-        self.resize_bg();
+        // self.resize_bg();
     }
 
     fn resize_bg(&mut self) {

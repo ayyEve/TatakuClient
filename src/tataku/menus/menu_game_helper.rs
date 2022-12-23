@@ -14,6 +14,8 @@ pub struct MenuGameHelper {
     /// use bg game settings, or global gamemode?
     use_global_playmode: bool,
     apply_rate: bool,
+
+    loader: Option<AsyncLoader<TatakuResult<IngameManager>>>
 }
 impl MenuGameHelper {
     pub fn new(use_global_playmode: bool, apply_rate: bool) -> Self {
@@ -25,7 +27,8 @@ impl MenuGameHelper {
             manager: None,
             fit_to: None,
             use_global_playmode,
-            apply_rate
+            apply_rate,
+            loader: None,
         }
     }
 
@@ -46,25 +49,33 @@ impl MenuGameHelper {
 
         let mode = if self.use_global_playmode { self.current_playmode.as_ref().0.clone() } else { settings.mode.clone() };
 
-        match manager_from_playmode(mode, &map).await {
-            Ok(mut manager) => {
-                manager.make_menu_background();
-
-                if let Some((pos, size)) = self.fit_to {
-                    manager.gamemode.fit_to_area(pos, size).await
-                }
-                
-                manager.start().await;
-                trace!("manager started");
-
-                self.manager = Some(manager);
-                // self.visualization.song_changed(&mut self.background_game);
-            },
-            Err(e) => {
-                // self.visualization.song_changed(&mut None);
-                NotificationManager::add_error_notification("Error loading beatmap", e).await;
-            }
+        if self.loader.is_some() {
+            // stop it somehow?
         }
+
+        let map = map.clone();
+        let f = async move {manager_from_playmode(mode, &map).await};
+        self.loader = Some(AsyncLoader::new(f));
+
+        // match manager_from_playmode(mode, &map).await {
+        //     Ok(mut manager) => {
+        //         manager.make_menu_background();
+
+        //         if let Some((pos, size)) = self.fit_to {
+        //             manager.gamemode.fit_to_area(pos, size).await
+        //         }
+                
+        //         manager.start().await;
+        //         trace!("manager started");
+
+        //         self.manager = Some(manager);
+        //         // self.visualization.song_changed(&mut self.background_game);
+        //     },
+        //     Err(e) => {
+        //         // self.visualization.song_changed(&mut None);
+        //         NotificationManager::add_error_notification("Error loading beatmap", e).await;
+        //     }
+        // }
 
     }
 
@@ -91,6 +102,27 @@ impl MenuGameHelper {
             }
         }
 
+        if let Some(loader) = &self.loader {
+            if let Some(result) = loader.check().await {
+                self.loader = None;
+                
+                match result {
+                    Ok(mut manager) => {
+                        manager.make_menu_background();
+
+                        if let Some((pos, size)) = self.fit_to {
+                            manager.gamemode.fit_to_area(pos, size).await
+                        }
+                        
+                        manager.start().await;
+                        trace!("manager started");
+
+                        self.manager = Some(manager);
+                    },
+                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await,
+                }
+            }
+        }
         
         match AudioManager::get_song().await {
             Some(song) => {
