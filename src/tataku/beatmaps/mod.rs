@@ -8,13 +8,6 @@ mod adofai;
 mod u_typing;
 mod stepmania;
 
-use osu::OsuBeatmap;
-use quaver::QuaverBeatmap;
-use adofai::AdofaiBeatmap;
-use u_typing::UTypingBeatmap;
-use stepmania::StepmaniaBeatmap;
-
-
 pub use osu::*;
 pub use common::*;
 pub use quaver::*;
@@ -42,11 +35,11 @@ impl Beatmap {
         if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(vec![Beatmap::Osu(Box::new(OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
-            "qua" => Ok(vec![Beatmap::Quaver(Box::new(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))]),
-            "adofai" => Ok(vec![Beatmap::Adofai(Box::new(AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))]),
-            "txt" => Ok(vec![Beatmap::UTyping(Box::new(UTypingBeatmap::load(path)?))]),
-            "ssc" | "sm" => Ok(StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
+            "osu" => Ok(vec![Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
+            "qua" => Ok(vec![Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))]),
+            "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))]),
+            "txt" => Ok(vec![Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path)?))]),
+            "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
 
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -56,11 +49,11 @@ impl Beatmap {
         if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
         
         match path.extension().unwrap().to_str().unwrap() {
-            "osu" => Ok(Beatmap::Osu(Box::new(OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
-            "qua" => Ok(Beatmap::Quaver(Box::new(QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))),
-            "adofai" => Ok(Beatmap::Adofai(Box::new(AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
-            "txt" => Ok(Beatmap::UTyping(Box::new(UTypingBeatmap::load(path.to_str().unwrap().to_owned())?))),
-            "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(StepmaniaBeatmap::load_single(path, meta)?))),
+            "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "qua" => Ok(Beatmap::Quaver(Box::new(quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
+            "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap().to_owned())?))),
+            "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(stepmania::StepmaniaBeatmap::load_single(path, meta)?))),
             
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -76,7 +69,7 @@ impl Default for Beatmap {
 impl TatakuBeatmap for Beatmap {
     fn hash(&self) -> String {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.hash(),
             Beatmap::Quaver(map) => map.hash(),
             Beatmap::Adofai(map) => map.hash(),
@@ -87,7 +80,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.get_timing_points(),
             Beatmap::Quaver(map) => map.get_timing_points(),
             Beatmap::Adofai(map) => map.get_timing_points(),
@@ -98,7 +91,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.get_beatmap_meta(),
             Beatmap::Quaver(map) => map.get_beatmap_meta(),
             Beatmap::Adofai(map) => map.get_beatmap_meta(),
@@ -109,7 +102,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn playmode(&self, incoming: PlayMode) -> PlayMode {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.playmode(incoming),
             Beatmap::Quaver(map) => map.playmode(incoming),
             Beatmap::Adofai(map) => map.playmode(incoming),
@@ -120,7 +113,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn slider_velocity_at(&self, time:f32) -> f32 {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.slider_velocity_at(time),
             Beatmap::Quaver(map) => map.slider_velocity_at(time),
             Beatmap::Adofai(map) => map.slider_velocity_at(time),
@@ -131,7 +124,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.beat_length_at(time, allow_multiplier),
             Beatmap::Quaver(map) => map.beat_length_at(time, allow_multiplier),
             Beatmap::Adofai(map) => map.beat_length_at(time, allow_multiplier),
@@ -142,7 +135,7 @@ impl TatakuBeatmap for Beatmap {
 
     fn control_point_at(&self, time:f32) -> TimingPoint {
         match self {
-            Beatmap::None => todo!(),
+            Beatmap::None => unimplemented!(),
             Beatmap::Osu(map) => map.control_point_at(time),
             Beatmap::Quaver(map) => map.control_point_at(time),
             Beatmap::Adofai(map) => map.control_point_at(time),

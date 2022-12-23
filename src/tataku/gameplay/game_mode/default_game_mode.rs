@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 // needed for std::mem::take/swap
 #[derive(Default)]
-pub struct NoMode {}
+pub struct NoMode;
 
 #[async_trait]
 impl GameMode for NoMode {

@@ -234,7 +234,7 @@ impl HitObject for OsuNote {
             format!("{}", self.combo_num),
             get_font()
         )));
-        self.combo_text.as_mut().unwrap().center_text(Rectangle::bounds_only(
+        self.combo_text.as_mut().unwrap().center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,
         ));
@@ -311,7 +311,7 @@ impl OsuHitObject for OsuNote {
             format!("{}", self.combo_num),
             get_font()
         ));
-        combo_text.center_text(Rectangle::bounds_only(
+        combo_text.center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,
         ));

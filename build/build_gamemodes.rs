@@ -1,4 +1,4 @@
-use std::{path::Path, fs::DirEntry};
+use std::fs::DirEntry;
 
 const GAMEMODE_FOLDER: &str = "src/tataku/gameplay/modes";
 
@@ -24,7 +24,7 @@ pub fn build_gamemodes() {
     let mut info_lines = Vec::new();
 
     for f in files {
-        if !f.path().is_dir() {continue}
+        if !f.path().is_dir() { continue }
 
         let mode_folder = f.file_name().to_string_lossy().to_string();
         // eprintln!("adding gamemode {:?}", mode_folder);
@@ -63,7 +63,7 @@ pub fn get_gamemode_info(playmode: &String) -> Option<&Box<dyn GameModeInfo + Se
 "#);
 
 
-    let path = gamemode_path.join(Path::new("mod.rs"));
+    let path = gamemode_path.join("mod.rs");
 
     // check if we should actually write the file
     if let Ok(file) = std::fs::read(&path) {

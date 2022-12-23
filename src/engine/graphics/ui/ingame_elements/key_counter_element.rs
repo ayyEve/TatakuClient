@@ -118,7 +118,7 @@ impl InnerUIElement for KeyCounterElement {
                 text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
             }
 
-            text.center_text(Rectangle::bounds_only(pos, box_size));
+            text.center_text(&Rectangle::bounds_only(pos, box_size));
             list.push(Box::new(text));
         }
 

@@ -1,72 +1,79 @@
 use crate::prelude::*;
+// this is bad, i dont care
 
 #[derive(Clone, Copy)]
-pub struct Circle {
+pub struct Sector {
     pub depth: f64,
+    pub radius: f64,
+    pub start: f64,
+    pub end: f64,
 
     // initial
-    pub initial_color: Color,
     pub initial_pos: Vector2,
-    pub initial_radius: f64,
+    pub initial_scale: Vector2,
+    pub initial_color: Color,
 
     // current
-    pub current_color: Color,
     pub current_pos: Vector2,
-    pub current_radius: f64,
+    pub current_scale: Vector2,
+    pub current_color: Color,
 
     context: Option<Context>,
 
-    pub border: Option<Border>,
-    pub resolution: u32,
+    pub border: Option<Border>
 }
-impl Circle {
-    pub fn new(color:Color, depth:f64, pos:Vector2, radius:f64, border: Option<Border>) -> Circle {
+impl Sector {
+    pub fn new(pos:Vector2, radius: f64, start:f64, end:f64, color:Color, depth:f64, border: Option<Border>) -> Self {
         let initial_color = color;
         let current_color = color;
 
         let initial_pos = pos;
         let current_pos = pos;
 
-        let initial_radius = radius;
-        let current_radius = radius;
-        Circle {
+        let initial_size = Vector2::one();
+        let current_size = Vector2::one();
+
+        Self {
             depth,
+            radius,
+            start,
+            end,
 
             initial_color,
             current_color,
             initial_pos,
             current_pos,
 
-            initial_radius,
-            current_radius,
+            initial_scale: initial_size,
+            current_scale: current_size,
 
             border,
             context: None,
-            resolution: 128,
         }
     }
 }
-impl Renderable for Circle {
-    fn get_name(&self) -> String { "Circle".to_owned() }
+impl Renderable for Sector {
+    fn get_name(&self) -> String { "Sector".to_owned() }
     fn get_depth(&self) -> f64 {self.depth}
     fn get_context(&self) -> Option<Context> {self.context}
     fn set_context(&mut self, c:Option<Context>) {self.context = c}
 
     fn draw(&self, g: &mut GlGraphics, c: Context) {
-        graphics::ellipse::Ellipse {
-            color: self.current_color.into(),
-            border: if self.border.is_some() {Some(self.border.unwrap().into())} else {None},
-            resolution: self.resolution
-        }.draw(
-            graphics::ellipse::circle(self.current_pos.x, self.current_pos.y, self.current_radius),
-            &self.context.unwrap_or(c).draw_state,
-            c.transform,
+        let r = self.current_scale * self.radius;
+        
+        graphics::circle_arc(
+            self.current_color.into(), 
+            self.radius / 4.0,
+            self.start, 
+            self.end, 
+            [self.current_pos.x, self.current_pos.y, r.x, r.y],
+            c.transform.trans(-self.radius/2.0, -self.radius/2.0), 
             g
         );
     }
 }
 
-impl Transformable for Circle {
+impl Transformable for Sector {
     fn apply_transform(&mut self, transform: &Transformation, val:TransformValueResult) {
 
         match transform.trans_type {
@@ -77,7 +84,8 @@ impl Transformable for Circle {
             },
             TransformType::Scale { .. } => {
                 let val:f64 = val.into();
-                self.current_radius = self.initial_radius * val;
+                self.current_scale = Vector2::one() * val;
+                // self.current_radius = self.initial_radius * val;
             },
             TransformType::Transparency { .. } => {
                 // this is a circle, it doesnt rotate
@@ -110,7 +118,7 @@ impl Transformable for Circle {
     }
 
     fn visible(&self) -> bool {
-        (self.current_color.a > 0.0 && self.current_radius > 0.0) 
+        (self.current_color.a > 0.0 && self.current_scale.length_squared() > 0.0) 
         || if let Some(b) = &self.border {b.color.a > 0.0 && b.radius > 0.0} else {false}
     }
 }

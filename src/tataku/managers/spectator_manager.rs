@@ -429,7 +429,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut Vec<Box<dyn Renderabl
         Vector2::new((window_size.x - text_width) / 2.0, window_size.y * 1.0/3.0), 
         Vector2::new( text_width + BANNER_WPADDING, 64.0)
     );
-    offset_text.center_text(rect);
+    offset_text.center_text(&rect);
     // add
     list.push(visibility_bg(rect.current_pos, rect.size, BANNER_DEPTH + 10.0));
     list.push(Box::new(offset_text));

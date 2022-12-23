@@ -253,7 +253,7 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
         
         if let Some(selected_file) = selected_file {
             let arg = format!("/select,{path}\\{selected_file}");
-            info!("a: {arg}");
+            trace!("open folder: {arg}");
             cmd = cmd.arg(arg)
         } else {
             cmd = cmd.arg(path)

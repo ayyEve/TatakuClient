@@ -47,7 +47,7 @@ impl InnerUIElement for ComboElement {
                 crate::format_number(self.combo),
                 get_font()
             );
-            combo_text.center_text(combo_bounds);
+            combo_text.center_text(&combo_bounds);
             list.push(Box::new(combo_text));
         }
     }

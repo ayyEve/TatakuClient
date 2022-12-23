@@ -201,6 +201,6 @@ impl TextRender<Font2> for Text {
     }
 
     fn center_text(&mut self, rect:ayyeve_piston_ui::prelude::Rectangle) {
-        Text::center_text(self, rect.into())
+        Text::center_text(self, &rect.into())
     }
 }

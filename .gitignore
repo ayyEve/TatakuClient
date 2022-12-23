@@ -26,7 +26,7 @@ settings.json
 # things that are auto-generated each build
 test-commits.rs
 commits.rs
-/src/gameplay/modes/mod.rs
+src/tataku/gameplay/modes/mod.rs
 
 
 # test files

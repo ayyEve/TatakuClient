@@ -8,8 +8,8 @@ use chrono::{
     Utc
 };
 
-const GRAPH_SIZE:Vector2 = Vector2::new(400.0, 200.0);
-const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
+// const GRAPH_SIZE:Vector2 = Vector2::new(400.0, 200.0);
+// const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
 
 const MENU_ITEM_COUNT:usize = 2;
 
@@ -19,17 +19,13 @@ pub struct ScoreMenu {
     score_mods: String,
 
     beatmap: Arc<BeatmapMeta>,
-
     buttons: Vec<MenuButton<Font2, Text>>,
-    // back_button: MenuButton<Font2, Text>,
-    // replay_button: MenuButton<Font2, Text>,
 
-    graph: Graph<Font2, Text>,
+    // graph: Graph<Font2, Text>,
 
     // cached
     hit_error: HitError,
     hit_counts: Vec<(String, u32, Color)>,
-
 
     pub dont_do_menu: bool,
     pub should_close: bool,
@@ -38,8 +34,11 @@ pub struct ScoreMenu {
     window_size: Arc<WindowSize>,
 
     pub score_submit: Option<Arc<ScoreSubmitHelper>>,
-
     score_submit_response: Option<SubmitResponse>,
+
+
+    selected_stat: usize,
+    stats: Vec<MenuStatsInfo>
 }
 impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
@@ -47,14 +46,14 @@ impl ScoreMenu {
         let hit_error = score.hit_error();
         let font = get_font();
 
-        let graph = Graph::new(
-            Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
-            GRAPH_SIZE,
-            score.hit_timings.iter().map(|e|*e as f32).collect(),
-            -50.0,
-            50.0,
-            font.clone()
-        );
+        // let graph = Graph::new(
+        //     Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
+        //     GRAPH_SIZE,
+        //     score.hit_timings.iter().map(|e|*e as f32).collect(),
+        //     -50.0,
+        //     50.0,
+        //     font.clone()
+        // );
 
         let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
         
@@ -94,13 +93,23 @@ impl ScoreMenu {
         buttons.push(back_button);
 
 
+        let mut stats = Vec::new();
+        if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
+            let mut groups = gamemode_info.get_stat_groups();
+            groups.extend(default_stat_groups());
+            let data = score.stats.into_groups(&groups);
+
+            stats = default_stats_from_groups(&data);
+            stats.extend(gamemode_info.stats_from_groups(&data));
+        }
+
         ScoreMenu {
             score: score.clone(),
             score_mods,
             replay: None,
             beatmap,
             hit_error,
-            graph,
+            // graph,
             buttons,
 
             dont_do_menu: false,
@@ -111,6 +120,9 @@ impl ScoreMenu {
             window_size,
             score_submit: None,
             score_submit_response: None,
+
+            selected_stat: 0,
+            stats
         }
     }
 
@@ -135,8 +147,6 @@ impl ScoreMenu {
     }
 
     async fn do_replay(&mut self, game: &mut Game, mut replay: Replay) {
-        // game.menus.get("beatmap").unwrap().lock().on_change(false);
-        // game.queue_mode_change(GameMode::Replaying(self.beatmap.clone(), replay.clone(), 0));
         match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
             Ok(mut manager) => {
                 if replay.score_data.is_none() {
@@ -151,9 +161,7 @@ impl ScoreMenu {
 
     async fn retry(&mut self, game: &mut Game) {
         match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-            Ok(manager) => {
-                game.queue_state_change(GameState::Ingame(manager));
-            },
+            Ok(manager) => game.queue_state_change(GameState::Ingame(manager)),
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
     }
@@ -179,12 +187,15 @@ impl AsyncMenu<Game> for ScoreMenu {
 
         let depth = 0.0;
         
+        const TITLE_STRING_Y:f64 = 20.0;
+        const TITLE_STRING_FONT_SIZE:u32 = 30;
+        
         // draw beatmap title string
         list.push(Box::new(Text::new(
             Color::BLACK,
             depth + 1.0,
-            Vector2::new(10.0, 20.0),
-            30,
+            Vector2::new(10.0, TITLE_STRING_Y),
+            TITLE_STRING_FONT_SIZE,
             format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed),
             font.clone()
         )));
@@ -285,8 +296,8 @@ impl AsyncMenu<Game> for ScoreMenu {
         }
 
 
-        // graph
-        self.graph.draw(args, Vector2::zero(), depth, &mut list);
+        // // graph
+        // self.graph.draw(args, Vector2::zero(), depth, &mut list);
         
         // draw background so score info is readable
         list.push(visibility_bg(
@@ -294,6 +305,16 @@ impl AsyncMenu<Game> for ScoreMenu {
             Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0),
             depth + 10.0
         ));
+
+
+        if let Some(stat) = self.stats.get(self.selected_stat) {
+            const PAD:f64 = 20.0;
+            let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE as f64 + PAD);
+            let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
+
+            let bounds = Rectangle::bounds_only(pos, size);
+            stat.draw(&bounds, depth, &mut list)
+        }
 
         list
     }
@@ -320,12 +341,12 @@ impl AsyncMenu<Game> for ScoreMenu {
         }
     }
 
-    async fn on_key_press(&mut self, key:piston::Key, game: &mut Game, _mods:KeyModifiers) {
-        if key == piston::Key::Escape {
+    async fn on_key_press(&mut self, key:Key, game: &mut Game, _mods:KeyModifiers) {
+        if key == Key::Escape {
             self.close(game)
         }
 
-        if key == piston::Key::F2 {
+        if key == Key::F2 {
             if let Some(replay) = &self.replay {
                 // save the replay
                 match save_replay(replay, &self.score) {
@@ -362,11 +383,20 @@ impl AsyncMenu<Game> for ScoreMenu {
                 };
             }
         }
+    
+        if key == Key::Left && self.stats.len() > 0 {
+            if self.selected_stat == 0 { self.selected_stat = self.stats.len() - 1 }
+            else { self.selected_stat -= 1 }
+        }
+
+        if key == Key::Right && self.stats.len() > 0 {
+            self.selected_stat += 1;
+            if self.selected_stat >= self.stats.len() { self.selected_stat = 0 }
+        }
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
-        
     }
 }
 

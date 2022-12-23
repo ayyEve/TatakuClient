@@ -226,7 +226,7 @@ impl HitObject for OsuSpinner {
             format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
             get_font()
         );
-        txt.center_text(Rectangle::bounds_only(
+        txt.center_text(&Rectangle::bounds_only(
             Vector2::new(0.0, self.pos.y + 50.0),
             Vector2::new(self.pos.x * 2.0, 50.0)
         ));

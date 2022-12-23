@@ -64,7 +64,7 @@ impl InnerUIElement for ElapsedElement {
             format!("{mins:02}:{secs:02}"),
             get_font()
         );
-        text.center_text(bounds);
+        text.center_text(&bounds);
         list.push(Box::new(text));
     }
 }

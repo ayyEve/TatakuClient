@@ -16,7 +16,8 @@ const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 macro_rules! add_timing {
     ($self:ident, $time:expr, $note_time:expr) => {{
         let diff = $time - $note_time;
-        $self.score.hit_timings.push(diff);
+        $self.add_stat(HitVarianceStat, diff);
+        // $self.score.hit_timings.push(diff);
         $self.hitbar_timings.push(($time, diff));
     }}
 }
@@ -54,7 +55,7 @@ pub struct IngameManager {
     pub should_pause: bool,
 
     /// is a pause pending?
-    /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause
+    /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
     pause_pending: bool,
 
     /// is this playing in the background of the main menu?
@@ -313,6 +314,18 @@ impl IngameManager {
                 self.reset().await;
                 return;
             }
+        }
+
+        // check pause
+        if self.pause_pending {
+            info!("pausing");
+            self.pause();
+            self.pause_pending = false;
+        }
+        if self.should_pause && self.in_break() {
+            info!("pausing");
+            self.pause();
+            self.should_pause = false;
         }
 
 
@@ -819,7 +832,8 @@ impl IngameManager {
 
         // re-add judgments to score
         for j in self.judgment_type.variants() {
-            self.score.judgments.insert(j.as_str_internal().to_owned(), 0);
+            let id = j.as_str_internal();
+            self.score.judgments.insert(id.to_owned(), 0);
         }
 
     }
@@ -992,7 +1006,8 @@ impl IngameManager {
             ui_editor.on_mouse_move(&pos, &mut ()).await;
         }
 
-        if self.failed {return}
+        if self.failed { return }
+
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.mouse_move(pos, self).await;
         self.gamemode = gamemode;
@@ -1051,11 +1066,12 @@ impl IngameManager {
     }
 
     pub fn window_focus_lost(&mut self, got_focus: bool) {
+        info!("window focus changed");
         if got_focus {
             self.pause_pending = false
         } else {
             if self.can_pause() {
-                // if self.in_break() {self.pause_pending = true} else {self.should_pause = true}
+                if self.in_break() { info!("in break"); self.pause_pending = true } else { info!("not in break"); self.should_pause = true }
             }
         }
     }
@@ -1127,6 +1143,12 @@ impl IngameManager {
         SkinManager::get_texture_grayscale(name, true, grayscale).await.map(|mut i| {on_loaded(&mut i); i})
     }
 
+
+    fn in_break(&self) -> bool {
+        let time = self.time();
+        #[allow(irrefutable_let_patterns)]
+        self.events.iter().find(|f| if let InGameEvent::Break { start, end } = f { time >= *start && time < *end } else { false }).is_some()
+    }
 
 }
 

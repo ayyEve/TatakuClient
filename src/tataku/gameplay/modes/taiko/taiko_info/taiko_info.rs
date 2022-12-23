@@ -30,7 +30,7 @@ impl GameModeInfo for TaikoGameInfo {
 
     fn get_stat_groups(&self) -> Vec<StatGroup> {
         vec![
-            StatGroup::new("press_counters")
+            StatGroup::new("press_counters", "Press Counts")
                 .with_stat(TaikoStatLeftPresses)
                 .with_stat(TaikoStatRightPresses)
         ]
@@ -84,4 +84,25 @@ impl GameModeInfo for TaikoGameInfo {
         Ok(Box::new(calc))
     }
 
+
+    fn stats_from_groups(&self, data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
+        let mut info = Vec::new();
+
+        macro_rules! get_or_return {
+            ($data: expr, $thing:expr) => {
+                if let Some(val) = $data.get(&$thing.name().to_owned()) { val } else { return info }
+            }
+        }
+
+        if let Some(press_counters) = data.get(&"press_counters".to_owned()) {
+            let left_presses:f32 = get_or_return!(press_counters, TaikoStatLeftPresses).iter().sum();
+            let right_presses:f32 = get_or_return!(press_counters, TaikoStatRightPresses).iter().sum();
+            info.push(MenuStatsInfo::new("Presses", GraphType::Pie, vec![
+                MenuStatsEntry::new_f32("Left Presses", left_presses, Color::BLUE, true, true),
+                MenuStatsEntry::new_f32("Right Presses", right_presses, Color::RED, true, true),
+            ]))
+        }
+
+        info
+    }
 }

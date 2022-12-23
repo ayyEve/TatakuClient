@@ -53,7 +53,7 @@ impl CenteredTextHelper {
                 Vector2::new((self.window_size.x - text_width) / 2.0, self.window_size.y * 1.0/3.0), 
                 Vector2::new( text_width + TEXT_HPADDING, 64.0)
             );
-            offset_text.center_text(rect);
+            offset_text.center_text(&rect);
             // add
             list.push(visibility_bg(rect.current_pos, rect.size, self.depth + 10.0));
             list.push(Box::new(offset_text));
