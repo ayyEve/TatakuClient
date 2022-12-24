@@ -69,19 +69,16 @@ impl AsyncMenu<Game> for PauseMenu {
 
     }
     
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         let pos_offset = Vector2::zero();
         let depth = 0.0;
 
         // draw buttons
         if !self.is_fail_menu {
-            self.continue_button.draw(args, pos_offset, depth, &mut list);
+            self.continue_button.draw(args, pos_offset, depth, list);
         }
-        self.retry_button.draw(args, pos_offset, depth, &mut list);
-        self.exit_button.draw(args, pos_offset, depth, &mut list);
-
-        list
+        self.retry_button.draw(args, pos_offset, depth, list);
+        self.exit_button.draw(args, pos_offset, depth, list);
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {

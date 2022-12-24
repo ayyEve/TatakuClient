@@ -54,11 +54,10 @@ impl VolumeControl {
     }
 
 
-    pub async fn draw(&mut self, _args: RenderArgs) -> Vec<Box<dyn Renderable>> {
+    pub async fn draw(&mut self, _args: RenderArgs, list: &mut RenderableCollection) {
         self.settings.update();
         self.window_size.update();
 
-        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
         let elapsed = self.elapsed();
 
         // draw the volume things if needed
@@ -168,25 +167,19 @@ impl VolumeControl {
                 _ => error!("self.vol_selected_index out of bounds somehow")
             }
 
-            let a:[Box<dyn Renderable>; 10] = [
-                Box::new(b),
-                Box::new(master_text),
-                Box::new(master_border),
-                Box::new(master_fill),
-                
-                Box::new(effect_text),
-                Box::new(effect_border),
-                Box::new(effect_fill),
+            list.push(b);
+            list.push(master_text);
+            list.push(master_border);
+            list.push(master_fill);
+            
+            list.push(effect_text);
+            list.push(effect_border);
+            list.push(effect_fill);
 
-                Box::new(music_text),
-                Box::new(music_border),
-                Box::new(music_fill),
-            ];
-
-            list.extend(a);
+            list.push(music_text);
+            list.push(music_border);
+            list.push(music_fill);
         }
-
-        list
     }
 
     pub fn on_mouse_move(&mut self, mouse_pos: Vector2) {

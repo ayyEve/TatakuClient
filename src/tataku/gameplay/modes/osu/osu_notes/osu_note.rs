@@ -32,7 +32,7 @@ pub struct OsuNote {
     scaling_helper: Arc<ScalingHelper>,
     
     /// combo num text cache
-    combo_text: Option<Box<Text>>,
+    combo_text: Option<Text>,
 
 
     /// current map time
@@ -160,7 +160,7 @@ impl HitObject for OsuNote {
         });
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             shape.draw(list)
@@ -182,7 +182,7 @@ impl HitObject for OsuNote {
         // combo number
         if let Some(combo) = &mut self.combo_image {
             combo.current_color.a = alpha;
-            list.push(Box::new(combo.clone()));
+            list.push(combo.clone());
         } else {
             self.combo_text.as_mut().unwrap().current_color.a = alpha;
             list.push(self.combo_text.clone().unwrap());
@@ -192,13 +192,13 @@ impl HitObject for OsuNote {
         if let Some(image) = &mut self.circle_image {
             image.draw(list);
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 self.color.alpha(alpha),
                 self.base_depth,
                 self.pos,
                 self.radius,
                 Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_helper.scale))
-            )));
+            ));
         }
 
     }
@@ -226,14 +226,14 @@ impl HitObject for OsuNote {
         self.circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.base_depth, self.color).await;
         self.approach_circle.reload_texture().await;
     
-        self.combo_text = Some(Box::new(Text::new(
+        self.combo_text = Some(Text::new(
             Color::BLACK,
             self.base_depth - 0.0000001,
             self.pos,
             self.radius as u32,
             format!("{}", self.combo_num),
             get_font()
-        )));
+        ));
         self.combo_text.as_mut().unwrap().center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,
@@ -303,14 +303,14 @@ impl OsuHitObject for OsuNote {
         self.scaling_helper = new_scale.clone();
         self.approach_circle.scale_changed(new_scale);
 
-        let mut combo_text = Box::new(Text::new(
+        let mut combo_text = Text::new(
             Color::BLACK,
             self.base_depth - 0.0000001,
             self.pos,
             self.radius as u32,
             format!("{}", self.combo_num),
             get_font()
-        ));
+        );
         combo_text.center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,

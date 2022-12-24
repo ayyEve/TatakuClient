@@ -25,27 +25,27 @@ impl MenuStatsInfo {
         }
     }
 
-    pub fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
         let font = get_font();
 
         // display name should be at the top with some margin above and below
         let display_text = Text::new(Color::BLACK, depth, bounds.current_pos, 30, self.display_name.clone(), font.clone());
         // display_text.center_text(bounds);
         // display_text.current_pos.y = 0.0;
-        list.push(Box::new(display_text));
+        list.push(display_text);
         
         // ~half the remaining vertical should be for listing the values 
         let mut current_pos = bounds.current_pos + Vector2::new(0.0, 30.0 + 5.0);
         for i in self.data.iter() {
             if i.show_in_list {
                 let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
-                list.push(Box::new(Text::new(i.color, depth, current_pos, 20, text, font.clone())));
+                list.push(Text::new(i.color, depth, current_pos, 20, text, font.clone()));
             }
-            current_pos += Vector2::y_only(20.0 + 5.0);
+            current_pos += Vector2::with_y(20.0 + 5.0);
         }
 
         // there should be some margin between the list and the graph
-        current_pos += Vector2::y_only(20.0);
+        current_pos += Vector2::with_y(20.0);
 
         // the remaining space should be used for the graph
         let mut size = bounds.size - current_pos.y();

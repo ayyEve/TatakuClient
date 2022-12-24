@@ -78,19 +78,19 @@ impl HitObject for TaikoNote {
         }
         
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 { return }
 
         if let Some(image) = &mut self.image {
             image.draw(list);
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 self.get_color(),
                 self.depth,
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            )));
+            ));
         }
     }
 

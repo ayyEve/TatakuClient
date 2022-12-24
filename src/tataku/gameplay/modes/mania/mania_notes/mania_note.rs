@@ -44,7 +44,7 @@ impl ManiaNote {
             hit_time: 0.0,
             hit: false,
             missed: false,
-            pos: Vector2::x_only(x),
+            pos: Vector2::with_x(x),
 
             playfield,
             note_image:None,
@@ -71,7 +71,7 @@ impl HitObject for ManiaNote {
     async fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time);
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 { return }
         if self.hit { return }
         
@@ -81,15 +81,15 @@ impl HitObject for ManiaNote {
             
             img.current_pos = self.pos;
             img.current_scale = self.playfield.note_size() / img.tex_size();
-            list.push(Box::new(img));
+            list.push(img);
         } else {
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 self.color,
                 MANIA_NOTE_DEPTH,
                 self.pos,
                 self.playfield.note_size(),
                 Some(Border::new(Color::BLACK, self.playfield.note_border_width))
-            )));
+            ));
         }
     }
 

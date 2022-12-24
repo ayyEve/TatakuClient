@@ -46,7 +46,7 @@ impl InnerUIElement for RemainingElement {
         self.elapsed = manager.time() / self.speed;
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let mut bounds = self.elapsed_bounds.clone();
         bounds.current_pos = pos_offset;
         bounds.size *= scale;
@@ -66,6 +66,6 @@ impl InnerUIElement for RemainingElement {
             get_font()
         );
         text.center_text(&bounds);
-        list.push(Box::new(text));
+        list.push(text);
     }
 }

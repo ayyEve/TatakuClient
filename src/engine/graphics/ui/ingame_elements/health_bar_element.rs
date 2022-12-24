@@ -29,26 +29,26 @@ impl InnerUIElement for HealthBarElement {
         self.health_ratio = manager.health.get_ratio() as f64
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let percent = self.health_ratio;
         let len = self.common_game_settings.healthbar_colors.len();
         let index = ((len as f64 * percent) as usize).min(len - 1);
         // bg
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             self.common_game_settings.healthbar_bg_color,
             1.0,
             pos_offset,
             Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT) * scale,
             Some(Border::new(self.common_game_settings.healthbar_border_color, 1.8))
-        )));
+        ));
         // fill
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             self.common_game_settings.healthbar_colors[index],
             2.0,
             pos_offset,
             Vector2::new((self.window_size.x / 2.0) * percent, DURATION_HEIGHT) * scale,
             None
-        )));
+        ));
 
     }
 }

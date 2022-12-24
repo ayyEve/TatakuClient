@@ -62,19 +62,17 @@ impl TimingBar {
         // self.pos = HIT_POSITION + Vector2::new(( - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
     }
 
-    pub fn draw(&mut self, _args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut renderables: Vec<Box<dyn Renderable>> = Vec::new();
-        if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return renderables }
+    pub fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+        if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return }
 
-        renderables.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             BAR_COLOR,
             BAR_DEPTH,
-            self.pos + Vector2::y_only(self.playfield.note_size().y),
+            self.pos + Vector2::with_y(self.playfield.note_size().y),
             self.size,
             None
-        )));
+        ));
 
-        renderables
     }
 
     pub fn reset(&mut self) {

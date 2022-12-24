@@ -320,46 +320,46 @@ impl Dialog<Game> for Chat {
         self.input.set_selected(true);
     }
 
-    async fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         let args = *args;
         let depth = *depth;
         let window_size = self.window_size.0;
 
         // draw backgrounds
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::WHITE.alpha(0.85),
             depth + 0.005,
             self.channel_scroll.get_pos(),
             self.channel_scroll.size(),
             Some(Border::new(Color::BLACK, 2.0))
-        )));
-        list.push(Box::new(Rectangle::new(
+        ));
+        list.push(Rectangle::new(
             Color::WHITE.alpha(0.85),
             depth + 0.005,
             self.message_scroll.get_pos(),
             self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
             Some(Border::new(Color::BLACK, 2.0))
-        )));
+        ));
 
         if self.width_resize_hover {
             // red line at width
-            list.push(Box::new(Line::new(
+            list.push(Line::new(
                 Vector2::new(self.channel_list_width, window_size.y),
                 Vector2::new(self.channel_list_width, window_size.y - self.chat_height),
                 2.0,
                 depth - 0.8,
                 Color::RED
-            )))
+            ))
         }
         if self.height_resize_hover {
             // red line at height
-            list.push(Box::new(Line::new(
+            list.push(Line::new(
                 Vector2::new(0.0, window_size.y - self.chat_height),
                 Vector2::new(window_size.x, window_size.y - self.chat_height),
                 2.0,
                 depth - 0.8,
                 Color::RED
-            )))
+            ))
         }
 
         self.channel_scroll.draw(args, Vector2::zero(), depth, list);
@@ -465,7 +465,7 @@ impl ChannelScroll {
     }
 }
 impl ScrollableItem for ChannelScroll {
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
 
         let text = Text::new(
             if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
@@ -475,7 +475,7 @@ impl ScrollableItem for ChannelScroll {
             self.channel.get_name(),
             self.font.clone()
         );
-        list.push(Box::new(text));
+        list.push(text);
     }
 }
 
@@ -504,8 +504,7 @@ impl MessageScroll {
     }
 }
 impl ScrollableItem for MessageScroll {
-
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let text = Text::new(
             Color::BLACK,
             parent_depth,
@@ -514,6 +513,6 @@ impl ScrollableItem for MessageScroll {
             self.message.get_formatted_text(),
             self.font.clone()
         );
-        list.push(Box::new(text));
+        list.push(text);
     }
 }

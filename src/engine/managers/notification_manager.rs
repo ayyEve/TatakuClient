@@ -97,7 +97,7 @@ impl NotificationManager { // non-static
         // }
     }
 
-    pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         let mut current_pos = self.window_size.0;
 
         for i in self.processed_notifs.iter().rev() {
@@ -207,11 +207,11 @@ impl ProcessedNotif {
         self.time.elapsed().as_secs_f32() * 1000.0 < self.notification.duration
     }
 
-    fn draw(&self, pos_offset: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&self, pos_offset: Vector2, list: &mut RenderableCollection) {
         let pos = pos_offset - Vector2::new(self.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + self.size.y);
 
         // bg
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             NOTIF_BG_COLOR,
             NOTIF_DEPTH + 0.1,
             pos,
@@ -220,11 +220,11 @@ impl ProcessedNotif {
                 self.notification.color,
                 1.2
             ))
-        ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10))));
+        ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10)));
 
         let mut text = self.text.clone();
         text.current_pos = pos + NOTIF_PADDING;
-        list.push(Box::new(text));
+        list.push(text);
     }
 }
 

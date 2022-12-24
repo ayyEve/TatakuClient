@@ -42,7 +42,7 @@ impl SkinnedButton {
         })
     }
 
-    pub fn draw(&self, _args: RenderArgs, pos_offset: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, _args: RenderArgs, pos_offset: Vector2, list: &mut RenderableCollection) {
         let mut current_pos = self.pos + pos_offset;
 
         for mut i in [
@@ -52,7 +52,7 @@ impl SkinnedButton {
         ] {
             i.current_pos = current_pos;
             current_pos.x += i.size().x;
-            list.push(Box::new(i))
+            list.push(i)
         }
     }
 }

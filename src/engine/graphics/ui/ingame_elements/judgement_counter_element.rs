@@ -55,7 +55,7 @@ impl InnerUIElement for JudgementCounterElement {
         }
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let font = get_font();
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE) * scale;
         
@@ -74,18 +74,18 @@ impl InnerUIElement for JudgementCounterElement {
                     btn.current_color = color;
                 }
                 
-                list.push(Box::new(btn));
+                list.push(btn);
             } else {
                 box_width = (BOX_SIZE * scale).x;
 
                 // draw bg box
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     *self.colors.get(txt).unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
                     -100.0,
                     pos,
                     BOX_SIZE * scale,
                     Some(Border::new(Color::BLACK, 2.0))
-                )));
+                ));
             }
 
             // draw text/count
@@ -104,7 +104,7 @@ impl InnerUIElement for JudgementCounterElement {
             }
             text.center_text(&Rectangle::bounds_only(pos, box_size));
 
-            list.push(Box::new(text));
+            list.push(text);
         }
     }
 }

@@ -23,19 +23,19 @@ impl PieGraph {
 }
 
 impl StatsGraph for PieGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
         let pos = bounds.current_pos;
         let size = bounds.size;
         let radius = size.x / 2.0;
 
         // background
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::new(0.2, 0.2, 0.2, 0.7),
             depth,
             pos,
             size,
             Some(Border::new(Color::RED, 1.5))
-        )));
+        ));
 
         // // mid
         // list.push(Box::new(Line::new(
@@ -53,7 +53,7 @@ impl StatsGraph for PieGraph {
             let theta = (i.get_value() / self.sum) as f64 * 2.0 * PI;
 
             // arc
-            list.push(Box::new(Sector::new(
+            list.push(Sector::new(
                 center, 
                 radius,
                 last_theta,
@@ -61,7 +61,7 @@ impl StatsGraph for PieGraph {
                 i.color,
                 depth,
                 None
-            )));
+            ));
 
             last_theta += theta
         }

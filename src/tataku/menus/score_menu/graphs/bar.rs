@@ -43,40 +43,40 @@ impl BarGraph {
 }
 
 impl StatsGraph for BarGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
         let pos = bounds.current_pos;
         let size = bounds.size;
 
         // background
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::new(0.2, 0.2, 0.2, 0.7),
             depth,
             pos,
             size,
             Some(Border::new(Color::RED, 1.5))
-        )));
+        ));
 
         // // mid
-        // list.push(Box::new(Line::new(
+        // list.push(Line::new(
         //     pos + Vector2::new(0.0, size.y / 2.0),
         //     pos + Vector2::new(size.x, size.y / 2.0),
         //     LINE_WIDTH,
         //     parent_depth,
         //     Color::WHITE
-        // )));
+        // ));
 
         for i in self.data.iter() {
             match &i.value {
                 MenuStatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    list.push(Box::new(Line::new(
-                        pos + Vector2::y_only(v),
-                        pos + size.x() + Vector2::y_only(v),
+                    list.push(Line::new(
+                        pos + Vector2::with_y(v),
+                        pos + size.x() + Vector2::with_y(v),
                         2.0,
                         depth,
                         i.color,
-                    )))
+                    ))
                 }
                 MenuStatsValue::List(points) => {
                     let mapped_points = self.map_points(&points, size);
@@ -86,13 +86,13 @@ impl StatsGraph for BarGraph {
 
                     for n in 1..mapped_points.len() {
                         let new_y = mapped_points[n];
-                        list.push(Box::new(Line::new(
+                        list.push(Line::new(
                             pos + Vector2::new(x_step * (n-1) as f64, prev_y),
                             pos + Vector2::new(x_step * n as f64, new_y),
                             2.0,
                             depth + 1.0,
                             i.color
-                        )));
+                        ));
 
                         prev_y = new_y;
                     }

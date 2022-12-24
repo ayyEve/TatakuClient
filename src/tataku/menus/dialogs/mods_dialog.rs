@@ -57,7 +57,7 @@ impl Dialog<Game> for ModDialog {
         self.scroll.update();
     }
     
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         self.draw_background(depth + 1.00000001, Color::BLACK, list);
         self.scroll.draw(*args, Vector2::zero(), *depth, list);
     }
@@ -133,7 +133,7 @@ impl ScrollableItem for ModButton {
         }
     }
 
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let pos_offset = self.pos + pos_offset;
         
         let font = get_font();
@@ -147,7 +147,7 @@ impl ScrollableItem for ModButton {
         let desc_text = Text::new(Color::WHITE, parent_depth, desc_pos, font_size, self.gameplay_mod.description().to_owned(), font);
 
         checkbox.draw(args, pos_offset, parent_depth, list);
-        list.push(Box::new(desc_text));
+        list.push(desc_text);
     }
 
     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {

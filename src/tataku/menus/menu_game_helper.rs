@@ -149,7 +149,7 @@ impl MenuGameHelper {
 
     }
 
-    pub async fn draw(&mut self, args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         if let Some(manager) = &mut self.manager {
             manager.draw(args, list).await;
         }

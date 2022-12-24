@@ -134,7 +134,7 @@ impl Dialog<Game> for UserPanel {
         }
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         self.chat.draw(args, depth, list).await;
         //TODO: move the set_pos code to update or smth
         let mut counter = 0;

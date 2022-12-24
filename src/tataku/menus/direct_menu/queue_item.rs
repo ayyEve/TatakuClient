@@ -37,34 +37,34 @@ impl ScrollableItemGettersSetters for DirectItem {
 impl ScrollableItem for DirectItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.item.clone())}
 
-    fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, _args:piston::RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let font = get_font();
 
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::WHITE,
             parent_depth + 10.0,
             self.pos + pos_offset,
             self.size(),
             Some(Border::new(if self.hover {Color::BLUE} else if self.selected {Color::RED} else {Color::BLACK}, 1.5))
-        )));
+        ));
 
-        list.push(Box::new(Text::new(
+        list.push(Text::new(
             Color::BLACK,
             parent_depth + 9.9,
             self.pos+Vector2::new(5.0, 25.0) + pos_offset,
             20,
             format!("{} - {}", self.item.artist(), self.item.title()),
             font.clone()
-        )));
+        ));
 
-        list.push(Box::new(Text::new(
+        list.push(Text::new(
             Color::BLACK,
             parent_depth + 9.9,
             self.pos+Vector2::new(5.0, 50.0) + pos_offset,
             20,
             format!("Mapped by {}", self.item.creator()),
             font.clone()
-        )));
+        ));
     }
 
     fn on_click(&mut self, _pos:Vector2, _button:piston::MouseButton, _mods:KeyModifiers) -> bool {

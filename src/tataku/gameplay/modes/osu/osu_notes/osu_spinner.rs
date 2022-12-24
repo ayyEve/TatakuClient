@@ -159,28 +159,28 @@ impl HitObject for OsuSpinner {
         self.current_time = beatmap_time;
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
 
         let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
 
         // bg circle
         if let Some(i) = self.spinner_background.clone() {
-            list.push(Box::new(i))
+            list.push(i)
         } else {}
 
         // bottom circle
         if let Some(i) = self.spinner_bottom.clone() {
-            list.push(Box::new(i))
+            list.push(i)
         } else {
             if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
-                list.push(Box::new(Circle::new(
+                list.push(Circle::new(
                     Color::YELLOW,
                     -10.0,
                     self.pos,
                     SPINNER_RADIUS,
                     border.clone()
-                )));
+                ));
             }
         }
 
@@ -188,15 +188,15 @@ impl HitObject for OsuSpinner {
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
             i.current_scale = Vector2::one() * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
-            list.push(Box::new(i))
+            list.push(i)
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::WHITE,
                 -11.0,
                 self.pos,
                 SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64),
                 border.clone()
-            )));
+            ));
         }
 
 
@@ -204,16 +204,16 @@ impl HitObject for OsuSpinner {
         if let Some(mut i) = self.spinner_circle.clone() {
             i.current_scale = Vector2::one() * self.scaling_helper.scale;
             i.current_rotation = self.display_rotation;
-            list.push(Box::new(i))
+            list.push(i)
         } else {
             let p2 = self.pos + Vector2::new(self.display_rotation.cos(), self.display_rotation.sin()) * SPINNER_RADIUS;
-            list.push(Box::new(Line::new(
+            list.push(Line::new(
                 self.pos,
                 p2,
                 5.0,
                 -20.0,
                 Color::GREEN
-            )));
+            ));
         }
 
         // draw a counter
@@ -230,7 +230,7 @@ impl HitObject for OsuSpinner {
             Vector2::new(0.0, self.pos.y + 50.0),
             Vector2::new(self.pos.x * 2.0, 50.0)
         ));
-        list.push(Box::new(txt));
+        list.push(txt);
     }
 
     async fn reset(&mut self) {

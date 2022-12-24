@@ -187,10 +187,9 @@ impl AsyncMenu<Game> for DirectMenu {
         }
     }
 
-    async fn draw(&mut self, args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
-        self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
-        self.search_bar.draw(args, Vector2::zero(), -90.0, &mut list);
+    async fn draw(&mut self, args:piston::RenderArgs, list: &mut RenderableCollection) {
+        self.scroll_area.draw(args, Vector2::zero(), 0.0, list);
+        self.search_bar.draw(args, Vector2::zero(), -90.0, list);
 
         // draw download items
         if self.downloading.len() > 0 {
@@ -198,13 +197,13 @@ impl AsyncMenu<Game> for DirectMenu {
             let x = args.window_size[0] - (DOWNLOAD_ITEM_SIZE.x + DOWNLOAD_ITEM_XOFFSET);
 
             // side bar background and border if hover
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 Color::WHITE,
                 3.0,
                 Vector2::new(x, DOWNLOAD_ITEM_YOFFSET),
                 Vector2::new(DOWNLOAD_ITEM_SIZE.x, args.window_size[1] - DOWNLOAD_ITEM_YOFFSET * 2.0),
                 Some(Border::new(Color::BLACK, 1.8))
-            )));
+            ));
             
             let mut counter = 0.0;
             let font = get_font();
@@ -213,22 +212,22 @@ impl AsyncMenu<Game> for DirectMenu {
             for i in self.downloading.iter() {
                 let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
                 // bounding box
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     Color::WHITE,
                     2.0,
                     pos,
                     DOWNLOAD_ITEM_SIZE,
                     Some(Border::new(Color::BLUE, 1.5))
-                )));
+                ));
                 // map text
-                list.push(Box::new(Text::new(
+                list.push(Text::new(
                     Color::BLACK,
                     1.0,
                     pos + Vector2::new(0.0, 15.0),
                     15,
                     format!("{} (Downloading)", i.title()),
                     font.clone()
-                )));
+                ));
 
                 counter += 1.0;
             }
@@ -237,28 +236,26 @@ impl AsyncMenu<Game> for DirectMenu {
             for i in self.queue.iter() {
                 let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
                 // bounding box
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     Color::WHITE,
                     2.0,
                     pos,
                     DOWNLOAD_ITEM_SIZE,
                     Some(Border::new(Color::BLACK, 1.5))
-                )));
+                ));
                 // map text
-                list.push(Box::new(Text::new(
+                list.push(Text::new(
                     Color::BLACK,
                     1.0,
                     pos + Vector2::new(0.0, 15.0),
                     15,
                     format!("{} (Waiting...)", i.title()),
                     font.clone()
-                )));
+                ));
 
                 counter += 1.0;
             }
         }
-
-        list
     }
     
     async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {

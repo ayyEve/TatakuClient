@@ -97,9 +97,9 @@ impl HitCircleImageHelper {
         self.overlay.current_color.a = alpha;
     }
 
-    pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
-        list.push(Box::new(self.circle.clone()));
-        list.push(Box::new(self.overlay.clone()));
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
+        list.push(self.circle.clone());
+        list.push(self.overlay.clone());
     }
 }
 
@@ -153,7 +153,7 @@ impl ApproachCircle {
         self.alpha = 0.0;
     }
 
-    pub fn draw(&self, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, list: &mut RenderableCollection) {
         if let Some(mut tex) = self.image.clone() {
             tex.depth = self.depth - 100.0;
             // i think this is incorrect
@@ -167,15 +167,15 @@ impl ApproachCircle {
             tex.current_color = tex.initial_color;
             tex.current_scale = tex.initial_scale;
 
-            list.push(Box::new(tex))
+            list.push(tex)
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.depth - 100.0,
                 self.pos,
                 self.radius + (self.time_diff as f64 / self.preempt as f64) * (APPROACH_CIRCLE_MULT * CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs),
                 Some(Border::new(self.color.alpha(self.alpha), NOTE_BORDER_SIZE * self.scaling_helper.scaled_cs))
-            )))
+            ))
         }
     }
 }

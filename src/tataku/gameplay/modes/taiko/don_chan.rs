@@ -74,7 +74,7 @@ impl InnerUIElement for DonChan {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            -Vector2::y_only(DEFAULT_DONCHAN_SIZE.y / 2.0), 
+            -Vector2::with_y(DEFAULT_DONCHAN_SIZE.y / 2.0), 
             DEFAULT_DONCHAN_SIZE / 2.0
         )
     }
@@ -148,7 +148,7 @@ impl InnerUIElement for DonChan {
         }
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         match self.state {
             DonChanState::Normal => {
                 if self.kiai {
@@ -156,14 +156,14 @@ impl InnerUIElement for DonChan {
                         let mut anim = anim.clone();
                         anim.current_pos = pos_offset;
                         anim.current_scale *= scale;
-                        list.push(Box::new(anim))
+                        list.push(anim)
                     }
                 } else {
                     if let Some(anim) = &self.normal_anim {
                         let mut anim = anim.clone();
                         anim.current_pos = pos_offset;
                         anim.current_scale *= scale;
-                        list.push(Box::new(anim))
+                        list.push(anim)
                     }
                 }
             }
@@ -172,7 +172,7 @@ impl InnerUIElement for DonChan {
                     let mut anim = anim.clone();
                     anim.current_pos = pos_offset;
                     anim.current_scale *= scale;
-                    list.push(Box::new(anim))
+                    list.push(anim)
                 }
             }
             DonChanState::Fail => {
@@ -180,7 +180,7 @@ impl InnerUIElement for DonChan {
                     let mut anim = anim.clone();
                     anim.current_pos = pos_offset;
                     anim.current_scale *= scale;
-                    list.push(Box::new(anim))
+                    list.push(anim)
                 }
             }
         }

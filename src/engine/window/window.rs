@@ -97,7 +97,9 @@ impl GameWindow {
 
             // set window icon
             match image::open("resources/icon-small.png") {
-                Ok(img) => window.window.set_icon(vec![img.into_rgba8()]),
+                Ok(img) => {
+                    window.window.set_icon(vec![img.into_rgba8()]);
+                }
                 Err(e) => warn!("error setting window icon: {}", e)
             }
         }
@@ -105,7 +107,6 @@ impl GameWindow {
         #[cfg(feature="mobile")] {
             AudioManager::init_audio(0 as *mut std::ffi::c_void).expect("error initializing audio");
         }
-
 
         let now = Instant::now();
         unsafe {
@@ -371,7 +372,7 @@ fn render(window: WindowPtr, args: RenderArgs, frametime: &mut Instant) {
 
 pub enum TatakuRenderEvent {
     None,
-    Draw(Vec<Box<dyn Renderable>>),
+    Draw(Vec<Arc<dyn Renderable>>),
 }
 impl Default for TatakuRenderEvent {
     fn default() -> Self {

@@ -52,8 +52,8 @@ pub use serde::{Serialize, Deserialize};
 // ui imports
 // pub use ayyeve_piston_ui::menu::*;
 pub use ayyeve_piston_ui::menu::menu_elements::*;
-pub use ayyeve_piston_ui::render::{ Renderable, Vector2, Color, FontRender, TextRender, Border };
-pub use ayyeve_piston_ui::prelude::{ ScrollableItemGettersSetters, ScrollableGettersSetters, KeyModifiers };
+pub use ayyeve_piston_ui::render::{ Renderable, Vector2, Color, FontRender, TextRender, Border, RenderableCollection };
+pub use ayyeve_piston_ui::prelude::{ ScrollableItemGettersSetters, ScrollableGettersSetters, KeyModifiers, graphics, opengl_graphics, piston };
 
 // tataku-common imports
 pub use tataku_common::types::*;

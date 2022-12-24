@@ -10,7 +10,7 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager);
 
     async fn update(&mut self, manager:&mut IngameManager, time: f32);
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut Vec<Box<dyn Renderable>>);
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection);
 
     fn skip_intro(&mut self, manager: &mut IngameManager);
     fn pause(&mut self, _manager:&mut IngameManager) {}

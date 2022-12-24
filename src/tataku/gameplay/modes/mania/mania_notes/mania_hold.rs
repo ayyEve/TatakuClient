@@ -59,7 +59,7 @@ impl ManiaHold {
             holding: false,
             color,
 
-            pos: Vector2::x_only(x),
+            pos: Vector2::with_x(x),
             hold_starts: Vec::new(),
             hold_ends: Vec::new(),
             end_y: 0.0,
@@ -123,7 +123,7 @@ impl HitObject for ManiaHold {
         }
 
     }
-    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -135,24 +135,24 @@ impl HitObject for ManiaHold {
         if self.playfield.upside_down {
             // start
             if self.pos.y > self.playfield.hit_y() {
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     color,
                     MANIA_NOTE_DEPTH,
                     self.pos,
                     self.playfield.note_size(),
                     border.clone()
-                )));
+                ));
             }
 
             // end
             if self.end_y > self.playfield.hit_y() {
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     color,
                     MANIA_NOTE_DEPTH,
                     Vector2::new(self.pos.x, self.end_y),
                     self.playfield.note_size(),
                     border.clone()
-                )));
+                ));
             }
         } else {
 
@@ -161,30 +161,30 @@ impl HitObject for ManiaHold {
                 let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
 
                 if let Some(img) = &self.middle_image {
-                    list.push(Box::new(img.clone()));
+                    list.push(img.clone());
                 } else {
-                    list.push(Box::new(Rectangle::new(
+                    list.push(Rectangle::new(
                         color,
                         MANIA_SLIDER_DEPTH,
                         Vector2::new(self.pos.x, y),
                         Vector2::new(self.playfield.column_width, self.end_y - y),
                         border.clone()
-                    )));
+                    ));
                 }
             }
 
             // start of hold
             if self.pos.y < self.playfield.hit_y() {
                 if let Some(img) = &self.start_image {
-                    list.push(Box::new(img.clone()));
+                    list.push(img.clone());
                 } else {
-                    list.push(Box::new(Rectangle::new(
+                    list.push(Rectangle::new(
                         color,
                         MANIA_NOTE_DEPTH,
                         self.pos,
                         self.playfield.note_size(),
                         border.clone()
-                    )));
+                    ));
                 }
             }
 
@@ -192,15 +192,15 @@ impl HitObject for ManiaHold {
             // end
             if self.end_y < self.playfield.hit_y() {
                 if let Some(img) = &self.end_image {
-                    list.push(Box::new(img.clone()));
+                    list.push(img.clone());
                 } else {
-                    list.push(Box::new(Rectangle::new(
+                    list.push(Rectangle::new(
                         color,
                         MANIA_NOTE_DEPTH,
                         Vector2::new(self.pos.x, self.end_y + note_size.y),
                         self.playfield.note_size(),
                         border.clone()
-                    )));
+                    ));
                 }
             }
 

@@ -30,7 +30,7 @@ impl InnerUIElement for LeaderboardElement {
         self.scores = manager.all_scores().into_iter().map(|i|i.clone()).collect();
     }
 
-    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         
         // draw scores
         let args = RenderArgs {
@@ -49,7 +49,7 @@ impl InnerUIElement for LeaderboardElement {
 
             l.set_pos(base_pos);
             l.draw(args, Vector2::zero(), 0.0, list);
-            base_pos += Vector2::y_only(l.size().y + 5.0) * scale;
+            base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 
     }

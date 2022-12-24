@@ -50,7 +50,7 @@ impl InnerUIElement for JudgementBarElement {
         self.hitbar_timings = manager.hitbar_timings.clone()
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         // TODO: rework this garbage lmao
         // // draw hit timings bar
         // // draw hit timing colors below the bar
@@ -66,20 +66,20 @@ impl InnerUIElement for JudgementBarElement {
         let timing_bar_size = HIT_TIMING_BAR_SIZE * scale;
 
         // since the calcs scale the x, but the x pos does not actually scale, we need to offset it
-        let x_offset = Vector2::x_only(timing_bar_size.x - HIT_TIMING_BAR_SIZE.x) / 2.0;
+        let x_offset = Vector2::with_x(timing_bar_size.x - HIT_TIMING_BAR_SIZE.x) / 2.0;
         let pos_offset = pos_offset + x_offset;
         
         // draw other hit windows
         for (window, color) in &self.judgment_colors {
             let width = (window / self.miss_window) as f64 * timing_bar_size.x;
             
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 *color,
                 17.0,
                 pos_offset + Vector2::new(-width/2.0, HIT_TIMING_BAR_POS.y),
                 Vector2::new(width, timing_bar_size.y),
                 None // for now
-            )));
+            ));
         }
         
         // draw hit timings
@@ -96,13 +96,13 @@ impl InnerUIElement for JudgementBarElement {
                 1.0 - (diff - (HIT_TIMING_DURATION - HIT_TIMING_FADE)) / HIT_TIMING_FADE
             } else { 1.0 };
 
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 HIT_TIMING_BAR_COLOR.alpha(alpha),
                 10.0,
                 pos_offset + Vector2::new(pos, HIT_TIMING_BAR_POS.y),
                 Vector2::new(2.0, timing_bar_size.y),
                 None // for now
-            )));
+            ));
         }
 
         

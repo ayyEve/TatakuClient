@@ -33,11 +33,20 @@ impl TransformGroup {
     }
 
     //TODO: maybe this could be improved?
-    pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
-        list.reserve(self.items.len());
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
+        // list.reserve(self.items.len());
         for i in self.items.iter() {
             if !i.visible() { continue }
-            list.push(i.to_renderable());
+
+            match i {
+                DrawItem::Line(a) => list.push(a.clone()),
+                DrawItem::Text(a) => list.push(a.clone()),
+                DrawItem::Image(a) => list.push(a.clone()),
+                DrawItem::Circle(a) => list.push(a.clone()),
+                DrawItem::Rectangle(a) => list.push(a.clone()),
+                DrawItem::HalfCircle(a) => list.push(a.clone()),
+                DrawItem::SkinnedNumber(a) => list.push(a.clone()),
+            }
         }
     }
 }
@@ -169,18 +178,17 @@ impl DrawItem {
         };
     }
 
-    pub fn to_renderable(&self) -> Box<dyn Renderable> {
-        let new_item:Box<dyn Renderable> = match self {
-            DrawItem::Line(a) => Box::new(a.clone()),
-            DrawItem::Text(a) => Box::new(a.clone()),
-            DrawItem::Image(a) => Box::new(a.clone()),
-            DrawItem::Circle(a) => Box::new(a.clone()),
-            DrawItem::Rectangle(a) => Box::new(a.clone()),
-            DrawItem::HalfCircle(a) => Box::new(a.clone()),
-            DrawItem::SkinnedNumber(a) => Box::new(a.clone()),
-        };
+    pub fn to_renderable(&self) -> Arc<dyn Renderable> {
+        match self {
+            DrawItem::Line(a) =>                   Arc::new(a.clone()),
+            DrawItem::Text(a) =>                   Arc::new(a.clone()),
+            DrawItem::Image(a) =>                 Arc::new(a.clone()),
+            DrawItem::Circle(a) =>               Arc::new(a.clone()),
+            DrawItem::Rectangle(a) =>         Arc::new(a.clone()),
+            DrawItem::HalfCircle(a) =>       Arc::new(a.clone()),
+            DrawItem::SkinnedNumber(a) => Arc::new(a.clone()),
+        }
 
-        new_item
     }
 
     pub fn visible(&self) -> bool {

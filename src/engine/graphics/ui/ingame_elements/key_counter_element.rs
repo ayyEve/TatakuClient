@@ -46,7 +46,7 @@ impl InnerUIElement for KeyCounterElement {
         self.counter = manager.key_counter.clone();
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let font = get_font();
 
         // let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {
@@ -84,12 +84,12 @@ impl InnerUIElement for KeyCounterElement {
                 }
                 
                 box_width = btn.size().x * scale.x;
-                list.push(Box::new(btn));
+                list.push(btn);
             } else {
                 box_width = (BOX_SIZE * scale).x;
 
                 // draw bg box
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     if info.held {
                         Color::new(0.8, 0.0, 0.8, 0.8)
                     } else {
@@ -99,7 +99,7 @@ impl InnerUIElement for KeyCounterElement {
                     pos,
                     BOX_SIZE * scale,
                     Some(Border::new(Color::BLACK, 2.0))
-                )));
+                ));
             }
 
             // draw key
@@ -119,7 +119,7 @@ impl InnerUIElement for KeyCounterElement {
             }
 
             text.center_text(&Rectangle::bounds_only(pos, box_size));
-            list.push(Box::new(text));
+            list.push(text);
         }
 
     }

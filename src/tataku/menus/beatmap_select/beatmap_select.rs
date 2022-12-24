@@ -520,8 +520,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     
     }
 
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut items: Vec<Box<dyn Renderable>> = Vec::new();
+    async fn draw(&mut self, args:RenderArgs, items: &mut RenderableCollection) {
         // let mut counter: usize = 0;
         let depth: f64 = 5.0;
         // let font = get_font();
@@ -534,7 +533,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             Vector2::new(args.window_size[0], INFO_BAR_HEIGHT),
             Some(Border::new(Color::BLACK, 1.2))
         );
-        items.push(Box::new(bar_rect));
+        items.push(bar_rect);
 
         // // draw selected map info
         // if let Some(meta) = &mut BEATMAP_MANAGER.write().current_beatmap {
@@ -560,24 +559,22 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // }
 
         // beatmap scroll
-        self.beatmap_scroll.draw(args, Vector2::zero(), 0.0, &mut items);
+        self.beatmap_scroll.draw(args, Vector2::zero(), 0.0, items);
 
         // leaderboard scroll
-        self.leaderboard_scroll.draw(args, Vector2::zero(), 0.0, &mut items);
+        self.leaderboard_scroll.draw(args, Vector2::zero(), 0.0, items);
 
         // back button
-        self.back_button.draw(args, Vector2::zero(), 0.0, &mut items);
+        self.back_button.draw(args, Vector2::zero(), 0.0, items);
 
         // everything else
         for i in self.interactables() {
-            i.draw(args, Vector2::zero(), 0.0, &mut items);
+            i.draw(args, Vector2::zero(), 0.0, items);
         }
 
 
         // draw bg game
-        self.menu_game.draw(args, &mut items).await;
-
-        items
+        self.menu_game.draw(args, items).await;
     }
 
     async fn on_change(&mut self, into:bool) {

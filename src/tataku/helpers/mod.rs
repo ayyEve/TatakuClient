@@ -71,16 +71,16 @@ pub fn format_float<T:Display>(num:T, precis: usize) -> String {
 
 
 
-pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f64) -> Box<Rectangle> {
+pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f64) -> impl Renderable {
     let mut color = Color::WHITE;
     color.a = 0.6;
-    Box::new(Rectangle::new(
+    Rectangle::new(
         color,
         depth,
         pos,
         size,
         None
-    ))
+    )
 }
 
 

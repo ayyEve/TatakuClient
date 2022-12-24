@@ -682,7 +682,7 @@ impl GameMode for OsuGame {
         }
 
     }
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         if !manager.menu_background {
@@ -723,16 +723,16 @@ impl GameMode for OsuGame {
 
                 playfield.border = Some(Border::new(Color::WHITE, line_size));
 
-                list.push(Box::new(wx_line));
-                list.push(Box::new(wy_line));
-                list.push(Box::new(px_line));
-                list.push(Box::new(py_line));
+                list.push(wx_line);
+                list.push(wy_line);
+                list.push(px_line);
+                list.push(py_line);
             }
 
             if manager.current_timing_point().kiai {
                 playfield.border = Some(Border::new(Color::YELLOW, 2.0));
             }
-            list.push(Box::new(playfield));
+            list.push(playfield);
         }
 
 
@@ -800,15 +800,15 @@ impl GameMode for OsuGame {
                             i.current_pos = point;
                             i.current_rotation = direction;
                             // i.current_scale = Vector2::one() * self.scaling_helper.scale;
-                            list.push(Box::new(i));
+                            list.push(i);
                         } else {
-                            list.push(Box::new(Circle::new(
+                            list.push(Circle::new(
                                 Color::WHITE.alpha(alpha),
                                 100_000.0,
                                 point,
                                 follow_dot_size,
                                 None
-                            )));
+                            ));
                         }
 
                     }
@@ -1155,7 +1155,7 @@ impl GameModeProperties for OsuGame {
         // Leaderboard
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
-            Vector2::y_only(window_size.y / 3.0),
+            Vector2::with_y(window_size.y / 3.0),
             LeaderboardElement::new()
         ).await);
         

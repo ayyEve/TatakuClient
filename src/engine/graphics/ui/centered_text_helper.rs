@@ -34,7 +34,7 @@ impl CenteredTextHelper {
         self.changed_time = 0.0;
     }
 
-    pub fn draw(&mut self, time: f32, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         self.window_size.update();
         
         if self.changed_time > 0.0 && time - self.changed_time < self.draw_time {
@@ -56,7 +56,7 @@ impl CenteredTextHelper {
             offset_text.center_text(&rect);
             // add
             list.push(visibility_bg(rect.current_pos, rect.size, self.depth + 10.0));
-            list.push(Box::new(offset_text));
+            list.push(offset_text);
         }
     }
 }

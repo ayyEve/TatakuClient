@@ -67,7 +67,7 @@ pub struct OsuSlider {
     hitwindow_miss: f32,
 
     /// combo text cache, probably not needed but whatever
-    combo_text: Option<Box<Text>>,
+    combo_text: Option<Text>,
     combo_image: Option<SkinnedNumber>,
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
@@ -464,7 +464,7 @@ impl HitObject for OsuSlider {
 
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             shape.draw(list)
@@ -486,7 +486,7 @@ impl HitObject for OsuSlider {
             // combo number
             if let Some(combo) = &mut self.combo_image {
                 combo.current_color.a = alpha;
-                list.push(Box::new(combo.clone()));
+                list.push(combo.clone());
             } else {
                 self.combo_text.as_mut().unwrap().current_color.a = alpha;
                 list.push(self.combo_text.clone().unwrap());
@@ -495,28 +495,28 @@ impl HitObject for OsuSlider {
         } else if self.map_time < self.curve.end_time {
             // slider ball
             // inner
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 color,
                 self.circle_depth - 0.0000001,
                 self.slider_ball_pos,
                 self.radius,
                 Some(Border::new(Color::WHITE.alpha(alpha), 2.0))
-            )));
+            ));
 
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.circle_depth - 0.0000001,
                 self.slider_ball_pos,
                 self.radius * 2.0,
                 Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),2.0)
-            ))));
+            )));
         }
 
         // slider body
         if let Some(rt) = &self.slider_body_render_target {
             let mut b = rt.image.clone();
             b.current_color.a = alpha;
-            list.push(Box::new(b));
+            list.push(b);
         }
 
         
@@ -534,7 +534,7 @@ impl HitObject for OsuSlider {
                 start_circle.set_alpha(alpha);
                 start_circle.draw(list);
             } else {
-                list.push(Box::new(Circle::new(
+                list.push(Circle::new(
                     self.color.alpha(alpha),
                     self.circle_depth, // should be above curves but below slider ball
                     self.pos,
@@ -543,7 +543,7 @@ impl HitObject for OsuSlider {
                         Color::BLACK.alpha(alpha),
                         self.scaling_helper.border_scaled
                     ))
-                )));
+                ));
             }
 
         } else {
@@ -552,7 +552,7 @@ impl HitObject for OsuSlider {
                 let mut end_circle = end_circle.clone();
                 end_circle.current_color.a = alpha;
                 end_circle.current_pos = self.pos;
-                list.push(Box::new(end_circle));
+                list.push(end_circle);
                 
                 if start_repeat {
                     if let Some(reverse_arrow) = &self.slider_reverse_image {
@@ -565,11 +565,11 @@ impl HitObject for OsuSlider {
                         let l = self.curve.curve_lines[0];
                         im.current_rotation = Vector2::atan2_wrong(l.p2 - l.p1);
 
-                        list.push(Box::new(im));
+                        list.push(im);
                     }
                 }
             } else {
-                list.push(Box::new(Circle::new(
+                list.push(Circle::new(
                     self.color.alpha(alpha),
                     self.circle_depth, // should be above curves but below slider ball
                     self.pos,
@@ -578,7 +578,7 @@ impl HitObject for OsuSlider {
                         if start_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
                         self.scaling_helper.border_scaled
                     ))
-                )));
+                ));
             }
 
         }
@@ -588,7 +588,7 @@ impl HitObject for OsuSlider {
         if let Some(end_circle) = &self.end_circle_image {
             let mut im = end_circle.clone();
             im.current_color.a = alpha;
-            list.push(Box::new(im));
+            list.push(im);
 
             if end_repeat {
                 if let Some(reverse_arrow) = &self.slider_reverse_image {
@@ -601,12 +601,12 @@ impl HitObject for OsuSlider {
                     let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
                     im.current_rotation = Vector2::atan2_wrong(l.p1 - l.p2);
 
-                    list.push(Box::new(im));
+                    list.push(im);
                 }
             }
 
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 color,
                 self.circle_depth, // should be above curves but below slider ball
                 self.visual_end_pos,
@@ -615,7 +615,7 @@ impl HitObject for OsuSlider {
                     if end_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
                     self.scaling_helper.border_scaled
                 ))
-            )));
+            ));
         }
 
 
@@ -669,14 +669,14 @@ impl HitObject for OsuSlider {
         self.approach_circle.reload_texture().await;
         
         
-        let mut combo_text =  Box::new(Text::new(
+        let mut combo_text = Text::new(
             Color::BLACK,
             self.circle_depth - 0.0000001,
             self.pos,
             self.radius as u32,
             self.combo_num.to_string(),
             get_font()
-        ));
+        );
         combo_text.center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,
@@ -807,14 +807,14 @@ impl OsuHitObject for OsuSlider {
 
         self.approach_circle.scale_changed(new_scale);
         
-        let mut combo_text =  Box::new(Text::new(
+        let mut combo_text = Text::new(
             Color::BLACK,
             self.circle_depth - 0.0000001,
             self.pos,
             self.radius as u32,
             format!("{}", self.combo_num),
             get_font()
-        ));
+        );
         combo_text.center_text(&Rectangle::bounds_only(
             self.pos - Vector2::one() * self.radius / 2.0,
             Vector2::one() * self.radius,
@@ -929,22 +929,22 @@ impl SliderDot {
         }
     }
     
-    pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, list: &mut RenderableCollection) {
         if self.checked{ return }
 
         if let Some(mut image) = self.dot_image.clone() {
             image.depth = self.depth;
             image.current_pos = self.pos;
             image.current_scale = Vector2::one() * self.scale * 0.8;
-            list.push(Box::new(image));
+            list.push(image);
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::WHITE,
                 self.depth,
                 self.pos,
                 SLIDER_DOT_RADIUS * self.scale,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale))
-            )));
+            ));
         }
 
     }

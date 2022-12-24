@@ -51,7 +51,7 @@ impl InnerUIElement for AccuracyElement {
         self.acc = manager.score.accuracy * 100.0;    
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let bounds_x = self.bounds_size.x();
 
         if let Some(mut acc) = self.acc_image.clone() {
@@ -60,7 +60,7 @@ impl InnerUIElement for AccuracyElement {
 
             // let size = acc.measure_text();
             acc.current_pos = pos_offset - bounds_x;
-            list.push(Box::new(acc));
+            list.push(acc);
         } else {
 
             // score bg
@@ -88,7 +88,7 @@ impl InnerUIElement for AccuracyElement {
             }
             
             // score text
-            list.push(Box::new(text));
+            list.push(text);
         }
         
     }

@@ -239,32 +239,29 @@ impl AsyncMenu<Game> for MainMenu {
 
     }
 
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         let pos_offset = Vector2::zero();
         let depth = 0.0;
 
         // draw interactables
         for i in self.interactables(true) {
-            i.draw(args, pos_offset, depth, &mut list)
+            i.draw(args, pos_offset, depth, list)
         }
 
         // visualization
         let mid = self.window_size.0 / 2.0;
-        self.visualization.draw(args, mid, depth + 10.0, &mut list).await;
+        self.visualization.draw(args, mid, depth + 10.0, list).await;
 
-        self.menu_game.draw(args, &mut list).await;
+        self.menu_game.draw(args, list).await;
         
         // draw dim
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::BLACK.alpha(0.5),
             depth + 11.0,
             Vector2::zero(),
             self.window_size.0,
             None
-        )));
-
-        list
+        ));
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {

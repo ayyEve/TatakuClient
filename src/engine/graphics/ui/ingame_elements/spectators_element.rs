@@ -35,7 +35,7 @@ impl InnerUIElement for SpectatorsElement {
         self.spectator_cache = manager.spectator_cache.clone();
     }
 
-    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
 
         // draw spectators
         if self.spectator_cache.len() > 0 {
@@ -50,14 +50,14 @@ impl InnerUIElement for SpectatorsElement {
             let font = get_font();
             for (i, (_, username)) in self.spectator_cache.iter().enumerate() {
                 // draw username
-                list.push(Box::new(Text::new(
+                list.push(Text::new(
                     Color::WHITE, 
                     DEPTH - 0.001, 
                     pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f64) * scale,
                     (30.0 * scale.y) as u32,
                     username.clone(),
                     font.clone()
-                )))
+                ))
             }
         }
 

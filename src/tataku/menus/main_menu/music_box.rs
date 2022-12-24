@@ -55,7 +55,7 @@ impl MusicBox {
         // setup buttons
         let mut texts = Vec::new();
         let mut actions = Vec::new();
-        let mut btn_pos = pos + Vector2::x_only(CONTROL_BUTTON_PADDING.x); // add initial left-side pad
+        let mut btn_pos = pos + Vector2::with_x(CONTROL_BUTTON_PADDING.x); // add initial left-side pad
         let font_awesome = get_font_awesome();
         for button in CONTROL_BUTTONS {
             if let Some(c) = button {
@@ -83,7 +83,7 @@ impl MusicBox {
         let size = 
             MUSIC_BOX_PADDING * 2.0 // add padding
             + size // button sizes
-            + Vector2::y_only(CONTROL_BUTTON_PADDING.y * 2.0) // control button border padding
+            + Vector2::with_y(CONTROL_BUTTON_PADDING.y * 2.0) // control button border padding
             ;
 
         // update text's y pos
@@ -212,7 +212,7 @@ impl ScrollableItem for MusicBox {
         }
         
         if Rectangle::bounds_only(
-            self.pos + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD), 
+            self.pos + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD), 
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT)
         ).contains(pos) {
             let rel_x = (pos - self.pos).x;
@@ -230,7 +230,7 @@ impl ScrollableItem for MusicBox {
 
     fn update(&mut self) {}
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         // let draw_pos = self.pos + pos_offset;
 
         // draw buttons
@@ -255,29 +255,29 @@ impl ScrollableItem for MusicBox {
             // rect.border.as_mut().unwrap().color.a = 0.8;
 
             // add rect
-            list.push(Box::new(rect));
+            list.push(rect);
 
             // add text after rect
-            list.push(Box::new(text));
+            list.push(text);
         }
 
 
         // draw progress bar
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             PRIMARY_COLOR,
             parent_depth,
-            self.pos + pos_offset + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD),
+            self.pos + pos_offset + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD),
             Vector2::new(self.size.x * (self.song_time / self.song_duration) as f64, PROGRESSBAR_HEIGHT),
             None
-        ).shape(Shape::Round(2.0, 5))));
+        ).shape(Shape::Round(2.0, 5)));
         // draw border after
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::TRANSPARENT_WHITE,
             parent_depth,
-            self.pos + pos_offset + Vector2::y_only(self.size.y + PROGRESSBAR_YPAD),
+            self.pos + pos_offset + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD),
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT),
             Some(Border::new(SECONDARY_COLOR, 1.2))
-        ).shape(Shape::Round(2.0, 5))));
+        ).shape(Shape::Round(2.0, 5)));
 
     }
 }

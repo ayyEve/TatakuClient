@@ -132,8 +132,7 @@ impl AsyncMenu<Game> for LoadingMenu {
         }
     }
 
-    async fn draw(&mut self, _args:piston::RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
+    async fn draw(&mut self, _args:piston::RenderArgs, list: &mut RenderableCollection) {
         let font = get_font();
 
         // since this is just loading, we dont care about performance here
@@ -212,8 +211,7 @@ impl AsyncMenu<Game> for LoadingMenu {
         }
 
         text.center_text(&Rectangle::bounds_only(Vector2::zero(), self.window_size.0));
-        list.push(Box::new(text));
-        list
+        list.push(text);
     }
 }
 impl ControllerInputMenu<Game> for LoadingMenu {}

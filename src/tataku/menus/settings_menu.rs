@@ -126,9 +126,8 @@ impl AsyncMenu<Game> for SettingsMenu {
     }
 
     
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>> {
-        let mut list: Vec<Box<dyn Renderable>> = Vec::new();
-        self.scroll_area.draw(args, Vector2::zero(), 0.0, &mut list);
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
+        self.scroll_area.draw(args, Vector2::zero(), 0.0, list);
 
         // background
         list.push(visibility_bg(
@@ -137,9 +136,7 @@ impl AsyncMenu<Game> for SettingsMenu {
             10.0
         ));
         
-        self.menu_game.draw(args, &mut list).await;
-
-        list
+        self.menu_game.draw(args, list).await;
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {

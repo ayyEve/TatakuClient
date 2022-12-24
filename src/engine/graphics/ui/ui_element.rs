@@ -47,7 +47,7 @@ impl UIElement {
         self.inner.update(manager);
     }
 
-    pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         if !self.visible { return }
         self.inner.draw(self.pos_offset, self.scale, list);
     }
@@ -74,7 +74,7 @@ impl UIElement {
 
 pub trait InnerUIElement: Send + Sync {
     fn update(&mut self, manager: &mut IngameManager);
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>);
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection);
     fn get_bounds(&self) -> Rectangle;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;

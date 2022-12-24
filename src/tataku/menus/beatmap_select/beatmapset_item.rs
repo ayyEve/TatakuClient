@@ -81,7 +81,7 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
             Vector2::new(BEATMAPSET_ITEM_SIZE.x, (BEATMAPSET_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * (self.beatmaps.len()+1) as f64) * self.scale
         }
     }
-    fn get_tag(&self) -> String {self.beatmaps[self.selected_index].beatmap_hash.clone()}
+    fn get_tag(&self) -> String {self.beatmaps[self.selected_index.min(self.beatmaps.len()-1)].beatmap_hash.clone()}
     // fn set_tag(&mut self, _tag:&str) {self.pending_play = false} // bit of a jank strat: when this is called, reset the pending_play property
     fn get_pos(&self) -> Vector2 {self.pos}
     fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
@@ -165,7 +165,7 @@ impl ScrollableItem for BeatmapsetItem {
 
     }
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let font = get_font();
 
         // draw rectangle
@@ -174,7 +174,7 @@ impl ScrollableItem for BeatmapsetItem {
             // button_image
             button_image.draw(_args, pos_offset, list);
         } else {
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 [0.2, 0.2, 0.2, 1.0].into(),
                 parent_depth + 5.0,
                 self.pos + pos_offset,
@@ -186,7 +186,7 @@ impl ScrollableItem for BeatmapsetItem {
                 } else {
                     Some(Border::new(Color::WHITE * 0.8, 1.0))
                 }
-            ).shape(Shape::Round(5.0, 10))));
+            ).shape(Shape::Round(5.0, 10)));
         }
 
         // line 1
@@ -213,7 +213,7 @@ impl ScrollableItem for BeatmapsetItem {
 
         // title_line.set_text_colors(colors);
 
-        list.push(Box::new(title_line));
+        list.push(title_line);
 
 
         // if selected, draw map items
@@ -256,7 +256,7 @@ impl ScrollableItem for BeatmapsetItem {
                 let meta = &mut self.beatmaps[i];
 
                 // bounding rect
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     [0.2, 0.2, 0.2, 1.0].into(),
                     parent_depth + 5.0,
                     pos,
@@ -268,30 +268,30 @@ impl ScrollableItem for BeatmapsetItem {
                     } else {
                         Some(Border::new(Color::WHITE * 0.8, 1.0))
                     }
-                ).shape(Shape::Round(5.0, 10))));
+                ).shape(Shape::Round(5.0, 10)));
 
                 // version text
-                list.push(Box::new(Text::new(
+                list.push(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
                     pos + Vector2::new(5.0, 5.0) * self.scale,
                     (12.0 * self.scale.y) as u32,
                     format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     font.clone()
-                )));
+                ));
 
 
                 // diff text
                 let playmode = self.playmode.0.clone();
                 if let Some(info) = get_gamemode_info(&meta.check_mode_override(playmode)) { 
-                    list.push(Box::new(Text::new(
+                    list.push(Text::new(
                         Color::WHITE,
                         parent_depth + 4.0,
                         pos + Vector2::new(5.0, 5.0 + 20.0) * self.scale,
                         (12.0 * self.scale.y) as u32,
                         info.get_diff_string(meta, &self.mods),
                         font.clone()
-                    )));
+                    ));
                 };
 
 

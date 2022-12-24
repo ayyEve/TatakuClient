@@ -239,7 +239,7 @@ impl CursorManager {
     }
 
 
-    pub async fn draw(&mut self, list:&mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, list: &mut RenderableCollection) {
         if !self.visible { return }
 
         let mut radius = DEFAULT_CURSOR_SIZE;
@@ -269,9 +269,9 @@ impl CursorManager {
                 cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
             }
             
-            list.push(Box::new(cursor.clone()));
+            list.push(cursor.clone());
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 self.color,
                 -f64::MAX,
                 self.pos,
@@ -282,7 +282,7 @@ impl CursorManager {
                         self.settings.cursor_border as f64
                     ))
                 } else { None }
-            )));
+            ));
         }
     }
 

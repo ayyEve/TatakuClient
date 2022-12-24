@@ -283,7 +283,7 @@ impl ScrollableItem for MainMenuButton {
 
     }
 
-    fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list: &mut RenderableCollection) {
         if !self.visible { return }
         self.shapes.draw(list);
 

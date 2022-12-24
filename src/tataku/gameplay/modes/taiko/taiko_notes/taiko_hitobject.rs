@@ -111,9 +111,9 @@ impl HitCircleImageHelper {
         self.circle.current_pos  = pos;
         self.overlay.current_pos = pos;
     }
-    pub fn draw(&mut self, list: &mut Vec<Box<dyn Renderable>>) {
-        list.push(Box::new(self.circle.clone()));
-        list.push(Box::new(self.overlay.clone()));
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
+        list.push(self.circle.clone());
+        list.push(self.overlay.clone());
     }
 
     pub fn update_settings(&mut self, settings: Arc<TaikoSettings>, finisher: bool) {

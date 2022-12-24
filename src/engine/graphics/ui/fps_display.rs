@@ -65,17 +65,17 @@ impl FpsDisplay {
         self.frametime_last = self.frametime_last.max(self.frametime_timer.elapsed().as_secs_f32() * 1000.0);
         self.frametime_timer = Instant::now();
     }
-    pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, list:&mut RenderableCollection) {
         let font = get_font();
 
-        list.push(Box::new(Text::new(
+        list.push(Text::new(
             Color::BLACK,
             -99_999_999.99, // should be on top of everything
             self.pos + TEXT_PADDING,
             12,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             font.clone()
-        )));
+        ));
 
 
         list.push(visibility_bg(self.pos, SIZE, -99_999_999.98));
@@ -138,17 +138,17 @@ impl AsyncFpsDisplay {
         }
     }
 
-    pub fn draw(&self, list:&mut Vec<Box<dyn Renderable>>) {
+    pub fn draw(&self, list:&mut RenderableCollection) {
         let font = get_font();
 
-        list.push(Box::new(Text::new(
+        list.push(Text::new(
             Color::BLACK,
             -99_999_999.99, // should be on top of everything
             self.pos + TEXT_PADDING,
             12,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             font.clone()
-        )));
+        ));
 
         list.push(visibility_bg(self.pos, SIZE, -99_999_999.98));
     }

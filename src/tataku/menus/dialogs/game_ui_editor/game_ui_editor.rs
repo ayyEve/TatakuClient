@@ -199,15 +199,15 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         self.sidebar.draw(*args, Vector2::zero(), *depth-9999999999999999999999.0, list);
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::BLACK.alpha(0.8),
             -9999999999999999999999.0,
             self.sidebar.get_pos(),
             self.sidebar.size(),
             None
-        )));
+        ));
 
         for i in self.elements.iter_mut() {
             i.draw(list);
@@ -216,7 +216,7 @@ impl Dialog<()> for GameUIEditorDialog {
             if (!self.sidebar.get_hover() && bounds.contains(self.mouse_pos)) || Some(i.element_name.clone()) == self.highlight_name {
                 bounds.depth = -999999999999999999999.0;
                 bounds.current_color = Color::PINK.alpha(0.7);
-                list.push(Box::new(bounds));
+                list.push(bounds);
             }
         }
 
@@ -224,7 +224,7 @@ impl Dialog<()> for GameUIEditorDialog {
             let mut bounds = self.elements[i].get_bounds();
             bounds.depth = -999999999999999999999.0;
             bounds.current_color = Color::RED;
-            list.push(Box::new(bounds));
+            list.push(bounds);
         }
         
     }
@@ -283,15 +283,15 @@ impl UISideBarElement {
     }
 }
 impl ScrollableItem for UISideBarElement {
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let text = Text::new(Color::WHITE, parent_depth, self.pos + pos_offset, TEXT_SIZE as u32, self.display_name.clone(), get_font());
         
         let color = if self.hover {Color::BLUE} else {Color::RED};
         let mut r = Rectangle::bounds_only(self.pos + pos_offset, text.measure_text());
         r.current_color = color;
-        list.push(Box::new(r));
+        list.push(r);
 
-        list.push(Box::new(text));
+        list.push(text);
     }
 
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {

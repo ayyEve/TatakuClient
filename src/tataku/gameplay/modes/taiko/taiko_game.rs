@@ -131,7 +131,7 @@ impl TaikoGame {
 
 
     fn add_hit_indicator(time: f32, mut hit_value: &TaikoHitJudgments, finisher_hit: bool, game_settings: &Arc<TaikoSettings>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
-        let pos = game_settings.hit_position + Vector2::y_only(game_settings.judgement_indicator_offset);
+        let pos = game_settings.hit_position + Vector2::with_y(game_settings.judgement_indicator_offset);
 
         // if finisher, upgrade to geki or katu
         if finisher_hit {
@@ -569,7 +569,7 @@ impl GameMode for TaikoGame {
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(time); }
     }
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let time = manager.time();
         let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
@@ -582,76 +582,76 @@ impl GameMode for TaikoGame {
                     if let Some(kat) = &self.left_kat_image {
                         let mut img = kat.clone();
                         img.current_color.a = alpha;
-                        list.push(Box::new(img));
+                        list.push(img);
                     } else {
-                        list.push(Box::new(HalfCircle::new(
+                        list.push(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
                             depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
-                        )));
+                        ));
                     }
                 }
                 TaikoHit::LeftDon => {
                     if let Some(don) = &self.left_don_image {
                         let mut img = don.clone();
                         img.current_color.a = alpha;
-                        list.push(Box::new(img));
+                        list.push(img);
                     } else {
-                        list.push(Box::new(HalfCircle::new(
+                        list.push(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
                             depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
-                        )));
+                        ));
                     }
                 }
                 TaikoHit::RightDon => {
                     if let Some(don) = &self.right_don_image {
                         let mut img = don.clone();
                         img.current_color.a = alpha;
-                        list.push(Box::new(img));
+                        list.push(img);
                     } else {
-                        list.push(Box::new(HalfCircle::new(
+                        list.push(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
                             depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
-                        )));
+                        ));
                     }
                 }
                 TaikoHit::RightKat => {
                     if let Some(kat) = &self.right_kat_image {
                         let mut img = kat.clone();
                         img.current_color.a = alpha;
-                        list.push(Box::new(img));
+                        list.push(img);
                     } else {
-                        list.push(Box::new(HalfCircle::new(
+                        list.push(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
                             depth,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
-                        )));
+                        ));
                     }
                 }
             }
         }
 
         // draw the playfield
-        list.push(Box::new(self.taiko_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai)));
+        list.push(self.taiko_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai));
 
         // draw the hit area
-        list.push(Box::new(Circle::new(
+        list.push(Circle::new(
             Color::BLACK,
             1001.0,
             self.taiko_settings.hit_position,
             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
             None
-        )));
+        ));
 
         // draw notes
         for note in self.notes.iter_mut() { note.draw(args, list).await }
@@ -1152,7 +1152,7 @@ impl GameModeProperties for TaikoGame {
         // Leaderboard
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
-            Vector2::y_only(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
+            Vector2::with_y(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
             LeaderboardElement::new()
         ).await);
 
@@ -1200,16 +1200,16 @@ impl TimingBar {
     fn x_at(&self, time: f32) -> f32 {
         ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x as f32
     }
-    fn draw(&mut self, args:RenderArgs, list:&mut Vec<Box<dyn Renderable>>){
+    fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection){
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
 
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             BAR_COLOR,
             1001.5,
             self.pos,
             self.size,
             None
-        )));
+        ));
     }
 
     fn playfield_changed(&mut self, new: Arc<TaikoPlayfield>) {

@@ -52,7 +52,7 @@ impl InnerUIElement for PerformanceElement {
         self.perf = manager.score.performance;
     }
 
-    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let bounds_x = self.bounds_size.x();
 
         if let Some(perf) = &mut self.perf_image {
@@ -68,7 +68,7 @@ impl InnerUIElement for PerformanceElement {
 
             // let size = acc.measure_text();
             // perf.current_pos = pos_offset - bounds_x;
-            list.push(Box::new(perf));
+            list.push(perf);
         } else {
 
             // score bg
@@ -96,7 +96,7 @@ impl InnerUIElement for PerformanceElement {
             }
             
             // score text
-            list.push(Box::new(text));
+            list.push(text);
         }
         
     }

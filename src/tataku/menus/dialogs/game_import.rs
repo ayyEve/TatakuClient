@@ -22,7 +22,7 @@ impl GameImportDialog {
 
         let mut scrollable = ScrollableArea::new(
             Vector2::new(10.0, 30.0),
-            BASE_SIZE - (item_size + Vector2::y_only(button_height)),
+            BASE_SIZE - (item_size + Vector2::with_y(button_height)),
             true
         );
 
@@ -75,7 +75,7 @@ impl Dialog<Game> for GameImportDialog {
         Rectangle::bounds_only(self.pos, BASE_SIZE)
     }
     
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         let pos = self.pos;
 
         self.draw_background(*depth + 10.0, Color::WHITE, list);

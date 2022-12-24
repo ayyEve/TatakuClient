@@ -790,17 +790,17 @@ impl GameMode for ManiaGame {
         for tb in self.timing_bars.iter_mut() {tb.update(time)}
     }
     
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let window_size = self.playfield.window_size;
 
         // playfield
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::new(0.0, 0.0, 0.0, 0.8),
             FIELD_DEPTH + 1.0,
             Vector2::new(self.playfield.col_pos(0), 0.0),
             Vector2::new(self.playfield.col_pos(self.column_count) - self.playfield.col_pos(0), window_size.y),
             Some(Border::new(if manager.current_timing_point().kiai {Color::YELLOW} else {Color::BLACK}, 1.2))
-        )));
+        ));
 
 
         // draw columns
@@ -808,13 +808,13 @@ impl GameMode for ManiaGame {
             let x = self.playfield.col_pos(col);
 
             // column background
-            list.push(Box::new(Rectangle::new(
+            list.push(Rectangle::new(
                 Color::new(0.1, 0.1, 0.1, 0.8),
                 FIELD_DEPTH,
                 Vector2::new(x, 0.0),
                 Vector2::new(self.playfield.column_width, window_size.y),
                 Some(Border::new(Color::GREEN, 1.2))
-            )));
+            ));
 
 
             // hit area/button state for this col
@@ -824,15 +824,15 @@ impl GameMode for ManiaGame {
                 let mut img = img.clone();
                 img.current_pos = Vector2::new(x, self.playfield.hit_y());
 
-                list.push(Box::new(img));
+                list.push(img);
             } else {
-                list.push(Box::new(Rectangle::new(
+                list.push(Rectangle::new(
                     if self.column_states[col as usize] {self.get_color(col)} else {Color::TRANSPARENT_WHITE},
                     HIT_AREA_DEPTH,
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
                     Some(Border::new(Color::RED, self.playfield.note_border_width))
-                )));
+                ));
             }
         }
 
@@ -841,7 +841,7 @@ impl GameMode for ManiaGame {
             for note in col.iter_mut() { note.draw(args, list).await}
         }
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() {list.extend(tb.draw(args))}
+        for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
@@ -1112,7 +1112,7 @@ impl GameModeProperties for ManiaGame {
         // Leaderboard
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
-            Vector2::y_only(window_size.y / 3.0),
+            Vector2::with_y(window_size.y / 3.0),
             LeaderboardElement::new()
         ).await);
         

@@ -63,7 +63,7 @@ impl HitObject for TaikoSpinner {
         self.pos = self.settings.hit_position + Vector2::new(self.x_at(beatmap_time) as f64, 0.0);
         if beatmap_time > self.end_time { self.complete = true }
     }
-    async fn draw(&mut self, _args:RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }
 
@@ -72,22 +72,22 @@ impl HitObject for TaikoSpinner {
         // if its time to start hitting the spinner
         if self.pos.x <= self.settings.hit_position.x {
             // bg circle
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::YELLOW,
                 -5.0,
                 spinner_position,
                 SPINNER_RADIUS,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            )));
+            ));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 Color::WHITE,
                 -5.0,
                 spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64),
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
-            )));
+            ));
             
             //TODO: draw a counter
 
@@ -95,23 +95,23 @@ impl HitObject for TaikoSpinner {
             if let Some(image) = &self.spinner_image {
                 let mut i = image.clone();
                 i.current_pos = self.pos;
-                list.push(Box::new(i));
+                list.push(i);
             } else {
-                list.push(Box::new(HalfCircle::new(
+                list.push(HalfCircle::new(
                     self.don_color,
                     self.pos,
                     self.depth,
                     self.settings.note_radius,
                     true
-                )));
+                ));
 
-                list.push(Box::new(HalfCircle::new(
+                list.push(HalfCircle::new(
                     self.kat_color,
                     self.pos,
                     self.depth,
                     self.settings.note_radius,
                     false
-                )));
+                ));
             }
         }
     }

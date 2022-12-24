@@ -53,7 +53,7 @@ impl InnerUIElement for ScoreElement {
         self.score = manager.score.score.score;
     }
 
-    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         // score
         if let Some(score) = &mut self.score_image {
             score.number = self.score as f64;
@@ -66,7 +66,7 @@ impl InnerUIElement for ScoreElement {
             // TODO: right align
             score.current_pos = pos_offset-self.bounds_size.x() + ((self.bounds_size * scale).x() - size.x());
             
-            list.push(Box::new(score.clone()));
+            list.push(score.clone());
         } else {
             
             // score bg
@@ -93,7 +93,7 @@ impl InnerUIElement for ScoreElement {
             }
             
             // score text
-            list.push(Box::new(text));
+            list.push(text);
         }
 
     }

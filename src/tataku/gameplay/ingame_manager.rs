@@ -464,7 +464,7 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
 
-    pub async fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, args: RenderArgs, list: &mut RenderableCollection) {
         let time = self.time();
 
         // draw gamemode

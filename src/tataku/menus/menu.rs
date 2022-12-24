@@ -5,7 +5,7 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     /// helpful for determining what menu this is
     fn get_name(&self) -> &str {"none"}
     async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, args:RenderArgs) -> Vec<Box<dyn Renderable>>;
+    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection);
 
 
     // input handlers

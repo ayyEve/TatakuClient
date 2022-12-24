@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub trait Visualization: Send + Sync {
     fn should_lerp(&self) -> bool { true }
     fn lerp_factor(&self) -> f32 { 20.0 }
-    async fn draw(&mut self, args:piston::RenderArgs, pos_offset:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>);
+    async fn draw(&mut self, args:piston::RenderArgs, pos_offset:Vector2, depth:f64, list: &mut RenderableCollection);
     async fn update(&mut self) {}
     fn reset(&mut self) {}
 

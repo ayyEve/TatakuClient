@@ -795,13 +795,13 @@ impl Game {
         // let timer = Instant::now();
         let elapsed = self.game_start.elapsed().as_millis() as u64;
 
-        let mut render_queue:Vec<Box<dyn Renderable>> = Vec::new();
+        let mut render_queue = RenderableCollection::new();
 
         self.cursor_manager.draw(&mut render_queue).await;
 
         // draw background image here
         if let Some(img) = &self.background_image {
-            render_queue.push(Box::new(img.clone()));
+            render_queue.push(img.clone());
         }
 
         // should we draw the background dim?
@@ -813,7 +813,7 @@ impl Game {
             GameState::Ingame(manager) => manager.draw(args, &mut render_queue).await,
             GameState::InMenu(menu) => {
                 let mut lock = menu.lock().await;
-                render_queue.extend(lock.draw(args).await);
+                lock.draw(args, &mut render_queue).await;
                 if lock.get_name() == "main_menu" {
                     draw_bg_dim = false;
                 }
@@ -823,13 +823,13 @@ impl Game {
         }
 
         if draw_bg_dim {
-            render_queue.push(Box::new(Rectangle::new(
+            render_queue.push(Rectangle::new(
                 Color::BLACK.alpha(self.settings.background_dim),
                 f64::MAX - 1.0,
                 Vector2::zero(),
                 self.window_size.0,
                 None
-            )));
+            ));
         }
 
         // transition
@@ -842,17 +842,17 @@ impl Game {
             let mut alpha = diff / (TRANSITION_TIME as f64 / 2.0);
             if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME as f64}
 
-            render_queue.push(Box::new(Rectangle::new(
+            render_queue.push(Rectangle::new(
                 [0.0, 0.0, 0.0, alpha as f32].into(),
                 -f64::MAX,
                 Vector2::zero(),
                 self.window_size.0,
                 None
-            )));
+            ));
 
             // draw old mode
             match (&self.current_state, &self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => render_queue.extend(menu.lock().await.draw(args).await),
+                (GameState::None, Some(GameState::InMenu(menu))) => menu.lock().await.draw(args, &mut render_queue).await,
                 _ => {}
             }
         }
@@ -868,7 +868,7 @@ impl Game {
         self.dialogs = dialog_list;
 
         // volume control
-        render_queue.extend(self.volume_controller.draw(args).await);
+        self.volume_controller.draw(args, &mut render_queue).await;
 
         // draw fps's
         self.fps_display.draw(&mut render_queue);
@@ -887,6 +887,7 @@ impl Game {
         // self.cursor_manager.draw(&mut self.render_queue);
 
         // sort the queue here (so it only needs to be sorted once per frame, instead of every time a shape is added)
+        let mut render_queue = render_queue.take();
         render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
         // toss the items to the window to render

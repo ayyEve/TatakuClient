@@ -300,14 +300,14 @@ impl SpectatorManager {
         }
     }
 
-    pub async fn draw(&mut self, args: RenderArgs, list: &mut Vec<Box<dyn Renderable>>) {
+    pub async fn draw(&mut self, args: RenderArgs, list: &mut RenderableCollection) {
         if let Some(manager) = self.game_manager.as_mut() {
             manager.draw(args, list).await
         }
 
         // draw score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            list.extend(menu.draw(args).await)
+            menu.draw(args, list).await
         }
         
         // draw spectator banner
@@ -411,7 +411,7 @@ impl Drop for SpectatorManager {
 }
 
 
-fn draw_banner(text:&str, window_size: Vector2, list: &mut Vec<Box<dyn Renderable>>) {
+fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection) {
     let font = get_font();
 
     let mut offset_text = Text::new(
@@ -432,7 +432,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut Vec<Box<dyn Renderabl
     offset_text.center_text(&rect);
     // add
     list.push(visibility_bg(rect.current_pos, rect.size, BANNER_DEPTH + 10.0));
-    list.push(Box::new(offset_text));
+    list.push(offset_text);
 }
 
 

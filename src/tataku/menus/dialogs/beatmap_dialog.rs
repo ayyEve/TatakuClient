@@ -83,7 +83,7 @@ impl Dialog<Game> for BeatmapDialog {
         true
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         // background and border
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;
@@ -93,7 +93,7 @@ impl Dialog<Game> for BeatmapDialog {
         let depth = depth - 0.0001;
         self.delete_map.draw(*args, Vector2::zero(), depth, list);
 
-        list.push(Box::new(bg_rect));
+        list.push(bg_rect);
     }
 
 }

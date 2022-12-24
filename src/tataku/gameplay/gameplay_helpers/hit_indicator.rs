@@ -5,7 +5,7 @@ const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
 pub trait JudgementIndicator: Send + Sync{
     fn should_keep(&self, map_time: f32) -> bool;
     fn set_draw_duration(&mut self, duration: f32);
-    fn draw(&mut self, map_time: f32, list: &mut Vec<Box<dyn Renderable>>);
+    fn draw(&mut self, map_time: f32, list: &mut RenderableCollection);
 }
 
 
@@ -46,21 +46,21 @@ impl JudgementIndicator for BasicJudgementIndicator {
         map_time < self.time + self.draw_duration
     }
 
-    fn draw(&mut self, map_time: f32, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&mut self, map_time: f32, list: &mut RenderableCollection) {
         let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
         
         if let Some(img) = &self.image {
             let mut img = img.clone();
             img.current_color.a = alpha;
-            list.push(Box::new(img));
+            list.push(img);
         } else {
-            list.push(Box::new(Circle::new(
+            list.push(Circle::new(
                 self.color.alpha(alpha),
                 self.depth,
                 self.pos,
                 self.radius,
                 None
-            )))
+            ))
         }
     }
 

@@ -103,7 +103,7 @@ impl Dialog<Game> for NormalDialog {
         true
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         // background and border
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;
@@ -114,6 +114,6 @@ impl Dialog<Game> for NormalDialog {
             button.draw(*args, Vector2::zero(), depth, list);
         }
 
-        list.push(Box::new(bg_rect));
+        list.push(bg_rect);
     }
 }

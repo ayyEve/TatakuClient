@@ -44,41 +44,41 @@ impl ScatterGraph {
 
 
 impl StatsGraph for ScatterGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut Vec<Box<dyn Renderable>>) {
+    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
         let pos = bounds.current_pos;
         let size = bounds.size;
 
         // background
-        list.push(Box::new(Rectangle::new(
+        list.push(Rectangle::new(
             Color::new(0.2, 0.2, 0.2, 0.7),
             depth,
             pos,
             size,
             Some(Border::new(Color::RED, 1.5))
-        )));
+        ));
         
         // 0 line
-        let zero_pos = Vector2::y_only(self.map_point(0.0, size));
-        list.push(Box::new(Line::new(
+        let zero_pos = Vector2::with_y(self.map_point(0.0, size));
+        list.push(Line::new(
             pos + zero_pos,
             pos + size.x() + zero_pos,
             1.5,
             depth,
             Color::WHITE,
-        )));
+        ));
 
         for i in self.data.iter() {
             match &i.value {
                 MenuStatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    list.push(Box::new(Line::new(
-                        pos + Vector2::y_only(v),
-                        pos + size.x() + Vector2::y_only(v),
+                    list.push(Line::new(
+                        pos + Vector2::with_y(v),
+                        pos + size.x() + Vector2::with_y(v),
                         1.5,
                         depth,
                         i.color,
-                    )))
+                    ))
                 }
                 MenuStatsValue::List(points) => {
                     let mapped_points = self.map_points(&points, size);
@@ -93,7 +93,7 @@ impl StatsGraph for ScatterGraph {
                             None
                         );
                         c.resolution = 32;
-                        list.push(Box::new(c));
+                        list.push(c);
                     }
                     
                 }

@@ -120,7 +120,7 @@ impl Visualization for MenuVisualization {
     fn data(&mut self) -> &mut Vec<FFTData> {&mut self.data}
     fn timer(&mut self) -> &mut Instant {&mut self.timer}
 
-    async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list:&mut Vec<Box<dyn Renderable>>) {
+    async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list: &mut RenderableCollection) {
         let since_last = self.timer.elapsed().as_secs_f64();
         self.update_data().await;
 
@@ -147,7 +147,7 @@ impl Visualization for MenuVisualization {
         self.cookie.current_pos = pos;
         self.cookie.current_rotation = self.rotation * 2.0;
         self.cookie.set_size(Vector2::one() * self.current_inner_radius * 2.05);
-        list.push(Box::new(self.cookie.clone()));
+        list.push(self.cookie.clone());
 
         // draw ripples
         for ripple in self.ripples.iter_mut() {
@@ -200,14 +200,14 @@ impl Visualization for MenuVisualization {
                 sin * l
             );
 
-            list.push(Box::new(Line::new(
+            list.push(Line::new(
                 p1,
                 p2,
                 n,
                 depth,
                 // COLORS[i % COLORS.len()]
                 Color::from_hex("#27bfc2")
-            )));
+            ));
         }
     }
 
