@@ -187,7 +187,7 @@ impl HitObject for OsuSpinner {
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
-            i.current_scale = Vector2::one() * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
+            i.scale = Vector2::one() * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
             list.push(i)
         } else {
             list.push(Circle::new(
@@ -202,8 +202,8 @@ impl HitObject for OsuSpinner {
 
         // draw line to show rotation
         if let Some(mut i) = self.spinner_circle.clone() {
-            i.current_scale = Vector2::one() * self.scaling_helper.scale;
-            i.current_rotation = self.display_rotation;
+            i.scale = Vector2::one() * self.scaling_helper.scale;
+            i.rotation = self.display_rotation;
             list.push(i)
         } else {
             let p2 = self.pos + Vector2::new(self.display_rotation.cos(), self.display_rotation.sin()) * SPINNER_RADIUS;
@@ -249,33 +249,25 @@ impl HitObject for OsuSpinner {
 
         self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, |i| {
             // const SIZE:f64 = 700.0;
-            i.initial_pos = pos;
-            i.current_pos = pos;
-            i.initial_scale = scale;
-            i.current_scale = scale;
+            i.pos = pos;
+            i.scale = scale;
         }).await;
 
         self.spinner_background = IngameManager::load_texture_maybe("spinner-background", false, |i| {
             // const SIZE:f64 = 667.0;
-            i.initial_pos = pos;
-            i.current_pos = pos;
-            i.initial_scale = scale;
-            i.current_scale = scale;
+            i.pos = pos;
+            i.scale = scale;
         }).await;
 
         self.spinner_bottom = IngameManager::load_texture_maybe("spinner-bottom", false, |i| {
-            i.initial_pos = pos;
-            i.current_pos = pos;
-            i.initial_scale = scale;
-            i.current_scale = scale;
+            i.pos = pos;
+            i.scale = scale;
         }).await;
 
         self.spinner_approach = IngameManager::load_texture_maybe("spinner-approachcircle", false, |i| {
             // const SIZE:f64 = 320.0;
-            i.initial_pos = pos;
-            i.current_pos = pos;
-            i.initial_scale = scale;
-            i.current_scale = scale;
+            i.pos = pos;
+            i.scale = scale;
         }).await;
 
     }
@@ -305,11 +297,8 @@ impl OsuHitObject for OsuSpinner {
             &mut self.spinner_approach,
         ] {
             if let Some(i) = i {
-                i.initial_pos = self.pos;
-                i.current_pos = self.pos;
-
-                i.initial_scale = scale;
-                i.current_scale = scale;
+                i.pos = self.pos;
+                i.scale = scale;
             }
         }
 

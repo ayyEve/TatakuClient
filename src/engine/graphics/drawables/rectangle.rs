@@ -2,21 +2,13 @@ use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Rectangle {
-
-    // initial
-    pub initial_color: Color,
-    pub initial_pos: Vector2,
-    pub initial_rotation: f64,
-    pub initial_scale: Vector2,
-
-    // current
-    pub current_color: Color,
-    pub current_pos: Vector2,
-    pub current_rotation: f64,
-    pub current_scale: Vector2,
+    pub color: Color,
+    pub pos: Vector2,
+    pub rotation: f64,
+    pub scale: Vector2,
 
     pub origin: Vector2,
-    context: Option<Context>,
+    draw_state: Option<DrawState>,
 
     pub shape: Shape,
 
@@ -27,31 +19,21 @@ pub struct Rectangle {
 }
 impl Rectangle {
     pub fn new(color: Color, depth: f64, pos: Vector2, size: Vector2, border: Option<Border>) -> Rectangle {
-        let initial_pos = pos;
-        let current_pos = pos;
-        let initial_rotation = 0.0;
-        let current_rotation = 0.0;
-        let initial_color = color;
-        let current_color = color;
-        let initial_scale = Vector2::one();
-        let current_scale = Vector2::one();
+        let rotation = 0.0;
+        let scale = Vector2::ONE;
         
         Rectangle {
-            initial_color,
-            current_color,
-            initial_pos,
-            current_pos,
-            initial_scale,
-            current_scale,
-            initial_rotation,
-            current_rotation,
+            color,
+            pos,
+            scale,
+            rotation,
             shape: Shape::Square,
 
             depth,
             size,
             border,
             origin: size / 2.0,
-            context: None,
+            draw_state: None,
         }
     }
     
@@ -62,7 +44,7 @@ impl Rectangle {
 
     /// check if this rectangle contains a point
     pub fn contains(&self, p:Vector2) -> bool {
-        p.x > self.current_pos.x && p.x < self.current_pos.x + self.size.x && p.y > self.current_pos.y && p.y < self.current_pos.y + self.size.y
+        p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
     }
 }
 
@@ -77,84 +59,48 @@ impl Rectangle {
 impl Renderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
     fn get_depth(&self) -> f64 {self.depth}
-    fn get_context(&self) -> Option<Context> {self.context}
-    fn set_context(&mut self, c:Option<Context>) {self.context = c}
+    fn get_draw_state(&self) -> Option<DrawState> { self.draw_state }
+    fn set_draw_state(&mut self, c:Option<DrawState>) { self.draw_state = c }
 
     fn draw(&self, g: &mut GlGraphics, c: Context) {
-        let mut r = graphics::Rectangle::new(self.current_color.into());
+        let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
+        self.draw_with_transparency(c, self.color.a, border_alpha, g)
+    }
+}
+
+impl TatakuRenderable for Rectangle {
+    fn draw_with_transparency(&self, c: Context, alpha: f32, border_alpha: f32, g: &mut GlGraphics) {
+        let mut r = graphics::Rectangle::new(self.color.alpha(alpha).into());
         r.shape = self.shape;
 
-        if let Some(b) = self.border { r.border = Some(b.into())}
+        if let Some(mut b) = self.border { 
+            b.color.a = border_alpha;
+            r.border = Some(b.into())
+        }
         
         let transform = c.transform
             // move to pos
-            .trans_pos(self.current_pos)
+            .trans_pos(self.pos)
 
             // scale to size
-            .scale_pos(self.current_scale)
+            .scale_pos(self.scale)
 
             // undo origin
             .trans_pos(self.origin)
 
             // rotate to rotate
-            .rot_rad(self.current_rotation)
+            .rot_rad(self.rotation)
 
             // apply origin
             .trans_pos(-self.origin)
         ;
 
-
-        r.draw([0.0, 0.0, self.size.x, self.size.y], &DrawState::default(), transform, g);
-    }
-}
-
-impl Transformable for Rectangle {
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
-        match transform.trans_type {
-            TransformType::Position { .. } => {
-                let val:Vector2 = val.into();
-                self.current_pos = self.initial_pos + val;
-            },
-            TransformType::Scale { .. } => {
-                let val:f64 = val.into();
-                self.current_scale = self.initial_scale + val;
-            },
-            TransformType::Rotation { .. } => {
-                let val:f64 = val.into();
-                self.current_rotation = self.initial_rotation + val;
-            }
-            
-            // self color
-            TransformType::Transparency { .. } => {
-                let val:f64 = val.into();
-                self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
-            },
-            TransformType::Color { .. } => {
-                let col = val.into();
-                self.current_color = col;
-            },
-
-            // border
-            TransformType::BorderTransparency { .. } => if let Some(border) = self.border.as_mut() {
-                // this is a circle, it doesnt rotate
-                let val:f64 = val.into();
-                border.color = border.color.alpha(val.clamp(0.0, 1.0) as f32);
-            },
-            TransformType::BorderSize { .. } => if let Some(border) = self.border.as_mut() {
-                // this is a circle, it doesnt rotate
-                border.radius = val.into();
-            },
-            TransformType::BorderColor { .. } => if let Some(border) = self.border.as_mut() {
-                let val:Color = val.into();
-                border.color = val
-            },
-
-            TransformType::None => {},
-        }
-    }
-    
-    fn visible(&self) -> bool {
-        self.current_scale.x != 0.0 && self.current_scale.y != 0.0
+        r.draw(
+            [0.0, 0.0, self.size.x, self.size.y], 
+            &self.draw_state.unwrap_or(c.draw_state), 
+            transform, 
+            g
+        );
     }
 }
 

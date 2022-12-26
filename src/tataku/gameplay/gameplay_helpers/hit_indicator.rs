@@ -51,7 +51,7 @@ impl JudgementIndicator for BasicJudgementIndicator {
         
         if let Some(img) = &self.image {
             let mut img = img.clone();
-            img.current_color.a = alpha;
+            img.color.a = alpha;
             list.push(img);
         } else {
             list.push(Circle::new(

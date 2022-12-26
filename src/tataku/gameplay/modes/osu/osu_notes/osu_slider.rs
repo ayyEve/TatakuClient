@@ -298,22 +298,23 @@ impl OsuSlider {
 
     fn add_ripple(&mut self, time: f32, pos: Vector2, is_tick: bool) {
         if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new();
+            let depth = if is_tick && self.standard_settings.slider_tick_ripples_above { self.slider_depth - 0.000001 } else { self.slider_depth };
+            let mut group = TransformGroup::new(pos, depth).alpha(0.0).border_alpha(1.0);
+            group.alpha.current = 0.0;
 
             // border is white if ripple caused by slider tick
             let border_color = if is_tick { Color::WHITE } else { self.color };
-            let depth = if is_tick && self.standard_settings.slider_tick_ripples_above { self.slider_depth - 0.000001 } else { self.slider_depth };
 
-            group.items.push(DrawItem::Circle(Circle::new(
+            group.push(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 depth,
-                pos,
+                Vector2::ZERO,
                 self.radius,
                 Some(Border::new(border_color, 2.0))
-            )));
+            ));
 
             let duration = 500.0;
-            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
+            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true,  None);
 
             self.shapes.push(group);
         }
@@ -347,21 +348,26 @@ impl OsuSlider {
 
 
         // hitcircle
-        let mut circle_group = TransformGroup::new();
+        let mut circle_group = TransformGroup::new(self.pos, self.circle_depth).alpha(1.0).border_alpha(1.0);
         if let Some(start_circle) = &self.start_circle_image {
-            circle_group.items.push(DrawItem::Image(start_circle.circle.clone()));
-            circle_group.items.push(DrawItem::Image(start_circle.overlay.clone()));
+            let mut i_circle = start_circle.circle.clone();
+            i_circle.pos = Vector2::ZERO;
+            let mut i_overlay = start_circle.overlay.clone();
+            i_overlay.pos = Vector2::ZERO;
+
+            circle_group.push(i_circle);
+            circle_group.push(i_overlay);
         } else {
-            circle_group.items.push(DrawItem::Circle(Circle::new(
+            circle_group.push(Circle::new(
                 self.color,
                 self.circle_depth, // should be above curves but below slider ball
-                self.pos,
+                Vector2::ZERO,
                 self.radius,
                 Some(Border::new(
                     Color::BLACK,
                     self.scaling_helper.border_scaled
                 ))
-            )));
+            ));
         }
 
         // make it ripple and add it to the list
@@ -384,7 +390,7 @@ impl HitObject for OsuSlider {
         let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
             shape.update(time);
-            shape.items.iter().find(|di|di.visible()).is_some()
+            shape.visible()
         });
 
         // check sliding ok
@@ -467,7 +473,8 @@ impl HitObject for OsuSlider {
     async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
-            shape.draw(list)
+            // shape.draw(list)
+            list.push(shape.clone())
         }
 
         // if its not time to draw anything else, leave
@@ -485,10 +492,10 @@ impl HitObject for OsuSlider {
 
             // combo number
             if let Some(combo) = &mut self.combo_image {
-                combo.current_color.a = alpha;
+                combo.color.a = alpha;
                 list.push(combo.clone());
             } else {
-                self.combo_text.as_mut().unwrap().current_color.a = alpha;
+                self.combo_text.as_mut().unwrap().color.a = alpha;
                 list.push(self.combo_text.clone().unwrap());
             }
 
@@ -515,7 +522,7 @@ impl HitObject for OsuSlider {
         // slider body
         if let Some(rt) = &self.slider_body_render_target {
             let mut b = rt.image.clone();
-            b.current_color.a = alpha;
+            b.color.a = alpha;
             list.push(b);
         }
 
@@ -550,20 +557,20 @@ impl HitObject for OsuSlider {
             // draw it as a slider end
             if let Some(end_circle) = &self.end_circle_image {
                 let mut end_circle = end_circle.clone();
-                end_circle.current_color.a = alpha;
-                end_circle.current_pos = self.pos;
+                end_circle.color.a = alpha;
+                end_circle.pos = self.pos;
                 list.push(end_circle);
                 
                 if start_repeat {
                     if let Some(reverse_arrow) = &self.slider_reverse_image {
                         let mut im = reverse_arrow.clone();
-                        im.current_pos = self.pos;
+                        im.pos = self.pos;
                         im.depth = self.circle_depth;
-                        im.current_color.a = alpha;
-                        im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+                        im.color.a = alpha;
+                        im.scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
                         let l = self.curve.curve_lines[0];
-                        im.current_rotation = Vector2::atan2_wrong(l.p2 - l.p1);
+                        im.rotation = Vector2::atan2_wrong(l.p2 - l.p1);
 
                         list.push(im);
                     }
@@ -587,19 +594,19 @@ impl HitObject for OsuSlider {
         // end pos
         if let Some(end_circle) = &self.end_circle_image {
             let mut im = end_circle.clone();
-            im.current_color.a = alpha;
+            im.color.a = alpha;
             list.push(im);
 
             if end_repeat {
                 if let Some(reverse_arrow) = &self.slider_reverse_image {
                     let mut im = reverse_arrow.clone();
-                    im.current_pos = self.visual_end_pos;
+                    im.pos = self.visual_end_pos;
                     im.depth = self.circle_depth;
-                    im.current_color.a = alpha;
-                    im.current_scale = Vector2::one() * self.scaling_helper.scaled_cs;
+                    im.color.a = alpha;
+                    im.scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
                     let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
-                    im.current_rotation = Vector2::atan2_wrong(l.p1 - l.p2);
+                    im.rotation = Vector2::atan2_wrong(l.p1 - l.p2);
 
                     list.push(im);
                 }
@@ -824,17 +831,14 @@ impl OsuHitObject for OsuSlider {
             image.playfield_changed(&self.scaling_helper)
         }
         if let Some(image) = &mut self.end_circle_image {
-           image.initial_pos   = self.scaling_helper.scale_coords(self.visual_end_pos);
-           image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-           image.current_pos   = image.initial_pos;
-           image.current_scale = image.initial_scale;
+           image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
+           image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
         }
 
         
         
         if let Some(image) = &mut self.combo_image {
-            image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-            image.current_scale = image.initial_scale;
+            image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
             image.center_text(Rectangle::bounds_only(
                 self.pos - Vector2::one() * self.radius / 2.0,
@@ -934,8 +938,8 @@ impl SliderDot {
 
         if let Some(mut image) = self.dot_image.clone() {
             image.depth = self.depth;
-            image.current_pos = self.pos;
-            image.current_scale = Vector2::one() * self.scale * 0.8;
+            image.pos = self.pos;
+            image.scale = Vector2::one() * self.scale * 0.8;
             list.push(image);
         } else {
             list.push(Circle::new(

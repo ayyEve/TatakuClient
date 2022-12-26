@@ -938,8 +938,7 @@ impl Game {
                     self.window_size.y,
                 ));
             }
-            bg.initial_pos = (self.window_size.0 - bg.size()) / 2.0;
-            bg.current_pos = bg.initial_pos;
+            bg.pos = (self.window_size.0 - bg.size()) / 2.0;
         }
     }
 

@@ -56,10 +56,10 @@ impl InnerUIElement for AccuracyElement {
 
         if let Some(mut acc) = self.acc_image.clone() {
             acc.number = self.acc;
-            acc.current_scale = scale;
+            acc.scale = scale;
 
             // let size = acc.measure_text();
-            acc.current_pos = pos_offset - bounds_x;
+            acc.pos = pos_offset - bounds_x;
             list.push(acc);
         } else {
 
@@ -77,11 +77,11 @@ impl InnerUIElement for AccuracyElement {
             let text_size = text.measure_text();
             let right_align = self.bounds_size.x - text_size.x;
             // offset text position to account for right alrign
-            text.current_pos.x = pos_offset.x - self.bounds_size.x + right_align;
+            text.pos.x = pos_offset.x - self.bounds_size.x + right_align;
 
             if !WHITE_TEXT {
                 list.push(visibility_bg(
-                    text.current_pos - PADDING,
+                    text.pos - PADDING,
                     text_size + PADDING * 2.0,
                     1.0
                 ));

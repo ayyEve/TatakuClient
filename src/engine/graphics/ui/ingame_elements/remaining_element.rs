@@ -48,7 +48,7 @@ impl InnerUIElement for RemainingElement {
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let mut bounds = self.elapsed_bounds.clone();
-        bounds.current_pos = pos_offset;
+        bounds.pos = pos_offset;
         bounds.size *= scale;
 
         let diff = self.elapsed - self.end_time;

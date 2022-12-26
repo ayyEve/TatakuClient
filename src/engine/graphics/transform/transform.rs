@@ -48,8 +48,7 @@ impl Transformation {
             | TransformType::BorderTransparency { start, end }
             => TransformValueResult::F64(self.run_easing_fn( start, end, factor)),
 
-            TransformType::BorderColor { start, end }
-            | TransformType::Color { start, end } 
+            TransformType::Color { start, end } 
             => TransformValueResult::Color(self.run_easing_fn( start, end, factor)),
 
             TransformType::None => TransformValueResult::None,
@@ -147,7 +146,6 @@ pub enum TransformType {
     Color {start: Color, end: Color},
     BorderSize {start: f64, end: f64},
     Transparency {start: f64, end: f64},
-    BorderColor {start: Color, end: Color},
     Position {start: Vector2, end: Vector2},
     BorderTransparency {start: f64, end: f64},
 }

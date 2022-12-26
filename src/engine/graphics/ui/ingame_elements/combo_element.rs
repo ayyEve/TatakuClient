@@ -28,14 +28,14 @@ impl InnerUIElement for ComboElement {
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let mut combo_bounds = self.combo_bounds.clone();
-        combo_bounds.current_pos = pos_offset;
+        combo_bounds.pos = pos_offset;
         combo_bounds.size *= scale;
         
         if let Some(combo) = &mut self.combo_image {
             combo.number = self.combo as f64;
 
             let mut combo = combo.clone();
-            combo.current_scale = scale;
+            combo.scale = scale;
             combo.center_text(combo_bounds);
             list.push(combo);
         } else {

@@ -72,9 +72,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "ayyeve-piston-ui"
-version = "0.7.1"
+version = "0.7.4"
 source = "registry+https://gitlab.ayyeve.xyz/tataku/tataku-rust-registry"
-checksum = "42eab0776b5b2daef193e9da28cbbae67a3499a348aa123a4e08de7c153083b7"
+checksum = "4eb3331439144a2ffa594fea17fc585a8de71b0dd9f849b779c35d853286aff0"
 dependencies = [
  "ayyeve-ui-proc-macros",
  "clipboard",
@@ -83,6 +83,7 @@ dependencies = [
  "piston",
  "piston2d-graphics",
  "piston2d-opengl_graphics",
+ "serde",
 ]
 
 [[package]]
@@ -2432,18 +2433,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.151"
+version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fed41fc1a24994d044e6db6935e69511a1153b52c15eb42493b26fa87feba0"
+checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.151"
+version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "255abe9a125a985c05190d687b320c12f9b1f0b99445e608c21ba0782c719ad8"
+checksum = "af487d118eecd09402d70a5d72551860e788df87b464af30e5ea6a38c75c541e"
 dependencies = [
  "proc-macro2",
  "quote",

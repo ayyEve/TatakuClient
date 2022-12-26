@@ -79,8 +79,8 @@ impl HitObject for ManiaNote {
         if let Some(img) = &self.note_image {
             let mut img = img.clone();
             
-            img.current_pos = self.pos;
-            img.current_scale = self.playfield.note_size() / img.tex_size();
+            img.pos = self.pos;
+            img.scale = self.playfield.note_size() / img.tex_size();
             list.push(img);
         } else {
             list.push(Rectangle::new(
@@ -109,7 +109,7 @@ impl HitObject for ManiaNote {
             if let Some(path) = map.get(&self.column) {
                 if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     let mut img = img.clone();
-                    img.current_color = self.color;
+                    img.color = self.color;
                     img.origin = Vector2::zero();
                     img.depth = MANIA_NOTE_DEPTH;
                     note_image = Some(img);

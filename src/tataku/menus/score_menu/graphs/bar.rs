@@ -44,7 +44,7 @@ impl BarGraph {
 
 impl StatsGraph for BarGraph {
     fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
-        let pos = bounds.current_pos;
+        let pos = bounds.pos;
         let size = bounds.size;
 
         // background

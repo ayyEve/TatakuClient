@@ -77,10 +77,10 @@ impl InnerUIElement for KeyCounterElement {
 
             if let Some(btn) = &self.button_image {
                 let mut btn = btn.clone();
-                btn.current_pos = pos + box_size / 2.0;
-                btn.current_scale = scale;
+                btn.pos = pos + box_size / 2.0;
+                btn.scale = scale;
                 if info.held {
-                    btn.current_scale = Vector2::new(1.1, 1.1) * scale;
+                    btn.scale = Vector2::new(1.1, 1.1) * scale;
                 }
                 
                 box_width = btn.size().x * scale.x;

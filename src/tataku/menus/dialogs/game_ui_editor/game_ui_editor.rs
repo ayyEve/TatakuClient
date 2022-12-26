@@ -215,7 +215,7 @@ impl Dialog<()> for GameUIEditorDialog {
             let mut bounds = i.get_bounds();
             if (!self.sidebar.get_hover() && bounds.contains(self.mouse_pos)) || Some(i.element_name.clone()) == self.highlight_name {
                 bounds.depth = -999999999999999999999.0;
-                bounds.current_color = Color::PINK.alpha(0.7);
+                bounds.color = Color::PINK.alpha(0.7);
                 list.push(bounds);
             }
         }
@@ -223,7 +223,7 @@ impl Dialog<()> for GameUIEditorDialog {
         if let Some((i, _, _)) = self.mouse_down {
             let mut bounds = self.elements[i].get_bounds();
             bounds.depth = -999999999999999999999.0;
-            bounds.current_color = Color::RED;
+            bounds.color = Color::RED;
             list.push(bounds);
         }
         
@@ -288,7 +288,7 @@ impl ScrollableItem for UISideBarElement {
         
         let color = if self.hover {Color::BLUE} else {Color::RED};
         let mut r = Rectangle::bounds_only(self.pos + pos_offset, text.measure_text());
-        r.current_color = color;
+        r.color = color;
         list.push(r);
 
         list.push(text);

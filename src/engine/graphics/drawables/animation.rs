@@ -1,4 +1,3 @@
-
 use crate::prelude::*;
 
 #[derive(Clone)]
@@ -19,19 +18,13 @@ pub struct Animation {
     pub frame_index: usize,
     pub frame_delays: Vec<f32>,
 
-    context: Option<Context>,
-    
-    // initial
-    pub initial_color: Color,
-    pub initial_pos: Vector2,
-    pub initial_scale: Vector2,
-    pub initial_rotation: f64,
+    draw_state: Option<DrawState>,
 
     // current
-    pub current_color: Color,
-    pub current_pos: Vector2,
-    pub current_scale: Vector2,
-    pub current_rotation: f64,
+    pub color: Color,
+    pub pos: Vector2,
+    pub scale: Vector2,
+    pub rotation: f64,
 }
 #[allow(unused)]
 impl Animation {
@@ -40,38 +33,26 @@ impl Animation {
         let tex_size = Vector2::new(frames[0].get_width() as f64, frames[0].get_height() as f64);
         let scale = size / tex_size;
 
-        let initial_pos = pos;
-        let initial_rotation = 0.0;
-        let initial_scale = scale;
-        let initial_color = Color::WHITE;
-
-        let current_pos = pos;
-        let current_rotation = 0.0;
-        let current_scale = scale;
-        let current_color = Color::WHITE;
+        let rotation = 0.0;
+        let color = Color::WHITE;
 
         let origin = tex_size / 2.0;
 
         Self {
-            initial_pos,
-            initial_scale,
-            initial_rotation,
-            initial_color,
+            pos,
+            scale,
+            rotation,
+            color,
 
             frames,
             frame_index: 0,
             frame_delays,
             frame_start_time: 0.0,
 
-            current_pos,
-            current_scale,
-            current_rotation,
-            current_color,
-
             size: tex_size,
             depth,
             origin,
-            context: None,
+            draw_state: None,
         }
     }
 
@@ -101,13 +82,12 @@ impl Animation {
     }
 
     pub fn size(&self) -> Vector2 {
-        self.size * self.current_scale
+        self.size * self.scale
     }
     pub fn set_size(&mut self, size: Vector2) {
         let tex_size = self.tex_size();
         let scale = size / tex_size;
-        self.initial_scale = scale;
-        self.current_scale = scale;
+        self.scale = scale;
     }
 
     pub fn tex_size(&self) -> Vector2 {
@@ -129,21 +109,27 @@ impl Animation {
 impl Renderable for Animation {
     fn get_depth(&self) -> f64 {self.depth}
 
-    fn get_context(&self) -> Option<Context> {self.context}
-    fn set_context(&mut self, c:Option<Context>) {self.context = c}
+    fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
+    fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
     fn draw(&self, g: &mut GlGraphics, c: Context) {
-        let pre_rotation = self.current_pos / self.current_scale;
+        self.draw_with_transparency(c, self.color.a, 0.0, g)
+    }
+}
+
+impl TatakuRenderable for Animation {
+    fn draw_with_transparency(&self, c: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
+        let pre_rotation = self.pos / self.scale;
 
         let transform = c
             .transform
             // scale to size
-            .scale(self.current_scale.x, self.current_scale.y)
+            .scale(self.scale.x, self.scale.y)
 
             // move to pos
             .trans(pre_rotation.x, pre_rotation.y)
 
             // rotate to rotate
-            .rot_rad(self.current_rotation)
+            .rot_rad(self.rotation)
             
             // apply origin
             .trans(-self.origin.x, -self.origin.y)
@@ -151,45 +137,7 @@ impl Renderable for Animation {
 
         let image = &self.frames[self.frame_index];
         graphics::Image::new()
-            .color(self.current_color.into())
-            .draw(image.as_ref(), &self.context.unwrap_or(c).draw_state, transform, g)
-    }
-}
-impl Transformable for Animation {
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
-        match transform.trans_type {
-            TransformType::Position { .. } => {
-                let val:Vector2 = val.into();
-                // trace!("val: {:?}", val);
-                self.current_pos = self.initial_pos + val;
-            },
-            TransformType::Scale { .. } => {
-                let val:f64 = val.into();
-                self.current_scale = self.initial_scale + val;
-            },
-            TransformType::Rotation { .. } => {
-                let val:f64 = val.into();
-                self.current_rotation = self.current_rotation + val;
-            }
-            
-            TransformType::Transparency { .. } => {
-                let val:f64 = val.into();
-                self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
-            },
-
-            // no color, ignore
-            TransformType::Color { .. } => {},
-
-            // this doesnt have a border, ignore
-            TransformType::BorderTransparency { .. } => {},
-            TransformType::BorderSize { .. } => {},
-            TransformType::BorderColor { .. } => {},
-
-            TransformType::None => {},
-        }
-    }
-    
-    fn visible(&self) -> bool {
-        self.current_scale.x != 0.0 && self.current_scale.y != 0.0 && self.current_color.a != 0.0
+            .color(self.color.alpha(alpha).into())
+            .draw(image.as_ref(), &self.draw_state.unwrap_or(c.draw_state), transform, g)
     }
 }

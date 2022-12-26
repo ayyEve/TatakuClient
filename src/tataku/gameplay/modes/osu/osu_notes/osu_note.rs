@@ -105,7 +105,7 @@ impl OsuNote {
 
     fn ripple_start(&mut self) {
         if !self.standard_settings.ripple_hitcircles { return }
-        let scale = 0.0..1.3;
+        let scale = 1.0..1.5;
 
         // broken
         // // combo text
@@ -122,21 +122,26 @@ impl OsuNote {
 
 
         // hitcircle
-        let mut circle_group = TransformGroup::new();
+        let mut circle_group = TransformGroup::new(self.pos, self.base_depth).alpha(1.0).border_alpha(1.0);
         if let Some(circle) = &self.circle_image {
-            circle_group.items.push(DrawItem::Image(circle.circle.clone()));
-            circle_group.items.push(DrawItem::Image(circle.overlay.clone()));
+            let mut i_circle = circle.circle.clone();
+            i_circle.pos = Vector2::ZERO;
+            let mut i_overlay = circle.overlay.clone();
+            i_overlay.pos = Vector2::ZERO;
+
+            circle_group.push(i_circle);
+            circle_group.push(i_overlay);
         } else {
-            circle_group.items.push(DrawItem::Circle(Circle::new(
+            circle_group.push(Circle::new(
                 self.color,
                 self.base_depth, // should be above curves but below slider ball
-                self.pos,
+                Vector2::ZERO,
                 self.radius,
                 Some(Border::new(
                     Color::BLACK,
                     self.scaling_helper.border_scaled
                 ))
-            )));
+            ));
         }
 
         // make it ripple and add it to the list
@@ -156,14 +161,15 @@ impl HitObject for OsuNote {
         let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
             shape.update(time);
-            shape.items.iter().find(|di|di.visible()).is_some()
+            shape.visible()
         });
     }
 
     async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
-            shape.draw(list)
+            // shape.draw(list)
+            list.push(shape.clone())
         }
 
         // if its not time to draw anything else, leave
@@ -181,10 +187,10 @@ impl HitObject for OsuNote {
 
         // combo number
         if let Some(combo) = &mut self.combo_image {
-            combo.current_color.a = alpha;
+            combo.color.a = alpha;
             list.push(combo.clone());
         } else {
-            self.combo_text.as_mut().unwrap().current_color.a = alpha;
+            self.combo_text.as_mut().unwrap().color.a = alpha;
             list.push(self.combo_text.clone().unwrap());
         }
 
@@ -278,15 +284,15 @@ impl OsuHitObject for OsuNote {
         self.hit = true;
 
         if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new();
+            let mut group = TransformGroup::new(self.pos, self.base_depth).alpha(0.0).border_alpha(1.0);
 
-            group.items.push(DrawItem::Circle(Circle::new(
+            group.push(Circle::new(
                 Color::TRANSPARENT_WHITE,
-                self.base_depth,
-                self.pos,
+                0.0,
+                Vector2::ZERO,
                 self.radius,
                 Some(Border::new(self.color, 2.0))
-            )));
+            ));
 
             let duration = 500.0;
             group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
@@ -322,8 +328,7 @@ impl OsuHitObject for OsuNote {
         }
         
         if let Some(image) = &mut self.combo_image {
-            image.initial_scale = Vector2::one() * self.scaling_helper.scaled_cs;
-            image.current_scale = image.initial_scale;
+            image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
 
             image.center_text(Rectangle::bounds_only(
                 self.pos - Vector2::one() * self.radius / 2.0,

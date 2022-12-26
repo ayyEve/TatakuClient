@@ -2,21 +2,12 @@ use crate::prelude::*;
 
 #[derive(Clone)]
 pub struct SkinnedNumber {
-    // initial
-    pub initial_color: Color,
-    pub initial_pos: Vector2,
-    pub initial_rotation: f64,
-    pub initial_scale: Vector2,
-
-    // currentz
-    pub current_color: Color,
-    pub current_pos: Vector2,
-    pub current_rotation: f64,
-    pub current_scale: Vector2,
+    pub color: Color,
+    pub pos: Vector2,
+    pub rotation: f64,
+    pub scale: Vector2,
 
     pub origin: Vector2,
-
-    pub color: Color,
     pub depth: f64,
 
     number_textures: Vec<Image>,
@@ -26,20 +17,14 @@ pub struct SkinnedNumber {
 
     pub number: f64,
     pub floating_precision: usize,
-    context: Option<Context>,
+    draw_state: Option<DrawState>,
 
     cache: Arc<parking_lot::RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
-        let initial_pos = pos;
-        let current_pos = pos;
-        let initial_rotation = 0.0;
-        let current_rotation = 0.0;
-        let initial_color = color;
-        let current_color = color;
-        let initial_scale = Vector2::one();
-        let current_scale = Vector2::one();
+        let rotation = 0.0;
+        let scale = Vector2::one();
 
         let origin = Vector2::zero();
 
@@ -75,27 +60,22 @@ impl SkinnedNumber {
 
 
         Ok(Self {
-            initial_color,
-            current_color,
-            initial_pos,
-            current_pos,
-            initial_scale,
-            current_scale,
-            initial_rotation,
-            current_rotation,
+            color,
+            pos,
+            scale,
+            rotation,
 
             origin,
-            color,
             depth,
             number,
 
-            cache: Arc::new(parking_lot::RwLock::new((number, number_as_text(number, floating_precision, &symbol)))),
+            cache: Arc::new(parking_lot::RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
             number_textures: textures,
             symbol_textures,
             symbol,
             floating_precision,
 
-            context: None,
+            draw_state: None,
         })
     }
 
@@ -105,7 +85,7 @@ impl SkinnedNumber {
         drop(last);
         
 
-        let s = number_as_text(self.number, self.floating_precision, &self.symbol);
+        let s = Self::number_as_text_base(self.number, self.floating_precision, &self.symbol);
         *self.cache.write() = (self.number, s.clone());
         s
     }
@@ -140,7 +120,7 @@ impl SkinnedNumber {
 
         for c in s.chars() {
             if let Some(t) = self.get_char_tex(c) {
-                let t = t.size() * self.current_scale;
+                let t = t.size() * self.scale;
                 width += t.x;
                 max_height = max_height.max(t.y)
             }
@@ -151,34 +131,51 @@ impl SkinnedNumber {
 
     pub fn center_text(&mut self, rect:Rectangle) {
         let text_size = self.measure_text();
-        self.initial_pos = rect.current_pos + (rect.size - text_size) / 2.0;
-        self.current_pos = self.initial_pos;
+        self.pos = rect.pos + (rect.size - text_size) / 2.0;
     }
+
+    fn number_as_text_base(num: f64, precision: usize, symbol: &Option<char>) -> String {
+            let mut s = crate::format_float(num, precision);
+
+            if precision == 0 {
+                s = s.split(".").next().unwrap().to_owned();
+            }
+
+            if let Some(symb) = symbol {
+                s.push(*symb);
+            }
+
+            s
+    }
+
 }
 impl Renderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
     fn get_depth(&self) -> f64 {self.depth}
-    fn get_context(&self) -> Option<Context> {self.context}
-    fn set_context(&mut self, c:Option<Context>) {self.context = c}
+    fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
+    fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
 
-    fn draw(&self, g: &mut GlGraphics, context: Context) {
-        // let size = self.measure_text();
+    fn draw(&self, g: &mut GlGraphics, c: Context) {
+        self.draw_with_transparency(c, self.color.a, 0.0, g)
+    }
+}
 
-        // from image
-        // let pre_rotation = self.current_pos / self.current_scale + self.origin;
 
-        // ignore origin for now, will be pain
+impl TatakuRenderable for SkinnedNumber {
+    fn draw_with_transparency(&self, mut context: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
 
+        let color = self.color.alpha(alpha);
+        context.draw_state = self.draw_state.unwrap_or(context.draw_state);
 
         //TODO: cache `s`
         let s = self.number_as_text();
-        let mut current_pos = self.current_pos;
+        let mut current_pos = self.pos;
         for c in s.chars() {
             if let Some(t) = self.get_char_tex(c) {
                 let mut t = t.clone();
-                t.current_pos = current_pos;
-                t.current_scale = self.current_scale;
-                t.current_color = self.current_color;
+                t.pos = current_pos;
+                t.scale = self.scale;
+                t.color = color;
                 current_pos.x += t.size().x;
 
                 t.draw(g, context);
@@ -219,70 +216,4 @@ impl Renderable for SkinnedNumber {
         //     g
         // ).unwrap();
     }
-}
-
-impl Transformable for SkinnedNumber {
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
-        match transform.trans_type {
-            TransformType::Position { .. } => {
-                let val:Vector2 = val.into();
-                self.current_pos = self.initial_pos + val;
-            }
-            TransformType::Scale { .. } => {
-                let val:f64 = val.into();
-                self.current_scale = self.initial_scale + val;
-            }
-            TransformType::Rotation { .. } => {
-                let val:f64 = val.into();
-                self.current_rotation = self.initial_rotation + val;
-            }
-            
-            // self color
-            TransformType::Transparency { .. } => {
-                let val:f64 = val.into();
-                self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
-            }
-            TransformType::Color { .. } => {
-                let col = val.into();
-                self.current_color = col;
-            }
-
-            // border
-            // TransformType::BorderTransparency { .. } => if let Some(border) = self.border.as_mut() {
-            //     // this is a circle, it doesnt rotate
-            //     let val:f64 = val.into();
-            //     border.color = border.color.alpha(val.clamp(0.0, 1.0) as f32);
-            // },
-            // TransformType::BorderSize { .. } => if let Some(border) = self.border.as_mut() {
-            //     // this is a circle, it doesnt rotate
-            //     border.radius = val.into();
-            // },
-            // TransformType::BorderColor { .. } => if let Some(border) = self.border.as_mut() {
-            //     let val:Color = val.into();
-            //     border.color = val
-            // },
-
-            TransformType::None => {},
-            _ => {}
-        }
-    }
-    
-    fn visible(&self) -> bool {
-        self.current_scale.x != 0.0 && self.current_scale.y != 0.0
-    }
-}
-
-
-fn number_as_text(num: f64, precision: usize, symbol: &Option<char>) -> String {
-        let mut s = crate::format_float(num, precision);
-
-        if precision == 0 {
-            s = s.split(".").next().unwrap().to_owned();
-        }
-
-        if let Some(symb) = symbol {
-            s.push(*symb);
-        }
-
-        s
 }

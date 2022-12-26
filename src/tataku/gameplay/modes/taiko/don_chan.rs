@@ -154,15 +154,15 @@ impl InnerUIElement for DonChan {
                 if self.kiai {
                     if let Some(anim) = &self.kiai_anim {
                         let mut anim = anim.clone();
-                        anim.current_pos = pos_offset;
-                        anim.current_scale *= scale;
+                        anim.pos = pos_offset;
+                        anim.scale *= scale;
                         list.push(anim)
                     }
                 } else {
                     if let Some(anim) = &self.normal_anim {
                         let mut anim = anim.clone();
-                        anim.current_pos = pos_offset;
-                        anim.current_scale *= scale;
+                        anim.pos = pos_offset;
+                        anim.scale *= scale;
                         list.push(anim)
                     }
                 }
@@ -170,16 +170,16 @@ impl InnerUIElement for DonChan {
             DonChanState::ComboMilestone => {
                 if let Some(anim) = &self.combo_anim {
                     let mut anim = anim.clone();
-                    anim.current_pos = pos_offset;
-                    anim.current_scale *= scale;
+                    anim.pos = pos_offset;
+                    anim.scale *= scale;
                     list.push(anim)
                 }
             }
             DonChanState::Fail => {
                 if let Some(anim) = &self.fail_anim {
                     let mut anim = anim.clone();
-                    anim.current_pos = pos_offset;
-                    anim.current_scale *= scale;
+                    anim.pos = pos_offset;
+                    anim.scale *= scale;
                     list.push(anim)
                 }
             }

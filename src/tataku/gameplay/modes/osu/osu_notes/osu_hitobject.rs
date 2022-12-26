@@ -49,25 +49,16 @@ impl HitCircleImageHelper {
         let mut circle = SkinManager::get_texture("hitcircle", true).await;
         if let Some(circle) = &mut circle {
             circle.depth = depth;
-            circle.initial_pos = pos;
-            circle.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
-            circle.initial_color = color;
-            
-            circle.current_pos = circle.initial_pos;
-            circle.current_scale = circle.initial_scale;
-            circle.current_color = circle.initial_color;
+            circle.pos = pos;
+            circle.scale = Vector2::one() * scaling_helper.scaled_cs;
+            circle.color = color;
         }
 
         let mut overlay = SkinManager::get_texture("hitcircleoverlay", true).await;
         if let Some(overlay) = &mut overlay {
             overlay.depth = depth - 0.0000001;
-            overlay.initial_pos = pos;
-            overlay.initial_scale = Vector2::one() * scaling_helper.scaled_cs;
-            // overlay.initial_color = color;
-            
-            overlay.current_pos = overlay.initial_pos;
-            overlay.current_scale = overlay.initial_scale;
-            // overlay.current_color = overlay.initial_color;
+            overlay.pos = pos;
+            overlay.scale = Vector2::one() * scaling_helper.scaled_cs;
         }
 
         if overlay.is_none() || circle.is_none() {return None}
@@ -81,20 +72,16 @@ impl HitCircleImageHelper {
 
     
     pub fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
-        self.overlay.initial_pos = new_scale.scale_coords(self.pos);
-        self.overlay.initial_scale = Vector2::one() * new_scale.scaled_cs;
-        self.overlay.current_pos = self.overlay.initial_pos;
-        self.overlay.current_scale = self.overlay.initial_scale;
+        self.overlay.pos = new_scale.scale_coords(self.pos);
+        self.overlay.scale = Vector2::one() * new_scale.scaled_cs;
 
-        self.circle.initial_pos   = self.overlay.initial_pos;
-        self.circle.initial_scale = self.overlay.initial_scale;
-        self.circle.current_pos   = self.overlay.initial_pos;
-        self.circle.current_scale = self.overlay.initial_scale;
+        self.circle.pos   = self.overlay.pos;
+        self.circle.scale = self.overlay.scale;
     }
 
     pub fn set_alpha(&mut self, alpha: f32) {
-        self.circle.current_color.a = alpha;
-        self.overlay.current_color.a = alpha;
+        self.circle.color.a = alpha;
+        self.overlay.color.a = alpha;
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {
@@ -159,13 +146,9 @@ impl ApproachCircle {
             // i think this is incorrect
             let scale = 1.0 + (self.time_diff as f64 / self.preempt as f64) * (APPROACH_CIRCLE_MULT - 1.0);
 
-            tex.initial_pos = self.pos;
-            tex.initial_color = self.color.alpha(self.alpha);
-            tex.initial_scale = Vector2::one() * scale * self.scaling_helper.scaled_cs;
-
-            tex.current_pos = tex.initial_pos;
-            tex.current_color = tex.initial_color;
-            tex.current_scale = tex.initial_scale;
+            tex.pos = self.pos;
+            tex.color = self.color.alpha(self.alpha);
+            tex.scale = Vector2::one() * scale * self.scaling_helper.scaled_cs;
 
             list.push(tex)
         } else {

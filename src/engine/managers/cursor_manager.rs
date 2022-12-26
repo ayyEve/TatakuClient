@@ -205,17 +205,16 @@ impl CursorManager {
 
         // check if we should add a new trail
         if self.cursor_trail_image.is_some() && time - self.last_trail_time >= self.trail_create_timer {
-            if let Some(mut trail) = self.cursor_trail_image.clone() {
-                let mut g = TransformGroup::new();
+            if let Some(trail) = self.cursor_trail_image.clone() {
+                let mut g = TransformGroup::new(self.pos, trail.depth).alpha(1.0).border_alpha(0.0);
                 g.transforms.push(Transformation::new(
                     self.trail_fadeout_timer_start, 
                     self.trail_fadeout_timer_duration, 
-                    TransformType::Transparency {start: 1.0, end: 0.0}, 
+                    TransformType::Transparency { start: 1.0, end: 0.0 }, 
                     TransformEasing::EaseOutSine, 
                     time
                 ));
-                trail.current_pos = self.pos;
-                g.items.push(DrawItem::Image(trail));
+                g.push(trail);
 
                 self.trail_images.push(g);
                 self.last_trail_time = time;
@@ -226,14 +225,14 @@ impl CursorManager {
         // update the transforms, removing any that are not visible
         self.trail_images.retain_mut(|i| {
             i.update(time);
-            i.items[0].visible()
+            i.visible()
         });
 
         // update ripples
         let time = self.time.elapsed().as_secs_f64() * 1000.0;
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
-            ripple.items[0].visible()
+            ripple.visible()
         });
 
     }
@@ -249,24 +248,26 @@ impl CursorManager {
 
         if self.cursor_trail_image.is_some() {
             // draw the transforms
-            for i in self.trail_images.iter_mut() {
-                i.draw(list);
+            for i in self.trail_images.iter() {
+                // i.draw(list);
+                list.push(i.clone())
             }
         }
         
         // draw ripples
-        for ripple in self.ripples.iter_mut() {
-            ripple.draw(list)
+        for ripple in self.ripples.iter() {
+            list.push(ripple.clone())
+            // ripple.draw(list)
         }
 
         // draw cursor itself
         if let Some(cursor) = &self.cursor_image {
             let mut cursor = cursor.clone();
-            cursor.current_pos = self.pos;
+            cursor.pos = self.pos;
             // cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
-                cursor.current_scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
+                cursor.scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
             }
             
             list.push(cursor.clone());
@@ -288,24 +289,18 @@ impl CursorManager {
 
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new();
+        let mut group = TransformGroup::new(self.pos, 1000.0).alpha(0.0).border_alpha(1.0);
         let duration = 500.0;
         let time = self.time.elapsed().as_secs_f64() * 1000.0;
 
         // if let Some(mut ripple) = self.ripple_image.clone() {
 
-        //     // set alpha
-        //     ripple.initial_color.a = self.ripple_color.a;
-        //     ripple.current_color.a = self.ripple_color.a;
-
-        //     // set pos
-        //     ripple.initial_pos = self.pos;
-        //     ripple.current_pos = self.pos;
+        //     ripple.color.a = self.ripple_color.a;
+        //     ripple.pos = self.pos;
 
         //     // set scale
         //     const SCALE:f64 = 0.25;
-        //     ripple.initial_scale = Vector2::one() * SCALE;
-        //     ripple.current_scale = ripple.initial_scale;
+        //     ripple.scale = Vector2::one() * SCALE;
 
         //     let end_scale = self
         //         .ripple_radius_override
@@ -314,7 +309,7 @@ impl CursorManager {
         //         * SCALE;
 
         //     // add to transform group and make it ripple
-        //     group.items.push(DrawItem::Image(ripple));
+        //     group.push(ripple);
         //     group.ripple_scale_range(0.0, duration, time, end_scale..SCALE, Some(2.0..0.0), Some(0.2));
         // } else {
 
@@ -326,13 +321,13 @@ impl CursorManager {
 
             // let end_scale = self.settings.cursor_ripple_final_scale * self.ripple_radius_override.map(|r| DEFAULT_CURSOR_SIZE / r).unwrap_or(1.0);
 
-            group.items.push(DrawItem::Circle(Circle::new(
-                Color::WHITE,
-                1_000.0,
-                self.pos,
+            group.push(Circle::new(
+                Color::WHITE.alpha(0.5),
+                0.0,
+                Vector2::ZERO,
                 radius,
-                Some(Border::new(Color::WHITE, 2.0))
-            )));
+                Some(Border::new(Color::WHITE, 2.0 / end_scale))
+            ));
             group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
         // }
 

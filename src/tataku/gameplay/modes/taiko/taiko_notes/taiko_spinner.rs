@@ -94,7 +94,7 @@ impl HitObject for TaikoSpinner {
         } else { // just draw the note on the playfield
             if let Some(image) = &self.spinner_image {
                 let mut i = image.clone();
-                i.current_pos = self.pos;
+                i.pos = self.pos;
                 list.push(i);
             } else {
                 list.push(HalfCircle::new(
@@ -167,9 +167,7 @@ impl TaikoHitObject for TaikoSpinner {
 
         if let Some(i) = &mut self.spinner_image {
             let radius = settings.note_radius;
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            i.initial_scale = scale;
-            i.current_scale = scale;
+            i.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
     }
 

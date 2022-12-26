@@ -26,10 +26,9 @@ impl SkinnedButton {
         for i in [&mut left_image, &mut middle_image, &mut right_image] {
             i.depth = depth;
             i.origin = Vector2::zero();
-            i.current_color = Color::GRAY;
+            i.color = Color::GRAY;
 
-            i.initial_scale = Vector2::new(x_scale, size.y / i.size.y);
-            i.current_scale = i.initial_scale;
+            i.scale = Vector2::new(x_scale, size.y / i.size.y);
         }
 
 
@@ -50,7 +49,7 @@ impl SkinnedButton {
             self.middle_image.clone(),
             self.right_image.clone(),
         ] {
-            i.current_pos = current_pos;
+            i.pos = current_pos;
             current_pos.x += i.size().x;
             list.push(i)
         }

@@ -89,7 +89,7 @@ impl MusicBox {
         // update text's y pos
         pos.y -= size.y + Y_BOTTOM_PADDING + PROGRESSBAR_HEIGHT * 2.0; // bottom padding;
         for i in texts.iter_mut() {
-            i.current_pos.y = pos.y + MUSIC_BOX_PADDING.y + CONTROL_BUTTON_PADDING.y;
+            i.pos.y = pos.y + MUSIC_BOX_PADDING.y + CONTROL_BUTTON_PADDING.y;
         }
 
         Self {
@@ -189,7 +189,7 @@ impl ScrollableItem for MusicBox {
             
             // make bounding box
             let rect = Rectangle::bounds_only(
-                text.current_pos - CONTROL_BUTTON_PADDING, 
+                text.pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
             );
 
@@ -236,7 +236,7 @@ impl ScrollableItem for MusicBox {
         // draw buttons
         for mut text in self.texts.clone() {
             text.depth = parent_depth;
-            text.current_pos += pos_offset;
+            text.pos += pos_offset;
             
             let t_size = text.measure_text();
             
@@ -244,13 +244,13 @@ impl ScrollableItem for MusicBox {
             let mut rect = Rectangle::new(
                 SECONDARY_COLOR.alpha(0.1),
                 parent_depth,
-                text.current_pos - CONTROL_BUTTON_PADDING, 
+                text.pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
                 None, //Some(Border::new(Color::BLACK, 1.2))
             ).shape(Shape::Round(5.0, 10));
 
             if rect.contains(self.mouse_pos) {
-                rect.current_color.a = 0.2;
+                rect.color.a = 0.2;
             }
             // rect.border.as_mut().unwrap().color.a = 0.8;
 

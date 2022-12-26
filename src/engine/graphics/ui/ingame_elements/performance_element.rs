@@ -57,14 +57,14 @@ impl InnerUIElement for PerformanceElement {
 
         if let Some(perf) = &mut self.perf_image {
             perf.number = self.perf as f64;
-            perf.current_scale = scale;
+            perf.scale = scale;
 
             let mut perf = perf.clone();
-            perf.current_scale = scale;
+            perf.scale = scale;
 
             // right align
             let size = perf.measure_text();
-            perf.current_pos = pos_offset-bounds_x + ((self.bounds_size * scale).x() - size.x());
+            perf.pos = pos_offset-bounds_x + ((self.bounds_size * scale).x() - size.x());
 
             // let size = acc.measure_text();
             // perf.current_pos = pos_offset - bounds_x;
@@ -85,11 +85,11 @@ impl InnerUIElement for PerformanceElement {
             let text_size = text.measure_text();
             let right_align = self.bounds_size.x - text_size.x;
             // offset text position to account for right alrign
-            text.current_pos.x = pos_offset.x - self.bounds_size.x + right_align;
+            text.pos.x = pos_offset.x - self.bounds_size.x + right_align;
 
             if !WHITE_TEXT {
                 list.push(visibility_bg(
-                    text.current_pos - PADDING,
+                    text.pos - PADDING,
                     text_size + PADDING * 2.0,
                     1.0
                 ));

@@ -165,12 +165,11 @@ impl OsuGame {
         let color = hit_value.color();
         let mut image = judgment_helper.get_from_scorehit(hit_value);
         if let Some(image) = &mut image {
-            image.current_pos = pos;
+            image.pos = pos;
             image.depth = -2.0;
 
             let scale = Vector2::one() * scaling_helper.scale;
-            image.initial_scale = scale;
-            image.current_scale = scale;
+            image.scale = scale;
         }
 
         manager.add_judgement_indicator(BasicJudgementIndicator::new(
@@ -692,15 +691,15 @@ impl GameMode for OsuGame {
                 let line_size = self.game_settings.playfield_movelines_thickness;
                 // draw x and y center lines
                 let px_line = Line::new(
-                    playfield.current_pos + Vector2::new(0.0, playfield.size.y/2.0),
-                    playfield.current_pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
+                    playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
+                    playfield.pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
                     line_size,
                     -100.0,
                     Color::WHITE
                 );
                 let py_line = Line::new(
-                    playfield.current_pos + Vector2::new(playfield.size.x/2.0, 0.0),
-                    playfield.current_pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
+                    playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
+                    playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
                     line_size, 
                     -100.0,
                     Color::WHITE
@@ -797,8 +796,8 @@ impl GameMode for OsuGame {
                         // add point
                         if let Some(mut i) = self.follow_point_image.clone() {
                             const FOLLOW_DOT_TEX_SIZE: Vector2 = Vector2::new(128.0, 128.0);
-                            i.current_pos = point;
-                            i.current_rotation = direction;
+                            i.pos = point;
+                            i.rotation = direction;
                             // i.current_scale = Vector2::one() * self.scaling_helper.scale;
                             list.push(i);
                         } else {
@@ -1089,11 +1088,11 @@ impl GameModeInput for OsuGame {
                     // -1.0 to 1.0
                     // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.x = playfield.current_pos.x + f64::lerp(0.0, playfield.size.x, normalized);
+                    new_pos.x = playfield.pos.x + f64::lerp(0.0, playfield.size.x, normalized);
                 },
                 Some(ControllerAxis::Left_Y) => {
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.y = playfield.current_pos.y + f64::lerp(0.0, playfield.size.y, normalized);
+                    new_pos.y = playfield.pos.y + f64::lerp(0.0, playfield.size.y, normalized);
                 },
                 _ => {},
             }
@@ -1112,7 +1111,7 @@ impl GameModeProperties for OsuGame {
     fn end_time(&self) -> f32 {self.end_time}
     fn show_cursor(&self) -> bool {true}
     fn ripple_size(&self) -> Option<f64> {
-        Some(self.scaling_helper.scaled_circle_size.x * 1.5)
+        Some(self.scaling_helper.scaled_circle_size.x)
     }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {

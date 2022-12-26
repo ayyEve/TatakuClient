@@ -76,13 +76,9 @@ impl HitCircleImageHelper {
             let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
             circle.depth = depth;
-            circle.initial_pos = Vector2::zero();
-            circle.initial_scale = scale;
-            circle.initial_color = color;
-            
-            circle.current_pos = circle.initial_pos;
-            circle.current_scale = circle.initial_scale;
-            circle.current_color = circle.initial_color;
+            circle.pos = Vector2::zero();
+            circle.scale = scale;
+            circle.color = color;
         }
 
         let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
@@ -90,13 +86,9 @@ impl HitCircleImageHelper {
             let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
             overlay.depth = depth - 0.0000001;
-            overlay.initial_pos = Vector2::zero();
-            overlay.initial_scale = scale;
-            overlay.initial_color = color;
-            
-            overlay.current_pos = overlay.initial_pos;
-            overlay.current_scale = overlay.initial_scale;
-            overlay.current_color = overlay.initial_color;
+            overlay.pos = Vector2::zero();
+            overlay.scale = scale;
+            overlay.color = color;
         }
 
         if overlay.is_none() || circle.is_none() {return None}
@@ -108,8 +100,8 @@ impl HitCircleImageHelper {
     }
 
     pub fn set_pos(&mut self, pos: Vector2) {
-        self.circle.current_pos  = pos;
-        self.overlay.current_pos = pos;
+        self.circle.pos  = pos;
+        self.overlay.pos = pos;
     }
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
@@ -124,12 +116,8 @@ impl HitCircleImageHelper {
         };
 
         let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-        
-        self.circle.initial_scale = scale;
-        self.circle.current_scale = self.circle.initial_scale;
-        
-        self.overlay.initial_scale = scale;
-        self.overlay.current_scale = self.overlay.initial_scale;
+        self.circle.scale = scale;
+        self.overlay.scale = scale;
     }
 }
 

@@ -223,7 +223,7 @@ impl ProcessedNotif {
         ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10)));
 
         let mut text = self.text.clone();
-        text.current_pos = pos + NOTIF_PADDING;
+        text.pos = pos + NOTIF_PADDING;
         list.push(text);
     }
 }

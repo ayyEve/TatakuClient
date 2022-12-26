@@ -106,20 +106,20 @@ impl HitObject for ManiaHold {
 
         // update start tex
         if let Some(img) = &mut self.start_image {
-            img.current_pos = self.pos;
-            img.current_scale = self.playfield.note_size() / img.tex_size();
+            img.pos = self.pos;
+            img.scale = self.playfield.note_size() / img.tex_size();
         }
 
         // update middle tex
         if let Some(img) = &mut self.middle_image {
-            img.current_pos = Vector2::new(self.pos.x, y);
-            img.current_scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+            img.pos = Vector2::new(self.pos.x, y);
+            img.scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
         }
 
         // update end tex
         if let Some(img) = &mut self.end_image {
-            img.current_pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
-            img.current_scale = self.playfield.note_size() / img.tex_size();
+            img.pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
+            img.scale = self.playfield.note_size() / img.tex_size();
         }
 
     }
@@ -239,7 +239,7 @@ impl HitObject for ManiaHold {
             
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.current_color = self.color;
+                    img.color = self.color;
                     img.origin = Vector2::zero();
                     img.depth = MANIA_NOTE_DEPTH;
 
@@ -255,7 +255,7 @@ impl HitObject for ManiaHold {
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.origin = Vector2::zero();
-                    img.current_color = Color::WHITE;
+                    img.color = Color::WHITE;
                     img.depth = MANIA_NOTE_DEPTH;
 
                     middle_image = Some(img);
@@ -270,8 +270,8 @@ impl HitObject for ManiaHold {
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.origin = Vector2::zero();
-                    img.current_color = Color::WHITE;
-                    img.current_scale.y *= -1.0;
+                    img.color = Color::WHITE;
+                    img.scale.y *= -1.0;
                     img.depth = MANIA_NOTE_DEPTH;
                     end_image = Some(img)
                 }

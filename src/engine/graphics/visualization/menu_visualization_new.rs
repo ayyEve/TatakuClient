@@ -73,19 +73,19 @@ impl MenuVisualizationNew {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new();
+        let mut group = TransformGroup::new(self.window_size.0 / 2.0, 50.0).alpha(1.0).border_alpha(1.0);
         let duration = 1000.0;
         let time = self.other_timer.as_millis();
 
         // info!("adding ripple {time}");
 
-        group.items.push(DrawItem::Circle(Circle::new(
+        group.push(Circle::new(
             Color::WHITE.alpha(0.5),
-            50.0,
-            self.window_size.0 / 2.0,
+            0.0,
+            Vector2::ZERO,
             self.current_inner_radius,
             Some(Border::new(Color::WHITE, 2.0))
-        )));
+        ));
         group.ripple(0.0, duration, time as f64, 2.0, true, Some(0.5));
 
         self.ripples.push(group);
@@ -144,7 +144,7 @@ impl MenuVisualizationNew {
         let time = self.other_timer.as_millis64();
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
-            ripple.items[0].visible()
+            ripple.visible()
         });
     }
 
@@ -181,14 +181,15 @@ impl Visualization for MenuVisualizationNew {
         self.rotation += rotation_increment * since_last;
 
         self.cookie.depth = depth - 1.0;
-        self.cookie.current_pos = pos;
-        self.cookie.current_rotation = self.rotation * 2.0;
+        self.cookie.pos = pos;
+        self.cookie.rotation = self.rotation * 2.0;
         self.cookie.set_size(Vector2::one() * self.current_inner_radius * 2.05);
         list.push(self.cookie.clone());
 
         // draw ripples
-        for ripple in self.ripples.iter_mut() {
-            ripple.draw(list)
+        for ripple in self.ripples.iter() {
+            list.push(ripple.clone());
+            // ripple.draw(list)
         }
 
         // let mut mirror = self.data.clone();

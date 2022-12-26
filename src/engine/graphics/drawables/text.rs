@@ -2,17 +2,11 @@ use crate::prelude::*;
 
 #[derive(Clone)]
 pub struct Text {
-    // initial
-    pub initial_color: Color,
-    pub initial_pos: Vector2,
-    pub initial_rotation: f64,
-    pub initial_scale: Vector2,
-
     // current
-    pub current_color: Color,
-    pub current_pos: Vector2,
-    pub current_rotation: f64,
-    pub current_scale: Vector2,
+    pub color: Color,
+    pub pos: Vector2,
+    pub rotation: f64,
+    pub scale: Vector2,
 
     pub origin: Vector2,
 
@@ -22,34 +16,24 @@ pub struct Text {
     pub text_colors: Vec<Color>,
     pub fonts: Vec<Font2>,
 
-    context: Option<Context>,
+    draw_state: Option<DrawState>,
 }
 impl Text {
     pub fn new(color:Color, depth:f64, pos: Vector2, font_size: u32, text: String, font: Font2) -> Text {
         let font_size = FontSize::new(font_size as f32).unwrap();
         let fonts = vec![font, get_fallback_font()];
 
-        let initial_pos = pos;
-        let current_pos = pos;
-        let initial_rotation = 0.0;
-        let current_rotation = 0.0;
-        let initial_color = color;
-        let current_color = color;
-        let initial_scale = Vector2::one();
-        let current_scale = Vector2::one();
+        let rotation = 0.0;
+        let scale = Vector2::one();
 
         let text_size = measure_text(&fonts, font_size, &text, Vector2::one(), 2.0);
         let origin = text_size / 2.0;
 
         Text {
-            initial_color,
-            current_color,
-            initial_pos,
-            current_pos,
-            initial_scale,
-            current_scale,
-            initial_rotation,
-            current_rotation,
+            color,
+            pos,
+            scale,
+            rotation,
 
             origin,
             depth,
@@ -57,17 +41,16 @@ impl Text {
             text,
             fonts,
             text_colors: Vec::new(),
-            context: None,
+            draw_state: None,
         }
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        measure_text(&self.fonts, self.font_size, &self.text, self.current_scale, 2.0) 
+        measure_text(&self.fonts, self.font_size, &self.text, self.scale, 2.0) 
     }
     pub fn center_text(&mut self, rect:&Rectangle) {
         let text_size = self.measure_text();
-        self.initial_pos = rect.current_pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
-        self.current_pos = self.initial_pos;
+        self.pos = rect.pos + (rect.size - text_size)/2.0; // + Vector2::new(0.0, text_size.y);
     }
 
     pub fn _set_text_colors(&mut self, colors: Vec<Color>) {
@@ -77,12 +60,19 @@ impl Text {
 impl Renderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size.0) }
     fn get_depth(&self) -> f64 { self.depth }
-    fn get_context(&self) -> Option<Context> { self.context }
-    fn set_context(&mut self, c:Option<Context>) { self.context = c }
+    fn get_draw_state(&self) -> Option<DrawState> { self.draw_state }
+    fn set_draw_state(&mut self, c:Option<DrawState>) { self.draw_state = c }
 
     fn draw(&self, g: &mut GlGraphics, c: Context) {
+        self.draw_with_transparency(c, self.color.a, 0.0, g)
+    }
+}
+
+impl TatakuRenderable for Text {
+    fn draw_with_transparency(&self, c: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
+        
         // from image
-        let pre_rotation = self.current_pos / self.current_scale + self.origin;
+        let pre_rotation = self.pos / self.scale + self.origin;
 
         let transform = c
             .transform
@@ -93,7 +83,7 @@ impl Renderable for Text {
             .trans(pre_rotation.x, pre_rotation.y)
 
             // rotate to rotate
-            .rot_rad(self.current_rotation)
+            .rot_rad(self.rotation)
             
             // apply origin
             .trans(-self.origin.x, -self.origin.y)
@@ -102,74 +92,23 @@ impl Renderable for Text {
 
         let text;
         if self.text_colors.len() > 0 {
-            text = self.text.chars().enumerate().map(|(i, c)| (c, self.text_colors[i % self.text_colors.len()].alpha(self.current_color.a))).collect::<Vec<(char, Color)>>();
+            text = self.text.chars().enumerate().map(|(i, c)| (c, self.text_colors[i % self.text_colors.len()].alpha(alpha))).collect::<Vec<(char, Color)>>();
         } else {
-            text = self.text.chars().map(|c| (c, self.current_color)).collect::<Vec<(char, Color)>>();
+            text = self.text.chars().map(|c| (c, self.color.alpha(alpha))).collect::<Vec<(char, Color)>>();
         }
         
         let mut font_size = self.font_size.clone();
-        font_size.0 *= self.current_scale.y as f32;
+        font_size.0 *= self.scale.y as f32;
 
         draw_text(
             &text, 
             font_size, 
             &self.fonts, 
             2.0,
-            &c.draw_state, 
+            &self.draw_state.unwrap_or(c.draw_state), 
             transform, 
             g
         );
-    }
-}
-
-impl Transformable for Text {
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
-        match transform.trans_type {
-            TransformType::Position { .. } => {
-                let val:Vector2 = val.into();
-                self.current_pos = self.initial_pos + val;
-            },
-            TransformType::Scale { .. } => {
-                let val:f64 = val.into();
-                self.current_scale = self.initial_scale + val;
-            },
-            TransformType::Rotation { .. } => {
-                let val:f64 = val.into();
-                self.current_rotation = self.initial_rotation + val;
-            }
-            
-            // self color
-            TransformType::Transparency { .. } => {
-                let val:f64 = val.into();
-                self.current_color = self.current_color.alpha(val.clamp(0.0, 1.0) as f32);
-            },
-            TransformType::Color { .. } => {
-                let col = val.into();
-                self.current_color = col;
-            },
-
-            // border
-            // TransformType::BorderTransparency { .. } => if let Some(border) = self.border.as_mut() {
-            //     // this is a circle, it doesnt rotate
-            //     let val:f64 = val.into();
-            //     border.color = border.color.alpha(val.clamp(0.0, 1.0) as f32);
-            // },
-            // TransformType::BorderSize { .. } => if let Some(border) = self.border.as_mut() {
-            //     // this is a circle, it doesnt rotate
-            //     border.radius = val.into();
-            // },
-            // TransformType::BorderColor { .. } => if let Some(border) = self.border.as_mut() {
-            //     let val:Color = val.into();
-            //     border.color = val
-            // },
-
-            TransformType::None => {},
-            _ => {}
-        }
-    }
-    
-    fn visible(&self) -> bool {
-        self.current_scale.x != 0.0 && self.current_scale.y != 0.0
     }
 }
 

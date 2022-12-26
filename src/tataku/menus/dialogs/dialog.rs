@@ -31,7 +31,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
         list.push(Rectangle::new(
             color.alpha(0.8),
             depth, 
-            bounds.current_pos,
+            bounds.pos,
             bounds.size,
             Some(Border::new(color, 2.0))
         ))

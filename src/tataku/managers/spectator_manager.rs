@@ -431,7 +431,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
     );
     offset_text.center_text(&rect);
     // add
-    list.push(visibility_bg(rect.current_pos, rect.size, BANNER_DEPTH + 10.0));
+    list.push(visibility_bg(rect.pos, rect.size, BANNER_DEPTH + 10.0));
     list.push(offset_text);
 }
 

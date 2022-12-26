@@ -72,8 +72,8 @@ impl HitObject for TaikoDrumroll {
         // middle segment
         if let Some(image) = &self.middle_image {
             let mut image = image.clone();
-            image.current_pos = self.pos + Vector2::with_y(self.radius);
-            image.current_scale.x = self.end_x - self.pos.x;
+            image.pos = self.pos + Vector2::with_y(self.radius);
+            image.scale.x = self.end_x - self.pos.x;
             list.push(image);
         } else {
             // middle
@@ -90,13 +90,13 @@ impl HitObject for TaikoDrumroll {
         if let Some(image) = &self.end_image {
             // start
             let mut start = image.clone();
-            start.current_pos = self.pos + Vector2::new(0.0, self.radius);
-            start.current_scale.x *= -1.0;
+            start.pos = self.pos + Vector2::new(0.0, self.radius);
+            start.scale.x *= -1.0;
             list.push(start);
 
             // end
             let mut end = image.clone();
-            end.current_pos = Vector2::new(self.end_x, self.pos.y + self.radius);
+            end.pos = Vector2::new(self.end_x, self.pos.y + self.radius);
             list.push(end);
             
         } else {
@@ -159,12 +159,10 @@ impl HitObject for TaikoDrumroll {
         if let Some(image) = &mut middle_image {
             image.depth = self.depth;
             image.origin.x = 0.0;
-            image.current_color = Color::YELLOW;
+            image.color = Color::YELLOW;
 
             let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            image.initial_scale = scale;
-            image.current_scale = scale;
+            image.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
         self.middle_image = middle_image;
 
@@ -172,12 +170,10 @@ impl HitObject for TaikoDrumroll {
         if let Some(image) = &mut end_image {
             image.depth = self.depth;
             image.origin.x = 0.0;
-            image.current_color = Color::YELLOW;
+            image.color = Color::YELLOW;
 
             let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-            image.initial_scale = scale;
-            image.current_scale = scale;
+            image.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
         self.end_image = end_image;
 
@@ -209,9 +205,7 @@ impl TaikoHitObject for TaikoDrumroll {
         for i in [&mut self.middle_image, &mut self.end_image] {
             if let Some(i) = i {
                 let radius = settings.note_radius * if self.finisher {settings.big_note_multiplier} else {1.0};
-                let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
-                i.initial_scale = scale;
-                i.current_scale = scale;
+                i.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
             }
         }
     }

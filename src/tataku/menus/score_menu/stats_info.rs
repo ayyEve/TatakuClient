@@ -29,13 +29,13 @@ impl MenuStatsInfo {
         let font = get_font();
 
         // display name should be at the top with some margin above and below
-        let display_text = Text::new(Color::BLACK, depth, bounds.current_pos, 30, self.display_name.clone(), font.clone());
+        let display_text = Text::new(Color::BLACK, depth, bounds.pos, 30, self.display_name.clone(), font.clone());
         // display_text.center_text(bounds);
         // display_text.current_pos.y = 0.0;
         list.push(display_text);
         
         // ~half the remaining vertical should be for listing the values 
-        let mut current_pos = bounds.current_pos + Vector2::new(0.0, 30.0 + 5.0);
+        let mut current_pos = bounds.pos + Vector2::new(0.0, 30.0 + 5.0);
         for i in self.data.iter() {
             if i.show_in_list {
                 let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
@@ -51,7 +51,7 @@ impl MenuStatsInfo {
         let mut size = bounds.size - current_pos.y();
         if size.x < size.y { size.y = size.x; } else { size.x = size.y; }
 
-        let y = bounds.current_pos.y + bounds.size.y - size.y;
+        let y = bounds.pos.y + bounds.size.y - size.y;
 
         self.graph.draw(&Rectangle::bounds_only(Vector2::new(current_pos.x, y), size), depth, list);
     }

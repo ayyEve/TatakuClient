@@ -54,7 +54,7 @@ impl UIElement {
 
     pub fn get_bounds(&self) -> Rectangle {
         let mut base = self.inner.get_bounds();
-        base.current_pos += self.pos_offset;
+        base.pos += self.pos_offset;
         base.size *= self.scale;
         base
     }

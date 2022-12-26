@@ -161,9 +161,9 @@ impl VolumeControl {
             
             // highlight selected index
             match self.vol_selected_index {
-                0 => master_text.current_color = Color::RED,
-                1 => effect_text.current_color = Color::RED,
-                2 => music_text.current_color = Color::RED,
+                0 => master_text.color = Color::RED,
+                1 => effect_text.color = Color::RED,
+                2 => music_text.color = Color::RED,
                 _ => error!("self.vol_selected_index out of bounds somehow")
             }
 

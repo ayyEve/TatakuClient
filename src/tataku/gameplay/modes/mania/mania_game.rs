@@ -151,8 +151,8 @@ impl ManiaGame {
                     if let Some(img) = SkinManager::get_texture(path, true).await {
                         let mut img = img.clone();
                         img.origin = Vector2::zero();
-                        img.current_scale = self.playfield.note_size() / img.tex_size();
-                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
+                        img.scale = self.playfield.note_size() / img.tex_size();
+                        img.pos = Vector2::new(x, self.playfield.hit_y());
 
                         self.key_images_up.insert(col, img);
                     }
@@ -163,8 +163,8 @@ impl ManiaGame {
                     if let Some(img) = SkinManager::get_texture(path, true).await {
                         let mut img = img.clone();
                         img.origin = Vector2::zero();
-                        img.current_scale = self.playfield.note_size() / img.tex_size();
-                        img.current_pos = Vector2::new(x, self.playfield.hit_y());
+                        img.scale = self.playfield.note_size() / img.tex_size();
+                        img.pos = Vector2::new(x, self.playfield.hit_y());
 
                         self.key_images_down.insert(col, img);
                     }
@@ -822,7 +822,7 @@ impl GameMode for ManiaGame {
 
             if let Some(img) = map.get(&col) {
                 let mut img = img.clone();
-                img.current_pos = Vector2::new(x, self.playfield.hit_y());
+                img.pos = Vector2::new(x, self.playfield.hit_y());
 
                 list.push(img);
             } else {

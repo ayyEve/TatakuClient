@@ -59,12 +59,12 @@ impl InnerUIElement for ScoreElement {
             score.number = self.score as f64;
 
             let mut score = score.clone();
-            score.current_scale = scale;
+            score.scale = scale;
 
             let size = score.measure_text();
 
             // TODO: right align
-            score.current_pos = pos_offset-self.bounds_size.x() + ((self.bounds_size * scale).x() - size.x());
+            score.pos = pos_offset-self.bounds_size.x() + ((self.bounds_size * scale).x() - size.x());
             
             list.push(score.clone());
         } else {
@@ -82,11 +82,11 @@ impl InnerUIElement for ScoreElement {
             let text_size = text.measure_text();
             let right_align = self.bounds_size.x - text_size.x;
             // offset text position to account for right alrign
-            text.current_pos.x = pos_offset.x - self.bounds_size.x + right_align;
+            text.pos.x = pos_offset.x - self.bounds_size.x + right_align;
 
             if !WHITE_TEXT {
                 list.push(visibility_bg(
-                    text.current_pos - PADDING,
+                    text.pos - PADDING,
                     text_size + PADDING * 2.0,
                     1.0
                 ));

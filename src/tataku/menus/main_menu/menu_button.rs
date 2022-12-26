@@ -27,7 +27,7 @@ pub struct MainMenuButton {
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
         let pos = Vector2::zero();
-        let shapes = TransformGroup::new();
+        let shapes = TransformGroup::new(pos, 10.0).alpha(1.0).border_alpha(0.0);
         let window_size = WindowSize::get().0;
 
         MainMenuButton {
@@ -180,57 +180,60 @@ impl MainMenuButton {
 impl ScrollableItemGettersSetters for MainMenuButton {
     fn size(&self) -> Vector2 {self.size}
     fn get_pos(&self) -> Vector2 {
-        self.shapes.items.get(0).map(|i|i.get_pos()).unwrap_or_default()
+        *self.shapes.pos
     }
 
     fn get_hover(&self) -> bool {self.hover}
     fn set_hover(&mut self, mut hover:bool) {
-        if !self.visible {hover = false}
+        if !self.visible { hover = false }
+        if self.hover == hover { return }
         self.hover = hover;
 
-        let size = if hover {
-            1.0
+        if hover {
+            // self.shapes.push(Rectangle::new(
+            //     Color::TRANSPARENT_WHITE,
+            //     10.0,
+            //     self.pos,
+            //     self.size,
+            //     Some(Border::new(Color::RED, 0.0))
+            // ).shape(Shape::Round(5.0, 10)))
+            self.shapes.transforms.push(Transformation::new(
+                0.0,
+                1.0, 
+                TransformType::BorderTransparency { start: 0.0, end: 1.0 },
+                TransformEasing::Linear,
+                0.0,
+            ))
+
         } else {
-            0.0
-        };
+            self.shapes.transforms.push(Transformation::new(
+                0.0,
+                1.0, 
+                TransformType::BorderTransparency { start: 1.0, end: 0.0 },
+                TransformEasing::Linear,
+                0.0,
+            ))
+            // self.shapes.items.remove(self.shapes.items.len() - 1);
+        }
 
-        let transform = Transformation::new(
-            0.0, 
-            1.0,
-            TransformType::BorderSize {start: size, end: size},
-            TransformEasing::Linear,
-            self.time()
-        );
+        // let transform = Transformation::new(
+        //     0.0, 
+        //     1.0,
+        //     TransformType::BorderSize {start: size, end: size},
+        //     TransformEasing::Linear,
+        //     self.time()
+        // );
 
-        self.shapes.transforms.push(transform);
+        // self.shapes.transforms.push(transform);
     }
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, mut selected:bool) {
         if !self.visible {selected = false}
+        if self.selected == selected { return }
         self.selected = selected;
         trace!("setting selected: {}", selected);
 
-        if selected {
-            let transform2 = Transformation::new(
-                0.0, 
-                1.0,
-                TransformType::BorderSize {start: 1.0, end: 1.0},
-                TransformEasing::Linear,
-                self.time()
-            );
-            let transform = Transformation::new(
-                1.0, 
-                1.0,
-                TransformType::BorderColor {start: Color::BLUE, end: Color::BLUE},
-                TransformEasing::Linear,
-                self.time()
-            );
-
-            self.shapes.transforms.push(transform);
-            self.shapes.transforms.push(transform2);
-        } else {
-            self.set_hover(self.hover)
-        }
+        self.set_hover(self.selected);
     }
     fn get_selectable(&self) -> bool {false}
 }
@@ -245,7 +248,7 @@ impl ScrollableItem for MainMenuButton {
                 10.0,
                 self.pos,
                 self.size,
-                Some(Border::new(Color::RED, 0.0))
+                Some(Border::new(Color::RED.alpha(0.0), 1.0))
             ).shape(Shape::Round(5.0, 10));
             
             // draw text
@@ -259,9 +262,8 @@ impl ScrollableItem for MainMenuButton {
             );
             txt.center_text(&r);
 
-            
-            self.shapes.items.push(DrawItem::Rectangle(r));
-            self.shapes.items.push(DrawItem::Text(txt));
+            self.shapes.push(r);
+            self.shapes.push(txt);
         }
 
 
@@ -270,7 +272,7 @@ impl ScrollableItem for MainMenuButton {
 
         self.disposable_shapes.retain_mut(|i|{
             i.update(time);
-            i.items.iter().find(|s|s.visible()).is_some()
+            i.visible()
         });
 
 
@@ -285,10 +287,12 @@ impl ScrollableItem for MainMenuButton {
 
     fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list: &mut RenderableCollection) {
         if !self.visible { return }
-        self.shapes.draw(list);
+        // self.shapes.draw(list);
+        list.push(self.shapes.clone());
 
         for i in self.disposable_shapes.iter_mut() {
-            i.draw(list);
+            // i.draw(list);
+            list.push(i.clone())
         }
     }
 }
