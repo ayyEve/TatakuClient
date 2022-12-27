@@ -147,7 +147,6 @@ impl TaikoHitObject for TaikoSpinner {
         if time < self.time || time > self.end_time { return false }
         // wrong note, or already done (just in case)
         if self.complete { return false }
-
         self.hit_count += 1;
         if self.hit_count == self.hits_required { self.complete = true }
 

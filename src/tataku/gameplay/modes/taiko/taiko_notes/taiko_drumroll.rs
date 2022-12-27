@@ -27,7 +27,7 @@ pub struct TaikoDrumroll {
 impl TaikoDrumroll {
     pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
         let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
-        let depth = TaikoGame::get_depth(time);
+        let depth = TaikoGame::get_slider_depth(time);
 
         let middle_image = None;
         let end_image = None;

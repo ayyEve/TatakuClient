@@ -124,7 +124,7 @@ impl TaikoHitObject for TaikoNote {
         self.missed = true;
     }
 
-    fn check_finisher(&mut self, hit_type:HitType, time:f32, game_speed: f32) -> bool {
+    fn check_finisher(&self, hit_type:HitType, time:f32, game_speed: f32) -> bool {
         self.finisher && hit_type == self.hit_type && (time - self.hit_time) < FINISHER_LENIENCY * game_speed
     }
 
@@ -138,7 +138,7 @@ impl TaikoHitObject for TaikoNote {
     
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
         self.settings = settings.clone();
-        if let Some(i) = &mut self.image{
+        if let Some(i) = &mut self.image {
             i.update_settings(settings, self.finisher)
         }
     }

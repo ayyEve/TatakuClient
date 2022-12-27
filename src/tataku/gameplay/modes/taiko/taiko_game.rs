@@ -51,10 +51,10 @@ pub const GRAVITY_SCALING:f32 = 400.0;
 
 pub struct TaikoGame {
     // lists
-    pub notes: Vec<Box<dyn TaikoHitObject>>,
+    pub notes: TaikoNoteQueue,
+    pub other_notes: TaikoNoteQueue,
+
     timing_bars: Vec<TimingBar>,
-    // list indices
-    note_index: usize,
 
     end_time: f32,
     auto_helper: TaikoAutoHelper,
@@ -79,8 +79,6 @@ pub struct TaikoGame {
     current_mods: Arc<ModManager>
 }
 impl TaikoGame {
-    pub fn next_note(&mut self) { self.note_index += 1 }
-
     async fn play_sound(&self, manager: &mut IngameManager, note_time:f32,  hit_type: HitType, finisher: bool) {
         let hitsound;
         match (hit_type, finisher) {
@@ -119,7 +117,7 @@ impl TaikoGame {
         ];
         self.miss_window = w_miss;
 
-        for note in self.notes.iter_mut() {
+        for note in self.other_notes.iter_mut() {
             if note.note_type() == NoteType::Spinner {
                 let length = note.end_time(0.0) - note.time();
                 let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
@@ -165,6 +163,10 @@ impl TaikoGame {
     #[inline]
     pub fn get_depth(time: f32) -> f64 {
         NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time as f64)
+    }
+    #[inline]
+    pub fn get_slider_depth(_time: f32) -> f64 {
+        NOTE_DEPTH_RANGE.end
     }
 
     #[inline]
@@ -218,8 +220,8 @@ impl GameMode for TaikoGame {
         let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let mut s = Self {
-                    notes: Vec::new(),
-                    note_index: 0,
+                    notes: TaikoNoteQueue::new(),
+                    other_notes: TaikoNoteQueue::new(),
 
                     timing_bars: Vec::new(),
                     end_time: 0.0,
@@ -249,15 +251,14 @@ impl GameMode for TaikoGame {
                     let hit_type = if (note.hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
                     let finisher = (note.hitsound & 4) > 0;
 
-                    let note = Box::new(TaikoNote::new(
+                    s.notes.push(Box::new(TaikoNote::new(
                         note.time,
                         hit_type,
                         finisher,
                         settings.clone(),
                         playfield.clone(),
                         diff_calc_only,
-                    ).await);
-                    s.notes.push(note);
+                    ).await));
                 }
                 for slider in beatmap.sliders.iter() {
                     let SliderDef {time, slides, length, ..} = slider.to_owned();
@@ -299,52 +300,48 @@ impl GameMode for TaikoGame {
                         loop {
                             let sound_type = sound_types[i];
 
-                            let note = Box::new(TaikoNote::new(
+                            s.notes.push(Box::new(TaikoNote::new(
                                 j,
                                 sound_type.0,
                                 sound_type.1,
                                 settings.clone(),
                                 playfield.clone(),
                                 diff_calc_only,
-                            ).await);
-                            s.notes.push(note);
+                            ).await));
 
                             if !unified_sound_addition {i = (i + 1) % sound_types.len()}
 
                             j += skip_period;
-                            if !(j < end_time + skip_period / 8.0) {break}
+                            if !(j < end_time + skip_period / 8.0) { break }
                         }
                     } else {
-                        let slider = Box::new(TaikoDrumroll::new(
+                        s.other_notes.push(Box::new(TaikoDrumroll::new(
                             time, 
                             end_time, 
                             finisher, 
                             settings.clone(),
                             playfield.clone(),
                             diff_calc_only,
-                        ).await);
-                        s.notes.push(slider);
+                        ).await));
                     }
                 }
                 for spinner in beatmap.spinners.iter() {
-
-                    let spinner = Box::new(TaikoSpinner::new(
+                    s.other_notes.push(Box::new(TaikoSpinner::new(
                         spinner.time,
                         spinner.end_time, 
                         0, 
                         settings.clone(),
                         playfield.clone(),
                         diff_calc_only,
-                    ).await);
-                    s.notes.push(spinner);
+                    ).await));
                 }
                 s
             }
             Beatmap::Adofai(beatmap) => {
                 let settings = Arc::new(get_settings!().taiko_settings.clone());
                 let mut s = Self {
-                    notes: Vec::new(),
-                    note_index: 0,
+                    notes: TaikoNoteQueue::new(),
+                    other_notes: TaikoNoteQueue::new(), 
 
                     timing_bars: Vec::new(),
                     end_time: 0.0,
@@ -390,9 +387,18 @@ impl GameMode for TaikoGame {
             _ => return Err(BeatmapError::UnsupportedMode.into()),
         };
 
-        if s.notes.len() == 0 {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        if s.notes.len() + s.other_notes.len() == 0 { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)) }
         s.notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
-        s.end_time = s.notes.iter().last().unwrap().time();
+        s.other_notes.sort_by(|a, b|a.time().partial_cmp(&b.time()).unwrap());
+
+        // theres probably a better way to do this lol
+        if let Some(last) = s.notes.last() {
+            s.end_time = s.end_time.max(last.end_time(0.0));
+        }
+        if let Some(last) = s.other_notes.last() {
+            s.end_time = s.end_time.max(last.end_time(0.0));
+        }
+        s.end_time += 1000.0;
 
         if !diff_calc_only {
             s.reload_skin().await;
@@ -451,60 +457,73 @@ impl GameMode for TaikoGame {
         let mut finisher_sound = false;
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
-        // if theres no more notes to hit, return after playing the sound
-        if self.note_index >= self.notes.len() {
-            self.play_sound(manager, time, hit_type, false).await;
-            return;
-        }
+        let mut hit_time = time;
 
-        // check for finisher 2nd hit. 
-        if self.last_judgment != TaikoHitJudgments::Miss {
-            let last_note = self.notes.get_mut(self.note_index-1).unwrap();
-            if last_note.check_finisher(hit_type, time, manager.current_mods.get_speed()) {
-                let j = match &self.last_judgment {
-                    TaikoHitJudgments::X300 | TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
-                    TaikoHitJudgments::X100 | TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
-                    _ => return, // this shouldnt happen, last judgment will always be one of the above
-                };
-                
-                // add whatever the last judgment was as a finisher score
-                manager.add_judgment(j).await;
-                Self::add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
-                return;
-            }
-        }
+        let mut did_hit = false;
+        for queue in [&mut self.notes, &mut self.other_notes] {
+            // if theres no more notes to hit, return after playing the sound
+            if queue.done() { continue; }
 
-        let note = self.notes.get_mut(self.note_index).unwrap();
-        let note_time = note.time();
-
-        match note.note_type() {
-            NoteType::Note => {
-                let cond = || note.hit_type() == hit_type;
-
-                if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
-                    // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
-                    finisher_sound = note.finisher_sound();
-
-                    if let TaikoHitJudgments::Miss = judge {
-                        note.miss(time);
-                    } else {
-                        note.hit(time);
+            // check for finisher 2nd hit. 
+            if !did_hit && self.last_judgment != TaikoHitJudgments::Miss {
+                if let Some(last_note) = queue.previous_note() {
+                    if last_note.check_finisher(hit_type, time, manager.current_mods.get_speed()) {
+                        let j = match &self.last_judgment {
+                            TaikoHitJudgments::X300 | TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
+                            TaikoHitJudgments::X100 | TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
+                            _ => return, // this shouldnt happen, last judgment will always be one of the above
+                        };
+                        
+                        // add whatever the last judgment was as a finisher score
+                        manager.add_judgment(j).await;
+                        Self::add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
+                        return; // return and note continue because we dont want the 2nd finisher press to count towards anything
                     }
-
-                    Self::add_hit_indicator(time, judge, false, &self.taiko_settings, &self.judgement_helper, manager);
-                    
-                    self.last_judgment = *judge;
-                    self.next_note();
                 }
-            },
+            }
 
-            // slider or spinner, special hit stuff
-            NoteType::Slider  if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SliderPoint).await,
-            NoteType::Spinner if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SpinnerPoint).await,
-            _ => {}
+            // check note hit
+            if let Some(note) = queue.current_note() {
+                let note_time = note.time();
+                match note.note_type() {
+                    NoteType::Note => {
+                        let cond = || note.hit_type() == hit_type;
+
+                        if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
+                            // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
+                            finisher_sound = note.finisher_sound();
+
+                            if let TaikoHitJudgments::Miss = judge {
+                                note.miss(time);
+                            } else {
+                                note.hit(time);
+                            }
+
+                            Self::add_hit_indicator(time, judge, false, &self.taiko_settings, &self.judgement_helper, manager);
+                            
+                            self.last_judgment = *judge;
+                            queue.next();
+                        }
+                    },
+
+                    // slider or spinner, special hit stuff
+                    NoteType::Slider  if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SliderPoint).await,
+                    NoteType::Spinner if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SpinnerPoint).await,
+                    _ => {}
+                }
+
+                // if was hit, the sound already played
+                if !did_hit {
+                    hit_time = note_time;
+                    // self.play_sound(manager, note_time, hit_type, finisher_sound).await;
+                }
+            }
+            
+            did_hit = true;
         }
 
-        self.play_sound(manager, note_time, hit_type, finisher_sound).await;
+        // play sound
+        self.play_sound(manager, hit_time, hit_type, finisher_sound).await;
     }
 
 
@@ -513,56 +532,85 @@ impl GameMode for TaikoGame {
         // do autoplay things
         if manager.current_mods.has_autoplay() {
             let mut pending_frames = Vec::new();
-            let notes = &mut self.notes;
+            let mut queues = vec![
+                std::mem::take(&mut self.notes),
+                std::mem::take(&mut self.other_notes),
+            ];
 
             // get auto inputs
-            self.auto_helper.update(time, notes, &mut pending_frames);
+            self.auto_helper.update(time, &mut queues, &mut pending_frames);
 
-            if !manager.completed {
+            // if !manager.completed {
                 
-                // update index
-                for i in 0..notes.len() + 1 {
-                    self.note_index = i;
-                    if i == notes.len() { break }
+            //     // update index
+            //     for i in 0..notes.len() + 1 {
+            //         self.note_index = i;
+            //         if i == notes.len() { break }
 
-                    if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
-                        break;
-                    }
-                }
+            //         if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
+            //             break;
+            //         }
+            //     }
 
-            }
+            // }
+
+            self.notes = queues.remove(0);
+            self.other_notes = queues.remove(0);
 
             for frame in pending_frames.iter() {
                 self.handle_replay_frame(*frame, time, manager).await;
             }
         }
 
-        // update notes
-        for note in self.notes.iter_mut() { 
-            note.update(time).await;
-        }
+        // // update notes
+        // for note in self.notes.iter_mut() { 
+        //     note.update(time).await;
+        // }
 
-        // if theres no more notes to hit, show score screen
-        if self.note_index >= self.notes.len() {
-            if manager.time() >= self.notes.last().unwrap().end_time(self.miss_window) + 1000.0 {
-                manager.completed = true;
-            }
+        // // if theres no more notes to hit, show score screen
+        // if self.note_index >= self.notes.len() {
+        //     if manager.time() >= self.notes.last().unwrap().end_time(self.miss_window) + 1000.0 {
+        //         manager.completed = true;
+        //     }
 
-            return;
-        }
+        //     return;
+        // }
 
         // check if we missed the current note
-        if self.notes[self.note_index].end_time(self.miss_window) < time {
-            if self.notes[self.note_index].causes_miss() {
-                self.notes[self.note_index].miss(time);
+        // if self.notes[self.note_index].end_time(self.miss_window) < time {
+        //     if self.notes[self.note_index].causes_miss() {
+        //     }
 
-                let j = &TaikoHitJudgments::Miss;
-                manager.add_judgment(j).await;
-                Self::add_hit_indicator(time, j, false, &self.taiko_settings, &self.judgement_helper, manager);
+        //     self.next_note();
+        // }
+
+        
+        for queue in [&mut self.notes, &mut self.other_notes] {
+            for note in queue.notes.iter_mut() {
+                note.update(time).await;
             }
 
-            self.next_note();
+            if queue.done() {
+                if !manager.completed && time > self.end_time {
+                    manager.completed = true;
+                }
+
+                continue;
+            }
+
+            if let Some(do_miss) = queue.check_missed(time, self.miss_window) {
+                if do_miss {
+                    // queue.current_note().miss(time); // done in check_missed
+
+                    let j = &TaikoHitJudgments::Miss;
+                    manager.add_judgment(j).await;
+                    Self::add_hit_indicator(time, j, false, &self.taiko_settings, &self.judgement_helper, manager);
+                }
+
+                queue.next()
+            }
         }
+
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(time); }
@@ -652,25 +700,32 @@ impl GameMode for TaikoGame {
         ));
 
         // draw notes
-        for note in self.notes.iter_mut() { note.draw(args, list).await }
+        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
+            note.draw(args, list).await 
+        }
+
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
-        for note in self.notes.iter_mut() {
-            note.reset().await;
+        for queue in [&mut self.notes, &mut self.other_notes] {
+            queue.index = 0;
+                
+            for note in queue.iter_mut() {
+                note.reset().await;
 
-            // set note svs
-            if self.current_mods.has_mod("no_sv") {
-                note.set_sv(self.taiko_settings.sv_multiplier);
-            } else {
-                let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
-                note.set_sv(sv);
+                // set note svs
+                if self.current_mods.has_mod("no_sv") {
+                    note.set_sv(self.taiko_settings.sv_multiplier);
+                } else {
+                    let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
+                    note.set_sv(sv);
+                }
             }
         }
+
         
-        self.note_index = 0;
         self.last_judgment = TaikoHitJudgments::Miss;
         self.counter = FullAltCounter::new();
 
@@ -718,15 +773,17 @@ impl GameMode for TaikoGame {
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
-        if self.note_index > 0 { return }
-
-        // TODO: self.playfield.window_size.x
-        let x_needed = self.playfield.size.x as f32;
+        let x_needed = (self.playfield.pos.x + self.playfield.size.x) as f32;
         let mut time = self.end_time; //manager.time();
+        
+        for queue in [&self.notes, &self.other_notes] {
+            if queue.index > 0 { return }
 
-        for i in self.notes.iter().rev() {
-            let time_at = i.time_at(x_needed);
-            time = time.min(time_at)
+            for i in queue.notes.iter().rev() {
+                let time_at = i.time_at(x_needed);
+                time = time.min(time_at)
+            }
+
         }
 
         if manager.time() >= time { return }
@@ -746,7 +803,7 @@ impl GameMode for TaikoGame {
         self.playfield = Arc::new(TaikoPlayfield { pos: Vector2::zero(), size: window_size.0 });
         
         // update notes
-        for note in self.notes.iter_mut() { 
+        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
             note.playfield_changed(self.playfield.clone());
         }
 
@@ -760,7 +817,7 @@ impl GameMode for TaikoGame {
         self.playfield = Arc::new(TaikoPlayfield { pos, size });
         
         // update notes
-        for note in self.notes.iter_mut() { 
+        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
             note.playfield_changed(self.playfield.clone());
         }
         
@@ -782,7 +839,7 @@ impl GameMode for TaikoGame {
 
 
         // update notes
-        for n in self.notes.iter_mut() {
+        for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
             n.set_settings(settings.clone());
 
             // set note svs
@@ -869,7 +926,7 @@ impl GameMode for TaikoGame {
 
         self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
 
-        for n in self.notes.iter_mut() {
+        for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
             n.reload_skin().await;
         }
     }
@@ -882,7 +939,7 @@ impl GameMode for TaikoGame {
         self.current_mods = mods;
         
         if current_sv_static != old_sv_static {
-            for n in self.notes.iter_mut() {
+            for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
 
                 // set note svs
                 if current_sv_static {
@@ -922,13 +979,15 @@ impl GameMode for TaikoGame {
         // info!("{new_time} < {latest_time}");
 
         if new_time < latest_time {
-            self.note_index = 0;
-
-            for (i, note) in self.notes.iter_mut().enumerate() {
-                note.reset().await;
-                if note.time() <= new_time {
-                    self.note_index = i
+            for queue in [&mut self.notes, &mut self.other_notes] {
+                let mut index = 0;
+                for (i, note) in queue.iter_mut().enumerate() {
+                    note.reset().await;
+                    if note.time() <= new_time {
+                        index = i
+                    }
                 }
+                queue.index = index;
             }
             
             // reset hitcache times
@@ -939,7 +998,6 @@ impl GameMode for TaikoGame {
 
 #[async_trait]
 impl GameModeInput for TaikoGame {
-
     async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
         // dont accept key input when autoplay is enabled, or a replay is being watched
         if manager.current_mods.has_autoplay() || manager.replaying {
@@ -1228,9 +1286,6 @@ struct TaikoAutoHelper {
     don_presses: u32,
     kat_presses: u32,
 
-    current_note_duration: f32,
-    note_index: i64,
-
     last_hit: f32,
     last_update: f32,
 }
@@ -1239,71 +1294,68 @@ impl TaikoAutoHelper {
         Self {
             don_presses: 0, 
             kat_presses: 0, 
-            note_index: -1, 
             last_hit: 0.0, 
-            current_note_duration: 0.0,
             last_update: 0.0
-            // notes: Vec::new()
         }
     }
 
-    fn update(&mut self, time: f32, notes: &mut Vec<Box<dyn TaikoHitObject>>, frames: &mut Vec<ReplayFrame>) {
+    fn update(&mut self, time: f32, queue: &mut Vec<TaikoNoteQueue>, frames: &mut Vec<ReplayFrame>) {
         let catching_up = time - self.last_update > 20.0;
         self.last_update = time;
 
-        if catching_up {trace!("catching up")}
+        // if catching_up { trace!("catching up") }
 
-        for i in 0..notes.len() {
-            let note = &mut notes[i];
-            
-            if time >= note.time() 
-            // && time <= note.end_time(100.0) 
-            && !note.was_hit() {
+        for queue in queue.iter_mut() {
+            let mut queue_index = queue.index;
+            let mut note_hit = false;
 
+            for (i, note) in queue.iter_mut().enumerate().skip(queue_index).filter(|(_, note)|time > note.time() && !note.was_hit()) {
+                // note is the note we need to hit
+
+                // if note is a drumroll/spinner, we need to time when to hit it
+                // if note is a note, we need to hit it and move on
+                
                 // check if we're catching up
                 if catching_up {
                     // pretend the note was hit
                     note.force_hit();
+                    queue_index = i;
                     continue;
                 }
 
-                // otherwise it spams sliders even after it has finished
-                if let NoteType::Slider = note.note_type() {
-                    if time > note.end_time(0.0) {
+                // // otherwise it spams sliders even after it has finished
+                // if let NoteType::Slider = note.note_type() {
+                //     if time > note.end_time(0.0) {
+                //         if i == queue_index {
+                //             queue_index += 1;
+                //         }
+                //         continue 'notes;
+                //     }
+                // }
+
+                if note.note_type() != NoteType::Note {
+                    // this is a drumroll or a spinner
+                    let end_time = note.end_time(0.0);
+
+                    // check if time is up
+                    if time > end_time { 
+                        // queue_index = i + 1;
                         continue;
                     }
+
+                    // check if its time to do another hit
+                    let duration = end_time - note.time();
+                    let time_between_hits = duration / (note.hits_to_complete() as f32);
+                    
+                    // if its not time to do another hit yet
+                    if time - self.last_hit < time_between_hits { break }
                 }
 
-                // we're already working on this note
-                if i as i64 == self.note_index {
-                    match note.note_type() {
-                        NoteType::Slider | NoteType::Spinner => {
-                            let time_between_hits = self.current_note_duration / (note.hits_to_complete() as f32);
-                            
-                            // if its not time to do another hit yet
-                            if time - self.last_hit < time_between_hits {return}
-                        }
 
-                        // nothing to do for notes (they only need 1 hit) and holds dont exist
-                        // dont do anything else for this object
-                        NoteType::Hold | NoteType::Note => continue,
-                    }
-                } else {
-                    self.note_index = i as i64;
-                        
-                    match note.note_type() {
-                        NoteType::Slider | NoteType::Spinner => self.current_note_duration = note.end_time(0.0) - note.time(),
-                        _ => {},
-                    }
-                }
-
+                // perform the hit
                 self.last_hit = time;
-                // let note_type = note.note_type();
                 let is_kat = note.is_kat();
                 let is_finisher = note.finisher_sound();
-
-                let count = self.don_presses + self.kat_presses;
-                let side = count % 2;
 
                 if is_finisher {
                     if is_kat {
@@ -1314,6 +1366,7 @@ impl TaikoAutoHelper {
                         frames.push(ReplayFrame::Press(KeyPress::RightDon));
                     }
                 } else {
+                    let side = (self.don_presses + self.kat_presses) % 2;
                     match (is_kat, side) {
                         // kat, left side
                         (true, 0) => frames.push(ReplayFrame::Press(KeyPress::LeftKat)),
@@ -1338,9 +1391,14 @@ impl TaikoAutoHelper {
                     self.don_presses += 1;
                 }
 
-                return
+                note_hit = true;
+                break;
             }
+
+            queue.index = queue_index;
+            if note_hit { return }
         }
+
     }
 }
 
@@ -1411,3 +1469,53 @@ impl FullAltCounter {
 }
 
 
+#[derive(Default)]
+pub struct TaikoNoteQueue {
+    notes: Vec<Box<dyn TaikoHitObject>>,
+    index: usize,
+}
+impl TaikoNoteQueue {
+    fn new() -> Self { Self::default() }
+    fn done(&self) -> bool { self.index >= self.notes.len() }
+    fn next(&mut self) { self.index += 1; }
+
+    // some if missed, bool is if miss judgment should be applied
+    fn check_missed(&mut self, time: f32, miss_window: f32) -> Option<bool> {
+        if let Some(note) = self.current_note() {
+            if note.end_time(miss_window) < time {
+                if note.causes_miss() {
+                    note.miss(time);
+                    Some(true)
+                } else {
+                    Some(false)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+    
+    #[inline]
+    fn current_note(&mut self) -> Option<&mut Box<dyn TaikoHitObject>> {
+        self.notes.get_mut(self.index)
+    }
+    #[inline]
+    fn previous_note(&self) -> Option<&Box<dyn TaikoHitObject>> {
+        self.notes.get(self.index - 1)
+    }
+}
+
+impl Deref for TaikoNoteQueue {
+    type Target = Vec<Box<dyn TaikoHitObject>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.notes
+    }
+}
+impl DerefMut for TaikoNoteQueue {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.notes
+    }
+}

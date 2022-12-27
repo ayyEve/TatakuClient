@@ -29,9 +29,6 @@ pub struct BeatmapManager {
 }
 impl BeatmapManager {
     pub fn new() -> Self {
-        GlobalObjectManager::update(Arc::new(CurrentBeatmap::default()));
-        GlobalObjectManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
-
         Self {
             initialized: false,
 
