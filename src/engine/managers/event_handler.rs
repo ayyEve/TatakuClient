@@ -74,7 +74,8 @@ impl<T:'static + Send + Sync> GlobalObjectValue<T> {
 
         let Some(entry) = entry.get(&id) else { 
             let backtrace = std::backtrace::Backtrace::capture();
-            panic!("Value not initialized for typeid {id:?}: {backtrace}")
+            let name = std::any::type_name::<T>();
+            panic!("Value not initialized for {name}: {backtrace}")
         };
 
         let counter = entry.counter.load(SeqCst);
