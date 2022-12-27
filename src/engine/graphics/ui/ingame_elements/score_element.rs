@@ -43,7 +43,7 @@ impl InnerUIElement for ScoreElement {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            -self.bounds_size.x() - PADDING,
+            -self.bounds_size.x_portion() - PADDING,
             self.bounds_size + PADDING * 2.0
         )
     }
@@ -64,7 +64,7 @@ impl InnerUIElement for ScoreElement {
             let size = score.measure_text();
 
             // TODO: right align
-            score.pos = pos_offset-self.bounds_size.x() + ((self.bounds_size * scale).x() - size.x());
+            score.pos = pos_offset-self.bounds_size.x_portion() + ((self.bounds_size * scale).x_portion() - size.x_portion());
             
             list.push(score.clone());
         } else {
@@ -73,7 +73,7 @@ impl InnerUIElement for ScoreElement {
             let mut text = Text::new(
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
-                pos_offset - self.bounds_size.x(),
+                pos_offset - self.bounds_size.x_portion(),
                 30 * scale.y as u32,
                 crate::format_number(self.score),
                 get_font()

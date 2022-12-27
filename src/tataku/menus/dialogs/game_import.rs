@@ -32,7 +32,7 @@ impl GameImportDialog {
             .iter()
             .for_each(|f| {
                 scrollable.add_item(Box::new(TextInput::<Font2, Text>::new(
-                    INPUT_SIZE.y() + PADDING,
+                    INPUT_SIZE.y_portion() + PADDING,
                     INPUT_SIZE,
                     "Game Path",
                     f,
@@ -112,7 +112,7 @@ impl Dialog<Game> for GameImportDialog {
 
         if self.add_button.on_click(pos, *button, *mods) {
             self.input_scrollable.add_item(Box::new(TextInput::<Font2, Text>::new(
-                INPUT_SIZE.y() + PADDING,
+                INPUT_SIZE.y_portion() + PADDING,
                 INPUT_SIZE,
                 "Game Path",
                 "",

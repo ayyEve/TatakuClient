@@ -16,23 +16,23 @@ impl GameModeInfo for ManiaGameInfo {
         let okay  = score.judgments.get("x50").copy_or_default() as f64;
         let miss = score.judgments.get("xmiss").copy_or_default() as f64;
     
-        let top = [
+        let top:f64 = [
             marv * 1.0, // 100%
             perf * 0.9825, // 98.25%
             great * 0.65, // 65%
             good * 0.25, // 25%
             okay * -1.00, // -100%
             miss * -0.50, // -50%
-        ].sum();
+        ].iter().sum();
     
-        let bottom = [
+        let bottom:f64 = [
             marv, 
             perf, 
             great, 
             good, 
             okay, 
             miss
-        ].sum();
+        ].iter().sum();
     
         top.max(0.0) / bottom
     }

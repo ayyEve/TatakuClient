@@ -72,7 +72,7 @@ impl StatsGraph for BarGraph {
 
                     list.push(Line::new(
                         pos + Vector2::with_y(v),
-                        pos + size.x() + Vector2::with_y(v),
+                        pos + size.x_portion() + Vector2::with_y(v),
                         2.0,
                         depth,
                         i.color,

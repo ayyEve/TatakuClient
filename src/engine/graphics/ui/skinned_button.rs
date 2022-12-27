@@ -19,7 +19,7 @@ impl SkinnedButton {
         let mut middle_image = SkinManager::get_texture("button-middle", true).await?;
         let mut right_image = SkinManager::get_texture("button-right", true).await?;
 
-        size += left_image.size().x() + right_image.size().x();
+        size += left_image.size().x_portion() + right_image.size().x_portion();
 
         let x_scale = size.x / (left_image.size.x + middle_image.size.x + right_image.size.x);
 

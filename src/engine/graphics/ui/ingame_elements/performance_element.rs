@@ -43,7 +43,7 @@ impl InnerUIElement for PerformanceElement {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            -self.bounds_size.x() - PADDING,
+            -self.bounds_size.x_portion() - PADDING,
             self.bounds_size + PADDING * 2.0
         )
     }
@@ -53,7 +53,7 @@ impl InnerUIElement for PerformanceElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let bounds_x = self.bounds_size.x();
+        let bounds_x = self.bounds_size.x_portion();
 
         if let Some(perf) = &mut self.perf_image {
             perf.number = self.perf as f64;
@@ -64,7 +64,7 @@ impl InnerUIElement for PerformanceElement {
 
             // right align
             let size = perf.measure_text();
-            perf.pos = pos_offset-bounds_x + ((self.bounds_size * scale).x() - size.x());
+            perf.pos = pos_offset-bounds_x + ((self.bounds_size * scale).x_portion() - size.x_portion());
 
             // let size = acc.measure_text();
             // perf.current_pos = pos_offset - bounds_x;
@@ -75,7 +75,7 @@ impl InnerUIElement for PerformanceElement {
             let mut text = Text::new(
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
-                pos_offset - self.bounds_size.x(),
+                pos_offset - self.bounds_size.x_portion(),
                 30 * scale.y as u32,
                 format!("{:.2}", self.perf),
                 get_font()

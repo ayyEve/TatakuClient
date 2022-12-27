@@ -143,7 +143,7 @@ impl ScrollableItem for ModButton {
         checkbox.set_hover(self.hover);
 
         let font_size = 30;
-        let desc_pos = pos_offset + cb_size.x() + Vector2::new(10.0, (cb_size.y - font_size as f64) / 2.0);
+        let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size as f64) / 2.0);
         let desc_text = Text::new(Color::WHITE, parent_depth, desc_pos, font_size, self.gameplay_mod.description().to_owned(), font);
 
         checkbox.draw(args, pos_offset, parent_depth, list);

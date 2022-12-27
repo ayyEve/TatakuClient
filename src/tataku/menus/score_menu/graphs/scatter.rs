@@ -61,7 +61,7 @@ impl StatsGraph for ScatterGraph {
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
         list.push(Line::new(
             pos + zero_pos,
-            pos + size.x() + zero_pos,
+            pos + size.x_portion() + zero_pos,
             1.5,
             depth,
             Color::WHITE,
@@ -74,7 +74,7 @@ impl StatsGraph for ScatterGraph {
 
                     list.push(Line::new(
                         pos + Vector2::with_y(v),
-                        pos + size.x() + Vector2::with_y(v),
+                        pos + size.x_portion() + Vector2::with_y(v),
                         1.5,
                         depth,
                         i.color,

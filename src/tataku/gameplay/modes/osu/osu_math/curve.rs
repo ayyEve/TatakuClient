@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use super::super::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
 pub struct CurveLine {

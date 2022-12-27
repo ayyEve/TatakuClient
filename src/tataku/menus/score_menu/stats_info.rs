@@ -48,7 +48,7 @@ impl MenuStatsInfo {
         current_pos += Vector2::with_y(20.0);
 
         // the remaining space should be used for the graph
-        let mut size = bounds.size - current_pos.y();
+        let mut size = bounds.size - current_pos.y_portion();
         if size.x < size.y { size.y = size.x; } else { size.x = size.y; }
 
         let y = bounds.pos.y + bounds.size.y - size.y;
