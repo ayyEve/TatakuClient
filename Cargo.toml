@@ -19,6 +19,7 @@ debug_sliders = []
 debug_hitsounds = []
 snipping = []
 debug_perf_rating = []
+log_frametimes = []
 
 desktop = ["pistoncore-glfw_window", "bass_audio", "discord"]
 mobile = ["pistoncore-glutin_window", "bass_audio", "discord"]

@@ -41,6 +41,7 @@ type InnerWindow = glfw_window::GlfwWindow;
 #[cfg(feature="mobile")]
 type InnerWindow = glutin_window::GlutinWindow;
 
+
 pub struct GameWindow {
     pub window: InnerWindow,
 
@@ -50,6 +51,8 @@ pub struct GameWindow {
     input_timer: Instant,
 
     window_size: WindowSizeHelper,
+
+    frametime_logger: FrameTimeLogger
 }
 
 impl GameWindow {
@@ -138,6 +141,8 @@ impl GameWindow {
 
             frametime_timer: now,
             input_timer: now,
+
+            frametime_logger: FrameTimeLogger::new(),
         }
     }
 
@@ -169,6 +174,7 @@ impl GameWindow {
                 #[cfg(feature = "desktop")] self.window.window.set_should_close(true);
                 #[cfg(feature = "mobile")] self.window.set_should_close(true);
                 let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowClosed);
+                self.frametime_logger.write();
                 return;
             }
         }
@@ -226,7 +232,9 @@ impl GameWindow {
             INPUT_COUNT.fetch_add(1, SeqCst);
 
             // actually render
+            let now = Instant::now();
             self.render().await;
+            self.frametime_logger.add(now.as_millis());
             tokio::task::yield_now().await;
         }
     }
@@ -300,52 +308,42 @@ fn render(window: WindowPtr, args: RenderArgs, frametime: &mut Instant) {
 
                     // use this for snipping
                     #[cfg(feature="snipping")] {
-                        // actually draw everything now
-                        let mut orig_c = graphics.draw_begin(args.viewport());
+                        let orig_c = graphics.draw_begin(args.viewport());
                         graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
 
                         for i in data.iter() {
-                            if let Some(ic) = i.get_context() {
-                                orig_c.draw_state = ic.draw_state;
-                            } else {
-                                orig_c.draw_state = Default::default();
-                            }
+                            let mut drawstate_changed = false;
+                            let mut c = orig_c;
 
-                            graphics.use_draw_state(&orig_c.draw_state);
+                            if let Some(ds) = i.get_draw_state() {
+                                drawstate_changed = true;
+                                // println!("ic: {:?}", ic);
+                                graphics.draw_end();
+                                graphics.draw_begin(args.viewport());
+                                graphics.use_draw_state(&ds);
+                                c.draw_state = ds;
+                            }
                             
-                            i.draw(graphics, orig_c);
+                            // graphics.use_draw_state(&c.draw_state);
+                            i.draw(graphics, c);
+
+                            if drawstate_changed {
+                                graphics.draw_end();
+                                graphics.draw_begin(args.viewport());
+                                graphics.use_draw_state(&orig_c.draw_state);
+                            }
                         }
 
-                        // // draw cursor
-                        // orig_c.draw_state = Default::default();
-                        // graphics.use_draw_state(&orig_c.draw_state);
-                        // if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                        //     if let Ok(mut q) = q.try_lock() {
-                        //         for i in q.read().iter() {
-                        //             i.draw(graphics, orig_c);
-                        //         }
-                        //     }
-                        // }
-                        
                         graphics.draw_end();
                     }
 
                     #[cfg(not(feature="snipping"))] {
-
-
                         let c = graphics.draw_begin(args.viewport());
                         graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
                         
                         for i in data.iter() {
                             i.draw(graphics, c);
                         }
-                        // if let Some(q) = CURSOR_RENDER_QUEUE.get() {
-                        //     if let Ok(mut q) = q.try_lock() {
-                        //         for i in q.read().iter() {
-                        //             i.draw(graphics, c);
-                        //         }
-                        //     }
-                        // }
                         
                         graphics.draw_end();
                     }
