@@ -195,9 +195,6 @@ impl Hash for ModManager {
 
 
 
-
-
-
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OldModManager {

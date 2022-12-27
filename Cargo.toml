@@ -21,7 +21,7 @@ snipping = []
 debug_perf_rating = []
 log_frametimes = []
 
-desktop = ["pistoncore-glfw_window", "bass_audio", "discord"]
+desktop = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping"]
 mobile = ["pistoncore-glutin_window", "bass_audio", "discord"]
 
 [dependencies]

@@ -57,7 +57,7 @@ impl LoadingMenu {
 
 
         let folders = BeatmapManager::folders_to_check().await;
-
+        let ignored = Database::get_all_ignored().await;
 
         {
             let existing_maps = Database::get_all_beatmaps().await;
@@ -66,9 +66,11 @@ impl LoadingMenu {
             status.lock().await.loading_count = existing_maps.len();
             // load from db
             let mut lock = BEATMAP_MANAGER.write().await;
+            lock.ignore_beatmaps = ignored.into_iter().collect();
+
             for meta in existing_maps {
                 // verify the map exists
-                if !std::path::Path::new(&meta.file_path).exists() {
+                if !std::path::Path::new(&*meta.file_path).exists() {
                     // trace!("beatmap exists in db but not in songs folder: {}", meta.file_path);
                     continue
                 }
@@ -84,7 +86,7 @@ impl LoadingMenu {
         // get existing dirs
         let mut existing_paths = HashSet::new();
         for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
-            if let Some(parent) = Path::new(&i.file_path).parent() {
+            if let Some(parent) = Path::new(&*i.file_path).parent() {
                 existing_paths.insert(parent.to_string_lossy().to_string());
             }
         }
@@ -99,6 +101,7 @@ impl LoadingMenu {
             lock.custom_message = "Checking folders...".to_owned();
         }
 
+        trace!("loading from the disk");
         for f in folders.iter() {
             BEATMAP_MANAGER.write().await.check_folder(f).await;
             status.lock().await.loading_done += 1;

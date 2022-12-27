@@ -2,6 +2,7 @@ mod database;
 mod beatmaps;
 mod score_database;
 mod ui_element_info;
+mod ignore_beatmaps;
 mod beatmap_collections;
 mod beatmap_preferences;
 // mod difficulty_database;

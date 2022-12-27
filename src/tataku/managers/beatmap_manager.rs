@@ -1,14 +1,10 @@
 use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
-use crate::{ DOWNLOADS_DIR, SONGS_DIR };
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
     pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
-
-    // lock to ensure other diffcalcs are completed first, will reduce speed over multiple calcs, but should help prevent memory overflows lol
-    static ref DIFF_CALC_LOCK: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
 pub struct BeatmapManager {
@@ -17,6 +13,7 @@ pub struct BeatmapManager {
     pub current_beatmap: Option<Arc<BeatmapMeta>>,
     pub beatmaps: Vec<Arc<BeatmapMeta>>,
     pub beatmaps_by_hash: HashMap<String, Arc<BeatmapMeta>>,
+    pub ignore_beatmaps: HashSet<String>,
 
     /// previously played maps
     played: Vec<Arc<BeatmapMeta>>,
@@ -26,7 +23,7 @@ pub struct BeatmapManager {
     new_maps: Vec<Arc<BeatmapMeta>>,
 
     /// helpful when a map is deleted
-    pub(crate) force_beatmap_list_refresh: bool,
+    pub force_beatmap_list_refresh: bool,
 
     pub new_map_added: (MultiFuse<Arc<BeatmapMeta>>, MultiBomb<Arc<BeatmapMeta>>),
 }
@@ -41,6 +38,7 @@ impl BeatmapManager {
             current_beatmap: None,
             beatmaps: Vec::new(),
             beatmaps_by_hash: HashMap::new(),
+            ignore_beatmaps: HashSet::new(),
 
             played: Vec::new(),
             play_index: 0,
@@ -119,17 +117,21 @@ impl BeatmapManager {
         }
     }
 
-    // adders
     pub async fn check_folder(&mut self, dir: impl AsRef<Path>) {
         let dir = dir.as_ref();
 
         if !dir.is_dir() { return }
         let dir_files = read_dir(dir).unwrap();
 
-        // cache of existing paths
-        let mut existing_paths = HashSet::new();
+        // ignore existing paths
+        let mut ignore_paths = HashSet::new();
         for i in self.beatmaps.iter() {
-            existing_paths.insert(i.file_path.clone());
+            ignore_paths.insert(i.file_path.clone());
+        }
+
+        // also add maps to be ignored to the list
+        for i in self.ignore_beatmaps.iter() {
+            ignore_paths.insert(i.clone());
         }
 
         for file in dir_files {
@@ -147,7 +149,7 @@ impl BeatmapManager {
             || file.ends_with(".sm") 
             || file.ends_with("info.txt") {
                 // check file paths first
-                if existing_paths.contains(file) {
+                if ignore_paths.contains(file) {
                     continue
                 }
 
@@ -180,7 +182,17 @@ impl BeatmapManager {
 
     pub fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>) {
         // check if we already have this map
-        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {return debug!("map already added")}
+        if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {
+            // see if this beatmap is being added from another source
+            if self.beatmaps.iter().find(|m|m.file_path == beatmap.file_path).is_none() { 
+                trace!("adding {} to the ignore list", beatmap.file_path);
+                // if so, add it to the ignore list
+                self.ignore_beatmaps.insert(beatmap.file_path.clone());
+                tokio::spawn(Database::add_ignored(beatmap.file_path.clone()));
+            }
+
+            return debug!("map already added") 
+        }
 
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash.clone();
@@ -193,26 +205,33 @@ impl BeatmapManager {
         self.beatmaps.push(beatmap.clone());
     }
 
-
-    // remover
     pub async fn delete_beatmap(&mut self, beatmap:String, game: &mut Game) {
         // delete beatmap
         self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
+
         if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
-            // delete the file
-            if let Err(e) = std::fs::remove_file(&old_map.file_path) {
-                NotificationManager::add_error_notification("Error deleting map", e).await;
+            if old_map.file_path.starts_with(SONGS_DIR) {
+
+                // delete the file
+                if let Err(e) = std::fs::remove_file(&old_map.file_path) {
+                    NotificationManager::add_error_notification("Error deleting map", e).await;
+                }
+                // TODO: should check if this is the last beatmap in this folder
+                // if so, delete the parent dir
+            } else {
+                // file is probably in an external folder, just add this file to the ignore list
+                self.ignore_beatmaps.insert(old_map.file_path.clone());
+                Database::add_ignored(old_map.file_path.clone()).await;
             }
-            // TODO: should check if this is the last beatmap in this folder
-            // if so, delete the parent dir
         }
 
         self.force_beatmap_list_refresh = true;
-        // select next one
+
+        // select next beatmap
         self.next_beatmap(game).await;
     }
 
-    // setters
+
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         GlobalObjectManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
