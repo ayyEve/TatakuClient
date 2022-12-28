@@ -422,7 +422,8 @@ impl GameMode for TaikoGame {
             ReplayFrame::Release(k) => {
                 manager.key_counter.key_up(k);
                 // should probably return here lol
-                k
+                // and now we do
+                return;
             },
             _ => return,
         };
@@ -1020,7 +1021,28 @@ impl GameModeInput for TaikoGame {
         }
     }
     
-    async fn key_up(&mut self, _key:piston::Key, _manager:&mut IngameManager) {}
+    async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
+        
+        // dont accept key input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.has_autoplay() || manager.replaying {
+            return;
+        }
+
+        let time = manager.time();
+
+        if key == self.taiko_settings.left_kat {
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await;
+        }
+        if key == self.taiko_settings.left_don {
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await;
+        }
+        if key == self.taiko_settings.right_don {
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager).await;
+        }
+        if key == self.taiko_settings.right_kat {
+            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager).await;
+        }
+    }
 
 
     async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
@@ -1038,20 +1060,20 @@ impl GameModeInput for TaikoGame {
         }
     }
 
-    // async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
         
-    //     // dont accept mouse input when autoplay is enabled, or a replay is being watched
-    //     if manager.current_mods.autoplay || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
-    //         return;
-    //     }
+        // dont accept mouse input when autoplay is enabled, or a replay is being watched
+        if manager.current_mods.has_autoplay() || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
+            return;
+        }
         
-    //     let time = manager.time();
-    //     match btn {
-    //         piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager),
-    //         piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager),
-    //         _ => {}
-    //     }
-    // }
+        let time = manager.time();
+        match btn {
+            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await,
+            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await,
+            _ => {}
+        }
+    }
 
 
     async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
