@@ -437,11 +437,10 @@ impl GameMode for TaikoGame {
             KeyPress::RightKat => TaikoHit::RightKat,
             _ => TaikoHit::LeftKat
         };
+        let is_left = hit_type == TaikoHit::LeftKat || hit_type == TaikoHit::LeftDon;
         
-        match hit_type {
-            TaikoHit::LeftDon | TaikoHit::LeftKat => manager.add_stat(TaikoStatLeftPresses, 1.0),
-            TaikoHit::RightDon | TaikoHit::RightKat => manager.add_stat(TaikoStatRightPresses, 1.0),
-        }
+        if is_left { manager.add_stat(TaikoStatLeftPresses, 1.0) }
+        else { manager.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
         if manager.current_mods.has_mod(FullAlt.name()) {
@@ -450,15 +449,12 @@ impl GameMode for TaikoGame {
             }
         }
 
-
-        // draw drum
-        *self.hit_cache.get_mut(&hit_type).unwrap() = time;
-
-        let hit_type:HitType = key.into();
+        let mut hit_type:HitType = key.into();
         let mut finisher_sound = false;
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
         let mut hit_time = time;
+        let has_relax = manager.current_mods.has_mod(Relax.name());
 
         let mut did_hit = false;
         for queue in [&mut self.notes, &mut self.other_notes] {
@@ -488,11 +484,14 @@ impl GameMode for TaikoGame {
                 let note_time = note.time();
                 match note.note_type() {
                     NoteType::Note => {
-                        let cond = || note.hit_type() == hit_type;
+                        let cond = || note.hit_type() == hit_type || has_relax;
 
                         if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
                             // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
                             finisher_sound = note.finisher_sound();
+                            if has_relax {
+                                hit_type = note.hit_type();
+                            }
 
                             if let TaikoHitJudgments::Miss = judge {
                                 note.miss(time);
@@ -523,6 +522,17 @@ impl GameMode for TaikoGame {
             did_hit = true;
         }
 
+        // account for relax changing the hit type
+        let new_hit_type = match (is_left, hit_type) {
+            (false, HitType::Don) => TaikoHit::RightDon,
+            (true, HitType::Don) => TaikoHit::LeftDon,
+            (true, HitType::Kat) => TaikoHit::LeftKat,
+            (false, HitType::Kat) => TaikoHit::RightKat,
+        };
+
+        // draw drum
+        *self.hit_cache.get_mut(&new_hit_type).unwrap() = time;
+
         // play sound
         self.play_sound(manager, hit_time, hit_type, finisher_sound).await;
     }
@@ -541,20 +551,6 @@ impl GameMode for TaikoGame {
             // get auto inputs
             self.auto_helper.update(time, &mut queues, &mut pending_frames);
 
-            // if !manager.completed {
-                
-            //     // update index
-            //     for i in 0..notes.len() + 1 {
-            //         self.note_index = i;
-            //         if i == notes.len() { break }
-
-            //         if (!notes[i].was_hit() && notes[i].note_type() != NoteType::Slider) || (notes[i].note_type() == NoteType::Slider && notes[i].end_time(0.0) > time) {
-            //             break;
-            //         }
-            //     }
-
-            // }
-
             self.notes = queues.remove(0);
             self.other_notes = queues.remove(0);
 
@@ -562,29 +558,6 @@ impl GameMode for TaikoGame {
                 self.handle_replay_frame(*frame, time, manager).await;
             }
         }
-
-        // // update notes
-        // for note in self.notes.iter_mut() { 
-        //     note.update(time).await;
-        // }
-
-        // // if theres no more notes to hit, show score screen
-        // if self.note_index >= self.notes.len() {
-        //     if manager.time() >= self.notes.last().unwrap().end_time(self.miss_window) + 1000.0 {
-        //         manager.completed = true;
-        //     }
-
-        //     return;
-        // }
-
-        // check if we missed the current note
-        // if self.notes[self.note_index].end_time(self.miss_window) < time {
-        //     if self.notes[self.note_index].causes_miss() {
-        //     }
-
-        //     self.next_note();
-        // }
-
         
         for queue in [&mut self.notes, &mut self.other_notes] {
             for note in queue.notes.iter_mut() {
@@ -717,7 +690,7 @@ impl GameMode for TaikoGame {
                 note.reset().await;
 
                 // set note svs
-                if self.current_mods.has_mod("no_sv") {
+                if self.current_mods.has_mod(NoSV.name()) {
                     note.set_sv(self.taiko_settings.sv_multiplier);
                 } else {
                     let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
@@ -742,7 +715,7 @@ impl GameMode for TaikoGame {
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !self.current_mods.has_mod("no_sv") {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
+                if !self.current_mods.has_mod(NoSV.name()) {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
@@ -830,7 +803,7 @@ impl GameMode for TaikoGame {
 
     async fn force_update_settings(&mut self, settings: &Settings) {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let sv_static = self.current_mods.has_mod("no_sv");
+        let sv_static = self.current_mods.has_mod(NoSV.name());
         
         let mut settings = settings.taiko_settings.clone();
         // calculate the hit area
@@ -935,8 +908,8 @@ impl GameMode for TaikoGame {
     
     async fn apply_mods(&mut self, mods: Arc<ModManager>) {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let old_sv_static = self.current_mods.has_mod("no_sv");
-        let current_sv_static = mods.has_mod("no_sv");
+        let old_sv_static = self.current_mods.has_mod(NoSV.name());
+        let current_sv_static = mods.has_mod(NoSV.name());
         self.current_mods = mods;
         
         if current_sv_static != old_sv_static {

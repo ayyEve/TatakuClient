@@ -20,6 +20,7 @@ impl GameModeInfo for TaikoGameInfo {
         vec![
             GameplayModGroup::new("Skill")
                 .with_mod(super::FullAlt)
+                .with_mod(super::Relax)
             ,
             GameplayModGroup::new("Difficulty")
                 .with_mod(super::HardRock)

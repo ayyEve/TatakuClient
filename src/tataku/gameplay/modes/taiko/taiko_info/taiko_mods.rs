@@ -15,6 +15,13 @@ impl GameplayMod for NoSV {
     fn display_name(&self) -> &'static str { "No SV" }
     fn description(&self) -> &'static str { "No more slider velocity changes!" }
 }
+pub struct Relax;
+impl GameplayMod for Relax {
+    fn name(&self) -> &'static str { "relax" }
+    fn short_name(&self) -> &'static str { "RX" }
+    fn display_name(&self) -> &'static str { "Relax" }
+    fn description(&self) -> &'static str { "Hit any (taiko) key you want!" }
+}
 
 pub struct HardRock;
 impl GameplayMod for HardRock {
