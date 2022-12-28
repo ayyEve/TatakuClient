@@ -50,7 +50,7 @@ impl HitCircleImageHelper {
         if let Some(circle) = &mut circle {
             circle.depth = depth;
             circle.pos = pos;
-            circle.scale = Vector2::one() * scaling_helper.scaled_cs;
+            circle.scale = Vector2::ONE * scaling_helper.scaled_cs;
             circle.color = color;
         }
 
@@ -58,7 +58,7 @@ impl HitCircleImageHelper {
         if let Some(overlay) = &mut overlay {
             overlay.depth = depth - 0.0000001;
             overlay.pos = pos;
-            overlay.scale = Vector2::one() * scaling_helper.scaled_cs;
+            overlay.scale = Vector2::ONE * scaling_helper.scaled_cs;
         }
 
         if overlay.is_none() || circle.is_none() {return None}
@@ -73,7 +73,7 @@ impl HitCircleImageHelper {
     
     pub fn playfield_changed(&mut self, new_scale: &Arc<ScalingHelper>) {
         self.overlay.pos = new_scale.scale_coords(self.pos);
-        self.overlay.scale = Vector2::one() * new_scale.scaled_cs;
+        self.overlay.scale = Vector2::ONE * new_scale.scaled_cs;
 
         self.circle.pos   = self.overlay.pos;
         self.circle.scale = self.overlay.scale;
@@ -148,7 +148,7 @@ impl ApproachCircle {
 
             tex.pos = self.pos;
             tex.color = self.color.alpha(self.alpha);
-            tex.scale = Vector2::one() * scale * self.scaling_helper.scaled_cs;
+            tex.scale = Vector2::ONE * scale * self.scaling_helper.scaled_cs;
 
             list.push(tex)
         } else {

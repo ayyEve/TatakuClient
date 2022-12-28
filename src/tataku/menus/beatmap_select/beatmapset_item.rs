@@ -30,18 +30,18 @@ impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
         BeatmapsetItem {
             beatmaps, 
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             hover: false,
             selected: false,
             display_text,
-            scale: Vector2::one(),
+            scale: Vector2::ONE,
 
             selected_index: 0,
-            mouse_pos: Vector2::zero(),
+            mouse_pos: Vector2::ZERO,
             mods: ModManagerHelper::new(),
             playmode: CurrentPlaymodeHelper::new(),
             double_clicked: false,
-            button_image: SkinnedButton::new(Vector2::zero(), BEATMAPSET_ITEM_SIZE, 5.0).await,
+            button_image: SkinnedButton::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE, 5.0).await,
         }
     }
 

@@ -110,7 +110,7 @@ impl HitObject for ManiaNote {
                 if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     let mut img = img.clone();
                     img.color = self.color;
-                    img.origin = Vector2::zero();
+                    img.origin = Vector2::ZERO;
                     img.depth = MANIA_NOTE_DEPTH;
                     note_image = Some(img);
                 }

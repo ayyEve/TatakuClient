@@ -14,7 +14,7 @@ impl UIElement {
     pub async fn new<T:'static+InnerUIElement>(name: &str, default_pos: Vector2, inner: T) -> Self {
         let element_name = name.to_owned();
         let mut pos_offset = default_pos;
-        let mut scale = Vector2::one();
+        let mut scale = Vector2::ONE;
         let mut visible = true;
         
         if let Some((stored_pos, stored_scale, stored_window_size, stored_visible)) = Database::get_element_info(&element_name).await {

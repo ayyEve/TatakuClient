@@ -79,7 +79,7 @@ impl OsuGame {
     fn apply_stacking(&mut self) {
         let stack_offset = self.scaling_helper.scaled_cs / 10.0;
 
-        let stack_vector = Vector2::one() * stack_offset;
+        let stack_vector = Vector2::ONE * stack_offset;
 
         // let stack_threshhold = self.preempt * self.beatmap.stack_leniency
 
@@ -168,7 +168,7 @@ impl OsuGame {
             image.pos = pos;
             image.depth = -2.0;
 
-            let scale = Vector2::one() * scaling_helper.scale;
+            let scale = Vector2::ONE * scaling_helper.scale;
             image.scale = scale;
         }
 
@@ -253,8 +253,8 @@ impl GameMode for OsuGame {
 
                 let mut s = Self {
                     notes: Vec::new(),
-                    mouse_pos: Vector2::zero(),
-                    window_mouse_pos: Vector2::zero(),
+                    mouse_pos: Vector2::ZERO,
+                    window_mouse_pos: Vector2::ZERO,
                     hit_windows: Vec::new(),
                     miss_window: 0.0,
         
@@ -798,7 +798,7 @@ impl GameMode for OsuGame {
                             const FOLLOW_DOT_TEX_SIZE: Vector2 = Vector2::new(128.0, 128.0);
                             i.pos = point;
                             i.rotation = direction;
-                            // i.current_scale = Vector2::one() * self.scaling_helper.scale;
+                            // i.current_scale = Vector2::ONE * self.scaling_helper.scale;
                             list.push(i);
                         } else {
                             list.push(Circle::new(
@@ -1140,7 +1140,7 @@ impl GameModeProperties for OsuGame {
 
         let size = Vector2::new(100.0, 30.0);
         let combo_bounds = Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             size
         );
         
@@ -1181,11 +1181,11 @@ struct StandardAutoHelper {
 impl StandardAutoHelper {
     fn new() -> Self {
         Self {
-            // point_trail_angle: Vector2::zero(),
+            // point_trail_angle: Vector2::ZERO,
             point_trail_start_time: 0.0,
             point_trail_end_time: 0.0,
-            point_trail_start_pos: Vector2::zero(),
-            point_trail_end_pos: Vector2::zero(),
+            point_trail_start_pos: Vector2::ZERO,
+            point_trail_end_pos: Vector2::ZERO,
 
             holding: HashMap::new(),
 
@@ -1355,7 +1355,7 @@ impl ScalingHelper {
         let cs_base = (1.0 - 0.7 * (cs as f64 - 5.0) / 5.0) / 2.0;
         let scaled_cs = cs_base * scale;
 
-        let circle_size = Vector2::one() * circle_size * scaled_cs;
+        let circle_size = Vector2::ONE * circle_size * scaled_cs;
 
         let border_scaled = border_size * scale;
 

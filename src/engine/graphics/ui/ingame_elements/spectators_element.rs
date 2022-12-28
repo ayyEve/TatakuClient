@@ -21,7 +21,7 @@ impl InnerUIElement for SpectatorsElement {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             // TODO: setup a proper size
             Vector2::new(
                 SPECTATOR_ITEM_SIZE.x,

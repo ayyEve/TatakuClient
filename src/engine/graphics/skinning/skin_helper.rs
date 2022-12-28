@@ -2,7 +2,6 @@
 use crate::prelude::*;
 
 const DEFAULT_SKIN:&str = "default";
-use tokio::sync::RwLock;
 
 lazy_static::lazy_static! {
     static ref SKIN_MANAGER: Arc<RwLock<SkinManager>> = Arc::new(RwLock::new(SkinManager::new()));
@@ -110,7 +109,7 @@ impl SkinManager {
 
             if let Some(img) = &mut maybe_img {
                 img.set_size(img.tex_size());
-                // img.initial_scale = Vector2::one();
+                // img.initial_scale = Vector2::ONE;
                 // img.current_scale = img.initial_scale;
             }
 

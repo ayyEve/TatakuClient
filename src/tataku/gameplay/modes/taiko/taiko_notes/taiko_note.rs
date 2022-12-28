@@ -40,7 +40,7 @@ impl TaikoNote {
             speed: 0.0,
             hit: false,
             missed: false,
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             image: None,
             settings,
             playfield,
@@ -95,7 +95,7 @@ impl HitObject for TaikoNote {
     }
 
     async fn reset(&mut self) {
-        self.pos = Vector2::zero();
+        self.pos = Vector2::ZERO;
         self.hit = false;
         self.missed = false;
         self.hit_time = 0.0;

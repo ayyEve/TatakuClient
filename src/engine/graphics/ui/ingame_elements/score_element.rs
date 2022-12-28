@@ -11,7 +11,7 @@ pub struct ScoreElement {
 impl ScoreElement {
     pub async fn new() -> Self {
         let number:u32 = 1_000_000_000;
-        let mut score_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 0).await.ok();
+        let mut score_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "score", None, 0).await.ok();
 
         // get the bounds
         // TODO: make it not rely on this shit
@@ -22,7 +22,7 @@ impl ScoreElement {
             Text::new(
                 Color::BLACK,
                 0.0,
-                Vector2::zero(),
+                Vector2::ZERO,
                 30,
                 crate::format_number(number),
                 get_font()

@@ -18,7 +18,7 @@ pub struct Sector {
 }
 impl Sector {
     pub fn new(pos:Vector2, radius: f64, start:f64, end:f64, color:Color, depth:f64, border: Option<Border>) -> Self {
-        let scale = Vector2::one();
+        let scale = Vector2::ONE;
 
         Self {
             depth,

@@ -97,7 +97,7 @@ impl BeatmapSelectMenu {
         );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
         beatmap_scroll.set_item_margin(7.0);
-        beatmap_scroll.ui_scale_changed(Vector2::one() * scale);
+        beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
 
         let mut m = BeatmapSelectMenu {
             // pending_refresh: false,
@@ -433,13 +433,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.set_pos(Vector2::new(self.window_size.x - BEATMAPSET_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT));
         self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
         self.beatmap_scroll.window_size_changed(size);
-        self.beatmap_scroll.ui_scale_changed(Vector2::one() * scale);
+        self.beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
         self.beatmap_scroll.scroll_to_selection();
 
         
         self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
         self.leaderboard_scroll.window_size_changed(size);
-        self.leaderboard_scroll.ui_scale_changed(Vector2::one() * scale);
+        self.leaderboard_scroll.ui_scale_changed(Vector2::ONE * scale);
 
 
         self.search_text.set_pos(Vector2::new(size.x - (size.x / 4.0), 0.0));
@@ -529,7 +529,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         let bar_rect = Rectangle::new(
             Color::WHITE,
             depth - 1.0,
-            Vector2::zero(),
+            Vector2::ZERO,
             Vector2::new(args.window_size[0], INFO_BAR_HEIGHT),
             Some(Border::new(Color::BLACK, 1.2))
         );
@@ -559,17 +559,17 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // }
 
         // beatmap scroll
-        self.beatmap_scroll.draw(args, Vector2::zero(), 0.0, items);
+        self.beatmap_scroll.draw(args, Vector2::ZERO, 0.0, items);
 
         // leaderboard scroll
-        self.leaderboard_scroll.draw(args, Vector2::zero(), 0.0, items);
+        self.leaderboard_scroll.draw(args, Vector2::ZERO, 0.0, items);
 
         // back button
-        self.back_button.draw(args, Vector2::zero(), 0.0, items);
+        self.back_button.draw(args, Vector2::ZERO, 0.0, items);
 
         // everything else
         for i in self.interactables() {
-            i.draw(args, Vector2::zero(), 0.0, items);
+            i.draw(args, Vector2::ZERO, 0.0, items);
         }
 
 

@@ -32,7 +32,7 @@ impl GameModeProperties for NoMode {
     fn playmode(&self) -> PlayMode {"none".to_owned()}
     fn end_time(&self) -> f32 {0.0}
     
-    // fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::zero(), Vector2::zero())}
+    // fn combo_bounds(&self) -> Rectangle {Rectangle::bounds_only(Vector2::ZERO, Vector2::ZERO)}
     fn timing_bar_things(&self) -> Vec<(f32,Color)> { Vec::new() }
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> { Vec::new() }
     // fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized { String::new() }

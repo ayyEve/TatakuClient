@@ -150,7 +150,7 @@ impl ManiaGame {
                 if let Some(path) = up_map.get(&col) {
                     if let Some(img) = SkinManager::get_texture(path, true).await {
                         let mut img = img.clone();
-                        img.origin = Vector2::zero();
+                        img.origin = Vector2::ZERO;
                         img.scale = self.playfield.note_size() / img.tex_size();
                         img.pos = Vector2::new(x, self.playfield.hit_y());
 
@@ -162,7 +162,7 @@ impl ManiaGame {
                 if let Some(path) = down_map.get(&col) {
                     if let Some(img) = SkinManager::get_texture(path, true).await {
                         let mut img = img.clone();
-                        img.origin = Vector2::zero();
+                        img.origin = Vector2::ZERO;
                         img.scale = self.playfield.note_size() / img.tex_size();
                         img.pos = Vector2::new(x, self.playfield.hit_y());
 
@@ -1098,7 +1098,7 @@ impl GameModeProperties for ManiaGame {
         let width = self.playfield.col_pos(self.column_count) - start_x;
 
         let combo_bounds = Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             Vector2::new(width, 30.0)
         );
         

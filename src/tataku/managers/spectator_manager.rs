@@ -417,7 +417,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
     let mut offset_text = Text::new(
         Color::BLACK,
         BANNER_DEPTH,
-        Vector2::zero(), // centered anyways
+        Vector2::ZERO, // centered anyways
         32,
         text.to_owned(),
         font.clone()

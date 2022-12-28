@@ -34,7 +34,7 @@ impl MenuVisualization {
             data: Vec::new(),
             timer: Instant::now(),
             //TODO!: skins
-            cookie: Image::from_path("./resources/icon.png", Vector2::zero(), 0.0, Vector2::one() * initial_inner_radius).await.unwrap(),
+            cookie: Image::from_path("./resources/icon.png", Vector2::ZERO, 0.0, Vector2::ONE * initial_inner_radius).await.unwrap(),
 
             bar_height: 1.0,
             initial_inner_radius,
@@ -146,7 +146,7 @@ impl Visualization for MenuVisualization {
         self.cookie.depth = depth - 1.0;
         self.cookie.pos = pos;
         self.cookie.rotation = self.rotation * 2.0;
-        self.cookie.set_size(Vector2::one() * self.current_inner_radius * 2.05);
+        self.cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
         list.push(self.cookie.clone());
 
         // draw ripples

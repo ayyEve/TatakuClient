@@ -6,7 +6,7 @@ pub const TWO_PI:f64 = PI * 2.0;
 
 pub(crate) fn create_bezier(input: Vec<Vector2>, wrong: bool) -> Vec<Vector2> {
     let count = input.len();
-    let mut working = vec![Vector2::zero(); count];
+    let mut working = vec![Vector2::ZERO; count];
     let mut output = Vec::new();
 
     let points = SLIDER_DETAIL_LEVEL * count as u32;

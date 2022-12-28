@@ -21,14 +21,14 @@ impl PanelUser {
             user,
             hover: false,
             selected: false,
-            pos: Vector2::zero()
+            pos: Vector2::ZERO
         }
     }
 }
 impl Default for PanelUser {
     fn default() -> Self {
         Self { 
-            pos: Vector2::zero(), 
+            pos: Vector2::ZERO, 
             size: USER_ITEM_SIZE,
             tag: String::new(),
             hover: Default::default(), 

@@ -19,7 +19,7 @@ impl InnerUIElement for HealthBarElement {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT)
         )
     }

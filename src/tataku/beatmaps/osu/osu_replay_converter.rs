@@ -336,7 +336,7 @@ impl OsuReplay {
             }
 
         } else {
-            let mut last_mouse_pos = Vector2::zero();
+            let mut last_mouse_pos = Vector2::ZERO;
             let mut last_keys = Vec::new();
 
             for f in replay_frames.iter() {

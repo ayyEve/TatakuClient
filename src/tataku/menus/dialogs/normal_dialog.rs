@@ -21,7 +21,7 @@ impl NormalDialog {
         let bounds = Rectangle::new(
             Color::BLACK.alpha(0.7),
             0.0,
-            Vector2::zero(),
+            Vector2::ZERO,
             window_size.0,
             Some(Border::new(
                 Color::BLACK, 
@@ -111,7 +111,7 @@ impl Dialog<Game> for NormalDialog {
         // draw buttons
         let depth = depth - 0.0001;
         for button in self.buttons.iter_mut() {
-            button.draw(*args, Vector2::zero(), depth, list);
+            button.draw(*args, Vector2::ZERO, depth, list);
         }
 
         list.push(bg_rect);

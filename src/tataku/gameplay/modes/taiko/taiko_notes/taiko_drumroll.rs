@@ -162,7 +162,7 @@ impl HitObject for TaikoDrumroll {
             image.color = Color::YELLOW;
 
             let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-            image.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
         self.middle_image = middle_image;
 
@@ -173,7 +173,7 @@ impl HitObject for TaikoDrumroll {
             image.color = Color::YELLOW;
 
             let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
-            image.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
         self.end_image = end_image;
 
@@ -205,7 +205,7 @@ impl TaikoHitObject for TaikoDrumroll {
         for i in [&mut self.middle_image, &mut self.end_image] {
             if let Some(i) = i {
                 let radius = settings.note_radius * if self.finisher {settings.big_note_multiplier} else {1.0};
-                i.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
             }
         }
     }

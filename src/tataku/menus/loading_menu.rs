@@ -149,7 +149,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                 text = Text::new(
                     text_color,
                     -100.0,
-                    Vector2::zero(),
+                    Vector2::ZERO,
                     32,
                     error.clone(),
                     font
@@ -160,7 +160,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text = Text::new(
                         text_color,
                         -100.0,
-                        Vector2::zero(),
+                        Vector2::ZERO,
                         32,
                         format!(""),
                         font
@@ -170,7 +170,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text = Text::new(
                         text_color,
                         -100.0,
-                        Vector2::zero(),
+                        Vector2::ZERO,
                         32,
                         format!("Done"),
                         font
@@ -180,7 +180,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text = Text::new(
                         text_color,
                         -100.0,
-                        Vector2::zero(),
+                        Vector2::ZERO,
                         32,
                         format!("Loading Database"),
                         font
@@ -190,7 +190,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text = Text::new(
                         text_color,
                         -100.0,
-                        Vector2::zero(),
+                        Vector2::ZERO,
                         32,
                         format!("Loading Audio"),
                         font
@@ -200,7 +200,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text = Text::new(
                         text_color,
                         -100.0,
-                        Vector2::zero(),
+                        Vector2::ZERO,
                         32,
                         format!("{} ({}/{})", 
                             if state.custom_message.is_empty() {"Loading Beatmaps"} else {&state.custom_message},
@@ -213,7 +213,7 @@ impl AsyncMenu<Game> for LoadingMenu {
             },
         }
 
-        text.center_text(&Rectangle::bounds_only(Vector2::zero(), self.window_size.0));
+        text.center_text(&Rectangle::bounds_only(Vector2::ZERO, self.window_size.0));
         list.push(text);
     }
 }

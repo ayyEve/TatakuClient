@@ -830,7 +830,7 @@ impl Game {
             render_queue.push(Rectangle::new(
                 Color::BLACK.alpha(self.settings.background_dim),
                 f64::MAX - 1.0,
-                Vector2::zero(),
+                Vector2::ZERO,
                 self.window_size.0,
                 None
             ));
@@ -849,7 +849,7 @@ impl Game {
             render_queue.push(Rectangle::new(
                 [0.0, 0.0, 0.0, alpha as f32].into(),
                 -f64::MAX,
-                Vector2::zero(),
+                Vector2::ZERO,
                 self.window_size.0,
                 None
             ));
@@ -924,7 +924,7 @@ impl Game {
 
     fn resize_bg(&mut self) {
         if let Some(bg) = self.background_image.as_mut() {
-            bg.origin = Vector2::zero();
+            bg.origin = Vector2::ZERO;
             
             // resize to maintain aspect ratio
             let image_size = bg.tex_size();

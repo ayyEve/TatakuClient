@@ -68,7 +68,7 @@ impl TaikoSettings {
             let window_size = **WindowSize::get();
             window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
         } else {
-            Vector2::zero()
+            Vector2::ZERO
         };
         self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1]);
 
@@ -110,7 +110,7 @@ impl Default for TaikoSettings {
             hit_area_radius_mult: 1.2,
             playfield_height_padding: 8.0,
             // hit area stuff
-            hit_position: Vector2::zero(),
+            hit_position: Vector2::ZERO,
             hit_position_relative_to_window_size: true,
             hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
             hit_position_offset: [

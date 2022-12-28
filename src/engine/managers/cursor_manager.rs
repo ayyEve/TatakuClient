@@ -91,7 +91,7 @@ impl CursorManager {
 
         let settings = SettingsHelper::new();
         Self {
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
             ripple_color: Color::from_hex(&settings.cursor_ripple_color),
@@ -267,7 +267,7 @@ impl CursorManager {
             // cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
-                cursor.scale = Vector2::one() * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
+                cursor.scale = Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
             }
             
             list.push(cursor.clone());
@@ -300,7 +300,7 @@ impl CursorManager {
 
         //     // set scale
         //     const SCALE:f64 = 0.25;
-        //     ripple.scale = Vector2::one() * SCALE;
+        //     ripple.scale = Vector2::ONE * SCALE;
 
         //     let end_scale = self
         //         .ripple_radius_override

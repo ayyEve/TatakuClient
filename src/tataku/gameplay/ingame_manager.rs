@@ -223,7 +223,7 @@ impl IngameManager {
         // Healthbar
         self.ui_elements.push(UIElement::new(
             &get_name("healthbar"),
-            Vector2::zero(),
+            Vector2::ZERO,
             HealthBarElement::new(self.common_game_settings.clone())
         ).await);
 
@@ -1014,7 +1014,7 @@ impl IngameManager {
     }
     pub async fn mouse_down(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_down(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ()).await;
+            ui_editor.on_mouse_down(&Vector2::ZERO, &btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 
@@ -1025,7 +1025,7 @@ impl IngameManager {
     }
     pub async fn mouse_up(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_up(&Vector2::zero(), &btn, &KeyModifiers::default(), &mut ()).await;
+            ui_editor.on_mouse_up(&Vector2::ZERO, &btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 

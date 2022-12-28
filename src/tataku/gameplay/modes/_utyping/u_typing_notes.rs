@@ -179,7 +179,7 @@ impl UTypingNote {
             hit: false,
             missed: false,
 
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, time as f64).await},
             settings,
             bounce_factor,
@@ -262,7 +262,7 @@ impl HitObject for UTypingNote {
     }
 
     async fn reset(&mut self) {
-        self.pos = Vector2::zero();
+        self.pos = Vector2::ZERO;
         self.hit = false;
         self.missed = false;
         self.hit_time = 0.0;
@@ -338,8 +338,8 @@ impl HitCircleImageHelper {
         let mut circle = SkinManager::get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
             circle.depth = depth;
-            circle.initial_pos = Vector2::zero();
-            circle.initial_scale = Vector2::one() * scale;
+            circle.initial_pos = Vector2::ZERO;
+            circle.initial_scale = Vector2::ONE * scale;
             // circle.initial_color = color;
             
             circle.current_pos = circle.initial_pos;
@@ -350,8 +350,8 @@ impl HitCircleImageHelper {
         let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
             overlay.depth = depth - 0.0000001;
-            overlay.initial_pos = Vector2::zero();
-            overlay.initial_scale = Vector2::one() * scale;
+            overlay.initial_pos = Vector2::ZERO;
+            overlay.initial_scale = Vector2::ONE * scale;
             // overlay.initial_color = color;
             
             overlay.current_pos = overlay.initial_pos;

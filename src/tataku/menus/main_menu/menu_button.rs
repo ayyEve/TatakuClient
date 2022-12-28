@@ -26,7 +26,7 @@ pub struct MainMenuButton {
 }
 impl MainMenuButton {
     pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
-        let pos = Vector2::zero();
+        let pos = Vector2::ZERO;
         let shapes = TransformGroup::new(pos, 10.0).alpha(1.0).border_alpha(0.0);
         let window_size = WindowSize::get().0;
 
@@ -255,7 +255,7 @@ impl ScrollableItem for MainMenuButton {
             let mut txt = Text::new(
                 Color::WHITE,
                 9.0,
-                Vector2::zero(),
+                Vector2::ZERO,
                 font_size,
                 self.text.to_owned(),
                 get_font()

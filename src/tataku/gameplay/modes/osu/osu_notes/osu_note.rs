@@ -73,7 +73,7 @@ impl OsuNote {
             missed: false,
 
             map_time: 0.0,
-            mouse_pos: Vector2::zero(),
+            mouse_pos: Vector2::ZERO,
             circle_image: None,
             time_preempt,
             hitwindow_miss: 0.0,
@@ -241,8 +241,8 @@ impl HitObject for OsuNote {
             get_font()
         ));
         self.combo_text.as_mut().unwrap().center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::one() * self.radius / 2.0,
-            Vector2::one() * self.radius,
+            self.pos - Vector2::ONE * self.radius / 2.0,
+            Vector2::ONE * self.radius,
         ));
 
         let mut combo_image = SkinnedNumber::new(
@@ -256,8 +256,8 @@ impl HitObject for OsuNote {
         ).await.ok();
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::one() * self.radius / 2.0,
-                Vector2::one() * self.radius,
+                self.pos - Vector2::ONE * self.radius / 2.0,
+                Vector2::ONE * self.radius,
             ));
         }
         self.combo_image = combo_image;
@@ -318,8 +318,8 @@ impl OsuHitObject for OsuNote {
             get_font()
         );
         combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::one() * self.radius / 2.0,
-            Vector2::one() * self.radius,
+            self.pos - Vector2::ONE * self.radius / 2.0,
+            Vector2::ONE * self.radius,
         ));
 
         
@@ -328,11 +328,11 @@ impl OsuHitObject for OsuNote {
         }
         
         if let Some(image) = &mut self.combo_image {
-            image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
+            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
             image.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::one() * self.radius / 2.0,
-                Vector2::one() * self.radius,
+                self.pos - Vector2::ONE * self.radius / 2.0,
+                Vector2::ONE * self.radius,
             ));
         }
 

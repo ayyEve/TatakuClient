@@ -82,7 +82,7 @@ impl Chat {
 
     pub fn scroll_to_new_message(&mut self) {
         // make the message scroll think the mouse is on it
-        self.message_scroll.on_mouse_move(self.message_scroll.get_pos() + Vector2::one());
+        self.message_scroll.on_mouse_move(self.message_scroll.get_pos() + Vector2::ONE);
 
         // do a negative max scroll
         self.message_scroll.on_scroll(-f64::MAX);
@@ -362,9 +362,9 @@ impl Dialog<Game> for Chat {
             ))
         }
 
-        self.channel_scroll.draw(args, Vector2::zero(), depth, list);
-        self.message_scroll.draw(args, Vector2::zero(), depth, list);
-        self.input.draw(args, Vector2::zero(), depth - 10.0, list);
+        self.channel_scroll.draw(args, Vector2::ZERO, depth, list);
+        self.message_scroll.draw(args, Vector2::ZERO, depth, list);
+        self.input.draw(args, Vector2::ZERO, depth - 10.0, list);
     }
 }
 
@@ -458,7 +458,7 @@ impl ChannelScroll {
 
             hover: false,
             selected: false,
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             size: Vector2::new(width, font_size as f64),
             font: get_font(),
         }
@@ -497,7 +497,7 @@ impl MessageScroll {
             font_size: FontSize::new(font_size as f32).unwrap(),
 
             hover: false,
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             size: Vector2::new(width, font_size as f64),
             font: get_font(),
         }

@@ -52,7 +52,7 @@ impl MenuVisualizationNew {
             timer: Instant::now(),
             other_timer: Instant::now(),
             //TODO!: skins
-            cookie: Image::from_path("./resources/icon.png", Vector2::zero(), 0.0, Vector2::one() * initial_inner_radius).await.unwrap(),
+            cookie: Image::from_path("./resources/icon.png", Vector2::ZERO, 0.0, Vector2::ONE * initial_inner_radius).await.unwrap(),
 
             bar_height: 1.0,
             initial_inner_radius,
@@ -102,7 +102,7 @@ impl MenuVisualizationNew {
         if self.window_size.update() {
             self.initial_inner_radius = self.window_size.y / 6.0;
             
-            self.cookie.set_size(Vector2::one() * self.initial_inner_radius);
+            self.cookie.set_size(Vector2::ONE * self.initial_inner_radius);
         }
 
 
@@ -183,7 +183,7 @@ impl Visualization for MenuVisualizationNew {
         self.cookie.depth = depth - 1.0;
         self.cookie.pos = pos;
         self.cookie.rotation = self.rotation * 2.0;
-        self.cookie.set_size(Vector2::one() * self.current_inner_radius * 2.05);
+        self.cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
         list.push(self.cookie.clone());
 
         // draw ripples

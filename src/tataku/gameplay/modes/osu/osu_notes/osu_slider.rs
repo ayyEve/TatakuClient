@@ -150,7 +150,7 @@ impl OsuSlider {
             start_checked: false,
             end_checked: false,
             holding: false,
-            mouse_pos: Vector2::zero(),
+            mouse_pos: Vector2::ZERO,
             
             dots_missed: 0,
             dot_count: 0,
@@ -162,7 +162,7 @@ impl OsuSlider {
 
             scaling_helper,
             sliding_ok: false,
-            slider_ball_pos: Vector2::zero(),
+            slider_ball_pos: Vector2::ZERO,
 
 
             standard_settings,
@@ -254,7 +254,7 @@ impl OsuSlider {
             for i in list { i.draw(g, c); }
             g.draw_end();
         }).await {
-            slider_body_render_target.image.origin = Vector2::zero();
+            slider_body_render_target.image.origin = Vector2::ZERO;
             slider_body_render_target.image.depth = self.slider_depth;
             self.slider_body_render_target = Some(slider_body_render_target);
         } else {
@@ -567,7 +567,7 @@ impl HitObject for OsuSlider {
                         im.pos = self.pos;
                         im.depth = self.circle_depth;
                         im.color.a = alpha;
-                        im.scale = Vector2::one() * self.scaling_helper.scaled_cs;
+                        im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
                         let l = self.curve.curve_lines[0];
                         im.rotation = Vector2::atan2_wrong(l.p2 - l.p1);
@@ -603,7 +603,7 @@ impl HitObject for OsuSlider {
                     im.pos = self.visual_end_pos;
                     im.depth = self.circle_depth;
                     im.color.a = alpha;
-                    im.scale = Vector2::one() * self.scaling_helper.scaled_cs;
+                    im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
                     let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
                     im.rotation = Vector2::atan2_wrong(l.p1 - l.p2);
@@ -685,15 +685,15 @@ impl HitObject for OsuSlider {
             get_font()
         );
         combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::one() * self.radius / 2.0,
-            Vector2::one() * self.radius,
+            self.pos - Vector2::ONE * self.radius / 2.0,
+            Vector2::ONE * self.radius,
         ));
         self.combo_text = Some(combo_text);
 
         let mut combo_image = SkinnedNumber::new(
             Color::WHITE, // TODO: setting: colored same as note or just white?
             self.circle_depth - 0.0000001, 
-            Vector2::zero(), 
+            Vector2::ZERO, 
             self.combo_num as f64,
             "default",
             None,
@@ -701,8 +701,8 @@ impl HitObject for OsuSlider {
         ).await.ok();
         if let Some(combo) = &mut combo_image {
             combo.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::one() * self.radius / 2.0,
-                Vector2::one() * self.radius,
+                self.pos - Vector2::ONE * self.radius / 2.0,
+                Vector2::ONE * self.radius,
             ));
         };
         self.combo_image = combo_image;
@@ -823,8 +823,8 @@ impl OsuHitObject for OsuSlider {
             get_font()
         );
         combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::one() * self.radius / 2.0,
-            Vector2::one() * self.radius,
+            self.pos - Vector2::ONE * self.radius / 2.0,
+            Vector2::ONE * self.radius,
         ));
 
         if let Some(image) = &mut self.start_circle_image {
@@ -832,17 +832,17 @@ impl OsuHitObject for OsuSlider {
         }
         if let Some(image) = &mut self.end_circle_image {
            image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
-           image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
+           image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
 
         
         
         if let Some(image) = &mut self.combo_image {
-            image.scale = Vector2::one() * self.scaling_helper.scaled_cs;
+            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
             image.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::one() * self.radius / 2.0,
-                Vector2::one() * self.radius,
+                self.pos - Vector2::ONE * self.radius / 2.0,
+                Vector2::ONE * self.radius,
             ));
         }
 
@@ -939,7 +939,7 @@ impl SliderDot {
         if let Some(mut image) = self.dot_image.clone() {
             image.depth = self.depth;
             image.pos = self.pos;
-            image.scale = Vector2::one() * self.scale * 0.8;
+            image.scale = Vector2::ONE * self.scale * 0.8;
             list.push(image);
         } else {
             list.push(Circle::new(

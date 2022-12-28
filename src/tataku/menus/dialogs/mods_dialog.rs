@@ -24,7 +24,7 @@ impl ModDialog {
 
         // create the scrollable and add the mod buttons to it
         let window_size = WindowSize::get();
-        let mut scroll = ScrollableArea::new(Vector2::zero(), window_size.0, true);
+        let mut scroll = ScrollableArea::new(Vector2::ZERO, window_size.0, true);
         let pos = Vector2::new(50.0, 0.0);
 
         let font = get_font();
@@ -50,7 +50,7 @@ impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str { "mod_menu" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Rectangle { 
-        Rectangle::bounds_only(Vector2::zero(), self.window_size.0) 
+        Rectangle::bounds_only(Vector2::ZERO, self.window_size.0) 
     }
 
     async fn update(&mut self, _g: &mut Game) {
@@ -59,7 +59,7 @@ impl Dialog<Game> for ModDialog {
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         self.draw_background(depth + 1.00000001, Color::BLACK, list);
-        self.scroll.draw(*args, Vector2::zero(), *depth, list);
+        self.scroll.draw(*args, Vector2::ZERO, *depth, list);
     }
 
     async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
@@ -139,7 +139,7 @@ impl ScrollableItem for ModButton {
         let font = get_font();
         let cb_size = Vector2::new(200.0, 50.0);
 
-        let mut checkbox = Checkbox::<Font2, Text>::new(Vector2::zero(), cb_size, &self.mod_name, self.enabled, font.clone());
+        let mut checkbox = Checkbox::<Font2, Text>::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, font.clone());
         checkbox.set_hover(self.hover);
 
         let font_size = 30;

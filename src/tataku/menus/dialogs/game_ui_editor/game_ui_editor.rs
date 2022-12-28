@@ -27,7 +27,7 @@ impl GameUIEditorDialog {
 
         let window_size = WindowSize::get();
 
-        let mut sidebar = ScrollableArea::new(Vector2::zero(), Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), true);
+        let mut sidebar = ScrollableArea::new(Vector2::ZERO, Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), true);
 
         for i in elements.iter() {
             sidebar.add_item(Box::new(UISideBarElement::new(i.element_name.clone(), i.inner.display_name(), event_sender.clone())));
@@ -39,7 +39,7 @@ impl GameUIEditorDialog {
         Self {
             should_close: false,
             elements,
-            mouse_pos: Vector2::zero(),
+            mouse_pos: Vector2::ZERO,
             mouse_down: None,
 
             window_size: WindowSize::get(),
@@ -77,7 +77,7 @@ impl Dialog<()> for GameUIEditorDialog {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::zero(), 
+            Vector2::ZERO, 
             self.window_size.0
         )
     }
@@ -135,12 +135,12 @@ impl Dialog<()> for GameUIEditorDialog {
             if let Some((index, _, _)) = self.mouse_down {
                 let ele = &mut self.elements[index];
                 
-                ele.scale += Vector2::one() * delta;
+                ele.scale += Vector2::ONE * delta;
                 
                 if ele.scale.x.abs() < 0.01 { ele.scale.x = 1.0 }
                 if ele.scale.y.abs() < 0.01 { ele.scale.y = 1.0 }
             } else if let Some((_, ele)) = self.find_ele_under_mouse() {
-                ele.scale += Vector2::one() * delta;
+                ele.scale += Vector2::ONE * delta;
                 
                 if ele.scale.x.abs() < 0.01 { ele.scale.x = 1.0 }
                 if ele.scale.y.abs() < 0.01 { ele.scale.y = 1.0 }
@@ -200,7 +200,7 @@ impl Dialog<()> for GameUIEditorDialog {
     }
 
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
-        self.sidebar.draw(*args, Vector2::zero(), *depth-9999999999999999999999.0, list);
+        self.sidebar.draw(*args, Vector2::ZERO, *depth-9999999999999999999999.0, list);
         list.push(Rectangle::new(
             Color::BLACK.alpha(0.8),
             -9999999999999999999999.0,
@@ -232,7 +232,7 @@ impl Dialog<()> for GameUIEditorDialog {
 
 async fn reset_element(ele: &mut UIElement) {
     ele.pos_offset = ele.default_pos;
-    ele.scale = Vector2::one();
+    ele.scale = Vector2::ONE;
     ele.clear_save().await;
 }
 
@@ -273,7 +273,7 @@ impl ScrollableItemGettersSetters for UISideBarElement {
 impl UISideBarElement {
     fn new(element_name: String, display_name:&str, event_sender: Arc<parking_lot::Mutex<MultiFuze<UIElementEvent>>>) -> Self {
         Self { 
-            pos: Vector2::zero(), 
+            pos: Vector2::ZERO, 
             size: Vector2::new(WindowSize::get().x/3.0, TEXT_SIZE), 
             hover: false, 
             element_name, 

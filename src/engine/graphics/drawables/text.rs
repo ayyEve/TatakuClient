@@ -24,9 +24,9 @@ impl Text {
         let fonts = vec![font, get_fallback_font()];
 
         let rotation = 0.0;
-        let scale = Vector2::one();
+        let scale = Vector2::ONE;
 
-        let text_size = measure_text(&fonts, font_size, &text, Vector2::one(), 2.0);
+        let text_size = measure_text(&fonts, font_size, &text, Vector2::ONE, 2.0);
         let origin = text_size / 2.0;
 
         Text {
@@ -115,7 +115,7 @@ impl TatakuRenderable for Text {
 
 
 fn measure_text(fonts: &Vec<Font2>, font_size: <Font2 as FontRender>::Size, text: &String, _scale: Vector2, line_spacing: f64) -> Vector2 {
-    if fonts.len() == 0 { return Vector2::zero() }
+    if fonts.len() == 0 { return Vector2::ZERO }
 
     let mut max_width:f64 = 0.0;
     let mut current_width = 0.0;

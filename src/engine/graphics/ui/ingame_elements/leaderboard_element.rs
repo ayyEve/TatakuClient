@@ -16,7 +16,7 @@ impl InnerUIElement for LeaderboardElement {
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             Vector2::new(
                 LEADERBOARD_ITEM_SIZE.x,
                 LEADERBOARD_ITEM_SIZE.y * 10.0
@@ -48,7 +48,7 @@ impl InnerUIElement for LeaderboardElement {
             else if score.is_previous {l.set_selected(true)}
 
             l.set_pos(base_pos);
-            l.draw(args, Vector2::zero(), 0.0, list);
+            l.draw(args, Vector2::ZERO, 0.0, list);
             base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 

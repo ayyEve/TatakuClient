@@ -98,7 +98,7 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Im
             }
 
             let tex = load_texture_data(img).await.ok()?;
-            let img = Some(Image::new(Vector2::zero(), f64::MAX, tex, Vector2::one()));
+            let img = Some(Image::new(Vector2::ZERO, f64::MAX, tex, Vector2::ONE));
             img
         }
         Err(e) => {

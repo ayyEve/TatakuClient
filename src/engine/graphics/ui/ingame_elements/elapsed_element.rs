@@ -17,8 +17,8 @@ pub struct ElapsedElement {
 impl ElapsedElement {
     pub async fn new() -> Self {
         Self {
-            // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "normal", None, 0).await.ok(),
-            elapsed_bounds: Rectangle::bounds_only(Vector2::zero(), SIZE),
+            // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
+            elapsed_bounds: Rectangle::bounds_only(Vector2::ZERO, SIZE),
             
             speed: 1.0,
             start_time: -1.0,
@@ -59,7 +59,7 @@ impl InnerUIElement for ElapsedElement {
         let mut text = Text::new(
             Color::WHITE,
             0.0,
-            Vector2::zero(),
+            Vector2::ZERO,
             (30.0 * scale.x) as u32,
             format!("{mins:02}:{secs:02}"),
             get_font()

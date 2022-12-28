@@ -547,7 +547,7 @@ impl CatchAutoHelper {
 
     fn new() -> Self {
         Self {
-            // point_trail_angle: Vector2::zero(),
+            // point_trail_angle: Vector2::ZERO,
             point_trail_start_time: 0.0,
             point_trail_end_time: 0.0,
             current_note_index: 0,

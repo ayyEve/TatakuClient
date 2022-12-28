@@ -53,12 +53,12 @@ impl Dialog<Game> for SkinSelect {
     fn name(&self) -> &'static str {"skin_select"}
     fn should_close(&self) -> bool {self.should_close}
     fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(Vector2::zero(), WindowSize::get().0)
+        Rectangle::bounds_only(Vector2::ZERO, WindowSize::get().0)
     }
     
     async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
         self.draw_background(*depth, Color::WHITE, list);
-        self.dropdown.draw(*args, Vector2::zero(), *depth, list)
+        self.dropdown.draw(*args, Vector2::ZERO, *depth, list)
     }
 
     async fn update(&mut self, _g:&mut Game) {

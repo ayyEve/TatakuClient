@@ -240,7 +240,7 @@ impl AsyncMenu<Game> for MainMenu {
     }
 
     async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        let pos_offset = Vector2::zero();
+        let pos_offset = Vector2::ZERO;
         let depth = 0.0;
 
         // draw interactables
@@ -258,7 +258,7 @@ impl AsyncMenu<Game> for MainMenu {
         list.push(Rectangle::new(
             Color::BLACK.alpha(0.5),
             depth + 11.0,
-            Vector2::zero(),
+            Vector2::ZERO,
             self.window_size.0,
             None
         ));

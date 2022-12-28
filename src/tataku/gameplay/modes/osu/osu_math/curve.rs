@@ -322,7 +322,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 fn catmull_rom(value1:Vector2, value2:Vector2, value3:Vector2, value4:Vector2, amount:f64) -> Vector2 {
     let num = amount * amount;
     let num2 = amount * num;
-    let mut result = Vector2::zero();
+    let mut result = Vector2::ZERO;
 
     result.x = 0.5 * (2.0 * value2.x + (-value1.x + value3.x) * amount + (2.0 * value1.x - 5.0 * value2.x + 4.0 * value3.x - value4.x) * num +
         (-value1.x + 3.0 * value2.x - 3.0 * value3.x + value4.x) * num2);

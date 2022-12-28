@@ -70,7 +70,7 @@ impl AsyncMenu<Game> for PauseMenu {
     }
     
     async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        let pos_offset = Vector2::zero();
+        let pos_offset = Vector2::ZERO;
         let depth = 0.0;
 
         // draw buttons

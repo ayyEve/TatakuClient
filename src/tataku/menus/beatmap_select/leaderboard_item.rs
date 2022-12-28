@@ -28,7 +28,7 @@ impl LeaderboardItem {
         let score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
 
         LeaderboardItem {
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             size: LEADERBOARD_ITEM_SIZE,
             score,
             tag,
@@ -36,7 +36,7 @@ impl LeaderboardItem {
             selected: false,
             font,
             score_mods,
-            ui_scale: Vector2::one()
+            ui_scale: Vector2::ONE
         }
     }
 }

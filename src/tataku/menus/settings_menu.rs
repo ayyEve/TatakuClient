@@ -127,7 +127,7 @@ impl AsyncMenu<Game> for SettingsMenu {
 
     
     async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        self.scroll_area.draw(args, Vector2::zero(), 0.0, list);
+        self.scroll_area.draw(args, Vector2::ZERO, 0.0, list);
 
         // background
         list.push(visibility_bg(

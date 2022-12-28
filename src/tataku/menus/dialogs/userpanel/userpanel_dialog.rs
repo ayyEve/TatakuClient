@@ -40,7 +40,7 @@ impl Dialog<Game> for UserPanel {
     fn should_close(&self) -> bool {self.should_close}
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::zero(), 
+            Vector2::ZERO, 
             self.window_size.0
         )
     }
@@ -146,7 +146,7 @@ impl Dialog<Game> for UserPanel {
             u.set_pos(Vector2::new(x, y));
 
             counter += 1;
-            u.draw(*args, Vector2::zero(), *depth, list);
+            u.draw(*args, Vector2::ZERO, *depth, list);
         }
         
     }

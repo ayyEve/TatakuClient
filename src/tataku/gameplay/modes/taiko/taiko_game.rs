@@ -147,7 +147,7 @@ impl TaikoGame {
             image.depth = -2.0;
 
             let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
-            image.scale = Vector2::one() * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
+            image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
         }
 
         manager.add_judgement_indicator(BasicJudgementIndicator::new(
@@ -212,7 +212,7 @@ impl GameMode for TaikoGame {
 
 
         let playfield = Arc::new(TaikoPlayfield {
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
             size: WindowSize::get().0
         });
 
@@ -800,7 +800,7 @@ impl GameMode for TaikoGame {
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.playfield = Arc::new(TaikoPlayfield { pos: Vector2::zero(), size: window_size.0 });
+        self.playfield = Arc::new(TaikoPlayfield { pos: Vector2::ZERO, size: window_size.0 });
         
         // update notes
         for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
@@ -875,7 +875,7 @@ impl GameMode for TaikoGame {
 
         // update images
         let radius = settings.note_radius * settings.hit_area_radius_mult;
-        let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+        let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
         for i in [ &mut self.left_don_image, &mut self.right_kat_image ] {
             if let Some(i) = i {
@@ -901,7 +901,7 @@ impl GameMode for TaikoGame {
             don.pos = self.taiko_settings.hit_position;
             
             let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
             self.left_don_image = Some(don.clone());
             self.left_don_image.as_mut().unwrap().scale = scale;
@@ -915,7 +915,7 @@ impl GameMode for TaikoGame {
             kat.pos = self.taiko_settings.hit_position;
             
             let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
             
             self.left_kat_image = Some(kat.clone());
             self.left_kat_image.as_mut().unwrap().scale = Vector2::new(-1.0, 1.0) * scale;
@@ -1192,7 +1192,7 @@ impl GameModeProperties for TaikoGame {
         };
 
         let combo_bounds = Rectangle::bounds_only(
-            Vector2::zero(),
+            Vector2::ZERO,
             Vector2::new(self.taiko_settings.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
         );
         

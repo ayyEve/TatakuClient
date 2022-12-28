@@ -24,9 +24,9 @@ pub struct SkinnedNumber {
 impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
         let rotation = 0.0;
-        let scale = Vector2::one();
+        let scale = Vector2::ONE;
 
-        let origin = Vector2::zero();
+        let origin = Vector2::ZERO;
 
         let tn = texture_name.as_ref();
 

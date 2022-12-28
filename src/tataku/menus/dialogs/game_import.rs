@@ -56,7 +56,7 @@ impl GameImportDialog {
         );
 
         Self {
-            pos: Vector2::one() * 200.0,
+            pos: Vector2::ONE * 200.0,
 
             should_close: false,
             input_scrollable: scrollable,

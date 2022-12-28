@@ -29,7 +29,7 @@ impl BeatmapDialog {
         let bounds = Rectangle::new(
             Color::BLACK.alpha(0.7),
             0.0,
-            Vector2::zero(),
+            Vector2::ZERO,
             window.0,
             Some(Border::new(
                 Color::BLACK, 
@@ -91,7 +91,7 @@ impl Dialog<Game> for BeatmapDialog {
 
         // draw buttons
         let depth = depth - 0.0001;
-        self.delete_map.draw(*args, Vector2::zero(), depth, list);
+        self.delete_map.draw(*args, Vector2::ZERO, depth, list);
 
         list.push(bg_rect);
     }

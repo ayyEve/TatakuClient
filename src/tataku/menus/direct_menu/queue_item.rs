@@ -12,7 +12,7 @@ pub struct DirectItem {
 impl DirectItem {
     pub fn new(item: Arc<dyn DirectDownloadable>) -> DirectItem {
         DirectItem {
-            pos: Vector2::zero(), // being set by the scroll area anyways
+            pos: Vector2::ZERO, // being set by the scroll area anyways
             item, //DirectMeta::from_str(str.clone()),
 
             hover: false,

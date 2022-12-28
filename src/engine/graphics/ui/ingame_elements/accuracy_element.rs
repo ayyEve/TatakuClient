@@ -11,7 +11,7 @@ pub struct AccuracyElement {
 }
 impl AccuracyElement {
     pub async fn new() -> Self {
-        let mut acc_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", Some('%'), 2).await.ok();
+        let mut acc_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "score", Some('%'), 2).await.ok();
         
         // get the bounds
         // TODO: make it not rely on this shit
@@ -22,7 +22,7 @@ impl AccuracyElement {
             Text::new(
                 Color::BLACK,
                 0.0,
-                Vector2::zero(),
+                Vector2::ZERO,
                 30,
                 "100.00%".to_owned(),
                 get_font()

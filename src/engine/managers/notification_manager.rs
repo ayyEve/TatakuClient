@@ -36,20 +36,20 @@ impl NotificationManager { // static
     pub async fn add_notification(notif: Notification) {
         NOTIFICATION_MANAGER.lock().await.pending_notifs.push(notif);
     }
-    pub async fn add_text_notification(text: &str, duration: f32, color: Color) {
-        let notif = Notification::new(text.to_owned(), color, duration, NotificationOnClick::None);
-
+    pub async fn add_text_notification(text: impl ToString, duration: f32, color: Color) {
+        let text = text.to_string();
         trace!("adding text notif '{text}'");
+        let notif = Notification::new(text, color, duration, NotificationOnClick::None);
+
         Self::add_notification(notif).await;
     }
-    pub async fn add_error_notification<E: Into<TatakuError>>(msg:&str, error:E) {
+    pub async fn add_error_notification<E: Into<TatakuError>>(msg: impl std::fmt::Display, error:E) {
         let error:TatakuError = error.into();
-        let text = format!("{}:\n{}", msg, error);
+        let text = format!("{msg}:\n{error}");
         error!("{text}");
         
-        // debug!("{}", text);
         Self::add_text_notification(
-            &text, 
+            text, 
             5_000.0, 
             Color::RED
         ).await;
@@ -117,10 +117,11 @@ impl NotificationManager { // non-static
                 match &n.notification.onclick {
                     NotificationOnClick::None => {}
                     NotificationOnClick::Url(url) => {
-                        debug!("open url {}", url);
+                        debug!("open url {url}");
+                        open_link(url.clone());
                     }
                     NotificationOnClick::Menu(menu_name) => {
-                        debug!("goto menu {}", menu_name);
+                        debug!("goto menu {menu_name}");
                     }
 
                     NotificationOnClick::File(file_path) => {
@@ -183,7 +184,7 @@ impl ProcessedNotif {
         let text = Text::new(
             Color::WHITE,
             NOTIF_DEPTH - 0.1,
-            Vector2::zero(),
+            Vector2::ZERO,
             NOTIF_TEXT_SIZE,
             notification.text.clone(),
             font.clone()

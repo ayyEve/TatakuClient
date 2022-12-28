@@ -49,7 +49,7 @@ impl MusicBox {
     pub async fn new() -> Self {
         // this is a big mess
         let window_size = WindowSize::get();
-        let mut size = Vector2::zero();
+        let mut size = Vector2::ZERO;
         let mut pos = Vector2::new(X_PADDING, window_size.y);
 
         // setup buttons
@@ -96,7 +96,7 @@ impl MusicBox {
             pos, 
             size, 
             hover: false, 
-            mouse_pos: Vector2::zero(), 
+            mouse_pos: Vector2::ZERO, 
             actions, 
             texts, 
 

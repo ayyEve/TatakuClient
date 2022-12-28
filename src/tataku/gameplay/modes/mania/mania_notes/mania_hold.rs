@@ -240,7 +240,7 @@ impl HitObject for ManiaHold {
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.color = self.color;
-                    img.origin = Vector2::zero();
+                    img.origin = Vector2::ZERO;
                     img.depth = MANIA_NOTE_DEPTH;
 
                     start_image = Some(img);
@@ -254,7 +254,7 @@ impl HitObject for ManiaHold {
             
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::zero();
+                    img.origin = Vector2::ZERO;
                     img.color = Color::WHITE;
                     img.depth = MANIA_NOTE_DEPTH;
 
@@ -269,7 +269,7 @@ impl HitObject for ManiaHold {
             
             if let Some(path) = map.get(&self.column) {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::zero();
+                    img.origin = Vector2::ZERO;
                     img.color = Color::WHITE;
                     img.scale.y *= -1.0;
                     img.depth = MANIA_NOTE_DEPTH;

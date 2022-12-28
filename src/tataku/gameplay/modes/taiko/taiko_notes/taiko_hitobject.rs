@@ -73,20 +73,20 @@ impl HitCircleImageHelper {
 
         let mut circle = SkinManager::get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
             circle.depth = depth;
-            circle.pos = Vector2::zero();
+            circle.pos = Vector2::ZERO;
             circle.scale = scale;
             circle.color = color;
         }
 
         let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
-            let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
             overlay.depth = depth - 0.0000001;
-            overlay.pos = Vector2::zero();
+            overlay.pos = Vector2::ZERO;
             overlay.scale = scale;
             overlay.color = color;
         }
@@ -115,7 +115,7 @@ impl HitCircleImageHelper {
             settings.note_radius
         };
 
-        let scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+        let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         self.circle.scale = scale;
         self.overlay.scale = scale;
     }

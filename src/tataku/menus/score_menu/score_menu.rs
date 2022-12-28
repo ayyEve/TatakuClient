@@ -291,16 +291,16 @@ impl AsyncMenu<Game> for ScoreMenu {
 
         // draw buttons
         for b in self.buttons.iter_mut() {
-            b.draw(args, Vector2::zero(), depth, list)
+            b.draw(args, Vector2::ZERO, depth, list)
         }
 
 
         // // graph
-        // self.graph.draw(args, Vector2::zero(), depth, &mut list);
+        // self.graph.draw(args, Vector2::ZERO, depth, &mut list);
         
         // draw background so score info is readable
         list.push(visibility_bg(
-            Vector2::one() * 5.0, 
+            Vector2::ONE * 5.0, 
             Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0),
             depth + 10.0
         ));

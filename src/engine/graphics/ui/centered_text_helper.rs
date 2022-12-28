@@ -41,7 +41,7 @@ impl CenteredTextHelper {
             let mut offset_text = Text::new(
                 Color::BLACK,
                 self.depth,
-                Vector2::zero(), // centered anyways
+                Vector2::ZERO, // centered anyways
                 32,
                 self.text.clone(),
                 self.font.clone()

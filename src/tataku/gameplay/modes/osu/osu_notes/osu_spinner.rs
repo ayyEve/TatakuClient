@@ -72,7 +72,7 @@ impl OsuSpinner {
 
             rotations_required,
             rotations_completed: 0,
-            mouse_pos: Vector2::zero(),
+            mouse_pos: Vector2::ZERO,
             points_queue: Vec::new(),
 
             last_update: 0.0,
@@ -187,7 +187,7 @@ impl HitObject for OsuSpinner {
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
-            i.scale = Vector2::one() * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
+            i.scale = Vector2::ONE * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
             list.push(i)
         } else {
             list.push(Circle::new(
@@ -202,7 +202,7 @@ impl HitObject for OsuSpinner {
 
         // draw line to show rotation
         if let Some(mut i) = self.spinner_circle.clone() {
-            i.scale = Vector2::one() * self.scaling_helper.scale;
+            i.scale = Vector2::ONE * self.scaling_helper.scale;
             i.rotation = self.display_rotation;
             list.push(i)
         } else {
@@ -221,7 +221,7 @@ impl HitObject for OsuSpinner {
         let mut txt = Text::new(
             Color::BLACK,
             -999.9,
-            Vector2::zero(),
+            Vector2::ZERO,
             30,
             format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
             get_font()
@@ -245,7 +245,7 @@ impl HitObject for OsuSpinner {
 
     async fn reload_skin(&mut self) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
-        let scale = Vector2::one() * self.scaling_helper.scale;
+        let scale = Vector2::ONE * self.scaling_helper.scale;
 
         self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, |i| {
             // const SIZE:f64 = 700.0;
@@ -285,7 +285,7 @@ impl OsuHitObject for OsuSpinner {
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos; }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
-        let scale = Vector2::one() * new_scale.scale;
+        let scale = Vector2::ONE * new_scale.scale;
 
         self.pos = new_scale.scale_coords(FIELD_SIZE / 2.0);
         self.scaling_helper = new_scale;

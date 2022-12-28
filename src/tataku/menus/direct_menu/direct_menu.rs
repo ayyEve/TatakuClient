@@ -63,7 +63,7 @@ impl DirectMenu {
             selected: None,
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::zero(), Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font()),
+            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font()),
             current_api: Box::new(OsuDirect::new()),
 
             mode,
@@ -188,8 +188,8 @@ impl AsyncMenu<Game> for DirectMenu {
     }
 
     async fn draw(&mut self, args:piston::RenderArgs, list: &mut RenderableCollection) {
-        self.scroll_area.draw(args, Vector2::zero(), 0.0, list);
-        self.search_bar.draw(args, Vector2::zero(), -90.0, list);
+        self.scroll_area.draw(args, Vector2::ZERO, 0.0, list);
+        self.search_bar.draw(args, Vector2::ZERO, -90.0, list);
 
         // draw download items
         if self.downloading.len() > 0 {

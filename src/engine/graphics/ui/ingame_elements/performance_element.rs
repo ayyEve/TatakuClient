@@ -12,7 +12,7 @@ pub struct PerformanceElement {
 impl PerformanceElement {
     pub async fn new() -> Self {
         let number:u32 = 1_000_000_000;
-        let mut perf_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::zero(), 0.0, "score", None, 2).await.ok();
+        let mut perf_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "score", None, 2).await.ok();
         
         // get the bounds
         // TODO: make it not rely on this shit
@@ -23,7 +23,7 @@ impl PerformanceElement {
             Text::new(
                 Color::BLACK,
                 0.0,
-                Vector2::zero(),
+                Vector2::ZERO,
                 30,
                 crate::format_float(number, 2),
                 get_font()

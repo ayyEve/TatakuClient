@@ -25,7 +25,7 @@ impl SkinnedButton {
 
         for i in [&mut left_image, &mut middle_image, &mut right_image] {
             i.depth = depth;
-            i.origin = Vector2::zero();
+            i.origin = Vector2::ZERO;
             i.color = Color::GRAY;
 
             i.scale = Vector2::new(x_scale, size.y / i.size.y);

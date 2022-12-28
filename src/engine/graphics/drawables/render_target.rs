@@ -1,4 +1,4 @@
-#![allow(unused, dead_code)]
+#![allow(unused)]
 use graphics::Viewport;
 
 use crate::prelude::*;
@@ -103,7 +103,7 @@ impl RenderTarget {
         let old_view_port = [0; 4];
 
         let image = Image::new(
-            Vector2::zero(),
+            Vector2::ZERO,
             -99999999999999990.0, 
             Arc::new(Texture::new(texture_id, width as u32, height as u32)),
             Vector2::new(width, height)

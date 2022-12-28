@@ -38,7 +38,7 @@ impl TaikoSpinner {
 
             hit_count: 0,
             complete: false,
-            pos: Vector2::zero(),
+            pos: Vector2::ZERO,
 
             settings,
             playfield,
@@ -166,7 +166,7 @@ impl TaikoHitObject for TaikoSpinner {
 
         if let Some(i) = &mut self.spinner_image {
             let radius = settings.note_radius;
-            i.scale = Vector2::one() * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+            i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
         }
     }
 
