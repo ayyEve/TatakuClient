@@ -58,8 +58,8 @@ pub struct Game {
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
-        GlobalObjectManager::update(Arc::new(CurrentBeatmap::default()));
-        GlobalObjectManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
+        GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
+        GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
 
 
         let mut g = Game {
@@ -112,7 +112,7 @@ impl Game {
         });
 
         // make sure we have a value in the mod manager global store
-        GlobalObjectManager::update(Arc::new(ModManager::new()));
+        GlobalValueManager::update(Arc::new(ModManager::new()));
 
         // set the current leaderboard filter
         // this is here so it happens before anything else

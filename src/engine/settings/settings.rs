@@ -7,14 +7,14 @@ const SETTINGS_FILE:&str = "settings.json";
 #[macro_export]
 macro_rules! get_settings {
     () => {{
-        GlobalObjectManager::get::<Settings>().unwrap()
+        GlobalValueManager::get::<Settings>().unwrap()
     }}
 }
 
 #[macro_export]
 macro_rules! get_settings_mut {
     () => {{
-        GlobalObjectManager::get_mut::<Settings>().unwrap()
+        GlobalValueManager::get_mut::<Settings>().unwrap()
         // MutSettingsHelper::new(Settings::get_mut().await)
     }}
 }
@@ -155,8 +155,8 @@ impl Settings {
         // check password hashes
         s.check_hashes();
         
-        GlobalObjectManager::update(Arc::new(s.clone()));
-        GlobalObjectManager::update(Arc::new(WindowSize(s.window_size.into())));
+        GlobalValueManager::update(Arc::new(s.clone()));
+        GlobalValueManager::update(Arc::new(WindowSize(s.window_size.into())));
 
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates

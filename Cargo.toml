@@ -39,6 +39,7 @@ async-trait = "0.1"
 bombs = "0.1.5"
 triple_buffer = "6.0"
 crossbeam = "*"
+global_value_manager = "*"
 
 # gl/piston etc
 # careful when verison bumping these

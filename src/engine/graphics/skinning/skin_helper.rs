@@ -73,7 +73,7 @@ impl SkinManager {
 // instance
 impl SkinManager {
     pub fn new() -> Self {
-        let settings = GlobalObjectManager::get::<Settings>().unwrap();
+        let settings = GlobalValueManager::get::<Settings>().unwrap();
         
         let current_skin = settings.current_skin.clone();
         let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());

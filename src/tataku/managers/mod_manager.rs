@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use crate::prelude::*;
 
-pub type ModManagerHelper = GlobalObjectValue<ModManager>;
+pub type ModManagerHelper = GlobalValue<ModManager>;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
@@ -21,14 +21,14 @@ impl ModManager {
         }
     }
     
-    pub fn get_mut() -> GlobalObjectMutValue<Self> {
-        GlobalObjectManager::get_mut::<Self>().unwrap()
+    pub fn get_mut() -> GlobalValueMut<Self> {
+        GlobalValueManager::get_mut::<Self>().unwrap()
     }
     pub fn get() -> Arc<Self> {
-        GlobalObjectManager::get::<Self>().unwrap()
+        GlobalValueManager::get::<Self>().unwrap()
     }
     pub fn get_cloned() -> Self {
-        GlobalObjectManager::get::<Self>().unwrap().as_ref().clone()
+        GlobalValueManager::get::<Self>().unwrap().as_ref().clone()
     }
 
     pub fn mods_for_playmode(playmode: &String) -> Vec<Box<dyn GameplayMod>> {

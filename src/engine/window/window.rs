@@ -149,7 +149,7 @@ impl GameWindow {
     pub async fn run(&mut self) {
         // fire event so things get moved around correctly
         let settings = get_settings!().clone();
-        GlobalObjectManager::update(Arc::new(WindowSize(settings.window_size.into())));
+        GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
         self.window_size.update();
 

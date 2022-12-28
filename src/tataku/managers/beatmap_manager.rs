@@ -231,7 +231,7 @@ impl BeatmapManager {
 
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
-        GlobalObjectManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
+        GlobalValueManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
         self.play_index += 1;

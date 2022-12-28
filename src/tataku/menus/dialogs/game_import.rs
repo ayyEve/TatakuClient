@@ -27,7 +27,7 @@ impl GameImportDialog {
         );
 
         
-        GlobalObjectManager::get::<Settings>().unwrap()
+        GlobalValueManager::get::<Settings>().unwrap()
             .external_games_folders
             .iter()
             .for_each(|f| {

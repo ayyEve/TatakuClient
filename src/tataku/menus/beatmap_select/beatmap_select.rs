@@ -67,7 +67,7 @@ impl BeatmapSelectMenu {
         );
 
         let mode = settings.last_played_mode.clone();
-        GlobalObjectManager::update(Arc::new(CurrentPlaymode(mode.clone())));
+        GlobalValueManager::update(Arc::new(CurrentPlaymode(mode.clone())));
         
         let playmode_dropdown = Dropdown::new(
             Vector2::new(205.0, 5.0),
@@ -137,7 +137,7 @@ impl BeatmapSelectMenu {
     async fn set_selected_mode(&mut self, new_mode: PlayMode) {
         // update values
         self.mode = new_mode.clone();
-        GlobalObjectManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
+        GlobalValueManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
 
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
         get_settings_mut!().last_played_mode = new_mode.clone();

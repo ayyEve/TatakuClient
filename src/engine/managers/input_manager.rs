@@ -10,22 +10,6 @@ use piston::input::ButtonState;
 use piston::ControllerAxisEvent;
 
 use crate::prelude::*;
-
-// #[derive(Clone, Hash, PartialEq, Eq)]
-// pub struct ControllerMeta {
-//     pub id: u32,
-//     pub name: Arc<String>
-// }
-// impl ControllerMeta {
-//     fn new(id:u32, name:Arc<String>) -> Self {
-//         Self {
-//             id,
-//             name
-//         }
-//     }
-// }
-
-
 pub struct InputManager {
     pub mouse_pos: Vector2,
     pub scroll_delta: f64,
@@ -187,19 +171,6 @@ impl InputManager {
             }
         }
 
-        // if let Some(axis) = e.controller_axis_args() {
-        //     // debug!("got controller axis: {:?}", axis);
-        //     let id = axis.axis;
-        //     let value = axis.position;
-        //     let controller_id = axis.id;
-        //     self.verify_controller_index_exists(controller_id, window);
-
-        //     let map = self.controller_axis.get_mut(&controller_id).unwrap();
-        //     if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
-        //         map.insert(id, (true, value));
-        //     }
-        // }
-
         e.mouse_cursor(|[x, y]| {
             let incoming = Vector2::new(x, y);
             if incoming == self.mouse_pos { return }
@@ -211,7 +182,7 @@ impl InputManager {
         if let Some(e) = e.text_args() { self.text_cache += &e; }
         if let Some(has_focus) = e.focus_args() { self.window_change_focus = Some(has_focus); }
         if let Some(thing) = e.resize_args() { 
-            GlobalObjectManager::update(Arc::new(WindowSize(thing.window_size.into())));
+            GlobalValueManager::update(Arc::new(WindowSize(thing.window_size.into())));
         }
 
         // e.text(|text| debug!("Typed '{}'", text));
