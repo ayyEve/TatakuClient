@@ -77,7 +77,7 @@ impl MainMenu {
         self.settings.update();
 
         if let Some(song) = AudioManager::get_song().await {
-            self.music_box.update_song_duration(song.get_duration())
+            self.music_box.update_song_duration(song.get_duration());
         }
 
         let settings = self.settings.background_game_settings.clone();
@@ -138,10 +138,17 @@ impl MainMenu {
         }
     }
 
+    fn update_online(beatmap_manager: &BeatmapManager) {
+        if let Some(map) = &beatmap_manager.current_beatmap {
+            OnlineManager::set_action(SetAction::Listening { artist: map.artist.clone(), title: map.title.clone() }, None);
+        }
+    }
+
     async fn next(&mut self, game: &mut Game) -> bool {
         let mut manager = BEATMAP_MANAGER.write().await;
 
         if manager.next_beatmap(game).await {
+            Self::update_online(&manager);
             true
         } else {
             trace!("no next");
@@ -152,6 +159,7 @@ impl MainMenu {
         let mut manager = BEATMAP_MANAGER.write().await;
 
         if manager.previous_beatmap(game).await {
+            Self::update_online(&manager);
             true
         } else {
             trace!("no prev");
@@ -330,26 +338,21 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         self.reset_timer();
-        use piston::Key::*;
+        // if mods.ctrl && key == Key::N {
+        //     NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
+        // }
 
         let mut needs_manager_setup = false;
-
-        if mods.ctrl && key == Key::N {
-            NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
-        }
-
-
-        
-        if mods.ctrl && key == Key::Up {
-            self.visualization.index += 1;
-            info!("i: {}", self.visualization.index)
-        }
-        if mods.ctrl && key == Key::Down {
-            if self.visualization.index > 0 {
-                self.visualization.index -= 1;
-            }
-            info!("i: {}", self.visualization.index)
-        }
+        // if mods.ctrl && key == Key::Up {
+        //     self.visualization.index += 1;
+        //     info!("i: {}", self.visualization.index)
+        // }
+        // if mods.ctrl && key == Key::Down {
+        //     if self.visualization.index > 0 {
+        //         self.visualization.index -= 1;
+        //     }
+        //     info!("i: {}", self.visualization.index)
+        // }
 
         
 
@@ -358,18 +361,18 @@ impl AsyncMenu<Game> for MainMenu {
 
         if !mods.alt {
             match key {
-                Left => needs_manager_setup |= self.previous(game).await,
-                Right => needs_manager_setup |= self.next(game).await,
+                Key::Left => needs_manager_setup |= self.previous(game).await,
+                Key::Right => needs_manager_setup |= self.next(game).await,
                 _ => {}
             }
         }
         
         if mods.alt {
             let new_mode = match key {
-                D1 => Some("osu".to_owned()),
-                D2 => Some("taiko".to_owned()),
-                D3 => Some("catch".to_owned()),
-                D4 => Some("mania".to_owned()),
+                Key::D1 => Some("osu".to_owned()),
+                Key::D2 => Some("taiko".to_owned()),
+                Key::D3 => Some("catch".to_owned()),
+                Key::D4 => Some("mania".to_owned()),
                 _ => None
             };
 
