@@ -53,8 +53,8 @@ async fn main() {
         }
     }
 
-    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
-
+    // setup logging
+    init_logging();
 
     // finish setting up
     setup().await;
@@ -219,3 +219,25 @@ async fn check_bass() {
     }
 }
 
+
+fn init_logging() {
+    // start log handler
+    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
+
+    // clean up any old log files
+    let Ok(files) = std::fs::read_dir("logs/") else { return };
+    let today = chrono::Utc::now().date_naive();
+    let Some(remove_date) = today.checked_sub_days(chrono::Days::new(5)) else { return warn!("Unable to determine log remove date")};
+
+    for file in files.filter_map(|f|f.ok()) {
+        let filename = file.file_name();
+        let Some(date) = filename.to_str().and_then(|s|s.split("--").next()) else { continue };
+        let Ok(date) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else { continue };
+
+        if date <= remove_date {
+            if let Err(e) = std::fs::remove_file(file.path()) {
+                error!("Error removing log file: {e}");
+            }
+        }
+    }
+}
