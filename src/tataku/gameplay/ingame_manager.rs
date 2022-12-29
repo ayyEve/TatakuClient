@@ -224,7 +224,7 @@ impl IngameManager {
         self.ui_elements.push(UIElement::new(
             &get_name("healthbar"),
             Vector2::ZERO,
-            HealthBarElement::new(self.common_game_settings.clone())
+            HealthBarElement::new(self.common_game_settings.clone()).await
         ).await);
 
         // Duration Bar
