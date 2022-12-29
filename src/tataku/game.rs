@@ -326,8 +326,8 @@ impl Game {
         let mut text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
-        let controller_down = self.input_manager.get_controller_down();
-        let controller_up = self.input_manager.get_controller_up();
+        let mut controller_down = self.input_manager.get_controller_down();
+        let mut controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
 
         let mut controller_pause = false;
@@ -506,6 +506,13 @@ impl Game {
 
             async_retain!(keys_down, k, !d.on_key_press(k, &mods, self).await);
             async_retain!(keys_up, k, !d.on_key_release(k,  &mods, self).await);
+
+            async_retain!(controller_down, k, !d.on_controller_press(&k.0, k.1).await);
+            async_retain!(controller_up, k, !d.on_controller_release(&k.0, k.1).await);
+
+            for (c, b) in controller_axis.iter() {
+                d.on_controller_axis(c, b).await;
+            }
 
             if !text.is_empty() && d.on_text(&text).await {text = String::new()}
 

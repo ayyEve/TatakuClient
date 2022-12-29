@@ -24,3 +24,11 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 }
+
+
+#[async_trait]
+pub trait ControllerInputMenu<G:Send+Sync>:AsyncMenu<G> + Send + Sync {
+    async fn controller_down(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
+    async fn controller_up(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
+    async fn controller_axis(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _axis_data: HashMap<u8, (bool, f64)>) -> bool {false}
+}

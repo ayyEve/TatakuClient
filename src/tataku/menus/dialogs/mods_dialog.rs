@@ -4,7 +4,9 @@ pub struct ModDialog {
     should_close: bool,
     scroll: ScrollableArea,
 
-    window_size: Arc<WindowSize>
+    window_size: Arc<WindowSize>,
+
+    selected_index: usize
 }
 impl ModDialog {
     pub async fn new(groups: Vec<GameplayModGroup>) -> Self {
@@ -41,6 +43,31 @@ impl ModDialog {
             should_close: false,
             scroll,
             window_size,
+            selected_index: 0
+        }
+    }
+
+    fn increment_index(&mut self) {
+        if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+
+        let old = self.selected_index;
+        self.selected_index = (self.selected_index + 1) % self.scroll.items.len();
+
+        self.scroll.items.get_mut(old).unwrap().set_selected(false);
+        self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
+    }
+    fn deincrement_index(&mut self) {
+        if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+
+        let old = self.selected_index;
+        self.selected_index = if self.selected_index == 0 { self.scroll.items.len() - 1 } else { self.selected_index - 1 };
+
+        self.scroll.items.get_mut(old).unwrap().set_selected(false);
+        self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
+    }
+    fn toggle_current(&mut self) {
+        if let Some(i) = self.scroll.items.get_mut(self.selected_index) {
+            i.on_key_press(Key::Space, Default::default());
         }
     }
 }
@@ -63,12 +90,26 @@ impl Dialog<Game> for ModDialog {
     }
 
     async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == &Key::Escape {
-            self.should_close = true;
-            return true;
-        }
+        match key {
+            Key::Escape => {
+                self.should_close = true;
+                true
+            }
+            Key::Up => {
+                self.deincrement_index();
+                true
+            }
+            Key::Down => {
+                self.increment_index();
+                true
+            }
+            Key::Space | Key::Return => {
+                self.toggle_current();
+                true
+            }
 
-        false
+            _ => false
+        }
     }
 
     async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
@@ -93,6 +134,26 @@ impl Dialog<Game> for ModDialog {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
     }
+
+
+    
+    async fn on_controller_press(&mut self, controller: &Box<dyn Controller>, button: u8) -> bool {
+        let Some(button) = controller.map_button(button) else { return false };
+        
+        match button {
+            ControllerButton::A => self.toggle_current(),
+            ControllerButton::DPad_Up => self.deincrement_index(),
+            ControllerButton::DPad_Down => self.increment_index(),
+            
+            ControllerButton::B | ControllerButton::Start => self.should_close = true,
+
+            _ => {}
+        }
+        true
+    }
+    async fn on_controller_release(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {
+        true
+    }
 }
 
 #[derive(ScrollableGettersSetters)]
@@ -100,6 +161,7 @@ struct ModButton {
     size: Vector2,
     pos: Vector2,
     hover: bool,
+    selected: bool,
 
     gameplay_mod: Box<dyn GameplayMod>,
     mod_name: String,
@@ -116,6 +178,7 @@ impl ModButton {
             size: Vector2::new(500.0, 50.0),
             pos, 
             hover: false,
+            selected: false,
 
             gameplay_mod,
             mod_name,
@@ -125,6 +188,15 @@ impl ModButton {
         }
     }
 
+    fn toggle(&self) {
+        let name = self.gameplay_mod.name();
+        let removes:HashSet<String> = self.gameplay_mod.removes().iter().map(|m|(*m).to_owned()).collect();
+        tokio::spawn(async move {
+            let mut manager = ModManager::get_mut();
+            manager.toggle_mod(name);
+            manager.mods.retain(|m|!removes.contains(m));
+        });
+    }
 }
 impl ScrollableItem for ModButton {
     fn update(&mut self) {
@@ -141,6 +213,7 @@ impl ScrollableItem for ModButton {
 
         let mut checkbox = Checkbox::<Font2, Text>::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, font.clone());
         checkbox.set_hover(self.hover);
+        checkbox.set_selected(self.selected);
 
         let font_size = 30;
         let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size as f64) / 2.0);
@@ -150,16 +223,17 @@ impl ScrollableItem for ModButton {
         list.push(desc_text);
     }
 
-    fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
+    fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
+        if key == Key::Space {
+            self.toggle()
+        }
 
+        self.get_selected()
+    }
+
+    fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
         if self.hover {
-            let name = self.gameplay_mod.name();
-            let removes:HashSet<String> = self.gameplay_mod.removes().iter().map(|m|(*m).to_owned()).collect();
-            tokio::spawn(async move {
-                let mut manager = ModManager::get_mut();
-                manager.toggle_mod(name);
-                manager.mods.retain(|m|!removes.contains(m));
-            });
+            self.toggle();
         }
 
         self.hover
