@@ -430,21 +430,21 @@ impl GameMode for TaikoGame {
 
 
         // turn the keypress into a hit type
-        let hit_type = match key {
+        let taiko_hit_type = match key {
             KeyPress::LeftKat  => TaikoHit::LeftKat,
             KeyPress::LeftDon  => TaikoHit::LeftDon,
             KeyPress::RightDon => TaikoHit::RightDon,
             KeyPress::RightKat => TaikoHit::RightKat,
             _ => TaikoHit::LeftKat
         };
-        let is_left = hit_type == TaikoHit::LeftKat || hit_type == TaikoHit::LeftDon;
+        let is_left = taiko_hit_type == TaikoHit::LeftKat || taiko_hit_type == TaikoHit::LeftDon;
         
         if is_left { manager.add_stat(TaikoStatLeftPresses, 1.0) }
         else { manager.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
         if manager.current_mods.has_mod(FullAlt.name()) {
-            if !self.counter.add_hit(hit_type) {
+            if !self.counter.add_hit(taiko_hit_type) {
                 return;
             }
         }
@@ -474,6 +474,10 @@ impl GameMode for TaikoGame {
                         // add whatever the last judgment was as a finisher score
                         manager.add_judgment(j).await;
                         Self::add_hit_indicator(time, j, true, &self.taiko_settings, &self.judgement_helper, manager);
+
+                        // draw drum
+                        *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = time;
+
                         return; // return and note continue because we dont want the 2nd finisher press to count towards anything
                     }
                 }

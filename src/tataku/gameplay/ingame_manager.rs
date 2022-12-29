@@ -106,6 +106,10 @@ pub struct IngameManager {
     restart_key_hold_start: Option<Instant>,
 
     map_diff: f32,
+
+    // used for discord rich presence
+    pub start_time: i64,
+    pause_start: Option<i64>
 }
 
 impl IngameManager {
@@ -185,6 +189,7 @@ impl IngameManager {
             score_loader,
             settings,
             window_size: WindowSize::get(),
+            start_time: chrono::Utc::now().timestamp(),
             // initialize defaults for anything else not specified
             ..Self::default()
         }
@@ -701,6 +706,11 @@ impl IngameManager {
         self.pause_pending = false;
         self.should_pause = false;
 
+        // offset our start time by the duration of the pause
+        if let Some(pause_time) = std::mem::take(&mut self.pause_start) {
+            self.start_time += chrono::Utc::now().timestamp() - pause_time
+        }
+
         // re init ui because pointers may not be valid anymore
         self.ui_elements.clear();
         self.init_ui().await;
@@ -755,13 +765,13 @@ impl IngameManager {
         }
     }
     pub fn pause(&mut self) {
-
         // make sure the cursor is visible
         CursorManager::set_visible(true);
         CursorManager::show_system_cursor(false);
         CursorManager::set_ripple_override(None);
 
         self.song.pause();
+        self.pause_start = Some(chrono::Utc::now().timestamp());
 
         // is there anything else we need to do?
 
@@ -1221,7 +1231,9 @@ impl Default for IngameManager {
             skin_helper: SkinChangeHelper::new_empty(),
 
             restart_key_hold_start: None,
-            map_diff: 0.0
+            map_diff: 0.0,
+            start_time: 0,
+            pause_start: None,
         }
     }
 }

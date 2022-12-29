@@ -712,10 +712,9 @@ impl Game {
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
-                        let m = {
-                            manager.start().await;
-                            manager.metadata.clone()
-                        };
+                        manager.start().await;
+                        let m = manager.metadata.clone();
+                        let start_time = manager.start_time;
 
                         self.set_background_beatmap(&m).await;
                         let action = SetAction::Playing { 
@@ -723,7 +722,8 @@ impl Game {
                             title: m.title.clone(),
                             version: m.version.clone(),
                             creator: m.creator.clone(),
-                            multiplayer_lobby_name: None
+                            multiplayer_lobby_name: None,
+                            start_time
                         };
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));

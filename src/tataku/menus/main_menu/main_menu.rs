@@ -138,17 +138,26 @@ impl MainMenu {
         }
     }
 
-    fn update_online(beatmap_manager: &BeatmapManager) {
-        if let Some(map) = &beatmap_manager.current_beatmap {
-            OnlineManager::set_action(SetAction::Listening { artist: map.artist.clone(), title: map.title.clone() }, None);
-        }
+    fn update_online() {
+        tokio::spawn(async move {
+            let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
+
+            if let Some(song) = AudioManager::get_song().await {
+                OnlineManager::set_action(SetAction::Listening { 
+                    artist: map.artist.clone(), 
+                    title: map.title.clone(),
+                    elapsed: song.get_position(),
+                    duration: song.get_duration()
+                }, None);
+            }
+        });
     }
 
     async fn next(&mut self, game: &mut Game) -> bool {
         let mut manager = BEATMAP_MANAGER.write().await;
 
         if manager.next_beatmap(game).await {
-            Self::update_online(&manager);
+            Self::update_online();
             true
         } else {
             trace!("no next");
@@ -159,7 +168,7 @@ impl MainMenu {
         let mut manager = BEATMAP_MANAGER.write().await;
 
         if manager.previous_beatmap(game).await {
-            Self::update_online(&manager);
+            Self::update_online();
             true
         } else {
             trace!("no prev");
@@ -177,7 +186,6 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn on_change(&mut self, into:bool) {
         if into {
-
             // update our window size
             self.window_size_changed(WindowSize::get()).await;
 
@@ -190,6 +198,9 @@ impl AsyncMenu<Game> for MainMenu {
                 // // play
                 // song.play(true).unwrap();
             }
+
+            // update online to what song we're listening to
+            Self::update_online();
 
             self.setup_manager("on_change").await;
         } else {
@@ -227,6 +238,7 @@ impl AsyncMenu<Game> for MainMenu {
             if let Some(map) = map {
                 BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
                 self.setup_manager("update song done").await;
+                Self::update_online();
             }
         }
 

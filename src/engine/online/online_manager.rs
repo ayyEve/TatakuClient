@@ -368,9 +368,9 @@ impl OnlineManager {
                 SetAction::Idle => format!("Idle"),
                 SetAction::Closing => format!("Closing"),
 
-                SetAction::Listening { artist, title } => format!("Listening to {artist} - {title}"),
+                SetAction::Listening { artist, title, .. } => format!("Listening to {artist} - {title}"),
                 SetAction::Spectating { player, artist, title, version, creator:_ } => format!("Watching {player} play {artist} - {title}[{version}]"),
-                SetAction::Playing { artist, title, version, multiplayer_lobby_name:_, creator:_ } => format!("Playing {artist} - {title}[{version}]"),
+                SetAction::Playing { artist, title, version, .. } => format!("Playing {artist} - {title}[{version}]"),
             };
 
 
@@ -386,7 +386,7 @@ impl OnlineManager {
 
             if get_settings!().lastfm_enabled {
                 match &action_info {
-                    SetAction::Listening { artist, title } 
+                    SetAction::Listening { artist, title, .. } 
                     | SetAction::Playing { artist, title, .. } 
                     | SetAction::Spectating { artist, title, .. } => {
                         LastFmIntegration::update(title.clone(), artist.clone()).await;
@@ -545,6 +545,9 @@ pub enum SetAction {
     Listening {
         artist: String,
         title: String,
+
+        elapsed: f32,
+        duration: f32
     },
 
     Playing {
@@ -552,7 +555,8 @@ pub enum SetAction {
         title: String,
         version: String,
         creator: String,
-        multiplayer_lobby_name: Option<String>
+        multiplayer_lobby_name: Option<String>,
+        start_time: i64,
     },
 
     Spectating {
