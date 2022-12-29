@@ -194,7 +194,7 @@ impl HitObject for OsuSpinner {
                 Color::WHITE,
                 -11.0,
                 self.pos,
-                SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64),
+                SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64).min(1.0),
                 border.clone()
             ));
         }
