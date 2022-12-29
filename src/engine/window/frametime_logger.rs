@@ -1,5 +1,6 @@
 #[derive(Default)]
 pub struct FrameTimeLogger {
+    #[cfg(feature="log_frametimes")]
     frametimes: Vec<f32>
 }
 impl FrameTimeLogger {
@@ -11,18 +12,20 @@ impl FrameTimeLogger {
     }
 
     pub fn write(&self) {
-        std::fs::write(
-            "./frametimes.csv", 
-            format!(
-                "count, time\n{}", 
-                self.frametimes
-                .iter()
-                .enumerate()
-                .map(|(i, n)|format!("{i},{n}"))
-                .collect::<Vec<String>>()
-                .join("\n")
-            )
-        ).unwrap();
-        println!("wrote frametimes");
+        #[cfg(feature="log_frametimes")] {
+            std::fs::write(
+                "./frametimes.csv", 
+                format!(
+                    "count, time\n{}", 
+                    self.frametimes
+                    .iter()
+                    .enumerate()
+                    .map(|(i, n)|format!("{i},{n}"))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+                )
+            ).unwrap();
+            println!("wrote frametimes");
+        }
     }
 }
