@@ -30,6 +30,7 @@ pub struct MainMenu {
 
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
+    song_display: CurrentSongDisplay,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -67,6 +68,7 @@ impl MainMenu {
             settings: SettingsHelper::new(),
             window_size,
             last_input: Instant::now(),
+            song_display: CurrentSongDisplay::new(),
         }
     }
 
@@ -189,6 +191,7 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn update(&mut self, g:&mut Game) {
         self.settings.update();
+        self.song_display.update();
 
         let mut song_done = false;
 
@@ -253,6 +256,8 @@ impl AsyncMenu<Game> for MainMenu {
         self.visualization.draw(args, mid, depth + 10.0, list).await;
 
         self.menu_game.draw(args, list).await;
+
+        self.song_display.draw(list);
         
         // draw dim
         list.push(Rectangle::new(
