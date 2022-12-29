@@ -5,6 +5,8 @@ use std::{collections::BTreeMap, ffi::c_void};
 
 use tokio::sync::mpsc::{ UnboundedSender, unbounded_channel };
 
+const FONT_PADDING:u32 = 2;
+
 pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
 fn get_texture_load_queue<'a>() -> TatakuResult<&'a UnboundedSender<LoadImage>> {
@@ -64,6 +66,7 @@ pub async fn texture_load_loop() {
 
                         // bitmap is a vec of grayscale pixels
                         // we need to turn that into rgba bytes
+                        // TODO: could reduce ram usage during font rasterization if this is moved to where the tex is actually loaded
                         let mut data = Vec::new();
                         bitmap.into_iter().for_each(|gray| {
                             data.push(255); // r
@@ -75,7 +78,7 @@ pub async fn texture_load_loop() {
                         rects_to_place.push_rect(
                             char,
                             None,
-                            RectToInsert::new(metrics.width as u32, metrics.height as u32, 1)
+                            RectToInsert::new(metrics.width as u32 + FONT_PADDING, metrics.height as u32 + FONT_PADDING, 1)
                         );
 
                         char_data.insert(char, (metrics, data));
@@ -112,8 +115,8 @@ pub async fn texture_load_loop() {
 
                         let x = data.x();
                         let y = data.y();
-                        let w = data.width();
-                        let h = data.height();
+                        let w = data.width() - FONT_PADDING;
+                        let h = data.height() - FONT_PADDING;
 
                         let pos = Vector2::new(x as f64, y as f64);
                         let size = Vector2::new(w as f64, h as f64);
