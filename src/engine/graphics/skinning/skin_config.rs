@@ -215,7 +215,7 @@ impl Default for SkinSettings {
             cursor_center: true,
             cursor_trail_rotate: false,
             
-            sliderball_frames: 1,
+            sliderball_frames: 10,
             hit_circle_overlay_above_number: false,
             /// ??
             slider_style: 2, 

@@ -9,6 +9,7 @@ pub struct OsuSlider {
     def: SliderDef,
     /// curve that defines the slider
     curve: Curve,
+    velocity: f32,
 
     /// start pos
     pos: Vector2,
@@ -97,7 +98,7 @@ pub struct OsuSlider {
     sliderdot_hitsound: Hitsound
 }
 impl OsuSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -174,6 +175,7 @@ impl OsuSlider {
             hitsounds,
             sliderdot_hitsound,
             sliderball_image: None,
+            velocity,
         }
     }
 
@@ -339,18 +341,6 @@ impl OsuSlider {
         }
     }
 
-
-    fn get_velocity(&self) -> f32 {
-        let t1 = self.time;
-        let t2 = self.time + 1.0;
-
-        let p1 = self.pos_at(t1);
-        let p2 = self.pos_at(t2);
-
-        let dist = p1.distance(p2) as f32;
-
-        dist / (t2 - t1)
-    }
 }
 
 #[async_trait]
@@ -476,7 +466,11 @@ impl HitObject for OsuSlider {
                 ball.pos = self.slider_ball_pos;
                 ball.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
                 ball.color = color;
-                ball.depth = self.circle_depth;
+                ball.depth = self.circle_depth - 0.0000001;
+
+                let next_pos = self.pos_at(self.map_time + 0.1);
+                ball.rotation = PI * 2.0 - (next_pos - self.slider_ball_pos).atan2();
+
                 list.push(ball);
             } else {
                 list.push(Circle::new(
@@ -678,16 +672,14 @@ impl HitObject for OsuSlider {
         }
 
         if images.len() > 0 {
-            let skin = SkinManager::current_skin_config().await;
             let size = images[0].tex_size();
             let base_scale = images[0].base_scale;
 
             let images = images.into_iter().map(|i|i.tex).collect::<Vec<_>>();
 
             // stolen from peppy, i'll figure it out later lol
-            let slider_frametimes = skin.sliderball_frames as f32;
-            let frametime = 1000.0 / slider_frametimes;
-            let velocity = self.get_velocity();
+            let frametime = 1000.0 / 60.0;
+            let velocity = self.velocity;
             let frametime = ((150.0 / velocity) * frametime).max(frametime);
             let frametimes = vec![frametime; images.len()];
 

@@ -396,7 +396,8 @@ impl GameMode for OsuGame {
                                 slider_depth,
                                 depth,
                                 std_settings.clone(),
-                                get_hitsounds
+                                get_hitsounds,
+                                beatmap.slider_velocity_at(slider.time)
                             ).await))
                         }
                         
@@ -680,6 +681,7 @@ impl GameMode for OsuGame {
         }
 
     }
+    
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
@@ -772,7 +774,7 @@ impl GameMode for OsuGame {
                     let n1_pos = n1.pos_at(n2_time);
                     let n2_pos = n2.pos_at(n2_time);
                     let distance = n1_pos.distance(n2_pos);
-                    let direction = PI * 2.0 - Vector2::atan2(n1_pos - n2_pos);
+                    let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
                     
                     let follow_dot_count = distance/follow_dot_distance;
                     for i in 1..follow_dot_count as u64 {
