@@ -65,8 +65,8 @@ impl AsyncMenu<Game> for PauseMenu {
 
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-
+        self.window_size = window_size.clone();
+        self.manager.window_size_changed(window_size).await;
     }
     
     async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
