@@ -14,11 +14,12 @@ pub struct MenuGameHelper {
     /// use bg game settings, or global gamemode?
     use_global_playmode: bool,
     apply_rate: bool,
+    check_enabled: Box<dyn Fn(&Settings) -> bool + Send + Sync>,
 
     loader: Option<AsyncLoader<TatakuResult<IngameManager>>>
 }
 impl MenuGameHelper {
-    pub fn new(use_global_playmode: bool, apply_rate: bool) -> Self {
+    pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Box<dyn Fn(&Settings) -> bool + Send + Sync>) -> Self {
         Self {
             current_beatmap: CurrentBeatmapHelper::new(),
             current_playmode: CurrentPlaymodeHelper::new(),
@@ -29,6 +30,7 @@ impl MenuGameHelper {
             use_global_playmode,
             apply_rate,
             loader: None,
+            check_enabled
         }
     }
 
@@ -37,10 +39,14 @@ impl MenuGameHelper {
         self.current_beatmap.update();
         self.current_mods.update();
         self.settings.update();
-        if !self.settings.background_game_settings.beatmap_select_enabled { return }
+
+
+        if !(self.check_enabled)(&self.settings) { return }
+
+        // if !self.settings.background_game_settings.beatmap_select_enabled { return }
 
         let settings = self.settings.background_game_settings.clone();
-        if !settings.main_menu_enabled { return }
+        // if !settings.main_menu_enabled { return }
 
         let map = match &self.current_beatmap.0 {
             Some(map) => map,

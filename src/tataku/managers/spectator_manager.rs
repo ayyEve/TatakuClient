@@ -29,7 +29,7 @@ pub struct SpectatorManager {
     /// list
     buffered_score_frames: Vec<(f32, Score)>,
 
-    new_map_check: MultiBomb<Arc<BeatmapMeta>>
+    new_map_check: LatestBeatmapHelper
 }
 impl SpectatorManager {
     pub async fn new() -> Self {
@@ -43,8 +43,8 @@ impl SpectatorManager {
             score_menu: None,
             buffered_score_frames: Vec::new(),
             current_map: None,
-            new_map_check: BEATMAP_MANAGER.read().await.new_map_added.1.clone(),
             window_size: WindowSizeHelper::new(),
+            new_map_check: LatestBeatmapHelper::new(),
         }
     }
 
@@ -63,7 +63,8 @@ impl SpectatorManager {
         }
 
         // handle all new maps
-        while let Some(new_map) = self.new_map_check.exploded() {
+        if self.new_map_check.update() {
+            let new_map = self.new_map_check.0.clone();
             info!("got new map: {new_map:?}");
             
             let current_time = self.good_until;

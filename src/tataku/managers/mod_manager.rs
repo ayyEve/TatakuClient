@@ -187,9 +187,9 @@ impl ModManager {
 impl Hash for ModManager {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.speed.hash(state);
-        for m in self.mods.iter() {
-            m.hash(state)
-        }
+        let mut mods = self.mods.clone().into_iter().collect::<Vec<_>>();
+        mods.sort();
+        mods.hash(state);
     }
 }
 

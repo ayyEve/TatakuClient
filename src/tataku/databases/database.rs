@@ -63,7 +63,7 @@ impl Database {
     pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
         let now = Instant::now();
         let a = DATABASE.connection.lock().await;
-        let duration = now.elapsed().as_secs_f32() * 1000.0;
+        let duration = now.as_millis();
         if duration > 100.0 {info!("db lock took {:.4}ms to aquire", duration)};
         a
     }

@@ -31,6 +31,7 @@ pub struct MainMenu {
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
+    new_map_helper: LatestBeatmapHelper,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -60,7 +61,7 @@ impl MainMenu {
             exit_button,
 
             visualization,
-            menu_game: MenuGameHelper::new(false, false),
+            menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
             menu_visible: false,
             music_box: MusicBox::new().await,
@@ -69,6 +70,7 @@ impl MainMenu {
             window_size,
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
+            new_map_helper: LatestBeatmapHelper::new(),
         }
     }
 
@@ -242,9 +244,8 @@ impl AsyncMenu<Game> for MainMenu {
             }
         }
 
-        let maps = BEATMAP_MANAGER.write().await.get_new_maps();
-        if maps.len() > 0 {
-            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &maps[maps.len() - 1], false).await;
+        if self.new_map_helper.update() {
+            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &self.new_map_helper.0, false).await;
             self.setup_manager("update new map").await;
         }
 

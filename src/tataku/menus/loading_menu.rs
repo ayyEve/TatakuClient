@@ -56,7 +56,6 @@ impl LoadingMenu {
         status.lock().await.loading_done = 0;
 
 
-        let folders = BeatmapManager::folders_to_check().await;
         let ignored = Database::get_all_ignored().await;
 
         {
@@ -83,32 +82,42 @@ impl LoadingMenu {
         // look through the songs folder to make sure everything is already added
         BEATMAP_MANAGER.write().await.initialized = true; // these are new maps
 
-        // get existing dirs
-        let mut existing_paths = HashSet::new();
-        for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
-            if let Some(parent) = Path::new(&*i.file_path).parent() {
-                existing_paths.insert(parent.to_string_lossy().to_string());
+        tokio::spawn(async move {
+
+            // get existing dirs
+            let mut existing_paths = HashSet::new();
+            for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
+                if let Some(parent) = Path::new(&*i.file_path).parent() {
+                    existing_paths.insert(parent.to_string_lossy().to_string());
+                }
             }
-        }
+                
+            // filter out folders that already exist
+            let folders = BeatmapManager::folders_to_check().await;
+            let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
 
-        // filter out folders that already exist
-        let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
+            // {
+            //     let mut lock = status.lock().await;
+            //     lock.loading_done = 0;
+            //     lock.loading_count = folders.len();
+            //     lock.custom_message = "Checking folders...".to_owned();
+            // }
 
-        {
-            let mut lock = status.lock().await;
-            lock.loading_done = 0;
-            lock.loading_count = folders.len();
-            lock.custom_message = "Checking folders...".to_owned();
-        }
+            trace!("loading from the disk");
+            let mut manager = BEATMAP_MANAGER.write().await;
+            let len = manager.beatmaps.len();
+            
+            // this should probably be delegated to the background
+            for f in folders.iter() {
+                manager.check_folder(f).await;
+                // status.lock().await.loading_done += 1;
+            }
 
-        trace!("loading from the disk");
-        for f in folders.iter() {
-            BEATMAP_MANAGER.write().await.check_folder(f).await;
-            status.lock().await.loading_done += 1;
-        }
+            let nlen = manager.beatmaps.len();
+            debug!("loaded {nlen} beatmaps ({} new)", nlen - len);
+        });
 
 
-        debug!("loaded {} beatmaps", BEATMAP_MANAGER.read().await.beatmaps.len())
     }
 
 }

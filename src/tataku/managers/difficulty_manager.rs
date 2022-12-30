@@ -52,21 +52,30 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     let mut data = HashMap::new();
 
     debug!("diffcalc starting for mode {playmode}");
-    for map in maps {
-        if let Ok(mut calc) = calc_diff(map, playmode.clone()).await {
-            for speed in (50..=1000).step_by(5) { // 0.5..=10.0
-                for mut mods in mod_mutations.clone() {
-                    mods.speed = speed;
+    'maps: for map in maps {
+        let mut calc = None;
 
-                    let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
-                    if existing.contains_key(&diff_key) { continue }
-                    
-                    let diff = calc.calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
-                    
-                    #[cfg(feature="debug_perf_rating")]
-                    info!("[calc] {diff_key:?} -> {diff}");
-                    data.insert(diff_key, diff);
+        for speed in (50..=1000).step_by(5) { // 0.5..=10.0
+            for mut mods in mod_mutations.clone() {
+                mods.speed = speed;
+
+                let diff_key = DifficultyEntry::new(map.beatmap_hash.clone(), playmode.clone(), mods.clone());
+                if existing.contains_key(&diff_key) { continue }
+
+                // only load the calc if its actually needed
+                if calc.as_ref().is_none() {
+                    calc = calc_diff(map, playmode.clone()).await.ok();
+                    if calc.is_none() { 
+                        data.insert(diff_key, -1.0);
+                        continue 'maps 
+                    }
                 }
+                
+                let diff = calc.as_mut().unwrap().calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
+                
+                #[cfg(feature="debug_perf_rating")]
+                info!("[calc] {diff_key:?} -> {diff}");
+                data.insert(diff_key, diff);
             }
         }
     }

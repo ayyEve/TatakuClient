@@ -20,15 +20,12 @@ pub struct BeatmapManager {
     /// current index of previously played maps
     play_index: usize,
 
-    new_maps: Vec<Arc<BeatmapMeta>>,
-
     /// helpful when a map is deleted
     pub force_beatmap_list_refresh: bool,
-
-    pub new_map_added: (MultiFuse<Arc<BeatmapMeta>>, MultiBomb<Arc<BeatmapMeta>>),
 }
 impl BeatmapManager {
     pub fn new() -> Self {
+        GlobalValueManager::update(Arc::new(LatestBeatmap(Arc::new(BeatmapMeta::default()))));
         Self {
             initialized: false,
 
@@ -39,11 +36,8 @@ impl BeatmapManager {
 
             played: Vec::new(),
             play_index: 0,
-            new_maps: Vec::new(),
 
             force_beatmap_list_refresh: false,
-
-            new_map_added: MultiBomb::new()
         }
     }
 
@@ -72,9 +66,6 @@ impl BeatmapManager {
     }
 
     // download checking
-    pub fn get_new_maps(&mut self) -> Vec<Arc<BeatmapMeta>> {
-        std::mem::take(&mut self.new_maps)
-    }
     async fn check_downloads() {
         if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
             extract_all().await;
@@ -87,7 +78,7 @@ impl BeatmapManager {
                     folders.push(f.to_str().unwrap().to_owned());
                 });
 
-            for f in folders {BEATMAP_MANAGER.write().await.check_folder(&f).await}
+            for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f).await }
         }
 
     }
@@ -193,13 +184,13 @@ impl BeatmapManager {
 
         // dont have it, add it
         let new_hash = beatmap.beatmap_hash.clone();
-        if self.initialized { 
-            self.new_maps.push(beatmap.clone());
-            self.new_map_added.0.ignite(beatmap.clone());
-        }
-        
         self.beatmaps_by_hash.insert(new_hash, beatmap.clone());
         self.beatmaps.push(beatmap.clone());
+
+        if self.initialized { 
+            debug!("adding beatmap {}", beatmap.version_string());
+            GlobalValueManager::update(Arc::new(LatestBeatmap(beatmap.clone())));
+        }
     }
 
     pub async fn delete_beatmap(&mut self, beatmap:String, game: &mut Game) {
@@ -355,5 +346,6 @@ pub enum GroupBy {
 
 
 crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBeatmapHelper);
+crate::create_value_helper!(LatestBeatmap, Arc<BeatmapMeta>, LatestBeatmapHelper);
 crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
 

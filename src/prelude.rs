@@ -28,7 +28,7 @@ pub use triple_buffer::Output as TripleBufferReceiver;
 
 pub use crossbeam::sync::{ ShardedLock, ShardedLockReadGuard, ShardedLockWriteGuard };
 
-pub use global_value_manager::prelude::*;
+pub use global_value_manager::{ GlobalValue, GlobalValueManager, GlobalValueMut };
 
 // piston imports
 pub use piston::Key;
