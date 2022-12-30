@@ -592,7 +592,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
     async fn on_change(&mut self, into:bool) {
         if !into { return }
-
+        
+        self.new_beatmap_helper.update();
         self.menu_game.setup().await;
         
         // update our window size

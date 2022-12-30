@@ -190,6 +190,7 @@ impl AsyncMenu<Game> for MainMenu {
         if into {
             // update our window size
             self.window_size_changed(WindowSize::get()).await;
+            self.new_map_helper.update();
 
             self.visualization.reset();
 
