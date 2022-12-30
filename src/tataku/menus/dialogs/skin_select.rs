@@ -126,29 +126,30 @@ impl Dropdownable for SkinDropdownable {
 
 
 
-pub struct SkinChangeHelper {
-    current_skin: String,
-}
-impl SkinChangeHelper {
-    pub fn new_empty() -> Self {
-        Self { current_skin: String::new() }
-    }
-    pub async fn new() -> Self {
-        let current_skin = get_settings!().current_skin.clone();
-        Self {
-            current_skin,
-        }
-    }
-    pub async fn check(&mut self) -> bool {
-        let mut changed = false;
 
-        // let skin_manager = SKIN_MANAGER.read();
-        let current_skin = &get_settings!().current_skin;
-        if &self.current_skin != current_skin {
-            changed = true;
-            self.current_skin = current_skin.clone();
-            // println!("skin changed");
-        }
-        changed
-    }
-}
+// pub struct SkinChangeHelper {
+//     current_skin: String,
+// }
+// impl SkinChangeHelper {
+//     pub fn new_empty() -> Self {
+//         Self { current_skin: String::new() }
+//     }
+//     pub async fn new() -> Self {
+//         let current_skin = get_settings!().current_skin.clone();
+//         Self {
+//             current_skin,
+//         }
+//     }
+//     pub async fn check(&mut self) -> bool {
+//         let mut changed = false;
+
+//         // let skin_manager = SKIN_MANAGER.read();
+//         let current_skin = &get_settings!().current_skin;
+//         if &self.current_skin != current_skin {
+//             changed = true;
+//             self.current_skin = current_skin.clone();
+//             // println!("skin changed");
+//         }
+//         changed
+//     }
+// }

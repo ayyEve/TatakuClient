@@ -32,11 +32,13 @@ pub struct CursorManager {
     ripple_radius_override: Option<f64>,
     // ripple_image: Option<Image>,
 
+    cursor_rotation: f64,
+
     pub cursor_image: Option<Image>,
+    pub cursor_middle_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
     pub trail_images: Vec<TransformGroup>,
     last_trail_time: f64,
-    skin_change_helper: SkinChangeHelper,
 
     trail_create_timer: f64,
     trail_fadeout_timer_start: f64,
@@ -55,6 +57,7 @@ pub struct CursorManager {
     right_pressed: bool,
 
     settings: SettingsHelper,
+    current_skin: CurrentSkinHelper,
 
     ripples: Vec<TransformGroup>,
     time: Instant,
@@ -73,9 +76,12 @@ impl CursorManager {
         }
 
 
-        let has_middle = SkinManager::get_texture("cursormiddle", false).await;
-        let has_middle = has_middle.is_some();
-        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
+        let mut cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
+        if let Some(cursor) = &mut cursor_middle_image {
+            cursor.depth = -f64::MAX;
+        }
+
+        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
         } else {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
@@ -96,10 +102,11 @@ impl CursorManager {
             border_color: Color::from_hex(&settings.cursor_border_color),
             ripple_color: Color::from_hex(&settings.cursor_ripple_color),
             
-            skin_change_helper: SkinChangeHelper::new().await,
+            current_skin: CurrentSkinHelper::new(),
 
             trail_images: Vec::new(),
             cursor_image,
+            cursor_middle_image,
             cursor_trail_image,
             last_trail_time: 0.0,
             // ripple_image,
@@ -107,6 +114,7 @@ impl CursorManager {
             trail_create_timer, 
             trail_fadeout_timer_start,
             trail_fadeout_timer_duration,
+            cursor_rotation: 0.0,
 
             event_receiver,
 
@@ -126,8 +134,9 @@ impl CursorManager {
     pub async fn reload_skin(&mut self) {
         self.cursor_image = SkinManager::get_texture("cursor", true).await;
         self.cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
-        let has_middle = SkinManager::get_texture("cursormiddle", false).await.is_some();
-        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if has_middle {
+        self.cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
+
+        let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if self.cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
         } else {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
@@ -137,10 +146,15 @@ impl CursorManager {
         self.trail_fadeout_timer_start = trail_fadeout_timer_start;
         self.trail_fadeout_timer_duration = trail_fadeout_timer_duration;
 
+        self.cursor_rotation = 0.0;
         if let Some(trail) = &mut self.cursor_trail_image {
             trail.depth = (-f64::MAX) + 50.0;
         }
         if let Some(cursor) = &mut self.cursor_image {
+            cursor.depth = -f64::MAX;
+        }
+        
+        if let Some(cursor) = &mut self.cursor_middle_image {
             cursor.depth = -f64::MAX;
         }
     }
@@ -197,15 +211,20 @@ impl CursorManager {
         }
 
 
-        if self.skin_change_helper.check().await {
+        if self.current_skin.update() {
             self.reload_skin().await;
+        }
+
+        if self.current_skin.cursor_rotate {
+            self.cursor_rotation -= 0.0003 * (time - self.time.as_millis64())
         }
 
         // trail stuff
 
         // check if we should add a new trail
         if self.cursor_trail_image.is_some() && time - self.last_trail_time >= self.trail_create_timer {
-            if let Some(trail) = self.cursor_trail_image.clone() {
+            if let Some(mut trail) = self.cursor_trail_image.clone() {
+                trail.scale = Vector2::ONE * self.settings.cursor_scale;
                 let mut g = TransformGroup::new(self.pos, trail.depth).alpha(1.0).border_alpha(0.0);
                 g.transforms.push(Transformation::new(
                     self.trail_fadeout_timer_start, 
@@ -229,11 +248,12 @@ impl CursorManager {
         });
 
         // update ripples
-        let time = self.time.elapsed().as_secs_f64() * 1000.0;
+        let time = self.time.as_millis64();
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
             ripple.visible()
         });
+
 
     }
 
@@ -264,10 +284,13 @@ impl CursorManager {
         if let Some(cursor) = &self.cursor_image {
             let mut cursor = cursor.clone();
             cursor.pos = self.pos;
+            cursor.rotation = self.cursor_rotation;
             // cursor.current_color = self.color;
             
             if self.left_pressed || self.right_pressed {
                 cursor.scale = Vector2::ONE * PRESSED_CURSOR_SCALE * self.settings.cursor_scale;
+            } else {
+                cursor.scale = Vector2::ONE * self.settings.cursor_scale;
             }
             
             list.push(cursor.clone());
@@ -285,7 +308,18 @@ impl CursorManager {
                 } else { None }
             ));
         }
+    
+        
+        if let Some(cursor) = &self.cursor_middle_image {
+            let mut cursor = cursor.clone();
+            cursor.pos = self.pos;
+            cursor.rotation = self.cursor_rotation;
+            cursor.scale = Vector2::ONE * self.settings.cursor_scale;
+            
+            list.push(cursor.clone());
+        }
     }
+
 
 
     fn add_ripple(&mut self) {

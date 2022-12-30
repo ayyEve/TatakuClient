@@ -113,6 +113,7 @@ impl Game {
 
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
+        GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
 
         // set the current leaderboard filter
         // this is here so it happens before anything else

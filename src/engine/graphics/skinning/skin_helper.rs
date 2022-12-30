@@ -30,6 +30,7 @@ impl SkinManager {
         let mut s = SKIN_MANAGER.write().await;
         s.settings = SettingsHelper::new();
         s.last_skin = s.settings.current_skin.clone();
+        GlobalValueManager::update(Arc::new(CurrentSkin(s.current_skin_config.clone())));
     }
 
     pub async fn get_texture<N: AsRef<str> + Send + Sync>(name:N, allow_default:bool) -> Option<Image> {
@@ -67,6 +68,8 @@ impl SkinManager {
         s.last_skin = new_skin.clone();
         s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
         s.texture_cache.clear();
+
+        GlobalValueManager::update(Arc::new(CurrentSkin(s.current_skin_config.clone())));
     }
 }
 
@@ -136,3 +139,7 @@ impl SkinManager {
         self.texture_cache.get(&name).unwrap().clone()
     }
 }
+
+
+
+crate::create_value_helper!(CurrentSkin, Arc<SkinSettings>, CurrentSkinHelper);

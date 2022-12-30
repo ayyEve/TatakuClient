@@ -101,7 +101,7 @@ pub struct IngameManager {
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
-    skin_helper: SkinChangeHelper,
+    skin_helper: CurrentSkinHelper,
 
     restart_key_hold_start: Option<Instant>,
 
@@ -182,7 +182,7 @@ impl IngameManager {
             beatmap_preferences,
 
             common_game_settings,
-            skin_helper: SkinChangeHelper::new().await,
+            skin_helper: CurrentSkinHelper::new(),
 
             gamemode,
             score_list: Vec::new(),
@@ -301,8 +301,7 @@ impl IngameManager {
     pub async fn update(&mut self) {
         // update settings
         self.settings.update();
-        if self.skin_helper.check().await {
-            SkinManager::change_skin(self.settings.current_skin.clone(), true).await;
+        if self.skin_helper.update() {
             self.gamemode.reload_skin().await;
             info!("reloading skin");
         }
@@ -1228,7 +1227,7 @@ impl Default for IngameManager {
             settings: SettingsHelper::new(),
             window_size: WindowSize::get(),
             pending_time_jump: None,
-            skin_helper: SkinChangeHelper::new_empty(),
+            skin_helper: CurrentSkinHelper::new(),
 
             restart_key_hold_start: None,
             map_diff: 0.0,
