@@ -21,14 +21,14 @@ impl SkinnedButton {
 
         size += left_image.size().x_portion() + right_image.size().x_portion();
 
-        let x_scale = size.x / (left_image.size.x + middle_image.size.x + right_image.size.x);
+        let x_scale = size.x / (left_image.size().x + middle_image.size().x + right_image.size().x);
 
         for i in [&mut left_image, &mut middle_image, &mut right_image] {
             i.depth = depth;
             i.origin = Vector2::ZERO;
             i.color = Color::GRAY;
 
-            i.scale = Vector2::new(x_scale, size.y / i.size.y);
+            i.scale = Vector2::new(x_scale, size.y / i.size().y);
         }
 
 

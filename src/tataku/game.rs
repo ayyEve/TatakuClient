@@ -159,7 +159,7 @@ impl Game {
             Ok(list) => {
                 for wall_file in list {
                     if let Ok(file) = wall_file {
-                        if let Some(wallpaper) = load_image(file.path().to_str().unwrap(), false).await {
+                        if let Some(wallpaper) = load_image(file.path().to_str().unwrap(), false, Vector2::ONE).await {
                             self.wallpapers.push(wallpaper)
                         }
                     }
@@ -917,7 +917,7 @@ impl Game {
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // let mut helper = BenchmarkHelper::new("loaad image");
         let filename = beatmap.image_filename.clone();
-        let f = async move {load_image(filename, false).await};
+        let f = async move { load_image(filename, false, Vector2::ONE).await };
         self.background_loader = Some(AsyncLoader::new(f));
 
         // self.background_image = load_image(&beatmap.image_filename, false).await;

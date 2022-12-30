@@ -216,7 +216,8 @@ async fn load_anim(name: &str) -> Option<Animation> {
             -1000.0,
             DEFAULT_DONCHAN_SIZE / 2.0,
             frames,
-            delays
+            delays,
+            Vector2::ONE
         );
         anim.origin.x = 0.0;
         anim.origin.y *= 2.0; // since its center, just double it

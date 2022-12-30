@@ -9,6 +9,7 @@ pub struct SkinnedNumber {
 
     pub origin: Vector2,
     pub depth: f64,
+    pub spacing_override: Option<f64>,
 
     number_textures: Vec<Image>,
     symbol_textures: HashMap<char, Image>,
@@ -74,6 +75,7 @@ impl SkinnedNumber {
             symbol_textures,
             symbol,
             floating_precision,
+            spacing_override: None,
 
             draw_state: None,
         })
@@ -117,19 +119,20 @@ impl SkinnedNumber {
 
         let mut width = 0.0;
         let mut max_height:f64 = 0.0;
+        let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
         for c in s.chars() {
             if let Some(t) = self.get_char_tex(c) {
                 let t = t.size() * self.scale;
-                width += t.x;
+                width += t.x + x_spacing;
                 max_height = max_height.max(t.y)
             }
         }
         
-        Vector2::new(width, max_height)
+        Vector2::new(width - x_spacing, max_height)
     }
 
-    pub fn center_text(&mut self, rect:Rectangle) {
+    pub fn center_text(&mut self, rect:&Rectangle) {
         let text_size = self.measure_text();
         self.pos = rect.pos + (rect.size - text_size) / 2.0;
     }
@@ -166,6 +169,7 @@ impl TatakuRenderable for SkinnedNumber {
 
         let color = self.color.alpha(alpha);
         context.draw_state = self.draw_state.unwrap_or(context.draw_state);
+        let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
         //TODO: cache `s`
         let s = self.number_as_text();
@@ -176,7 +180,7 @@ impl TatakuRenderable for SkinnedNumber {
                 t.pos = current_pos;
                 t.scale = self.scale;
                 t.color = color;
-                current_pos.x += t.size().x;
+                current_pos.x += t.size().x + x_spacing;
 
                 t.draw(g, context);
             }

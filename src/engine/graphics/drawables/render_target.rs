@@ -106,7 +106,7 @@ impl RenderTarget {
             Vector2::ZERO,
             -99999999999999990.0, 
             Arc::new(Texture::new(texture_id, width as u32, height as u32)),
-            Vector2::new(width, height)
+            Vector2::ONE
         );
 
         let data = Arc::new(RenderTargetData {

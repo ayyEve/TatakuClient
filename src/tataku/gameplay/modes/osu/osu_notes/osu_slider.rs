@@ -66,10 +66,6 @@ pub struct OsuSlider {
     time_preempt:f32,
     hitwindow_miss: f32,
 
-    /// combo text cache, probably not needed but whatever
-    combo_text: Option<Text>,
-    combo_image: Option<SkinnedNumber>,
-
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
     /// (time, hitsound)
     sound_queue: Vec<Vec<Hitsound>>,
@@ -92,6 +88,7 @@ pub struct OsuSlider {
     start_circle_image: Option<HitCircleImageHelper>,
     end_circle_image: Option<Image>,
     slider_reverse_image: Option<Image>,
+    sliderball_image: Option<Animation>,
     approach_circle: ApproachCircle,
     slider_body_render_target: Option<RenderTarget>,
     slider_body_render_target_failed: Option<f32>,
@@ -156,8 +153,6 @@ impl OsuSlider {
             dot_count: 0,
             start_judgment: OsuHitJudgments::Miss,
 
-            combo_text: None,
-            combo_image: None,
             sound_queue: Vec::new(),
 
             scaling_helper,
@@ -178,6 +173,7 @@ impl OsuSlider {
 
             hitsounds,
             sliderdot_hitsound,
+            sliderball_image: None,
         }
     }
 
@@ -186,26 +182,33 @@ impl OsuSlider {
         if self.slider_body_render_target_failed.is_some() {
             return
         }
+        // let skin = SkinManager::current_skin_config().await;
 
         let mut list:Vec<Box<dyn Renderable>> = Vec::new();
         let window_size = WindowSize::get().0;
         
-        let mut color = self.color;
-        const DARKER:f32 = 2.0/3.0;
-        color.r *= DARKER;
-        color.g *= DARKER;
-        color.b *= DARKER;
+        // info!("{:?}", skin.slider_track_override);
+        // let color = skin.slider_track_override.filter(|c|c != &Color::BLACK).unwrap_or_else(|| {
+            let mut color = self.color;
+            const DARKER:f32 = 2.0/3.0;
+            color.r *= DARKER;
+            color.g *= DARKER;
+            color.b *= DARKER;
+            // color
+        // });
 
-        const BORDER_RADIUS: f64 = 6.0;
+        const BORDER_RADIUS:f64 = 6.0;
         const BORDER_COLOR:Color = Color::WHITE;
+
+        let border_color = BORDER_COLOR; //skin.slider_border.unwrap_or(BORDER_COLOR);
 
         // starting point
         let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
 
         // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
-        // border is first, body is 2nd, since the body must be drawn on top of the border (which created the border)
-        for (radius, color) in [(self.radius, BORDER_COLOR), (self.radius - BORDER_RADIUS, color)] {
+        // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
+        for (radius, color) in [(self.radius, border_color), (self.radius - BORDER_RADIUS * 1.5, color)] {
 
             // add starting circle manually
             list.push(Box::new(Circle::new(
@@ -331,50 +334,23 @@ impl OsuSlider {
     fn ripple_start(&mut self) {
         if !self.standard_settings.ripple_hitcircles { return }
 
-        let scale = 0.0..1.3;
-
-        // broken
-        // // combo text
-        // let mut combo_group = TransformGroup::new();
-        // if let Some(mut c) = self.combo_image.clone() {
-        //     c.origin = c.measure_text() / 2.0;
-        //     c.current_pos -= c.origin;
-        //     combo_group.items.push(DrawItem::SkinnedNumber(c));
-        // } else {
-        //     combo_group.items.push(DrawItem::Text(*self.combo_text.as_ref().unwrap().clone()));
-        // }
-        // combo_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale.clone(), None, Some(0.8));
-        // self.shapes.push(combo_group);
-
-
-        // hitcircle
-        let mut circle_group = TransformGroup::new(self.pos, self.circle_depth).alpha(1.0).border_alpha(1.0);
-        if let Some(start_circle) = &self.start_circle_image {
-            let mut i_circle = start_circle.circle.clone();
-            i_circle.pos = Vector2::ZERO;
-            let mut i_overlay = start_circle.overlay.clone();
-            i_overlay.pos = Vector2::ZERO;
-
-            circle_group.push(i_circle);
-            circle_group.push(i_overlay);
-        } else {
-            circle_group.push(Circle::new(
-                self.color,
-                self.circle_depth, // should be above curves but below slider ball
-                Vector2::ZERO,
-                self.radius,
-                Some(Border::new(
-                    Color::BLACK,
-                    self.scaling_helper.border_scaled
-                ))
-            ));
+        if let Some(circle) = &self.start_circle_image {
+            self.shapes.push(circle.ripple(self.map_time));
         }
-
-        // make it ripple and add it to the list
-        circle_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale, None, Some(0.5));
-        self.shapes.push(circle_group);
     }
 
+
+    fn get_velocity(&self) -> f32 {
+        let t1 = self.time;
+        let t2 = self.time + 1.0;
+
+        let p1 = self.pos_at(t1);
+        let p2 = self.pos_at(t2);
+
+        let dist = p1.distance(p2) as f32;
+
+        dist / (t2 - t1)
+    }
 }
 
 #[async_trait]
@@ -468,6 +444,10 @@ impl HitObject for OsuSlider {
             self.make_body().await;
         }
 
+        if let Some(ball) = &mut self.sliderball_image {
+            ball.update(beatmap_time)
+        }
+
     }
 
     async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
@@ -487,29 +467,28 @@ impl HitObject for OsuSlider {
         if self.map_time < self.time {
             // timing circle
             self.approach_circle.draw(list);
-            
-            // list.push(approach_circle(self.pos, self.radius, self.time - self.map_time, self.time_preempt, self.circle_depth, self.scaling_helper.scaled_cs, alpha, approach_circle_color).await);
-
-            // combo number
-            if let Some(combo) = &mut self.combo_image {
-                combo.color.a = alpha;
-                list.push(combo.clone());
-            } else {
-                self.combo_text.as_mut().unwrap().color.a = alpha;
-                list.push(self.combo_text.clone().unwrap());
-            }
 
         } else if self.map_time < self.curve.end_time {
             // slider ball
-            // inner
-            list.push(Circle::new(
-                color,
-                self.circle_depth - 0.0000001,
-                self.slider_ball_pos,
-                self.radius,
-                Some(Border::new(Color::WHITE.alpha(alpha), 2.0))
-            ));
 
+            // inner
+            if let Some(mut ball) = self.sliderball_image.clone() {
+                ball.pos = self.slider_ball_pos;
+                ball.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+                ball.color = color;
+                ball.depth = self.circle_depth;
+                list.push(ball);
+            } else {
+                list.push(Circle::new(
+                    color,
+                    self.circle_depth - 0.0000001,
+                    self.slider_ball_pos,
+                    self.radius,
+                    Some(Border::new(Color::WHITE.alpha(alpha), 2.0))
+                ));
+            }
+
+            // radius thingy
             list.push(Circle::new(
                 Color::TRANSPARENT_WHITE,
                 self.circle_depth - 0.0000001,
@@ -669,50 +648,57 @@ impl HitObject for OsuSlider {
     }
 
     async fn reload_skin(&mut self) {
-        self.start_circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.circle_depth, self.color).await;
+        if let Some(circle) = &mut self.start_circle_image {
+            circle.reload_skin().await;
+        } else {
+            self.start_circle_image = Some(HitCircleImageHelper::new(
+                self.def.pos,
+                self.scaling_helper.clone(),
+                self.circle_depth,
+                self.color,
+                self.combo_num
+            ).await);
+        }
         self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
         self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
 
         self.approach_circle.reload_texture().await;
-        
-        
-        let mut combo_text = Text::new(
-            Color::BLACK,
-            self.circle_depth - 0.0000001,
-            self.pos,
-            self.radius as u32,
-            self.combo_num.to_string(),
-            get_font()
-        );
-        combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::ONE * self.radius / 2.0,
-            Vector2::ONE * self.radius,
-        ));
-        self.combo_text = Some(combo_text);
-
-        let mut combo_image = SkinnedNumber::new(
-            Color::WHITE, // TODO: setting: colored same as note or just white?
-            self.circle_depth - 0.0000001, 
-            Vector2::ZERO, 
-            self.combo_num as f64,
-            "default",
-            None,
-            0
-        ).await.ok();
-        if let Some(combo) = &mut combo_image {
-            combo.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::ONE * self.radius / 2.0,
-                Vector2::ONE * self.radius,
-            ));
-        };
-        self.combo_image = combo_image;
 
         for dot in self.hit_dots.iter_mut() {
             dot.reload_skin().await;
         }
 
-        
+        // slider ball
+        let mut i = 0;
+        let mut images = Vec::new();
+        loop {
+            let Some(image) = SkinManager::get_texture(format!("sliderb{i}"), true).await else { break };
+            images.push(image);
+            i += 1;
+        }
+
+        if images.len() > 0 {
+            let skin = SkinManager::current_skin_config().await;
+            let size = images[0].tex_size();
+            let base_scale = images[0].base_scale;
+
+            let images = images.into_iter().map(|i|i.tex).collect::<Vec<_>>();
+
+            // stolen from peppy, i'll figure it out later lol
+            let slider_frametimes = skin.sliderball_frames as f32;
+            let frametime = 1000.0 / slider_frametimes;
+            let velocity = self.get_velocity();
+            let frametime = ((150.0 / velocity) * frametime).max(frametime);
+            let frametimes = vec![frametime; images.len()];
+
+            let mut animation = Animation::new(Vector2::ZERO, self.slider_depth, size, images, frametimes, base_scale);
+            animation.scale = Vector2::ONE;
+
+            self.sliderball_image = Some(animation);
+        }
+
     }
+
 }
 
 #[async_trait]
@@ -812,20 +798,7 @@ impl OsuHitObject for OsuSlider {
         self.visual_end_pos =  self.scaling_helper.scale_coords(self.curve.position_at_length(self.curve.length()));
         self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
 
-        self.approach_circle.scale_changed(new_scale);
-        
-        let mut combo_text = Text::new(
-            Color::BLACK,
-            self.circle_depth - 0.0000001,
-            self.pos,
-            self.radius as u32,
-            format!("{}", self.combo_num),
-            get_font()
-        );
-        combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::ONE * self.radius / 2.0,
-            Vector2::ONE * self.radius,
-        ));
+        self.approach_circle.scale_changed(new_scale, self.radius);
 
         if let Some(image) = &mut self.start_circle_image {
             image.playfield_changed(&self.scaling_helper)
@@ -835,18 +808,6 @@ impl OsuHitObject for OsuSlider {
            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
 
-        
-        
-        if let Some(image) = &mut self.combo_image {
-            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
-
-            image.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::ONE * self.radius / 2.0,
-                Vector2::ONE * self.radius,
-            ));
-        }
-
-        self.combo_text = Some(combo_text);
         if self.slider_body_render_target.is_some() {
             self.make_body().await;
         }
@@ -865,25 +826,11 @@ impl OsuHitObject for OsuSlider {
         self.standard_settings = settings;
     }
 
-    
 
     fn set_ar(&mut self, ar: f32) {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 
-
-    // fn get_hitsamples(&self) -> HitSamples {
-    //     let mut samples = self.def.hitsamples.clone();
-    //     let [normal_set, addition_set] = self.def.edge_sets[self.sound_index.min(self.def.edge_sets.len() - 1)];
-    //     samples.normal_set = normal_set;
-    //     samples.addition_set = addition_set;
-
-    //     samples
-    // }
-    // fn get_hitsound(&self) -> u8 {
-    //     // trace!("{}: getting hitsound at index {}/{}", self.time, self.sound_index, self.def.edge_sounds.len() - 1);
-    //     self.def.edge_sounds[self.sound_index.min(self.def.edge_sounds.len() - 1)]
-    // }
     fn get_hitsound(&self) -> Vec<Hitsound> {
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()

@@ -99,21 +99,38 @@ impl SkinManager {
         let name = name.as_ref().to_owned();
 
         if !self.texture_cache.contains_key(&name) {
-            let tex_path = get_tex_path(&name, &self.settings.current_skin);
-            let mut maybe_img = load_image(&tex_path, grayscale).await;
+            self.texture_cache.insert(name.clone(), None);
 
-            if maybe_img.is_none() && allow_default {
-                trace!("Skin missing tex {tex_path}/{name}");
-                maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale).await;
+            let mut skin_names = vec![self.settings.current_skin.clone()];
+            if allow_default { skin_names.push(DEFAULT_SKIN.to_owned()) }
+
+            'load: for skin_name in skin_names {
+                for (tex_name, scale) in vec![(name.clone() + "@2x", Vector2::ONE / 2.0), (name.clone(), Vector2::ONE)] {
+                    let tex_path = get_tex_path(&tex_name, &skin_name);
+
+                    if let Some(maybe_img) = load_image(&tex_path, grayscale, scale).await {
+                        trace!("loaded tex {tex_path}");
+                        self.texture_cache.insert(name.clone(), Some(maybe_img));
+                        break 'load;
+                    }
+                }
             }
 
-            if let Some(img) = &mut maybe_img {
-                img.set_size(img.tex_size());
-                // img.initial_scale = Vector2::ONE;
-                // img.current_scale = img.initial_scale;
-            }
+            // let tex_path = get_tex_path(&name, &self.settings.current_skin);
+            // let mut maybe_img = load_image(&tex_path, grayscale).await;
 
-            self.texture_cache.insert(name.clone(), maybe_img);
+            // if maybe_img.is_none() && allow_default {
+            //     trace!("Skin missing tex {tex_path}/{name}");
+            //     maybe_img = load_image(get_tex_path(&name, &DEFAULT_SKIN.to_owned()), grayscale).await;
+            // }
+
+            // if let Some(img) = &mut maybe_img {
+            //     img.set_size(img.tex_size());
+            //     // img.initial_scale = Vector2::ONE;
+            //     // img.current_scale = img.initial_scale;
+            // }
+
+            // self.texture_cache.insert(name.clone(), maybe_img);
         }
 
         self.texture_cache.get(&name).unwrap().clone()

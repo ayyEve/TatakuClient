@@ -33,8 +33,7 @@ impl MenuVisualization {
             rotation: 0.0,
             data: Vec::new(),
             timer: Instant::now(),
-            //TODO!: skins
-            cookie: Image::from_path("./resources/icon.png", Vector2::ZERO, 0.0, Vector2::ONE * initial_inner_radius).await.unwrap(),
+            cookie: load_image("./resources/icon.png", false, Vector2::ONE).await.unwrap(), //Image::from_path("./resources/icon.png", Vector2::ZERO, 0.0, Vector2::ONE * initial_inner_radius).await.unwrap(),
 
             bar_height: 1.0,
             initial_inner_radius,

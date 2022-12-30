@@ -36,7 +36,7 @@ impl InnerUIElement for ComboElement {
 
             let mut combo = combo.clone();
             combo.scale = scale;
-            combo.center_text(combo_bounds);
+            combo.center_text(&combo_bounds);
             list.push(combo);
         } else {
             let mut combo_text = Text::new(

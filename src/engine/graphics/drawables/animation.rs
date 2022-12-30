@@ -5,7 +5,7 @@ pub struct Animation {
     pub size: Vector2,
     pub depth: f64,
     pub origin: Vector2,
-
+    pub base_scale: Vector2,
 
     /// when did the current frame start being drawn?
     /// this will always be related to the delay
@@ -28,7 +28,7 @@ pub struct Animation {
 }
 #[allow(unused)]
 impl Animation {
-    pub fn new(pos:Vector2, depth:f64, size:Vector2, frames: Vec<Arc<Texture>>, frame_delays: Vec<f32>) -> Self {
+    pub fn new(pos:Vector2, depth:f64, size:Vector2, frames: Vec<Arc<Texture>>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(frames[0].get_width() as f64, frames[0].get_height() as f64);
         let scale = size / tex_size;
@@ -43,6 +43,7 @@ impl Animation {
             scale,
             rotation,
             color,
+            base_scale,
 
             frames,
             frame_index: 0,
@@ -92,18 +93,17 @@ impl Animation {
 
     pub fn tex_size(&self) -> Vector2 {
         let (w, h) = self.frames[0].get_size();
-        Vector2::new(w as f64, h as f64)
+        Vector2::new(w as f64, h as f64) * self.base_scale
     }
 
 
     pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
-
         let mut frames = Vec::new();
         for p in paths {
             frames.push(load_texture(p).await?);
         }
 
-        Ok(Self::new(pos, depth, size, frames, delays))
+        Ok(Self::new(pos, depth, size, frames, delays, Vector2::ONE))
     }
 }
 impl Renderable for Animation {
@@ -118,21 +118,18 @@ impl Renderable for Animation {
 
 impl TatakuRenderable for Animation {
     fn draw_with_transparency(&self, c: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
-        let pre_rotation = self.pos / self.scale;
-
-        let transform = c
-            .transform
-            // scale to size
-            .scale(self.scale.x, self.scale.y)
-
+        let transform = c.transform
             // move to pos
-            .trans(pre_rotation.x, pre_rotation.y)
+            .trans_pos(self.pos)
+
+            // scale to size
+            .scale_pos(self.scale * self.base_scale)
 
             // rotate to rotate
             .rot_rad(self.rotation)
             
             // apply origin
-            .trans(-self.origin.x, -self.origin.y)
+            .trans_pos(-self.origin)
         ;
 
         let image = &self.frames[self.frame_index];

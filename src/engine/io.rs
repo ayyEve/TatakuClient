@@ -69,7 +69,8 @@ pub fn exists<P: AsRef<Path>>(path: P) -> bool {
 
 
 /// load an image file to an image struct
-pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Image> {
+/// non-main thread safe
+pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
     // helper.log("settings made", true);
 
     let buf: Vec<u8> = match std::fs::read(path.as_ref()) {
@@ -98,7 +99,7 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool) -> Option<Im
             }
 
             let tex = load_texture_data(img).await.ok()?;
-            let img = Some(Image::new(Vector2::ZERO, f64::MAX, tex, Vector2::ONE));
+            let img = Some(Image::new(Vector2::ZERO, f64::MAX, tex, base_scale));
             img
         }
         Err(e) => {

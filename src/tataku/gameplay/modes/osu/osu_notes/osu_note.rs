@@ -31,10 +31,6 @@ pub struct OsuNote {
     // (lol)
     scaling_helper: Arc<ScalingHelper>,
     
-    /// combo num text cache
-    combo_text: Option<Text>,
-
-
     /// current map time
     map_time: f32,
     /// current mouse pos
@@ -46,7 +42,6 @@ pub struct OsuNote {
     shapes: Vec<TransformGroup>,
 
     circle_image: Option<HitCircleImageHelper>,
-    combo_image: Option<SkinnedNumber>,
     approach_circle: ApproachCircle,
 
     hitsounds: Vec<Hitsound>,
@@ -79,12 +74,9 @@ impl OsuNote {
             hitwindow_miss: 0.0,
             radius,
             scaling_helper,
-            
-            combo_text: None,
 
             standard_settings,
             shapes: Vec::new(),
-            combo_image: None,
             approach_circle,
 
             hitsounds
@@ -105,48 +97,10 @@ impl OsuNote {
 
     fn ripple_start(&mut self) {
         if !self.standard_settings.ripple_hitcircles { return }
-        let scale = 1.0..1.5;
-
-        // broken
-        // // combo text
-        // let mut combo_group = TransformGroup::new();
-        // if let Some(mut c) = self.combo_image.clone() {
-        //     c.origin = c.measure_text() / 2.0;
-        //     c.current_pos -= c.origin;
-        //     combo_group.items.push(DrawItem::SkinnedNumber(c));
-        // } else {
-        //     combo_group.items.push(DrawItem::Text(*self.combo_text.as_ref().unwrap().clone()));
-        // }
-        // combo_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale.clone(), None, Some(0.8));
-        // self.shapes.push(combo_group);
-
-
-        // hitcircle
-        let mut circle_group = TransformGroup::new(self.pos, self.base_depth).alpha(1.0).border_alpha(1.0);
+        
         if let Some(circle) = &self.circle_image {
-            let mut i_circle = circle.circle.clone();
-            i_circle.pos = Vector2::ZERO;
-            let mut i_overlay = circle.overlay.clone();
-            i_overlay.pos = Vector2::ZERO;
-
-            circle_group.push(i_circle);
-            circle_group.push(i_overlay);
-        } else {
-            circle_group.push(Circle::new(
-                self.color,
-                self.base_depth, // should be above curves but below slider ball
-                Vector2::ZERO,
-                self.radius,
-                Some(Border::new(
-                    Color::BLACK,
-                    self.scaling_helper.border_scaled
-                ))
-            ));
+            self.shapes.push(circle.ripple(self.map_time));
         }
-
-        // make it ripple and add it to the list
-        circle_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale, None, Some(0.5));
-        self.shapes.push(circle_group);
     }
 }
 #[async_trait]
@@ -185,15 +139,6 @@ impl HitObject for OsuNote {
         self.approach_circle.draw(list);
 
 
-        // combo number
-        if let Some(combo) = &mut self.combo_image {
-            combo.color.a = alpha;
-            list.push(combo.clone());
-        } else {
-            self.combo_text.as_mut().unwrap().color.a = alpha;
-            list.push(self.combo_text.clone().unwrap());
-        }
-
         // note
         if let Some(image) = &mut self.circle_image {
             image.draw(list);
@@ -203,7 +148,7 @@ impl HitObject for OsuNote {
                 self.base_depth,
                 self.pos,
                 self.radius,
-                Some(Border::new(Color::BLACK.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_helper.scale))
+                Some(Border::new(Color::WHITE.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_helper.scale))
             ));
         }
 
@@ -229,38 +174,18 @@ impl HitObject for OsuNote {
 
     
     async fn reload_skin(&mut self) {
-        self.circle_image = HitCircleImageHelper::new(self.pos, &self.scaling_helper, self.base_depth, self.color).await;
-        self.approach_circle.reload_texture().await;
-    
-        self.combo_text = Some(Text::new(
-            Color::BLACK,
-            self.base_depth - 0.0000001,
-            self.pos,
-            self.radius as u32,
-            format!("{}", self.combo_num),
-            get_font()
-        ));
-        self.combo_text.as_mut().unwrap().center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::ONE * self.radius / 2.0,
-            Vector2::ONE * self.radius,
-        ));
-
-        let mut combo_image = SkinnedNumber::new(
-            Color::WHITE,  // TODO: setting: colored same as note or just white?
-            self.base_depth - 0.0000001, 
-            self.pos, 
-            self.combo_num as f64,
-            "default",
-            None,
-            0
-        ).await.ok();
-        if let Some(combo) = &mut combo_image {
-            combo.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::ONE * self.radius / 2.0,
-                Vector2::ONE * self.radius,
-            ));
+        if let Some(circle) = &mut self.circle_image {
+            circle.reload_skin().await;
+        } else {
+            self.circle_image = Some(HitCircleImageHelper::new(
+                self.def.pos,
+                self.scaling_helper.clone(),
+                self.base_depth,
+                self.color,
+                self.combo_num
+            ).await);
         }
-        self.combo_image = combo_image;
+        self.approach_circle.reload_texture().await;
     }
 }
 
@@ -307,36 +232,11 @@ impl OsuHitObject for OsuNote {
         self.pos = new_scale.scale_coords(self.def.pos);
         self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
         self.scaling_helper = new_scale.clone();
-        self.approach_circle.scale_changed(new_scale);
+        self.approach_circle.scale_changed(new_scale, self.radius);
 
-        let mut combo_text = Text::new(
-            Color::BLACK,
-            self.base_depth - 0.0000001,
-            self.pos,
-            self.radius as u32,
-            format!("{}", self.combo_num),
-            get_font()
-        );
-        combo_text.center_text(&Rectangle::bounds_only(
-            self.pos - Vector2::ONE * self.radius / 2.0,
-            Vector2::ONE * self.radius,
-        ));
-
-        
         if let Some(image) = &mut self.circle_image {
             image.playfield_changed(&self.scaling_helper)
         }
-        
-        if let Some(image) = &mut self.combo_image {
-            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
-
-            image.center_text(Rectangle::bounds_only(
-                self.pos - Vector2::ONE * self.radius / 2.0,
-                Vector2::ONE * self.radius,
-            ));
-        }
-
-        self.combo_text = Some(combo_text);
     }
 
     

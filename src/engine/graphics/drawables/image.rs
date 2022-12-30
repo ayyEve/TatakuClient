@@ -2,11 +2,13 @@ use crate::prelude::*;
 
 #[derive(Clone)]
 pub struct Image {
-    pub size: Vector2,
+    // pub size: Vector2,
     pub depth: f64,
     pub tex: Arc<Texture>,
+    /// underlying scale of this image, mainly used for 2x res sprites
+    pub base_scale: Vector2,
 
-    // rotation of origin, relative to image size
+    // origin of rotation in px, relative to image position
     pub origin: Vector2,
 
     draw_state: Option<DrawState>,
@@ -17,10 +19,9 @@ pub struct Image {
     pub rotation: f64,
 }
 impl Image {
-    pub fn new(pos:Vector2, depth:f64, tex:Arc<Texture>, size:Vector2) -> Image {
+    pub fn new(pos:Vector2, depth:f64, tex:Arc<Texture>, base_scale: Vector2) -> Image {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.get_width() as f64, tex.get_height() as f64);
-        let scale = size / tex_size;
 
         let rotation = 0.0;
         let color = Color::WHITE;
@@ -29,41 +30,39 @@ impl Image {
 
         Image {
             pos,
-            scale,
+            scale: Vector2::ONE,
             rotation,
             color,
 
-            size: tex_size,
+            // size: tex_size,
             depth,
             origin,
             tex,
             draw_state: None,
+            base_scale
         }
     }
 
     pub fn size(&self) -> Vector2 {
-        self.size * self.scale
+        self.tex_size() * self.scale
     }
     pub fn set_size(&mut self, size: Vector2) {
-        let tex_size = Vector2::new(
-            self.tex.get_width() as f64, 
-            self.tex.get_height() as f64
-        );
+        let tex_size = self.tex_size();
         self.scale = size / tex_size;
     }
 
     pub fn tex_size(&self) -> Vector2 {
         let (w, h) = self.tex.get_size();
-        Vector2::new(w as f64, h as f64)
+        Vector2::new(w as f64, h as f64) * self.base_scale
     }
 
 
-    pub async fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
-        match load_texture(path).await {
-            Ok(tex) => Ok(Self::new(pos, depth, tex, size)),
-            Err(e) => return Err(e),
-        }
-    }
+    // pub async fn from_path<P: AsRef<Path>>(path: P, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
+    //     match load_texture(path).await {
+    //         Ok(tex) => Ok(Self::new(pos, depth, tex, size)),
+    //         Err(e) => return Err(e),
+    //     }
+    // }
 }
 impl Renderable for Image {
     fn get_name(&self) -> String { format!("Texture with id {}", self.tex.get_id()) }
@@ -83,7 +82,7 @@ impl TatakuRenderable for Image {
             .trans_pos(self.pos)
 
             // scale to size
-            .scale_pos(self.scale)
+            .scale_pos(self.scale * self.base_scale)
 
             // rotate to rotate
             .rot_rad(self.rotation)

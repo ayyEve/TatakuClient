@@ -10,7 +10,6 @@ const STACK_LENIENCY:u32 = 3;
 
 pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
 pub const NOTE_BORDER_SIZE:f64 = 2.0;
-pub const APPROACH_CIRCLE_MULT:f64 = 4.0;
 pub const PREEMPT_MIN:f32 = 450.0;
 
 pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3

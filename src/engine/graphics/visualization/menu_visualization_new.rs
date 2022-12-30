@@ -46,13 +46,15 @@ impl MenuVisualizationNew {
         let window_size = WindowSizeHelper::new();
         let initial_inner_radius = window_size.y / 6.0;
 
+        let mut cookie = load_image("./resources/icon.png", false, Vector2::ONE).await.expect("no cookie image?");
+        cookie.set_size(Vector2::ONE * initial_inner_radius);
+
         Self {
             rotation: 0.0,
             data: Vec::new(),
             timer: Instant::now(),
             other_timer: Instant::now(),
-            //TODO!: skins
-            cookie: Image::from_path("./resources/icon.png", Vector2::ZERO, 0.0, Vector2::ONE * initial_inner_radius).await.unwrap(),
+            cookie,
 
             bar_height: 1.0,
             initial_inner_radius,

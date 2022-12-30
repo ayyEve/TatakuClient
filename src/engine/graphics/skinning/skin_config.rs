@@ -23,13 +23,13 @@ pub struct SkinSettings {
 
     // colors
     pub combo_colors: Vec<Color>,
-    pub slider_border: Color,
-    pub slider_track_override: Color,
+    pub slider_border: Option<Color>,
+    pub slider_track_override: Option<Color>,
     /// ???
-    pub spinner_approach_circle: Color,
-    pub song_select_active_text: Color,
-    pub song_select_inactive_text: Color,
-    pub input_overlay_text: Color,
+    pub spinner_approach_circle: Option<Color>,
+    pub song_select_active_text: Option<Color>,
+    pub song_select_inactive_text: Option<Color>,
+    pub input_overlay_text: Option<Color>,
 
     // fonts
     pub hitcircle_prefix: String,
@@ -122,7 +122,7 @@ impl SkinSettings {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap_or_default().trim();
 
-                    let val2 = col(val.split(",").map(|s|s.parse::<u8>().unwrap_or_default()).collect::<Vec<u8>>().as_slice());
+                    let val2 = Some(col(&val.split(",").map(|s|s.parse::<u8>().unwrap_or_default()).collect::<Vec<u8>>()));
                     
                     match &*key.to_lowercase() {
                         "songselectactivetext" => s.song_select_active_text = val2,
@@ -230,13 +230,13 @@ impl Default for SkinSettings {
                 col(&[255,128,255]),
                 col(&[255,255,0]),
             ],
-            slider_border: col(&[250,250,250]),
-            slider_track_override: col(&[0,0,0]),
+            slider_border: None,
+            slider_track_override: None,
             /// ???
-            spinner_approach_circle: col(&[77,139,217]),
-            song_select_active_text: col(&[255,255,255]),
-            song_select_inactive_text: col(&[255,255,255]),
-            input_overlay_text: col(&[255,255,255]),
+            spinner_approach_circle: None,
+            song_select_active_text: None,
+            song_select_inactive_text: None,
+            input_overlay_text: None,
 
             // fonts
             hitcircle_prefix: "default".to_owned(),
