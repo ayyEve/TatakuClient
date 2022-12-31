@@ -165,7 +165,6 @@ impl GameWindow {
         #[cfg(feature = "mobile")] {
             let size = [self.window_size.x as u32, self.window_size.y as u32];
             self.window.ctx.resize(size.into());
-            
         }
         
 
@@ -180,6 +179,7 @@ impl GameWindow {
         }
         
         loop {
+            self.window_size.update();
 
             // poll window events
             while let Some(e) = self.window.poll_event() {
@@ -268,14 +268,14 @@ impl GameWindow {
                 0, 
                 0, 
                 width as i32, 
-                width as i32, 
+                height as i32, 
                 gl::RGB, 
                 gl::UNSIGNED_BYTE, 
                 window_data2
             );
         }
 
-        // screenshot is upside down for some reason
+        // screenshot is upside down
         let mut window_data2 = Vec::new();
         for i in (0..window_data.len()).step_by(3 * width).rev() {
             window_data2.extend(window_data[i..i + 3 * width].iter());
