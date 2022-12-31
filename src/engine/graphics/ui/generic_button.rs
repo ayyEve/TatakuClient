@@ -1,8 +1,7 @@
-#![allow(unused)]
 use crate::prelude::*;
 
 #[derive(Clone)]
-pub struct SkinnedButton {
+pub struct GenericButtonImage {
     pub pos: Vector2,
     pub size: Vector2,
     pub color: Color,
@@ -12,8 +11,8 @@ pub struct SkinnedButton {
     right_image: Image,
 }
 
-impl SkinnedButton {
-    pub async fn new(pos: Vector2, mut size: Vector2) -> Option<Self> {
+impl GenericButtonImage {
+    pub async fn new(pos: Vector2, size: Vector2) -> Option<Self> {
         // return None;
         let mut left_image = SkinManager::get_texture("button-left", true).await?;
         left_image.origin = Vector2::ZERO;
@@ -53,7 +52,7 @@ impl SkinnedButton {
     }
 
     pub fn draw(&self, _args: RenderArgs, depth: f64, pos_offset: Vector2, list: &mut RenderableCollection) {
-        let mut current_pos = self.pos + pos_offset;
+        let current_pos = self.pos + pos_offset;
 
         for mut i in [
             self.left_image.clone(),

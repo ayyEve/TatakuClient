@@ -194,7 +194,7 @@ impl GameWindow {
                 }
                 
                 #[cfg(feature="desktop")]
-                if let Some(Button::Controller(cb)) = e.button_args().map(|b|b.button) {
+                if let Some(piston::input::Button::Controller(cb)) = e.button_args().map(|b|b.button) {
                     // debug!("press: c: {}, b: {}", cb.id, cb.button);
 
                     let j_id = get_joystick_id(cb.id);

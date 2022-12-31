@@ -13,8 +13,8 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 pub struct MainMenu {
     // index 0
     pub play_button: MainMenuButton,
-    // index 1
-    pub direct_button: MainMenuButton,
+    // // index 1
+    // pub direct_button: MainMenuButton,
     // index 2
     pub settings_button: MainMenuButton,
     // index 3
@@ -39,16 +39,16 @@ impl MainMenu {
         let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
         let mut counter = 1.0;
         
-        let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play");
+        let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play", "menu-button-play").await;
+        // counter += 1.0;
+        // let mut direct_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "osu!Direct").await;
         counter += 1.0;
-        let mut direct_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "osu!Direct");
+        let mut settings_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Settings", "menu-button-options").await;
         counter += 1.0;
-        let mut settings_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Settings");
-        counter += 1.0;
-        let mut exit_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Exit");
+        let mut exit_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Exit", "menu-button-exit").await;
 
         play_button.visible = false;
-        direct_button.visible = false;
+        // direct_button.visible = false;
         settings_button.visible = false;
         exit_button.visible = false;
 
@@ -56,7 +56,7 @@ impl MainMenu {
 
         MainMenu {
             play_button,
-            direct_button,
+            // direct_button,
             settings_button,
             exit_button,
 
@@ -96,15 +96,17 @@ impl MainMenu {
 
         // ensure they have the latest window size
         self.play_button.window_size = self.window_size.0;
-        self.direct_button.window_size = self.window_size.0;
+        // self.direct_button.window_size = self.window_size.0;
         self.settings_button.window_size = self.window_size.0;
         self.exit_button.window_size = self.window_size.0;
 
         // show
-        self.play_button.show(0, 4, true);
-        self.direct_button.show(1, 4, true);
-        self.settings_button.show(2, 4, true);
-        self.exit_button.show(3, 4, true);
+        let count = 3;
+        let mut counter = 0;
+        self.play_button.show(counter, count, true); counter += 1;
+        // self.direct_button.show(counter, count, true); counter += 1;
+        self.settings_button.show(counter, count, true); counter += 1;
+        self.exit_button.show(counter, count, true); // counter += 1;
     }
 
     fn hide_menu(&mut self) {
@@ -112,15 +114,17 @@ impl MainMenu {
 
         // ensure they have the latest window size
         self.play_button.window_size = self.window_size.0;
-        self.direct_button.window_size = self.window_size.0;
+        // self.direct_button.window_size = self.window_size.0;
         self.settings_button.window_size = self.window_size.0;
         self.exit_button.window_size = self.window_size.0;
 
-        // show
-        self.play_button.hide(0, 4, true);
-        self.direct_button.hide(1, 4, true);
-        self.settings_button.hide(2, 4, true);
-        self.exit_button.hide(3, 4, true);
+        // hide
+        let count = 3;
+        let mut counter = 0;
+        self.play_button.hide(counter, count, true); counter += 1;
+        // self.direct_button.hide(1, 4, true); counter += 1;
+        self.settings_button.hide(counter, count, true); counter += 1;
+        self.exit_button.hide(counter, count, true); // counter += 1;
     }
     
 
@@ -129,7 +133,7 @@ impl MainMenu {
             vec![
                 &mut self.music_box,
                 &mut self.play_button,
-                &mut self.direct_button,
+                // &mut self.direct_button,
                 &mut self.settings_button,
                 &mut self.exit_button,
             ]
@@ -304,13 +308,13 @@ impl AsyncMenu<Game> for MainMenu {
             return;
         }
 
-        // open direct menu
-        if self.direct_button.on_click(pos, button, mods) {
-            let mode = self.settings.background_game_settings.mode.clone();
-            let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode).await));
-            game.queue_state_change(GameState::InMenu(menu));
-            return;
-        }
+        // // open direct menu
+        // if self.direct_button.on_click(pos, button, mods) {
+        //     let mode = self.settings.background_game_settings.mode.clone();
+        //     let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode).await));
+        //     game.queue_state_change(GameState::InMenu(menu));
+        //     return;
+        // }
 
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
@@ -409,7 +413,7 @@ impl AsyncMenu<Game> for MainMenu {
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.play_button.window_size_changed(&window_size);
-        self.direct_button.window_size_changed(&window_size);
+        // self.direct_button.window_size_changed(&window_size);
         self.settings_button.window_size_changed(&window_size);
         self.exit_button.window_size_changed(&window_size);
 
@@ -455,7 +459,7 @@ impl ControllerInputMenu<Game> for MainMenu {
 
         if changed {
             self.play_button.set_selected(self.selected_index == 0);
-            self.direct_button.set_selected(self.selected_index == 1);
+            // self.direct_button.set_selected(self.selected_index == 1);
             self.settings_button.set_selected(self.selected_index == 2);
             self.exit_button.set_selected(self.selected_index == 3);
         }

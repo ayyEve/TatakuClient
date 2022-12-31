@@ -24,7 +24,7 @@ pub struct BeatmapsetItem {
     display_text: String,
     double_clicked: bool,
 
-    button_image: Option<SkinnedButton>,
+    button_image: Option<GenericButtonImage>,
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
@@ -41,7 +41,7 @@ impl BeatmapsetItem {
             mods: ModManagerHelper::new(),
             playmode: CurrentPlaymodeHelper::new(),
             double_clicked: false,
-            button_image: SkinnedButton::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE).await,
+            button_image: GenericButtonImage::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE).await,
         }
     }
 

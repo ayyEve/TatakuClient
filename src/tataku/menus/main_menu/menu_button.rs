@@ -23,12 +23,29 @@ pub struct MainMenuButton {
     last_count: usize,
 
     hide_time: f32,
+
+    image: Option<Image>,
+    hover_image: Option<Image>,
 }
 impl MainMenuButton {
-    pub fn new(_pos: Vector2, size: Vector2, text:&str) -> MainMenuButton {
+    pub async fn new(_pos: Vector2, mut size: Vector2, text:&str, tex_name: &str) -> MainMenuButton {
         let pos = Vector2::ZERO;
         let shapes = TransformGroup::new(pos, 10.0).alpha(1.0).border_alpha(0.0);
         let window_size = WindowSize::get().0;
+
+        let mut image = SkinManager::get_texture(tex_name, true).await;
+        let mut hover_image = SkinManager::get_texture(format!("{tex_name}-over"), true).await;
+
+        // limit by height, not width
+        if let Some(image) = &mut image {
+            image.scale = Vector2::ONE * (size.y / image.tex_size().y);
+            image.origin = Vector2::ZERO;
+            size = image.size();
+            if let Some(hover) = &mut hover_image {
+                hover.origin = Vector2::ZERO;
+                hover.scale = image.scale;
+            }
+        }
 
         MainMenuButton {
             pos, 
@@ -48,13 +65,16 @@ impl MainMenuButton {
             last_num: 0,
             last_count: 0,
 
-            hide_time: -1.0
+            hide_time: -1.0,
+            image,
+            hover_image,
         }
     }
 
     /// num: this button number, count: number of buttons
     pub fn show(&mut self, num: usize, count: usize, do_transform: bool) {
         if self.visible { return }
+        self.shapes.items.clear();
 
         let time = self.time();
         self.visible = true;
@@ -75,10 +95,7 @@ impl MainMenuButton {
         ) - Vector2::new(0.0, height / 2.0);
 
         let duration = if do_transform { 500.0 } else { 1.0 };
-        let start = Vector2::new(
-            center.x,
-            end.y
-        );
+        let start = Vector2::new(center.x, end.y);
 
         let t1 = Transformation::new(
             0.0,
@@ -170,6 +187,16 @@ impl MainMenuButton {
 
     pub fn window_size_changed(&mut self, window_size: &Arc<WindowSize>) {
         self.window_size = window_size.0;
+        let scale = self.window_size.y / 1080.0;
+
+        if let Some(i) = &mut self.image {
+            i.scale = Vector2::ONE * scale;
+            self.size = i.size();
+        }
+        if let Some(i) = &mut self.hover_image {
+            i.scale = Vector2::ONE * scale;
+            self.size = i.size();
+        }
 
         if self.visible {
             self.visible = false;
@@ -190,29 +217,40 @@ impl ScrollableItemGettersSetters for MainMenuButton {
         self.hover = hover;
 
         if hover {
-            // self.shapes.push(Rectangle::new(
-            //     Color::TRANSPARENT_WHITE,
-            //     10.0,
-            //     self.pos,
-            //     self.size,
-            //     Some(Border::new(Color::RED, 0.0))
-            // ).shape(Shape::Round(5.0, 10)))
-            self.shapes.transforms.push(Transformation::new(
-                0.0,
-                1.0, 
-                TransformType::BorderTransparency { start: 0.0, end: 1.0 },
-                TransformEasing::Linear,
-                0.0,
-            ))
+            if let Some(hover) = self.hover_image.clone() {
+                self.shapes.items.clear();
+                self.shapes.push(hover);
+            } else {
+                // self.shapes.push(Rectangle::new(
+                //     Color::TRANSPARENT_WHITE,
+                //     10.0,
+                //     self.pos,
+                //     self.size,
+                //     Some(Border::new(Color::RED, 0.0))
+                // ).shape(Shape::Round(5.0, 10)))
+                self.shapes.transforms.push(Transformation::new(
+                    0.0,
+                    1.0, 
+                    TransformType::BorderTransparency { start: 0.0, end: 1.0 },
+                    TransformEasing::Linear,
+                    0.0,
+                ))
+            }
 
         } else {
-            self.shapes.transforms.push(Transformation::new(
-                0.0,
-                1.0, 
-                TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-                TransformEasing::Linear,
-                0.0,
-            ))
+            if let Some(image) = self.image.clone() {
+                self.shapes.items.clear();
+                self.shapes.push(image);
+            } else {
+                self.shapes.transforms.push(Transformation::new(
+                    0.0,
+                    1.0, 
+                    TransformType::BorderTransparency { start: 1.0, end: 0.0 },
+                    TransformEasing::Linear,
+                    0.0,
+                ))
+            }
+
             // self.shapes.items.remove(self.shapes.items.len() - 1);
         }
 
@@ -240,32 +278,39 @@ impl ScrollableItemGettersSetters for MainMenuButton {
 impl ScrollableItem for MainMenuButton {
     fn update(&mut self) {
         if self.shapes.items.len() == 0 {
-            let font_size: u32 = 15;
+            let scale = self.window_size.y / 1080.0;
 
-            // draw box
-            let r = Rectangle::new(
-                [0.2, 0.2, 0.2, 1.0].into(),
-                10.0,
-                self.pos,
-                self.size,
-                Some(Border::new(Color::RED.alpha(0.0), 1.0))
-            ).shape(Shape::Round(5.0, 10));
-            
-            // draw text
-            let mut txt = Text::new(
-                Color::WHITE,
-                9.0,
-                Vector2::ZERO,
-                font_size,
-                self.text.to_owned(),
-                get_font()
-            );
-            txt.center_text(&r);
+            if let Some(image) = self.image.clone() {
+                if self.visible {
+                    self.shapes.push(image);
+                }
+            } else {
+                let font_size = (15.0 * scale) as u32;
+                // draw box
+                let r = Rectangle::new(
+                    [0.2, 0.2, 0.2, 1.0].into(),
+                    10.0,
+                    self.pos,
+                    self.size * scale,
+                    Some(Border::new(Color::RED.alpha(0.0), 1.0))
+                ).shape(Shape::Round(5.0, 10));
+                
+                // draw text
+                let mut txt = Text::new(
+                    Color::WHITE,
+                    9.0,
+                    Vector2::ZERO,
+                    font_size,
+                    self.text.to_owned(),
+                    get_font()
+                );
+                txt.center_text(&r);
 
-            self.shapes.push(r);
-            self.shapes.push(txt);
+                self.shapes.push(r);
+                self.shapes.push(txt);
+            }
+
         }
-
 
         let time = self.timer.elapsed().as_secs_f64() * 1000.0;
         self.shapes.update(time);
