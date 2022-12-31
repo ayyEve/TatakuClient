@@ -32,6 +32,7 @@ pub struct MainMenu {
     window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
     new_map_helper: LatestBeatmapHelper,
+    current_skin: CurrentSkinHelper,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -52,7 +53,7 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
-        let visualization = MenuVisualizationNew::new().await;    
+        let visualization = MenuVisualizationNew::new().await;
 
         MainMenu {
             play_button,
@@ -71,6 +72,7 @@ impl MainMenu {
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
             new_map_helper: LatestBeatmapHelper::new(),
+            current_skin: CurrentSkinHelper::new()
         }
     }
 
@@ -218,6 +220,20 @@ impl AsyncMenu<Game> for MainMenu {
     async fn update(&mut self, g:&mut Game) {
         self.settings.update();
         self.song_display.update();
+
+        if self.current_skin.update() {
+            self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
+            // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
+            self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
+            self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
+
+            if self.menu_visible {
+                self.window_size_changed(self.window_size.clone()).await;
+                self.show_menu();
+            } else {
+                self.window_size_changed(self.window_size.clone()).await;
+            }
+        }
 
         let mut song_done = false;
 
