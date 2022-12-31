@@ -38,15 +38,12 @@ pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
 pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
 pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
 
-
 const NOTE_DEPTH_RANGE:std::ops::Range<f64> = 0.0..1000.0;
-
 
 pub const FINISHER_LENIENCY:f32 = 20.0; // ms
 pub const NOTE_BORDER_SIZE:f64 = 2.0;
 
 pub const GRAVITY_SCALING:f32 = 400.0;
-
 
 
 pub struct TaikoGame {
@@ -598,7 +595,7 @@ impl GameMode for TaikoGame {
         let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
         for (hit_type, hit_time) in self.hit_cache.iter() {
-            if time - hit_time > lifetime_time {continue}
+            if time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
             let depth = -1.0;
             match hit_type {
@@ -872,31 +869,29 @@ impl GameMode for TaikoGame {
 
 
     }
+    
     async fn reload_skin(&mut self) {
+        let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
+        let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
+
         if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
             don.depth = -1.0;
-            don.origin.x = don.tex_size().x;
+            don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.taiko_settings.hit_position;
-            
-            let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
-            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
             self.left_don_image = Some(don.clone());
             self.left_don_image.as_mut().unwrap().scale = scale;
 
             self.right_don_image = Some(don.clone());
-            self.right_don_image.as_mut().unwrap().scale = Vector2::new(-1.0, 1.0) * scale;
+            self.right_don_image.as_mut().unwrap().scale = scale * Vector2::new(-1.0, 1.0);
         }
         if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
             kat.depth = -1.0;
             kat.origin.x = 0.0;
             kat.pos = self.taiko_settings.hit_position;
             
-            let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
-            let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
-            
             self.left_kat_image = Some(kat.clone());
-            self.left_kat_image.as_mut().unwrap().scale = Vector2::new(-1.0, 1.0) * scale;
+            self.left_kat_image.as_mut().unwrap().scale = scale * Vector2::new(-1.0, 1.0);
 
             self.right_kat_image = Some(kat.clone());
             self.right_kat_image.as_mut().unwrap().scale = scale;
