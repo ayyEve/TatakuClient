@@ -313,7 +313,6 @@ impl CursorManager {
         if let Some(cursor) = &self.cursor_middle_image {
             let mut cursor = cursor.clone();
             cursor.pos = self.pos;
-            cursor.rotation = self.cursor_rotation;
             cursor.scale = Vector2::ONE * self.settings.cursor_scale;
             
             list.push(cursor.clone());
