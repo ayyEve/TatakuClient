@@ -208,13 +208,15 @@ impl OsuSlider {
 
         let border_color = BORDER_COLOR; //skin.slider_border.unwrap_or(BORDER_COLOR);
 
+        let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
+
         // starting point
         let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
 
         // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
         // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
-        for (radius, color) in [(self.radius, border_color), (self.radius - BORDER_RADIUS * 1.5, color)] {
+        for (radius, color) in [(self.radius, border_color), (self.radius - border_radius, color)] {
 
             // add starting circle manually
             list.push(Box::new(Circle::new(
@@ -560,21 +562,7 @@ impl HitObject for OsuSlider {
                 end_circle.pos = self.pos;
                 list.push(end_circle);
                 
-                if start_repeat {
-                    if let Some(reverse_arrow) = &self.slider_reverse_image {
-                        let mut im = reverse_arrow.clone();
-                        im.pos = self.pos;
-                        im.depth = self.circle_depth;
-                        im.color.a = alpha;
-                        im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
-
-                        let l = self.curve.curve_lines[0];
-                        im.rotation = Vector2::atan2_wrong(l.p2 - l.p1);
-
-                        list.push(im);
-                    }
-                }
-            } else {
+            } else if self.start_circle_image.is_none() {
                 list.push(Circle::new(
                     self.color.alpha(alpha),
                     self.circle_depth, // should be above curves but below slider ball
@@ -587,6 +575,20 @@ impl HitObject for OsuSlider {
                 ));
             }
 
+            if start_repeat {
+                if let Some(reverse_arrow) = &self.slider_reverse_image {
+                    let mut im = reverse_arrow.clone();
+                    im.pos = self.pos;
+                    im.depth = self.circle_depth;
+                    im.color.a = alpha;
+                    im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+
+                    let l = self.curve.curve_lines[0];
+                    im.rotation = Vector2::atan2_wrong(l.p2 - l.p1);
+
+                    list.push(im);
+                }
+            }
         }
 
 
@@ -595,23 +597,7 @@ impl HitObject for OsuSlider {
             let mut im = end_circle.clone();
             im.color.a = alpha;
             list.push(im);
-
-            if end_repeat {
-                if let Some(reverse_arrow) = &self.slider_reverse_image {
-                    let mut im = reverse_arrow.clone();
-                    im.pos = self.visual_end_pos;
-                    im.depth = self.circle_depth;
-                    im.color.a = alpha;
-                    im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
-
-                    let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
-                    im.rotation = Vector2::atan2_wrong(l.p1 - l.p2);
-
-                    list.push(im);
-                }
-            }
-
-        } else {
+        } else if self.start_circle_image.is_none() {
             list.push(Circle::new(
                 color,
                 self.circle_depth, // should be above curves but below slider ball
@@ -624,6 +610,20 @@ impl HitObject for OsuSlider {
             ));
         }
 
+        if end_repeat {
+            if let Some(reverse_arrow) = &self.slider_reverse_image {
+                let mut im = reverse_arrow.clone();
+                im.pos = self.visual_end_pos;
+                im.depth = self.circle_depth;
+                im.color.a = alpha;
+                im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+
+                let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
+                im.rotation = Vector2::atan2_wrong(l.p1 - l.p2);
+
+                list.push(im);
+            }
+        }
 
         // draw hit dots
         for dot in self.hit_dots.iter() {
