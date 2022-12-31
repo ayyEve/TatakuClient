@@ -161,16 +161,19 @@ impl HitObject for OsuSpinner {
 
     async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
         if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
+        let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
         let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
 
         // bg circle
-        if let Some(i) = self.spinner_background.clone() {
+        if let Some(mut i) = self.spinner_background.clone() {
+            i.scale = scale;
             list.push(i)
         } else {}
 
         // bottom circle
-        if let Some(i) = self.spinner_bottom.clone() {
+        if let Some(mut i) = self.spinner_bottom.clone() {
+            i.scale = scale;
             list.push(i)
         } else {
             if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
@@ -202,7 +205,7 @@ impl HitObject for OsuSpinner {
 
         // draw line to show rotation
         if let Some(mut i) = self.spinner_circle.clone() {
-            i.scale = Vector2::ONE * self.scaling_helper.scale;
+            i.scale = scale;
             i.rotation = self.display_rotation;
             list.push(i)
         } else {

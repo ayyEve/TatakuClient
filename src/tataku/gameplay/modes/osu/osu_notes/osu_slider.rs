@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-
 const SLIDER_DOT_RADIUS:f64 = 8.0;
 
 pub struct OsuSlider {
@@ -64,7 +63,7 @@ pub struct OsuSlider {
     /// start/end circle depth
     circle_depth: f64,
     /// when should the note start being drawn (specifically the )
-    time_preempt:f32,
+    time_preempt: f32,
     hitwindow_miss: f32,
 
     /// list of sounds waiting to be played (used by repeat and slider dot sounds)
@@ -90,6 +89,9 @@ pub struct OsuSlider {
     end_circle_image: Option<Image>,
     slider_reverse_image: Option<Image>,
     sliderball_image: Option<Animation>,
+    sliderball_under_image: Option<Image>,
+    follow_circle_image: Option<Image>,
+
     approach_circle: ApproachCircle,
     slider_body_render_target: Option<RenderTarget>,
     slider_body_render_target_failed: Option<f32>,
@@ -170,11 +172,13 @@ impl OsuSlider {
             slider_reverse_image: None,
             slider_body_render_target: None,
             slider_body_render_target_failed: None,
+            follow_circle_image: None,
+            sliderball_image: None,
+            sliderball_under_image: None,
             approach_circle,
 
             hitsounds,
             sliderdot_hitsound,
-            sliderball_image: None,
             velocity,
         }
     }
@@ -459,17 +463,29 @@ impl HitObject for OsuSlider {
             self.approach_circle.draw(list);
 
         } else if self.map_time < self.curve.end_time {
+            let rotation = PI * 2.0 - (self.pos_at(self.map_time + 0.1) - self.slider_ball_pos).atan2();
             // slider ball
+
+            let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+
+            // under
+            if let Some(mut ball) = self.sliderball_under_image.clone() {
+                ball.pos = self.slider_ball_pos;
+                ball.scale = scale;
+                // ball.color = color;
+                ball.color.a = alpha;
+                ball.depth = self.circle_depth;
+
+                list.push(ball);
+            }
 
             // inner
             if let Some(mut ball) = self.sliderball_image.clone() {
                 ball.pos = self.slider_ball_pos;
-                ball.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+                ball.scale = scale;
                 ball.color = color;
                 ball.depth = self.circle_depth - 0.0000001;
-
-                let next_pos = self.pos_at(self.map_time + 0.1);
-                ball.rotation = PI * 2.0 - (next_pos - self.slider_ball_pos).atan2();
+                ball.rotation = rotation;
 
                 list.push(ball);
             } else {
@@ -483,13 +499,23 @@ impl HitObject for OsuSlider {
             }
 
             // radius thingy
-            list.push(Circle::new(
-                Color::TRANSPARENT_WHITE,
-                self.circle_depth - 0.0000001,
-                self.slider_ball_pos,
-                self.radius * 2.0,
-                Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),2.0)
-            )));
+            if let Some(mut circle) = self.follow_circle_image.clone() {
+                circle.pos = self.slider_ball_pos;
+                circle.scale = scale;
+                circle.color = color;
+                circle.depth = self.circle_depth - 0.0000001;
+                circle.rotation = rotation;
+
+                list.push(circle);
+            } else {
+                list.push(Circle::new(
+                    Color::TRANSPARENT_WHITE,
+                    self.circle_depth - 0.0000001,
+                    self.slider_ball_pos,
+                    self.radius * 2.0,
+                    Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),2.0)
+                )));
+            }
         }
 
         // slider body
@@ -655,6 +681,7 @@ impl HitObject for OsuSlider {
         }
         self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
         self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
+        self.follow_circle_image = SkinManager::get_texture("sliderfollowcircle", true).await;
 
         self.approach_circle.reload_texture().await;
 
@@ -663,6 +690,8 @@ impl HitObject for OsuSlider {
         }
 
         // slider ball
+        self.sliderball_under_image = SkinManager::get_texture("sliderb-nd", true).await;
+        
         let mut i = 0;
         let mut images = Vec::new();
         loop {
