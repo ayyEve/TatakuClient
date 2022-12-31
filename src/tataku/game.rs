@@ -114,6 +114,9 @@ impl Game {
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
         GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
+        GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
+
+        Self::load_theme(&self.settings.theme);
 
         // set the current leaderboard filter
         // this is here so it happens before anything else
@@ -126,10 +129,6 @@ impl Game {
 
         // beatmap manager loop
         BeatmapManager::download_check_loop();
-
-        // init diff manager
-        init_diffs().await;
-
 
         // init integrations
         if settings.lastfm_enabled {
@@ -207,6 +206,7 @@ impl Game {
             let last_master_vol = self.settings.master_vol;
             let last_music_vol = self.settings.music_vol;
             let last_effect_vol = self.settings.effect_vol;
+            let last_theme = self.settings.theme.clone();
             
             if self.settings.update() {
                 let audio_changed = 
@@ -232,6 +232,10 @@ impl Game {
                 if self.settings.current_skin != self.last_skin {
                     SkinManager::change_skin(self.settings.current_skin.clone(), false).await;
                     self.last_skin = self.settings.current_skin.clone();
+                }
+
+                if self.settings.theme != last_theme {
+                    Self::load_theme(&self.settings.theme)
                 }
 
                 // update doubletap protection
@@ -497,6 +501,14 @@ impl Game {
             });
 
         }
+
+
+        // if keys_down.contains(&Key::D1) && mods.ctrl {
+        //     GlobalValueManager::update(Arc::new(CurrentTheme(tataku_theme())))
+        // }
+        // if keys_down.contains(&Key::D2) && mods.ctrl {
+        //     GlobalValueManager::update(Arc::new(CurrentTheme(osu_theme())))
+        // }
 
         // update any dialogs
         use crate::async_retain;
@@ -1072,6 +1084,16 @@ impl Game {
         }
     }
 
+
+    fn load_theme(theme: &SelectedTheme) {
+        let theme = match &theme {
+            SelectedTheme::Tataku => tataku_theme(),
+            SelectedTheme::Osu => osu_theme(),
+            SelectedTheme::Custom(path, _) => std::fs::read(path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default(),
+        };
+
+        GlobalValueManager::update(Arc::new(CurrentTheme(theme)));
+    }
 }
 
 

@@ -40,11 +40,11 @@ impl MainMenuButton {
         if let Some(image) = &mut image {
             image.scale = Vector2::ONE * (size.y / image.tex_size().y);
             image.origin.y = 0.0;
-            // image.origin.x += 1.0;
+            image.origin.x -= image.tex_size().x / 3.0;
             size = image.size();
             if let Some(hover) = &mut hover_image {
                 hover.origin.y = 0.0;
-                // hover.origin.x += 1.0;
+                hover.origin.x -= hover.tex_size().x / 3.0;
                 hover.scale = image.scale;
             }
         }

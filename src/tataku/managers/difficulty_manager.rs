@@ -8,6 +8,7 @@ lazy_static::lazy_static! {
 
 
 pub async fn init_diffs() {
+    info!("loading diffs");
     let all_diffs = match load_all_diffs() {
         Ok(d) => d,
         Err(e) => {
@@ -22,6 +23,7 @@ pub async fn init_diffs() {
     }
 
     *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;
+    info!("loading diffs done")
 }
 
 

@@ -23,7 +23,7 @@ impl LoadingMenu {
             let status = status.clone();
 
             // load database
-            Self::load_database(status.clone()).await;
+            Self::load_difficulties(status.clone()).await;
 
             // preload audio 
             Self::load_audio(status.clone()).await;
@@ -36,12 +36,16 @@ impl LoadingMenu {
     }
 
     // loaders
-    async fn load_database(status: Arc<Mutex<LoadingStatus>>) {
-        status.lock().await.stage = LoadingStage::Database;
-        // let _ = crate::databases::DATABASE.lock();
+    async fn load_difficulties(status: Arc<Mutex<LoadingStatus>>) {
+        trace!("loading difficulties");
+        status.lock().await.stage = LoadingStage::Difficulties;
+        
+        // init diff manager
+        init_diffs().await;
     }
 
     async fn load_audio(status: Arc<Mutex<LoadingStatus>>) {
+        trace!("loading audio");
         status.lock().await.stage = LoadingStage::Audio;
         // get a value from the hash, will do the lazy_static stuff and populate
         // if let Ok(a) = Audio::play_preloaded("don") {
@@ -50,6 +54,7 @@ impl LoadingMenu {
     }
 
     async fn load_beatmaps(status: Arc<Mutex<LoadingStatus>>) {
+        trace!("loading audio");
         status.lock().await.stage = LoadingStage::Beatmaps;
         // set the count and reset the counter
         status.lock().await.loading_count = 0;
@@ -57,12 +62,15 @@ impl LoadingMenu {
 
 
         let ignored = Database::get_all_ignored().await;
+        let existing_len;
+        trace!("got ignored {}", ignored.len());
 
         {
             let existing_maps = Database::get_all_beatmaps().await;
-            trace!("loading {} from the db", existing_maps.len());
+            existing_len = existing_maps.len();
+            trace!("loading {existing_len} from the db");
             
-            status.lock().await.loading_count = existing_maps.len();
+            status.lock().await.loading_count = existing_len;
             // load from db
             let mut lock = BEATMAP_MANAGER.write().await;
             lock.ignore_beatmaps = ignored.into_iter().collect();
@@ -70,20 +78,20 @@ impl LoadingMenu {
             for meta in existing_maps {
                 // verify the map exists
                 if !std::path::Path::new(&*meta.file_path).exists() {
-                    // trace!("beatmap exists in db but not in songs folder: {}", meta.file_path);
+                    trace!("beatmap exists in db but not in fs: {}", meta.file_path);
                     continue
                 }
 
                 lock.add_beatmap(&meta);
                 status.lock().await.loading_done += 1;
             }
+            trace!("done beatmap manager init");
+            lock.initialized = true;
         }
         
         // look through the songs folder to make sure everything is already added
-        BEATMAP_MANAGER.write().await.initialized = true; // these are new maps
 
-        tokio::spawn(async move {
-
+        if existing_len == 0 {
             // get existing dirs
             let mut existing_paths = HashSet::new();
             for i in BEATMAP_MANAGER.read().await.beatmaps.iter() {
@@ -96,26 +104,25 @@ impl LoadingMenu {
             let folders = BeatmapManager::folders_to_check().await;
             let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
 
-            // {
-            //     let mut lock = status.lock().await;
-            //     lock.loading_done = 0;
-            //     lock.loading_count = folders.len();
-            //     lock.custom_message = "Checking folders...".to_owned();
-            // }
+            {
+                let mut lock = status.lock().await;
+                lock.loading_done = 0;
+                lock.loading_count = folders.len();
+                lock.custom_message = "Checking folders...".to_owned();
+            }
 
             trace!("loading from the disk");
             let mut manager = BEATMAP_MANAGER.write().await;
-            let len = manager.beatmaps.len();
             
             // this should probably be delegated to the background
             for f in folders.iter() {
                 manager.check_folder(f).await;
-                // status.lock().await.loading_done += 1;
+                status.lock().await.loading_done += 1;
             }
 
             let nlen = manager.beatmaps.len();
-            debug!("loaded {nlen} beatmaps ({} new)", nlen - len);
-        });
+            debug!("loaded {nlen} beatmaps ({} new)", nlen - existing_len);
+        }
 
 
     }
@@ -185,13 +192,13 @@ impl AsyncMenu<Game> for LoadingMenu {
                         font
                     )
                 }
-                LoadingStage::Database => {
+                LoadingStage::Difficulties => {
                     text = Text::new(
                         text_color,
                         -100.0,
                         Vector2::ZERO,
                         32,
-                        format!("Loading Database"),
+                        format!("Loading Difficulties"),
                         font
                     )
                 }
@@ -252,7 +259,7 @@ impl LoadingStatus {
 #[derive(Clone, Copy, Debug)]
 enum LoadingStage {
     None,
-    Database,
+    Difficulties,
     Beatmaps,
     Audio,
 

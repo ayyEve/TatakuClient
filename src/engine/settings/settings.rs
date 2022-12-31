@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-
 const SETTINGS_FILE:&str = "settings.json";
 
 #[macro_export]
@@ -113,6 +112,8 @@ pub struct Settings {
     // skin settings
     #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
     pub current_skin: String,
+    #[Setting(text="Theme", dropdown="SelectedTheme")]
+    pub theme: SelectedTheme,
 
 
     // misc keybinds
@@ -251,7 +252,8 @@ impl Default for Settings {
 
             external_games_folders: Vec::new(),
 
-            skip_autosaveing: false
+            skip_autosaveing: false,
+            theme: SelectedTheme::Tataku
         }
     }
 }

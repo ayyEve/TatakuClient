@@ -222,17 +222,21 @@ impl AsyncMenu<Game> for MainMenu {
         self.song_display.update();
 
         if self.current_skin.update() {
+            self.visualization.reload_skin().await;
+
             self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
             // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
             self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
             self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
 
+            self.window_size_changed(self.window_size.clone()).await;
+
             if self.menu_visible {
-                self.window_size_changed(self.window_size.clone()).await;
                 self.show_menu();
             } else {
-                self.window_size_changed(self.window_size.clone()).await;
+                self.hide_menu();
             }
+
         }
 
         let mut song_done = false;
