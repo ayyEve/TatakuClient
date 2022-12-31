@@ -39,10 +39,12 @@ impl MainMenuButton {
         // limit by height, not width
         if let Some(image) = &mut image {
             image.scale = Vector2::ONE * (size.y / image.tex_size().y);
-            image.origin = Vector2::ZERO;
+            image.origin.y = 0.0;
+            // image.origin.x += 1.0;
             size = image.size();
             if let Some(hover) = &mut hover_image {
-                hover.origin = Vector2::ZERO;
+                hover.origin.y = 0.0;
+                // hover.origin.x += 1.0;
                 hover.scale = image.scale;
             }
         }
@@ -83,7 +85,7 @@ impl MainMenuButton {
         self.hide_time = -1.0;
 
 
-        let radius = (self.window_size.y / 6.0) * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
+        let radius = (self.window_size.y / 6.0) + X_OFFSET;
         let center = self.window_size / 2.0;
 
 

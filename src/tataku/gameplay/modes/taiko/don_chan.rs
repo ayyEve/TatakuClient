@@ -220,7 +220,7 @@ async fn load_anim(name: &str) -> Option<Animation> {
             Vector2::ONE
         );
         anim.origin.x = 0.0;
-        anim.origin.y *= 2.0; // since its center, just double it
+        anim.origin.y *= 2.0; // since its center, just double it to get the bottom
 
         Some(anim)
     }
