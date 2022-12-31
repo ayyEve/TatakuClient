@@ -352,9 +352,9 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
         self.reset_timer();
-        // if mods.ctrl && key == Key::N {
-        //     NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
-        // }
+        if mods.ctrl && key == Key::N {
+            NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
+        }
 
         let mut needs_manager_setup = false;
         // if mods.ctrl && key == Key::Up {

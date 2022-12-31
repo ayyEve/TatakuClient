@@ -24,7 +24,7 @@ pub struct BeatmapsetItem {
     display_text: String,
     double_clicked: bool,
 
-    button_image: Option<SkinnedButton>
+    button_image: Option<SkinnedButton>,
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
@@ -41,7 +41,7 @@ impl BeatmapsetItem {
             mods: ModManagerHelper::new(),
             playmode: CurrentPlaymodeHelper::new(),
             double_clicked: false,
-            button_image: SkinnedButton::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE, 5.0).await,
+            button_image: SkinnedButton::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE).await,
         }
     }
 
@@ -95,6 +95,9 @@ impl ScrollableItem for BeatmapsetItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.double_clicked)}
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.scale = scale;
+        if let Some(btn) = &mut self.button_image {
+            btn.set_size(BEATMAPSET_ITEM_SIZE * scale)
+        }
     }
 
     fn on_click(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
@@ -165,17 +168,21 @@ impl ScrollableItem for BeatmapsetItem {
 
     }
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let font = get_font();
+        let color = [0.2, 0.2, 0.2, 1.0].into();
 
         // draw rectangle
-        if let Some(mut button_image) = self.button_image.clone() {
-            button_image.pos = self.pos;
+        if let Some(button_image) = &mut self.button_image {
             // button_image
-            button_image.draw(_args, pos_offset, list);
+            let color = if self.hover { Color::BLUE } else if self.selected { Color::RED } else { color };
+
+            button_image.pos = self.pos;
+            button_image.color = color;
+            button_image.draw(args, parent_depth + 5.0, pos_offset, list);
         } else {
             list.push(Rectangle::new(
-                [0.2, 0.2, 0.2, 1.0].into(),
+                color,
                 parent_depth + 5.0,
                 self.pos + pos_offset,
                 BEATMAPSET_ITEM_SIZE * self.scale,
@@ -193,7 +200,7 @@ impl ScrollableItem for BeatmapsetItem {
         let title_line = Text::new(
             Color::WHITE,
             parent_depth + 4.0,
-            self.pos + pos_offset + Vector2::new(15.0, 5.0),
+            self.pos + pos_offset + Vector2::new(20.0, 10.0),
             (15.0 * self.scale.y) as u32,
             self.display_text.clone(),
             font.clone()
@@ -251,30 +258,41 @@ impl ScrollableItem for BeatmapsetItem {
             //     index = 999;
             // }
             let index = self.index_at(self.mouse_pos);
+            let mut btn_base = self.button_image.clone();
+            if let Some(btn) = &mut btn_base {
+                btn.set_size(BEATMAP_ITEM_SIZE * self.scale);
+            }
 
             for i in 0..self.beatmaps.len() {
                 let meta = &mut self.beatmaps[i];
 
                 // bounding rect
-                list.push(Rectangle::new(
-                    [0.2, 0.2, 0.2, 1.0].into(),
-                    parent_depth + 5.0,
-                    pos,
-                    BEATMAP_ITEM_SIZE * self.scale,
-                    if i == index { // hover
-                        Some(Border::new(Color::BLUE, 1.0))
-                    } else if i == self.selected_index { // selected
-                        Some(Border::new(Color::RED, 1.0))
-                    } else {
-                        Some(Border::new(Color::WHITE * 0.8, 1.0))
-                    }
-                ).shape(Shape::Round(5.0, 10)));
+                if let Some(btn) = &mut btn_base {
+                    btn.color = if i == index { Color::BLUE } else if i == self.selected_index { Color::RED } else { [0.2, 0.2, 0.2, 1.0].into() };
+                    btn.pos = pos;
+                    btn.draw(args, parent_depth + 5.0, Vector2::ZERO, list);
+                } else {
+                    list.push(Rectangle::new(
+                        [0.2, 0.2, 0.2, 1.0].into(),
+                        parent_depth + 5.0,
+                        pos,
+                        BEATMAP_ITEM_SIZE * self.scale,
+                        if i == index { // hover
+                            Some(Border::new(Color::BLUE, 1.0))
+                        } else if i == self.selected_index { // selected
+                            Some(Border::new(Color::RED, 1.0))
+                        } else {
+                            Some(Border::new(Color::WHITE * 0.8, 1.0))
+                        }
+                    ).shape(Shape::Round(5.0, 10)));
+                }
+
 
                 // version text
                 list.push(Text::new(
                     Color::WHITE,
                     parent_depth + 4.0,
-                    pos + Vector2::new(5.0, 5.0) * self.scale,
+                    pos + Vector2::new(10.0, 5.0) * self.scale,
                     (12.0 * self.scale.y) as u32,
                     format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     font.clone()
@@ -287,7 +305,7 @@ impl ScrollableItem for BeatmapsetItem {
                     list.push(Text::new(
                         Color::WHITE,
                         parent_depth + 4.0,
-                        pos + Vector2::new(5.0, 5.0 + 20.0) * self.scale,
+                        pos + Vector2::new(10.0, 5.0 + 20.0) * self.scale,
                         (12.0 * self.scale.y) as u32,
                         info.get_diff_string(meta, &self.mods),
                         font.clone()
@@ -298,6 +316,7 @@ impl ScrollableItem for BeatmapsetItem {
                 pos.y += (BEATMAP_ITEM_SIZE.y + BEATMAP_ITEM_Y_PADDING) * self.scale.y;
             }
         }
+    
     }
 
 }

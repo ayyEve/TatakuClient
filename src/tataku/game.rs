@@ -308,10 +308,10 @@ impl Game {
         let mut current_state = std::mem::take(&mut self.current_state);
 
         // update counters
-        self.fps_display.update();
-        self.update_display.update();
-        self.render_display.update();
-        self.input_display.update();
+        self.fps_display.update().await;
+        self.update_display.update().await;
+        self.render_display.update().await;
+        self.input_display.update().await;
 
         // read input events
         let mouse_pos = self.input_manager.mouse_pos;

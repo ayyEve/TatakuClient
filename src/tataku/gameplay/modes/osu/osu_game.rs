@@ -167,7 +167,7 @@ impl OsuGame {
             image.pos = pos;
             image.depth = -2.0;
 
-            let scale = Vector2::ONE * scaling_helper.scale;
+            let scale = Vector2::ONE * scaling_helper.scaled_cs;
             image.scale = scale;
         }
 

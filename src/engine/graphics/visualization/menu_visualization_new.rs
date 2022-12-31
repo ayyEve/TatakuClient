@@ -46,7 +46,12 @@ impl MenuVisualizationNew {
         let window_size = WindowSizeHelper::new();
         let initial_inner_radius = window_size.y / 6.0;
 
-        let mut cookie = load_image("./resources/icon.png", false, Vector2::ONE).await.expect("no cookie image?");
+        let mut cookie = SkinManager::get_texture("menu-osu", true).await;
+        if cookie.is_none() {
+            cookie = load_image("./resources/icon.png", false, Vector2::ONE).await;
+        }
+
+        let mut cookie = cookie.expect("no cookie image?");
         cookie.set_size(Vector2::ONE * initial_inner_radius);
 
         Self {

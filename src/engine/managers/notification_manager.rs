@@ -30,7 +30,9 @@ pub struct NotificationManager {
     processed_notifs: Vec<ProcessedNotif>,
     pending_notifs: Vec<Notification>,
 
+    current_skin: CurrentSkinHelper,
     window_size: WindowSizeHelper,
+    notification_image: Option<Image>,
 }
 impl NotificationManager { // static
     pub async fn add_notification(notif: Notification) {
@@ -61,47 +63,37 @@ impl NotificationManager { // non-static
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
             
+            current_skin: CurrentSkinHelper::new(),
             window_size: WindowSizeHelper::new(),
+            notification_image: None
         }
     }
 
     pub async fn update(&mut self) {
         self.window_size.update();
+        if self.current_skin.update() {
+            self.notification_image = SkinManager::get_texture("notification", true).await;
+        }
 
         for notif in std::mem::take(&mut self.pending_notifs) {
             // trace!("adding notif");
             let new = ProcessedNotif::new(notif);
 
-            // // move all the other notifs up
-            // let offset = new.size.y + NOTIF_MARGIN.y;
-            // for n in self.processed_notifs.iter_mut() {
-            //     n.pos.y -= offset;
-            // }
-
             // add the new one
             self.processed_notifs.push(new);
         }
 
-        // let mut removed_height = 0.0;
         self.processed_notifs.retain(|n| {
             let keep = n.check_time();
-            // if !keep {removed_height += n.size.y + NOTIF_Y_MARGIN}
             keep
         });
-
-
-        // if removed_height > 0.0 {
-        //     for i in self.processed_notifs.iter_mut() {
-        //         i.pos.y += removed_height;
-        //     }
-        // }
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         let mut current_pos = self.window_size.0;
 
         for i in self.processed_notifs.iter().rev() {
-            i.draw(current_pos, list);
+            i.draw(current_pos, &self.notification_image, list);
             current_pos.y -= i.size.y + NOTIF_MARGIN.y;
         }
     }
@@ -208,20 +200,28 @@ impl ProcessedNotif {
         self.time.elapsed().as_secs_f32() * 1000.0 < self.notification.duration
     }
 
-    fn draw(&self, pos_offset: Vector2, list: &mut RenderableCollection) {
+    fn draw(&self, pos_offset: Vector2, image: &Option<Image>, list: &mut RenderableCollection) {
         let pos = pos_offset - Vector2::new(self.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + self.size.y);
 
         // bg
-        list.push(Rectangle::new(
-            NOTIF_BG_COLOR,
-            NOTIF_DEPTH + 0.1,
-            pos,
-            self.size,
-            Some(Border::new(
-                self.notification.color,
-                1.2
-            ))
-        ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10)));
+        if let Some(mut image) = image.clone() {
+            image.pos = pos;
+            image.set_size(self.size);
+            image.color = self.notification.color;
+
+            list.push(image);
+        } else {
+            list.push(Rectangle::new(
+                NOTIF_BG_COLOR,
+                NOTIF_DEPTH + 0.1,
+                pos,
+                self.size,
+                Some(Border::new(
+                    self.notification.color,
+                    1.2
+                ))
+            ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10)));
+        }
 
         let mut text = self.text.clone();
         text.pos = pos + NOTIF_PADDING;

@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub struct SkinnedButton {
     pub pos: Vector2,
     pub size: Vector2,
+    pub color: Color,
 
     left_image: Image,
     middle_image: Image,
@@ -12,36 +13,46 @@ pub struct SkinnedButton {
 }
 
 impl SkinnedButton {
-    pub async fn new(mut pos: Vector2, mut size: Vector2, depth: f64) -> Option<Self> {
-        return None;
-
+    pub async fn new(pos: Vector2, mut size: Vector2) -> Option<Self> {
+        // return None;
         let mut left_image = SkinManager::get_texture("button-left", true).await?;
-        let mut middle_image = SkinManager::get_texture("button-middle", true).await?;
+        left_image.origin = Vector2::ZERO;
+        
         let mut right_image = SkinManager::get_texture("button-right", true).await?;
+        right_image.origin = Vector2::ZERO;
 
-        size += left_image.size().x_portion() + right_image.size().x_portion();
+        let mut middle_image = SkinManager::get_texture("button-middle", true).await?;
+        middle_image.origin = Vector2::ZERO;
 
-        let x_scale = size.x / (left_image.size().x + middle_image.size().x + right_image.size().x);
-
-        for i in [&mut left_image, &mut middle_image, &mut right_image] {
-            i.depth = depth;
-            i.origin = Vector2::ZERO;
-            i.color = Color::GRAY;
-
-            i.scale = Vector2::new(x_scale, size.y / i.size().y);
-        }
-
-
-        Some(Self {
+        let mut s = Self {
             pos,
             size,
+            color: Color::WHITE,
             left_image,
             middle_image,
             right_image,
-        })
+        };
+        s.set_size(size);
+
+        Some(s)
     }
 
-    pub fn draw(&self, _args: RenderArgs, pos_offset: Vector2, list: &mut RenderableCollection) {
+    pub fn set_size(&mut self, size: Vector2) {
+        self.left_image.scale = Vector2::ONE * size.y / self.left_image.tex_size().y;
+        self.right_image.scale = Vector2::ONE * size.y / self.right_image.tex_size().y;
+
+        let w1 = self.left_image.size().x;
+        let w3 = self.right_image.size().x;
+        self.right_image.pos = Vector2::with_x(size.x - w3);
+
+        self.middle_image.pos = Vector2::with_x(w1);
+        self.middle_image.set_size(Vector2::new(
+            size.x - (w1 + w3),
+            size.y
+        ));
+    }
+
+    pub fn draw(&self, _args: RenderArgs, depth: f64, pos_offset: Vector2, list: &mut RenderableCollection) {
         let mut current_pos = self.pos + pos_offset;
 
         for mut i in [
@@ -49,8 +60,9 @@ impl SkinnedButton {
             self.middle_image.clone(),
             self.right_image.clone(),
         ] {
-            i.pos = current_pos;
-            current_pos.x += i.size().x;
+            i.pos += current_pos;
+            i.depth = depth;
+            i.color = self.color;
             list.push(i)
         }
     }

@@ -18,31 +18,40 @@ pub struct FpsDisplay {
 
     window_size: WindowSizeHelper,
     pos_count: u8,
+
+    // skin_helper: CurrentSkinHelper,
+    // number_image: Option<SkinnedNumber>,
 }
 impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
     pub async fn new(name:&str, pos_count:u8) -> Self {
         let window_size = WindowSizeHelper::new();
+        let pos = Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f64);
 
         Self {
             count: 0,
             last: 0.0,
             timer: Instant::now(),
             name: name.to_owned(),
-            pos: Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f64),
+            pos,
 
             frametime_last: 0.0,
             frametime_last_draw: 0.0,
             frametime_timer: Instant::now(),
             window_size,
+            // skin_helper: CurrentSkinHelper::new(),
+            // number_image: SkinnedNumber::new(Color::BLACK, 0.0, pos, 0.0, "fps", None, 2).await.ok(),
             pos_count
         }
     }
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         if self.window_size.update() {
             self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
         }
+        // if self.skin_helper.update() {
+        //     self.number_image = SkinnedNumber::new(Color::BLACK, 0.0, self.pos, self.frametime_last_draw as f64, "fps", None, 2).await.ok();
+        // }
         
         let now = Instant::now();
         let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
@@ -56,6 +65,10 @@ impl FpsDisplay {
             self.frametime_last_draw = self.frametime_last;
             self.frametime_last = 0.0;
             // info!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last);
+
+            // if let Some(n) = &mut self.number_image {
+            //     n.number = self.frametime_last_draw as f64;
+            // }
         }
     }
 
@@ -68,14 +81,18 @@ impl FpsDisplay {
     pub fn draw(&self, list:&mut RenderableCollection) {
         let font = get_font();
 
-        list.push(Text::new(
-            Color::BLACK,
-            -99_999_999.99, // should be on top of everything
-            self.pos + TEXT_PADDING,
-            12,
-            format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
-            font.clone()
-        ));
+        // if let Some(i) = self.number_image.clone() {
+
+        // } else {
+            list.push(Text::new(
+                Color::BLACK,
+                -99_999_999.99, // should be on top of everything
+                self.pos + TEXT_PADDING,
+                12,
+                format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
+                font.clone()
+            ));
+        // }
 
 
         list.push(visibility_bg(self.pos, SIZE, -99_999_999.98));
@@ -119,7 +136,7 @@ impl AsyncFpsDisplay {
         }
     }
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         if self.window_size.update() {
             self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
         }

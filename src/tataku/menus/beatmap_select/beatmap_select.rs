@@ -43,6 +43,7 @@ pub struct BeatmapSelectMenu {
     window_size: Arc<WindowSize>,
     settings: SettingsHelper,
     mods: ModManagerHelper,
+    current_skin: CurrentSkinHelper,
 
     menu_game: MenuGameHelper,
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
@@ -129,6 +130,7 @@ impl BeatmapSelectMenu {
 
             diffcalc_complete: None,
             new_beatmap_helper: LatestBeatmapHelper::new(),
+            current_skin: CurrentSkinHelper::new(),
         };
 
         // reposition things
@@ -488,6 +490,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         let mut refresh_pending = false;
+
+        if self.current_skin.update() {
+            filter_pending = true;
+        }
 
         if self.new_beatmap_helper.update() {
             BEATMAP_MANAGER.write().await.set_current_beatmap(game, &self.new_beatmap_helper.0, true).await;
