@@ -1201,7 +1201,7 @@ impl GameModeProperties for TaikoGame {
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
             Vector2::with_y(self.taiko_settings.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
-            LeaderboardElement::new()
+            LeaderboardElement::new().await
         ).await);
 
         // don chan

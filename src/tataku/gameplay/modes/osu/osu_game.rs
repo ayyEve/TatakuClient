@@ -1156,7 +1156,7 @@ impl GameModeProperties for OsuGame {
         ui_elements.push(UIElement::new(
             &get_name("leaderboard".to_owned()),
             Vector2::with_y(window_size.y / 3.0),
-            LeaderboardElement::new()
+            LeaderboardElement::new().await
         ).await);
         
     }

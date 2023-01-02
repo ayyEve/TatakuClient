@@ -20,30 +20,50 @@ pub struct LeaderboardItem {
     score_mods: String,
 
     ui_scale: Vector2,
+
+    pub color_override: Option<Color>,
+    pub text_color_override: Option<Color>,
+    pub image: Option<Image>,
+    pub theme: ThemeHelper,
 }
 impl LeaderboardItem {
     pub fn new(score:IngameScore) -> LeaderboardItem {
+        let pos = Vector2::ZERO;
+        let size = LEADERBOARD_ITEM_SIZE;
+
         let tag = score.hash(); //username.clone();
         let font = get_font();
         let score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
 
         LeaderboardItem {
-            pos: Vector2::ZERO,
-            size: LEADERBOARD_ITEM_SIZE,
+            pos,
+            size,
             score,
             tag,
             hover: false,
             selected: false,
             font,
             score_mods,
-            ui_scale: Vector2::ONE
+            ui_scale: Vector2::ONE,
+
+            color_override: None,
+            text_color_override: None,
+            image: None,
+            theme: ThemeHelper::new(),
         }
+    }
+    pub async fn load_image(mut self) -> Self {
+        self.image = SkinManager::get_texture("menu-button-background", true).await;
+        self
     }
 }
 impl ScrollableItem for LeaderboardItem {
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = LEADERBOARD_ITEM_SIZE * scale;
+    }
+    fn update(&mut self) {
+        self.theme.update();
     }
 
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
@@ -56,19 +76,50 @@ impl ScrollableItem for LeaderboardItem {
         } else {
             String::new()
         };
+        
+        let color = if let Some(color) = self.color_override {
+            color
+        } else if self.selected {
+            self.theme.get_color(ThemeColor::LeaderboardSelect).unwrap_or(Color::BLUE)
+        } else if self.hover {
+            self.theme.get_color(ThemeColor::LeaderboardHover).unwrap_or(Color::RED)
+        } else {
+            self.theme.get_color(ThemeColor::LeaderboardBg).unwrap_or(Color::WHITE)
+        };
 
-        // bounding rect
-        list.push(Rectangle::new(
-            [0.2, 0.2, 0.2, 1.0].into(),
-            parent_depth + 5.0,
-            self.pos + pos_offset,
-            LEADERBOARD_ITEM_SIZE * self.ui_scale,
-            self.get_border_none(1.0)
-        ).shape(Shape::Round(5.0, 10)));
+        let text_color = if let Some(color) = self.text_color_override {
+            color
+        } else if self.selected {
+            self.theme.get_color(ThemeColor::LeaderboardTextSelected).unwrap_or(Color::WHITE)
+        } else if self.hover {
+            self.theme.get_color(ThemeColor::LeaderboardTextHovered).unwrap_or(Color::WHITE)
+        } else {
+            self.theme.get_color(ThemeColor::LeaderboardText).unwrap_or(Color::WHITE)
+        };
+
+        if let Some(mut img) = self.image.clone() {
+            img.pos = self.pos;
+            img.origin = Vector2::ZERO;
+            img.color = color;
+            img.depth = parent_depth + 5.0;
+            img.set_size(LEADERBOARD_ITEM_SIZE * self.ui_scale);
+
+            list.push(img)
+        } else {
+            // bounding rect
+            list.push(Rectangle::new(
+                [0.2, 0.2, 0.2, 1.0].into(),
+                parent_depth + 5.0,
+                self.pos + pos_offset,
+                LEADERBOARD_ITEM_SIZE * self.ui_scale,
+                Some(Border::new(color, 1.5 * self.ui_scale.y))
+            ).shape(Shape::Round(5.0, 10)));
+        }
+
 
         // score text
         list.push(Text::new(
-            Color::WHITE,
+            text_color,
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING * self.ui_scale,
             (15.0 * self.ui_scale.y) as u32,
@@ -78,7 +129,7 @@ impl ScrollableItem for LeaderboardItem {
 
         // combo text
         list.push(Text::new(
-            Color::WHITE,
+            text_color,
             parent_depth + 4.0,
             self.pos + pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * self.ui_scale,
             (12.0 * self.ui_scale.y) as u32,

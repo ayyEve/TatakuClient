@@ -46,6 +46,18 @@ pub enum ThemeColor {
     BeatmapSelectText,
     BeatmapSelectTextHovered,
     BeatmapSelectTextSelected,
+    
+    // leaderboard
+    LeaderboardBg,
+    LeaderboardHover,
+    LeaderboardSelect,
+    LeaderboardText,
+    LeaderboardTextHovered,
+    LeaderboardTextSelected,
+
+    LeaderboardCurrentScore,
+    LeaderboardPreviousScores,
+    LeaderboardPreviousBest,
 }
 
 #[allow(unused)]
@@ -141,6 +153,17 @@ pub fn osu_theme() -> Theme {
         (ThemeColor::BeatmapSelectText, Color::WHITE),
         (ThemeColor::BeatmapSelectTextHovered, Color::BLACK),
         (ThemeColor::BeatmapSelectTextSelected, Color::BLACK),
+
+        // leaderboard
+        (ThemeColor::LeaderboardBg, Color::BLACK.alpha(0.5)),
+        (ThemeColor::LeaderboardHover, lighten.alpha(0.5)),
+        (ThemeColor::LeaderboardSelect, lighten.alpha(0.5)),
+        (ThemeColor::LeaderboardText, Color::WHITE),
+        (ThemeColor::LeaderboardTextHovered, Color::WHITE),
+        (ThemeColor::LeaderboardTextSelected, Color::WHITE),
+
+        (ThemeColor::LeaderboardPreviousBest, col([255, 69, 0, 150])),
+        (ThemeColor::LeaderboardCurrentScore, Color::WHITE),
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
 

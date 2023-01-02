@@ -10,7 +10,7 @@ const DEFAULT_HEIGHT: f64 = 768.0;
 
 
 pub struct BeatmapSelectMenu {
-    current_scores: HashMap<String, Arc<Mutex<IngameScore>>>,
+    current_scores: HashMap<String, IngameScore>,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
     back_button: MenuButton<Font2, Text>,
@@ -384,7 +384,7 @@ impl BeatmapSelectMenu {
         if let Some(score_tag) = self.leaderboard_scroll.on_click_tagged(pos, button, mods) {
             // score display
             if let Some(score) = self.current_scores.get(&score_tag) {
-                let score = score.lock().await.clone();
+                let score = score.clone();
 
                 if let Some(selected) = &BEATMAP_MANAGER.read().await.current_beatmap {
                     let menu = ScoreMenu::new(&score, selected.clone(), false);
@@ -427,6 +427,14 @@ impl BeatmapSelectMenu {
         
         for i in self.interactables() {
             i.on_click_release(pos, button) 
+        }
+    }
+
+    async fn reload_leaderboard(&mut self) {
+        self.leaderboard_scroll.clear();
+        
+        for (_, s) in self.current_scores.iter() {
+            self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.clone()).load_image().await));
         }
     }
 }
@@ -493,6 +501,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         if self.current_skin.update() {
             filter_pending = true;
+            self.reload_leaderboard().await;
         }
 
         if self.new_beatmap_helper.update() {
@@ -531,8 +540,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
                 // add scores to list
                 for s in scores.iter() {
-                    self.current_scores.insert(s.hash(), Arc::new(Mutex::new(s.clone())));
-                    self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned())));
+                    self.current_scores.insert(s.hash(), s.clone());
+                    self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned()).load_image().await));
                 }
             }
         }
