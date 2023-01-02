@@ -51,9 +51,40 @@ impl Image {
         self.scale = size / tex_size;
     }
 
-    pub fn tex_size(&self) -> Vector2 {
+    fn raw_tex_size(&self) -> Vector2 {
         let (w, h) = self.tex.get_size();
-        Vector2::new(w as f64, h as f64) * self.base_scale
+        Vector2::new(w as f64, h as f64)
+    }
+    pub fn tex_size(&self) -> Vector2 { 
+        self.raw_tex_size() * self.base_scale
+    }
+
+    pub fn fit_to_bg_size(&mut self, size: Vector2, center: bool) {
+        // resize to maintain aspect ratio
+        let image_size = self.tex_size();
+        let ratio = image_size.y / image_size.x;
+
+        if image_size.x > image_size.y {
+            // use width as base
+            self.set_size(Vector2::new(
+                size.x,
+                size.x * ratio
+            ));
+        } else {
+            // use height as base
+            self.set_size(Vector2::new(
+                size.y * ratio,
+                size.y
+            ));
+        }
+
+        if center {
+            self.origin = self.raw_tex_size() / 2.0;
+            self.pos = size / 2.0;
+        } else {
+            self.origin = Vector2::ZERO;
+            self.pos = (size - self.size()) / 2.0;
+        }
     }
 
 

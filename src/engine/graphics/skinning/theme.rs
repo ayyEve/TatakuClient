@@ -3,11 +3,19 @@ use crate::{prelude::*, create_value_helper};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Theme {
     name: String,
-    colors: HashMap<ThemeColor, Color>
+    colors: HashMap<ThemeColor, Color>,
+    positions: HashMap<ThemePosition, Vector2>,
+    scales: HashMap<ThemeScale, Vector2>,
 }
 impl Theme {
     pub fn get_color(&self, color: ThemeColor) -> Option<Color> {
         self.colors.get(&color).cloned()
+    }
+    pub fn get_pos(&self, pos: ThemePosition) -> Option<Vector2> {
+        self.positions.get(&pos).cloned()
+    }
+    pub fn get_scale(&self, scale: ThemeScale) -> Option<Vector2> {
+        self.scales.get(&scale).cloned()
     }
 }
 
@@ -23,7 +31,6 @@ create_value_helper!(CurrentTheme, Theme, ThemeHelper);
 #[allow(unused)]
 #[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
 pub enum ThemeColor {
-
     // main menu
     MainMenuPrimary,
     MainMenuSecondary,
@@ -35,15 +42,41 @@ pub enum ThemeColor {
     BeatmapSelectMapBg,
     BeatmapSelectMapHover,
     BeatmapSelectMapSelect,
-    BeatmapSelectText,
-    BeatmapSelectTextSelected,
 
+    BeatmapSelectText,
+    BeatmapSelectTextHovered,
+    BeatmapSelectTextSelected,
+}
+
+#[allow(unused)]
+#[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
+pub enum ThemePosition {
+    // beatmap select
+    BeatmapSelectSetSelectedOffset,
+    BeatmapSelectSetHoveredOffset,
+    BeatmapSelectSetOffset,
+
+    BeatmapSelectMapSelectedOffset,
+    BeatmapSelectMapHoveredOffset,
+    BeatmapSelectMapOffset,
+}
+
+#[allow(unused)]
+#[derive(Debug, Serialize, Deserialize, Hash, Eq, PartialEq, Copy, Clone)]
+pub enum ThemeScale {
+    // beatmap select
+    BeatmapSelectSetSelectedScale,
+    BeatmapSelectSetHoveredScale,
+    BeatmapSelectSetScale,
+
+    BeatmapSelectMapSelectedScale,
+    BeatmapSelectMapHoveredScale,
+    BeatmapSelectMapScale,
 }
 
 
-
-
 pub fn tataku_theme() -> Theme {
+
     let name = "Tataku".to_owned();
     let colors = [
         // main menu
@@ -61,9 +94,26 @@ pub fn tataku_theme() -> Theme {
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
 
+    use ThemePosition::*;
+    let positions = [
+        // beatmap select
+        (BeatmapSelectSetSelectedOffset, Vector2::ZERO),
+        (BeatmapSelectSetHoveredOffset, Vector2::ZERO),
+    ].into_iter().collect::<HashMap<ThemePosition, Vector2>>();
+
+    use ThemeScale::*;
+    let scales = [
+        // beatmap select
+        (BeatmapSelectSetSelectedScale, Vector2::ONE),
+        (BeatmapSelectSetHoveredScale, Vector2::ONE),
+    ].into_iter().collect::<HashMap<ThemeScale, Vector2>>();
+
+
     Theme {
         name, 
-        colors
+        colors,
+        scales,
+        positions
     }
 }
 
@@ -89,13 +139,41 @@ pub fn osu_theme() -> Theme {
         (ThemeColor::BeatmapSelectMapHover, blue / lighten),
         (ThemeColor::BeatmapSelectMapSelect, white),
         (ThemeColor::BeatmapSelectText, Color::WHITE),
+        (ThemeColor::BeatmapSelectTextHovered, Color::BLACK),
         (ThemeColor::BeatmapSelectTextSelected, Color::BLACK),
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
 
+    
+    use ThemePosition::*;
+    let positions = [
+        // beatmap select
+        (BeatmapSelectSetSelectedOffset, Vector2::ZERO),
+        (BeatmapSelectSetHoveredOffset, Vector2::ZERO),
+        (BeatmapSelectSetOffset, Vector2::with_x(20.0)),
+
+        // (BeatmapSelectMapSelectedOffset, Vector2::with_x(-20.0)),
+        // (BeatmapSelectMapHoveredOffset, Vector2::with_x(-20.0)),
+        // (BeatmapSelectMapOffset, Vector2::with_x(-20.0)),
+    ].into_iter().collect::<HashMap<ThemePosition, Vector2>>();
+
+    
+    use ThemeScale::*;
+    let scales = [
+        // beatmap select
+        (BeatmapSelectSetSelectedScale, Vector2::ONE * 1.4),
+        (BeatmapSelectSetHoveredScale, Vector2::ONE * 1.4),
+
+        (BeatmapSelectMapSelectedScale, Vector2::ONE * 1.4),
+        (BeatmapSelectMapHoveredScale, Vector2::ONE * 1.4),
+        (BeatmapSelectMapScale, Vector2::ONE * 1.4),
+    ].into_iter().collect::<HashMap<ThemeScale, Vector2>>();
+
     Theme {
         name, 
-        colors
+        colors,
+        scales,
+        positions
     }
 }
 

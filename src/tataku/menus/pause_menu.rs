@@ -15,9 +15,11 @@ pub struct PauseMenu {
     selected_index: i8,
 
     window_size: Arc<WindowSize>,
+
+    bg: Option<Image>
 }
 impl PauseMenu {
-    pub fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
+    pub async fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
         let window_size = WindowSize::get();
         let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
         let font = get_font();
@@ -29,6 +31,16 @@ impl PauseMenu {
         n += 1.0;
         let exit_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Exit", font.clone());
 
+        let mut bg = if is_fail_menu {
+            SkinManager::get_texture("fail-background", true).await
+        } else {
+            SkinManager::get_texture("pause-overlay", true).await
+        };
+
+        if let Some(bg) = &mut bg {
+            bg.fit_to_bg_size(window_size.0, true);
+        }
+
         PauseMenu {
             manager,
             is_fail_menu,
@@ -36,7 +48,8 @@ impl PauseMenu {
             retry_button,
             exit_button,
             selected_index: 99,
-            window_size
+            window_size,
+            bg
         }
     }
 
@@ -72,6 +85,11 @@ impl AsyncMenu<Game> for PauseMenu {
     async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
         let pos_offset = Vector2::ZERO;
         let depth = 0.0;
+
+        if let Some(bg) = self.bg.clone() {
+            list.push(bg)
+        }
+
 
         // draw buttons
         if !self.is_fail_menu {
@@ -146,7 +164,7 @@ impl ControllerInputMenu<Game> for PauseMenu {
 
         if changed {
             let mut continue_index = 0;
-            if self.is_fail_menu {continue_index = -1}
+            if self.is_fail_menu { continue_index = -1 }
             self.continue_button.set_selected(self.selected_index == continue_index);
             self.retry_button.set_selected(self.selected_index == continue_index + 1);
             self.exit_button.set_selected(self.selected_index == continue_index + 2);

@@ -579,7 +579,7 @@ impl Game {
                 if !manager.failed && manager.can_pause() && (manager.should_pause || controller_pause) {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
-                    let menu = PauseMenu::new(manager2, false);
+                    let menu = PauseMenu::new(manager2, false).await;
                     self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
                 } else {
 
@@ -943,26 +943,8 @@ impl Game {
     }
 
     fn resize_bg(&mut self) {
-        if let Some(bg) = self.background_image.as_mut() {
-            bg.origin = Vector2::ZERO;
-            
-            // resize to maintain aspect ratio
-            let image_size = bg.tex_size();
-            let ratio = image_size.y / image_size.x;
-            if image_size.x > image_size.y {
-                // use width as base
-                bg.set_size(Vector2::new(
-                    self.window_size.x,
-                    self.window_size.x * ratio,
-                ));
-            } else {
-                // use height as base
-                bg.set_size(Vector2::new(
-                    self.window_size.y * ratio,
-                    self.window_size.y,
-                ));
-            }
-            bg.pos = (self.window_size.0 - bg.size()) / 2.0;
+        if let Some(bg) = &mut self.background_image {
+            bg.fit_to_bg_size(self.window_size.0, false);
         }
     }
 
@@ -1041,7 +1023,7 @@ impl Game {
         if manager.failed {
             trace!("player failed");
             let manager2 = std::mem::take(manager);
-            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true)))));
+            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true).await))));
             
         } else {
             let mut score = manager.score.clone();
