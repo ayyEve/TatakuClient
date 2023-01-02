@@ -1075,7 +1075,7 @@ impl IngameManager {
     }
 
     pub fn window_focus_lost(&mut self, got_focus: bool) {
-        info!("window focus changed");
+        // info!("window focus changed");
         if got_focus {
             self.pause_pending = false
         } else {

@@ -143,7 +143,7 @@ impl TaikoGame {
             image.pos = pos;
             image.depth = -2.0;
 
-            let radius = game_settings.note_radius * game_settings.big_note_multiplier * game_settings.hit_area_radius_mult;
+            let radius = game_settings.note_radius * game_settings.big_note_multiplier; // * game_settings.hit_area_radius_mult;
             image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
         }
 

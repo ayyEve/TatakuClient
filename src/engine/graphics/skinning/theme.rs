@@ -3,6 +3,7 @@ use crate::{prelude::*, create_value_helper};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Theme {
     name: String,
+
     colors: HashMap<ThemeColor, Color>,
     positions: HashMap<ThemePosition, Vector2>,
     scales: HashMap<ThemeScale, Vector2>,
@@ -163,7 +164,7 @@ pub fn osu_theme() -> Theme {
         (ThemeColor::LeaderboardTextSelected, Color::WHITE),
 
         (ThemeColor::LeaderboardPreviousBest, col([255, 69, 0, 150])),
-        (ThemeColor::LeaderboardCurrentScore, Color::WHITE),
+        (ThemeColor::LeaderboardCurrentScore, Color::BLACK.alpha(0.5)),
 
     ].into_iter().collect::<HashMap<ThemeColor, Color>>();
 
