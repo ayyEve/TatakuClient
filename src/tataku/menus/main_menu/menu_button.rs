@@ -207,7 +207,7 @@ impl MainMenuButton {
     }
 }
 impl ScrollableItemGettersSetters for MainMenuButton {
-    fn size(&self) -> Vector2 {self.size}
+    fn size(&self) -> Vector2 { self.size * self.window_size.y / 1080.0 }
     fn get_pos(&self) -> Vector2 {
         *self.shapes.pos
     }
