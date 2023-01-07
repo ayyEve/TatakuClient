@@ -4,14 +4,9 @@ use crate::prelude::*;
 extern crate log;
 
 // include files
-mod game;
-mod menus;
-mod errors;
+mod engine;
+mod tataku;
 mod prelude;
-mod graphics;
-mod beatmaps;
-mod gameplay;
-mod databases;
 pub mod commits;
 
 // folders
@@ -27,7 +22,6 @@ fn download_url<T:AsRef<str>>(file:T) -> String {
     format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
 }
 
-// https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
     // default audio
     "resources/audio/combobreak.mp3",
@@ -53,16 +47,15 @@ const FIRST_MAPS: &[u32] = &[
 // main fn
 #[tokio::main]
 async fn main() {
-    tataku_logging::init("logs/").unwrap();
-
-    let main_thread = tokio::task::LocalSet::new();
-
     // enter game dir
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
-            error!("error changing current dir: {}", e);
+            println!("error changing current dir: {}", e);
         }
     }
+
+    // setup logging
+    init_logging();
 
     // finish setting up
     setup().await;
@@ -70,8 +63,40 @@ async fn main() {
     // init skin manager
     SkinManager::init().await;
 
+
+    let mut play_game = true;
+
+    let mut args = std::env::args().map(|s|s.to_string());
+    args.next(); // skip the file param
+
+    // let path = std::env::current_exe().unwrap();
+    // println!("file hash: {}", get_file_hash(&path).unwrap());
+
+    if let Some(param1) = args.next() {
+        match &*param1 {
+            "--diff_calc" | "--diffcalc" | "-d" => {
+                play_game = false;
+                diff_calc_cli(&mut args).await;
+            }
+
+            _ => {}
+        }
+    }
+
+    if play_game {
+        start_game().await;
+
+        // game.await.ok().expect("error finishing game?");
+        info!("byebye!");
+    }
+
+}
+
+async fn start_game() {
+    let main_thread = tokio::task::LocalSet::new();
+
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
-    let (game_event_sender, game_event_receiver) = MultiBomb::new();
+    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
 
     // setup window
     trace!("creating window");
@@ -110,9 +135,6 @@ async fn main() {
     });
 
     let _ = tokio::join!(main_thread, game);
-    
-    // game.await.ok().expect("error finishing game?");
-    info!("byebye!");
 }
 
 
@@ -128,7 +150,7 @@ async fn setup() {
     check_folder("resources/audio");
     check_folder("resources/fonts");
 
-    info!("Folder check done, downloading files");
+    debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
@@ -156,7 +178,7 @@ async fn setup() {
     // check bass lib
     check_bass().await;
 
-    info!("File check done");
+    debug!("File check done");
 }
 
 
@@ -199,61 +221,24 @@ async fn check_bass() {
 }
 
 
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_number<T:Display>(num:T) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
+fn init_logging() {
+    // start log handler
+    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
 
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
+    // clean up any old log files
+    let Ok(files) = std::fs::read_dir("logs/") else { return };
+    let today = chrono::Utc::now().date_naive();
+    let Some(remove_date) = today.checked_sub_days(chrono::Days::new(5)) else { return warn!("Unable to determine log remove date")};
 
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
+    for file in files.filter_map(|f|f.ok()) {
+        let filename = file.file_name();
+        let Some(date) = filename.to_str().and_then(|s|s.split("--").next()) else { continue };
+        let Ok(date) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else { continue };
+
+        if date <= remove_date {
+            if let Err(e) = std::fs::remove_file(file.path()) {
+                error!("Error removing log file: {e}");
+            }
         }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        new_new += &format!(".{}", dec);
     }
-    new_new.trim_start_matches(",").to_owned()
-}
-
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_float<T:Display>(num:T, precis: usize) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
-
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
-
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        let dec = if dec.len() < precis {
-            format!("{}{}", dec, "0".repeat(precis - dec.len()))
-        } else {
-            dec.split_at(precis.min(dec.len())).0.to_owned()
-        };
-        new_new += &format!(".{}", dec);
-    } else if precis > 0 {
-        new_new += & format!(".{}", "0".repeat(precis))
-    }
-    new_new.trim_start_matches(",").to_owned()
 }

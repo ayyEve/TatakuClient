@@ -5,21 +5,28 @@ authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
 ]
-edition = "2018"
+edition = "2021"
 build = "build/mod.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["bass_audio", "discord"]
+default = ["desktop"]
 bass_audio = ["bass-rs"]
-neb_audio = ["cpal", "symphonia", "rustfft", "uuid"]
+# kira_audio = ["rustfft", "uuid"]
 discord = ["discord-rich-presence"]
 debug_sliders = []
 debug_hitsounds = []
+snipping = []
+debug_perf_rating = []
+log_frametimes = []
+
+desktop = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping"]
+mobile = ["pistoncore-glutin_window", "bass_audio", "discord"]
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
+tataku-client-proc-macros = { path = "./proc_macros" }
 # tataku-common = { path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-common" }
 
 # framework stuff
@@ -29,35 +36,34 @@ tokio = { version = "1.16", features = ["full"] }
 rusqlite = { version = "0.27", features = ["bundled"] }
 futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 async-trait = "0.1"
-rayon = "1.5.1"
 bombs = "0.1.5"
 triple_buffer = "6.0"
+crossbeam = "*"
+global_value_manager = "*"
 
 # gl/piston etc
 # careful when verison bumping these
 gl = "0.13"
-glfw = { version = "0.43.0", features = ["image"] }
-image = "0.23"
-piston = "0.53.0"
-lyon_tessellation = "0.17"
+glfw = { version = "0.47", features = ["image"] }
+image = "*"
 
-pistoncore-glfw_window = { version = "0.74" }
-ayyeve-piston-ui = { version = "0.5.3", registry = "tataku" }
-# ayyeve-piston-ui = {path="C:/Users/Eve/Desktop/Projects/rust/tataku/ayyeve-piston-ui"}
-piston2d-graphics = { version = "0.41.0", registry = "tataku" }
-piston2d-opengl_graphics = { version = "0.79.1", registry = "tataku" }
+
+pistoncore-glutin_window = { version = "0.70.1", optional=true}
+pistoncore-glfw_window = { version = "0.77", optional=true }
+
+ayyeve-piston-ui = "0.7"
 fontdue = "0.7"
+rectangle-pack = "0.4"
 
 
 
 # bass audio
-bass-rs = { version="0.1", optional = true }
+bass-rs = { version="0.2", optional = true }
 
-# neb audio
-cpal = { version = "0.13.3", optional = true }
-symphonia = { version = "0.3.0", default-features = false, features = ["mp3", "ogg", "wav", "pcm"], optional = true }
-rustfft = { version = "6.0", optional = true }
-uuid = { version = "0.8", features = ["v4"], optional = true }
+# other audio audio
+# kira = "0.7"
+# rustfft = { version = "6.0", optional = true }
+# uuid = { version = "0.8", features = ["v4"], optional = true }
 
 # networking
 sha2 = "0.10"
@@ -77,6 +83,9 @@ rand = "0.8.4"
 encoding_rs = "0.8"
 chrono = "0.4"
 lzma-rs = "0.2"
+png = "*"
+base64 = "*"
+fs_extra = "1.2.0"
 
 # logging
 tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }
