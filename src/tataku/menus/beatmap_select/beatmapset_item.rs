@@ -26,6 +26,7 @@ pub struct BeatmapsetItem {
 
     button_image: Option<Image>, //Option<GenericButtonImage>,
     theme: ThemeHelper,
+    skin: CurrentSkinHelper,
 }
 impl BeatmapsetItem {
     pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
@@ -33,6 +34,8 @@ impl BeatmapsetItem {
         if let Some(image) = &mut button_image {
             image.origin = Vector2::ZERO;
         }
+
+        let skin = CurrentSkinHelper::new();
 
         BeatmapsetItem {
             beatmaps, 
@@ -49,6 +52,7 @@ impl BeatmapsetItem {
             playmode: CurrentPlaymodeHelper::new(),
             double_clicked: false,
             button_image,
+            skin,
         }
     }
 
@@ -224,9 +228,10 @@ impl ScrollableItem for BeatmapsetItem {
     fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
         let font = get_font();
         let color = [0.2, 0.2, 0.2, 1.0].into();
-        let text_color = self.theme.get_color(ThemeColor::BeatmapSelectText).unwrap_or_else(||Color::WHITE);
-        let hovered_text_color = self.theme.get_color(ThemeColor::BeatmapSelectTextHovered).unwrap_or_else(||text_color);
-        let selected_text_color = self.theme.get_color(ThemeColor::BeatmapSelectTextSelected).unwrap_or_else(||text_color);
+        let text_color = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectText).unwrap_or_else(||Color::WHITE));
+
+        let hovered_text_color = self.skin.song_select_active_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectTextHovered).unwrap_or_else(||text_color));
+        let selected_text_color = self.skin.song_select_active_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectTextSelected).unwrap_or_else(||text_color));
 
         let scale = self.get_scale();
         let pos = self.get_pos() + pos_offset;

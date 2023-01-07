@@ -113,7 +113,7 @@ impl Game {
 
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
-        GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
+        // GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
         GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
 
         Self::load_theme(&self.settings.theme);
