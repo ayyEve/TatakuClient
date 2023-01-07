@@ -130,7 +130,7 @@ impl MainMenuButton {
         if !self.visible { return }
 
         let time = self.time();
-        self.visible = true;
+        self.visible = false;
         self.last_num = num;
         self.last_count = count;
         self.hide_time = time as f32;
@@ -311,7 +311,6 @@ impl ScrollableItem for MainMenuButton {
                 self.shapes.push(r);
                 self.shapes.push(txt);
             }
-
         }
 
         let time = self.timer.elapsed().as_secs_f64() * 1000.0;

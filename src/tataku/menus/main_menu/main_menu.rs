@@ -212,6 +212,8 @@ impl AsyncMenu<Game> for MainMenu {
             Self::update_online();
 
             self.setup_manager("on_change").await;
+            
+            self.hide_menu();
         } else {
             debug!("leaving main menu");
         }
