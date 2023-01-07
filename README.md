@@ -13,20 +13,16 @@ required deps:
    - pkg-config
    - libssl-dev
    - xorg-dev
-   - libxcb-shape0
-   - libxcb-render0
-   - libxcb-fixes0
+   - libxcb-shape0-dev
+   - libxcb-render0-dev
+   - libxcb-xfixes0-dev
 
 How to build:
  - install rust (https://rustup.rs/)
 
- - add nightly toolchain (required until iter_mut is added to stable)
-   - rustup toolchain add nightly
-   - rustup override set nightly
-
  - build and run
   - cargo run --release
-   
+
 
 TODO:
 - // Gameplay
@@ -34,14 +30,17 @@ TODO:
  - multiplayer (oh boy lmao)
  - online replays
 
+- // UI
+ - skin folder overhaul (separate ui, gamemodes, etc)
+ - make things not ugly (help ;-;)
+
 - // Audio Engine
  - handle headphones being unplugged (might require a dropdown to select the output device)
 
 - // Code
  - handle peppy direct download moment
  - depth doc (detail what is drawn at what depth range)
-  
+
 maybe todo:
  - profiler
- - read osu replays
  - more mods

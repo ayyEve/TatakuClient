@@ -1,18 +1,12 @@
-// #![feature(vec_retain_mut)]
 use crate::prelude::*;
 
 #[macro_use]
 extern crate log;
 
 // include files
-mod game;
-mod menus;
-mod errors;
+mod engine;
+mod tataku;
 mod prelude;
-mod graphics;
-mod beatmaps;
-mod gameplay;
-mod databases;
 pub mod commits;
 
 // folders
@@ -20,21 +14,16 @@ pub const DOWNLOADS_DIR:&str = "downloads";
 pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
 pub const SKIN_FOLDER:&str = "skins";
-
+pub const REPLAY_EXPORTS_DIR:&str = "../replays";
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.xyz/tataku";
+
 #[inline]
 fn download_url<T:AsRef<str>>(file:T) -> String {
     format!("{}/{}", DOWNLOAD_URL_BASE, file.as_ref())
 }
 
-// https://cdn.ayyeve.xyz/taiko-rs/
 pub const REQUIRED_FILES:&[&str] = &[
-
     // default audio
-    "resources/audio/don.wav",
-    "resources/audio/kat.wav",
-    "resources/audio/bigdon.wav",
-    "resources/audio/bigkat.wav",
     "resources/audio/combobreak.mp3",
 
     // icons
@@ -54,19 +43,104 @@ const FIRST_MAPS: &[u32] = &[
     727903, // galaxy collapse (taiko)
 ];
 
+
 // main fn
 #[tokio::main]
 async fn main() {
-    tataku_logging::init("logs/").unwrap();
-
-    let mut main_benchmark = BenchmarkHelper::new("main");
-
+    // enter game dir
     if exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
-            error!("error changing current dir: {}", e);
+            println!("error changing current dir: {}", e);
         }
     }
-    
+
+    // setup logging
+    init_logging();
+
+    // finish setting up
+    setup().await;
+
+    // init skin manager
+    SkinManager::init().await;
+
+
+    let mut play_game = true;
+
+    let mut args = std::env::args().map(|s|s.to_string());
+    args.next(); // skip the file param
+
+    // let path = std::env::current_exe().unwrap();
+    // println!("file hash: {}", get_file_hash(&path).unwrap());
+
+    if let Some(param1) = args.next() {
+        match &*param1 {
+            "--diff_calc" | "--diffcalc" | "-d" => {
+                play_game = false;
+                diff_calc_cli(&mut args).await;
+            }
+
+            _ => {}
+        }
+    }
+
+    if play_game {
+        start_game().await;
+
+        // game.await.ok().expect("error finishing game?");
+        info!("byebye!");
+    }
+
+}
+
+async fn start_game() {
+    let main_thread = tokio::task::LocalSet::new();
+
+    let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
+    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
+
+    // setup window
+    trace!("creating window");
+    let mut window = GameWindow::start(render_queue_receiver, game_event_sender);
+
+    // texture load loop
+    main_thread.spawn_local(async {
+        info!("starting texture load loop");
+        texture_load_loop().await;
+        warn!("texture loop closed");
+    });
+
+    // start game
+    let game = tokio::spawn(async move {
+        info!("starting wait loop");
+        while !TEXTURE_LOAD_QUEUE.initialized() {
+            tokio::task::yield_now().await;
+            // tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        trace!("window ready");
+
+        // start the game
+        trace!("creating game");
+        let game = Game::new(render_queue_sender, game_event_receiver).await;
+        trace!("running game");
+        game.game_loop().await;
+        warn!("game closed");
+
+        TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::GameClose).ok().unwrap();
+    });
+
+    main_thread.spawn_local(async move {
+        trace!("window running");
+        window.run().await;
+        warn!("window closed");
+    });
+
+    let _ = tokio::join!(main_thread, game);
+}
+
+
+async fn setup() {
+    Settings::load().await;
+
     // check for missing folders
     check_folder(DOWNLOADS_DIR);
     check_folder(REPLAYS_DIR);
@@ -76,7 +150,7 @@ async fn main() {
     check_folder("resources/audio");
     check_folder("resources/fonts");
 
-    main_benchmark.log("Folder check done, downloading files", true);
+    debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
@@ -84,18 +158,14 @@ async fn main() {
     }
 
     // hitsounds
-    for sample_set in ["normal", "soft", "drum"] {
-        for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
-            let file = &format!("resources/audio/{}-{}.wav", sample_set, hitsound);
-            check_file(file, &download_url(file)).await;
+    for mode in ["", "taiko-"] {
+        for sample_set in ["normal", "soft", "drum"] {
+            for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
+                let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
+                check_file(&file, &download_url(&file)).await;
+            }
         }
     }
-
-
-    // init fonts
-    get_font();
-    get_fallback_font();
-    get_font_awesome();
     
     // check if songs folder is empty
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
@@ -108,13 +178,7 @@ async fn main() {
     // check bass lib
     check_bass().await;
 
-    main_benchmark.log("File check done", true);
-    
-    let game = Game::new();
-    main_benchmark.log("Game creation complete", true);
-
-    drop(main_benchmark);
-    game.game_loop();
+    debug!("File check done");
 }
 
 
@@ -125,7 +189,7 @@ async fn main() {
 async fn check_bass() {
     #[cfg(target_os = "windows")]
     let filename = "bass.dll";
-       
+    
     #[cfg(target_os = "linux")]
     let filename = "libbass.so";
 
@@ -157,74 +221,24 @@ async fn check_bass() {
 }
 
 
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_number<T:Display>(num:T) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
+fn init_logging() {
+    // start log handler
+    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
 
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
+    // clean up any old log files
+    let Ok(files) = std::fs::read_dir("logs/") else { return };
+    let today = chrono::Utc::now().date_naive();
+    let Some(remove_date) = today.checked_sub_days(chrono::Days::new(5)) else { return warn!("Unable to determine log remove date")};
 
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
+    for file in files.filter_map(|f|f.ok()) {
+        let filename = file.file_name();
+        let Some(date) = filename.to_str().and_then(|s|s.split("--").next()) else { continue };
+        let Ok(date) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else { continue };
+
+        if date <= remove_date {
+            if let Err(e) = std::fs::remove_file(file.path()) {
+                error!("Error removing log file: {e}");
+            }
         }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        new_new += &format!(".{}", dec);
-    }
-    new_new.trim_start_matches(",").to_owned()
-}
-
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_float<T:Display>(num:T, precis: usize) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
-
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
-
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        let dec = if dec.len() < precis {
-            format!("{}{}", dec, "0".repeat(precis - dec.len()))
-        } else {
-            dec.split_at(precis.min(dec.len())).0.to_owned()
-        };
-        new_new += &format!(".{}", dec);
-    } else if precis > 0 {
-        new_new += & format!(".{}", "0".repeat(precis))
-    }
-    new_new.trim_start_matches(",").to_owned()
-}
-
-// because rust broke the feature somehow
-pub trait RetainMut<T> {
-    fn retain_mut<F>(&mut self, f: F) where F:FnMut(&mut T) -> bool;
-}
-impl<T> RetainMut<T> for Vec<T> {
-    fn retain_mut<F>(&mut self, mut f: F) where F:FnMut(&mut T) -> bool {
-        *self = std::mem::take(self)
-            .into_iter()
-            .filter_map(|mut t| if f(&mut t) {Some(t)} else {None})
-            .collect()
     }
 }

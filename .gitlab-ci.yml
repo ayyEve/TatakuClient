@@ -1,0 +1,45 @@
+stages:
+  - build-client
+
+
+build-windows:
+  stage: build-client
+  image: rust:latest
+  script:
+    - cargo build --release
+    - cp ./target/release/tataku-client.exe //192.168.0.170/website/cdn/tataku/releases/windows/tataku-client.exe
+  tags:
+    - windows
+    - local
+    - non-vm
+
+
+build-linux:
+  stage: build-client
+  image: rust:latest
+  rules:
+    - if: $TATAKU_RELEASE_KEY != null
+  script:
+    - apt update
+    - apt install -y libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev
+    - cargo build --release
+    # copy somehow
+  tags:
+    - linux
+    - local
+    - never
+
+
+# TODO: build-mac
+build-mac:
+  stage: build-client
+  image: rust:latest
+  rules:
+    - if: $TATAKU_RELEASE_KEY != null
+  script:
+    - cargo build --release --verbose
+    - ./release/linux.sh
+  tags:
+    - mac
+    - local
+    - never #TODO: remove this when ready
