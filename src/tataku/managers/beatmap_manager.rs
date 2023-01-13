@@ -296,7 +296,6 @@ impl BeatmapManager {
 
             None => if let Some(map) = self.random_beatmap() {
                 self.set_current_beatmap(game, &map, false).await;
-
                 true
             } else {
                 false

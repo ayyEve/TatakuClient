@@ -37,7 +37,7 @@ impl SkinSelect {
         let selected = self.dropdown.get_value().downcast::<Option<SkinDropdownable>>();
         if let Ok(s) = selected {
             if let Some(SkinDropdownable::Skin(s)) = *s {
-                if s == self.current_skin {return}
+                if s == self.current_skin { return }
 
                 trace!("skin changing to {}", s);
                 self.current_skin = s.clone();

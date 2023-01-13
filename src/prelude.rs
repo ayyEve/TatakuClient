@@ -1,19 +1,15 @@
 // std imports
-pub use std::path::Path;
 pub use std::fmt::Display;
+pub use std::time::Duration;
 pub use std::f64::consts::PI;
-pub use std::collections::HashMap;
-pub use std::collections::HashSet;
-pub use std::time::{ 
-    Duration, 
-    // Instant 
-};
+pub use std::path::{ Path, PathBuf };
 pub use std::ops::{ Range, Deref, DerefMut };
+pub use std::collections::{ HashMap, HashSet };
 
 // sync imports
-pub use std::sync::{Arc, Weak};
-pub use std::sync::atomic::{*, Ordering::SeqCst};
-pub use std::sync::mpsc::{Sender, SyncSender, Receiver, sync_channel, channel};
+pub use std::sync::{ Arc, Weak };
+pub use std::sync::atomic::{ *, Ordering::SeqCst };
+pub use std::sync::mpsc::{ Sender, SyncSender, Receiver, sync_channel, channel };
 
 // bomb imports
 pub use bombs::*;
@@ -47,9 +43,9 @@ pub use opengl_graphics::ImageSize;
 pub use opengl_graphics::GlGraphics;
 
 // tokio imports
-pub use tokio::sync::{OnceCell, Mutex, RwLock};
+pub use tokio::sync::{ OnceCell, Mutex, RwLock };
 // serde imports
-pub use serde::{Serialize, Deserialize};
+pub use serde::{ Serialize, Deserialize };
 
 // ui imports
 // pub use ayyeve_piston_ui::menu::*;
@@ -71,44 +67,11 @@ pub use crate::get_settings;
 pub use crate::create_packet;
 pub use crate::get_settings_mut;
 
+// general game imports
 pub use crate::engine::*;
 pub use crate::tataku::*;
 pub use crate::tataku::modes::*;
 
-// // audio imports
-// pub use crate::engine::audio::*;
-
-// // game and helper imports
-// pub use crate::tataku::*;
-// pub use crate::tataku::menus::*;
-// pub use crate::engine::window::*;
-// pub use crate::engine::graphics::*;
-// pub use crate::tataku::managers::*;
-// pub use crate::engine;
-// pub use crate::tataku::helpers::{*, io::*, math::*, curve::*, key_counter::*, crypto::*};
-
-
-// // error imports
-// pub use crate::errors::*;
-
-// // gameplay imports
-// pub use crate::gameplay::*;
-// pub use crate::gameplay::modes::*;
-
-// // beatmap imports
-// pub use crate::beatmaps::Beatmap;
-// pub use crate::beatmaps::common::*;
-// pub use crate::beatmaps::osu::hitobject_defs::*;
-
-// // database imports
-// pub use crate::databases::*;
-
-// // online imports
-// pub use crate::send_packet;
-// pub use crate::create_packet;
-// pub use crate::tataku::online::*;
+// online imports
 pub use tataku_common::PacketId;
 pub use tataku_common::serialization::*;
-
-// skin imports
-// pub use crate::graphics::skinning::*;

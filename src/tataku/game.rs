@@ -1,34 +1,21 @@
-use std::path::PathBuf;
-
-use chrono::{ Datelike, Timelike };
-
 use crate::prelude::*;
+use chrono::{ Datelike, Timelike };
 
 /// how long do transitions between gamemodes last?
 const TRANSITION_TIME:u64 = 500;
 
-#[macro_export]
-macro_rules! err_text_notif {
-    ($str: expr) => {
-        NotificationManager::add_text_notification(
-            $str, 
-            5_000.0, 
-            Color::RED
-        ).await;
-    }
-}
-
 pub struct Game {
     // engine things
-    pub input_manager: InputManager,
-    pub volume_controller: VolumeControl,
+    input_manager: InputManager,
+    volume_controller: VolumeControl,
     
     pub menus: HashMap<&'static str, Arc<Mutex<dyn ControllerInputMenu<Game>>>>,
     pub current_state: GameState,
-    pub queued_state: GameState,
+    queued_state: GameState,
+    game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
+    render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
 
     pub dialogs: Vec<Box<dyn Dialog<Self>>>,
-    pub wallpapers: Vec<Image>,
 
     // fps
     fps_display: FpsDisplay,
@@ -42,12 +29,11 @@ pub struct Game {
     transition_timer: u64,
 
     // misc
-    pub game_start: Instant,
-    pub background_image: Option<Image>,
+    game_start: Instant,
+    background_image: Option<Image>,
+    wallpapers: Vec<Image>,
     // register_timings: (f32,f32,f32),
 
-    game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
-    render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
 
     settings: SettingsHelper,
     window_size: WindowSizeHelper,
@@ -136,19 +122,17 @@ impl Game {
         }
 
         
-        // region == menu setup ==
+        // == menu setup ==
 
         let mut loading_menu = LoadingMenu::new().await;
         loading_menu.load().await;
 
         // main menu
-        let main_menu = Arc::new(Mutex::new(MainMenu::new().await));
-        self.menus.insert("main", main_menu.clone());
+        self.menus.insert("main", Arc::new(Mutex::new(MainMenu::new().await)));
         trace!("main menu created");
 
         // setup beatmap select menu
-        let beatmap_menu = Arc::new(Mutex::new(BeatmapSelectMenu::new().await));
-        self.menus.insert("beatmap", beatmap_menu.clone());
+        self.menus.insert("beatmap", Arc::new(Mutex::new(BeatmapSelectMenu::new().await)));
         trace!("beatmap menu created");
 
         // // check git updates
@@ -398,19 +382,19 @@ impl Game {
             WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::TakeScreenshot(f)).unwrap();
 
             tokio::spawn(async move {
+                macro_rules! check {
+                    ($e:expr) => {
+                        match $e {
+                            Ok(e) => e,
+                            Err(e) => {
+                                NotificationManager::add_error_notification("Error saving screenshot", e).await;
+                                break;
+                            }
+                        }
+                    };
+                }
 
                 loop {
-                    macro_rules! check {
-                        ($e:expr) => {
-                            match $e {
-                                Ok(e) => e,
-                                Err(e) => {
-                                    NotificationManager::add_error_notification("Error saving screenshot", e).await;
-                                    break;
-                                }
-                            }
-                        };
-                    }
 
                     if let Some((data, width, height)) = b.exploded() {
                         // create file
@@ -812,7 +796,6 @@ impl Game {
         
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
-
     }
 
     async fn draw(&mut self, args: RenderArgs) {
@@ -959,6 +942,7 @@ impl Game {
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap();
             match *&ext {
+                // osu / quaver set file
                 "osz" | "qp" => {
                     if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
                         error!("Error copying file: {}", e);
@@ -995,23 +979,25 @@ impl Game {
     }
 
     pub async fn try_open_replay(&mut self, replay: Replay) {
-        if let Some(score) = &replay.score_data {
-            let mut manager = BEATMAP_MANAGER.write().await;
+        let Some(score) = &replay.score_data else {
+            NotificationManager::add_text_notification("Replay does not contain score data (too old?)", 5_000.0, Color::RED).await;
+            return;
+        };
 
-            if let Some(map) = manager.get_by_hash(&score.beatmap_hash) {
-                manager.set_current_beatmap(self, &map, true).await;
+        let mut manager = BEATMAP_MANAGER.write().await;
 
-                // move to a score menu with this as the score
-                let score = IngameScore::new(score.clone(), false, false);
-                let mut menu = ScoreMenu::new(&score, map, false);
-                menu.replay = Some(replay);
-                self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
-            } else {
-                err_text_notif!("You don't have this beatmap!");
-            }
-        } else {
-            err_text_notif!("Replay does not contain score data (too old?)");
-        }
+        let Some(map) = manager.get_by_hash(&score.beatmap_hash) else {
+            NotificationManager::add_text_notification("You don't have this beatmap!", 5_000.0, Color::RED).await;
+            return;
+        };
+
+        manager.set_current_beatmap(self, &map, true).await;
+
+        // move to a score menu with this as the score
+        let score = IngameScore::new(score.clone(), false, false);
+        let mut menu = ScoreMenu::new(&score, map, false);
+        menu.replay = Some(replay);
+        self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
     }
 
 

@@ -187,7 +187,7 @@ impl BeatmapSelectMenu {
         let mut full_list = Vec::new();
         
         // used to select the current map in the list
-        let current_hash = if let Some(map) = current_beatmap {map.beatmap_hash.clone()} else {String::new()};
+        let current_hash = current_beatmap.map(|m|m.beatmap_hash.clone()).unwrap_or_default();
 
         for maps in self.cached_maps.iter() {
             let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| {

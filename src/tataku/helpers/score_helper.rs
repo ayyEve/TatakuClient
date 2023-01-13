@@ -229,11 +229,8 @@ mod osu {
         trace!("osu beatmap id lookup");
         let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?.to_vec();
         let maps: Vec<OsuApiBeatmap> = serde_json::from_slice(bytes.as_slice()).ok()?;
-        if let Some(map) = maps.first() {
-            Some(map.beatmap_id.clone())
-        } else {
-            None
-        }
+
+        maps.first().map(|m|m.beatmap_id.clone())
     }
 
     pub async fn get_scores(map: &Arc<BeatmapMeta>, playmode: &String) -> Vec<IngameScore> {
@@ -345,11 +342,7 @@ mod quaver {
         let bytes = reqwest::get(url).await.ok()?.bytes().await.ok()?;
         let resp:QuaverResponse = serde_json::from_slice(&bytes).ok()?;
 
-        if let Some(map) = resp.map {
-            Some(map.id)
-        } else {
-            None
-        }
+        resp.map.map(|m|m.id)
     }
     
 
@@ -366,53 +359,50 @@ mod quaver {
     async fn get_scores_internal(map_hash: &String) -> TatakuResult<Vec<IngameScore>> {
 
         // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
-        if let Some(id) = fetch_beatmap_id(map_hash).await {
-            let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
+        let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(TatakuError::String("no osu map".to_owned()))};
+        let url = format!("https://api.quavergame.com/v1/scores/map/{id}");
 
-            let bytes = reqwest::get(url).await?.bytes().await?;
-            // online_scores = quaver::scores_from_api_response(bytes);
+        let bytes = reqwest::get(url).await?.bytes().await?;
+        // online_scores = quaver::scores_from_api_response(bytes);
 
-            let resp:QuaverResponse = serde_json::from_slice(&bytes)?;
+        let resp:QuaverResponse = serde_json::from_slice(&bytes)?;
 
-            Ok(resp.scores.unwrap_or_default().iter().map(|s| {
-                let mut judgments = HashMap::new();
-                judgments.insert("x50".to_owned(),   s.count_okay as u16);
-                judgments.insert("x100".to_owned(),  s.count_good as u16);
-                judgments.insert("x300".to_owned(),  s.count_marv as u16);
-                judgments.insert("xgeki".to_owned(), s.count_perf as u16);
-                judgments.insert("xkatu".to_owned(), s.count_great as u16);
-                judgments.insert("xmiss".to_owned(), s.count_miss as u16);
+        Ok(resp.scores.unwrap_or_default().iter().map(|s| {
+            let mut judgments = HashMap::new();
+            judgments.insert("x50".to_owned(),   s.count_okay as u16);
+            judgments.insert("x100".to_owned(),  s.count_good as u16);
+            judgments.insert("x300".to_owned(),  s.count_marv as u16);
+            judgments.insert("xgeki".to_owned(), s.count_perf as u16);
+            judgments.insert("xkatu".to_owned(), s.count_great as u16);
+            judgments.insert("xmiss".to_owned(), s.count_miss as u16);
 
 
-                let mut score = Score::default();
-                score.username = s.user.username.clone();
-                score.score = s.total_score;
-                score.combo = s.max_combo as u16;
-                score.max_combo = s.max_combo as u16;
-                score.judgments = judgments;
-                score.speed = 1.0;
-                score.accuracy = s.accuracy as f64 / 100.0;
-                // check mods
-                for m in s.mods_string.split(", ") {
-                    if m.ends_with("x") {
-                        if let Ok(speed) = m.trim_end_matches("x").parse() {
-                            score.speed = speed;
-                            continue;
-                        }
+            let mut score = Score::default();
+            score.username = s.user.username.clone();
+            score.score = s.total_score;
+            score.combo = s.max_combo as u16;
+            score.max_combo = s.max_combo as u16;
+            score.judgments = judgments;
+            score.speed = 1.0;
+            score.accuracy = s.accuracy as f64 / 100.0;
+            // check mods
+            for m in s.mods_string.split(", ") {
+                if m.ends_with("x") {
+                    if let Ok(speed) = m.trim_end_matches("x").parse() {
+                        score.speed = speed;
+                        continue;
                     }
-
-                    score.mods_mut().insert(m.to_lowercase());
                 }
-                
 
-                let mut score = IngameScore::new(score, false, false);
-                score.replay_location = ReplayLocation::Online(Arc::new(QuaverReplayDownloader::new(score.score.clone(), s.id)));
+                score.mods_mut().insert(m.to_lowercase());
+            }
+            
 
-                score
-            }).collect())
-        } else {
-            Err(TatakuError::String("no osu map".to_owned()))
-        }
+            let mut score = IngameScore::new(score, false, false);
+            score.replay_location = ReplayLocation::Online(Arc::new(QuaverReplayDownloader::new(score.score.clone(), s.id)));
+
+            score
+        }).collect())
     }
 
     // helper because im lazy
