@@ -158,11 +158,11 @@ impl OsuGame {
     }
 
     
-    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, manager: &mut IngameManager) {
+    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &StandardSettings, manager: &mut IngameManager) {
         if !hit_value.should_draw() { return }
 
         let color = hit_value.color();
-        let mut image = judgment_helper.get_from_scorehit(hit_value);
+        let mut image = if settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
             image.depth = -2.0;
@@ -483,7 +483,7 @@ impl GameMode for OsuGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
+                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -606,7 +606,7 @@ impl GameMode for OsuGame {
 
             for (add_combo, pos) in note.pending_combo() {
                 manager.add_judgment(&add_combo).await;
-                Self::add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, manager);
+                Self::add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
             }
 
             // check if note was missed
@@ -625,7 +625,7 @@ impl GameMode for OsuGame {
                         let j = OsuHitJudgments::Miss;
                         manager.add_judgment(&j).await;
 
-                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
+                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                     }
                     NoteType::Slider => {
                         // check slider release points
@@ -636,7 +636,7 @@ impl GameMode for OsuGame {
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, manager);
+                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                         }
 
                         if let OsuHitJudgments::Miss = judge {
@@ -659,7 +659,7 @@ impl GameMode for OsuGame {
                         let j = OsuHitJudgments::SpinnerMiss;
                         manager.add_judgment(&j).await;
 
-                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, manager);
+                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                     }
 
                     _ => {},

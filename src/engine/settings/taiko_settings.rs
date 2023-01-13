@@ -56,6 +56,8 @@ pub struct TaikoSettings {
     #[serde(skip)]
     pub kat_color: Color,
 
+    #[Setting(text="Use Skin Judgments")]
+    pub use_skin_judgments: bool,
     
     /// how far above the hit position should hit indicators be?
     #[Setting(text="Hit Judgment Y-Offset", min=0, max=100)]
@@ -123,7 +125,8 @@ impl Default for TaikoSettings {
             don_color: Color::new(1.0, 0.0, 0.0, 1.0),
             kat_color: Color::new(0.0, 0.0, 1.0, 1.0),
             
-            judgement_indicator_offset: 0.0
+            judgement_indicator_offset: 0.0,
+            use_skin_judgments: true
         }
     }
 }

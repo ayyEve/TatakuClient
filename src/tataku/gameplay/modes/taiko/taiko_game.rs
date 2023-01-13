@@ -138,7 +138,7 @@ impl TaikoGame {
         }
 
         let color = hit_value.color();
-        let mut image = judgment_helper.get_from_scorehit(hit_value);
+        let mut image = if game_settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
             image.depth = -2.0;
@@ -151,7 +151,7 @@ impl TaikoGame {
             pos, 
             time,
             -2.0,
-            game_settings.note_radius * 0.5 * if finisher_hit {game_settings.big_note_multiplier} else {1.0},
+            game_settings.note_radius * 0.5 * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 },
             color,
             image
         ))

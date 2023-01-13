@@ -25,7 +25,8 @@ pub struct ManiaSettings {
     
     /// how far from the hit position should hit indicators be?
     pub judgement_indicator_offset: f64,
-
+    
+    pub use_skin_judgments: bool,
 }
 impl Default for ManiaSettings {
     fn default() -> Self {
@@ -64,7 +65,8 @@ impl Default for ManiaSettings {
 
             // other
             judgements_per_column: false,
-            judgement_indicator_offset: 200.0
+            judgement_indicator_offset: 200.0,
+            use_skin_judgments: true
         }
     }
 }

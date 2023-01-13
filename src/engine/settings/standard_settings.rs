@@ -44,6 +44,9 @@ pub struct StandardSettings {
 
     #[Setting(text="Beatmap Combo Colors")]
     pub use_beatmap_combo_colors: bool,
+
+    #[Setting(text="Use Skin Judgments")]
+    pub use_skin_judgments: bool,
 }
 impl StandardSettings {
     pub fn get_playfield(&self) -> (f64, Vector2) {
@@ -82,6 +85,7 @@ impl Default for StandardSettings {
             approach_combo_color: true,
 
             use_beatmap_combo_colors: true,
+            use_skin_judgments: true
         }
     }
 }
