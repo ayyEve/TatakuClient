@@ -93,9 +93,12 @@ impl GameWindow {
         
         
         #[cfg(feature="desktop")] {
-            #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
-            #[cfg(target_os = "linux")] let window_ptr = window.window.get_x11_window();
-            #[cfg(target_os = "macos")] let window_ptr = window.window.get_cocoa_window();
+            let window_ptr = window.window.window_ptr() as *mut std::ffi::c_void;
+            // #[cfg(target_os = "windows")] let window_ptr = window.window.get_win32_window();
+            // #[cfg(target_os = "macos")] let window_ptr = window.window.get_cocoa_window();
+            // #[cfg(all(any(target_os = "linux", target_os = "freebsd"), not(feature = "wayland")))] let window_ptr = window.window.get_x11_window();
+            // #[cfg(all(any(target_os = "linux", target_os = "freebsd"), feature = "wayland"))] let window_ptr = window.window.get_wayland_window();
+
             AudioManager::init_audio(window_ptr).expect("error initializing audio");
 
             // set window icon
