@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub trait AudioApi: Send + Sync {
-    fn init(window_ptr: *mut std::ffi::c_void) ->  TatakuResult<Self> where Self:Sized;
+    fn init() ->  TatakuResult<Self> where Self:Sized;
 
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>>;
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>>;

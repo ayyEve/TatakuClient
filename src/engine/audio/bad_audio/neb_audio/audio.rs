@@ -25,7 +25,7 @@ pub struct NebAudio {
 impl AudioApi for NebAudio {
 
     // todo: fix everything so nothing crashes and you can always change the device later etc
-    fn init(_window_ptr: *mut std::ffi::c_void) -> TatakuResult<Self> where Self:Sized {
+    fn init() -> TatakuResult<Self> where Self:Sized {
         let host = cpal::default_host();
         let device = host.default_output_device().expect("No default output device available.");
         let mut supported_configs = device.supported_output_configs().expect("Error while querying configs.");

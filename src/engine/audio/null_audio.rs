@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 pub struct NullAudio;
 impl AudioApi for NullAudio {
-    fn init(_: *mut std::ffi::c_void) -> TatakuResult<Self> where Self:Sized {
+    fn init() -> TatakuResult<Self> where Self:Sized {
         Ok(Self)
     }
 

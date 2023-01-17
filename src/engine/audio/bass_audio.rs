@@ -12,9 +12,9 @@ lazy_static::lazy_static! {
 
 pub struct BassAudio(bass_rs::Bass);
 impl AudioApi for BassAudio {
-    fn init(window_ptr: *mut std::ffi::c_void) -> TatakuResult<Self> where Self:Sized {
+    fn init() -> TatakuResult<Self> where Self:Sized {
         // initialize bass
-        Ok(Self(bass_rs::Bass::init_default_with_ptr(window_ptr)?))
+        Ok(Self(bass_rs::Bass::init_default()?))
     }
 
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {

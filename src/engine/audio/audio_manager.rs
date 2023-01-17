@@ -12,12 +12,12 @@ lazy_static::lazy_static!(
 
 pub struct AudioManager;
 impl AudioManager {
-    pub fn init_audio(window_ptr: *mut std::ffi::c_void) -> TatakuResult<()> {
+    pub fn init_audio() -> TatakuResult<()> {
         let mut api:Option<Arc<dyn AudioApi>> = None;
 
         // bass takes priority
         #[cfg(feature = "bass_audio")]
-        match super::bass_audio::BassAudio::init(window_ptr) {
+        match super::bass_audio::BassAudio::init() {
             Ok(bass) => api = Some(Arc::new(bass)),
             Err(e) => error!("error loading bass api: {e}"),
         }

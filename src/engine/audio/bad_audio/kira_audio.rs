@@ -18,7 +18,7 @@ const NO_TWEEN:Tween = Tween { start_time: kira::StartTime::Immediate, duration:
 
 pub struct KiraAudio(Arc<parking_lot::Mutex<KiraAudioManager<CpalBackend>>>);
 impl AudioApi for KiraAudio {
-    fn init(_: *mut std::ffi::c_void) -> TatakuResult<Self> where Self:Sized {
+    fn init() -> TatakuResult<Self> where Self:Sized {
         let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
         .map_err(|e|TatakuError::String(e.to_string()))?;
 
