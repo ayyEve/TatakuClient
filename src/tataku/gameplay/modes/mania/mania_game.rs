@@ -216,7 +216,7 @@ impl ManiaGame {
 
         let window_size = playfield.window_size;
         
-        let total_width =column_count as f64 * playfield.column_width;
+        let total_width = column_count as f64 * playfield.column_width;
         let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
 
         let pos = Vector2::new(
@@ -787,7 +787,7 @@ impl GameMode for ManiaGame {
         }   
         
         // TODO: might move tbs to a (time, speed) tuple
-        for tb in self.timing_bars.iter_mut() {tb.update(time)}
+        for tb in self.timing_bars.iter_mut() { tb.update(time) }
     }
     
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
@@ -799,7 +799,7 @@ impl GameMode for ManiaGame {
             FIELD_DEPTH + 1.0,
             Vector2::new(self.playfield.col_pos(0), 0.0),
             Vector2::new(self.playfield.col_pos(self.column_count) - self.playfield.col_pos(0), window_size.y),
-            Some(Border::new(if manager.current_timing_point().kiai {Color::YELLOW} else {Color::BLACK}, 1.2))
+            Some(Border::new(if manager.current_timing_point().kiai { Color::YELLOW } else { Color::BLACK }, 1.2))
         ));
 
 
@@ -827,7 +827,7 @@ impl GameMode for ManiaGame {
                 list.push(img);
             } else {
                 list.push(Rectangle::new(
-                    if self.column_states[col as usize] {self.get_color(col)} else {Color::TRANSPARENT_WHITE},
+                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
                     HIT_AREA_DEPTH,
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
@@ -838,8 +838,9 @@ impl GameMode for ManiaGame {
 
         // draw notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.draw(args, list).await}
+            for note in col.iter_mut() { note.draw(args, list).await }
         }
+        
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }
