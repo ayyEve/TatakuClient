@@ -463,8 +463,8 @@ impl GameMode for OsuGame {
                 let mut check_notes = Vec::new();
                 for note in self.notes.iter_mut() {
                     note.press(time);
-                    // check if note is in hitwindow
-                    if (time - note.time()).abs() <= self.miss_window && !note.was_hit() {
+                    // check if note is in hitwindow, has not yet been hit, and is not a spinner
+                    if (time - note.time()).abs() <= self.miss_window && !note.was_hit() && note.note_type() != NoteType::Spinner {
                         check_notes.push(note);
                     }
                 }
@@ -474,6 +474,11 @@ impl GameMode for OsuGame {
 
                 let note = &mut check_notes[0];
                 let note_time = note.time();
+
+                // spinners are a special case. hit windows don't affect them, or else you can miss for no reason lol
+                // if note.note_type() == NoteType::Spinner {
+                //     return;
+                // }
 
                 // check distance
                 if note.check_distance(self.mouse_pos) {
@@ -500,42 +505,6 @@ impl GameMode for OsuGame {
 
                     }
                 }
-
-
-                // let pts = note.get_points(true, time, (self.hitwindow_miss, self.hitwindow_50, self.hitwindow_100, self.hitwindow_300));
-                
-                
-                // let is_300 = match pts {ScoreHit::X300 | ScoreHit::Xgeki => true, _ => false};
-                // if !is_300 || (is_300 && self.game_settings.show_300s) {
-                // }
-
-                // match &pts {
-                //     ScoreHit::None | ScoreHit::Other(_,_) => {}
-                //     ScoreHit::Miss => {
-                //         manager.combo_break().await;
-                //         manager.score.hit_miss(time, note_time);
-                //         manager.hitbar_timings.push((time, time - note_time));
-
-                //         manager.health.take_damage();
-                //         if manager.health.is_dead() {
-                //             manager.fail()
-                //         }
-                //     }
-
-                //     pts => {
-
-                //         match pts {
-                //             ScoreHit::X50 => manager.score.hit50(time, note_time),
-                //             ScoreHit::X100 | ScoreHit::Xkatu => manager.score.hit100(time, note_time),
-                //             ScoreHit::X300 | ScoreHit::Xgeki => manager.score.hit300(time, note_time),
-                //             _ => {}
-                //         }
-
-                //         manager.health.give_life();
-
-                //         manager.hitbar_timings.push((time, time - note_time));
-                //     }
-                // }
             }
             // dont continue if no keys were being held (happens when leaving a menu)
             ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
@@ -556,7 +525,7 @@ impl GameMode for OsuGame {
                     }
 
                     // check if note is in hitwindow
-                    if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() != NoteType::Note {
+                    if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() == NoteType::Slider {
                         check_notes.push(note);
                     }
                 }

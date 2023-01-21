@@ -347,6 +347,10 @@ impl OsuSlider {
         }
     }
 
+    fn add_end_ripple(&mut self, time: f32) {
+        self.add_ripple(time, self.visual_end_pos, false);
+    }
+
 }
 
 #[async_trait]
@@ -726,12 +730,12 @@ impl HitObject for OsuSlider {
 impl OsuHitObject for OsuSlider {
     fn miss(&mut self) { self.end_checked = true }
     fn was_hit(&self) -> bool { self.end_checked }
-    fn point_draw_pos(&self, time: f32) -> Vector2 {self.pos_at(time)}
+    fn point_draw_pos(&self, time: f32) -> Vector2 { self.pos_at(time) }
 
-    fn get_preempt(&self) -> f32 {self.time_preempt}
-    fn press(&mut self, _:f32) {self.holding = true}
-    fn release(&mut self, _:f32) {self.holding = false}
-    fn mouse_move(&mut self, pos:Vector2) {self.mouse_pos = pos}
+    fn get_preempt(&self) -> f32 { self.time_preempt }
+    fn press(&mut self, _:f32) { self.holding = true }
+    fn release(&mut self, _:f32) { self.holding = false }
+    fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
@@ -754,12 +758,6 @@ impl OsuHitObject for OsuSlider {
     fn check_release_points(&mut self, time: f32) -> OsuHitJudgments {
         self.end_checked = true;
         self.sound_index = self.def.edge_sounds.len() - 1;
-
-        macro_rules! ripple {
-            () => {
-                self.add_ripple(time, self.visual_end_pos, false);
-            }
-        }
         let distance = self.mouse_pos.distance(self.time_end_pos); //((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
 
         match self.start_judgment {
@@ -775,20 +773,20 @@ impl OsuHitObject for OsuSlider {
                 } else if self.dots_missed == self.dot_count {
                     OsuHitJudgments::Miss
                 } else if self.dots_missed == 0 {
-                    ripple!();
+                    self.add_end_ripple(time);
                     OsuHitJudgments::X100
                 } else {
-                    ripple!();
+                    self.add_end_ripple(time);
                     OsuHitJudgments::X50
                 }
             }
 
             _ => {
                 if self.dots_missed == 0 && self.holding && distance < self.radius * 2.0 {
-                    ripple!();
+                    self.add_end_ripple(time);
                     OsuHitJudgments::X300
                 } else {
-                    ripple!();
+                    self.add_end_ripple(time);
                     OsuHitJudgments::X100
                 }
             }

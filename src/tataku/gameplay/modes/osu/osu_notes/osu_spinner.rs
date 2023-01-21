@@ -1,3 +1,8 @@
+/**
+ * Authored by ayyEve, RPM calculation by Nebula
+*/
+
+
 use crate::prelude::*;
 use super::super::prelude::*;
 
@@ -240,9 +245,14 @@ impl HitObject for OsuSpinner {
         self.missed = false;
         self.holding = false;
         self.rotation = 0.0;
+        self.last_update = 0.0;
+        self.current_time = 0.0;
+        self.last_mouse_angle = 0.0;
         self.display_rotation = 0.0;
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
+        self.rotation_windows = [0.0; 2];
+
         self.points_queue.clear();
     }
 
