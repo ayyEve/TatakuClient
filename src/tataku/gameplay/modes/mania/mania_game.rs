@@ -818,7 +818,7 @@ impl GameMode for ManiaGame {
 
 
             // hit area/button state for this col
-            let map = if self.column_states[col as usize] {&self.key_images_down} else {&self.key_images_up};
+            let map = if self.column_states[col as usize] { &self.key_images_down } else { &self.key_images_up };
 
             if let Some(img) = map.get(&col) {
                 let mut img = img.clone();
@@ -840,7 +840,7 @@ impl GameMode for ManiaGame {
         for col in self.columns.iter_mut() {
             for note in col.iter_mut() { note.draw(args, list).await }
         }
-        
+
         // draw timing lines
         for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
     }

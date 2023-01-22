@@ -134,6 +134,8 @@ impl HitObject for ManiaHold {
         let note_size = self.playfield.note_size();
         let pf_height = self.playfield.window_size.y;
 
+        let pf_top = 0.0; //-pf_height;
+
 
         if self.playfield.upside_down {
             // start
@@ -160,7 +162,7 @@ impl HitObject for ManiaHold {
         } else {
 
             // middle
-            if self.end_y < hit_y && self.end_y > hit_y - pf_height {
+            if self.end_y < hit_y && self.pos.y > pf_top {
                 let y = if self.holding { hit_y } else { self.pos.y } + note_size.y / 2.0;
 
                 if let Some(img) = &self.middle_image {
@@ -178,7 +180,7 @@ impl HitObject for ManiaHold {
 
 
             // start of hold
-            if self.pos.y < hit_y && self.pos.y > hit_y - pf_height {
+            if self.pos.y < hit_y && self.pos.y > pf_top {
                 if let Some(img) = &self.start_image {
                     list.push(img.clone());
                 } else {
@@ -194,7 +196,7 @@ impl HitObject for ManiaHold {
 
 
             // end
-            if self.end_y < hit_y && self.end_y > hit_y - pf_height {
+            if self.end_y < hit_y && self.end_y > pf_top {
                 if let Some(img) = &self.end_image {
                     list.push(img.clone());
                 } else {
