@@ -113,7 +113,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
             for mut mods in mod_mutations.clone() {
                 mods.set_speed(speed as f32 / 100.0);
 
-                let diff = calc.calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
+                let diff = calc.calc(&mods).await.unwrap_or_default().diff.normal_or(0.0);
                 data.add(&map, mods.speed as u32, diff, playmode.clone());
             }
         }

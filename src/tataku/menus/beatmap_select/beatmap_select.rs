@@ -235,17 +235,28 @@ impl BeatmapSelectMenu {
         self.beatmap_scroll.scroll_to_selection();
 
         if modes_needing_diffcalc.len() > 0 && self.diffcalc_complete.is_none() {
-            let (fuze, bomb) = Bomb::new();
-            self.diffcalc_complete = Some(bomb);
-            
-            tokio::spawn(async move {
-                for mode in modes_needing_diffcalc {
-                    do_diffcalc(mode).await;
-                }
-                fuze.ignite(());
-            });
+            self.run_diffcalc(modes_needing_diffcalc.into_iter(), false);
         }
 
+    }
+
+    fn run_diffcalc(&mut self, modes: impl Iterator<Item=String>+Send+'static, manual: bool) {
+        let (fuze, bomb) = Bomb::new();
+        self.diffcalc_complete = Some(bomb);
+        
+        tokio::spawn(async move {
+            for mode in modes {
+                if manual {
+                    NotificationManager::add_text_notification(format!("Diffcalc started for mode {mode}"), 5_000.0, Color::BLUE).await;
+                    BEATMAP_DIFFICULTIES.write().unwrap().retain(|k, _| k.playmode != mode);
+                }
+                do_diffcalc(mode.clone()).await;
+                if manual {
+                    NotificationManager::add_text_notification(format!("Diffcalc complete for mode {mode}"), 5_000.0, Color::BLUE).await;
+                }
+            }
+            fuze.ignite(());
+        });
     }
 
 
@@ -770,10 +781,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         if key == F7 && mods.ctrl {
-            let playmode = self.mode.clone();
-            tokio::spawn(async move {
-                do_diffcalc(playmode).await;
-            });
+            self.run_diffcalc(vec![self.mode.clone()].into_iter(), true);
         }
 
         if key == Escape {

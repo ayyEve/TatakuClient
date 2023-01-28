@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use super::super::osu_game::*;
 
-
 const BUCKET_LENGTH:f32 = 500.0;
+pub const WINDOW_SIZE:Vector2 = Vector2::new(1280.0, 720.0);
 
 pub struct OsuDifficultyCalculator {
     notes: Vec<OsuDifficultyHitObject>,
@@ -14,7 +14,7 @@ impl OsuDifficultyCalculator {
         let bucket_length = BUCKET_LENGTH * mods.get_speed();
         let mut aim_density = Vec::new();
         let mut aims = 0.0;
-
+        let aim_descale = Vector2::default().distance(WINDOW_SIZE).sqrt() * 2.5;
 
         for i in 0..self.notes.len() - 1 {
             let note1 = &self.notes[i];
@@ -28,10 +28,7 @@ impl OsuDifficultyCalculator {
             }
 
             match note1.note_type {
-                NoteType::Note | NoteType::Slider => {
-                    aims += note1.end_pos.distance(note2.pos);
-                },
-
+                NoteType::Note | NoteType::Slider => aims += note1.end_pos.distance(note2.pos) / aim_descale,
                 NoteType::Spinner => {},
 
                 // Not relevant to this gamemode.
@@ -134,13 +131,13 @@ impl DiffCalc for OsuDifficultyCalculator {
         })
     }
 
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
         let aim = self.calc_aim(mods)?;
         let note_density = self.calc_density(mods)?;
 
         let mut diff = Vec::new();
 
-        for (strain, density) in aim.into_iter().zip(note_density.into_iter()) {
+        for (&strain, &density) in aim.iter().zip(note_density.iter()) {
             let strain_value = (strain as f32).powf(1.75);
             let density_value = density;
 
@@ -154,18 +151,28 @@ impl DiffCalc for OsuDifficultyCalculator {
 
         const PERCENT: f32 = 0.99;
 
+        let diffs = diff.clone();
+
         // Sort by descending
         diff.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
-        for x in diff {
+        for x in diff.clone() {
             difficulty += x * weight;
             weight *= PERCENT;
         }
 
         difficulty /= (1.0 - weight) / (1.0 - PERCENT);
 
+        let diff = DiffCalcSummary {
+            diff: difficulty,
+            diffs,
+            strains: [
+                ("Aim".to_owned(), aim.into_iter().map(|a|a as f32).collect()),
+                ("Density".to_owned(), note_density)
+            ].into_iter().collect(),
+        };
 
-        Ok(difficulty)
+        Ok(diff)
     }
 }
 

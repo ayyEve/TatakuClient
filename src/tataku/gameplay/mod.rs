@@ -14,7 +14,19 @@ use crate::prelude::*;
 #[async_trait]
 pub trait DiffCalc: Send + Sync {
     async fn new(g: &BeatmapMeta) -> TatakuResult<Self> where Self:Sized;
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32>;
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;
+}
+#[derive(Default, serde::Serialize)]
+pub struct DiffCalcSummary {
+    pub diff: f32,
+    pub diffs: Vec<f32>,
+    pub strains: HashMap<String, Vec<f32>>
+}
+impl DiffCalcSummary {
+    pub fn save(&self, path: impl AsRef<Path>) -> TatakuResult {
+        std::fs::write(path, serde_json::to_string_pretty(self)?)?;
+        Ok(())
+    }
 }
 
 

@@ -215,7 +215,7 @@ impl GameMode for OsuGame {
         let metadata = map.get_beatmap_meta();
         let mods = ModManager::get();
         let window_size = WindowSize::get();
-        let effective_window_size = if diff_calc_only { Vector2::new(1280.0, 720.0) } else { window_size.0 };
+        let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
         let settings = get_settings!().standard_settings.clone();
 

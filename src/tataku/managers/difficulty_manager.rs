@@ -36,7 +36,7 @@ pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Opti
 }
 
 
-pub async fn do_diffcalc(playmode: PlayMode) {
+pub async fn do_diffcalc(playmode: String) {
     debug!("diffcalc initiated for mode {playmode}");
 
     let maps = BEATMAP_MANAGER
@@ -54,8 +54,9 @@ pub async fn do_diffcalc(playmode: PlayMode) {
     let mut data = HashMap::new();
 
     debug!("diffcalc starting for mode {playmode}");
-    'maps: for map in maps {
+    for map in maps {
         let mut calc = None;
+        let mut calc_failed = false;
 
         for speed in (50..=1000).step_by(5) { // 0.5..=10.0
             for mut mods in mod_mutations.clone() {
@@ -66,14 +67,20 @@ pub async fn do_diffcalc(playmode: PlayMode) {
 
                 // only load the calc if its actually needed
                 if calc.as_ref().is_none() {
-                    calc = calc_diff(map, playmode.clone()).await.ok();
-                    if calc.is_none() { 
+                    if calc_failed {
                         data.insert(diff_key, -1.0);
-                        continue 'maps 
+                        continue;
+                    } else {
+                        calc = calc_diff(map, playmode.clone()).await.ok();
+                        if calc.is_none() { 
+                            data.insert(diff_key, -1.0);
+                            calc_failed = true;
+                            continue;
+                        }
                     }
                 }
                 
-                let diff = calc.as_mut().unwrap().calc(&mods).await.unwrap_or(0.0).normal_or(0.0);
+                let diff = calc.as_mut().unwrap().calc(&mods).await.unwrap_or_default().diff.normal_or(0.0);
                 
                 #[cfg(feature="debug_perf_rating")]
                 info!("[calc] {diff_key:?} -> {diff}");

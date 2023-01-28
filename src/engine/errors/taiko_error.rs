@@ -7,7 +7,7 @@ use tataku_common::SerializationError;
 
 use super::*;
 
-pub type TatakuResult<T> = Result<T, TatakuError>;
+pub type TatakuResult<T=()> = Result<T, TatakuError>;
 
 #[derive(Debug)]
 #[allow(dead_code, unused)]

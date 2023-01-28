@@ -132,7 +132,7 @@ impl HitObject for ManiaHold {
         let color = self.color;
         let hit_y = self.playfield.hit_y();
         let note_size = self.playfield.note_size();
-        let pf_height = self.playfield.window_size.y;
+        // let pf_height = self.playfield.window_size.y;
 
         let pf_top = 0.0; //-pf_height;
 

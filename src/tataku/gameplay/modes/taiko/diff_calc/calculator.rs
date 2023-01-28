@@ -172,7 +172,7 @@ impl DiffCalc for TaikoDifficultyCalculator {
         })
     }
 
-    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<f32> {
+    async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary> {
         let strain = self.strain(mods)?;
         let note_density = self.note_density(mods)?;
 
@@ -307,7 +307,11 @@ impl DiffCalc for TaikoDifficultyCalculator {
             }
         }
 
-        Ok(difficulty)
+        let diff = DiffCalcSummary {
+            diff: difficulty,
+            ..Default::default()
+        };
+        Ok(diff)
     }
 
 }
