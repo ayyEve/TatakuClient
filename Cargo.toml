@@ -86,6 +86,8 @@ lzma-rs = "0.2"
 png = "*"
 base64 = "*"
 fs_extra = "1.2.0"
+deepsize = { version = "*"}
+radix_fmt = "1"
 
 # logging
 tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }

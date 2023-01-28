@@ -143,19 +143,22 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         }
 
         // do the thing
-        let diffs = BEATMAP_DIFFICULTIES.read().unwrap();
+        // for (mode, diffs) in BEATMAP_DIFFICULTIES.iter() {
+        //     let mut manager = BEATMAP_MANAGER.write().await;
+        //     for map in Database::get_all_beatmaps().await {
+        //         manager.add_beatmap(&map);
+        //     }
+
+        //     for (a, b) in &*diffs.read().unwrap() {
+        //         let hash = radix_fmt::radix(a.map_hash, 16).to_string();
+        //         if let Some(map) = manager.get_by_hash(&hash) {
+        //             data.add(&map, a.mods.speed as u32, *b, mode.clone());
+        //         }
+        //     }
+        // }
+        
 
         
-        let mut manager = BEATMAP_MANAGER.write().await;
-        for map in Database::get_all_beatmaps().await {
-            manager.add_beatmap(&map);
-        }
-
-        for (a, b) in &*diffs {
-            if let Some(map) = manager.get_by_hash(&a.map_hash) {
-                data.add(&map, a.mods.speed as u32, *b, a.playmode.clone());
-            }
-        }
     }
 
     let file_data = data.export(export_type);

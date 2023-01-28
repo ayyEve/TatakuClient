@@ -248,9 +248,11 @@ impl BeatmapSelectMenu {
             for mode in modes {
                 if manual {
                     NotificationManager::add_text_notification(format!("Diffcalc started for mode {mode}"), 5_000.0, Color::BLUE).await;
-                    BEATMAP_DIFFICULTIES.write().unwrap().retain(|k, _| k.playmode != mode);
+                    BEATMAP_DIFFICULTIES.get(&mode).unwrap().write().unwrap().clear();
                 }
+
                 do_diffcalc(mode.clone()).await;
+
                 if manual {
                     NotificationManager::add_text_notification(format!("Diffcalc complete for mode {mode}"), 5_000.0, Color::BLUE).await;
                 }

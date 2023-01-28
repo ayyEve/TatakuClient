@@ -5,6 +5,7 @@ pub type ModManagerHelper = GlobalValue<ModManager>;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
+#[derive(deepsize::DeepSizeOf)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
     pub speed: u16,
@@ -180,7 +181,11 @@ impl ModManager {
         self.has_mod(Autoplay.name())
     }
 
-
+    pub fn as_md5_u128(&self) -> u128 {
+        let mut mods = self.mods.clone().into_iter().collect::<Vec<_>>();
+        mods.sort();
+        u128::from_str_radix(&md5(mods.join("") + &self.speed.to_string()).to_string(), 16).unwrap_or_default()
+    }
 }
 
 // lets pretend this is correct for now
