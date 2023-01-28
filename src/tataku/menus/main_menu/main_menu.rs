@@ -325,8 +325,8 @@ impl AsyncMenu<Game> for MainMenu {
 
         // switch to beatmap selection
         if self.play_button.on_click(pos, button, mods) {
-            let menu = game.menus.get("beatmap").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("beatmap").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
             return;
         }
 
@@ -340,8 +340,8 @@ impl AsyncMenu<Game> for MainMenu {
 
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
-            let menu = Arc::new(Mutex::new(SettingsMenu::new().await));
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = Arc::new(Mutex::new());
+            game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
             return;
         }
 
@@ -489,17 +489,17 @@ impl ControllerInputMenu<Game> for MainMenu {
         if let Some(ControllerButton::A) = controller.map_button(button) {
             match self.selected_index {
                 0 => {
-                    let menu = game.menus.get("beatmap").unwrap().clone();
-                    game.queue_state_change(GameState::InMenu(menu));
+                    // let menu = game.menus.get("beatmap").unwrap().clone();
+                    game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
                 },
                 1 => {
                     let mode = self.settings.background_game_settings.mode.clone();
-                    let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new(DirectMenu::new(mode).await));
-                    game.queue_state_change(GameState::InMenu(menu));
+                    // let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new());
+                    game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(mode).await)));
                 },
                 2 => {
-                    let menu = Arc::new(tokio::sync::Mutex::new(SettingsMenu::new().await));
-                    game.queue_state_change(GameState::InMenu(menu));
+                    // let menu = Arc::new(tokio::sync::Mutex::new());
+                    game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
                 },
                 3 => game.queue_state_change(GameState::Closing),
                 _ => {}

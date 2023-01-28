@@ -72,15 +72,15 @@ impl SettingsMenu {
             s.skip_autosaveing = false;
         }
         
-        let menu = game.menus.get("main").unwrap().clone();
-        game.queue_state_change(GameState::InMenu(menu));
+        // let menu = game.menus.get("main").unwrap().clone();
+        game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
     }
     pub async fn finalize(&mut self, game:&mut Game) {
         self.update_settings().await;
         get_settings_mut!().skip_autosaveing = false;
 
-        let menu = game.menus.get("main").unwrap().clone();
-        game.queue_state_change(GameState::InMenu(menu));
+        // let menu = game.menus.get("main").unwrap().clone();
+        game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
     }
 
 }
@@ -158,8 +158,8 @@ impl AsyncMenu<Game> for SettingsMenu {
 
         if key == piston::Key::Escape {
             self.finalize(game).await;
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
             return;
         }
     }

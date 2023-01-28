@@ -149,8 +149,8 @@ impl DirectMenu {
             }
         }
 
-        let menu = game.menus.get("main").unwrap().clone();
-        game.queue_state_change(GameState::InMenu(menu));
+        // let menu = game.menus.get("main").unwrap().clone();
+        game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
     }
 }
 

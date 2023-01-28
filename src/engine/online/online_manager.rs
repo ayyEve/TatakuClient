@@ -438,7 +438,7 @@ impl OnlineManager {
 
 
                 GameState::InMenu(menu) => {
-                    match &*menu.lock().await.get_name() {
+                    match &*menu.get_name() {
                         // if in a pause menu, dont clear the list, the user could enter the game again
                         // so we want to wait until they decide if they want to play or quit
                         "pause" => {}

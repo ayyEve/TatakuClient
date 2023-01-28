@@ -126,14 +126,14 @@ impl ScoreMenu {
         }
     }
 
-    fn close(&mut self, game: &mut Game) {
+    async fn close(&mut self, game: &mut Game) {
         if self.dont_do_menu {
             self.should_close = true;
             return;
         }
 
-        let menu = game.menus.get("beatmap").unwrap().clone();
-        game.queue_state_change(GameState::InMenu(menu));
+        // let menu = game.menus.get("beatmap").unwrap().clone();
+        game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
     }
 
     async fn replay(&mut self, game: &mut Game) {
@@ -321,7 +321,7 @@ impl AsyncMenu<Game> for ScoreMenu {
         for b in self.buttons.iter_mut() {
             if b.on_click(pos, button, mods) {
                 match &*b.get_tag() {
-                    "back" => self.close(game),
+                    "back" => self.close(game).await,
                     "replay" => self.replay(game).await,
                     "retry" => self.retry(game).await,
                     _ => {}
@@ -340,7 +340,7 @@ impl AsyncMenu<Game> for ScoreMenu {
 
     async fn on_key_press(&mut self, key:Key, game: &mut Game, _mods:KeyModifiers) {
         if key == Key::Escape {
-            self.close(game)
+            self.close(game).await
         }
 
         if key == Key::F2 {
@@ -437,7 +437,7 @@ impl ControllerInputMenu<Game> for ScoreMenu {
                 },
                 1 => {
                     // back
-                    self.close(game);
+                    self.close(game).await;
                 },
                 2 => {
                     // retry

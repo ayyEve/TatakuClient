@@ -66,9 +66,9 @@ impl PauseMenu {
         self.unpause(game);
     }
 
-    fn exit(&mut self, game:&mut Game) {
-        let menu = game.menus.get("beatmap").unwrap().to_owned();
-        game.queue_state_change(GameState::InMenu(menu));
+    async fn exit(&mut self, game:&mut Game) {
+        // let menu = game.menus.get("beatmap").unwrap().to_owned();
+        game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
     }
 }
 
@@ -113,7 +113,7 @@ impl AsyncMenu<Game> for PauseMenu {
         }
 
         // return to song select
-        if self.exit_button.on_click(pos, button, mods) {self.exit(game)}
+        if self.exit_button.on_click(pos, button, mods) { self.exit(game).await }
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
@@ -125,7 +125,7 @@ impl AsyncMenu<Game> for PauseMenu {
     async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, _mods:KeyModifiers) {
         if key == piston::Key::Escape {
             if self.is_fail_menu {
-                self.exit(game);
+                self.exit(game).await;
             } else {
                 self.unpause(game);
             }
@@ -179,7 +179,7 @@ impl ControllerInputMenu<Game> for PauseMenu {
                     self.retry(game).await;
                 },
                 (2, false) | (1, true) => { // close
-                    self.exit(game);
+                    self.exit(game).await;
                 },
                 _ => {}
             }

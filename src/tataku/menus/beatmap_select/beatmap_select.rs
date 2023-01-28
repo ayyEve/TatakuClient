@@ -332,8 +332,8 @@ impl BeatmapSelectMenu {
 
     async fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.back_button.on_click(pos, button, mods) {
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
             return;
         }
 
@@ -399,7 +399,7 @@ impl BeatmapSelectMenu {
 
                 if let Some(selected) = &BEATMAP_MANAGER.read().await.current_beatmap {
                     let menu = ScoreMenu::new(&score, selected.clone(), false);
-                    game.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                    game.queue_state_change(GameState::InMenu(Box::new(menu)));
                 }
             }
             return;
@@ -785,8 +785,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         if key == Escape {
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
             return;
         }
         if key == F5 {
@@ -922,8 +922,8 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
         }
 
         if let Some(ControllerButton::B) = controller.map_button(button) {
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
         }
         
         false

@@ -370,8 +370,8 @@ impl SpectatorManager {
                 return;
             }
 
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
             // resume song if paused
 
             if let Some(song) = AudioManager::get_song().await {

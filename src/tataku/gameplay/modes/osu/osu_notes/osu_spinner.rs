@@ -53,6 +53,7 @@ pub struct OsuSpinner {
 
     points_queue: Vec<(OsuHitJudgments, Vector2)>
 }
+
 impl OsuSpinner {
     pub async fn new(def: SpinnerDef, scaling_helper: Arc<ScalingHelper>, rotations_required: u16) -> Self {
         let time = def.time;
@@ -89,6 +90,8 @@ impl OsuSpinner {
         }
     }
 }
+
+
 #[async_trait]
 impl HitObject for OsuSpinner {
     fn time(&self) -> f32 { self.time }
@@ -285,6 +288,7 @@ impl HitObject for OsuSpinner {
 
     }
 }
+
 #[async_trait]
 impl OsuHitObject for OsuSpinner {
     fn miss(&mut self) { self.missed = true }

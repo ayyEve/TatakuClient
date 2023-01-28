@@ -9,7 +9,7 @@ pub struct Game {
     input_manager: InputManager,
     volume_controller: VolumeControl,
     
-    pub menus: HashMap<&'static str, Arc<Mutex<dyn ControllerInputMenu<Game>>>>,
+    // pub menus: HashMap<&'static str, Arc<Mutex<dyn ControllerInputMenu<Game>>>>,
     pub current_state: GameState,
     queued_state: GameState,
     game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
@@ -58,7 +58,7 @@ impl Game {
             settings: SettingsHelper::new(),
             window_size: WindowSizeHelper::new(),
 
-            menus: HashMap::new(),
+            // menus: HashMap::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
 
@@ -128,12 +128,12 @@ impl Game {
         loading_menu.load().await;
 
         // main menu
-        self.menus.insert("main", Arc::new(Mutex::new(MainMenu::new().await)));
-        trace!("main menu created");
+        // self.menus.insert("main", Arc::new(Mutex::new(MainMenu::new().await)));
+        // trace!("main menu created");
 
         // setup beatmap select menu
-        self.menus.insert("beatmap", Arc::new(Mutex::new(BeatmapSelectMenu::new().await)));
-        trace!("beatmap menu created");
+        // self.menus.insert("beatmap", Arc::new(Mutex::new(BeatmapSelectMenu::new().await)));
+        // trace!("beatmap menu created");
 
         // // check git updates
         // self.add_dialog(Box::new(ChangelogDialog::new().await));
@@ -154,7 +154,7 @@ impl Game {
             }
         }
 
-        self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(loading_menu))));
+        self.queue_state_change(GameState::InMenu(Box::new(loading_menu)));
     }
     
     pub async fn game_loop(mut self) {
@@ -564,7 +564,7 @@ impl Game {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
                     let menu = PauseMenu::new(manager2, false).await;
-                    self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
                 } else {
 
                     // inputs
@@ -601,8 +601,7 @@ impl Game {
                 }
             }
             
-            GameState::InMenu(ref menu) => {
-                let mut menu = menu.lock().await;
+            GameState::InMenu(menu) => {
 
                 // menu input events
                 if window_size_updated {
@@ -697,8 +696,8 @@ impl Game {
 
             _ => {
                 // if the old state is a menu, tell it we're changing
-                if let GameState::InMenu(menu) = &current_state {
-                    menu.lock().await.on_change(false).await
+                if let GameState::InMenu(menu) = &mut current_state {
+                    menu.on_change(false).await
                 }
 
                 // let cloned_mode = self.queued_mode.clone();
@@ -727,7 +726,7 @@ impl Game {
                     },
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
-                            if menu.lock().await.get_name() == "pause" {
+                            if menu.get_name() == "pause" {
                                 if let Some(song) = AudioManager::get_song().await {
                                     song.play(false);
                                 }
@@ -762,7 +761,7 @@ impl Game {
                 let mut do_transition = true;
                 match &current_state {
                     GameState::None => do_transition = false,
-                    GameState::InMenu(menu) if menu.lock().await.get_name() == "pause" => do_transition = false,
+                    GameState::InMenu(menu) if menu.get_name() == "pause" => do_transition = false,
                     _ => {}
                 }
 
@@ -779,8 +778,8 @@ impl Game {
                     // old mode was none, or was pause menu, transition to new mode
                     std::mem::swap(&mut self.queued_state, &mut self.current_state);
 
-                    if let GameState::InMenu(menu) = &self.current_state {
-                        menu.lock().await.on_change(true).await;
+                    if let GameState::InMenu(menu) = &mut self.current_state {
+                        menu.on_change(true).await;
                     }
                 }
             }
@@ -819,9 +818,8 @@ impl Game {
         match &mut self.current_state {
             GameState::Ingame(manager) => manager.draw(args, &mut render_queue).await,
             GameState::InMenu(menu) => {
-                let mut lock = menu.lock().await;
-                lock.draw(args, &mut render_queue).await;
-                if lock.get_name() == "main_menu" {
+                menu.draw(args, &mut render_queue).await;
+                if menu.get_name() == "main_menu" {
                     draw_bg_dim = false;
                 }
             },
@@ -858,8 +856,8 @@ impl Game {
             ));
 
             // draw old mode
-            match (&self.current_state, &self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => menu.lock().await.draw(args, &mut render_queue).await,
+            match (&self.current_state, &mut self.transition_last) {
+                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(args, &mut render_queue).await,
                 _ => {}
             }
         }
@@ -997,7 +995,7 @@ impl Game {
         let score = IngameScore::new(score.clone(), false, false);
         let mut menu = ScoreMenu::new(&score, map, false);
         menu.replay = Some(replay);
-        self.queued_state = GameState::InMenu(Arc::new(Mutex::new(menu)));
+        self.queued_state = GameState::InMenu(Box::new(menu));
     }
 
 
@@ -1009,7 +1007,7 @@ impl Game {
         if manager.failed {
             trace!("player failed");
             let manager2 = std::mem::take(manager);
-            self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(PauseMenu::new(manager2, true).await))));
+            self.queue_state_change(GameState::InMenu(Box::new(PauseMenu::new(manager2, true).await)));
             
         } else {
             let mut score = manager.score.clone();
@@ -1037,15 +1035,15 @@ impl Game {
             // used to indicate user stopped watching a replay
             if manager.replaying && !manager.started {
                 // go back to beatmap select
-                let menu = self.menus.get("beatmap").unwrap();
-                let menu = menu.clone();
-                self.queue_state_change(GameState::InMenu(menu));
+                // let menu = self.menus.get("beatmap").unwrap();
+                let menu = BeatmapSelectMenu::new().await; 
+                self.queue_state_change(GameState::InMenu(Box::new(menu)));
             } else {
                 // show score menu
                 let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
                 menu.replay = Some(replay.clone());
                 menu.score_submit = score_submit;
-                self.queue_state_change(GameState::InMenu(Arc::new(Mutex::new(menu))));
+                self.queue_state_change(GameState::InMenu(Box::new(menu)));
             }
 
 
@@ -1069,9 +1067,8 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(IngameManager),
-    InMenu(Arc<Mutex<dyn ControllerInputMenu<Game>>>),
+    InMenu(Box<dyn ControllerInputMenu<Game>>),
 
-    #[allow(dead_code)]
     Spectating(SpectatorManager), // frames awaiting replay, state, beatmap
     // Multiplaying(MultiplayerState), // wink wink nudge nudge (dont hold your breath)
 }

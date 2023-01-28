@@ -138,8 +138,8 @@ impl AsyncMenu<Game> for LoadingMenu {
 
     async fn update(&mut self, game:&mut Game) {
         if let LoadingStage::Done = self.status.lock().await.stage {
-            let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(crate::tataku::GameState::InMenu(menu));
+            // let menu = game.menus.get("main").unwrap().clone();
+            game.queue_state_change(crate::tataku::GameState::InMenu(Box::new(MainMenu::new().await)));
 
             // select a map to load bg and intro audio from (TODO! add our own?)
             // let mut manager = BEATMAP_MANAGER.write().await;
