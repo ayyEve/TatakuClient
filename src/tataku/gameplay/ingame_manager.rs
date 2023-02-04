@@ -900,7 +900,37 @@ impl IngameManager {
 
 // Input Handlers
 impl IngameManager {
-    pub async fn key_down(&mut self, key:piston::Key, mods: ayyeve_piston_ui::menu::KeyModifiers) {
+    pub async fn handle_input(&mut self, frame: Option<ReplayFrame>) {
+        if let Some(frame) = frame {
+            let mut gamemode = std::mem::take(&mut self.gamemode);
+
+            if let ReplayFrame::Press(KeyPress::SkipIntro) = frame {
+                gamemode.skip_intro(self);
+                    
+                self.gamemode = gamemode;
+                return; //TODO: more to add here? (ie multi/spec?)
+            }
+
+            if !(self.current_mods.has_autoplay() || self.replaying) {
+                match frame {
+                    ReplayFrame::Press(k) => self.key_counter.key_down(k),
+                    ReplayFrame::Release(k) => self.key_counter.key_up(k),
+                    _ => {}
+                }
+
+                let time = self.time();
+                gamemode.handle_replay_frame(frame, time, self).await;
+
+                self.replay.frames.push((time, frame));
+                self.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{ frame }));
+            }
+
+            self.gamemode = gamemode;
+        }
+
+    }
+
+    pub async fn key_down(&mut self, key:Key, mods: KeyModifiers) {
         if (self.replaying || self.current_mods.has_autoplay()) && !self.menu_background {
             // check replay-only keys
             if key == piston::Key::Escape {
@@ -916,7 +946,7 @@ impl IngameManager {
             return;
         }
 
-        if self.failed && key == piston::Key::Escape {
+        if self.failed && key == Key::Escape {
             // set the failed time to negative, so it triggers the end
             self.failed_time = -1000.0;
         }
@@ -964,13 +994,6 @@ impl IngameManager {
             }
         }
 
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-
-        // skip intro
-        if key == piston::Key::Space {
-            gamemode.skip_intro(self);
-        }
-
         // check for offset changing keys
         if mods.shift {
             let mut t = 0.0;
@@ -984,10 +1007,16 @@ impl IngameManager {
             if key == self.common_game_settings.key_offset_up { self.increment_offset(5.0).await; }
             if key == self.common_game_settings.key_offset_down { self.increment_offset(-5.0).await; }
         }
-        
 
-        gamemode.key_down(key, self).await;
-        self.gamemode = gamemode;
+
+        // skip intro
+        let frame = if key == Key::Space {
+            Some(ReplayFrame::Press(KeyPress::SkipIntro))
+        } else {
+            self.gamemode.key_down(key).await
+        };
+
+        self.handle_input(frame).await;
     }
     pub async fn key_up(&mut self, key:piston::Key) {
         if self.failed { return }
@@ -998,15 +1027,13 @@ impl IngameManager {
             return;
         }
 
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.key_up(key, self).await;
-        self.gamemode = gamemode;
+        let frame = self.gamemode.key_up(key).await;
+        self.handle_input(frame).await;
     }
     pub async fn on_text(&mut self, text:&String, mods: &ayyeve_piston_ui::menu::KeyModifiers) {
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.on_text(text, mods, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.on_text(text, mods).await;
+        self.handle_input(frame).await;
     }
     
     
@@ -1017,9 +1044,8 @@ impl IngameManager {
 
         if self.failed { return }
 
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_move(pos, self).await;
-        self.gamemode = gamemode;
+        let frame = self.gamemode.mouse_move(pos).await;
+        self.handle_input(frame).await;
     }
     pub async fn mouse_down(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
@@ -1027,10 +1053,9 @@ impl IngameManager {
             return
         }
 
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_down(btn, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.mouse_down(btn).await;
+        self.handle_input(frame).await;
     }
     pub async fn mouse_up(&mut self, btn:piston::MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
@@ -1038,40 +1063,35 @@ impl IngameManager {
             return
         }
 
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_up(btn, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.mouse_up(btn).await;
+        self.handle_input(frame).await;
     }
     pub async fn mouse_scroll(&mut self, delta:f64) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_scroll(&delta, &mut ()).await;
         } 
 
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.mouse_scroll(delta, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.mouse_scroll(delta).await;
+        self.handle_input(frame).await;
     }
 
 
     pub async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_press(c, btn, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.controller_press(c, btn).await;
+        self.handle_input(frame).await;
     }
     pub async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_release(c, btn, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.controller_release(c, btn).await;
+        self.handle_input(frame).await;
     }
     pub async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
-        if self.failed {return}
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.controller_axis(c, axis_data, self).await;
-        self.gamemode = gamemode;
+        if self.failed { return }
+        let frame = self.gamemode.controller_axis(c, axis_data).await;
+        self.handle_input(frame).await;
     }
 
     pub fn window_focus_lost(&mut self, got_focus: bool) {

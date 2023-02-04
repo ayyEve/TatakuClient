@@ -644,14 +644,8 @@ impl GameMode for ManiaGame {
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
-        if !manager.replaying {
-            manager.replay.frames.push((time, frame));
-            manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
-        }
-
         match frame {
             ReplayFrame::Press(key) => {
-                manager.key_counter.key_down(key);
                 let Some(col) = Self::keypress2col(key) else { return };
                 // let hit_volume = get_settings!().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
@@ -701,7 +695,6 @@ impl GameMode for ManiaGame {
                 }
             }
             ReplayFrame::Release(key) => {
-                manager.key_counter.key_up(key);
                 let Some(col) = Self::keypress2col(key) else { return };
 
                 *self.column_states.get_mut(col).unwrap() = false;
@@ -989,7 +982,7 @@ impl GameMode for ManiaGame {
 #[async_trait]
 impl GameModeInput for ManiaGame {
 
-    async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_down(&mut self, key:piston::Key) -> Option<ReplayFrame> {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
@@ -1001,19 +994,12 @@ impl GameModeInput for ManiaGame {
 
             self.set_sv_mult_notes();
 
-            return;
+            return None;
         }
 
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-
-        let settings = get_settings!();
         let mut game_key = KeyPress::RightDon;
-
-        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
+    
+        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
         let base_key = KeyPress::Mania1 as u8;
         for col in 0..self.column_count as usize {
             let k = keys[col];
@@ -1022,21 +1008,15 @@ impl GameModeInput for ManiaGame {
                 break;
             }
         }
-        if game_key == KeyPress::RightDon {return}
-        let time = manager.time();
-        self.handle_replay_frame(ReplayFrame::Press(game_key), time, manager).await;
+        
+        if game_key == KeyPress::RightDon { return None }
+        Some(ReplayFrame::Press(game_key))
     }
     
-    async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let settings = get_settings!();
+    async fn key_up(&mut self, key:piston::Key) -> Option<ReplayFrame> {
         let mut game_key = KeyPress::RightDon;
 
-        let keys = &settings.mania_settings.keys[(self.column_count-1) as usize];
+        let keys = &self.game_settings.keys[(self.column_count-1) as usize];
         let base_key = KeyPress::Mania1 as u8;
         for col in 0..self.column_count as usize {
             let k = keys[col];
@@ -1045,10 +1025,9 @@ impl GameModeInput for ManiaGame {
                 break;
             }
         }
-        if game_key == KeyPress::RightDon {return}
-        let time = manager.time();
 
-        self.handle_replay_frame(ReplayFrame::Release(game_key), time, manager).await;
+        if game_key == KeyPress::RightDon { return None } 
+        Some(ReplayFrame::Release(game_key))
     }
 
 }

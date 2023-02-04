@@ -437,11 +437,6 @@ impl GameMode for OsuGame {
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
-        if !manager.replaying {
-            manager.replay.frames.push((time, frame.clone()));
-            manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
-        }
-
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
             KeyPress::Right,
@@ -451,7 +446,6 @@ impl GameMode for OsuGame {
 
         match frame {
             ReplayFrame::Press(key) if ALLOWED_PRESSES.contains(&key) => {
-                manager.key_counter.key_down(key);
                 self.hold_count += 1;
 
                 match key {
@@ -508,7 +502,6 @@ impl GameMode for OsuGame {
             }
             // dont continue if no keys were being held (happens when leaving a menu)
             ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
-                manager.key_counter.key_up(key);
                 self.hold_count -= 1;
 
                 match key {
@@ -875,50 +868,39 @@ impl GameMode for OsuGame {
 #[async_trait]
 impl GameModeInput for OsuGame {
 
-    async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_down(&mut self, key:piston::Key) -> Option<ReplayFrame> {
         if key == piston::Key::LCtrl {
-            let old = get_settings!().standard_settings.get_playfield();
+            let old = self.game_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
-            return;
-        }
-        
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
+            return None;
         }
 
-        let time = manager.time();
         if key == self.game_settings.left_key {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager).await;
-        }
-        if key == self.game_settings.right_key {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager).await;
+            Some(ReplayFrame::Press(KeyPress::Left))
+        } else if key == self.game_settings.right_key {
+            Some(ReplayFrame::Press(KeyPress::Right))
+        } else {
+            None
         }
     }
     
-    async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
+    async fn key_up(&mut self, key:piston::Key) -> Option<ReplayFrame> {
         if key == piston::Key::LCtrl {
             self.move_playfield = None;
-            return;
+            return None;
         }
 
-        
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
         if key == self.game_settings.left_key {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager).await;
-        }
-        if key == self.game_settings.right_key {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager).await;
+            Some(ReplayFrame::Release(KeyPress::Left))
+        } else if key == self.game_settings.right_key {
+            Some(ReplayFrame::Release(KeyPress::Right))
+        } else {
+            None
         }
     }
     
 
-    async fn mouse_move(&mut self, pos:Vector2, manager:&mut IngameManager) {
+    async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayFrame> {
         self.window_mouse_pos = pos;
         
         if let Some((original, mouse_start)) = self.move_playfield {
@@ -946,55 +928,40 @@ impl GameModeInput for OsuGame {
             }
 
             self.playfield_changed().await;
-            return;
+            return None;
         }
 
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
 
         // convert window pos to playfield pos
-        let time = manager.time();
         let pos = self.scaling_helper.descale_coords(pos);
-        self.handle_replay_frame(ReplayFrame::MousePos(pos.x as f32, pos.y as f32), time, manager).await;
+        Some(ReplayFrame::MousePos(pos.x as f32, pos.y as f32))
     }
     
-    async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
-        if self.game_settings.ignore_mouse_buttons {return}
+    async fn mouse_down(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+        if self.game_settings.ignore_mouse_buttons { return None }
         
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
         if btn == MouseButton::Left {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftMouse), time, manager).await;
-        }
-        if btn == MouseButton::Right {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightMouse), time, manager).await;
+            Some(ReplayFrame::Press(KeyPress::LeftMouse))
+        } else if btn == MouseButton::Right {
+            Some(ReplayFrame::Press(KeyPress::RightMouse))
+        } else {
+            None
         }
     }
     
-    async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
-        if self.game_settings.ignore_mouse_buttons {return}
+    async fn mouse_up(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+        if self.game_settings.ignore_mouse_buttons { return None }
 
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
         if btn == MouseButton::Left {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftMouse), time, manager).await;
-        }
-        if btn == MouseButton::Right {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightMouse), time, manager).await;
+            Some(ReplayFrame::Release(KeyPress::LeftMouse))
+        } else if btn == MouseButton::Right {
+            Some(ReplayFrame::Release(KeyPress::RightMouse))
+        } else {
+            None
         }
     }
 
-    async fn mouse_scroll(&mut self, delta:f64, _manager:&mut IngameManager) {
+    async fn mouse_scroll(&mut self, delta:f64) -> Option<ReplayFrame> {
         if self.move_playfield.is_some() {
             {
                 let settings = &mut get_settings_mut!().standard_settings;
@@ -1003,49 +970,32 @@ impl GameModeInput for OsuGame {
 
             self.playfield_changed().await;
         }
+
+        None
     }
 
 
-    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
+    async fn controller_press(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
-            let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Left), time, manager).await;
-        }
-
-        if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
-            let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::Right), time, manager).await;
+            Some(ReplayFrame::Press(KeyPress::Left))
+        } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
+            Some(ReplayFrame::Press(KeyPress::Right))
+        } else {
+            None
         }
     }
     
-    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
+    async fn controller_release(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
-            let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Left), time, manager).await;
-        }
-
-        if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
-            let time = manager.time();
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::Right), time, manager).await;
+            Some(ReplayFrame::Release(KeyPress::Left))
+        } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
+            Some(ReplayFrame::Release(KeyPress::Right))
+        } else {
+            None
         }
     }
     
-    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
+    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) -> Option<ReplayFrame> {
         self.use_controller_cursor = true;
 
         let mut new_pos = self.mouse_pos;
@@ -1068,9 +1018,8 @@ impl GameModeInput for OsuGame {
             }
         }
 
-        let time = manager.time();
         let new_pos = scaling_helper.descale_coords(new_pos);
-        self.handle_replay_frame(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32), time, manager).await;
+        Some(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32))
     }
 
 }

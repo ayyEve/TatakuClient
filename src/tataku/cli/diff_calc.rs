@@ -282,13 +282,13 @@ impl DiffCalcData {
 
             DiffCalcExportType::Db => {
                 let mut db = SerializationWriter::new();
-                db.write(self.0.len());
+                db.write(&self.0.len());
 
                 for (map, speed, diff, playmode) in &self.0 {
-                    db.write(map.beatmap_hash.clone());
-                    db.write(playmode.clone());
-                    db.write(*speed);
-                    db.write(*diff);
+                    db.write(&map.beatmap_hash);
+                    db.write(playmode);
+                    db.write(speed);
+                    db.write(diff);
                 }
 
                 db.data()

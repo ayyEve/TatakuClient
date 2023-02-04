@@ -407,24 +407,7 @@ impl GameMode for TaikoGame {
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
-        if !manager.replaying {
-            manager.replay.frames.push((time, frame.clone()));
-            manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
-        }
-        let key = match frame {
-            ReplayFrame::Press(k) => {
-                manager.key_counter.key_down(k);
-                k
-            },
-            ReplayFrame::Release(k) => {
-                manager.key_counter.key_up(k);
-                // should probably return here lol
-                // and now we do
-                return;
-            },
-            _ => return,
-        };
-
+        let ReplayFrame::Press(key) = frame else { return };
 
         // turn the keypress into a hit type
         let taiko_hit_type = match key {
@@ -971,111 +954,79 @@ impl GameMode for TaikoGame {
 
 #[async_trait]
 impl GameModeInput for TaikoGame {
-    async fn key_down(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
+    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
+        // // dont accept key input when autoplay is enabled, or a replay is being watched
+        // if manager.current_mods.has_autoplay() || manager.replaying {
+        //     return;
+        // }
 
         if key == self.taiko_settings.left_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await;
-        }
-        if key == self.taiko_settings.left_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await;
-        }
-        if key == self.taiko_settings.right_don {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager).await;
-        }
-        if key == self.taiko_settings.right_kat {
-            self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager).await;
+            Some(ReplayFrame::Press(KeyPress::LeftKat))
+        } else if key == self.taiko_settings.left_don {
+            Some(ReplayFrame::Press(KeyPress::LeftDon))
+        } else if key == self.taiko_settings.right_don {
+            Some(ReplayFrame::Press(KeyPress::RightDon))
+        } else if key == self.taiko_settings.right_kat {
+            Some(ReplayFrame::Press(KeyPress::RightKat))
+        } else {
+            None
         }
     }
     
-    async fn key_up(&mut self, key:piston::Key, manager:&mut IngameManager) {
-        
-        // dont accept key input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        let time = manager.time();
+    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
 
         if key == self.taiko_settings.left_kat {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await;
-        }
-        if key == self.taiko_settings.left_don {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await;
-        }
-        if key == self.taiko_settings.right_don {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager).await;
-        }
-        if key == self.taiko_settings.right_kat {
-            self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager).await;
+            Some(ReplayFrame::Release(KeyPress::LeftKat))
+        } else if key == self.taiko_settings.left_don {
+            Some(ReplayFrame::Release(KeyPress::LeftDon))
+        } else if key == self.taiko_settings.right_don {
+            Some(ReplayFrame::Release(KeyPress::RightDon))
+        } else if key == self.taiko_settings.right_kat {
+            Some(ReplayFrame::Release(KeyPress::RightKat))
+        } else {
+            None
         }
     }
 
 
-    async fn mouse_down(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
+        if self.taiko_settings.ignore_mouse_buttons { return None }
         
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
-            return;
-        }
-        
-        let time = manager.time();
         match btn {
-            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await,
-            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await,
-            _ => {}
+            MouseButton::Left  => Some(ReplayFrame::Press(KeyPress::LeftDon)),
+            MouseButton::Right => Some(ReplayFrame::Press(KeyPress::LeftKat)),
+            _ => None
         }
     }
 
-    async fn mouse_up(&mut self, btn:piston::MouseButton, manager:&mut IngameManager) {
+    async fn mouse_up(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+        if self.taiko_settings.ignore_mouse_buttons { return None }
         
-        // dont accept mouse input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying || self.taiko_settings.ignore_mouse_buttons {
-            return;
-        }
-        
-        let time = manager.time();
         match btn {
-            piston::MouseButton::Left => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await,
-            piston::MouseButton::Right => self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await,
-            _ => {}
+            MouseButton::Left =>  Some(ReplayFrame::Release(KeyPress::LeftDon)),
+            MouseButton::Right => Some(ReplayFrame::Release(KeyPress::LeftKat)),
+            _ => None
         }
     }
 
 
-    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
+    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) -> Option<ReplayFrame> {
 
-        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
-            let time = manager.time();
-
-            if c_config.left_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftKat), time, manager).await;
-            }
-
-            if c_config.left_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::LeftDon), time, manager).await;
-            }
-
-            if c_config.right_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightDon), time, manager).await;
-            }
-
-            if c_config.right_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Press(KeyPress::RightKat), time, manager).await;
-            }
+        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.get_name()) {
 
             // skip
             if Some(ControllerButton::Y) == c.map_button(btn) {
-                self.skip_intro(manager);
+                Some(ReplayFrame::Press(KeyPress::SkipIntro))
+            } else if c_config.left_kat.check_button(btn) {
+                Some(ReplayFrame::Press(KeyPress::LeftKat))
+            } else if c_config.left_don.check_button(btn) {
+                Some(ReplayFrame::Press(KeyPress::LeftDon))
+            } else if c_config.right_don.check_button(btn) {
+                Some(ReplayFrame::Press(KeyPress::RightDon))
+            } else if c_config.right_kat.check_button(btn) {
+                Some(ReplayFrame::Press(KeyPress::RightKat))
+            } else {
+                None
             }
 
         } else {
@@ -1097,38 +1048,22 @@ impl GameModeInput for TaikoGame {
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
-            self.controller_press(c, btn, manager).await;
+            self.controller_press(c, btn).await
         }
     }
 
-    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8, manager:&mut IngameManager) {
-        // dont accept controller input when autoplay is enabled, or a replay is being watched
-        if manager.current_mods.has_autoplay() || manager.replaying {
-            return;
-        }
-
-        if let Some(c_config) = self.taiko_settings.clone().controller_config.get(&*c.get_name()) {
-            let time = manager.time();
-
+    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) -> Option<ReplayFrame> {
+        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.get_name()) {
             if c_config.left_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftKat), time, manager).await;
-            }
-
-            if c_config.left_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::LeftDon), time, manager).await;
-            }
-
-            if c_config.right_don.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightDon), time, manager).await;
-            }
-
-            if c_config.right_kat.check_button(btn) {
-                self.handle_replay_frame(ReplayFrame::Release(KeyPress::RightKat), time, manager).await;
-            }
-
-            // skip
-            if Some(ControllerButton::Y) == c.map_button(btn) {
-                self.skip_intro(manager);
+                Some(ReplayFrame::Release(KeyPress::LeftKat))
+            } else if c_config.left_don.check_button(btn) {
+                Some(ReplayFrame::Release(KeyPress::LeftDon))
+            } else if c_config.right_don.check_button(btn) {
+                Some(ReplayFrame::Release(KeyPress::RightDon))
+            } else if c_config.right_kat.check_button(btn) {
+                Some(ReplayFrame::Release(KeyPress::RightKat))
+            } else {
+                None
             }
 
         } else {
@@ -1150,7 +1085,7 @@ impl GameModeInput for TaikoGame {
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
-            self.controller_release(c, btn, manager).await;
+            self.controller_release(c, btn).await
         }
     }
 

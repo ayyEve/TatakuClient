@@ -24,8 +24,8 @@ impl GameMode for NoMode {
 
 #[async_trait]
 impl GameModeInput for NoMode {
-    async fn key_down(&mut self, _:piston::Key, _:&mut IngameManager) {}
-    async fn key_up(&mut self, _:piston::Key, _:&mut IngameManager) {}
+    async fn key_down(&mut self, _:piston::Key) -> Option<ReplayFrame> { None }
+    async fn key_up(&mut self, _:piston::Key) -> Option<ReplayFrame> { None }
 }
 
 impl GameModeProperties for NoMode {

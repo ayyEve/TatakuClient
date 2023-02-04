@@ -172,8 +172,8 @@ impl Serializable for DifficultyEntry {
     }
 
     fn write(&self, sw:&mut SerializationWriter) {
-        sw.write(self.map_hash);
-        sw.write(self.mods);
+        sw.write(&self.map_hash);
+        sw.write(&self.mods);
         // sw.write(self.mods.speed);
         // sw.write(self.mods.mods.clone());
     }

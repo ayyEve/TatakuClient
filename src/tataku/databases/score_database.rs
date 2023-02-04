@@ -137,7 +137,7 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<String> {
     }
 
     let mut writer = SerializationWriter::new();
-    writer.write(r.clone());
+    writer.write(&r);
 
     let hash = s.hash();
     let actual_hash = format!("{:x}", md5::compute(hash));
