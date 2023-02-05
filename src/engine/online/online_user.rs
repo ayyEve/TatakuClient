@@ -10,6 +10,8 @@ pub struct OnlineUser {
     pub mode: Option<PlayMode>,
 
     pub game: String,
+
+    pub friend: bool,
 }
 impl OnlineUser {
     pub fn new(user_id:u32, username:String) -> Self {
@@ -20,6 +22,8 @@ impl OnlineUser {
             action_text: None,
             mode: None,
             game: String::new(),
+
+            friend: false,
         }
     }
 }
@@ -32,6 +36,7 @@ impl Default for OnlineUser {
             action_text: Default::default(),
             mode: Default::default(),
             game: String::new(),
+            friend: false,
         }
     }
 }

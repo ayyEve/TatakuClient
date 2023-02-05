@@ -56,6 +56,7 @@ lazy_static::lazy_static! {
 pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
+    pub friends: HashSet<u32>, // userid is key
     pub discord: Option<Discord>,
 
     pub user_id: u32, // this user's id
@@ -95,13 +96,12 @@ impl OnlineManager {
         )]);
 
         let discord = Discord::new();
-        if let Err(e) = &discord {
-            error!("{e}")
-        }
+        if let Err(e) = &discord { error!("{e}") }
 
         OnlineManager {
             user_id: 0,
             users: HashMap::new(),
+            friends: HashSet::new(),
             discord: discord.ok(),
             // chat: Chat::new(),
             writer: None,
@@ -116,6 +116,7 @@ impl OnlineManager {
             spectate_pending: 0
         }
     }
+
     pub async fn start() {
         let s = ONLINE_MANAGER.clone();
         let url = get_settings!().server_url.clone();
@@ -147,7 +148,7 @@ impl OnlineManager {
                             if let Err(e) = OnlineManager::handle_packet(data).await {
                                 error!("Error with packet: {}", e);
                             }
-                        },
+                        }
                         Ok(Message::Ping(_)) => {
                             if let Some(writer) = &s.read().await.writer {
                                 let _ = writer.lock().await.send(Message::Pong(Vec::new())).await;
@@ -160,7 +161,7 @@ impl OnlineManager {
                             s.connected = false;
                             s.writer = None;
                         }
-                        Ok(message) => if EXTRA_ONLINE_LOGGING {warn!("Got something else: {:?}", message)},
+                        Ok(message) => if EXTRA_ONLINE_LOGGING { warn!("Got something else: {:?}", message) },
 
                         Err(oof) => {
                             error!("oof: {}", oof);
@@ -215,7 +216,10 @@ impl OnlineManager {
                             s.write().await.user_id = user_id;
                             NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN).await;
 
-                            ping_handler()
+                            ping_handler();
+
+                            // request friends list
+                            send_packet!(s.read().await.writer, create_packet!(PacketId::Client_GetFriends));
                         },
                     }
                 }
@@ -259,7 +263,7 @@ impl OnlineManager {
                     }
                 }
                 PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
-                    // debug!("GGot user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
+                    // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
                     
                     if let Some(e) = s.read().await.users.get(&user_id) {
                         let mut a = e.lock().await;
@@ -301,6 +305,35 @@ impl OnlineManager {
                     chat_messages.get_mut(&channel).unwrap().push(message);
                 }
 
+                // friends list received from server
+                PacketId::Server_FriendsList { friend_ids } => {
+                    let mut s = s.write().await;
+                    for i in friend_ids.iter() {
+                        if let Some(u) = s.users.get_mut(i) {
+                            u.lock().await.friend = true;
+                        }
+                    }
+                    info!("got friends list: {friend_ids:?}");
+
+                    s.friends = friend_ids.into_iter().collect();
+                }
+
+
+                PacketId::Server_UpdateFriend { friend_id, is_friend } => {
+                    let mut s = s.write().await;
+                    if let Some(u) = s.users.get_mut(&friend_id) {
+                        u.lock().await.friend = is_friend;
+                    }
+
+                    if is_friend {
+                        s.friends.insert(friend_id);
+                        info!("add friend {friend_id}");
+                    } else {
+                        s.friends.remove(&friend_id);
+                        info!("remove friend {friend_id}");
+                    }
+                }
+
                 
                 // ===== spectator =====
                 PacketId::Server_SpectatorFrames { frames } => {
@@ -339,6 +372,9 @@ impl OnlineManager {
                     s.write().await.spectate_info_pending.push(user_id);
                     trace!("Got playing request");
                 }
+
+                
+
 
                 // other packets
                 PacketId::Unknown => {

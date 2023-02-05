@@ -72,6 +72,7 @@ impl Dialog<Game> for UserPanel {
                 // user menu dialog
                 let mut user_menu_dialog = NormalDialog::new("User Options");
 
+                // spectate
                 if i.user.game.starts_with("Tataku") {
                     user_menu_dialog.add_button("Spectate", Box::new(move |dialog, _game| {
                         OnlineManager::start_spectating(user_id);
@@ -79,11 +80,21 @@ impl Dialog<Game> for UserPanel {
                     }));
                 }
 
+                // message
                 user_menu_dialog.add_button("Send Message", Box::new(move |dialog, _game| {
                     PANEL_QUEUE.0.lock().ignite(UserPanelEvent::OpenChat(username.clone()));
                     dialog.should_close = true;
                 }));
 
+                // add/remove friend
+                let is_friend = ONLINE_MANAGER.read().await.friends.contains(&user_id);
+                let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
+                user_menu_dialog.add_button(friend_txt, Box::new(move |dialog, _game| {
+                    PANEL_QUEUE.0.lock().ignite(UserPanelEvent::AddRemoveFriend(user_id));
+                    dialog.should_close = true;
+                }));
+
+                // close menu
                 user_menu_dialog.add_button("Close", Box::new(|dialog, _game| {
                     dialog.should_close = true;
                 }));
@@ -116,6 +127,14 @@ impl Dialog<Game> for UserPanel {
         while let Some(event) = bomb.exploded() {
             match event {
                 UserPanelEvent::OpenChat(username) => self.chat.selected_channel = Some(ChatChannel::from_name(username)),
+
+                UserPanelEvent::AddRemoveFriend(friend_id) => {
+                    let manager = ONLINE_MANAGER.read().await;
+                    let is_friend = !manager.friends.contains(&friend_id);
+
+                    use futures_util::SinkExt;
+                    send_packet!(manager.writer, create_packet!(PacketId::Client_UpdateFriend {friend_id, is_friend}));
+                }
             }
         }
 
@@ -155,5 +174,6 @@ impl Dialog<Game> for UserPanel {
 
 #[derive(Clone)]
 pub enum UserPanelEvent {
-    OpenChat(String)
+    OpenChat(String),
+    AddRemoveFriend(u32)
 }
