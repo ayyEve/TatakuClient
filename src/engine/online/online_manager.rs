@@ -1,13 +1,12 @@
+use PacketId::*;
+use crate::prelude::*;
+use super::online_user::OnlineUser;
 use tokio::{ sync::Mutex, net::TcpStream };
 use futures_util::{ SinkExt, StreamExt, stream::SplitSink };
 use tokio_tungstenite::{ MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message };
 
-use crate::prelude::*;
-use super::online_user::OnlineUser;
-
-use PacketId::*;
-
 type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+
 
 
 const EXTRA_ONLINE_LOGGING:bool = true;
@@ -73,17 +72,18 @@ pub struct OnlineManager {
     // is this user spectating someone?
     pub spectating: bool,
     /// buffer for incoming and outgoing spectator frames
-    pub(crate) buffered_spectator_frames: SpectatorFrames,
-    pub(crate) last_spectator_frame: Instant,
+    pub buffered_spectator_frames: SpectatorFrames,
+    pub last_spectator_frame: Instant,
 
-    pub(crate) spectator_list: Vec<(u32, String)>,
+    pub spectator_list: Vec<(u32, String)>,
     /// which users are waiting for a spectator info response?
     /// TODO: should probably move the list itself to the server
-    pub(crate) spectate_info_pending: Vec<u32>,
+    pub spectate_info_pending: Vec<u32>,
 
     /// was a spectator request accepted? if so, this will be the user_id
     spectate_pending: u32,
 }
+
 impl OnlineManager {
     pub fn new() -> OnlineManager {
         let mut messages = HashMap::new();
@@ -118,6 +118,8 @@ impl OnlineManager {
     }
 
     pub async fn start() {
+        info!("starting network connection");
+
         let s = ONLINE_MANAGER.clone();
         let url = get_settings!().server_url.clone();
         // initialize the connection
@@ -183,6 +185,39 @@ impl OnlineManager {
         }
     }
 
+    pub fn restart() {
+        tokio::spawn(async {
+            ONLINE_MANAGER.write().await.reset().await;
+
+            // // re-establish the connection
+            // Self::start().await;
+        });
+    }
+
+    async fn reset(&mut self) {
+        // if we currently have a connection, close it
+        if let Some(writer) = &self.writer {
+            let _ = writer.lock().await.close();
+        }
+
+        // reset most values
+        self.writer = None;
+        self.connected = false;
+        self.user_id = 0;
+        self.users.clear();
+        self.friends.clear();
+
+        self.spectating = false;
+        self.buffered_spectator_frames.clear();
+        self.spectator_list.clear();
+
+        // TODO: move these
+        self.spectate_info_pending.clear();
+        self.spectate_pending = 0;
+    }
+
+
+
     async fn handle_packet(data:Vec<u8>) -> TatakuResult<()> {
         let s = ONLINE_MANAGER.clone();
         let mut reader = SerializationReader::new(data);
@@ -242,10 +277,20 @@ impl OnlineManager {
 
                 // ===== user updates =====
                 PacketId::Server_UserJoined { user_id, username, game } => {
-                    if EXTRA_ONLINE_LOGGING {debug!("User {} joined (id: {}, game: {})", username, user_id, game)};
-                    let mut user = OnlineUser::new(user_id, username);
+                    if EXTRA_ONLINE_LOGGING { debug!("User {} joined (id: {}, game: {})", username, user_id, game) };
+                    let mut user = OnlineUser::new(user_id, username.clone());
                     user.game = game;
-                    s.write().await.users.insert(user_id, Arc::new(Mutex::new(user)));
+
+                    let mut s = s.write().await;
+                    s.users.insert(user_id, Arc::new(Mutex::new(user)));
+
+                    // if this is us, make sure we have the correct username text
+                    if s.user_id == user_id {
+                        let mut settings = get_settings_mut!();
+                        if settings.username != username {
+                            settings.username = username
+                        }
+                    }
                 }
                 PacketId::Server_UserLeft {user_id} => {
                     if EXTRA_ONLINE_LOGGING {debug!("User id {} left", user_id)};
@@ -494,15 +539,11 @@ impl OnlineManager {
     }
 
     pub fn find_user_by_id(&self, user_id: u32) -> Option<Arc<Mutex<OnlineUser>>> {
-        for (&id, user) in self.users.iter() {
-            if id == user_id {
-                return Some(user.clone())
-            }
-        }
-
-        None
+        self.users.get(&user_id).cloned()
     }
 }
+
+// spectator functions
 impl OnlineManager {
     pub fn send_spec_frames(frames:SpectatorFrames, force_send: bool) {
         let s = ONLINE_MANAGER.clone();
@@ -568,7 +609,9 @@ fn ping_handler() {
         loop {
             tokio::time::sleep(duration).await;
             if LOG_PINGS {trace!("Sending ping")};
-            send_packet!(ONLINE_MANAGER.read().await.writer, ping.clone());
+            let writer = &ONLINE_MANAGER.read().await.writer;
+            if writer.is_none() { return; }
+            send_packet!(writer, ping.clone());
         }
     });
 }

@@ -64,11 +64,15 @@ impl ScoreSubmitHelper {
 
                 match res {
                     Ok(resp) => {
-                        if let Some(resp) = resp.text().await.log_error().ok().and_then(|t|serde_json::from_str::<SubmitResponse>(&t).log_error().ok()) {
-                            // trace!("score submitted successfully");
-                            *self.response.write().await = Some(resp);
-                        } else {
-                            *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::InternalError, "Error reading server response".to_owned()));
+                        if let Ok(txt) = resp.text().await {
+                            info!("got score submit response: {txt}");
+
+                            if let Some(resp) = serde_json::from_str::<SubmitResponse>(&txt).log_error().ok() {
+                                // trace!("score submitted successfully");
+                                *self.response.write().await = Some(resp);
+                            } else {
+                                *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::InternalError, "Error reading server response".to_owned()));
+                            }
                         }
                     },
                     Err(e) => NotificationManager::add_error_notification("error submitting score", format!("{e}")).await,

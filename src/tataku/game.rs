@@ -191,6 +191,7 @@ impl Game {
             let last_music_vol = self.settings.music_vol;
             let last_effect_vol = self.settings.effect_vol;
             let last_theme = self.settings.theme.clone();
+            let last_server_url = self.settings.server_url.clone();
             
             if self.settings.update() {
                 let audio_changed = 
@@ -220,6 +221,10 @@ impl Game {
 
                 if self.settings.theme != last_theme {
                     Self::load_theme(&self.settings.theme)
+                }
+
+                if self.settings.server_url != last_server_url {
+                    OnlineManager::restart();
                 }
 
                 // update doubletap protection

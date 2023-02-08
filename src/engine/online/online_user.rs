@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct OnlineUser {
     pub user_id: u32,
     pub username: String,
@@ -23,19 +23,6 @@ impl OnlineUser {
             mode: None,
             game: String::new(),
 
-            friend: false,
-        }
-    }
-}
-impl Default for OnlineUser {
-    fn default() -> Self {
-        Self { 
-            user_id: Default::default(), 
-            username: Default::default(), 
-            action: Default::default(), 
-            action_text: Default::default(),
-            mode: Default::default(),
-            game: String::new(),
             friend: false,
         }
     }
