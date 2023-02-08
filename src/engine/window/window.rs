@@ -50,7 +50,7 @@ pub struct GameWindow {
     frametime_timer: Instant,
     input_timer: Instant,
 
-    window_size: WindowSizeHelper,
+    settings: SettingsHelper,
 
     frametime_logger: FrameTimeLogger
 }
@@ -64,7 +64,6 @@ impl GameWindow {
             let mut window:InnerWindow = WindowSettings::new("Tataku!", [window_size.x as u32, window_size.y as u32])
                 .graphics_api(opengl)
                 // .resizable(false)
-                // .fullscreen(true) // this doesnt work?
                 // .samples(32) // not sure if this actually works or not
                 .build()
                 .expect("Error creating window");
@@ -134,7 +133,7 @@ impl GameWindow {
             window,
 
             window_event_receiver,
-            window_size,
+            settings: SettingsHelper::new(),
 
             frametime_timer: now,
             input_timer: now,
@@ -148,11 +147,11 @@ impl GameWindow {
         let settings = get_settings!().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
-        self.window_size.update();
+        self.settings.update();
 
         #[cfg(feature = "desktop")] {
             // resize window
-            self.window.window.set_size(self.window_size.x as i32, self.window_size.y as i32);
+            self.window.window.set_size(self.settings.window_size[0] as i32, self.settings.window_size[1] as i32);
 
             if settings.raw_mouse_input {
                 self.window.window.set_raw_mouse_motion(true);
@@ -160,7 +159,7 @@ impl GameWindow {
         } 
         
         #[cfg(feature = "mobile")] {
-            let size = [self.window_size.x as u32, self.window_size.y as u32];
+            let size = [self.settings.window_size[0] as u32, self.settings.window_size[1] as u32];
             self.window.ctx.resize(size.into());
         }
         
@@ -175,8 +174,16 @@ impl GameWindow {
             }
         }
         
+        self.refresh_monitors();
+        self.apply_fullscreen();
+
         loop {
-            self.window_size.update();
+            let old_fullscreen = self.settings.fullscreen_monitor;
+            if self.settings.update() {
+                if self.settings.fullscreen_monitor != old_fullscreen {
+                    self.apply_fullscreen()
+                }
+            }
 
             // poll window events
             while let Some(e) = self.window.poll_event() {
@@ -253,8 +260,9 @@ impl GameWindow {
     }
 
     fn screenshot(&self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
-        let width = self.window_size.x as usize;
-        let height = self.window_size.y as usize;
+        let size = self.window.size();
+        let width  = size.width as usize;
+        let height = size.height as usize;
 
         let data_size = 3 * width * height;
         let mut window_data:Vec<u8> = vec![0; data_size];
@@ -282,6 +290,61 @@ impl GameWindow {
         fuze.ignite((window_data2, width as u32, height as u32));
     }
 
+
+    fn refresh_monitors(&mut self) {
+        self.window.glfw.with_connected_monitors(|_, monitors| {
+            *MONITORS.write() = monitors.iter().filter_map(|m|m.get_name()).collect()
+        });
+    }
+
+    fn apply_fullscreen(&mut self) {
+        if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
+            let mut set = false;
+            self.window.glfw.with_connected_monitors(|_, monitors| {
+                for (n, monitor) in monitors.iter().enumerate() {
+                    if n == monitor_num {
+                        let mode = monitor.get_video_mode();
+
+                        let x = 0;
+                        let y = 0;
+
+                        let mut width = 0;
+                        let mut height = 0;
+
+                        //TODO: implement this. i think this will require being in fullscreen but not using the below stuff
+                        // // do we render at settings_window_size? 
+                        // if !settings.fullscreen_windowed {
+                        //     if let Some(mode) = mode {
+                        //         x = mode.width as usize / 2;
+                        //     }
+                        // }
+
+                        // if settings.fullscreen_center { 
+                        // } else {
+                        // }
+
+                        if let Some(mode) = &mode {
+                            width = mode.width;
+                            height = mode.height;
+                        }
+
+                        self.window.window.set_monitor(glfw::WindowMode::FullScreen(monitor), x, y, width, height, None);
+
+                        set = true;
+                        return;
+                    }
+                }
+            });
+            if set { return }
+        }
+
+        // either its not fullscreen, or the monitor wasnt found, so default to windowed
+
+        let size = self.window.size();
+        let width  = size.width as u32;
+        let height = size.height as u32;
+        self.window.window.set_monitor(glfw::WindowMode::Windowed, 0, 0, width, height, None);
+    }
 }
 
 
@@ -480,3 +543,40 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
     }
     actual_callback
 };
+
+
+
+
+
+lazy_static::lazy_static! {
+    static ref MONITORS: Arc<parking_lot::RwLock<Vec<String>>> = Default::default();
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub enum FullscreenMonitor {
+    None,
+    Monitor(usize),
+}
+impl Dropdownable for FullscreenMonitor {
+    fn variants() -> Vec<Self> {
+        [Self::None].into_iter().chain((0..MONITORS.read().len()).into_iter().map(|t|Self::Monitor(t))).collect()
+    }
+
+    fn display_text(&self) -> String {
+        match self {
+            Self::None => "None".to_owned(),
+            Self::Monitor(num) => MONITORS
+                .read()
+                .get(*num)
+                .map(|s|format!("({num}). {s}"))
+                .unwrap_or_else(||"None".to_owned())
+        }
+    }
+
+    fn from_string(s:String) -> Self {
+        match s.parse::<usize>() {
+            Err(_) => Self::None,
+            Ok(num) => Self::Monitor(num)
+        }
+    }
+}

@@ -90,6 +90,11 @@ pub struct Settings {
     pub raw_mouse_input: bool,
     #[Setting(text="Scroll Sensitivity", min=0.1, max=5.0)]
     pub scroll_sensitivity: f64,
+
+    #[Setting(text="Fullscreen", dropdown="FullscreenMonitor")]
+    pub fullscreen_monitor: FullscreenMonitor,
+    pub fullscreen_windowed: bool, // render at window_size?
+    pub fullscreen_center: bool, // when rendering at window_size, center?
     
 
     // cursor
@@ -224,6 +229,10 @@ impl Default for Settings {
             background_dim: 0.8,
             raw_mouse_input: false,
             scroll_sensitivity: 1.0,
+            
+            fullscreen_monitor: FullscreenMonitor::None,
+            fullscreen_windowed: false,
+            fullscreen_center: true,
 
             // cursor
             cursor_scale: 1.0,
