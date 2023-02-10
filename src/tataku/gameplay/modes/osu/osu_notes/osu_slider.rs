@@ -348,7 +348,7 @@ impl OsuSlider {
     }
 
     fn add_end_ripple(&mut self, time: f32) {
-        self.add_ripple(time, self.visual_end_pos, false);
+        self.add_ripple(time, self.time_end_pos, false);
     }
 
 }
