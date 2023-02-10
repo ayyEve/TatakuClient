@@ -57,7 +57,7 @@ impl SkinSettings {
         let mut s = Self::default();
 
         // return defaults if skin does not exist
-        if !exists(&path) {
+        if !Io::exists(&path) {
             trace!("skin.ini missing, using defaults");
             return Ok(s)
         }
@@ -66,7 +66,7 @@ impl SkinSettings {
 
         // read lines
         let mut current_area = SkinSection::General;
-        let mut lines = read_lines(&path)?;
+        let mut lines = Io::read_lines(&path)?;
 
         while let Some(Ok(line)) = lines.next() {
             // split out comments, and trim wacky chars

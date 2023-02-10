@@ -52,7 +52,7 @@ pub struct GameWindow {
 
     settings: SettingsHelper,
 
-    frametime_logger: FrameTimeLogger
+    frametime_logger: FrameTimeLogger,
 }
 
 impl GameWindow {
@@ -299,40 +299,19 @@ impl GameWindow {
 
     fn apply_fullscreen(&mut self) {
         if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
-            let mut set = false;
-            self.window.glfw.with_connected_monitors(|_, monitors| {
-                for (n, monitor) in monitors.iter().enumerate() {
-                    if n == monitor_num {
-                        let mode = monitor.get_video_mode();
+            let set = self.window.glfw.with_connected_monitors(|_, monitors| {
+                if let Some((_, monitor)) = monitors.iter().enumerate().find(|(n, _)|*n == monitor_num) {
+                    
+                    // if the monitor doesnt have a video mode (???) dont continue with fullscreen because we dont know what the resolution is
+                    let Some(mode) = monitor.get_video_mode() else { return false };
+                    let width = mode.width;
+                    let height = mode.height;
 
-                        let x = 0;
-                        let y = 0;
+                    self.window.window.set_monitor(glfw::WindowMode::FullScreen(monitor), 0, 0, width, height, None);
 
-                        let mut width = 0;
-                        let mut height = 0;
-
-                        //TODO: implement this. i think this will require being in fullscreen but not using the below stuff
-                        // // do we render at settings_window_size? 
-                        // if !settings.fullscreen_windowed {
-                        //     if let Some(mode) = mode {
-                        //         x = mode.width as usize / 2;
-                        //     }
-                        // }
-
-                        // if settings.fullscreen_center { 
-                        // } else {
-                        // }
-
-                        if let Some(mode) = &mode {
-                            width = mode.width;
-                            height = mode.height;
-                        }
-
-                        self.window.window.set_monitor(glfw::WindowMode::FullScreen(monitor), x, y, width, height, None);
-
-                        set = true;
-                        return;
-                    }
+                    true
+                } else {
+                    false
                 }
             });
             if set { return }

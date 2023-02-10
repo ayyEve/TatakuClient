@@ -24,7 +24,7 @@ pub struct OsuBeatmap {
 impl OsuBeatmap {
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
         let parent_dir = Path::new(&file_path).parent().unwrap();
-        let hash = crate::get_file_hash(&file_path).unwrap();
+        let hash = Io::get_file_hash(&file_path).unwrap();
 
         /// helper enum
         #[derive(Debug)]
@@ -59,7 +59,7 @@ impl OsuBeatmap {
             stack_leniency: 1.0,
         };
 
-        for line in read_lines_resolved(&file_path)? {
+        for line in Io::read_lines_resolved(&file_path)? {
             // ignore empty lines
             if line.len() < 2 {continue}
 

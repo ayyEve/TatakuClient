@@ -62,7 +62,7 @@ pub struct Font2 {
 
 impl Font2 {
     pub fn load<P:AsRef<Path>>(path:P) -> Option<Self> {
-        let data = std::fs::read(path.as_ref()).ok()?;
+        let data = Io::read_file(&path).ok()?;
         let name = path.as_ref().file_name().unwrap().to_string_lossy().to_string();
 
         let font_settings = fontdue::FontSettings::default();

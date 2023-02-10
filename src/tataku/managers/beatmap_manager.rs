@@ -141,7 +141,7 @@ impl BeatmapManager {
                     continue
                 }
 
-                match get_file_hash(file) {
+                match Io::get_file_hash(file) {
                     Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) {continue},
                     Err(e) => {
                         error!("error getting hash for file {}: {}", file, e);

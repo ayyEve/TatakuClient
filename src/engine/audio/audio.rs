@@ -7,11 +7,11 @@ pub trait AudioApi: Send + Sync {
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>>;
 
     fn load_sample_path(&self, path: &Path) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let data = std::fs::read(path)?;
+        let data = Io::read_file(path)?;
         self.load_sample_data(data)
     }
     fn load_stream_path(&self, path: &Path) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let data = std::fs::read(path)?;
+        let data = Io::read_file(path)?;
         self.load_stream_data(data)
     }
 

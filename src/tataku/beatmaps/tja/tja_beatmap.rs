@@ -24,7 +24,7 @@ pub struct TJABeatmap {
 }
 impl TJABeatmap {
     pub fn parse(path: String) -> TatakuResult<Self> {
-        if let Ok(file) = String::from_utf8(std::fs::read(path)?) {
+        if let Ok(file) = String::from_utf8(Io::read_file(path)?) {
             let lines = file.split("\n").map(|l|l.trim());
 
             let mut s = Self::default();

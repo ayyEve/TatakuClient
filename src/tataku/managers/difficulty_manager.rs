@@ -120,8 +120,8 @@ pub async fn do_diffcalc(playmode: String) {
 
 
 fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32>>> {
-    if exists(DIFF_FILE) {
-        let data = std::fs::read(DIFF_FILE)?;
+    if Io::exists(DIFF_FILE) {
+        let data = Io::read_file(DIFF_FILE)?;
         let mut reader = SerializationReader::new(data);
         Ok(reader.read()?)
     } else {

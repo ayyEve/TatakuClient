@@ -62,7 +62,7 @@ impl StepmaniaBeatmap {
         let mut meter = None;
         let mut groove_radar_values = None;
         
-        let mut lines = read_lines_resolved(&path)?;
+        let mut lines = Io::read_lines_resolved(&path)?;
         while let Some(line) = lines.next() {
             // trim out comments
             let line = line.split("//").next().unwrap();

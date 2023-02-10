@@ -8,7 +8,7 @@ pub fn convert_osu_replay(filepath: impl AsRef<Path>) -> TatakuResult<Replay> {
 }
 
 fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
-    let file = std::fs::read(file)?;
+    let file = Io::read_file(file)?;
     let file = file.as_slice();
     let mut offset = 0;
 

@@ -1,79 +1,112 @@
 use crate::prelude::*;
-use std::fs::DirEntry;
-use std::{fs::File, path::Path};
-use std::io::{self, BufRead, BufReader, Lines};
+use std::{ fs::File, path::Path };
+use std::io::{ self, BufRead, BufReader, Lines };
 
 
-/// check if folder exists, creating it if it doesnt
-pub fn check_folder(dir:&str) {
-    if !Path::new(dir).exists() {
-        std::fs::create_dir(dir).expect("error creating folder: ");
+pub struct Io;
+
+impl Io {
+
+    /// read a file into bytes
+    pub fn read_file(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
+        let time = Instant::now();
+        let f = std::fs::read(&path);
+
+        let duration = time.as_millis();
+        if duration > 1000.0 { warn!("took {duration:.2}ms to load file {}", path.as_ref().display()); }
+
+        f
     }
-}
 
-/// check if a file exists, downloading it if it doesnt
-pub async fn check_file<P:AsRef<Path>>(path:P, download_url:&str) {
-    let path = path.as_ref();
-    if !path.exists() {
-        info!("Check failed for '{:?}', downloading from '{}'", path, download_url);
+    /// helper for the read_lines functions
+    fn open_file(path: impl AsRef<Path>) -> io::Result<File>{
+        let time = Instant::now();
+        let f = File::open(&path);
+
+        let duration = time.as_millis();
+        if duration > 1000.0 { warn!("took {duration:.2}ms to load file {}", path.as_ref().display()); }
+
+        f
+    }
+
+    
+    /// get a file's hash
+    pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> std::io::Result<String> {
+        Ok(md5(Self::read_file(file_path)?))
+    }
+
+    // check if file or folder exists
+    pub fn exists<P: AsRef<Path>>(path: P) -> bool {
+        path.as_ref().exists()
+    }
+    /// check if folder exists, creating it if it doesnt
+    pub fn check_folder(dir:&str) -> io::Result<()> {
+        if !Path::new(dir).exists() {
+            std::fs::create_dir(dir)?;
+        }
+        Ok(())
+    }
+
+    /// check if a file exists, downloading it if it doesnt
+    pub async fn check_file<P:AsRef<Path>>(path:P, download_url:&str) {
+        let path = path.as_ref();
+        if !path.exists() {
+            info!("Check failed for '{:?}', downloading from '{}'", path, download_url);
+            
+            let bytes = reqwest::get(download_url)
+                .await
+                .expect("error with request")
+                .bytes()
+                .await
+                .expect("error converting to bytes");
+
+            std::fs::write(path, bytes)
+                .expect("Error saving file");
+        }
+    }
+
+
+    pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
+        filename.as_ref()
+            .replace("\\", "") 
+            .replace("/", "") 
+            .replace(":", "")  
+            .replace("*", "") 
+            .replace("?", "") 
+            .replace("\"", "") 
+            .replace("'", "") 
+            .replace("<", "") 
+            .replace(">", "") 
+            .replace("|", "") 
+    }
+
+
+
+    /// read a file to the end
+    pub fn read_lines(filename: impl AsRef<Path>) -> io::Result<Lines<BufReader<File>>> {
+        let file = Self::open_file(filename)?;
+        Ok(BufReader::new(file).lines())
+    }
+
+    pub fn read_lines_resolved(filename: impl AsRef<Path>) -> io::Result<impl Iterator<Item = String>> {
+        let file = Self::open_file(filename)?;
+        let lines = BufReader::new(file).lines().filter_map(|f|f.ok());
+        Ok(lines)
+    }
+
         
-        let bytes = reqwest::get(download_url)
-            .await
-            .expect("error with request")
-            .bytes()
-            .await
-            .expect("error converting to bytes");
-
-        std::fs::write(path, bytes)
-            .expect("Error saving file");
-    }
 }
 
 
-pub fn sanitize_filename(filename: impl AsRef<str>) -> String {
-    filename.as_ref()
-        .replace("\\", "") 
-        .replace("/", "") 
-        .replace(":", "")  
-        .replace("*", "") 
-        .replace("?", "") 
-        .replace("\"", "") 
-        .replace("'", "") 
-        .replace("<", "") 
-        .replace(">", "") 
-        .replace("|", "") 
-}
 
 
-/// read a file to the end
-pub fn read_lines<P: AsRef<Path>>(filename: P) -> io::Result<Lines<BufReader<File>>> {
-    let file = File::open(filename)?;
-    Ok(BufReader::new(file).lines())
-}
-#[allow(unused)]
-pub fn read_lines_resolved<P: AsRef<Path>>(filename: P) -> io::Result<impl Iterator<Item = String>> {
-    let file = File::open(filename)?;
-    let lines = BufReader::new(file).lines().filter_map(|f|f.ok());
-    Ok(lines)
-}
 
-/// get a file's hash
-pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> std::io::Result<String> {
-    Ok(md5(std::fs::read(file_path)?))
-}
-
-// check if file or folder exists
-pub fn exists<P: AsRef<Path>>(path: P) -> bool {
-    path.as_ref().exists()
-}
 
 
 /// load an image file to an image struct
 /// non-main thread safe
 pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
-    // helper.log("settings made", true);
-
-    let buf: Vec<u8> = match std::fs::read(path.as_ref()) {
+    let buf: Vec<u8> = match Io::read_file(path.as_ref()) {
         Ok(buf) => buf,
         Err(_) => return None,
     };
@@ -129,102 +162,87 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
 pub async fn extract_all() {
 
     // check for new maps
-    if let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) {
-        // let completed = Arc::new(Mutex::new(0));
 
-        let files:Vec<std::io::Result<DirEntry>> = files.collect();
-        // let len = files.len();
-        trace!("Files: {:?}", files);
 
-        for file in files {
-            trace!("Looping file {:?}", file);
-            // let completed = completed.clone();
+    let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) else { return };
 
-            match file {
-                Ok(filename) => {
-                    trace!("File ok");
-                    // tokio::spawn(async move {
-                        trace!("Reading file {:?}", filename);
+    for filename in files.filter_map(|f|f.ok()) {
+        trace!("Looping file {:?}", filename);
+        // let completed = completed.clone();
 
-                        let mut error_counter = 0;
-                        // unzip file into ./Songs
-                        while let Err(e) = std::fs::File::open(filename.path().to_str().unwrap()) {
-                            error!("Error opening osz file: {}", e);
-                            error_counter += 1;
+        trace!("File ok");
+        trace!("Reading file {:?}", filename);
 
-                            // if we've waited 5 seconds and its still broken
-                            if error_counter > 5 {
-                                error!("5 errors opening osz file: {}", e);
-                                return;
-                            }
+        let mut error_counter = 0;
+        // unzip file into ./Songs
+        while let Err(e) = std::fs::File::open(filename.path()) {
+            error!("Error opening osz file: {}", e);
+            error_counter += 1;
 
-                            // tokio::time::sleep(Duration::from_millis(1000)).await;
-                        }
-
-                        let file = std::fs::File::open(filename.path().to_str().unwrap()).unwrap();
-                        let mut archive = match zip::ZipArchive::new(file) {
-                            Ok(a) => a,
-                            Err(e) => {
-                                error!("Error extracting zip archive: {}", e);
-                                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED).await;
-                                continue;
-                            }
-                        };
-                        
-                        for i in 0..archive.len() {
-                            let mut file = archive.by_index(i).unwrap();
-                            let mut outpath = match file.enclosed_name() {
-                                Some(path) => path,
-                                None => continue,
-                            };
-
-                            let x = outpath.to_str().unwrap();
-                            let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(".osz"));
-                            let z = &(y + x);
-                            outpath = Path::new(z);
-
-                            if (&*file.name()).ends_with('/') {
-                                debug!("File {} extracted to \"{}\"", i, outpath.display());
-                                std::fs::create_dir_all(&outpath).unwrap();
-                            } else {
-                                debug!("File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
-                                if let Some(p) = outpath.parent() {
-                                    if !p.exists() {std::fs::create_dir_all(&p).unwrap()}
-                                }
-                                let mut outfile = std::fs::File::create(&outpath).unwrap();
-                                std::io::copy(&mut file, &mut outfile).unwrap();
-                            }
-
-                            // Get and Set permissions
-                            // #[cfg(unix)] {
-                            //     use std::os::unix::fs::PermissionsExt;
-                            //     if let Some(mode) = file.unix_mode() {
-                            //         fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
-                            //     }
-                            // }
-                        }
-                    
-                        match std::fs::remove_file(filename.path().to_str().unwrap()) {
-                            Ok(_) => {},
-                            Err(e) => error!("Error deleting file: {}", e),
-                        }
-                        
-                        trace!("Done");
-                        // *completed.lock() += 1;
-                    // });
-                }
-                Err(e) => {
-                    error!("Error with file: {}", e);
-                }
+            // if we've waited 5 seconds and its still broken
+            if error_counter > 5 {
+                error!("5 errors opening osz file: {}", e);
+                return;
             }
+
+            // tokio::time::sleep(Duration::from_millis(1000)).await;
+        }
+
+        let file = std::fs::File::open(filename.path()).unwrap();
+        let mut archive = match zip::ZipArchive::new(file) {
+            Ok(a) => a,
+            Err(e) => {
+                error!("Error extracting zip archive: {}", e);
+                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED).await;
+                continue;
+            }
+        };
+        
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i).unwrap();
+            let mut outpath = match file.enclosed_name() {
+                Some(path) => path,
+                None => continue,
+            };
+
+            let x = outpath.to_str().unwrap();
+            let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(".osz"));
+            let z = &(y + x);
+            outpath = Path::new(z);
+
+            if (&*file.name()).ends_with('/') {
+                debug!("File {} extracted to \"{}\"", i, outpath.display());
+                std::fs::create_dir_all(&outpath).unwrap();
+            } else {
+                debug!("File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() { std::fs::create_dir_all(&p).unwrap() }
+                }
+                let mut outfile = std::fs::File::create(&outpath).unwrap();
+                std::io::copy(&mut file, &mut outfile).unwrap();
+            }
+
+            // Get and Set permissions
+            // #[cfg(unix)] {
+            //     use std::os::unix::fs::PermissionsExt;
+            //     if let Some(mode) = file.unix_mode() {
+            //         fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+            //     }
+            // }
         }
     
+        if let Err(e) = std::fs::remove_file(filename.path()) {
+            error!("Error deleting file: {}", e)
+        }
         
-        // while *completed.lock() < len {
-        //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
-        //     std::thread::sleep(Duration::from_millis(500));
-        // }
+        trace!("Done");
     }
+
+    
+    // while *completed.lock() < len {
+    //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
+    //     std::thread::sleep(Duration::from_millis(500));
+    // }
 }
 
 

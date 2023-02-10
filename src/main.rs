@@ -48,7 +48,7 @@ const FIRST_MAPS: &[u32] = &[
 #[tokio::main]
 async fn main() {
     // enter game dir
-    if exists("./game") {
+    if Io::exists("./game") {
         if let Err(e) = std::env::set_current_dir("./game") {
             println!("error changing current dir: {}", e);
         }
@@ -142,19 +142,19 @@ async fn setup() {
     Settings::load().await;
 
     // check for missing folders
-    check_folder(DOWNLOADS_DIR);
-    check_folder(REPLAYS_DIR);
-    check_folder(SONGS_DIR);
-    check_folder("skins");
-    check_folder("resources");
-    check_folder("resources/audio");
-    check_folder("resources/fonts");
+    Io::check_folder(DOWNLOADS_DIR).unwrap();
+    Io::check_folder(REPLAYS_DIR).unwrap();
+    Io::check_folder(SONGS_DIR).unwrap();
+    Io::check_folder("skins").unwrap();
+    Io::check_folder("resources").unwrap();
+    Io::check_folder("resources/audio").unwrap();
+    Io::check_folder("resources/fonts").unwrap();
 
     debug!("Folder check done, downloading files");
 
     // check for missing files
     for file in REQUIRED_FILES.iter() {
-        check_file(file, &download_url(file)).await;
+        Io::check_file(file, &download_url(file)).await;
     }
 
     // hitsounds
@@ -162,7 +162,7 @@ async fn setup() {
         for sample_set in ["normal", "soft", "drum"] {
             for hitsound in ["hitnormal", "hitwhistle", "hitclap", "hitfinish", "slidertick"] {
                 let file = format!("resources/audio/{mode}{sample_set}-{hitsound}.wav");
-                check_file(&file, &download_url(&file)).await;
+                Io::check_file(&file, &download_url(&file)).await;
             }
         }
     }
@@ -171,7 +171,7 @@ async fn setup() {
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
         // no songs, download some
         for id in FIRST_MAPS {
-            check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &download_url(format!("/maps/{}.osz", id))).await;
+            Io::check_file(&format!("{}/{}.osz", DOWNLOADS_DIR, id), &download_url(format!("/maps/{}.osz", id))).await;
         }
     }
 
@@ -214,7 +214,7 @@ async fn check_bass() {
         }
 
         // download it from the web
-        check_file(&library_path, &download_url(format!("/lib/bass/{}", filename))).await;
+        Io::check_file(&library_path, &download_url(format!("/lib/bass/{}", filename))).await;
     } else {
         warn!("error getting current executable dir, assuming things are good...")
     }

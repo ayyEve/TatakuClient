@@ -26,7 +26,7 @@ pub async fn load_osu_skins(path: impl AsRef<Path>) {
 
 pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError> {
     let path = path.as_ref();
-    let data = read_lines_resolved(path)?
+    let data = Io::read_lines_resolved(path)?
         .map(|i| {
             let mut s = i.split("=");
             s

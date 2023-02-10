@@ -85,7 +85,7 @@ impl QuaverBeatmap {
         }
 
 
-        s.hash = get_file_hash(&path)?;
+        s.hash = Io::get_file_hash(&path)?;
         s.path = path.clone();
 
         let parent_dir = Path::new(&path).parent().unwrap().to_str().unwrap();

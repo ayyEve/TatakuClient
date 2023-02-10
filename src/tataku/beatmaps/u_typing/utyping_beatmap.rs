@@ -42,7 +42,7 @@ impl UTypingBeatmap {
 
         let parent_folder = path.as_ref().parent().unwrap().to_string_lossy().to_string();
 
-        let lines = encoding_rs::SHIFT_JIS.decode(std::fs::read(path.as_ref())?.as_slice()).0.to_string().replace("\r","");
+        let lines = encoding_rs::SHIFT_JIS.decode(Io::read_file(path.as_ref())?.as_slice()).0.to_string().replace("\r","");
         let mut lines = lines.split("\n");
 
         macro_rules! next {
@@ -59,7 +59,7 @@ impl UTypingBeatmap {
 
         let data_filename = next!(lines); 
         let data_filepath = Path::new(&parent_folder).join(data_filename);
-        let map_data = encoding_rs::SHIFT_JIS.decode(std::fs::read(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
+        let map_data = encoding_rs::SHIFT_JIS.decode(Io::read_file(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
         if map_data.chars().next() != Some('@') {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
 
         let map_data_lines = map_data.split("\n");
@@ -173,7 +173,7 @@ impl UTypingBeatmap {
         map.beat_length = list[1].time - list[0].time;
 
         // get the file hash
-        map.hash = get_file_hash(&data_filepath)?;
+        map.hash = Io::get_file_hash(&data_filepath)?;
 
         // get the start time
         map.start_time = map.notes[0].time;

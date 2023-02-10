@@ -442,7 +442,7 @@ impl Game {
                             let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
 
                             let mut err:Option<(&str, TatakuError)> = None;
-                            match std::fs::read(full_path) {
+                            match Io::read_file(full_path) {
                                 Err(e) => err = Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
                                 Ok(data) => match reqwest::Client::new().post(url).body(data).send().await {
                                     Err(e) => err = Some(("Error sending screenshot request", TatakuError::String(e.to_string()))),
@@ -1061,8 +1061,7 @@ impl Game {
                 menu.score_submit = score_submit;
                 self.queue_state_change(GameState::InMenu(Box::new(menu)));
             }
-
-
+            
         }
     }
 
@@ -1071,7 +1070,7 @@ impl Game {
         let theme = match &theme {
             SelectedTheme::Tataku => tataku_theme(),
             SelectedTheme::Osu => osu_theme(),
-            SelectedTheme::Custom(path, _) => std::fs::read(path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default(),
+            SelectedTheme::Custom(path, _) => Io::read_file(path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default(),
         };
 
         GlobalValueManager::update(Arc::new(CurrentTheme(theme)));

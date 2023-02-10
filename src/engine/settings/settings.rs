@@ -268,9 +268,9 @@ impl Default for Settings {
 
 // make a backup of the setting before they're overwritten (when the file fails to load)
 async fn backup_settings() {
-    if exists(SETTINGS_FILE) {
+    if Io::exists(SETTINGS_FILE) {
         let mut counter = 0;
-        while exists(format!("{SETTINGS_FILE}.bak_{counter}")) {
+        while Io::exists(format!("{SETTINGS_FILE}.bak_{counter}")) {
             counter += 1;
         }
         let file = format!("{SETTINGS_FILE}.bak_{counter}");

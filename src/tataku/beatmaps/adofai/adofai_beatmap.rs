@@ -40,7 +40,7 @@ impl AdofaiBeatmap {
             Err(e) => panic!("error reading adofai map '{}': {}", path, e),
         };
 
-        map.hash = get_file_hash(&path).unwrap();
+        map.hash = Io::get_file_hash(&path).unwrap();
         map.file_path = path.clone();
         
         let chars = map.path_data.chars().collect::<Vec<char>>();

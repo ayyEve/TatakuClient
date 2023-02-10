@@ -51,7 +51,7 @@ impl AudioManager {
 
         // check if file exists
         {
-            if !exists(&string_path) {
+            if !Io::exists(&string_path) {
                 error!("audio file does not exist! {}", string_path);
                 return TatakuResult::Err(TatakuError::Audio(AudioError::FileDoesntExist))
             }

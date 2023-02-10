@@ -360,7 +360,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                             date = score_time.date_naive().format("%d-%m-%Y").to_string();
                         }
 
-                        let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
+                        let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &Io::sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
                         let export_path = Path::new(&export_path);
 
                         // ensure export dir exists
