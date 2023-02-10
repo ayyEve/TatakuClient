@@ -18,6 +18,7 @@ build-linux:
   image: rust:latest
   rules:
     - if: $TATAKU_RELEASE_KEY != null
+      when: never
 
   script:
     - apt update
@@ -27,7 +28,6 @@ build-linux:
   tags:
     - linux
     - local
-  when: never
 
 
 # TODO: build-mac
@@ -36,10 +36,10 @@ build-mac:
   image: rust:latest
   rules:
     - if: $TATAKU_RELEASE_KEY != null
+      when: never
   script:
     - cargo build --release --verbose
     - ./release/linux.sh
   tags:
     - mac
     - local
-  when: never
