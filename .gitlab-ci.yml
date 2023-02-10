@@ -18,6 +18,7 @@ build-linux:
   image: rust:latest
   rules:
     - if: $TATAKU_RELEASE_KEY != null
+
   script:
     - apt update
     - apt install -y libasound2-dev cmake xorg-dev libxcb-shape0-dev libxcb-xfixes0-dev
@@ -26,7 +27,7 @@ build-linux:
   tags:
     - linux
     - local
-    - never
+  when: never
 
 
 # TODO: build-mac
@@ -41,4 +42,4 @@ build-mac:
   tags:
     - mac
     - local
-    - never #TODO: remove this when ready
+  when: never
