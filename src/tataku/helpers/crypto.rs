@@ -1,3 +1,5 @@
+use crate::prelude::*;
+
 pub fn md5<B:AsRef<[u8]>>(body: B) -> String {
     format!("{:x}", md5::compute(body).to_owned())
 }
@@ -41,4 +43,10 @@ pub fn check_sha512(s:String) -> String {
     } else {
         s
     }
+}
+
+
+pub fn decode_base64(data: impl AsRef<[u8]>) -> TatakuResult<Vec<u8>>{
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.decode(data).map_err(|e| TatakuError::String(e.to_string()))
 }

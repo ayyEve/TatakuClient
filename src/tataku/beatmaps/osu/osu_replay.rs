@@ -33,13 +33,10 @@ impl ReplayDownloader for OsuReplayDownloader {
         let data:Wrapper = serde_json::from_slice(&bytes)?;
 
         if let Some(content) = &data.content {
-            let data = base64::decode(content).map_err(|e| TatakuError::String(format!("error decoding osu replay: {e}")))?;
-
+            let data = decode_base64(content).map_err(|e| TatakuError::String(format!("error decoding osu replay: {e}")))?;
             Ok(OsuReplay::replay_from_score_and_lzma(&self.0, &mut data.as_ref())?)
         } else {
             Err(TatakuError::String(data.error.unwrap_or("peppy api sucks".to_owned())))
         }
     }
 }
-
-

@@ -21,7 +21,7 @@ pub struct OsuBeatmap {
     pub slider_tick_rate: f32,
     pub stack_leniency: f32,
 }
-impl OsuBeatmap {
+impl OsuBeatmap { 
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
         let parent_dir = Path::new(&file_path).parent().unwrap();
         let hash = Io::get_file_hash(&file_path).unwrap();

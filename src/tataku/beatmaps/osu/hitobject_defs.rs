@@ -74,7 +74,7 @@ pub enum CurveType {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct HitSamples {
     // Hit sample syntax: normalSet:additionSet:index:volume:filename
 
@@ -119,16 +119,5 @@ impl HitSamples {
             }
         }
 
-    }
-}
-impl Default for HitSamples {
-    fn default() -> Self {
-        Self {
-            normal_set: 0,
-            addition_set: 0,
-            index: 0,
-            volume: 0,
-            filename: None,
-        }
     }
 }
