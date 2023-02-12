@@ -23,8 +23,21 @@ pub struct OsuBeatmap {
 }
 impl OsuBeatmap { 
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
-        let parent_dir = Path::new(&file_path).parent().unwrap();
-        let hash = Io::get_file_hash(&file_path).unwrap();
+        Self::base_loader(file_path, false)
+    }
+
+    pub fn load_metadata(filepath: impl AsRef<Path>) -> TatakuResult<Arc<BeatmapMeta>> {
+        Ok(Self::base_loader(filepath, true)?.metadata)
+    }
+
+    /// loader for both metadata only and full map. removes duplicate code
+    fn base_loader(filepath: impl AsRef<Path>, metadata_only: bool) -> TatakuResult<OsuBeatmap> {
+        let file_path = filepath.as_ref();
+        let parent_dir = file_path.parent().unwrap();
+        let hash = Io::get_file_hash(file_path).unwrap();
+
+        let mut start_time = 0.0;
+        let mut end_time = 0.0;
 
         /// helper enum
         #[derive(Debug)]
@@ -40,6 +53,7 @@ impl OsuBeatmap {
             HitObjects,
         }
 
+        let file_path = file_path.as_os_str().to_string_lossy().to_string();
         let mut current_area = BeatmapSection::Version;
         let mut metadata = BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu);
 
@@ -61,24 +75,27 @@ impl OsuBeatmap {
 
         for line in Io::read_lines_resolved(&file_path)? {
             // ignore empty lines
-            if line.len() < 2 {continue}
+            if line.len() < 2 { continue }
 
             // check for section change
             if line.starts_with("[") {
-                // this one isnt really necessary
-                if line == "[General]" {current_area = BeatmapSection::General}
-                if line == "[Editor]" {current_area = BeatmapSection::Editor}
-                if line == "[Metadata]" {current_area = BeatmapSection::Metadata}
-                if line == "[Difficulty]" {current_area = BeatmapSection::Difficulty}
-                if line == "[Events]" {current_area = BeatmapSection::Events}
-                if line == "[Colours]" {current_area = BeatmapSection::Colors}
-                if line == "[TimingPoints]" {current_area = BeatmapSection::TimingPoints}
-                if line == "[HitObjects]" {
-                    // sort timing points before moving onto hitobjects
-                    beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
-
-                    current_area = BeatmapSection::HitObjects; 
+                match &*line {
+                    // this one isnt really necessary
+                    "[General]" => current_area = BeatmapSection::General,
+                    "[Editor]" => current_area = BeatmapSection::Editor,
+                    "[Metadata]" => current_area = BeatmapSection::Metadata,
+                    "[Difficulty]" => current_area = BeatmapSection::Difficulty,
+                    "[Events]" => current_area = BeatmapSection::Events,
+                    "[Colours]" => current_area = BeatmapSection::Colors,
+                    "[TimingPoints]" => current_area = BeatmapSection::TimingPoints,
+                    "[HitObjects]" => {
+                        // sort timing points before moving onto hitobjects
+                        beatmap.timing_points.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
+                        current_area = BeatmapSection::HitObjects; 
+                    }
+                    _ => {}
                 }
+
                 continue;
             }
 
@@ -95,12 +112,13 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim();
 
-                    if key == "AudioFilename" {metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned()}
-                    if key == "PreviewTime" {metadata.audio_preview = val.parse().unwrap_or(0.0)}
-                    if key == "StackLeniency" {beatmap.stack_leniency = val.parse().unwrap_or(0.0)}
-                    if key == "Mode" {
-                        let m = val.parse::<u8>().unwrap();
-                        metadata.mode = playmode_from_u8(m);
+                    match &*key {
+                        "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned(),
+                        "PreviewTime" => metadata.audio_preview = val.parse().unwrap_or(0.0),
+                        "StackLeniency" => beatmap.stack_leniency = val.parse().unwrap_or(0.0),
+                        "Mode" => metadata.mode = playmode_from_u8(val.parse::<u8>().unwrap()),
+
+                        _ => {}
                     }
                 }
                 BeatmapSection::Metadata => {
@@ -108,24 +126,30 @@ impl OsuBeatmap {
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap_or("").trim();
                     
-                    if key == "Title" {metadata.title = val.to_owned()}
-                    if key == "TitleUnicode" {metadata.title_unicode = val.to_owned()}
-                    if key == "Artist" {metadata.artist = val.to_owned()}
-                    if key == "ArtistUnicode" {metadata.artist_unicode = val.to_owned()}
-                    if key == "Creator" {metadata.creator = val.to_owned()}
-                    if key == "Version" {metadata.version = val.to_owned()}
+                    match &*key {
+                        "Title" => metadata.title = val.to_owned(), 
+                        "TitleUnicode" => metadata.title_unicode = val.to_owned(), 
+                        "Artist" => metadata.artist = val.to_owned(), 
+                        "ArtistUnicode" => metadata.artist_unicode = val.to_owned(), 
+                        "Creator" => metadata.creator = val.to_owned(), 
+                        "Version" => metadata.version = val.to_owned(), 
+                        _ => {}
+                    }
                 }
                 BeatmapSection::Difficulty => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
                     let val = split.next().unwrap().trim().parse::<f32>().unwrap();
 
-                    if key == "HPDrainRate" {metadata.hp = val}
-                    if key == "CircleSize" {metadata.cs = val}
-                    if key == "OverallDifficulty" {metadata.od = val}
-                    if key == "ApproachRate" {metadata.ar = val}
-                    if key == "SliderMultiplier" {beatmap.slider_multiplier = val}
-                    if key == "SliderTickRate" {beatmap.slider_tick_rate = val}
+                    match &*key {
+                        "HPDrainRate" => metadata.hp = val, 
+                        "CircleSize" => metadata.cs = val, 
+                        "OverallDifficulty" => metadata.od = val, 
+                        "ApproachRate" => metadata.ar = val, 
+                        "SliderMultiplier" => beatmap.slider_multiplier = val, 
+                        "SliderTickRate" => beatmap.slider_tick_rate = val, 
+                        _ => {}
+                    }
                 }
                 BeatmapSection::Events => {
                     let mut split = line.split(',');
@@ -145,11 +169,21 @@ impl OsuBeatmap {
                 }
                 BeatmapSection::HitObjects => {
                     let mut split = line.split(",");
-                    if split.clone().count() < 2 {continue} // skip empty lines
+                    if split.clone().count() < 2 { continue } // skip empty lines
 
                     let x = split.next().unwrap().parse::<f64>().unwrap();
                     let y = split.next().unwrap().parse::<f64>().unwrap();
                     let time = split.next().unwrap().parse::<f32>().unwrap();
+
+                    if time < start_time {
+                        start_time = time
+                    }
+                    if time > end_time {
+                        end_time = time
+                    }
+
+                    if metadata_only { continue; }
+
                     let read_type = split.next().unwrap().parse::<u64>().unwrap_or(0); // see below
 
                     let hitsound_raw = split.next().unwrap();
@@ -170,7 +204,7 @@ impl OsuBeatmap {
                     // h = mania hold
                     let new_combo = (read_type & 4) > 0;
                     let color_skip = 
-                            if (read_type & 16) > 0 {1} else {0} 
+                          if (read_type & 16) > 0 {1} else {0} 
                         + if (read_type & 32) > 0 {2} else {0} 
                         + if (read_type & 64) > 0 {4} else {0};
 
@@ -271,22 +305,25 @@ impl OsuBeatmap {
                 }
 
                 BeatmapSection::Colors => {
+                    if metadata_only { continue; }
+
                     // Combo[n] : r,g,b
                     // SliderTrackOverride : r,g,b
                     // SliderBorder : r,g,b
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
-                    let mut val_split = split.next().unwrap().trim().split(",");
-                    let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                    let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                    let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
-                    let c = |a| {a as f32 / 255.0};
-                    let color = Color::new(c(r), c(g), c(b), 1.0);
-                    
+
                     if key.starts_with("Combo") {
+                        let mut val_split = split.next().unwrap().trim().split(",");
+                        let r:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let g:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let b:u8 = val_split.next().unwrap_or_default().parse().unwrap_or_default();
+                        let c = |a| {a as f32 / 255.0};
+                        let color = Color::new(c(r), c(g), c(b), 1.0);
+
                         beatmap.combo_colors.push(color);
                     }
-                },
+                }
                 BeatmapSection::Editor => {},
             }
         }
@@ -295,7 +332,7 @@ impl OsuBeatmap {
         let mut bpm_min = 9999999999.9;
         let mut bpm_max = 0.0;
         for i in beatmap.timing_points.iter() {
-            if i.is_inherited() {continue}
+            if i.is_inherited() { continue }
 
             if i.beat_length < bpm_min {
                 bpm_min = i.beat_length;
@@ -308,32 +345,6 @@ impl OsuBeatmap {
         metadata.bpm_max = 60_000.0 / bpm_max;
 
         // metadata duration (scuffed bc .osu is trash)
-        let mut start_time = 0.0;
-        let mut end_time = 0.0;
-        for note in beatmap.notes.iter() {
-            if note.time < start_time {
-                start_time = note.time
-            }
-            if note.time > end_time {
-                end_time = note.time
-            }
-        }
-        for note in beatmap.sliders.iter() {
-            if note.time < start_time {
-                start_time = note.time
-            }
-            if note.time > end_time {
-                end_time = note.time
-            }
-        }
-        for note in beatmap.spinners.iter() {
-            if note.time < start_time {
-                start_time = note.time
-            }
-            if note.time > end_time {
-                end_time = note.time
-            }
-        }
         metadata.duration = end_time - start_time;
 
 
@@ -344,6 +355,7 @@ impl OsuBeatmap {
 
         Ok(beatmap)
     }
+
 
     pub fn from_metadata(metadata: &Arc<BeatmapMeta>) -> OsuBeatmap {
         // load the betmap

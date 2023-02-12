@@ -59,6 +59,22 @@ impl Beatmap {
         }
     }
 
+    /// loading metadata only is way faster if only the meta is needed
+    pub fn load_multiple_metadata(path: impl AsRef<Path>) -> TatakuResult<Vec<Arc<BeatmapMeta>>> {
+        let path = path.as_ref();
+        if path.extension().is_none() { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)) }
+        
+        match path.extension().unwrap().to_str().unwrap() {
+            "osu" => Ok(vec![osu::OsuBeatmap::load_metadata(path.to_str().unwrap().to_owned())?]),
+            "qua" => Ok(vec![quaver::QuaverBeatmap::load(path.to_str().unwrap().to_owned())?.get_beatmap_meta()]),
+            "adofai" => Ok(vec![adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned()).get_beatmap_meta()]),
+            "txt" => Ok(vec![u_typing::UTypingBeatmap::load(path)?.get_beatmap_meta()]),
+            "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
+
+            _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
+        }
+    }
+    
     pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         Self::load_single(&meta.file_path, meta)
     }

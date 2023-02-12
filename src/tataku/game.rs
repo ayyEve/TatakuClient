@@ -400,7 +400,6 @@ impl Game {
                 }
 
                 loop {
-
                     if let Some((data, width, height)) = b.exploded() {
                         // create file
                         let date = chrono::Local::now();

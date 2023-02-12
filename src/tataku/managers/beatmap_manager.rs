@@ -124,11 +124,7 @@ impl BeatmapManager {
 
         for file in dir_files {
             let file = file.unwrap().path();
-        
-            let file = match file.to_str() {
-                Some(f) => f,
-                None => continue,
-            };
+            let Some(file) = file.to_str() else { continue };
 
             if file.ends_with(".osu") 
             || file.ends_with(".qua") 
@@ -142,17 +138,16 @@ impl BeatmapManager {
                 }
 
                 match Io::get_file_hash(file) {
-                    Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) {continue},
+                    Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) { continue },
                     Err(e) => {
                         error!("error getting hash for file {}: {}", file, e);
                         continue;
                     }
                 }
 
-                match Beatmap::load_multiple(file.to_owned()) {
+                match Beatmap::load_multiple_metadata(file.to_owned()) {
                     Ok(maps) => {
                         for map in maps {
-                            let map = map.get_beatmap_meta();
                             self.add_beatmap(&map);
 
                             // if it got here, it shouldnt be in the database

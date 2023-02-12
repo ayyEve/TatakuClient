@@ -33,6 +33,9 @@ impl LoadingMenu {
 
             status.lock().await.stage = LoadingStage::Done;
         });
+
+
+        
     }
 
     // loaders
@@ -123,6 +126,29 @@ impl LoadingMenu {
             let nlen = manager.beatmaps.len();
             debug!("loaded {nlen} beatmaps ({} new)", nlen - existing_len);
         }
+
+        
+        // {
+        //     let beatmaps = BEATMAP_MANAGER.read().await.beatmaps.clone();
+        //     let timer = std::time::Instant::now();
+        //     for b in beatmaps.iter() {
+        //         if b.beatmap_type == BeatmapType::Osu {
+        //             let _ = OsuBeatmap::load(b.file_path.clone());
+        //         }
+        //     }
+        //     let full_elapsed = timer.elapsed().as_secs_f32() * 1000.0;
+        //     let timer = std::time::Instant::now();
+
+        //     for b in beatmaps.iter() {
+        //         if b.beatmap_type == BeatmapType::Osu {
+        //             let _ = OsuBeatmap::load_metadata(b.file_path.clone());
+        //         }
+        //     }
+        //     let meta_elapsed = timer.elapsed().as_secs_f32() * 1000.0;
+            
+        //     println!("full took {full_elapsed:.4}");
+        //     println!("meta took {meta_elapsed:.4}")
+        // }
 
 
     }
