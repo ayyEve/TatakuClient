@@ -288,8 +288,12 @@ impl OnlineManager {
                     if s.user_id == user_id {
                         let mut settings = get_settings_mut!();
                         if settings.username != username {
-                            settings.username = username
+                            settings.username = username.clone()
                         }
+                    }
+
+                    if s.friends.contains(&user_id) {
+                        NotificationManager::add_text_notification(format!("{username} is online"), 5000.0, Color::BLUE).await;
                     }
                 }
                 PacketId::Server_UserLeft {user_id} => {
@@ -297,7 +301,13 @@ impl OnlineManager {
 
                     let mut lock = s.write().await;
                     // remove from online users
-                    lock.users.remove(&user_id);
+                    if let Some(u) = lock.users.remove(&user_id) {
+                        let l = u.lock().await;
+                        let username = &l.username;
+                        if lock.friends.contains(&user_id) {
+                            NotificationManager::add_text_notification(format!("{username} is offline"), 5000.0, Color::BLUE).await;
+                        }
+                    }
 
                     // remove from our spec list
                     for (i, &(id, _)) in lock.spectator_list.iter().enumerate() {
@@ -306,6 +316,7 @@ impl OnlineManager {
                             break;
                         }
                     }
+                    
                 }
                 PacketId::Server_UserStatusUpdate { user_id, action, action_text, mode } => {
                     // debug!("Got user status update: {}, {:?}, {} ({:?})", user_id, action, action_text, mode);
