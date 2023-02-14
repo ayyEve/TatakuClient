@@ -540,8 +540,11 @@ impl GameMode for OsuGame {
     async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
         let mut pending_frames = Vec::new();
 
+        let has_autoplay = manager.current_mods.has_autoplay();
+        let has_relax = manager.current_mods.has_mod(Relax.name());
+
         // do autoplay things
-        if manager.current_mods.has_autoplay() {
+        if has_autoplay {
 
             self.auto_helper.update(time, &self.notes, &self.scaling_helper, &mut pending_frames);
 
@@ -551,7 +554,6 @@ impl GameMode for OsuGame {
             // }
         }
 
-        let has_relax = manager.current_mods.has_mod(Relax.name());
 
 
         // if the map is over, say it is
@@ -576,7 +578,7 @@ impl GameMode for OsuGame {
             }
 
 
-            if has_relax {
+            if has_relax && !has_autoplay {
                 // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
                 if time >= note.time() && time < end_time && !note.was_hit() && note.check_distance(self.mouse_pos) {
                     let key = KeyPress::LeftMouse;
