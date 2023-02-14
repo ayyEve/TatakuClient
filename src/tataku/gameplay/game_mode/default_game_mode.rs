@@ -10,7 +10,7 @@ impl GameMode for NoMode {
     async fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
     async fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
-    async fn update(&mut self, _:&mut IngameManager, _: f32) {}
+    async fn update(&mut self, _:&mut IngameManager, _: f32) -> Vec<ReplayFrame> { Vec::new() }
     async fn draw(&mut self, _:RenderArgs, _:&mut IngameManager, _: &mut RenderableCollection) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     async fn reset(&mut self, _:&Beatmap) {}

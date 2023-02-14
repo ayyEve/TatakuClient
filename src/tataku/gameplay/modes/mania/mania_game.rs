@@ -743,7 +743,7 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
         if manager.current_mods.has_autoplay() {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
@@ -760,7 +760,7 @@ impl GameMode for ManiaGame {
         // show score screen if map is over
         if time >= self.end_time {
             manager.completed = true;
-            return;
+            return Vec::new();
         }
 
         // check if we missed the current note
@@ -781,6 +781,8 @@ impl GameMode for ManiaGame {
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(time) }
+
+        Vec::new()
     }
     
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {

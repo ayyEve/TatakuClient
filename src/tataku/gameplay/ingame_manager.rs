@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use crate::prelude::*;
 
 
@@ -60,15 +62,15 @@ pub struct IngameManager {
 
     /// is this playing in the background of the main menu?
     pub menu_background: bool,
-    pub end_time: f32,
 
+
+    pub end_time: f32,
     pub lead_in_time: f32,
     pub lead_in_timer: Instant,
 
     pub timing_points: Vec<TimingPoint>,
     pub timing_point_index: usize,
     pub song: Arc<dyn AudioInstance>,
-
     pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
@@ -389,18 +391,20 @@ impl IngameManager {
 
         
         let mut gamemode = std::mem::take(&mut self.gamemode);
+        let mut pending_frames = Vec::new();
 
         // read inputs from replay if replaying
         if self.replaying && !self.current_mods.has_autoplay() {
 
             // read any frames that need to be read
             loop {
-                if self.replay_frame as usize >= self.replay.frames.len() {break}
+                if self.replay_frame as usize >= self.replay.frames.len() { break }
                 
                 let (frame_time, frame) = self.replay.frames[self.replay_frame as usize];
-                if frame_time > time {break}
+                if frame_time > time { break }
 
-                gamemode.handle_replay_frame(frame, frame_time, self).await;
+                pending_frames.push((frame, frame_time));
+                // gamemode.handle_replay_frame(frame, frame_time, self).await;
                 
                 self.replay_frame += 1;
             }
@@ -413,7 +417,8 @@ impl IngameManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        gamemode.update(self, time).await;
+        let update_frames = gamemode.update(self, time).await.into_iter().map(|f|(f, time));
+        pending_frames.extend(update_frames);
 
         if self.song.is_stopped() {
             trace!("Song over, saying map is complete");
@@ -462,6 +467,11 @@ impl IngameManager {
             
             // create and send the packet
             self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}))
+        }
+
+        // handle any frames
+        for (frame, time) in pending_frames {
+            self.handle_frame(frame, true, Some(time), &mut gamemode).await;
         }
 
         // put it back
@@ -900,34 +910,38 @@ impl IngameManager {
 
 // Input Handlers
 impl IngameManager {
-    pub async fn handle_input(&mut self, frame: Option<ReplayFrame>) {
-        if let Some(frame) = frame {
-            let mut gamemode = std::mem::take(&mut self.gamemode);
+    async fn handle_frame(&mut self, frame: ReplayFrame, force: bool, force_time: Option<f32>, gamemode: &mut Box<dyn GameMode>) {
+        if let ReplayFrame::Press(KeyPress::SkipIntro) = frame {
+            gamemode.skip_intro(self);
+            // more to do?
+            return;
+        }
+        
+        let add_frames = !(self.current_mods.has_autoplay() || self.replaying);
 
-            if let ReplayFrame::Press(KeyPress::SkipIntro) = frame {
-                gamemode.skip_intro(self);
-                    
-                self.gamemode = gamemode;
-                return; //TODO: more to add here? (ie multi/spec?)
+        if force || add_frames {
+            match frame {
+                ReplayFrame::Press(k) => self.key_counter.key_down(k),
+                ReplayFrame::Release(k) => self.key_counter.key_up(k),
+                _ => {}
             }
 
-            if !(self.current_mods.has_autoplay() || self.replaying) {
-                match frame {
-                    ReplayFrame::Press(k) => self.key_counter.key_down(k),
-                    ReplayFrame::Release(k) => self.key_counter.key_up(k),
-                    _ => {}
-                }
+            let time = force_time.unwrap_or_else(||self.time());
+            gamemode.handle_replay_frame(frame, time, self).await;
 
-                let time = self.time();
-                gamemode.handle_replay_frame(frame, time, self).await;
-
+            if !add_frames {
                 self.replay.frames.push((time, frame));
                 self.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{ frame }));
             }
-
-            self.gamemode = gamemode;
         }
+    }
 
+    async fn handle_input(&mut self, frame: Option<ReplayFrame>) {
+        let Some(frame) = frame else { return };
+
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        self.handle_frame(frame, false, None, &mut gamemode).await;
+        self.gamemode = gamemode;
     }
 
     pub async fn key_down(&mut self, key:Key, mods: KeyModifiers) {

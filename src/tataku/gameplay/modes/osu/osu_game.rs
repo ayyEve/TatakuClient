@@ -537,29 +537,33 @@ impl GameMode for OsuGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time:f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
+        let mut pending_frames = Vec::new();
+
         // do autoplay things
         if manager.current_mods.has_autoplay() {
-            let mut pending_frames = Vec::new();
 
-            self.auto_helper.update(time, &mut self.notes, &self.scaling_helper, &mut pending_frames);
+            self.auto_helper.update(time, &self.notes, &self.scaling_helper, &mut pending_frames);
 
-            // handle presses and mouse movements now, and releases later
-            for frame in pending_frames.iter() {
-                self.handle_replay_frame(*frame, time, manager).await;
-            }
+            // // handle presses and mouse movements now, and releases later
+            // for frame in pending_frames.iter() {
+            //     self.handle_replay_frame(*frame, time, manager).await;
+            // }
         }
+
+        let has_relax = manager.current_mods.has_mod(Relax.name());
 
 
         // if the map is over, say it is
         if time >= self.end_time {
             manager.completed = true;
-            return;
+            return Vec::new();
         }
 
         // update notes
         for note in self.notes.iter_mut() {
             note.update(time).await;
+            let end_time = note.end_time(self.miss_window);
 
             // play queued sounds
             for hitsound in note.get_sound_queue() {
@@ -571,12 +575,44 @@ impl GameMode for OsuGame {
                 Self::add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
             }
 
+
+            if has_relax {
+                // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
+                if time >= note.time() && time < end_time && !note.was_hit() && note.check_distance(self.mouse_pos) {
+                    let key = KeyPress::LeftMouse;
+
+                    match note.note_type() {
+                        NoteType::Note => {
+                            pending_frames.push(ReplayFrame::Press(key));
+                            pending_frames.push(ReplayFrame::Release(key));
+                        }
+                        NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
+                            // make sure we're not already holding
+                            if let Some(false) = manager.key_counter.keys.get(&key).map(|a|a.held) {
+                                pending_frames.push(ReplayFrame::Press(key));
+                            }
+                        }
+                    }
+                }
+
+                if time >= end_time && !note.was_hit() {
+                    let key = KeyPress::LeftMouse;
+
+                    match note.note_type() {
+                        NoteType::Note => {}
+                        NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
+                            // assume we're holding i guess?
+                            pending_frames.push(ReplayFrame::Release(key));
+                        }
+                    }
+                }
+            }
+
+
             // check if note was missed
             
             // if the time is leading in, we dont want to check if any notes have been missed
             if time < 0.0 { continue }
-
-            let end_time = note.end_time(self.miss_window);
 
             // check if note is in hitwindow
             if time >= end_time && !note.was_hit() {
@@ -632,16 +668,18 @@ impl GameMode for OsuGame {
             }
         }
 
-        // handle note releases
-        // required because autoplay frames are checked after the frame is processed
-        // so if the key is released on the same frame its checked, it will count as not held
-        // which makes sense, but we dont want that
+        // // handle note releases
+        // // required because autoplay frames are checked after the frame is processed
+        // // so if the key is released on the same frame its checked, it will count as not held
+        // // which makes sense, but we dont want that
         if manager.current_mods.has_autoplay() {
-            for frame in self.auto_helper.get_release_queue().iter() {
-                self.handle_replay_frame(*frame, time, manager).await;
-            }
+            pending_frames.extend(self.auto_helper.get_release_queue());
+            // for frame in self.auto_helper.get_release_queue() {
+            //     self.handle_replay_frame(frame, time, manager).await;
+            // }
         }
 
+        pending_frames
     }
     
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
@@ -1124,7 +1162,7 @@ impl StandardAutoHelper {
         }
     }
 
-    fn update(&mut self, time:f32, notes: &mut Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
+    fn update(&mut self, time:f32, notes: &Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
         let mut any_checked = false;
 
         let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);

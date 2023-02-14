@@ -25,3 +25,14 @@ impl GameplayMod for HardRock {
     fn score_multiplier(&self) -> f32 { 1.4 }
     fn removes(&self) -> &'static [&'static str] { &["easy"] }
 }
+
+pub struct Relax;
+impl GameplayMod for Relax {
+    fn name(&self) -> &'static str { "relax" }
+    fn short_name(&self) -> &'static str { "RX" }
+    fn display_name(&self) -> &'static str { "Relax" }
+    fn description(&self) -> &'static str { "You just need to aim!" }
+
+    fn score_multiplier(&self) -> f32 { 0.0 }
+    fn removes(&self) -> &'static [&'static str] { &["autoplay"] }
+}

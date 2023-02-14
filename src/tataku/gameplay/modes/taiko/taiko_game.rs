@@ -522,7 +522,7 @@ impl GameMode for TaikoGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
 
         // do autoplay things
         if manager.current_mods.has_autoplay() {
@@ -541,6 +541,7 @@ impl GameMode for TaikoGame {
             for frame in pending_frames.iter() {
                 self.handle_replay_frame(*frame, time, manager).await;
             }
+
         }
         
         for queue in [&mut self.notes, &mut self.other_notes] {
@@ -572,6 +573,8 @@ impl GameMode for TaikoGame {
         
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(time); }
+
+        Vec::new()
     }
     async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let time = manager.time();
