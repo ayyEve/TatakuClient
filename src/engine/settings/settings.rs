@@ -77,8 +77,11 @@ pub struct Settings {
     pub window_size: [f64; 2],
     #[Setting(text="FPS Limit", min=15, max=240, category="Window Settings")]
     pub fps_target: u64,
+    #[Setting(text="Vsync")]
+    pub vsync: bool,
     #[Setting(text="Update Limit", min=500, max=10_000)]
     pub update_target: u64,
+    
     // #[Setting(text="UI Scale")] // not ready yet
     pub ui_scale: f64,
     #[Setting(text="Background Dim", min=0, max=1)]
@@ -226,7 +229,9 @@ impl Default for Settings {
             // window settings
             fps_target: 144,
             update_target: 10_000,
+            vsync: false,
             window_size: [1280.0, 720.0],
+            
             ui_scale: 1.0,
             background_dim: 0.8,
             raw_mouse_input: false,

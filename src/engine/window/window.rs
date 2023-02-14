@@ -176,12 +176,19 @@ impl GameWindow {
         
         self.refresh_monitors();
         self.apply_fullscreen();
+        self.apply_vsync();
 
         loop {
             let old_fullscreen = self.settings.fullscreen_monitor;
+            let old_vsync = self.settings.vsync;
+
             if self.settings.update() {
                 if self.settings.fullscreen_monitor != old_fullscreen {
-                    self.apply_fullscreen()
+                    self.apply_fullscreen();
+                }
+
+                if self.settings.vsync != old_vsync {
+                    self.apply_vsync();
                 }
             }
 
@@ -323,6 +330,14 @@ impl GameWindow {
         let width  = size.width as u32;
         let height = size.height as u32;
         self.window.window.set_monitor(glfw::WindowMode::Windowed, 0, 0, width, height, None);
+    }
+
+    fn apply_vsync(&mut self) {
+        if self.settings.vsync {
+            self.window.glfw.set_swap_interval(glfw::SwapInterval::Sync(1))
+        } else {
+            self.window.glfw.set_swap_interval(glfw::SwapInterval::None)
+        }
     }
 }
 
