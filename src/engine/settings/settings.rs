@@ -139,8 +139,10 @@ pub struct Settings {
 
     // other misc
     pub last_git_hash: String,
-    pub logging_settings: LoggingSettings,
     pub external_games_folders: Vec<String>,
+    
+    #[Subsetting(category="Log Settings")]
+    pub logging_settings: LoggingSettings,
 
     #[serde(skip)]
     pub skip_autosaveing: bool,
