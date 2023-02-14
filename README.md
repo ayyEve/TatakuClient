@@ -17,6 +17,10 @@ required deps:
    - libxcb-render0-dev
    - libxcb-xfixes0-dev
 
+  You may also need the following on some distros:
+   - wayland-protocols
+   - extra-cmake-modules
+
 How to build:
  - install rust (https://rustup.rs/)
 

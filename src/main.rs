@@ -206,7 +206,7 @@ async fn check_bass() {
         
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
-        if exists(format!("/usr/lib/{}", filename)) {
+        if Io::exists(format!("/usr/lib/{}", filename)) {
             match std::fs::copy(filename, &library_path) {
                 Ok(_) => return info!("Found in /usr/lib"),
                 Err(e) => warn!("Found in /usr/lib, but couldnt copy: {}", e)
