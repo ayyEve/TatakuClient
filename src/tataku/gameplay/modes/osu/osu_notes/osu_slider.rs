@@ -214,9 +214,11 @@ impl OsuSlider {
         let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
 
+        // circles with a border have extra radius because of the border (i think its 0.5x the border width)
+
         // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
         // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
-        for (radius, color) in [(self.radius, border_color), (self.radius - border_radius, color)] {
+        for (radius, color) in [(self.radius - border_radius * 0.5, border_color), (self.radius - border_radius * 1.5, color)] {
 
             // add starting circle manually
             list.push(Box::new(Circle::new(
