@@ -182,7 +182,10 @@ impl InputManager {
         if let Some(e) = e.text_args() { self.text_cache += &e; }
         if let Some(has_focus) = e.focus_args() { self.window_change_focus = Some(has_focus); }
         if let Some(thing) = e.resize_args() { 
-            GlobalValueManager::update(Arc::new(WindowSize(thing.window_size.into())));
+            let val:Vector2 = thing.window_size.into();
+            if val.x == 0.0 || val.y == 0.0 { return }
+
+            GlobalValueManager::update(Arc::new(WindowSize(val)));
         }
 
         // e.text(|text| debug!("Typed '{}'", text));
