@@ -4,7 +4,7 @@ use crate::prelude::*;
 const DEFAULT_SKIN:&str = "default";
 
 lazy_static::lazy_static! {
-    static ref SKIN_MANAGER: Arc<RwLock<SkinManager>> = Arc::new(RwLock::new(SkinManager::new()));
+    static ref SKIN_MANAGER: Arc<AsyncRwLock<SkinManager>> = Arc::new(AsyncRwLock::new(SkinManager::new()));
 }
 
 

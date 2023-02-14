@@ -2,11 +2,11 @@ use super::audio::*;
 use crate::prelude::*;
 
 lazy_static::lazy_static!(
-    static ref CURRENT_SONG: Arc<Mutex<Option<(String, Arc<dyn AudioInstance>)>>> = Arc::new(Mutex::new(None));
+    static ref CURRENT_SONG: Arc<AsyncMutex<Option<(String, Arc<dyn AudioInstance>)>>> = Arc::new(AsyncMutex::new(None));
 
-    static ref PLAY_PENDING: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    static ref PLAY_PENDING: Arc<AsyncMutex<String>> = Arc::new(AsyncMutex::new(String::new()));
 
-    static ref CURRENT_API: Arc<parking_lot::RwLock<Arc<dyn AudioApi>>> = Arc::new(parking_lot::RwLock::new(Arc::new(super::null_audio::NullAudio)));
+    static ref CURRENT_API: Arc<RwLock<Arc<dyn AudioApi>>> = Arc::new(RwLock::new(Arc::new(super::null_audio::NullAudio)));
 );
 
 

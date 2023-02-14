@@ -7,7 +7,7 @@ use ayyeve_piston_ui::prelude::Dropdown;
 
 
 lazy_static::lazy_static! {
-    pub static ref SCORE_HELPER:Arc<RwLock<ScoreHelper>> = Arc::new(RwLock::new(ScoreHelper::new()));
+    pub static ref SCORE_HELPER:Arc<AsyncRwLock<ScoreHelper>> = Arc::new(AsyncRwLock::new(ScoreHelper::new()));
 }
 
 pub struct ScoreHelper {
@@ -20,16 +20,16 @@ impl ScoreHelper {
         }
     }
 
-    pub async fn get_scores(&self, map_hash: &String, playmode: &PlayMode) -> Arc<RwLock<ScoreLoaderHelper>> {
+    pub async fn get_scores(&self, map_hash: &String, playmode: &PlayMode) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
         let map_hash = map_hash.clone();
         let playmode = playmode.clone();
         let method = self.current_method;
+        let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::new()));
+        let scores_clone = scores.clone();
 
         match method {
             ScoreRetreivalMethod::Local 
             | ScoreRetreivalMethod::LocalMods => {
-                let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
-                let scores_clone = scores.clone();
                 tokio::spawn(async move {
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
 
@@ -42,14 +42,9 @@ impl ScoreHelper {
                     thing.scores = local_scores.into_iter().map(|s|IngameScore::new(s, false, false)).collect();
                     thing.done = true;
                 });
-                
-                scores
-            },
+            }
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
-                let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
-                
-                let scores_clone = scores.clone();
                 tokio::spawn(async move {
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
@@ -64,14 +59,10 @@ impl ScoreHelper {
                 });
                 
                 // scores.write().await.done = true;
-                scores
-            },
+            }
 
             ScoreRetreivalMethod::OgGame
             | ScoreRetreivalMethod::OgGameMods => {
-                let scores = Arc::new(RwLock::new(ScoreLoaderHelper::new()));
-                
-                let scores_clone = scores.clone();
                 tokio::spawn(async move {
                     let map_by_hash = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash).clone();
 
@@ -102,10 +93,10 @@ impl ScoreHelper {
                     thing.scores = online_scores;
                     thing.done = true;
                 });
-                
-                scores
-            },
+            }
         }
+
+        scores
     }
 }
 

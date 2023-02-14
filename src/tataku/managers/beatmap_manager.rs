@@ -4,7 +4,7 @@ use std::fs::read_dir;
 
 const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER:Arc<RwLock<BeatmapManager>> = Arc::new(RwLock::new(BeatmapManager::new()));
+    pub static ref BEATMAP_MANAGER:Arc<AsyncRwLock<BeatmapManager>> = Arc::new(AsyncRwLock::new(BeatmapManager::new()));
 }
 
 pub struct BeatmapManager {

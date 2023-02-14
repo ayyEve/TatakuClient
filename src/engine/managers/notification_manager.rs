@@ -21,7 +21,7 @@ const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
 
 
 lazy_static::lazy_static! {
-    pub static ref NOTIFICATION_MANAGER: Arc<Mutex<NotificationManager>> = Arc::new(Mutex::new(NotificationManager::new()));
+    pub static ref NOTIFICATION_MANAGER: Arc<AsyncMutex<NotificationManager>> = Arc::new(AsyncMutex::new(NotificationManager::new()));
 }
 
 

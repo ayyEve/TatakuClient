@@ -3,12 +3,12 @@ use crate::prelude::*;
 pub struct ScoreSubmitHelper {
     pub replay: Replay,
     settings: Settings,
-    pub response: RwLock<Option<SubmitResponse>>,
+    pub response: AsyncRwLock<Option<SubmitResponse>>,
 }
 
 impl ScoreSubmitHelper {
     pub fn new(replay: Replay, settings: &Settings) -> Arc<Self> {
-        Arc::new(Self { replay, settings: settings.clone(), response: RwLock::new(None) })
+        Arc::new(Self { replay, settings: settings.clone(), response: AsyncRwLock::new(None) })
     } 
 
     pub fn submit(self: Arc<Self>) {

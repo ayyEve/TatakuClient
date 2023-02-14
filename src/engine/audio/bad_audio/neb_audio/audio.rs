@@ -15,7 +15,7 @@ use crate::prelude::*;
 
 pub(super) static mut SAMPLE_RATE: u32 = 0;
 lazy_static::lazy_static! {
-    pub static ref CURRENT_DATA: Arc<parking_lot::Mutex<Vec<f32>>> = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    pub static ref CURRENT_DATA: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
 }
 
 

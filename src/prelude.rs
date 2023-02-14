@@ -43,7 +43,10 @@ pub use opengl_graphics::ImageSize;
 pub use opengl_graphics::GlGraphics;
 
 // tokio imports
-pub use tokio::sync::{ OnceCell, Mutex, RwLock };
+pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };
+
+pub use parking_lot::{ Mutex, RwLock };
+
 // serde imports
 pub use serde::{ Serialize, Deserialize };
 

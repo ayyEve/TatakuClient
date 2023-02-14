@@ -14,7 +14,7 @@ pub struct GameUIEditorDialog {
     window_size: Arc<WindowSize>,
 
     #[allow(unused)]
-    event_sender: Arc<parking_lot::Mutex<MultiFuze<UIElementEvent>>>,
+    event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>,
     event_receiver: MultiBomb<UIElementEvent>,
 
     sidebar: ScrollableArea,
@@ -24,7 +24,7 @@ pub struct GameUIEditorDialog {
 impl GameUIEditorDialog {
     pub fn new(elements: Vec<UIElement>) -> Self {
         let (event_sender, event_receiver) = MultiBomb::new();
-        let event_sender = Arc::new(parking_lot::Mutex::new(event_sender));
+        let event_sender = Arc::new(Mutex::new(event_sender));
 
         let window_size = WindowSize::get();
 
@@ -246,7 +246,7 @@ pub struct UISideBarElement {
 
     element_name: String,
     display_name: String,
-    event_sender: Arc<parking_lot::Mutex<MultiFuze<UIElementEvent>>>,
+    event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>,
 }
 impl ScrollableItemGettersSetters for UISideBarElement {
     fn size(&self) -> Vector2 {self.size}
@@ -271,7 +271,7 @@ impl ScrollableItemGettersSetters for UISideBarElement {
 }
 
 impl UISideBarElement {
-    fn new(element_name: String, display_name:&str, event_sender: Arc<parking_lot::Mutex<MultiFuze<UIElementEvent>>>) -> Self {
+    fn new(element_name: String, display_name:&str, event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>) -> Self {
         Self { 
             pos: Vector2::ZERO, 
             size: Vector2::new(WindowSize::get().x/3.0, TEXT_SIZE), 

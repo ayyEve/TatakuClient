@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use parking_lot::RwLock;
 use ayyeve_piston_ui::prelude::{ FontRender, TextRender };
 
 lazy_static::lazy_static! {
@@ -56,8 +55,8 @@ pub struct Font2 {
     pub font: Arc<fontdue::Font>,
     // if the size is loaded but the char isnt found, dont try to load the font
     pub loaded_sizes: Arc<RwLock<HashSet<FontSize>>>,
-    pub textures: Arc<parking_lot::RwLock<HashMap<FontSize, Arc<Texture>>>>,
-    pub characters: Arc<parking_lot::RwLock<HashMap<(FontSize, char), CharData>>>,
+    pub textures: Arc<RwLock<HashMap<FontSize, Arc<Texture>>>>,
+    pub characters: Arc<RwLock<HashMap<(FontSize, char), CharData>>>,
 }
 
 impl Font2 {

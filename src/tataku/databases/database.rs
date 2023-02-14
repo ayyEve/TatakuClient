@@ -57,7 +57,7 @@ fn perform_migrations(db: &Connection) {
 
 #[derive(Clone)]
 pub struct Database {
-    connection: Arc<Mutex<Connection>>,
+    connection: Arc<AsyncMutex<Connection>>,
 }
 impl Database {
     pub async fn get<'a>() -> tokio::sync::MutexGuard<'a, Connection> {
@@ -178,7 +178,7 @@ impl Database {
         perform_migrations(&connection);
 
 
-        let connection = Arc::new(Mutex::new(connection));
+        let connection = Arc::new(AsyncMutex::new(connection));
 
 
         let (sender, mut receiver) = channel(1000);

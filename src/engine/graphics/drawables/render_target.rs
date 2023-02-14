@@ -88,11 +88,12 @@ impl RenderTarget {
         //Check if FrameBuffer created successfully, and unbind it
         unsafe {
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-                let err = gl::GetError();
-                error!("error creating render target: {err}");
-
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-                
+
+                // when err is 0, the reason it couldnt create the render target is bc the window is minimized
+                let err = gl::GetError();
+                if err != 0 { error!("error creating render target: {err}"); }
+
                 return Err(TatakuError::GlError(GlError::RenderBuffer))
             }
             

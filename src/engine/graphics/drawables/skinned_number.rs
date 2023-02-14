@@ -20,7 +20,7 @@ pub struct SkinnedNumber {
     pub floating_precision: usize,
     draw_state: Option<DrawState>,
 
-    cache: Arc<parking_lot::RwLock<(f64, String)>>,
+    cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
@@ -70,7 +70,7 @@ impl SkinnedNumber {
             depth,
             number,
 
-            cache: Arc::new(parking_lot::RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
+            cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
             number_textures: textures,
             symbol_textures,
             symbol,

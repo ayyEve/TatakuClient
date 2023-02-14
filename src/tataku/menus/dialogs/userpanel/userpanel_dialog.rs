@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
 lazy_static::lazy_static! {
-    static ref PANEL_QUEUE: Arc<(parking_lot::Mutex<MultiFuze<UserPanelEvent>>, Mutex<MultiBomb<UserPanelEvent>>)> = {
+    static ref PANEL_QUEUE: Arc<(Mutex<MultiFuze<UserPanelEvent>>, AsyncMutex<MultiBomb<UserPanelEvent>>)> = {
         let (fuze, bomb) = MultiBomb::new();
-        let fuze = parking_lot::Mutex::new(fuze);
-        let bomb = Mutex::new(bomb);
+        let fuze = Mutex::new(fuze);
+        let bomb = AsyncMutex::new(bomb);
 
         Arc::new((fuze, bomb))
     };

@@ -11,7 +11,7 @@ pub struct SettingsMenu {
 
     window_size: Arc<WindowSize>,
 
-    change_receiver: Mutex<Receiver<()>>,
+    change_receiver: AsyncMutex<Receiver<()>>,
     menu_game: MenuGameHelper,
 }
 impl SettingsMenu {
@@ -49,7 +49,7 @@ impl SettingsMenu {
             scroll_area,
             old_settings: settings.as_ref().clone(),
             window_size,
-            change_receiver: Mutex::new(change_receiver),
+            change_receiver: AsyncMutex::new(change_receiver),
             menu_game: MenuGameHelper::new(true, false, Box::new(|s|s.background_game_settings.settings_menu_enabled))
         }
     }

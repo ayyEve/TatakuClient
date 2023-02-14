@@ -39,7 +39,7 @@ pub struct IngameManager {
     ui_elements: Vec<UIElement>,
 
     pub score_list: Vec<IngameScore>,
-    score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
+    score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
     pub started: bool,
     pub completed: bool,

@@ -16,7 +16,7 @@ pub struct BeatmapSelectMenu {
     back_button: MenuButton<Font2, Text>,
     // pending_refresh: bool,
 
-    score_loader: Option<Arc<RwLock<ScoreLoaderHelper>>>,
+    score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
     /// is changing, update loop detected that it was changing, how long since it changed
     map_changing: (bool, bool, u32),

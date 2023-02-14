@@ -528,7 +528,7 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
 
 
 lazy_static::lazy_static! {
-    static ref MONITORS: Arc<parking_lot::RwLock<Vec<String>>> = Default::default();
+    static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]

@@ -16,7 +16,7 @@ use kira::{
 };
 const NO_TWEEN:Tween = Tween { start_time: kira::StartTime::Immediate, duration: Duration::ZERO, easing: kira::tween::Easing::Linear };
 
-pub struct KiraAudio(Arc<parking_lot::Mutex<KiraAudioManager<CpalBackend>>>);
+pub struct KiraAudio(Arc<Mutex<KiraAudioManager<CpalBackend>>>);
 impl AudioApi for KiraAudio {
     fn init() -> TatakuResult<Self> where Self:Sized {
         let manager = KiraAudioManager::<CpalBackend>::new(AudioManagerSettings::default())
@@ -25,7 +25,7 @@ impl AudioApi for KiraAudio {
 
 
 
-        Ok(Self(Arc::new(parking_lot::Mutex::new(manager))))
+        Ok(Self(Arc::new(Mutex::new(manager))))
     }
 
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
@@ -48,16 +48,16 @@ struct StreamData {
     handle: Option<> 
 }
 
-struct KiraStreamAudioInstance (Arc<parking_lot::Mutex<StreamingSoundHandle<FromFileError>>>, Arc<parking_lot::Mutex<KiraAudioManager<CpalBackend>>>);
+struct KiraStreamAudioInstance (Arc<Mutex<StreamingSoundHandle<FromFileError>>>, Arc<Mutex<KiraAudioManager<CpalBackend>>>);
 impl KiraStreamAudioInstance {
-    fn new(data: StreamingSoundData<FromFileError>, manager: Arc<parking_lot::Mutex<KiraAudioManager<CpalBackend>>>) -> Self {
+    fn new(data: StreamingSoundData<FromFileError>, manager: Arc<Mutex<KiraAudioManager<CpalBackend>>>) -> Self {
         let mut manager_locked = manager.lock();
         let mut handle = manager_locked.play(data).expect("pain and suffering");
         let _ = handle.pause(NO_TWEEN);
         let _ = handle.seek_to(0.0);
         drop(manager_locked);
 
-        Self(Arc::new(parking_lot::Mutex::new(handle)), manager)
+        Self(Arc::new(Mutex::new(handle)), manager)
     }
 }
 impl AudioInstance for KiraStreamAudioInstance {

@@ -3,7 +3,7 @@ use crate::prelude::*;
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
     pub complete: bool,
-    status: Arc<Mutex<LoadingStatus>>,
+    status: Arc<AsyncMutex<LoadingStatus>>,
     window_size: Arc<WindowSize>,
 }
 
@@ -11,7 +11,7 @@ impl LoadingMenu {
     pub async fn new() -> Self {
         Self {
             complete: false,
-            status: Arc::new(Mutex::new(LoadingStatus::new())),
+            status: Arc::new(AsyncMutex::new(LoadingStatus::new())),
             
             window_size: WindowSize::get(),
         }
@@ -39,7 +39,7 @@ impl LoadingMenu {
     }
 
     // loaders
-    async fn load_difficulties(status: Arc<Mutex<LoadingStatus>>) {
+    async fn load_difficulties(status: Arc<AsyncMutex<LoadingStatus>>) {
         trace!("loading difficulties");
         status.lock().await.stage = LoadingStage::Difficulties;
         
@@ -47,7 +47,7 @@ impl LoadingMenu {
         init_diffs().await;
     }
 
-    async fn load_audio(status: Arc<Mutex<LoadingStatus>>) {
+    async fn load_audio(status: Arc<AsyncMutex<LoadingStatus>>) {
         trace!("loading audio");
         status.lock().await.stage = LoadingStage::Audio;
         // get a value from the hash, will do the lazy_static stuff and populate
@@ -56,7 +56,7 @@ impl LoadingMenu {
         // }
     }
 
-    async fn load_beatmaps(status: Arc<Mutex<LoadingStatus>>) {
+    async fn load_beatmaps(status: Arc<AsyncMutex<LoadingStatus>>) {
         trace!("loading audio");
         status.lock().await.stage = LoadingStage::Beatmaps;
         // set the count and reset the counter

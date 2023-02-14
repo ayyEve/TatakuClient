@@ -4,8 +4,8 @@ use crate::prelude::*;
 const APP_ID:&'static str = "857981337423577109";
 
 pub struct Discord {
-    client: Arc<Mutex<DiscordIpcClient>>,
-    last_status: Arc<Mutex<(String, String)>>
+    client: Arc<AsyncMutex<DiscordIpcClient>>,
+    last_status: Arc<AsyncMutex<(String, String)>>
 }
 
 impl Discord {
@@ -33,8 +33,8 @@ impl Discord {
 
         trace!("Done");
         Ok(Self {
-            client: Arc::new(Mutex::new(client)),
-            last_status: Arc::new(Mutex::new((String::new(), String::new())))
+            client: Arc::new(AsyncMutex::new(client)),
+            last_status: Arc::new(AsyncMutex::new((String::new(), String::new())))
         })
     }
 
