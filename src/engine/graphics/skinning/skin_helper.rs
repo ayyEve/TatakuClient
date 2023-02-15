@@ -5,8 +5,16 @@ const DEFAULT_SKIN:&str = "default";
 
 lazy_static::lazy_static! {
     static ref SKIN_MANAGER: Arc<AsyncRwLock<SkinManager>> = Arc::new(AsyncRwLock::new(SkinManager::new()));
+    
+    // TODO: change this to skin meta
+    static ref SKINS:Arc<RwLock<Vec<String>>> = {
+        let mut list = vec!["None".to_owned()];
+        for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
+            list.push(f.unwrap().file_name().to_string_lossy().to_string())
+        }
+        Arc::new(RwLock::new(list))
+    };
 }
-
 
 /// path to a texture file
 #[inline]
@@ -70,6 +78,16 @@ impl SkinManager {
         s.texture_cache.clear();
 
         GlobalValueManager::update(Arc::new(CurrentSkin(s.current_skin_config.clone())));
+    }
+
+
+    pub fn refresh_skins() {
+        let mut list = vec!["None".to_owned()];
+        for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
+            list.push(f.unwrap().file_name().to_string_lossy().to_string())
+        }
+
+        *SKINS.write() = list
     }
 }
 
@@ -143,3 +161,24 @@ impl SkinManager {
 
 
 crate::create_value_helper!(CurrentSkin, Arc<SkinSettings>, CurrentSkinHelper);
+
+
+
+#[derive(Clone)]
+pub enum SkinDropdownable {
+    Skin(String)
+}
+impl Dropdownable for SkinDropdownable {
+    fn variants() -> Vec<Self> {
+        SKINS.read().iter().map(|s|Self::Skin(s.clone())).collect()
+    }
+
+    fn display_text(&self) -> String {
+        let Self::Skin(s) = self;
+        s.clone()
+    }
+
+    fn from_string(s:String) -> Self {
+        Self::Skin(s)
+    }
+}

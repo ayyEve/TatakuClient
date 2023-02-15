@@ -1,15 +1,5 @@
 use crate::prelude::*;
 
-// TODO: change this to skin meta
-lazy_static::lazy_static! {
-    static ref SKINS:Vec<String> = {
-        let mut list = vec!["None".to_owned()];
-        for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
-            list.push(f.unwrap().file_name().to_string_lossy().to_string())
-        }
-        list
-    };
-}
 
 pub struct SkinSelect {
     should_close: bool,
@@ -102,54 +92,3 @@ impl Dialog<Game> for SkinSelect {
         
     }
 }
-
-
-
-#[derive(Clone)]
-pub enum SkinDropdownable {
-    Skin(String)
-}
-impl Dropdownable for SkinDropdownable {
-    fn variants() -> Vec<Self> {
-        SKINS.iter().map(|s|Self::Skin(s.clone())).collect()
-    }
-
-    fn display_text(&self) -> String {
-        let Self::Skin(s) = self;
-        s.clone()
-    }
-
-    fn from_string(s:String) -> Self {
-        Self::Skin(s)
-    }
-}
-
-
-
-
-// pub struct SkinChangeHelper {
-//     current_skin: String,
-// }
-// impl SkinChangeHelper {
-//     pub fn new_empty() -> Self {
-//         Self { current_skin: String::new() }
-//     }
-//     pub async fn new() -> Self {
-//         let current_skin = get_settings!().current_skin.clone();
-//         Self {
-//             current_skin,
-//         }
-//     }
-//     pub async fn check(&mut self) -> bool {
-//         let mut changed = false;
-
-//         // let skin_manager = SKIN_MANAGER.read();
-//         let current_skin = &get_settings!().current_skin;
-//         if &self.current_skin != current_skin {
-//             changed = true;
-//             self.current_skin = current_skin.clone();
-//             // println!("skin changed");
-//         }
-//         changed
-//     }
-// }

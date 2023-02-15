@@ -99,6 +99,9 @@ pub struct Settings {
     pub fullscreen_windowed: bool, // render at window_size?
     pub fullscreen_center: bool, // when rendering at window_size, center?
     
+    #[serde(skip)]
+    #[Setting(text="Refresh Monitors", action="|_|GameWindow::refresh_monitors()")]
+    refresh_monitors_button: (),
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
@@ -120,6 +123,11 @@ pub struct Settings {
     // skin settings
     #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
     pub current_skin: String,
+
+    #[serde(skip)]
+    #[Setting(text="Refresh Skins", action="|_|SkinManager::refresh_skins()")]
+    refresh_skins_button: (),
+
     #[Setting(text="Theme", dropdown="SelectedTheme")]
     pub theme: SelectedTheme,
 
@@ -240,6 +248,7 @@ impl Default for Settings {
             fullscreen_monitor: FullscreenMonitor::None,
             fullscreen_windowed: false,
             fullscreen_center: true,
+            refresh_monitors_button: (),
 
             // cursor
             cursor_scale: 1.0,
@@ -264,6 +273,7 @@ impl Default for Settings {
             last_git_hash: String::new(),
 
             current_skin: "None".to_owned(),
+            refresh_skins_button: (),
 
             external_games_folders: Vec::new(),
 
@@ -293,3 +303,4 @@ async fn backup_settings() {
         }
     }
 }
+

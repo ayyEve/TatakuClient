@@ -177,7 +177,7 @@ impl GameWindow {
             }
         }
         
-        self.refresh_monitors();
+        self.refresh_monitors_inner();
         self.apply_fullscreen();
         self.apply_vsync();
 
@@ -237,6 +237,7 @@ impl GameWindow {
                     WindowEvent::SetClipboard(val) => self.window.window.set_clipboard_string(&val),
                     WindowEvent::CloseGame => { close_window!(self); },
                     WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
+                    WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
                 }
 
                 #[cfg(feature="mobile")]
@@ -248,6 +249,7 @@ impl GameWindow {
                     // WindowEvent::SetClipboard(val) => self.window.window.set_clipboard_string(&val),
                     WindowEvent::CloseGame => { close_window!(self); },
                     WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
+                    WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
                     _ => {} // not implemented yet
                 }
@@ -314,7 +316,7 @@ impl GameWindow {
     }
 
 
-    fn refresh_monitors(&mut self) {
+    fn refresh_monitors_inner(&mut self) {
         #[cfg(feature="desktop")]
         self.window.glfw.with_connected_monitors(|_, monitors| {
             *MONITORS.write() = monitors.iter().filter_map(|m|m.get_name()).collect()
@@ -358,6 +360,13 @@ impl GameWindow {
         } else {
             self.window.glfw.set_swap_interval(glfw::SwapInterval::None)
         }
+    }
+}
+
+// static fns (mostly helpers)
+impl GameWindow {
+    pub fn refresh_monitors() {
+        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::RefreshMonitors);
     }
 }
 
@@ -463,6 +472,8 @@ pub enum WindowEvent {
     SetClipboard(String),
     CloseGame,
     TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
+
+    RefreshMonitors,
 }
 
 fn get_joystick_id(id: u32) -> glfw::JoystickId {

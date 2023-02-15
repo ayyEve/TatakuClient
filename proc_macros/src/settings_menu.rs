@@ -36,6 +36,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             // read the type
             match &f.ty {
                 Type::Path(path) => setting.setting_type = SettingsType::from(path.path.get_ident()),
+                Type::Tuple(_) => setting.setting_type = SettingsType::Button,
                 _ => {}
             }
         
@@ -87,6 +88,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                                 check!(val, category, "category");
                                 check!(val, setting_text, "text");
                                 check!(val, dropdown_value, "dropdown_value");
+                                check!(val, action, "action");
 
                                 if name_value.path.is_ident("dropdown") {
                                     setting.setting_type = SettingsType::Dropdown(val);
@@ -288,13 +290,26 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 }
             }
 
-            // 
+            // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
                 lines.push(format!("list.extend(self.{val}.get_menu_items(p, sender.clone()));"));
                 add = false;
 
                 lines2.push(format!("\n// {val2}"));
                 lines2.push(format!("self.{val}.from_menu(list);"));
+            }
+
+            // button that performs an action
+            SettingsType::Button => {
+                let w = float(setting.width.unwrap_or(600.0));
+                let size = format!("Vector2::new({w}, 50.0)");
+                lines.push(format!("let mut i = MenuButton::<Font2, Text>::new(p, {size}, \"{text}\", font.clone());"));
+                if let Some(action) = setting.action {
+                    lines.push(format!("i.on_click = Arc::new({action});"));
+                }
+                lines.push(format!("list.push(Box::new(i));"));
+
+                add = false;
             }
 
             // shrug
@@ -321,7 +336,11 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     lines.push("}".to_owned());
 
     let all_lines = lines.join("\n");
-    // std::fs::write(format!("./{struct_name}.rs", ), &all_lines).unwrap();
+
+    #[cfg(feature="extra_debugging")] {
+        std::fs::create_dir_all("./debug");
+        std::fs::write(format!("./debug/{struct_name}.rs", ), &all_lines).unwrap();
+    }
 
     let impl_tokens = all_lines.parse::<proc_macro2::TokenStream>().unwrap();
     quote! { #impl_tokens }
@@ -359,6 +378,9 @@ struct SettingsItem {
     range_min: Option<f64>,
     range_max: Option<f64>,
     width: Option<f64>,
+
+    // used for buttons
+    action: Option<String>
 }
 
 
@@ -376,6 +398,8 @@ enum SettingsType {
     Key,
     Dropdown(String),
     SubSetting,
+
+    Button,
 
     Unknown
 }
