@@ -540,8 +540,8 @@ impl GameMode for OsuGame {
     async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
         let mut pending_frames = Vec::new();
 
-        let has_autoplay = manager.current_mods.has_autoplay();
-        let has_relax = manager.current_mods.has_mod(Relax.name());
+        let has_autoplay = self.mods.has_autoplay();
+        let has_relax = self.mods.has_mod(Relax.name());
 
         // do autoplay things
         if has_autoplay {
@@ -909,11 +909,15 @@ impl GameMode for OsuGame {
 impl GameModeInput for OsuGame {
 
     async fn key_down(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+        // playfield adjustment
         if key == piston::Key::LCtrl {
             let old = self.game_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
             return None;
         }
+
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
             Some(ReplayFrame::Press(KeyPress::Left))
@@ -925,10 +929,14 @@ impl GameModeInput for OsuGame {
     }
     
     async fn key_up(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+        // playfield adjustment
         if key == piston::Key::LCtrl {
             self.move_playfield = None;
             return None;
         }
+
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
             Some(ReplayFrame::Release(KeyPress::Left))
@@ -978,7 +986,11 @@ impl GameModeInput for OsuGame {
     }
     
     async fn mouse_down(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+        // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
+
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
         
         if btn == MouseButton::Left {
             Some(ReplayFrame::Press(KeyPress::LeftMouse))
@@ -990,7 +1002,11 @@ impl GameModeInput for OsuGame {
     }
     
     async fn mouse_up(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+        // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
+
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if btn == MouseButton::Left {
             Some(ReplayFrame::Release(KeyPress::LeftMouse))
@@ -1016,6 +1032,9 @@ impl GameModeInput for OsuGame {
 
 
     async fn controller_press(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
             Some(ReplayFrame::Press(KeyPress::Left))
         } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
@@ -1026,6 +1045,9 @@ impl GameModeInput for OsuGame {
     }
     
     async fn controller_release(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+
         if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
             Some(ReplayFrame::Release(KeyPress::Left))
         } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
@@ -1066,9 +1088,9 @@ impl GameModeInput for OsuGame {
 
 #[async_trait]
 impl GameModeProperties for OsuGame {
-    fn playmode(&self) -> PlayMode {"osu".to_owned()}
-    fn end_time(&self) -> f32 {self.end_time}
-    fn show_cursor(&self) -> bool {true}
+    fn playmode(&self) -> PlayMode { "osu".to_owned() }
+    fn end_time(&self) -> f32 { self.end_time }
+    fn show_cursor(&self) -> bool { true }
     fn ripple_size(&self) -> Option<f64> {
         Some(self.scaling_helper.scaled_circle_size.x)
     }

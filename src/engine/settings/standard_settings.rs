@@ -14,6 +14,10 @@ pub struct StandardSettings {
     #[Setting(text="Ignore Mouse Buttons")]
     pub ignore_mouse_buttons: bool,
 
+    #[Setting(text="Allow manual input with Relax")]
+    pub manual_input_with_relax: bool,
+    
+
     // playfield
     pub playfield_x_offset: f64,
     pub playfield_y_offset: f64,
@@ -60,6 +64,7 @@ impl Default for StandardSettings {
             left_key: Key::S,
             right_key: Key::D,
             ignore_mouse_buttons: false,
+            manual_input_with_relax: false,
 
             playfield_x_offset: 0.0,
             playfield_y_offset: 0.0,
