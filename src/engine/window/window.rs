@@ -238,6 +238,19 @@ impl GameWindow {
                     WindowEvent::CloseGame => { close_window!(self); },
                     WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
                 }
+
+                #[cfg(feature="mobile")]
+                match event {
+                    // WindowEvent::ShowCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Normal),
+                    // WindowEvent::HideCursor => self.window.window.set_cursor_mode(glfw::CursorMode::Hidden),
+                    // WindowEvent::RequestAttention => self.window.window.request_attention(),
+                    // WindowEvent::SetRawInput(val) => self.window.window.set_raw_mouse_motion(val),
+                    // WindowEvent::SetClipboard(val) => self.window.window.set_clipboard_string(&val),
+                    WindowEvent::CloseGame => { close_window!(self); },
+                    WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
+
+                    _ => {} // not implemented yet
+                }
             }
 
             // increment input frametime stuff
