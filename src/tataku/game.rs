@@ -476,7 +476,6 @@ impl Game {
                                     }
                                 }
                             }
-
                             if let Some((s, err)) = err {
                                 NotificationManager::add_error_notification(s, err).await
                             }

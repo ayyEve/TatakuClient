@@ -130,6 +130,9 @@ impl TaikoGame {
 
         // if finisher, upgrade to geki or katu
         if finisher_hit {
+            // remove the normal hit indicator, its being replaced with a finisher
+            manager.judgement_indicators.pop();
+
             if let &TaikoHitJudgments::X100 = hit_value {
                 hit_value = &TaikoHitJudgments::Katu;
             } else if let &TaikoHitJudgments::X300 = hit_value {

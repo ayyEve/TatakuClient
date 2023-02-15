@@ -78,7 +78,7 @@ pub struct IngameManager {
     pub hitbar_timings: Vec<(f32, f32)>,
 
     /// list of judgement indicators to draw
-    judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
+    pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     /// if in replay mode, what replay frame are we at?
     replay_frame: u64,
