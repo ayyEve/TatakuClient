@@ -2675,6 +2675,7 @@ dependencies = [
  "bass-rs",
  "bombs",
  "chrono",
+ "clipboard",
  "crossbeam",
  "deepsize",
  "discord-rich-presence",
@@ -2709,6 +2710,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "triple_buffer",
+ "winit",
  "zip",
 ]
 

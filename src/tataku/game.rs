@@ -1097,5 +1097,6 @@ pub enum GameEvent {
     WindowEvent(piston::Event),
     DragAndDrop(PathBuf),
     /// controller event, controller name
+    #[allow(unused)]
     ControllerEvent(piston::Event, String)
 }

@@ -7,7 +7,6 @@ use piston::input::Button;
 use piston::MouseScrollEvent;
 use piston::MouseCursorEvent;
 use piston::input::ButtonState;
-use piston::ControllerAxisEvent;
 
 use crate::prelude::*;
 pub struct InputManager {
@@ -192,6 +191,7 @@ impl InputManager {
     }
 
     pub fn handle_controller_events(&mut self, e:Event, controller_name: String) {
+        use piston::ControllerAxisEvent;
 
         if let Some(axis) = e.controller_axis_args() {
             // debug!("got controller axis: {:?}", axis);
