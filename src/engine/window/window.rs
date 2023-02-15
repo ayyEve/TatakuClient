@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
-use glfw::Context;
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::{
     input::*, 
@@ -8,6 +7,8 @@ use piston::{
     Window
 };
 
+#[cfg(feature="desktop")]
+use glfw::Context;
 
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
@@ -104,7 +105,7 @@ impl GameWindow {
         }
         
         #[cfg(feature="mobile")] {
-            AudioManager::init_audio(0 as *mut std::ffi::c_void).expect("error initializing audio");
+            AudioManager::init_audio().expect("error initializing audio");
         }
 
         let now = Instant::now();
@@ -150,6 +151,7 @@ impl GameWindow {
         self.settings.update();
 
         #[cfg(feature = "desktop")] {
+            println!("using desktop");
             // resize window
             self.window.window.set_size(self.settings.window_size[0] as i32, self.settings.window_size[1] as i32);
 
@@ -159,6 +161,7 @@ impl GameWindow {
         } 
         
         #[cfg(feature = "mobile")] {
+            println!("using mobile");
             let size = [self.settings.window_size[0] as u32, self.settings.window_size[1] as u32];
             self.window.ctx.resize(size.into());
         }
@@ -299,12 +302,14 @@ impl GameWindow {
 
 
     fn refresh_monitors(&mut self) {
+        #[cfg(feature="desktop")]
         self.window.glfw.with_connected_monitors(|_, monitors| {
             *MONITORS.write() = monitors.iter().filter_map(|m|m.get_name()).collect()
         });
     }
 
     fn apply_fullscreen(&mut self) {
+        #[cfg(feature="desktop")]
         if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
             let set = self.window.glfw.with_connected_monitors(|_, monitors| {
                 if let Some((_, monitor)) = monitors.iter().enumerate().find(|(n, _)|*n == monitor_num) {
@@ -329,10 +334,12 @@ impl GameWindow {
         let size = self.window.size();
         let width  = size.width as u32;
         let height = size.height as u32;
+        #[cfg(feature="desktop")]
         self.window.window.set_monitor(glfw::WindowMode::Windowed, 0, 0, width, height, None);
     }
 
     fn apply_vsync(&mut self) {
+        #[cfg(feature="desktop")]
         if self.settings.vsync {
             self.window.glfw.set_swap_interval(glfw::SwapInterval::Sync(1))
         } else {
