@@ -1,7 +1,4 @@
-
 use ayyeve_piston_ui::prelude::piston::Window;
-use winit::platform::windows::WindowExtWindows;
-
 use crate::prelude::*;
 
 
@@ -30,7 +27,11 @@ impl GameWindowTrait for GlutinGameWindow {
         match winit::window::Icon::from_rgba(image.into_vec(), width, height) {
             Ok(icon) => {
                 self.window.ctx.window().set_window_icon(Some(icon.clone()));
-                self.window.ctx.window().set_taskbar_icon(Some(icon));
+                
+                #[cfg(target_os="windows")] {
+                    use winit::platform::windows::WindowExtWindows;
+                    self.window.ctx.window().set_taskbar_icon(Some(icon));
+                }
             },
             Err(e) => warn!("error setting window icon: {}", e)
         }
