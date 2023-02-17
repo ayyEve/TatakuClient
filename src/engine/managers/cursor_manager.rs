@@ -24,6 +24,7 @@ static CURSOR_EVENT_QUEUE:OnceCell<Sender<CursorEvent>> = OnceCell::const_new();
 pub struct CursorManager {
     /// position of the visible cursor
     pub pos: Vector2,
+    last_pos: Vector2,
 
     // cached settings
     pub color: Color,
@@ -98,6 +99,7 @@ impl CursorManager {
         let settings = SettingsHelper::new();
         Self {
             pos: Vector2::ZERO,
+            last_pos: Vector2::ZERO,
             color: Color::from_hex(&settings.cursor_color),
             border_color: Color::from_hex(&settings.cursor_border_color),
             ripple_color: Color::from_hex(&settings.cursor_ripple_color),
@@ -222,24 +224,48 @@ impl CursorManager {
         // trail stuff
 
         // check if we should add a new trail
-        if self.cursor_trail_image.is_some() && time - self.last_trail_time >= self.trail_create_timer {
-            if let Some(mut trail) = self.cursor_trail_image.clone() {
-                trail.scale = Vector2::ONE * self.settings.cursor_scale;
-                let mut g = TransformGroup::new(self.pos, trail.depth).alpha(1.0).border_alpha(0.0);
-                g.transforms.push(Transformation::new(
+        let is_solid_trail = self.cursor_middle_image.is_some();
+
+        if let Some(trail) = self.cursor_trail_image.as_ref().filter(|_|self.last_pos != self.pos) {
+            let scale = Vector2::ONE * self.settings.cursor_scale;
+
+            if is_solid_trail {
+                // solid trail, a bit more to check
+                let width = trail.size().x;
+                let dist = self.pos.distance(self.last_pos);
+                let count = (dist / width).ceil() as i32;
+
+                for i in 0..count {
+                    let pos = Vector2::lerp(self.last_pos, self.pos, i as f64 / count as f64);
+                    self.trail_images.push(Self::make_trail_group(
+                        pos, 
+                        trail.clone(), 
+                        self.trail_fadeout_timer_start, 
+                        self.trail_fadeout_timer_duration,
+                        scale,
+                        time
+                    ));
+                }
+
+                if count > 0 {
+                    self.last_pos = self.pos;
+                }
+            } else if time - self.last_trail_time >= self.trail_create_timer {
+                // not a solid trail, just follow the timer
+                self.last_trail_time = time;
+                self.last_pos = self.pos;
+                self.trail_images.push(Self::make_trail_group(
+                    self.pos, 
+                    trail.clone(), 
                     self.trail_fadeout_timer_start, 
-                    self.trail_fadeout_timer_duration, 
-                    TransformType::Transparency { start: 1.0, end: 0.0 }, 
-                    TransformEasing::EaseOutSine, 
+                    self.trail_fadeout_timer_duration,
+                    scale, 
                     time
                 ));
-                g.push(trail);
-
-                self.trail_images.push(g);
-                self.last_trail_time = time;
             }
 
         }
+
     
         // update the transforms, removing any that are not visible
         self.trail_images.retain_mut(|i| {
@@ -253,7 +279,6 @@ impl CursorManager {
             ripple.update(time);
             ripple.visible()
         });
-
 
     }
 
@@ -367,6 +392,22 @@ impl CursorManager {
 
         self.ripples.push(group);
     }
+
+
+    fn make_trail_group(pos: Vector2, mut trail: Image, start: f64, duration: f64, scale:Vector2, time: f64) -> TransformGroup {
+        trail.scale = scale;
+        let mut g = TransformGroup::new(pos, trail.depth).alpha(1.0).border_alpha(0.0);
+        g.transforms.push(Transformation::new(
+            start, 
+            duration, 
+            TransformType::Transparency { start: 1.0, end: 0.0 }, 
+            TransformEasing::EaseOutSine, 
+            time
+        ));
+        g.push(trail);
+        g
+    }
+
 }
 
 impl CursorManager {
