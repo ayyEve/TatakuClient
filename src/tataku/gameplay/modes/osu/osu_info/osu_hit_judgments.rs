@@ -66,7 +66,7 @@ impl HitJudgments for OsuHitJudgments {
     fn affects_combo(&self) -> AffectsCombo {
         match self {
             Miss | SliderDotMiss | SliderEndMiss | SpinnerMiss => AffectsCombo::Reset,
-            SliderDot | SpinnerPoint => AffectsCombo::Ignore,
+            SpinnerPoint => AffectsCombo::Ignore,
             
             _ => AffectsCombo::Increment,
         }
@@ -133,7 +133,7 @@ impl HitJudgments for OsuHitJudgments {
 
     fn fails_sudden_death(&self) -> bool {
         match self {
-            X50 | Miss | SliderEndMiss | SliderDotMiss => true,
+            X50 | Miss | SliderEndMiss | SliderDotMiss | SpinnerMiss => true,
             _ => false
         }
     }
