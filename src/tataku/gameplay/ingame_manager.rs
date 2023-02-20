@@ -134,7 +134,7 @@ impl IngameManager {
         score.speed = current_mods.get_speed();
 
 
-        let health = HealthHelper::new(Some(metadata.hp));
+        let health = HealthHelper::new();
         let score_loader = Some(SCORE_HELPER.read().await.get_scores(&metadata.beatmap_hash, &playmode).await);
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
 
@@ -452,6 +452,13 @@ impl IngameManager {
         if self.completed {
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}));
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
+
+            if self.health.check_fail_at_end {
+                if self.health.is_dead() {
+                    self.failed = true;
+                    self.failed_time = time;
+                }
+            }
         }
 
         // update our spectator list if we can
@@ -555,10 +562,10 @@ impl IngameManager {
         }
         
         // do health
-        self.health.do_health(judgment.get_health());
+        (self.health.do_health.clone())(&mut self.health, judgment, &self.score);
 
         // check health
-        if self.health.is_dead() {
+        if !self.health.check_fail_at_end && self.health.is_dead() {
             self.fail()
         }
 

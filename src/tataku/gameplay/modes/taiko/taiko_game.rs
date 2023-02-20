@@ -73,7 +73,8 @@ pub struct TaikoGame {
     miss_window: f32,
 
     last_judgment: TaikoHitJudgments,
-    current_mods: Arc<ModManager>
+    current_mods: Arc<ModManager>,
+    healthbar_swap_pending: bool,
 }
 impl TaikoGame {
     async fn play_sound(&self, manager: &mut IngameManager, note_time:f32,  hit_type: HitType, finisher: bool) {
@@ -244,6 +245,7 @@ impl GameMode for TaikoGame {
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
                     current_mods,
+                    healthbar_swap_pending: false
                 };
 
                 // add notes
@@ -363,6 +365,7 @@ impl GameMode for TaikoGame {
                     last_judgment: TaikoHitJudgments::Miss,
                     counter: FullAltCounter::new(),
                     current_mods,
+                    healthbar_swap_pending: false,
                 };
 
                 // add notes
@@ -527,6 +530,62 @@ impl GameMode for TaikoGame {
 
     async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
 
+        // check healthbar swap
+        if self.healthbar_swap_pending {
+            self.healthbar_swap_pending = false;
+            println!("swapping health");
+
+            // reset health helper to default
+            manager.health = Default::default();
+
+            // if we're using battery health
+            if !self.current_mods.has_mod(NoBattery.name()) {
+                let note_count = self.notes.iter().filter(|n|n.note_type() == NoteType::Note).count() as f32;
+
+                const MAX_HEALTH:f32 = 200.0;
+                const PASS_HEALTH:f32 = MAX_HEALTH / 2.0;
+
+                // this is essentially stolen from peppy's 2016 osu code
+                let normal_health = MAX_HEALTH / (0.06 * 6.0 * note_count * map_difficulty(self.metadata.hp, 0.5, 0.75, 0.98));
+                
+                // println!("normal health: {normal_health}");
+                
+                // random fudge because osu makes no sense
+                const FACTOR: f32 = 15.0;
+                let normal_health = normal_health / FACTOR;
+                // println!("normal health: {normal_health}");
+
+                let health_per_300 = normal_health * 6.0;
+                let health_per_100 = normal_health * map_difficulty(self.metadata.hp, 6.0, 2.2, 2.2);
+                let health_per_miss = map_difficulty(self.metadata.hp, -6.0, -25.0, -40.0) / FACTOR;
+
+                
+                // println!("note count: {note_count}");
+                // println!("health_per_300: {health_per_300}");
+                // println!("health_per_100: {health_per_100}");
+                // println!("health_per_miss: {health_per_miss}");
+
+
+                let health = &mut manager.health;
+                health.max_health = MAX_HEALTH;
+                health.current_health = 0.0;
+                health.initial_health = 0.0;
+                health.check_fail_at_end = true;
+
+                health.check_fail = Arc::new(move |s| s.current_health < PASS_HEALTH);
+                health.do_health = Arc::new(move |s, j, _score| {
+                    s.current_health += match j.as_str_internal() {
+                        "x300" => health_per_300,
+                        "x100" => health_per_100,
+                        "xmiss" => health_per_miss,
+                        _ => return
+                    };
+
+                    s.validate_health()
+                });
+            }
+        }
+
         // do autoplay things
         if manager.current_mods.has_autoplay() {
             let mut pending_frames = Vec::new();
@@ -573,7 +632,6 @@ impl GameMode for TaikoGame {
             }
         }
 
-        
         // TODO: might move tbs to a (time, speed) tuple
         for tb in self.timing_bars.iter_mut() { tb.update(time); }
 
@@ -734,6 +792,8 @@ impl GameMode for TaikoGame {
         
         // reset hitcache times
         self.hit_cache.iter_mut().for_each(|(_, t)| *t = -999.9);
+
+        self.healthbar_swap_pending = true;
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
@@ -896,7 +956,9 @@ impl GameMode for TaikoGame {
     
     async fn apply_mods(&mut self, mods: Arc<ModManager>) {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let old_sv_static = self.current_mods.has_mod(NoSV.name());
+        let old_mods = self.current_mods.clone();
+
+        let old_sv_static = old_mods.has_mod(NoSV.name());
         let current_sv_static = mods.has_mod(NoSV.name());
         self.current_mods = mods;
         
@@ -932,6 +994,9 @@ impl GameMode for TaikoGame {
             }
         }
 
+        if old_mods.has_mod(NoBattery.name()) != self.current_mods.has_mod(NoBattery.name()) {
+            self.healthbar_swap_pending = true;
+        }
     }
 
     

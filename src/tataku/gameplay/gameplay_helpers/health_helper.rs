@@ -1,28 +1,33 @@
-#![allow(dead_code)]
+use crate::prelude::*;
 
-#[derive(Clone, Default)]
+//TODO: add smoothing (visible_health, lerp on update between current_health and visible_health)
+#[derive(Clone)]
 pub struct HealthHelper {
-    max_health: f32,
-    current_health: f32,
+    pub current_health: f32,
+    pub initial_health: f32,
+    pub max_health: f32,
 
-    // pub damage_amount: f32,
-    // pub heal_amount: f32,
+    pub check_fail_at_end: bool,
+    pub check_fail: Arc<dyn (Fn(&Self) -> bool) + Send + Sync>,
+    pub do_health: Arc<dyn (Fn(&mut Self, &dyn HitJudgments, &IngameScore)) + Send + Sync>,
 }
 impl HealthHelper {
-    pub fn new(_hp_val: Option<f32>) -> Self {
-        let max_health = 80.0;
+    pub fn new() -> Self {
+        let initial_health = 80.0;
 
         Self {
-            max_health,
-            current_health: max_health,
+            current_health: initial_health,
+            max_health: initial_health,
+            initial_health,
 
-            // damage_amount: 10.0,
-            // heal_amount: 3.0
+            check_fail_at_end: false,
+            check_fail: Arc::new(Self::default_check_fail),
+            do_health: Arc::new(Self::default_do_health)
         }
     }
 
     pub fn is_dead(&self) -> bool {
-        self.current_health <= 0.0
+        (self.check_fail.clone())(self)
     }
 
     pub fn get_ratio(&self) -> f32 {
@@ -30,7 +35,7 @@ impl HealthHelper {
     }
 
     pub fn reset(&mut self) {
-        self.current_health = self.max_health;
+        self.current_health = self.initial_health;
     }
 
     #[inline]
@@ -39,22 +44,22 @@ impl HealthHelper {
         if self.current_health > self.max_health { self.current_health = self.max_health }
     }
 
-    pub fn do_health(&mut self, value:f32) {
-        self.current_health += value;
-        self.validate_health();
+}
+
+// default fns
+impl HealthHelper {
+    fn default_check_fail(&self) -> bool {
+        self.current_health <= 0.0
     }
+    fn default_do_health(&mut self, j: &dyn HitJudgments, _: &IngameScore) {
+        self.current_health += j.get_health();
+        self.validate_health()
+    }
+}
 
 
-    // pub fn take_damage(&mut self) {
-    //     self.current_health -= self.damage_amount;
-    //     self.validate_health();
-    // }
-    // pub fn give_life(&mut self) {
-    //     self.current_health += self.heal_amount;
-    //     self.validate_health();
-    // }
-    // pub fn give_extra_life(&mut self) {
-    //     self.current_health += self.heal_amount * 1.5;
-    //     self.validate_health();
-    // }
+impl Default for HealthHelper {
+    fn default() -> Self {
+        Self::new()
+    }
 }

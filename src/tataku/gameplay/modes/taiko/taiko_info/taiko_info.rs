@@ -25,6 +25,7 @@ impl GameModeInfo for TaikoGameInfo {
             GameplayModGroup::new("Difficulty")
                 .with_mod(super::HardRock)
                 .with_mod(super::Easy)
+                .with_mod(super::NoBattery)
             ,
         ]
     }

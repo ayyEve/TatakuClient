@@ -404,6 +404,11 @@ impl HitObject for OsuSlider {
             // direction changed
             self.moving_forward = current_moving_forwards;
             self.slides_complete += 1;
+
+            // if self.slides_complete == self.def.slides {
+            //     self.sound_index = self.def.edge_sounds.len() - 1;
+            // }
+
             #[cfg(feature="debug_sliders")]
             debug!("slide complete: {}", self.slides_complete);
 
@@ -853,6 +858,7 @@ impl OsuHitObject for OsuSlider {
     }
 
     fn get_hitsound(&self) -> Vec<Hitsound> {
+        println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }

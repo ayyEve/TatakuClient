@@ -4,7 +4,7 @@ pub struct FullAlt;
 impl GameplayMod for FullAlt {
     fn name(&self) -> &'static str { "full_alt" }
     fn short_name(&self) -> &'static str { "FA" }
-    fn display_name(&self) -> &'static str { "Full Auto" }
+    fn display_name(&self) -> &'static str { "Full Alt" }
     fn description(&self) -> &'static str { "Force full-alt :D" }
 }
 
@@ -41,4 +41,13 @@ impl GameplayMod for Easy {
     fn description(&self) -> &'static str { "Timing is looser :3" }
 
     fn score_multiplier(&self) -> f32 { 0.6 }
+}
+
+
+pub struct NoBattery;
+impl GameplayMod for NoBattery {
+    fn name(&self) -> &'static str { "no_battery" }
+    fn short_name(&self) -> &'static str { "NB" }
+    fn display_name(&self) -> &'static str { "No Battery" }
+    fn description(&self) -> &'static str { "Don't use battery health" }
 }
