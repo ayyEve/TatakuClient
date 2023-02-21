@@ -858,7 +858,7 @@ impl OsuHitObject for OsuSlider {
     }
 
     fn get_hitsound(&self) -> Vec<Hitsound> {
-        println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
+        // println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
         self.hitsounds[index].clone()
     }

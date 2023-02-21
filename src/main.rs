@@ -176,6 +176,7 @@ async fn setup() {
     }
 
     // check bass lib
+    #[cfg(feature="bass_audio")]
     check_bass().await;
 
     debug!("File check done");
@@ -186,6 +187,7 @@ async fn setup() {
 
 /// check for the bass lib
 /// if not found, will be downloaded
+#[cfg(feature="bass_audio")]
 async fn check_bass() {
     #[cfg(target_os = "windows")]
     let filename = "bass.dll";
