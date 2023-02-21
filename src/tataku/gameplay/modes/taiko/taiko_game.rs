@@ -533,7 +533,7 @@ impl GameMode for TaikoGame {
         // check healthbar swap
         if self.healthbar_swap_pending {
             self.healthbar_swap_pending = false;
-            println!("swapping health");
+            // println!("swapping health");
 
             // reset health helper to default
             manager.health = Default::default();

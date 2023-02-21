@@ -74,6 +74,7 @@ pub struct Settings {
     pub beatmap_hitsounds: bool,
 
     // window settings
+    pub window_pos: [i32; 2],
     pub window_size: [f64; 2],
     #[Setting(text="FPS Limit", min=15, max=240, category="Window Settings")]
     pub fps_target: u64,
@@ -238,6 +239,7 @@ impl Default for Settings {
             fps_target: 144,
             update_target: 10_000,
             vsync: false,
+            window_pos: [0, 0],
             window_size: [1280.0, 720.0],
             
             ui_scale: 1.0,

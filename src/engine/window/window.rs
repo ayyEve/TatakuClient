@@ -46,8 +46,8 @@ pub struct GameWindow {
 
 impl GameWindow {
     pub fn start(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: tokio::sync::mpsc::Sender<GameEvent>) -> Self {
-        let window_size = WindowSizeHelper::new();
-        let size = [window_size.x as u32, window_size.y as u32];
+        let settings = SettingsHelper::new();
+        let size = [settings.window_size[0] as u32, settings.window_size[1] as u32];
 
         let available_windows:Vec<Box<dyn Fn([u32; 2]) -> TatakuResult<Box<dyn GameWindowTrait>>>> = vec![
             #[cfg(feature="glfw_window")]
@@ -111,7 +111,7 @@ impl GameWindow {
             window,
 
             window_event_receiver,
-            settings: SettingsHelper::new(),
+            settings,
 
             frametime_timer: now,
             input_timer: now,
@@ -173,6 +173,7 @@ impl GameWindow {
                     continue
                 }
 
+
                 let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowEvent(e));
             }
 
@@ -189,7 +190,6 @@ impl GameWindow {
                     WindowEvent::CloseGame => { close_window!(self); },
                     WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
                     WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
-
                 }
             }
 
@@ -262,7 +262,7 @@ impl GameWindow {
         }
 
         // either its not fullscreen, or the monitor wasnt found, so default to windowed
-        self.window.apply_windowed();
+        self.window.apply_windowed(self.settings.window_pos);
     }
 
     fn apply_vsync(&mut self) {

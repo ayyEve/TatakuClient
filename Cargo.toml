@@ -12,6 +12,7 @@ build = "build/mod.rs"
 
 [features]
 default = ["glfw_window"]
+# default = ["glfw_window", "glutin_window"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
 discord = ["discord-rich-presence"]

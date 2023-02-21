@@ -19,7 +19,7 @@ impl GameWindowTrait for GlfwGameWindow {
         let window:glfw_window::GlfwWindow = piston::WindowSettings::new("Tataku!", size)
             .graphics_api(opengl_graphics::OpenGL::V4_5)
             .build()
-            .expect("Error creating window");
+            .map_err(|e|TatakuError::String(e.to_string()))?;
 
         let ptr = window.window.window_ptr();
         #[cfg(target_os = "windows")] 
@@ -97,11 +97,11 @@ impl GameWindowTrait for GlfwGameWindow {
         })
     }
 
-    fn apply_windowed(&mut self) {
+    fn apply_windowed(&mut self, [x, y]: [i32; 2]) {
         let size = self.window.size();
         let width  = size.width as u32;
         let height = size.height as u32;
-        self.window.window.set_monitor(glfw::WindowMode::Windowed, 0, 0, width, height, None);
+        self.window.window.set_monitor(glfw::WindowMode::Windowed, x as i32, y as i32, width, height, None);
     }
 
     
@@ -224,7 +224,7 @@ pub static RESIZE_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, 
 
 #[cfg(target_os = "windows")] 
 pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i32, i32) = {
-    extern "C" fn actual_callback(window: *mut glfw::ffi::GLFWwindow, _x:i32, _y:i32) {
+    extern "C" fn actual_callback(window: *mut glfw::ffi::GLFWwindow, x:i32, y:i32) {
         let draw_size = unsafe {
             let mut width = 0;
             let mut height = 0;
@@ -237,6 +237,12 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
             glfw::ffi::glfwGetWindowSize(window, &mut width, &mut height);
             [width as f64, height as f64]
         };
+
+        {
+            let mut settings = get_settings_mut!();
+            settings.window_pos = [x, y];
+            println!("new pos: {:?}", settings.window_pos)
+        }
 
         let args = RenderArgs { 
             ext_dt: 0.0, 

@@ -85,8 +85,10 @@ impl GameWindowTrait for GlutinGameWindow {
         }
     }
 
-    fn apply_windowed(&mut self) {
+    fn apply_windowed(&mut self, [x, y]: [i32; 2]) {
         self.window.ctx.window().set_fullscreen(None);
+        let pos = winit::dpi::PhysicalPosition::new(x, y);
+        self.window.ctx.window().set_outer_position(pos)
     }
 
     fn get_buffer_swappable(&mut self) -> &mut dyn BufferSwappable {

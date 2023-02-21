@@ -24,7 +24,7 @@ pub trait GameWindowTrait {
     fn get_monitors(&mut self) -> Vec<String>;
     /// set fullscreen, return false if failed
     fn apply_fullscreen(&mut self, monitor: usize) -> bool;
-    fn apply_windowed(&mut self);
+    fn apply_windowed(&mut self, pos: [i32; 2]);
 
     fn request_attention(&mut self);
 
