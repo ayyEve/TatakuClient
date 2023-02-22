@@ -4,7 +4,6 @@ use std::io::{ self, BufRead, BufReader, Lines };
 
 
 pub struct Io;
-
 impl Io {
 
     /// read a file into bytes
@@ -221,14 +220,6 @@ pub async fn extract_all() {
                 let mut outfile = std::fs::File::create(&outpath).unwrap();
                 std::io::copy(&mut file, &mut outfile).unwrap();
             }
-
-            // Get and Set permissions
-            // #[cfg(unix)] {
-            //     use std::os::unix::fs::PermissionsExt;
-            //     if let Some(mode) = file.unix_mode() {
-            //         fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
-            //     }
-            // }
         }
     
         if let Err(e) = std::fs::remove_file(filename.path()) {

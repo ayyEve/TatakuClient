@@ -27,7 +27,7 @@ impl ScoreSubmitHelper {
 
 
             let map = match BEATMAP_MANAGER.read().await.beatmaps_by_hash.get(&score.beatmap_hash) {
-                None => { // what
+                None => { // what? how did you play the map then?
                     *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::MapNotFound, "Map not found locally".to_owned()));
                     return 
                 }

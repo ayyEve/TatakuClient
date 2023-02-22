@@ -99,20 +99,6 @@ impl<T> Remove<T> for Vec<T> where T:Eq {
 }
 
 
-pub trait DurationAndReset {
-    fn duration_and_reset(&mut self) -> f32;
-}
-impl DurationAndReset for Instant {
-    fn duration_and_reset(&mut self) -> f32 {
-        let now = Instant::now();
-        let dur = now.duration_since(*self).as_secs_f32() * 1000.0;
-        *self = now;
-        dur
-    }
-}
-
-
-
 pub trait UnwrapNormal {
     fn normal_or(self, other:Self) -> Self;
 }
