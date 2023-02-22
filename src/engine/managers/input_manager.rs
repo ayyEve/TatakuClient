@@ -237,14 +237,14 @@ impl InputManager {
     /// get all keys that were pressed, and clear the pressed list. (will be true when first checked and pressed, false after first check or when key is up)
     pub fn get_keys_down(&mut self) -> Vec<Key> {
         let mut down = Vec::new();
-        for (i, time) in &self.keys_down {down.push(i.clone()); self.register_times.push(time.elapsed().as_secs_f32()*1000.0)}
+        for (i, time) in &self.keys_down { down.push(*i); self.register_times.push(time.as_millis()); }
         self.keys_down.clear();
 
         down
     }
     pub fn get_keys_up(&mut self) -> Vec<Key> {
         let mut up = Vec::new();
-        for (i, time) in &self.keys_up {up.push(i.clone()); self.register_times.push(time.elapsed().as_secs_f32()*1000.0)}
+        for (i, time) in &self.keys_up { up.push(*i); self.register_times.push(time.as_millis()); }
         self.keys_up.clear();
 
         up
@@ -254,13 +254,13 @@ impl InputManager {
     /// get all pressed mouse buttons, and reset the pressed array
     pub fn get_mouse_down(&mut self) -> Vec<MouseButton> {
         let mut down = Vec::new();
-        for (i, time) in &self.mouse_down {down.push(i.clone()); self.register_times.push(time.elapsed().as_secs_f32()*1000.0)}
+        for (i, time) in &self.mouse_down { down.push(*i); self.register_times.push(time.as_millis()); }
         self.mouse_down.clear();
         down
     }
     pub fn get_mouse_up(&mut self) -> Vec<MouseButton> {
         let mut up = Vec::new();
-        for (i, time) in &self.mouse_up {up.push(i.clone()); self.register_times.push(time.elapsed().as_secs_f32()*1000.0)}
+        for (i, time) in &self.mouse_up { up.push(*i); self.register_times.push(time.as_millis()); }
         self.mouse_up.clear();
         up
     }

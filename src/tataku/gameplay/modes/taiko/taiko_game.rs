@@ -288,7 +288,7 @@ impl GameMode for TaikoGame {
                         let mut sound_types:Vec<(HitType, bool)> = Vec::new();
 
                         for hitsound in slider.edge_sounds.iter() {
-                            let hit_type = if (hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
+                            let hit_type = if (hitsound & (2 | 8)) > 0 { HitType::Kat } else { HitType::Don };
                             let finisher = (hitsound & 4) > 0;
                             sound_types.push((hit_type, finisher));
                         }
@@ -311,7 +311,7 @@ impl GameMode for TaikoGame {
                                 diff_calc_only,
                             ).await));
 
-                            if !unified_sound_addition {i = (i + 1) % sound_types.len()}
+                            if !unified_sound_addition { i = (i + 1) % sound_types.len() }
 
                             j += skip_period;
                             if !(j < end_time + skip_period / 8.0) { break }

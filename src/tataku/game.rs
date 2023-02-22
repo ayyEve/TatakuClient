@@ -332,9 +332,12 @@ impl Game {
             }
         }
 
-        // if keys.len() > 0 {
-        //     self.register_timings = self.input_manager.get_register_delay();
-        //     debug!("register times: min:{}, max: {}, avg:{}", self.register_timings.0,self.register_timings.1,self.register_timings.2);
+
+        // prevent the list from building up and just wasting memory.
+        // not nuking the code because it might be a useful stat in the future
+        let _register_timings = self.input_manager.get_register_delay();
+        // if keys_up.len()+keys_down.len() > 0 {
+        //     info!("register times: min:{:.2}, max: {:.2}, avg:{:.2}", register_timings.0, register_timings.1, register_timings.2);
         // }
 
         if mouse_down.len() > 0 {
