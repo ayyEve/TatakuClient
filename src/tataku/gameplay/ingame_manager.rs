@@ -453,11 +453,9 @@ impl IngameManager {
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}));
             self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
 
-            if self.health.check_fail_at_end {
-                if self.health.is_dead() {
-                    self.failed = true;
-                    self.failed_time = time;
-                }
+            // check if we failed
+            if self.health.check_fail_at_end && self.health.is_dead() && !self.failed {
+                self.fail();
             }
         }
 

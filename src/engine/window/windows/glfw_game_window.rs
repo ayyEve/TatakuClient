@@ -241,7 +241,7 @@ pub static REPOSITION_WINDOW:extern "C" fn(window: *mut glfw::ffi::GLFWwindow, i
         {
             let mut settings = get_settings_mut!();
             settings.window_pos = [x, y];
-            println!("new pos: {:?}", settings.window_pos)
+            // println!("new pos: {:?}", settings.window_pos)
         }
 
         let args = RenderArgs { 
