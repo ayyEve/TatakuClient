@@ -115,10 +115,10 @@ impl TaikoGame {
         ];
         self.miss_window = w_miss;
 
+        let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
         for note in self.other_notes.iter_mut() {
             if note.note_type() == NoteType::Spinner {
                 let length = note.end_time(0.0) - note.time();
-                let diff_map = map_difficulty(od, 3.0, 5.0, 7.5);
                 let required_hits = ((length / 1000.0 * diff_map) * 1.65).max(1.0) as u16; 
                 note.set_required_hits(required_hits);
             }
