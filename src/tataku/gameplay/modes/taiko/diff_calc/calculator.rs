@@ -1,5 +1,3 @@
-
-
 use crate::prelude::*;
 use super::super::prelude::*;
 use super::difficulty_hit_object::DifficultyHitObject;
@@ -7,6 +5,7 @@ use super::difficulty_hit_object::DifficultyHitObject;
 // how long each "group" of notes is (ms)
 const BUCKET_LENGTH:f32 = 500.0;
 
+const WRITE_DEBUG_FILES:bool = false;
 
 pub struct TaikoDifficultyCalculator {
     difficulty_hitobjects: Vec<DifficultyHitObject>,
@@ -144,7 +143,6 @@ impl TaikoDifficultyCalculator {
     }
 }
 
-const WRITE_DEBUG_FILES:bool = false;
 
 #[async_trait]
 impl DiffCalc for TaikoDifficultyCalculator {

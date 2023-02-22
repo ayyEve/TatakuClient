@@ -1111,109 +1111,6 @@ impl Drop for ManiaGame {
 }
 
 
-
-// TODO: document whatever the hell is happening here
-struct ManiaAutoHelper {
-    states: Vec<AutoplayColumnState>,
-}
-impl ManiaAutoHelper {
-    fn new() -> Self {
-        Self {
-            states: Vec::new(),
-        }
-    }
-
-    fn get_keypress(col: usize) -> KeyPress {
-        let base_key = KeyPress::Mania1 as u8;
-        ((col + base_key as usize) as u8).into()
-    }
-
-    fn update(&mut self, columns: &Vec<Vec<Box<dyn ManiaHitObject>>>, column_indices: &mut Vec<usize>, time: f32, list: &mut Vec<ReplayFrame>) {
-        if self.states.len() != columns.len() {
-            let new_len = columns.len();
-            self.states.resize(new_len, AutoplayColumnState::default());
-            // self.notes_hit.resize(new_len, Vec::new());
-        }
-
-        for c in 0..columns.len() {
-            let state = &mut self.states[c];
-            if state.pressed && time > state.release_time {
-                list.push(ReplayFrame::Release(Self::get_keypress(c)));
-                state.pressed = false;
-            }
-
-            if column_indices[c] >= columns[c].len() {continue}
-
-            // catch up??
-            for i in column_indices[c]..columns[c].len() {
-                let note = &columns[c][i];
-                if time > note.end_time(100.0) && !note.was_hit() {
-                    column_indices[c] += 1;
-                } else {
-                    break;
-                }
-            }
-
-            if column_indices[c] >= columns[c].len() { continue }
-            let note = &columns[c][column_indices[c]];
-            if time >= note.time() && !note.was_hit() {
-                // if the key is already down, dont press it again
-                // if timer.0 == note.end_time(15.0) && 
-                if state.pressed { continue }
-
-                // press the key, and hold it until the note's end time
-                list.push(ReplayFrame::Press(Self::get_keypress(c)));
-                state.pressed = true;
-                if note.note_type() == NoteType::Hold {
-                    state.release_time = note.end_time(0.0);
-                } else {
-                    state.release_time = note.end_time(50.0);
-                }
-            }
-        }
-    }
-}
-
-#[derive(Default, Copy, Clone)]
-struct AutoplayColumnState {
-    pressed: bool,
-    release_time: f32
-}
-
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct SliderVelocity {
-    /// Start time of the timing section, in milliseconds from the beginning of the beatmap's audio. The end of the timing section is the next timing point's time (or never, if this is the last timing point).
-    pub time: f32,
-    
-    /// Velocity multiplier
-    pub slider_velocity: f64,
-}
-impl From<QuaverSliderVelocity> for SliderVelocity {
-    fn from(s: QuaverSliderVelocity) -> Self {
-        Self {
-            time: s.start_time,
-            slider_velocity: s.multiplier,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PositionPoint {
-    pub time: f32,
-    pub position: f64
-}
-
-impl Default for PositionPoint {
-    fn default() -> Self {
-        Self {
-            time: -LEAD_IN_TIME,
-            position: -LEAD_IN_TIME as f64,
-        }
-    }
-}
-
-
 #[derive(Clone)]
 pub struct ManiaPlayfield {
     settings: ManiaPlayfieldSettings,
@@ -1243,7 +1140,6 @@ impl ManiaPlayfield {
         x_offset + self.x_offset + (self.column_width + self.column_spacing) * col as f64
     }
 }
-
 
 impl Deref for ManiaPlayfield {
     type Target = ManiaPlayfieldSettings;

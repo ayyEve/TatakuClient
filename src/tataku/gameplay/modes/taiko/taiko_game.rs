@@ -217,36 +217,36 @@ impl GameMode for TaikoGame {
             size: WindowSize::get().0
         });
 
+        let mut s = Self {
+            notes: TaikoNoteQueue::new(),
+            other_notes: TaikoNoteQueue::new(),
 
-        let mut s = match beatmap {
+            timing_bars: Vec::new(),
+            end_time: 0.0,
+
+            auto_helper: TaikoAutoHelper::new(),
+            taiko_settings: settings.clone(),
+            playfield: playfield.clone(),
+            metadata,
+            
+
+            left_kat_image,
+            left_don_image,
+            right_don_image,
+            right_kat_image,
+            judgement_helper,
+
+            hit_windows: Vec::new(),
+            miss_window: 0.0,
+            hit_cache,
+            last_judgment: TaikoHitJudgments::Miss,
+            counter: FullAltCounter::new(),
+            current_mods,
+            healthbar_swap_pending: false
+        };
+
+        match beatmap {
             Beatmap::Osu(beatmap) => {
-                let mut s = Self {
-                    notes: TaikoNoteQueue::new(),
-                    other_notes: TaikoNoteQueue::new(),
-
-                    timing_bars: Vec::new(),
-                    end_time: 0.0,
-
-                    auto_helper: TaikoAutoHelper::new(),
-                    taiko_settings: settings.clone(),
-                    playfield: playfield.clone(),
-                    metadata,
-                    
-
-                    left_kat_image,
-                    left_don_image,
-                    right_don_image,
-                    right_kat_image,
-                    judgement_helper,
-
-                    hit_windows: Vec::new(),
-                    miss_window: 0.0,
-                    hit_cache,
-                    last_judgment: TaikoHitJudgments::Miss,
-                    counter: FullAltCounter::new(),
-                    current_mods,
-                    healthbar_swap_pending: false
-                };
 
                 // add notes
                 for note in beatmap.notes.iter() {
@@ -337,36 +337,8 @@ impl GameMode for TaikoGame {
                         diff_calc_only,
                     ).await));
                 }
-                s
             }
             Beatmap::Adofai(beatmap) => {
-                let settings = Arc::new(get_settings!().taiko_settings.clone());
-                let mut s = Self {
-                    notes: TaikoNoteQueue::new(),
-                    other_notes: TaikoNoteQueue::new(), 
-
-                    timing_bars: Vec::new(),
-                    end_time: 0.0,
-
-                    auto_helper: TaikoAutoHelper::new(),
-                    taiko_settings: settings.clone(),
-                    playfield: playfield.clone(),
-                    metadata,
-
-                    left_kat_image,
-                    left_don_image,
-                    right_don_image,
-                    right_kat_image,
-                    judgement_helper,
-
-                    hit_windows: Vec::new(),
-                    miss_window: 0.0,
-                    hit_cache,
-                    last_judgment: TaikoHitJudgments::Miss,
-                    counter: FullAltCounter::new(),
-                    current_mods,
-                    healthbar_swap_pending: false,
-                };
 
                 // add notes
                 for note in beatmap.notes.iter() {
@@ -383,8 +355,6 @@ impl GameMode for TaikoGame {
 
                     s.notes.push(note);
                 }
-
-                s
             }
 
             _ => return Err(BeatmapError::UnsupportedMode.into()),
@@ -733,7 +703,7 @@ impl GameMode for TaikoGame {
     async fn reset(&mut self, beatmap:&Beatmap) {
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
-                
+            
             for note in queue.iter_mut() {
                 note.reset().await;
 
@@ -1281,241 +1251,7 @@ impl TimingBar {
 
 
 
-
-struct TaikoAutoHelper {
-    don_presses: u32,
-    kat_presses: u32,
-
-    last_hit: f32,
-    last_update: f32,
-}
-impl TaikoAutoHelper {
-    fn new() -> Self {
-        Self {
-            don_presses: 0, 
-            kat_presses: 0, 
-            last_hit: 0.0, 
-            last_update: 0.0
-        }
-    }
-
-    fn update(&mut self, time: f32, queue: &mut Vec<TaikoNoteQueue>, frames: &mut Vec<ReplayFrame>) {
-        let catching_up = time - self.last_update > 20.0;
-        self.last_update = time;
-
-        // if catching_up { trace!("catching up") }
-
-        for queue in queue.iter_mut() {
-            let mut queue_index = queue.index;
-            let mut note_hit = false;
-
-            for (i, note) in queue.iter_mut().enumerate().skip(queue_index).filter(|(_, note)|time > note.time() && !note.was_hit()) {
-                // note is the note we need to hit
-
-                // if note is a drumroll/spinner, we need to time when to hit it
-                // if note is a note, we need to hit it and move on
-                
-                // check if we're catching up
-                if catching_up {
-                    // pretend the note was hit
-                    note.force_hit();
-                    queue_index = i;
-                    continue;
-                }
-
-                // // otherwise it spams sliders even after it has finished
-                // if let NoteType::Slider = note.note_type() {
-                //     if time > note.end_time(0.0) {
-                //         if i == queue_index {
-                //             queue_index += 1;
-                //         }
-                //         continue 'notes;
-                //     }
-                // }
-
-                if note.note_type() != NoteType::Note {
-                    // this is a drumroll or a spinner
-                    let end_time = note.end_time(0.0);
-
-                    // check if time is up
-                    if time > end_time { 
-                        // queue_index = i + 1;
-                        continue;
-                    }
-
-                    // check if its time to do another hit
-                    let duration = end_time - note.time();
-                    let time_between_hits = duration / (note.hits_to_complete() as f32);
-                    
-                    // if its not time to do another hit yet
-                    if time - self.last_hit < time_between_hits { break }
-                }
-
-
-                // perform the hit
-                self.last_hit = time;
-                let is_kat = note.is_kat();
-                let is_finisher = note.finisher_sound();
-
-                if is_finisher {
-                    if is_kat {
-                        frames.push(ReplayFrame::Press(KeyPress::LeftKat));
-                        frames.push(ReplayFrame::Press(KeyPress::RightKat));
-                    } else {
-                        frames.push(ReplayFrame::Press(KeyPress::LeftDon));
-                        frames.push(ReplayFrame::Press(KeyPress::RightDon));
-                    }
-                } else {
-                    let side = (self.don_presses + self.kat_presses) % 2;
-                    match (is_kat, side) {
-                        // kat, left side
-                        (true, 0) => frames.push(ReplayFrame::Press(KeyPress::LeftKat)),
-
-                        // kat, right side
-                        (true, 1) => frames.push(ReplayFrame::Press(KeyPress::RightKat)),
-
-                        // don, left side
-                        (false, 0) => frames.push(ReplayFrame::Press(KeyPress::LeftDon)),
-                        
-                        // don, right side
-                        (false, 1) => frames.push(ReplayFrame::Press(KeyPress::RightDon)),
-
-                        // shouldnt happen
-                        _ => {}
-                    }
-                }
-
-                if is_kat {
-                    self.kat_presses += 1;
-                } else {
-                    self.don_presses += 1;
-                }
-
-                note_hit = true;
-                break;
-            }
-
-            queue.index = queue_index;
-            if note_hit { return }
-        }
-
-    }
-}
-
-
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum TaikoHit {
-    LeftKat,
-    LeftDon,
-    RightDon,
-    RightKat
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HitType {
-    Don,
-    Kat
-}
-impl Into<HitType> for KeyPress {
-    fn into(self) -> HitType {
-        match self {
-            KeyPress::LeftKat|KeyPress::RightKat => HitType::Kat,
-            KeyPress::LeftDon|KeyPress::RightDon => HitType::Don,
-            _ => { panic!("non-taiko key while playing taiko") }
-        }
-    }
-}
-
-
 pub struct TaikoPlayfield {
     pub pos: Vector2,
     pub size: Vector2,
-}
-
-
-#[derive(Default)]
-pub struct FullAltCounter {
-    // hits: HashMap<TaikoHit, usize>,
-    last_hit: Option<TaikoHit>,
-    // playmode: TaikoPlaymode
-}
-impl FullAltCounter {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    fn add_hit(&mut self, hit: TaikoHit) -> bool {
-
-        if self.last_hit.is_none() {
-            self.last_hit = Some(hit);
-            return true;
-        }
-
-        let is_left = Self::hit_is_left(hit);
-        let last_is_left = Self::hit_is_left(self.last_hit.unwrap());
-        self.last_hit = Some(hit);
-        
-        is_left != last_is_left
-    }
-
-    fn hit_is_left(hit: TaikoHit) -> bool {
-        match hit {
-            TaikoHit::LeftKat | TaikoHit::LeftDon => true,
-            TaikoHit::RightDon | TaikoHit::RightKat => false,
-        }
-    }
-
-}
-
-
-#[derive(Default)]
-pub struct TaikoNoteQueue {
-    notes: Vec<Box<dyn TaikoHitObject>>,
-    index: usize,
-}
-impl TaikoNoteQueue {
-    fn new() -> Self { Self::default() }
-    fn done(&self) -> bool { self.index >= self.notes.len() }
-    fn next(&mut self) { self.index += 1; }
-
-    // some if missed, bool is if miss judgment should be applied
-    fn check_missed(&mut self, time: f32, miss_window: f32) -> Option<bool> {
-        if let Some(note) = self.current_note() {
-            if note.end_time(miss_window) < time {
-                if note.causes_miss() {
-                    note.miss(time);
-                    Some(true)
-                } else {
-                    Some(false)
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-    
-    #[inline]
-    fn current_note(&mut self) -> Option<&mut Box<dyn TaikoHitObject>> {
-        self.notes.get_mut(self.index)
-    }
-    #[inline]
-    fn previous_note(&self) -> Option<&Box<dyn TaikoHitObject>> {
-        self.notes.get(self.index - 1)
-    }
-}
-
-impl Deref for TaikoNoteQueue {
-    type Target = Vec<Box<dyn TaikoHitObject>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.notes
-    }
-}
-impl DerefMut for TaikoNoteQueue {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.notes
-    }
 }
