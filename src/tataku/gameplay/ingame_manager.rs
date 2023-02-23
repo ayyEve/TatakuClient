@@ -123,7 +123,6 @@ impl IngameManager {
         let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
-        // let hitsound_cache = HashMap::new();
 
 
         let mut current_mods = ModManager::get_cloned();
@@ -157,6 +156,8 @@ impl IngameManager {
         let mut hitsound_manager = HitsoundManager::new(audio_playmode_prefix);
         hitsound_manager.init(&metadata).await;
 
+        let events = beatmap.get_events();
+        // println!("loaded events {events:?}");
         let gamemode_info = get_gamemode_info(&score.playmode).unwrap();
 
         Self {
@@ -192,6 +193,8 @@ impl IngameManager {
             settings,
             window_size: WindowSize::get(),
             start_time: chrono::Utc::now().timestamp(),
+
+            events,
             // initialize defaults for anything else not specified
             ..Self::default()
         }
@@ -323,16 +326,18 @@ impl IngameManager {
         }
 
         // check pause
-        if self.pause_pending {
+        if self.pause_pending && !self.in_break() {
             info!("pausing");
             self.pause();
             self.pause_pending = false;
+            self.should_pause = true;
         }
-        if self.should_pause && self.in_break() {
-            info!("pausing");
-            self.pause();
-            self.should_pause = false;
-        }
+        // // i'm not sure whats happening here?
+        // if self.should_pause && self.in_break() {
+        //     info!("pausing");
+        //     self.pause();
+        //     self.should_pause = false;
+        // }
 
 
         // update ui elements
@@ -1119,7 +1124,7 @@ impl IngameManager {
             self.pause_pending = false
         } else {
             if self.can_pause() {
-                if self.in_break() { info!("in break"); self.pause_pending = true } else { info!("not in break"); self.should_pause = true }
+                if self.in_break() { self.pause_pending = true } else { self.should_pause = true }
             }
         }
     }
@@ -1276,7 +1281,7 @@ impl Default for IngameManager {
     }
 }
 
-
+#[derive(Clone, Debug)]
 pub enum InGameEvent {
-    Break {start: f32, end: f32}
+    Break { start: f32, end: f32 }
 }

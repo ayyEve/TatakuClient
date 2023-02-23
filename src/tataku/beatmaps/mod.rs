@@ -80,83 +80,20 @@ impl Beatmap {
     }
 }
 impl Default for Beatmap {
-    fn default() -> Self {Beatmap::None}
+    fn default() -> Self { Beatmap::None }
 }
-impl TatakuBeatmap for Beatmap {
-    fn hash(&self) -> String {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.hash(),
-            Beatmap::Quaver(map) => map.hash(),
-            Beatmap::Adofai(map) => map.hash(),
-            Beatmap::UTyping(map) => map.hash(),
-            Beatmap::Stepmania(map) => map.hash(),
-        }
-    }
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.get_timing_points(),
-            Beatmap::Quaver(map) => map.get_timing_points(),
-            Beatmap::Adofai(map) => map.get_timing_points(),
-            Beatmap::UTyping(map) => map.get_timing_points(),
-            Beatmap::Stepmania(map) => map.get_timing_points(),
-        }
-    }
+impl Deref for Beatmap {
+    type Target = dyn TatakuBeatmap;
 
-    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
+    fn deref(&self) -> &Self::Target {
         match self {
             Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.get_beatmap_meta(),
-            Beatmap::Quaver(map) => map.get_beatmap_meta(),
-            Beatmap::Adofai(map) => map.get_beatmap_meta(),
-            Beatmap::UTyping(map) => map.get_beatmap_meta(),
-            Beatmap::Stepmania(map) => map.get_beatmap_meta(),
-        }
-    }
-
-    fn playmode(&self, incoming: PlayMode) -> PlayMode {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.playmode(incoming),
-            Beatmap::Quaver(map) => map.playmode(incoming),
-            Beatmap::Adofai(map) => map.playmode(incoming),
-            Beatmap::UTyping(map) => map.playmode(incoming),
-            Beatmap::Stepmania(map) => map.playmode(incoming),
-        }
-    }
-
-    fn slider_velocity_at(&self, time:f32) -> f32 {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.slider_velocity_at(time),
-            Beatmap::Quaver(map) => map.slider_velocity_at(time),
-            Beatmap::Adofai(map) => map.slider_velocity_at(time),
-            Beatmap::UTyping(map) => map.slider_velocity_at(time),
-            Beatmap::Stepmania(map) => map.slider_velocity_at(time),
-        }
-    }
-
-    fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.beat_length_at(time, allow_multiplier),
-            Beatmap::Quaver(map) => map.beat_length_at(time, allow_multiplier),
-            Beatmap::Adofai(map) => map.beat_length_at(time, allow_multiplier),
-            Beatmap::UTyping(map) => map.beat_length_at(time, allow_multiplier),
-            Beatmap::Stepmania(map) => map.beat_length_at(time, allow_multiplier),
-        }
-    }
-
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        match self {
-            Beatmap::None => unimplemented!(),
-            Beatmap::Osu(map) => map.control_point_at(time),
-            Beatmap::Quaver(map) => map.control_point_at(time),
-            Beatmap::Adofai(map) => map.control_point_at(time),
-            Beatmap::UTyping(map) => map.control_point_at(time),
-            Beatmap::Stepmania(map) => map.control_point_at(time),
+            Beatmap::Osu(map) => &**map,
+            Beatmap::Quaver(map) => &**map,
+            Beatmap::Adofai(map) => &**map,
+            Beatmap::UTyping(map) => &**map,
+            Beatmap::Stepmania(map) => &**map,
         }
     }
 }
