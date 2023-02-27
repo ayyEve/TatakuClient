@@ -148,7 +148,7 @@ impl HitObject for OsuNote {
                 self.base_depth,
                 self.pos,
                 self.radius,
-                Some(Border::new(Color::WHITE.alpha(alpha), NOTE_BORDER_SIZE * self.scaling_helper.scale))
+                Some(Border::new(Color::WHITE.alpha(alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scale))
             ));
         }
 

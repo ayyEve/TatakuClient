@@ -40,6 +40,8 @@ pub struct IngameManager {
     pub key_counter: KeyCounter,
     ui_elements: Vec<UIElement>,
 
+    animation: Box<dyn BeatmapAnimation>,
+
     pub score_list: Vec<IngameScore>,
     score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
@@ -55,14 +57,13 @@ pub struct IngameManager {
 
     /// should the manager be paused?
     pub should_pause: bool,
-
     /// is a pause pending?
     /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
     pause_pending: bool,
+    pause_start: Option<i64>,
 
     /// is this playing in the background of the main menu?
     pub menu_background: bool,
-
 
     pub end_time: f32,
     pub lead_in_time: f32,
@@ -111,7 +112,6 @@ pub struct IngameManager {
 
     // used for discord rich presence
     pub start_time: i64,
-    pause_start: Option<i64>
 }
 
 impl IngameManager {
@@ -160,6 +160,12 @@ impl IngameManager {
         // println!("loaded events {events:?}");
         let gamemode_info = get_gamemode_info(&score.playmode).unwrap();
 
+        #[cfg(feature="storyboards")]
+        let animation = beatmap.get_animation().await.unwrap_or_else(||Box::new(EmptyAnimation));
+        #[cfg(not(feature="storyboards"))]
+        let animation = Box::new(EmptyAnimation);
+
+
         Self {
             metadata,
             timing_points,
@@ -174,6 +180,7 @@ impl IngameManager {
 
             replay: Replay::new(),
             beatmap,
+            animation,
 
             hitsound_manager,
             song,
@@ -486,6 +493,11 @@ impl IngameManager {
 
         // put it back
         self.gamemode = gamemode;
+
+        // handle animation
+        let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
+        anim.update(time, self).await;
+        self.animation = anim;
     }
 
     pub async fn draw(&mut self, args: RenderArgs, list: &mut RenderableCollection) {
@@ -522,6 +534,9 @@ impl IngameManager {
         for indicator in self.judgement_indicators.iter_mut() {
             indicator.draw(time, list);
         }
+
+        // draw animation
+        self.animation.draw(list).await;
 
     }
 }
@@ -1128,6 +1143,23 @@ impl IngameManager {
             }
         }
     }
+
+
+    pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size.clone();
+        self.gamemode.window_size_changed(window_size).await;
+        self.animation.window_size_changed(self.window_size.0);
+
+        // TODO: relocate ui elements properly
+        if let Some(mut editor) = std::mem::take(&mut self.ui_editor) {
+            self.init_ui().await;
+            editor.elements = std::mem::take(&mut self.ui_elements);
+            self.ui_editor = Some(editor);
+        } else {
+            self.ui_elements.clear();
+            self.init_ui().await;
+        }
+    }
 }
 
 // other misc stuff that isnt touched often and i just wanted it out of the way
@@ -1163,22 +1195,6 @@ impl IngameManager {
         settings.global_offset += delta;
 
         self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", settings.global_offset), time);
-    }
-
-    
-    pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size.clone();
-        self.gamemode.window_size_changed(window_size).await;
-
-        // TODO: relocate ui elements properly
-        if let Some(mut editor) = std::mem::take(&mut self.ui_editor) {
-            self.init_ui().await;
-            editor.elements = std::mem::take(&mut self.ui_elements);
-            self.ui_editor = Some(editor);
-        } else {
-            self.ui_elements.clear();
-            self.init_ui().await;
-        }
     }
 
     pub async fn force_update_settings(&mut self) {
@@ -1251,6 +1267,7 @@ impl Default for IngameManager {
             spectator_cache: Default::default(),
             last_spectator_score_sync: 0.0,
             on_start: Box::new(|_|{}),
+            animation: Box::new(EmptyAnimation),
 
             common_game_settings: Default::default(),
 

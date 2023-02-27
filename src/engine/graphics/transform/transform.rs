@@ -38,7 +38,8 @@ impl Transformation {
         let factor = elapsed / self.duration;
 
         match self.trans_type {
-            TransformType::Position { start, end } => 
+            TransformType::Position { start, end }
+            | TransformType::VectorScale { start, end } => 
                 TransformValueResult::Vector2(self.run_easing_fn(start, end, factor)),
 
             TransformType::Scale { start, end }
@@ -46,6 +47,8 @@ impl Transformation {
             | TransformType::Rotation { start, end }
             | TransformType::Transparency { start, end } 
             | TransformType::BorderTransparency { start, end }
+            | TransformType::PositionX { start, end }
+            | TransformType::PositionY { start, end }
             => TransformValueResult::F64(self.run_easing_fn( start, end, factor)),
 
             TransformType::Color { start, end } 
@@ -141,12 +144,15 @@ impl Into<Color> for TransformValueResult {
 #[derive(Copy, Clone)]
 pub enum TransformType {
     None, // default
+    VectorScale { start: Vector2, end: Vector2 },
     Scale {start: f64, end: f64},
     Rotation {start: f64, end: f64},
     Color {start: Color, end: Color},
     BorderSize {start: f64, end: f64},
     Transparency {start: f64, end: f64},
     Position {start: Vector2, end: Vector2},
+    PositionX {start: f64, end: f64},
+    PositionY {start: f64, end: f64},
     BorderTransparency {start: f64, end: f64},
 }
 impl Default for TransformType {

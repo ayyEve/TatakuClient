@@ -7,12 +7,7 @@ const NOTE_DEPTH:Range<f64> = 100.0..200.0;
 const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
 
 const STACK_LENIENCY:u32 = 3;
-
-pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
-pub const NOTE_BORDER_SIZE:f64 = 2.0;
 pub const PREEMPT_MIN:f32 = 450.0;
-
-pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 
 pub struct OsuGame {

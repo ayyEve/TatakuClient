@@ -921,7 +921,7 @@ impl SliderDot {
                 self.depth,
                 self.pos,
                 SLIDER_DOT_RADIUS * self.scale,
-                Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE * self.scale))
+                Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE * self.scale))
             ));
         }
 

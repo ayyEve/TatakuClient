@@ -1,5 +1,4 @@
 use std::str::FromStr;
-
 use crate::prelude::*;
 
 #[derive(Clone, Default)]
@@ -22,6 +21,8 @@ pub struct OsuBeatmap {
     pub timing_points: Vec<OsuTimingPoint>,
     pub combo_colors: Vec<Color>,
     pub events: Vec<OsuEvent>,
+
+    pub storyboard: Option<StoryboardDef>
 }
 impl OsuBeatmap { 
     pub fn load(file_path:String) -> TatakuResult<OsuBeatmap> {
@@ -59,6 +60,8 @@ impl OsuBeatmap {
         let mut current_area = BeatmapSection::Version;
         let mut metadata = BeatmapMeta::new(file_path.clone(), hash.clone(), BeatmapType::Osu);
 
+        let mut storyboard_lines = Vec::new();
+
         let mut beatmap = Self {
             metadata: Arc::new(metadata.clone()),
             hash,
@@ -69,6 +72,7 @@ impl OsuBeatmap {
             timing_points: Vec::new(),
             combo_colors: Vec::new(),
             events: Vec::new(),
+            storyboard: None,
 
             beatmap_version: 0,
             slider_multiplier: 1.4,
@@ -181,6 +185,10 @@ impl OsuBeatmap {
                             }
                         } 
                         Err(_e) => {
+                            if !metadata_only {
+                                storyboard_lines.push(line);
+                            }
+
                             // if !metadata_only {
                             //     error!("error parsing event: {e}")
                             // }
@@ -351,6 +359,22 @@ impl OsuBeatmap {
             }
         }
 
+        // storyboard
+        #[cfg(feature="storyboards")]
+        if !metadata_only {
+            // see if theres a .osb in the parent folder.
+            // idk if this is how its supposed to be done but theres no documentation on it in the wiki
+            let osb_file = std::fs::read_dir(parent_dir).ok().and_then(|files|files.filter_map(|f|f.ok()).find(|f|f.file_name().to_string_lossy().ends_with(".osb")));
+            if let Some(storyboard_file) = osb_file {
+                storyboard_lines.extend(Io::read_lines_resolved(storyboard_file.path()).unwrap())
+            }
+            
+            match StoryboardDef::read(storyboard_lines) {
+                Ok(s) => beatmap.storyboard = Some(s),
+                Err(e) => error!("error reading storyboard file: {e}")
+            }
+        }
+
         // metadata bpm
         let mut bpm_min = 9999999999.9;
         let mut bpm_max = 0.0;
@@ -389,7 +413,9 @@ impl OsuBeatmap {
     pub fn bpm_multiplier_at(&self, time:f32) -> f32 {
         self.control_point_at(time).bpm_multiplier()
     }
+
 }
+#[async_trait]
 impl TatakuBeatmap for OsuBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
     fn get_timing_points(&self) -> Vec<TimingPoint> {
@@ -460,6 +486,18 @@ impl TatakuBeatmap for OsuBeatmap {
             OsuEvent::Break { start_time, end_time } => Some(InGameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
             _ => None
         }).collect()
+    }
+    async fn get_animation(&self) -> Option<Box<dyn BeatmapAnimation>> {
+        if let Some(storyboard) = &self.storyboard {
+            let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
+            
+            match OsuStoryboard::new(storyboard.clone(), parent_dir).await {
+                Ok(sb) => Some(Box::new(sb)),
+                Err(_e) => None
+            }
+        } else {
+            None
+        }
     }
 }
 

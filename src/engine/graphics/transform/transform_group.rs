@@ -16,6 +16,9 @@ pub struct TransformGroup {
     pub transforms: Vec<Transformation>,
 
     pub draw_state: Option<DrawState>,
+    
+    pub image_flip_horizonal: bool,
+    pub image_flip_vertical: bool,
 }
 impl TransformGroup {
     pub fn new(pos: Vector2, depth: f64) -> Self {
@@ -31,7 +34,10 @@ impl TransformGroup {
             scale: InitialCurrent::new(Vector2::ONE),
             rotation: InitialCurrent::new(0.0),
             alpha: InitialCurrent::new(1.0),
-            border_alpha: InitialCurrent::new(1.0)
+            border_alpha: InitialCurrent::new(1.0),
+
+            image_flip_horizonal: false,
+            image_flip_vertical: false,
         }
     }
 
@@ -58,35 +64,22 @@ impl TransformGroup {
         let mut transforms = std::mem::take(&mut self.transforms);
         transforms.retain(|transform| {
             let start_time = transform.start_time();
-            // transform hasnt started, ignore
-            if game_time >= start_time {
+            let end_time = start_time + transform.duration;
+
+            // if the transform hasnt started, ignore
+            if game_time >= end_time {
+                let trans_val = transform.get_value(end_time);
+                self.apply_transform(transform, trans_val);
+            } else if game_time >= start_time {
                 let trans_val = transform.get_value(game_time);
                 self.apply_transform(transform, trans_val);
             }
 
-            game_time < start_time + transform.duration
+            game_time < end_time
         });
 
         self.transforms = transforms;
     }
-
-    // //TODO: maybe this could be improved?
-    // pub fn draw(&mut self, list: &mut RenderableCollection) {
-    //     // list.reserve(self.items.len());
-    //     for i in self.items.iter() {
-    //         if !i.visible() { continue }
-
-    //         match i {
-    //             DrawItem::Line(a) => list.push(a.clone()),
-    //             DrawItem::Text(a) => list.push(a.clone()),
-    //             DrawItem::Image(a) => list.push(a.clone()),
-    //             DrawItem::Circle(a) => list.push(a.clone()),
-    //             DrawItem::Rectangle(a) => list.push(a.clone()),
-    //             DrawItem::HalfCircle(a) => list.push(a.clone()),
-    //             DrawItem::SkinnedNumber(a) => list.push(a.clone()),
-    //         }
-    //     }
-    // }
 
     fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
         match transform.trans_type {
@@ -94,9 +87,35 @@ impl TransformGroup {
                 let val:Vector2 = val.into();
                 self.pos.current = self.pos.initial + val;
             }
+            TransformType::PositionX { .. } => {
+                let val:f64 = val.into();
+                self.pos.current.x = self.pos.initial.x + val;
+            }
+            TransformType::PositionY { .. } => {
+                let val:f64 = val.into();
+                self.pos.current.y = self.pos.initial.y + val;
+            }
             TransformType::Scale { .. } => {
                 let val:f64 = val.into();
                 self.scale.current = Vector2::ONE * val;
+
+                if self.image_flip_horizonal {
+                    self.scale.current.x *= -1.0;
+                }
+                if self.image_flip_vertical {
+                    self.scale.current.y *= -1.0;
+                }
+            }
+            TransformType::VectorScale { .. } => {
+                let val:Vector2 = val.into();
+                self.scale.current = val;
+
+                if self.image_flip_horizonal {
+                    self.scale.current.x *= -1.0;
+                }
+                if self.image_flip_vertical {
+                    self.scale.current.y *= -1.0;
+                }
             }
             TransformType::Rotation { .. } => {
                 let val:f64 = val.into();

@@ -423,6 +423,7 @@ impl BeatmapSelectMenu {
                 // clicked hash is the target
                 let dialog = BeatmapDialog::new(clicked_hash.clone());
                 game.add_dialog(Box::new(dialog));
+                info!("right click")
             }
 
             self.select_map(game, clicked_hash, button == MouseButton::Left).await;

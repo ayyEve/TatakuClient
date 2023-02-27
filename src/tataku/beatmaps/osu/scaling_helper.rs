@@ -1,6 +1,12 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
+
+pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
+pub const OSU_NOTE_BORDER_SIZE:f64 = 2.0;
+
+pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
+
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
     /// scale setting in settings
@@ -34,31 +40,40 @@ pub struct ScalingHelper {
 }
 impl ScalingHelper {
     pub async fn new(cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
-        let things = get_settings!().standard_settings.get_playfield();
-        let settings_scale = things.0;
-        let settings_offset = things.1;
-        Self::new_offset_scale(cs, window_size, settings_offset, settings_scale, flip_vertical)
+        let settings = get_settings!().standard_settings.clone();
+        Self::new_with_settings(&settings, cs, window_size, flip_vertical)
+    }
+    pub fn new_with_settings(settings: &StandardSettings, cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
+        let (scale, offset) = settings.get_playfield();
+        Self::new_offset_scale(cs, window_size, offset, scale, flip_vertical)
+    }
+    pub fn new_with_settings_custom_size(settings: &StandardSettings, cs:f32, window_size: Vector2, flip_vertical: bool, size: Vector2) -> Self {
+        let (scale, offset) = settings.get_playfield();
+        Self::new_offset_scale_custom_size(cs, window_size, offset, scale, flip_vertical, size)
+    }
+    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool) -> Self {
+        Self::new_offset_scale_custom_size(cs, window_size, settings_offset, settings_scale, flip_vertical, FIELD_SIZE)
     }
 
-    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool) -> Self {
+    pub fn new_offset_scale_custom_size(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool, playfield_size: Vector2) -> Self {
         let circle_size = CIRCLE_RADIUS_BASE;
-        let border_size = NOTE_BORDER_SIZE;
+        let border_size = OSU_NOTE_BORDER_SIZE;
+
+        let settings_offset = settings_offset + (playfield_size-FIELD_SIZE) / 2.0; // make sure the other thing is centered as well
         
-        let scale = (window_size.y / FIELD_SIZE.y) * settings_scale;
-        let scaled_pos_offset = (window_size - FIELD_SIZE * scale) / 2.0 + settings_offset;
+        let scale = (window_size.y / playfield_size.y) * settings_scale;
+        let scaled_pos_offset = (window_size - playfield_size * scale) / 2.0 + settings_offset;
 
         let cs_base = (1.0 - 0.7 * (cs as f64 - 5.0) / 5.0) / 2.0;
         let scaled_cs = cs_base * scale;
-
-        let circle_size = Vector2::ONE * circle_size * scaled_cs;
-
         let border_scaled = border_size * scale;
+        let circle_size = Vector2::ONE * circle_size * scaled_cs;
 
         let playfield_scaled_with_cs_border = Rectangle::new(
             [0.2, 0.2, 0.2, 0.5].into(),
             f64::MAX-4.0,
             scaled_pos_offset - circle_size,
-            FIELD_SIZE * scale + circle_size * 2.0,
+            playfield_size * scale + circle_size * 2.0,
             None
         );
 

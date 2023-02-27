@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use super::super::prelude::*;
 
 const APPROACH_CIRCLE_MULT:f64 = 4.0;
 
@@ -70,7 +69,7 @@ impl ApproachCircle {
                 self.depth - 100.0,
                 self.pos,
                 self.radius * scale, // self.radius is already accounting for the scaled_cs
-                Some(Border::new(self.color.alpha(self.alpha), NOTE_BORDER_SIZE * self.scaling_helper.scaled_cs))
+                Some(Border::new(self.color.alpha(self.alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scaled_cs))
             ))
         }
     }

@@ -21,6 +21,7 @@ debug_hitsounds = []
 snipping = []
 debug_perf_rating = []
 log_frametimes = []
+storyboards = []
 
 glfw_window = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping", "glfw"]
 glutin_window = ["pistoncore-glutin_window", "bass_audio", "discord", "snipping", "winit", "clipboard"]

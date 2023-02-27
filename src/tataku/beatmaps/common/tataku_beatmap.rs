@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-pub trait TatakuBeatmap {
+#[async_trait]
+pub trait TatakuBeatmap:Send+Sync {
     fn hash(&self) -> String;
 
     fn get_timing_points(&self) -> Vec<TimingPoint>;
@@ -13,4 +14,6 @@ pub trait TatakuBeatmap {
     fn control_point_at(&self, time:f32) -> TimingPoint;
 
     fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
+
+    async fn get_animation(&self) -> Option<Box<dyn BeatmapAnimation>> { None }
 }

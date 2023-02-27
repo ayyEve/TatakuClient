@@ -171,7 +171,7 @@ impl HitObject for OsuSpinner {
         if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
-        let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
+        let border = Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE));
 
         // bg circle
         if let Some(mut i) = self.spinner_background.clone() {

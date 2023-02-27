@@ -135,7 +135,7 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: 
             img
         }
         Err(e) => {
-            NotificationManager::add_error_notification(&format!("Error loading wallpaper: {}", path.as_ref()), e).await;
+            NotificationManager::add_error_notification(format!("Error loading image: {}", path.as_ref()), e).await;
             // error!("Error loading image {}: {}", path.as_ref(), e);
             None
         }
