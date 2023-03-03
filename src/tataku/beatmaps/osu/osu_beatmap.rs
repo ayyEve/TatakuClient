@@ -131,7 +131,7 @@ impl OsuBeatmap {
                 BeatmapSection::Metadata => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
-                    let val = split.next().unwrap_or("").trim();
+                    let val = split.collect::<Vec<&str>>().join(":");
                     
                     match &*key {
                         "Title" => metadata.title = val.to_owned(), 
