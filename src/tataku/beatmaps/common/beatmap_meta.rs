@@ -149,6 +149,9 @@ impl BeatmapMetaWithDiff {
                 // strings
                 "game" => format!("{:?}", self.beatmap_type).to_lowercase() == val.to_lowercase(),
                 "mode"|"playmode" => self.mode.to_lowercase() == val.to_lowercase(),
+                "title" => self.title.to_lowercase() == val.to_lowercase(),
+                "artist" => self.artist.to_lowercase() == val.to_lowercase(),
+                "creator" => self.creator.to_lowercase() == val.to_lowercase(),
                 
                 // pain
                 _ => true,
