@@ -8,6 +8,7 @@ pub struct TaikoNote {
     depth: f64,
     hit_time: f32,
     hit_type: HitType,
+    base_finisher: bool,
     finisher: bool,
     hit: bool,
     missed: bool,
@@ -36,6 +37,7 @@ impl TaikoNote {
             hit_time: 0.0,
             depth,
             hit_type, 
+            base_finisher: finisher,
             finisher,
             speed: 0.0,
             hit: false,
@@ -63,7 +65,6 @@ impl HitObject for TaikoNote {
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
 
     async fn update(&mut self, beatmap_time: f32) {
-
         let delta_time = beatmap_time - self.hit_time;
         let y = 
             if self.hit { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) } 
@@ -111,7 +112,8 @@ impl TaikoHitObject for TaikoNote {
     fn get_sv(&self) -> f32 { self.speed }
     fn set_sv(&mut self, sv:f32) { self.speed = sv }
     fn is_kat(&self) -> bool { self.hit_type == HitType::Kat }
-    fn finisher_sound(&self) -> bool { self.finisher }
+    fn is_finisher(&self) -> bool { self.finisher }
+    fn finisher_sound(&self) -> bool { self.base_finisher }
     fn causes_miss(&self) -> bool { true }
 
     fn hit(&mut self, time: f32) -> bool {
@@ -141,6 +143,12 @@ impl TaikoHitObject for TaikoNote {
         if let Some(i) = &mut self.image {
             i.update_settings(settings, self.finisher)
         }
+    }
+
+    
+    fn toggle_finishers(&mut self, enabled: bool) {
+        self.finisher = self.base_finisher && enabled;
+        self.set_settings(self.settings.clone());
     }
 }
 

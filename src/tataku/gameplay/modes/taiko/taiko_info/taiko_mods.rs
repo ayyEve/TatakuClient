@@ -51,3 +51,11 @@ impl GameplayMod for NoBattery {
     fn display_name(&self) -> &'static str { "No Battery" }
     fn description(&self) -> &'static str { "Don't use battery health" }
 }
+
+pub struct NoFinisher;
+impl GameplayMod for NoFinisher {
+    fn name(&self) -> &'static str { "no_finisher" }
+    fn short_name(&self) -> &'static str { "NX" }
+    fn display_name(&self) -> &'static str { "No Finishers" }
+    fn description(&self) -> &'static str { "Turn all big notes into small notes" }
+}

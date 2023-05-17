@@ -11,7 +11,9 @@ pub struct TaikoDrumroll {
     time: f32, // ms
     end_time: f32, // ms
     current_time: f32, 
-    finisher: bool,
+    /// should this be a finisher
+    pub base_finisher: bool,
+    pub finisher: bool,
     speed: f32,
     radius: f64,
     // TODO: figure out how to pre-calc this
@@ -36,6 +38,7 @@ impl TaikoDrumroll {
             time, 
             end_time,
             current_time: 0.0,
+            base_finisher: finisher,
             finisher,
             radius,
             speed: 0.0,
@@ -207,6 +210,13 @@ impl TaikoHitObject for TaikoDrumroll {
                 let radius = settings.note_radius * if self.finisher {settings.big_note_multiplier} else {1.0};
                 i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
             }
+        }
+    }
+    
+    fn toggle_finishers(&mut self, enabled: bool) {
+        if self.base_finisher {
+            self.finisher = enabled;
+            self.set_settings(self.settings.clone());
         }
     }
 }

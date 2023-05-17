@@ -939,7 +939,7 @@ impl Game {
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
     }
     
-    pub fn queue_state_change(&mut self, state:GameState) {self.queued_state = state}
+    pub fn queue_state_change(&mut self, state:GameState) { self.queued_state = state; }
 
     /// shortcut for setting the game's background texture to a beatmap's image
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {

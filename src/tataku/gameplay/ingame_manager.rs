@@ -208,7 +208,7 @@ impl IngameManager {
     }
 
     async fn init_ui(&mut self) {
-        if self.ui_editor.is_some() {return}
+        if self.ui_editor.is_some() { return }
         
         let playmode = self.gamemode.playmode();
         let get_name = |name| {

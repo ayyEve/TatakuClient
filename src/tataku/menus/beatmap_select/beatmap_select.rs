@@ -276,7 +276,11 @@ impl BeatmapSelectMenu {
     async fn play_map(&self, game: &mut Game, map: &BeatmapMeta) {
         // Audio::stop_song();
         match manager_from_playmode(self.mode.clone(), map).await {
-            Ok(manager) => game.queue_state_change(GameState::Ingame(manager)),
+            Ok(mut manager) => {
+                let mods = ModManager::get();
+                manager.apply_mods(mods.deref().clone()).await;
+                game.queue_state_change(GameState::Ingame(manager))
+            },
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
     }
@@ -794,8 +798,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
         if key == F5 {
             if mods.ctrl {
-                NotificationManager::add_text_notification("Doing a full refresh", 5000.0, Color::RED).await;
-                BEATMAP_MANAGER.write().await.full_refresh().await;
+                NotificationManager::add_text_notification("Doing a full refresh, the game will freeze for a bit", 5000.0, Color::RED).await;
+                tokio::spawn(async {
+                    BEATMAP_MANAGER.write().await.full_refresh().await;
+                });
             } else {
                 self.refresh_maps().await;
             }

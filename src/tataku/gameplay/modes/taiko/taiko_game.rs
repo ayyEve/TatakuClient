@@ -209,9 +209,6 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
-        let current_mods = ModManager::get();
-
-
         let playfield = Arc::new(TaikoPlayfield {
             pos: Vector2::ZERO,
             size: WindowSize::get().0
@@ -241,7 +238,7 @@ impl GameMode for TaikoGame {
             hit_cache,
             last_judgment: TaikoHitJudgments::Miss,
             counter: FullAltCounter::new(),
-            current_mods,
+            current_mods: ModManager::get(),
             healthbar_swap_pending: false
         };
 
@@ -378,6 +375,10 @@ impl GameMode for TaikoGame {
         }
 
         s.setup_hitwindows().await;
+
+        // // i wonder if not doing this has been causing issues
+        // s.apply_mods(s.current_mods.clone()).await;
+
 
         Ok(s)
     }
@@ -931,25 +932,13 @@ impl GameMode for TaikoGame {
         let old_sv_static = old_mods.has_mod(NoSV.name());
         let current_sv_static = mods.has_mod(NoSV.name());
         self.current_mods = mods;
+
+        // let old_no_finisher = old_mods.has_mod(NoFinisher.name());
+        let new_no_finisher = self.current_mods.has_mod(NoFinisher.name());
+        info!("toggle: {new_no_finisher}");
         
+        // update bars
         if current_sv_static != old_sv_static {
-            for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
-
-                // set note svs
-                if current_sv_static {
-                    n.set_sv(self.taiko_settings.sv_multiplier);
-                } else {
-                    let sv = if old_sv_static {
-                        n.get_sv()
-                    } else {
-                        n.get_sv() / old_sv_mult
-                    } * self.taiko_settings.sv_multiplier;
-                    n.set_sv(sv);
-                }
-            }
-
-
-            // update bars
             for bar in self.timing_bars.iter_mut() {
                 if current_sv_static {
                     bar.speed = self.taiko_settings.sv_multiplier;
@@ -963,6 +952,28 @@ impl GameMode for TaikoGame {
                 }
             }
         }
+
+        // update notes
+        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
+            
+            // set note svs
+            if current_sv_static != old_sv_static {
+                if current_sv_static {
+                    note.set_sv(self.taiko_settings.sv_multiplier);
+                } else {
+                    let sv = if old_sv_static {
+                        note.get_sv()
+                    } else {
+                        note.get_sv() / old_sv_mult
+                    } * self.taiko_settings.sv_multiplier;
+                    note.set_sv(sv);
+                }
+            }
+
+            // check nofinisher change
+            note.toggle_finishers(!new_no_finisher);
+        }
+
 
         if old_mods.has_mod(NoBattery.name()) != self.current_mods.has_mod(NoBattery.name()) {
             self.healthbar_swap_pending = true;

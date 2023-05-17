@@ -74,7 +74,7 @@ impl TaikoAutoHelper {
                 // perform the hit
                 self.last_hit = time;
                 let is_kat = note.is_kat();
-                let is_finisher = note.finisher_sound();
+                let is_finisher = note.is_finisher();
 
                 if is_finisher {
                     if is_kat {

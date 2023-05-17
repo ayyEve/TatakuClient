@@ -9,10 +9,11 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
     /// does this hit object play a finisher sound when hit?
     fn finisher_sound(&self) -> bool { false }
 
+    /// used by autoplay, is this note a finisher?
+    fn is_finisher(&self) -> bool { false }
+
     /// does this object count as a miss if it is not hit?
     fn causes_miss(&self) -> bool;
-    
-    // fn get_points(&mut self, hit_type:HitType, time:f32, hit_windows:(f32,f32,f32)) -> ScoreHit;
 
     /// returns true if a finisher was successfully hit
     fn check_finisher(&self, _hit_type:HitType, _time:f32, _game_speed: f32) -> bool { false }
@@ -47,8 +48,11 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
 
     fn playfield_changed(&mut self, _new_playfield: Arc<TaikoPlayfield>);
 
-    // only used by spinners
+    /// only used by spinners
     fn set_required_hits(&mut self, _required_hits:u16) {}
+
+    /// used if no_finisher mod is enabled/disabled
+    fn toggle_finishers(&mut self, _enabled: bool) {}
 }
 
 
