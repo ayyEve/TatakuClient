@@ -89,7 +89,6 @@ impl Game {
     }
 
     pub async fn init(&mut self) {
-        // info!("1");
         // online loop
         tokio::spawn(async move {
             loop {
@@ -97,42 +96,32 @@ impl Game {
                 tokio::time::sleep(Duration::from_millis(1_000)).await;
             }
         });
-        // info!("2");
 
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
         // GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
         GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
-        // info!("3");
 
         Self::load_theme(&self.settings.theme);
-        // info!("4");
 
         // set the current leaderboard filter
         // this is here so it happens before anything else
         let settings = SettingsHelper::new();
         SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
         self.last_skin = settings.current_skin.clone();
-        // info!("5");
 
         // setup double tap protection
         self.input_manager.set_double_tap_protection(settings.enable_double_tap_protection.then(|| settings.double_tap_protection_duration));
-        // info!("6");
 
         // beatmap manager loop
         BeatmapManager::download_check_loop();
-        // info!("7");
 
         // init integrations
         if settings.lastfm_enabled {
             LastFmIntegration::check().await;
         }
-        // info!("8");
-
         
         // == menu setup ==
-        info!("1");
-
         let mut loading_menu = LoadingMenu::new().await;
         loading_menu.load().await;
 
@@ -146,7 +135,6 @@ impl Game {
 
         // // check git updates
         // self.add_dialog(Box::new(ChangelogDialog::new().await));
-        info!("2");
 
         // load background images
         match std::fs::read_dir("resources/wallpapers") {
@@ -163,7 +151,6 @@ impl Game {
                 // NotificationManager::add_error_notification("Error loading wallpaper", e).await
             }
         }
-        info!("3");
 
         self.queue_state_change(GameState::InMenu(Box::new(loading_menu)));
     }
@@ -974,8 +961,8 @@ impl Game {
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap();
             match *&ext {
-                // osu / quaver set file
-                "osz" | "qp" => {
+                // osu | quaver | ptyping zipped set file
+                "osz" | "qp" | "ptm" => {
                     if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
                         error!("Error copying file: {}", e);
                         NotificationManager::add_error_notification(

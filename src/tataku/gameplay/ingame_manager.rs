@@ -544,6 +544,13 @@ impl IngameManager {
 // judgment stuff
 impl IngameManager {
 
+    pub fn add_hit_timning(&mut self, time: f32, note_time: f32) {
+        let diff = (time - note_time) / HIT_DIFF_FACTOR;
+        self.add_stat(HitVarianceStat, diff);
+        // $self.score.hit_timings.push(diff);
+        self.hitbar_timings.push((time, diff));
+    }
+
     // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
     // essentially the same thing as judgments
     pub async fn play_note_sound(&mut self, hitsounds: &Vec<Hitsound>) {
@@ -602,18 +609,28 @@ impl IngameManager {
 
     /// check and add to hit timings if found
     pub async fn check_judgment<'a, HJ:HitJudgments>(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
-        let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
-        for (hj, window) in windows.iter() {
-            if window.contains(&diff) {
-                self.add_judgment(hj).await;
-                add_timing!(self, time, note_time);
+        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
+            self.add_judgment(hj).await;
+            add_timing!(self, time, note_time);
 
-                // return the hit judgment we got
-                return Some(hj)
-            }
+            // return the hit judgment we got
+            Some(hj)
+        } else {
+            None
         }
 
-        None
+        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
+        // for (hj, window) in windows.iter() {
+        //     if window.contains(&diff) {
+        //         self.add_judgment(hj).await;
+        //         add_timing!(self, time, note_time);
+
+        //         // return the hit judgment we got
+        //         return Some(hj)
+        //     }
+        // }
+
+        // None
     }
     
     pub async fn check_judgment_condition<
@@ -621,25 +638,53 @@ impl IngameManager {
         HJ:HitJudgments,
         F:Fn() -> bool,
     >(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HJ) -> Option<&'a HJ> {
+        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
+            if cond() {
+                self.add_judgment(hj).await;
+                add_timing!(self, time, note_time);
+                // return the hit judgment we got
+                Some(hj)
+            } else {
+                self.add_judgment(if_bad).await;
+                // return the hit judgment we got
+                Some(if_bad)
+            }
+        } else {
+            None
+        }
+
+        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
+        // for (hj, window) in windows.iter() {
+        //     if window.contains(&diff) {
+        //         let is_okay = cond();
+        //         if is_okay {
+        //             self.add_judgment(hj).await;
+        //             add_timing!(self, time, note_time);
+        //             // return the hit judgment we got
+        //             return Some(hj)
+        //         } else {
+        //             self.add_judgment(if_bad).await;
+        //             // return the hit judgment we got
+        //             return Some(if_bad)
+        //         }
+
+        //     }
+        // }
+
+        // info!("no judgment");
+        // None
+    }
+
+    /// only check if the note + hit fit into a window, and if so, return the corresponding judgment
+    pub fn check_judgment_only<'a, HJ:HitJudgments>(&self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
         let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
         for (hj, window) in windows.iter() {
             if window.contains(&diff) {
-                let is_okay = cond();
-                if is_okay {
-                    self.add_judgment(hj).await;
-                    add_timing!(self, time, note_time);
-                    // return the hit judgment we got
-                    return Some(hj)
-                } else {
-                    self.add_judgment(if_bad).await;
-                    // return the hit judgment we got
-                    return Some(if_bad)
-                }
-
+                // return the hit judgment we got
+                return Some(hj)
             }
         }
 
-        // info!("no judgment");
         None
     }
 

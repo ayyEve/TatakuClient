@@ -62,7 +62,9 @@ impl BeatmapMeta {
 
     /// get the title string with the version
     pub fn version_string(&self) -> String {
-        format!("{} - {} [{}]", self.artist, self.title, self.version)  
+        let artist = if self.artist.is_empty() {&self.artist_unicode} else {&self.artist};
+        let title = if self.title.is_empty() {&self.title_unicode} else {&self.title};
+        format!("{} - {} [{}]", artist, title, self.version)  
     }
 
 
@@ -149,8 +151,8 @@ impl BeatmapMetaWithDiff {
                 // strings
                 "game" => format!("{:?}", self.beatmap_type).to_lowercase() == val.to_lowercase(),
                 "mode"|"playmode" => self.mode.to_lowercase() == val.to_lowercase(),
-                "title" => self.title.to_lowercase() == val.to_lowercase(),
-                "artist" => self.artist.to_lowercase() == val.to_lowercase(),
+                "title" => self.title.to_lowercase() == val.to_lowercase() || self.title_unicode.to_lowercase() == val.to_lowercase(),
+                "artist" => self.artist.to_lowercase() == val.to_lowercase() || self.artist_unicode.to_lowercase() == val.to_lowercase(),
                 "creator" => self.creator.to_lowercase() == val.to_lowercase(),
                 
                 // pain

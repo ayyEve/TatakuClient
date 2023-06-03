@@ -158,12 +158,11 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
 }
 
 
-pub async fn extract_all() {
+pub async fn extract_all() -> Vec<String> {
+    let mut paths = Vec::new();
 
     // check for new maps
-
-
-    let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) else { return };
+    let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) else { return paths};
 
     for filename in files.filter_map(|f|f.ok()) {
         trace!("Looping file {:?}", filename);
@@ -175,13 +174,13 @@ pub async fn extract_all() {
         let mut error_counter = 0;
         // unzip file into ./Songs
         while let Err(e) = std::fs::File::open(filename.path()) {
-            error!("Error opening osz file: {}", e);
+            error!("Error opening archive file: {}", e);
             error_counter += 1;
 
             // if we've waited 5 seconds and its still broken
             if error_counter > 5 {
-                error!("5 errors opening osz file: {}", e);
-                return;
+                error!("5 errors opening archive file: {}", e);
+                return paths;
             }
 
             // tokio::time::sleep(Duration::from_millis(1000)).await;
@@ -196,7 +195,11 @@ pub async fn extract_all() {
                 continue;
             }
         };
-        
+    
+        let ext = ".".to_owned() + &filename.path().extension().map(|s|s.to_string_lossy().to_string()).unwrap_or(".".to_owned());
+        let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(&ext));
+        paths.push(y.clone());
+
         for i in 0..archive.len() {
             let mut file = archive.by_index(i).unwrap();
             let mut outpath = match file.enclosed_name() {
@@ -205,8 +208,7 @@ pub async fn extract_all() {
             };
 
             let x = outpath.to_str().unwrap();
-            let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(".osz"));
-            let z = &(y + x);
+            let z = &(y.clone() + x);
             outpath = Path::new(z);
 
             if (&*file.name()).ends_with('/') {
@@ -228,8 +230,8 @@ pub async fn extract_all() {
         
         trace!("Done");
     }
-
     
+    paths
     // while *completed.lock() < len {
     //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
     //     std::thread::sleep(Duration::from_millis(500));

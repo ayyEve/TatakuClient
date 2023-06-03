@@ -19,7 +19,7 @@ pub struct UTypingBeatmap {
     pub difficulty: String,
 
     // notes and events
-    pub notes: Vec<UTypingNote>,
+    pub notes: Vec<UTypingNoteDef>,
     pub events: Vec<UTypingEvent>,
     
 
@@ -60,7 +60,7 @@ impl UTypingBeatmap {
         let data_filename = next!(lines); 
         let data_filepath = Path::new(&parent_folder).join(data_filename);
         let map_data = encoding_rs::SHIFT_JIS.decode(Io::read_file(&data_filepath)?.as_slice()).0.to_string().replace("\r","");
-        if map_data.chars().next() != Some('@') {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        if map_data.chars().next() != Some('@') { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
 
         let map_data_lines = map_data.split("\n");
         for line in map_data_lines {
@@ -85,7 +85,7 @@ impl UTypingBeatmap {
                     let time = next!(split).parse::<f32>().unwrap_or(0.0) * 1000.0;
                     let text = next!(split).trim().to_owned();
 
-                    map.notes.push(UTypingNote {
+                    map.notes.push(UTypingNoteDef {
                         time, 
                         text
                     });
@@ -245,7 +245,7 @@ impl TatakuBeatmap for UTypingBeatmap {
 
 
 #[derive(Clone, Default, Debug)]
-pub struct UTypingNote {
+pub struct UTypingNoteDef {
     pub time: f32,
     pub text: String
 }

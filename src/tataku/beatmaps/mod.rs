@@ -5,6 +5,7 @@ mod common;
 mod osu;
 mod quaver;
 mod adofai;
+mod ptyping;
 mod u_typing;
 mod stepmania;
 
@@ -12,6 +13,7 @@ pub use osu::*;
 pub use common::*;
 pub use quaver::*;
 pub use adofai::*;
+pub use ptyping::*;
 pub use u_typing::*;
 pub use stepmania::*;
 
@@ -26,13 +28,23 @@ pub enum Beatmap {
     Adofai(Box<adofai::AdofaiBeatmap>),
     /// uTyping beatmap
     UTyping(Box<u_typing::UTypingBeatmap>),
+    /// uTyping beatmap
+    PTyping(Box<ptyping::PTypingBeatmap>),
 
     Stepmania(Box<stepmania::StepmaniaBeatmap>),
 }
 impl Beatmap {
     pub fn load_multiple<F:AsRef<Path>>(path: F) -> TatakuResult<Vec<Beatmap>> {
         let path = path.as_ref();
-        if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        if path.extension().is_none() {
+            // check for ptyping file (it has no extention)
+            println!("path: {path:?}");
+            if path.file_name().unwrap().to_string_lossy().to_string() == "song" {
+                return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::PTyping(Box::new(b))).collect())
+            } else {
+                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+            }
+        }
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(vec![Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))]),
@@ -46,7 +58,14 @@ impl Beatmap {
     }
     pub fn load_single<F:AsRef<Path>>(path: F, meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         let path = path.as_ref();
-        if path.extension().is_none() {return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))}
+        if path.extension().is_none() {
+            // check for ptyping file (it has no extention)
+            if path.file_name().and_then(|a|a.to_str()).filter(|a|a.ends_with("song")).is_some() {
+                return Ok(Beatmap::PTyping(Box::new(ptyping::PTypingBeatmap::load_single(path, meta)?)))
+            } else {
+                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+            }
+        } 
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
@@ -62,7 +81,14 @@ impl Beatmap {
     /// loading metadata only is way faster if only the meta is needed
     pub fn load_multiple_metadata(path: impl AsRef<Path>) -> TatakuResult<Vec<Arc<BeatmapMeta>>> {
         let path = path.as_ref();
-        if path.extension().is_none() { return Err(TatakuError::Beatmap(BeatmapError::InvalidFile)) }
+        if path.extension().is_none() {
+            // check for ptyping file (it has no extention)
+            if path.file_name().and_then(|a|a.to_str()).filter(|a|a.ends_with("song")).is_some() {
+                return Ok(ptyping::PTypingBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect())
+            } else {
+                return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+            }
+        } 
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(vec![osu::OsuBeatmap::load_metadata(path.to_str().unwrap().to_owned())?]),
@@ -93,6 +119,7 @@ impl Deref for Beatmap {
             Beatmap::Quaver(map) => &**map,
             Beatmap::Adofai(map) => &**map,
             Beatmap::UTyping(map) => &**map,
+            Beatmap::PTyping(map) => &**map,
             Beatmap::Stepmania(map) => &**map,
         }
     }

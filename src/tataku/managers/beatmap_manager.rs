@@ -68,15 +68,16 @@ impl BeatmapManager {
     // download checking
     async fn check_downloads() {
         if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
-            extract_all().await;
+            let folders = extract_all().await;
+            info!("checking folders {folders:#?}");
 
-            let mut folders = Vec::new();
-            read_dir(SONGS_DIR)
-                .unwrap()
-                .for_each(|f| {
-                    let f = f.unwrap().path();
-                    folders.push(f.to_str().unwrap().to_owned());
-                });
+            // let mut folders = Vec::new();
+            // read_dir(SONGS_DIR)
+            //     .unwrap()
+            //     .for_each(|f| {
+            //         let f = f.unwrap().path();
+            //         folders.push(f.to_str().unwrap().to_owned());
+            //     });
 
             for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f).await }
         }
@@ -122,16 +123,18 @@ impl BeatmapManager {
             ignore_paths.insert(i.clone());
         }
 
-        for file in dir_files {
-            let file = file.unwrap().path();
+        for file in dir_files.filter_map(|s|s.ok()) {
+            let file = file.path();
             let Some(file) = file.to_str() else { continue };
+            // info!("checking {file}");
 
             if file.ends_with(".osu") 
             || file.ends_with(".qua") 
             || file.ends_with(".adofai") 
             || file.ends_with(".ssc") 
             || file.ends_with(".sm") 
-            || file.ends_with("info.txt") {
+            || file.ends_with("info.txt")
+            || file.ends_with("song") {
                 // check file paths first
                 if ignore_paths.contains(file) {
                     continue

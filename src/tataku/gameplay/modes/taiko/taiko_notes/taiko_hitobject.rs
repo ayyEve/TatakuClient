@@ -95,7 +95,7 @@ impl HitCircleImageHelper {
             overlay.color = color;
         }
 
-        if overlay.is_none() || circle.is_none() {return None}
+        if overlay.is_none() || circle.is_none() { return None }
 
         Some(Self {
             circle: circle.unwrap(),
@@ -104,8 +104,8 @@ impl HitCircleImageHelper {
     }
 
     pub fn set_pos(&mut self, pos: Vector2) {
-        self.circle.pos  = pos;
-        self.overlay.pos = pos;
+        self.circle.pos  = truncate(pos);
+        self.overlay.pos = truncate(pos);
     }
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
@@ -125,3 +125,12 @@ impl HitCircleImageHelper {
     }
 }
 
+
+
+
+fn truncate(v: Vector2) -> Vector2 {
+    Vector2::new(
+        v.x.trunc(),
+        v.y.trunc()
+    )
+}
