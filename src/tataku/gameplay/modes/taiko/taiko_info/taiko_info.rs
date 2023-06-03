@@ -22,6 +22,7 @@ impl GameModeInfo for TaikoGameInfo {
                 .with_mod(super::FullAlt)
                 .with_mod(super::Relax)
                 .with_mod(super::NoFinisher)
+                .with_mod(super::NoSV)
             ,
             GameplayModGroup::new("Difficulty")
                 .with_mod(super::HardRock)

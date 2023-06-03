@@ -935,7 +935,6 @@ impl GameMode for TaikoGame {
 
         // let old_no_finisher = old_mods.has_mod(NoFinisher.name());
         let new_no_finisher = self.current_mods.has_mod(NoFinisher.name());
-        info!("toggle: {new_no_finisher}");
         
         // update bars
         if current_sv_static != old_sv_static {
