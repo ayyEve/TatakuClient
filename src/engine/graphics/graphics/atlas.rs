@@ -47,15 +47,13 @@ impl Atlas {
         ).ok()?;
         let (_, info) = info.packed_locations().get(&0)?;
 
-        let max_size = Vector3::new(self.available_width as f32, self.available_height as f32, self.available_layers as f32);
+        let max_size = [self.available_width as f32, self.available_height as f32];
 
         let x = info.x() as f32;
         let y = info.y() as f32;
-        let z = info.z() as f32;
+        // let z = info.z() as f32;
         let w = info.width() as f32;
         let h = info.height() as f32;
-
-        let z = z - (0.5/self.available_layers as f32);
         
         let atlas_data = AtlasData {
             x: info.x(),
@@ -65,10 +63,10 @@ impl Atlas {
             height: info.height(),
 
             uvs: Uvs {
-                tl: Vector3::new(x, y, z),
-                tr: Vector3::new(x + w, y, z),
-                bl: Vector3::new(x, y + h, z),
-                br: Vector3::new(x + w, y + h, z),
+                tl: [x, y],
+                tr: [x + w, y],
+                bl: [x, y + h],
+                br: [x + w, y + h],
             }.div(max_size),
         };
 
@@ -79,23 +77,24 @@ impl Atlas {
 
 #[derive(Copy, Clone, Debug)]
 pub struct AtlasData {
-    pub uvs: Uvs,
     pub x: u32,
     pub y: u32,
+    pub layer: u32,
+    
     pub width: u32,
     pub height: u32,
-    pub layer: u32,
+    pub uvs: Uvs,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct Uvs {
-    pub tl: Vector3,
-    pub tr: Vector3,
-    pub bl: Vector3,
-    pub br: Vector3,
+    pub tl: [f32;2],
+    pub tr: [f32;2],
+    pub bl: [f32;2],
+    pub br: [f32;2],
 }
 impl Uvs {
-    fn div(mut self, max_size: Vector3) -> Self {
+    fn div(mut self, max_size: [f32;2]) -> Self {
         self.tl = div(self.tl, max_size);
         self.tr = div(self.tr, max_size);
         self.bl = div(self.bl, max_size);
@@ -106,10 +105,9 @@ impl Uvs {
 
 pub type TextureReference = AtlasData;
 
-fn div(a: Vector3, b: Vector3) -> Vector3 {
-    Vector3::new(
-        a.x / b.x,
-        a.y / b.y,
-        a.z / b.z
-    )
+fn div(a: [f32;2], b: [f32;2]) -> [f32;2] {
+    [
+        a[0] / b[0],
+        a[1] / b[1]
+    ]
 }

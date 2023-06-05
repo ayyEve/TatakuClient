@@ -1,11 +1,11 @@
 use crate::prelude::*;
 
 use lyon_tessellation::math::Point;
-// use raw_window_handle:: {
-//     HasRawWindowHandle,
-//     HasRawDisplayHandle
-// };
-use wgpu::{BufferBinding, util::DeviceExt};
+use raw_window_handle:: {
+    HasRawWindowHandle,
+    HasRawDisplayHandle
+};
+use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension};
 // use wgpu::util::DeviceExt;
 use winit::window::Window;
 
@@ -16,7 +16,6 @@ pub struct GraphicsState {
     config: wgpu::SurfaceConfiguration,
     
     render_pipeline: wgpu::RenderPipeline,
-    window: Window,
     
     recorded_buffers: Vec<RenderBuffer>,
     queued_buffers: Vec<RenderBuffer>,
@@ -38,9 +37,9 @@ pub struct GraphicsState {
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
-    async fn new(window: Window, _settings: &Settings, size: [u32;2]) -> Self {
-        let window_size = window.inner_size();
-        let window_size = Vector2::new(window_size.width as f64, window_size.height as f64);
+    async fn new(window: impl HasRawWindowHandle + HasRawDisplayHandle, settings: &Settings, size: [u32;2]) -> Self {
+        let window_size = settings.window_size;
+        let window_size = Vector2::new(window_size[0], window_size[1]);
 
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -65,7 +64,7 @@ impl GraphicsState {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER,
+                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY,
                 // WebGL doesn't support all of wgpu's features, so if
                 // we're building for the web we'll have to disable some.
                 limits: if cfg!(target_arch = "wasm32") {
@@ -105,28 +104,53 @@ impl GraphicsState {
         });
 
 
+        // let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //     label: Some("Texture/Sampler bind group layout"),
+        //     entries: &[
+        //         wgpu::BindGroupLayoutEntry {
+        //             binding: 0,
+        //             visibility: wgpu::ShaderStages::FRAGMENT,
+        //             ty: wgpu::BindingType::Texture {
+        //                 multisampled: false,
+        //                 view_dimension: wgpu::TextureViewDimension::D2Array,
+        //                 sample_type: wgpu::TextureSampleType::Float { filterable: true },
+        //             },
+        //             count: None,
+        //         },
+        //         wgpu::BindGroupLayoutEntry {
+        //             binding: 1,
+        //             visibility: wgpu::ShaderStages::FRAGMENT,
+        //             // This should match the filterable field of the
+        //             // corresponding Texture entry above.
+        //             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+        //             count: None,
+        //         },
+        //     ]
+        // });
+        
         let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Texture/Sampler bind group layout"),
+            label: Some("atlas group layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D3,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        // view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
                     },
-                    count: None,
+                    // count: None,
+                    // count: std::num::NonZeroU32::new(layers),
+                    count: std::num::NonZeroU32::new(3),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    // This should match the filterable field of the
-                    // corresponding Texture entry above.
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
-            ]
+            ],
         });
 
         let proj_matrix_size = std::mem::size_of::<[[f32; 4]; 4]>() as u64;
@@ -235,7 +259,7 @@ impl GraphicsState {
         }); 
 
 
-        let atlas_size = device.limits().max_texture_dimension_3d.min(4096);
+        let atlas_size = device.limits().max_texture_dimension_2d.min(4096);
         let atlas_layers = 3;
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, atlas_layers);
 
@@ -248,7 +272,6 @@ impl GraphicsState {
         );
 
         let mut s = Self {
-            window,
             surface,
             device,
             queue,
@@ -349,72 +372,112 @@ impl GraphicsState {
         let texture_size = wgpu::Extent3d {
             width,
             height,
-            depth_or_array_layers: layers,
+            depth_or_array_layers: 1,
         };
-        let texture = device.create_texture(
-            &wgpu::TextureDescriptor {
-                // All textures are stored as 3D, we represent our 2D texture
-                // by setting depth to 1.
-                size: texture_size,
-                mip_level_count: 1, // We'll talk about this a little later
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D3,
-                // Most images are stored using sRGB so we need to reflect that here.
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                // COPY_DST means that we want to copy data to this texture
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("diffuse_texture"),
-                // This is the same as with the SurfaceConfig. It
-                // specifies what texture formats can be used to
-                // create TextureViews for this texture. The base
-                // texture format (Rgba8UnormSrgb in this case) is
-                // always supported. Note that using a different
-                // texture format is not supported on the WebGL2
-                // backend.
-                view_formats: &[],
-            }
-        );
-        
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(sampler),
-                    }
-                ],
-                label: Some("diffuse_bind_group"),
-            }
-        );
+        let textures = (0..layers).map(|_| {
+            let texture = device.create_texture(
+                &wgpu::TextureDescriptor {
+                    size: texture_size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    // Most images are stored using sRGB so we need to reflect that here.
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+                    // COPY_DST means that we want to copy data to this texture
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    label: Some("texture_atlas"),
+                    // This is the same as with the SurfaceConfig. It
+                    // specifies what texture formats can be used to
+                    // create TextureViews for this texture. The base
+                    // texture format (Rgba8UnormSrgb in this case) is
+                    // always supported. Note that using a different
+                    // texture format is not supported on the WebGL2
+                    // backend.
+                    view_formats: &[],
+                }
+            );
+            
+            let view = texture.create_view(&wgpu::TextureViewDescriptor {
+                label: Some("pain and suffering"),
+                dimension: Some(TextureViewDimension::D2Array),
+                base_array_layer: 0,
+                // array_layer_count: Some(3),
+
+                ..Default::default()
+            });
+            (texture, view)
+        }).collect::<Vec<_>>();
+
+        let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
+        
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("texture array bind group"),
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureViewArray(&view_list),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+                // wgpu::BindGroupEntry {
+                //     binding: 2,
+                //     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                //         buffer: &texture_index_buffer,
+                //         offset: 0,
+                //         size: Some(NonZeroU64::new(4).unwrap()),
+                //     }),
+                // },
+            ],
+        });
+
+        // let bind_group = device.create_bind_group(
+        //     &wgpu::BindGroupDescriptor {
+        //         layout: &layout,
+        //         entries: &[
+        //             wgpu::BindGroupEntry {
+        //                 binding: 0,
+        //                 resource: wgpu::BindingResource::TextureView(&texture_view),
+        //             },
+        //             wgpu::BindGroupEntry {
+        //                 binding: 1,
+        //                 resource: wgpu::BindingResource::Sampler(sampler),
+        //             }
+        //         ],
+        //         label: Some("diffuse_bind_group"),
+        //     }
+        // );
+        
 
         WgpuTexture {
-            texture,
-            texture_view,
+            textures,
+            // texture,
+            // texture_view,
             bind_group
         }
     }
 
 
-    fn load_texture_path(&mut self, tex_name: &String, file_path: impl AsRef<Path>) -> TatakuResult<TextureReference> {
+    pub fn load_texture_path(&mut self, tex_name: &String, file_path: impl AsRef<Path>) -> TatakuResult<TextureReference> {
         let bytes = std::fs::read(file_path.as_ref())?;
-        self.load_texture_data(tex_name, bytes)
+        self.load_texture_bytes(tex_name, bytes)
     }
 
-    fn load_texture_data(&mut self, tex_name: &String, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
+    pub fn load_texture_bytes(&mut self, tex_name: &String, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
         let diffuse_image = image::load_from_memory(data.as_ref())?;
         let diffuse_rgba = diffuse_image.to_rgba8();
 
         use image::GenericImageView;
         let (width, height) = diffuse_image.dimensions();
 
+        self.load_texture_rgba(tex_name, &diffuse_rgba.to_vec(), width, height)
+    }
+
+    pub fn load_texture_rgba(&mut self, tex_name: &String, data: &Vec<u8>, width: u32, height: u32) -> TatakuResult<TextureReference> {
         let Some(info) = self.atlas.try_insert(tex_name, width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
         let texture_size = wgpu::Extent3d {
             width,
@@ -425,17 +488,17 @@ impl GraphicsState {
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
             wgpu::ImageCopyTexture {
-                texture: &self.atlas.tex.texture,
+                texture: &self.atlas.tex.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: info.x,
                     y: info.y,
-                    z: info.layer
+                    z: 0
                 },
                 aspect: wgpu::TextureAspect::All,
             },
             // The actual pixel data
-            &diffuse_rgba,
+            data,
             // The layout of the texture
             wgpu::ImageDataLayout {
                 offset: 0,
@@ -447,6 +510,7 @@ impl GraphicsState {
 
         Ok(info)
     }
+
 }
 
 
@@ -536,19 +600,6 @@ impl GraphicsState {
     }
 
 
-
-    // fn reserve_tex_quad_px_size(
-    //     &mut self,
-    //     tex_name: &String,
-    //     position: Vector2,
-    //     depth: f32,
-    //     size: Vector2,
-    //     color: Color,
-    // ) {
-    //     let tex_size:Vector2 = todo!();
-    //     self.reserve_tex_quad(tex_name, position, depth, size/tex_size, color);
-    // }
-
     fn reserve_tex_quad(
         &mut self,
         tex: &TextureReference,
@@ -566,24 +617,28 @@ impl GraphicsState {
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords: tex.uvs.tl.into(),
+                tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords: tex.uvs.tr.into(),
+                tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords: tex.uvs.bl.into(),
+                tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 //     .position = position + (size * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords: tex.uvs.br.into(),
+                tex_index: tex.layer as i32,
                 color
             }
         ], &mut [
@@ -604,7 +659,8 @@ impl GraphicsState {
         transform: Matrix
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
-        let tex_coords = [-1.0, -1.0, 0.0];
+        let tex_coords = [0.0, 0.0];
+        let tex_index = -1;
         let color = color.into();
 
         let [x, y, w, h] = rect;
@@ -612,21 +668,25 @@ impl GraphicsState {
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords,
+                tex_index,
                 color
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords,
+                tex_index,
                 color
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords,
+                tex_index,
                 color
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords,
+                tex_index,
                 color
             }
         ], &mut [
@@ -703,8 +763,8 @@ impl GraphicsState {
         self.tesselate_polygon(points, depth, color, m);
     }
 
-    pub fn draw_rect(&mut self, rect: [f64; 4], border: Option<&Border>, color: Color, transform: Matrix) {
-
+    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<&Border>, color: Color, transform: Matrix) {
+        self.reserve_quad(rect, depth, color, transform)
     }
 
     pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, transform: Matrix) {
@@ -749,7 +809,8 @@ impl GraphicsState {
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
                 position: [n.x, n.y, depth],
-                tex_coords: [-1.0, -1.0, 0.0],
+                tex_coords: [0.0, 0.0],
+                tex_index: -1,
                 color: [color.r, color.g, color.b, color.a]
             }.apply_matrix(&transform)
         ).collect::<Vec<_>>();
@@ -765,8 +826,9 @@ impl GraphicsState {
 
 
 pub struct WgpuTexture {
-    texture: wgpu::Texture,
-    pub texture_view: wgpu::TextureView,
+    textures: Vec<(wgpu::Texture, wgpu::TextureView)>,
+    // texture: wgpu::Texture,
+    // pub texture_view: wgpu::TextureView,
     pub bind_group: wgpu::BindGroup,
 }
 
@@ -785,7 +847,7 @@ async fn test() {
     let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut state = GraphicsState::new(window, &settings, size).await;
+    let mut state = GraphicsState::new(&window, &settings, size).await;
 
     let tex = state.load_texture_path(&"test_tex".to_owned(), "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").expect("failed to load tex");
     println!("got tex data {tex:?}");
@@ -823,7 +885,7 @@ async fn test() {
     let mut mouse_pos = Vector2::ZERO;
 
     event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent { ref event, window_id } if window_id == state.window.id() => match event {
+        Event::WindowEvent { ref event, window_id } if window_id == window.id() => match event {
             WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
                 input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Escape), .. }, ..
             } => *control_flow = ControlFlow::Exit,
@@ -868,7 +930,7 @@ async fn test() {
             _ => {}
         },
 
-        Event::RedrawRequested(window_id) if window_id == state.window.id() => {
+        Event::RedrawRequested(window_id) if window_id == window.id() => {
             state.begin();
             for i in things.iter_mut() {
                 i.draw(&mut state)
@@ -889,10 +951,11 @@ async fn test() {
         Event::MainEventsCleared => {
             // RedrawRequested will only trigger once, unless we manually
             // request it.
-            state.window.request_redraw();
+            window.request_redraw();
         }
         
         _ => {}
     });
 
 }
+ 
