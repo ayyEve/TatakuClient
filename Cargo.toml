@@ -11,7 +11,8 @@ build = "build/mod.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["glfw_window"]
+# default = ["glfw_window"]
+default = ["glfw_window", "winit"]
 # default = ["glfw_window", "glutin_window"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
@@ -51,14 +52,19 @@ image = "*"
 glfw = { version = "0.47", features = ["image"], optional = true }
 pistoncore-glfw_window = { version = "0.77", optional=true }
 
-winit = {version = "*", optional = true}
+winit = {version = "0.27", optional = true}
 pistoncore-glutin_window = { version = "0.70.1", optional=true }
 
 ayyeve-piston-ui = "0.7"
 fontdue = "0.7"
 rectangle-pack = "0.4"
+lyon_tessellation = "*"
 
 
+wgpu = "*"
+raw-window-handle = "0.5"
+bytemuck = { version = "1.12", features = [ "derive" ] }
+cgmath = "*"
 
 # bass audio
 bass-rs = { version="0.2", optional = true }
