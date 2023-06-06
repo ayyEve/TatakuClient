@@ -22,7 +22,7 @@ use super::prelude::*;
 /// timing bar color
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
 /// how wide is a timing bar
-const BAR_WIDTH:f64 = 4.0;
+const BAR_WIDTH:f32 = 4.0;
 /// how many beats between timing bars
 const BAR_SPACING:f32 = 4.0;
 
@@ -38,10 +38,10 @@ pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
 pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
 pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
 
-const NOTE_DEPTH_RANGE:std::ops::Range<f64> = 0.0..1000.0;
+const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
 
 pub const FINISHER_LENIENCY:f32 = 20.0; // ms
-pub const NOTE_BORDER_SIZE:f64 = 2.0;
+pub const NOTE_BORDER_SIZE:f32 = 2.0;
 
 pub const GRAVITY_SCALING:f32 = 400.0;
 
@@ -162,11 +162,11 @@ impl TaikoGame {
     }
 
     #[inline]
-    pub fn get_depth(time: f32) -> f64 {
-        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time as f64)
+    pub fn get_depth(time: f32) -> f32 {
+        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
     }
     #[inline]
-    pub fn get_slider_depth(_time: f32) -> f64 {
+    pub fn get_slider_depth(_time: f32) -> f32 {
         NOTE_DEPTH_RANGE.end
     }
 
@@ -608,7 +608,7 @@ impl GameMode for TaikoGame {
 
         Vec::new()
     }
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let time = manager.time();
         let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
         
@@ -681,7 +681,8 @@ impl GameMode for TaikoGame {
         }
 
         // draw the playfield
-        list.push(self.taiko_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai));
+        let window_size = WindowSize::get();
+        list.push(self.taiko_settings.get_playfield(window_size.x, manager.current_timing_point().kiai));
 
         // draw the hit area
         list.push(Circle::new(
@@ -694,11 +695,11 @@ impl GameMode for TaikoGame {
 
         // draw notes
         for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
-            note.draw(args, list).await 
+            note.draw(list).await 
         }
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
+        for tb in self.timing_bars.iter_mut() { tb.draw(list) }
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
@@ -1050,7 +1051,7 @@ impl GameModeInput for TaikoGame {
         }
     }
 
-    async fn mouse_up(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
         if self.taiko_settings.ignore_mouse_buttons { return None }
         
         match btn {
@@ -1228,14 +1229,14 @@ impl TimingBar {
     }
 
     pub fn update(&mut self, time:f32) {
-        self.pos.x = self.settings.hit_position.x + self.x_at(time) as f64 - BAR_WIDTH / 2.0;
+        self.pos.x = self.settings.hit_position.x + self.x_at(time) - BAR_WIDTH / 2.0;
     }
 
     fn x_at(&self, time: f32) -> f32 {
         ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x as f32
     }
-    fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection){
-        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
+    fn draw(&mut self, list: &mut RenderableCollection){
+        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 10000.0 {return}
 
         list.push(Rectangle::new(
             BAR_COLOR,

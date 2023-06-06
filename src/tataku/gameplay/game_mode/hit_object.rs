@@ -11,7 +11,7 @@ pub trait HitObject: Send + Sync {
     fn end_time(&self, hitwindow_miss:f32) -> f32;
 
     async fn update(&mut self, beatmap_time: f32);
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection);
+    async fn draw(&mut self, list: &mut RenderableCollection);
 
     /// set this object back to defaults
     async fn reset(&mut self);

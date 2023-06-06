@@ -23,7 +23,7 @@ impl AccuracyElement {
                 Color::BLACK,
                 0.0,
                 Vector2::ZERO,
-                30,
+                30.0,
                 "100.00%".to_owned(),
                 get_font()
             ).measure_text()
@@ -68,7 +68,7 @@ impl InnerUIElement for AccuracyElement {
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
                 pos_offset - self.bounds_size.x_portion(),
-                30 * scale.y as u32,
+                30.0 * scale.y,
                 format!("{:.2}%", self.acc),
                 get_font()
             );

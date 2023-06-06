@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 pub struct SkinSelect {
     should_close: bool,
-    dropdown: Dropdown<SkinDropdownable, Font2, Text>,
+    dropdown: Dropdown<SkinDropdownable>,
     current_skin: String
 }
 impl SkinSelect {
@@ -13,7 +13,7 @@ impl SkinSelect {
             dropdown: Dropdown::new(
                 Vector2::new(300.0, 200.0),
                 500.0,
-                FontSize::new(20.0).unwrap(),
+                20.0,
                 "Skin",
                 Some(SkinDropdownable::Skin(current_skin.clone())),
                 get_font()
@@ -46,31 +46,31 @@ impl Dialog<Game> for SkinSelect {
         Rectangle::bounds_only(Vector2::ZERO, WindowSize::get().0)
     }
     
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
-        self.draw_background(*depth, Color::WHITE, list);
-        self.dropdown.draw(*args, Vector2::ZERO, *depth, list)
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
+        self.draw_background(depth, Color::WHITE, list);
+        self.dropdown.draw(Vector2::ZERO, depth, list)
     }
 
     async fn update(&mut self, _g:&mut Game) {
         self.dropdown.update()
     }
 
-    async fn on_mouse_move(&mut self, p:&Vector2, _g:&mut Game) {
-        self.dropdown.on_mouse_move(*p)
+    async fn on_mouse_move(&mut self, p:Vector2, _g:&mut Game) {
+        self.dropdown.on_mouse_move(p)
     }
 
-    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
-        self.dropdown.on_scroll(*delta);
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
+        self.dropdown.on_scroll(delta);
         true
     }
 
-    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.dropdown.on_click(*pos, *button, *mods);
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.dropdown.on_click(pos, button, *mods);
         self.check_skin_change().await;
         true
     }
-    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.dropdown.on_click_release(*pos, *button);
+    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.dropdown.on_click_release(pos, button);
         true
     }
 
@@ -78,12 +78,12 @@ impl Dialog<Game> for SkinSelect {
         true
     }
 
-    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == &Key::Escape {self.should_close = true}
+    async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        if key == Key::Escape {self.should_close = true}
         
         true
     }
-    async fn on_key_release(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_release(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         true
     }
 

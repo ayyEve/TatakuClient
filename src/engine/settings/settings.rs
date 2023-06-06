@@ -75,7 +75,7 @@ pub struct Settings {
 
     // window settings
     pub window_pos: [i32; 2],
-    pub window_size: [f64; 2],
+    pub window_size: [f32; 2],
     #[Setting(text="FPS Limit", min=15, max=240, category="Window Settings")]
     pub fps_target: u64,
     #[Setting(text="Vsync")]
@@ -93,7 +93,7 @@ pub struct Settings {
     #[Setting(text="Raw Mouse Input (requires restart)")]
     pub raw_mouse_input: bool,
     #[Setting(text="Scroll Sensitivity", min=0.1, max=5.0)]
-    pub scroll_sensitivity: f64,
+    pub scroll_sensitivity: f32,
 
     #[Setting(text="Fullscreen", dropdown="FullscreenMonitor")]
     pub fullscreen_monitor: FullscreenMonitor,
@@ -108,7 +108,7 @@ pub struct Settings {
     #[Setting(text="Cursor Color", category="Cursor Settings")]
     pub cursor_color: String,
     #[Setting(text="Cursor Scale", min=0.1, max=10.0)]
-    pub cursor_scale: f64,
+    pub cursor_scale: f32,
     #[Setting(text="Cursor Border", min=0.1, max=5.0)]
     pub cursor_border: f32,
     #[Setting(text="Cursor Border Color")]
@@ -119,7 +119,7 @@ pub struct Settings {
     #[Setting(text="Cursor Ripple Color")]
     pub cursor_ripple_color: String,
     #[Setting(text="Cursor Ripple Scale")]
-    pub cursor_ripple_final_scale: f64,
+    pub cursor_ripple_final_scale: f32,
 
     // skin settings
     #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
@@ -293,16 +293,16 @@ async fn backup_settings() {
             counter += 1;
         }
         let file = format!("{SETTINGS_FILE}.bak_{counter}");
-
-        if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
-            NotificationManager::add_error_notification("Error backing up settings.json", e).await
-        } else {
-            NotificationManager::add_text_notification(
-                &format!("Backup saved as {file}"),
-                5000.0,
-                Color::YELLOW
-            ).await;
-        }
+        std::fs::copy(SETTINGS_FILE, &file).expect("you're bad");
+        // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
+        //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
+        // } else {
+        //     NotificationManager::add_text_notification(
+        //         &format!("Backup saved as {file}"),
+        //         5000.0,
+        //         Color::YELLOW
+        //     ).await;
+        // }
     }
 }
 

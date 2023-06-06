@@ -49,14 +49,14 @@ impl Database {
         let mut s = db.prepare(&sql).unwrap();
         let res = s.query_map([], |row| Ok((
             Vector2::new(
-                row.get::<&str, f64>("pos_x")?,
-                row.get::<&str, f64>("pos_y")?,
+                row.get::<&str, f32>("pos_x")?,
+                row.get::<&str, f32>("pos_y")?,
             ), Vector2::new(
-                row.get::<&str, f64>("scale_x")?,
-                row.get::<&str, f64>("scale_y")?,
+                row.get::<&str, f32>("scale_x")?,
+                row.get::<&str, f32>("scale_y")?,
             ), Vector2::new(
-                row.get::<&str, f64>("window_size_x")?,
-                row.get::<&str, f64>("window_size_y")?,
+                row.get::<&str, f32>("window_size_x")?,
+                row.get::<&str, f32>("window_size_y")?,
             ),
             row.get::<&str, bool>("visible")?,
         )));

@@ -2,20 +2,20 @@ use crate::prelude::*;
 use super::super::prelude::*;
 
 
-pub const CIRCLE_RADIUS_BASE:f64 = 64.0;
-pub const OSU_NOTE_BORDER_SIZE:f64 = 2.0;
+pub const CIRCLE_RADIUS_BASE:f32 = 64.0;
+pub const OSU_NOTE_BORDER_SIZE:f32 = 2.0;
 
 pub const FIELD_SIZE:Vector2 = Vector2::new(512.0, 384.0); // 4:3
 
 #[derive(Copy, Clone)]
 pub struct ScalingHelper {
     /// scale setting in settings
-    pub settings_scale: f64,
+    pub settings_scale: f32,
     /// playfield offset in settings
     pub settings_offset: Vector2,
 
     /// window size to playfield size scale, scales by settings_scale
-    pub scale: f64,
+    pub scale: f32,
 
     /// window size from settings
     pub window_size: Vector2,
@@ -24,10 +24,10 @@ pub struct ScalingHelper {
     pub scaled_pos_offset: Vector2,
 
     /// cs size scaled
-    pub scaled_cs: f64,
+    pub scaled_cs: f32,
 
     /// border size scaled
-    pub border_scaled: f64,
+    pub border_scaled: f32,
 
     pub scaled_circle_size: Vector2,
 
@@ -51,11 +51,11 @@ impl ScalingHelper {
         let (scale, offset) = settings.get_playfield();
         Self::new_offset_scale_custom_size(cs, window_size, offset, scale, flip_vertical, size)
     }
-    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool) -> Self {
+    pub fn new_offset_scale(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f32, flip_vertical: bool) -> Self {
         Self::new_offset_scale_custom_size(cs, window_size, settings_offset, settings_scale, flip_vertical, FIELD_SIZE)
     }
 
-    pub fn new_offset_scale_custom_size(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f64, flip_vertical: bool, playfield_size: Vector2) -> Self {
+    pub fn new_offset_scale_custom_size(cs:f32, window_size: Vector2, settings_offset: Vector2, settings_scale: f32, flip_vertical: bool, playfield_size: Vector2) -> Self {
         let circle_size = CIRCLE_RADIUS_BASE;
         let border_size = OSU_NOTE_BORDER_SIZE;
 
@@ -64,14 +64,14 @@ impl ScalingHelper {
         let scale = (window_size.y / playfield_size.y) * settings_scale;
         let scaled_pos_offset = (window_size - playfield_size * scale) / 2.0 + settings_offset;
 
-        let cs_base = (1.0 - 0.7 * (cs as f64 - 5.0) / 5.0) / 2.0;
+        let cs_base = (1.0 - 0.7 * (cs - 5.0) / 5.0) / 2.0;
         let scaled_cs = cs_base * scale;
         let border_scaled = border_size * scale;
         let circle_size = Vector2::ONE * circle_size * scaled_cs;
 
         let playfield_scaled_with_cs_border = Rectangle::new(
-            [0.2, 0.2, 0.2, 0.5].into(),
-            f64::MAX-4.0,
+            Color::new(0.2, 0.2, 0.2, 0.5),
+            f32::MAX-4.0,
             scaled_pos_offset - circle_size,
             playfield_size * scale + circle_size * 2.0,
             None

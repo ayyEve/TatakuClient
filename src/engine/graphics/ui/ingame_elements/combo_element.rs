@@ -43,7 +43,7 @@ impl InnerUIElement for ComboElement {
                 Color::WHITE,
                 0.0,
                 Vector2::ZERO,
-                (30.0 * scale.x) as u32,
+                30.0 * scale.x,
                 crate::format_number(self.combo),
                 get_font()
             );

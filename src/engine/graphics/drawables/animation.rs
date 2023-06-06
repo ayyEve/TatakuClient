@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Clone)]
 pub struct Animation {
     pub size: Vector2,
-    pub depth: f64,
+    pub depth: f32,
     pub origin: Vector2,
     pub base_scale: Vector2,
 
@@ -14,23 +14,23 @@ pub struct Animation {
     /// 
     /// hooray for terrible explanations
     pub frame_start_time: f32,
-    pub frames: Vec<Arc<Texture>>,
+    pub frames: Vec<TextureReference>,
     pub frame_index: usize,
     pub frame_delays: Vec<f32>,
 
-    draw_state: Option<DrawState>,
+    // draw_state: Option<DrawState>,
 
     // current
     pub color: Color,
     pub pos: Vector2,
     pub scale: Vector2,
-    pub rotation: f64,
+    pub rotation: f32,
 }
 #[allow(unused)]
 impl Animation {
-    pub fn new(pos:Vector2, depth:f64, size:Vector2, frames: Vec<Arc<Texture>>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
+    pub fn new(pos:Vector2, depth:f32, size:Vector2, frames: Vec<TextureReference>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
-        let tex_size = Vector2::new(frames[0].get_width() as f64, frames[0].get_height() as f64);
+        let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
         let scale = size / tex_size;
 
         let rotation = 0.0;
@@ -53,7 +53,7 @@ impl Animation {
             size: tex_size,
             depth,
             origin,
-            draw_state: None,
+            // draw_state: None,
         }
     }
 
@@ -92,12 +92,11 @@ impl Animation {
     }
 
     pub fn tex_size(&self) -> Vector2 {
-        let (w, h) = self.frames[0].get_size();
-        Vector2::new(w as f64, h as f64) * self.base_scale
+        Vector2::new(self.frames[0].width as f32, self.frames[0].height as f32) * self.base_scale
     }
 
 
-    pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f64, size: Vector2) -> TatakuResult<Self> {
+    pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f32, size: Vector2) -> TatakuResult<Self> {
         let mut frames = Vec::new();
         for p in paths {
             frames.push(load_texture(p).await?);
@@ -106,35 +105,37 @@ impl Animation {
         Ok(Self::new(pos, depth, size, frames, delays, Vector2::ONE))
     }
 }
-impl Renderable for Animation {
-    fn get_depth(&self) -> f64 {self.depth}
-
-    fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
-    fn draw(&self, g: &mut GlGraphics, c: Context) {
-        self.draw_with_transparency(c, self.color.a, 0.0, g)
-    }
-}
+// impl Renderable for Animation {
+// }
 
 impl TatakuRenderable for Animation {
-    fn draw_with_transparency(&self, c: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
-        let transform = c.transform
+    fn get_depth(&self) -> f32 {self.depth}
+
+    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
+    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+        self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    }
+
+    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
+        let transform = transform
             // move to pos
-            .trans_pos(self.pos)
+            .trans(self.pos)
 
             // scale to size
-            .scale_pos(self.scale * self.base_scale)
+            .scale(self.scale * self.base_scale)
 
             // rotate to rotate
-            .rot_rad(self.rotation)
+            .rot(self.rotation)
             
             // apply origin
-            .trans_pos(-self.origin)
+            .trans(-self.origin)
         ;
 
         let image = &self.frames[self.frame_index];
-        graphics::Image::new()
-            .color(self.color.alpha(alpha).into())
-            .draw(image.as_ref(), &self.draw_state.unwrap_or(c.draw_state), transform, g)
+        g.draw_tex(image, self.depth as f32, self.color, transform);
+        // graphics::Image::new()
+        //     .color(self.color.alpha(alpha).into())
+        //     .draw(image, &self.draw_state.unwrap_or(c.draw_state), transform, g)
     }
 }

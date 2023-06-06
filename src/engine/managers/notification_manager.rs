@@ -2,16 +2,16 @@ use crate::prelude::*;
 
 
 // const NOTIF_WIDTH:f64 = 300.0; // TODO: have this as the max width instead
-const NOTIF_Y_OFFSET:f64 = 100.0; // window_size().y - this
-const NOTIF_TEXT_SIZE:u32 = 15;
-const NOTIF_DEPTH:f64 = -800_000_000.0;
+const NOTIF_Y_OFFSET:f32 = 100.0; // window_size().y - this
+const NOTIF_TEXT_SIZE:f32 = 15.0;
+const NOTIF_DEPTH:f32 = -800_000_000.0;
 // const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 
 /// how many pixels of space should there be between notifications?
 const NOTIF_MARGIN:Vector2 = Vector2::new(5.0, 5.0);
 
 /// how rounded the borders are
-const NOTIF_BORDER_ROUNDING:f64 = 5.0;
+const NOTIF_BORDER_ROUNDING:f32 = 5.0;
 
 /// how many pixels of padding should the notif text have?
 const NOTIF_PADDING:Vector2 = Vector2::new(4.0, 4.0);

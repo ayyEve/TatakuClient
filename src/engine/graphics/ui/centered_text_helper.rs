@@ -1,19 +1,19 @@
 use crate::prelude::*;
 
-const TEXT_HPADDING:f64 = 5.0;
+const TEXT_HPADDING:f32 = 5.0;
 
 pub struct CenteredTextHelper {
     text: String,
 
-    pub depth: f64,
+    pub depth: f32,
     changed_time: f32,
     draw_time: f32,
-    font: Font2,
+    font: Font,
 
     window_size: WindowSizeHelper,
 }
 impl CenteredTextHelper {
-    pub async fn new(draw_time: f32, depth: f64, font: Font2) -> Self {
+    pub async fn new(draw_time: f32, depth: f32, font: Font) -> Self {
         Self {
             text: String::new(),
 
@@ -42,7 +42,7 @@ impl CenteredTextHelper {
                 Color::BLACK,
                 self.depth,
                 Vector2::ZERO, // centered anyways
-                32,
+                32.0,
                 self.text.clone(),
                 self.font.clone()
             );

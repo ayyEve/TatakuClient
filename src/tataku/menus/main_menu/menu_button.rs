@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-const X_OFFSET:f64 = 10.0;
+const X_OFFSET:f32 = 10.0;
 const ITEM_PADDING:usize = 2;
 
 #[allow(dead_code)]
@@ -90,7 +90,7 @@ impl MainMenuButton {
 
 
         let height = self.size.y;
-        let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f64) * (num + ITEM_PADDING) as f64 - PI / 2.0;
+        let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f32) * (num + ITEM_PADDING) as f32 - PI / 2.0;
         let end = center + Vector2::new(
             angle.cos() * radius,
             angle.sin() * radius,
@@ -141,7 +141,7 @@ impl MainMenuButton {
 
 
         let height = self.size.y;
-        let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f64) * (num + ITEM_PADDING) as f64 - PI / 2.0;
+        let angle = (PI / (count + 2 * ITEM_PADDING - 1) as f32) * (num + ITEM_PADDING) as f32 - PI / 2.0;
         let mut end = center + Vector2::new(
             angle.cos() * radius,
             angle.sin() * radius,
@@ -183,8 +183,8 @@ impl MainMenuButton {
     }
     
 
-    pub fn time(&self) -> f64 {
-        self.timer.as_millis64()
+    pub fn time(&self) -> f32 {
+        self.timer.as_millis()
     }
 
     pub fn window_size_changed(&mut self, window_size: &Arc<WindowSize>) {
@@ -287,10 +287,10 @@ impl ScrollableItem for MainMenuButton {
                     self.shapes.push(image);
                 }
             } else {
-                let font_size = (15.0 * scale) as u32;
+                let font_size = 15.0 * scale;
                 // draw box
                 let r = Rectangle::new(
-                    [0.2, 0.2, 0.2, 1.0].into(),
+                    Color::new(0.2, 0.2, 0.2, 1.0),
                     10.0,
                     self.pos,
                     self.size * scale,
@@ -313,7 +313,7 @@ impl ScrollableItem for MainMenuButton {
             }
         }
 
-        let time = self.timer.elapsed().as_secs_f64() * 1000.0;
+        let time = self.timer.as_millis();
         self.shapes.update(time);
 
         self.disposable_shapes.retain_mut(|i|{
@@ -323,7 +323,7 @@ impl ScrollableItem for MainMenuButton {
 
 
         if self.hide_time > 0.0 {
-            if time - self.hide_time as f64 > 500.0 {
+            if time - self.hide_time > 500.0 {
                 self.visible = false;
             }
         }
@@ -331,7 +331,7 @@ impl ScrollableItem for MainMenuButton {
 
     }
 
-    fn draw(&mut self, _args:piston::RenderArgs, _pos_offset:Vector2, _parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, _pos_offset:Vector2, _parent_depth:f32, list: &mut RenderableCollection) {
         if !self.visible { return }
         // self.shapes.draw(list);
         list.push(self.shapes.clone());

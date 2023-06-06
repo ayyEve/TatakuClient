@@ -3,8 +3,8 @@ use std::ops::Range;
 use crate::prelude::*;
 use super::prelude::*;
 
-const NOTE_DEPTH:Range<f64> = 100.0..200.0;
-const SLIDER_DEPTH:Range<f64> = 200.0..300.0;
+const NOTE_DEPTH:Range<f32> = 100.0..200.0;
+const SLIDER_DEPTH:Range<f32> = 200.0..300.0;
 
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
@@ -107,7 +107,7 @@ impl OsuGame {
                 let obj_is_slider = obj.note_type() == NoteType::Slider;
                 let obj_end_pos = obj.pos_at(obj.end_time(0.0));
 
-                if obj_pos.distance(obj_n_pos) < STACK_LENIENCY as f64 || (obj_is_slider && obj_end_pos.distance(obj_n_pos) < STACK_LENIENCY as f64) {
+                if obj_pos.distance(obj_n_pos) < STACK_LENIENCY as f32 || (obj_is_slider && obj_end_pos.distance(obj_n_pos) < STACK_LENIENCY as f32) {
                     stack_base_index = n;
 
                     // self.notes[n].set_stack_count(0)
@@ -318,7 +318,7 @@ impl GameMode for OsuGame {
                 let mut combo_change = 0;
         
                 // used for the end time
-                let end_time = s.end_time as f64;
+                let end_time = s.end_time;
         
                 let mut counter = 0;
         
@@ -339,7 +339,7 @@ impl GameMode for OsuGame {
                     combo_num += 1;
         
                     if let Some(note) = note {
-                        let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
+                        let depth = NOTE_DEPTH.start + (note.time / end_time) * NOTE_DEPTH.end;
                         s.notes.push(Box::new(OsuNote::new(
                             note.clone(),
                             ar,
@@ -363,7 +363,7 @@ impl GameMode for OsuGame {
                                 color_skip: slider.color_skip,
                             };
         
-                            let depth = NOTE_DEPTH.start + (note.time as f64 / end_time) * NOTE_DEPTH.end;
+                            let depth = NOTE_DEPTH.start + (note.time / end_time) * NOTE_DEPTH.end;
                             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
                             s.notes.push(Box::new(OsuNote::new(
                                 note,
@@ -377,8 +377,8 @@ impl GameMode for OsuGame {
                                 hitsounds,
                             ).await));
                         } else {
-                            let slider_depth = SLIDER_DEPTH.start + (slider.time as f64 / end_time) * SLIDER_DEPTH.end;
-                            let depth = NOTE_DEPTH.start + (slider.time as f64 / end_time) * NOTE_DEPTH.end;
+                            let slider_depth = SLIDER_DEPTH.start + (slider.time / end_time) * SLIDER_DEPTH.end;
+                            let depth = NOTE_DEPTH.start + (slider.time / end_time) * NOTE_DEPTH.end;
         
                             let curve = get_curve(slider, &map);
                             s.notes.push(Box::new(OsuSlider::new(
@@ -520,7 +520,7 @@ impl GameMode for OsuGame {
             }
             ReplayFrame::MousePos(x, y) => {
                 // scale the coords from playfield to window
-                let pos = self.scaling_helper.scale_coords(Vector2::new(x as f64, y as f64));
+                let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
 
                 for note in self.notes.iter_mut() {
@@ -679,7 +679,7 @@ impl GameMode for OsuGame {
         pending_frames
     }
     
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         if !manager.menu_background {
@@ -740,7 +740,7 @@ impl GameMode for OsuGame {
 
         // draw notes
         for note in self.notes.iter_mut() {
-            note.draw(args, list).await;
+            note.draw(list).await;
         }
 
         // draw follow points
@@ -773,10 +773,10 @@ impl GameMode for OsuGame {
                     let distance = n1_pos.distance(n2_pos);
                     let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
                     
-                    let follow_dot_count = distance/follow_dot_distance;
+                    let follow_dot_count = distance / follow_dot_distance;
                     for i in 1..follow_dot_count as u64 {
-                        let lerp_amount = i as f64 / follow_dot_count as f64;
-                        let time_at_this_point = f64::lerp(n1_time as f64, n2_time as f64, lerp_amount) as f32;
+                        let lerp_amount = i as f32 / follow_dot_count;
+                        let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
                         let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
                         
                         // get the alpha
@@ -784,9 +784,9 @@ impl GameMode for OsuGame {
                         let alpha = if alpha_lerp_amount > 2.0 || alpha_lerp_amount < 0.0 {
                             0.0
                         } else if alpha_lerp_amount > 1.0 {
-                            f64::easeout_sine(1.0, 0.0, alpha_lerp_amount as f64 - 1.0) as f32
+                            f32::easeout_sine(1.0, 0.0, alpha_lerp_amount - 1.0)
                         } else {
-                            f64::easein_sine(0.0, 1.0, alpha_lerp_amount as f64) as f32
+                            f32::easein_sine(0.0, 1.0, alpha_lerp_amount)
                         };
 
                         if alpha == 0.0 { continue }
@@ -903,9 +903,9 @@ impl GameMode for OsuGame {
 #[async_trait]
 impl GameModeInput for OsuGame {
 
-    async fn key_down(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
         // playfield adjustment
-        if key == piston::Key::LCtrl {
+        if key == Key::LControl {
             let old = self.game_settings.get_playfield();
             self.move_playfield = Some((old.1, self.window_mouse_pos));
             return None;
@@ -923,9 +923,9 @@ impl GameModeInput for OsuGame {
         }
     }
     
-    async fn key_up(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
         // playfield adjustment
-        if key == piston::Key::LCtrl {
+        if key == Key::LControl {
             self.move_playfield = None;
             return None;
         }
@@ -980,7 +980,7 @@ impl GameModeInput for OsuGame {
         Some(ReplayFrame::MousePos(pos.x as f32, pos.y as f32))
     }
     
-    async fn mouse_down(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
@@ -996,7 +996,7 @@ impl GameModeInput for OsuGame {
         }
     }
     
-    async fn mouse_up(&mut self, btn:piston::MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
@@ -1012,7 +1012,7 @@ impl GameModeInput for OsuGame {
         }
     }
 
-    async fn mouse_scroll(&mut self, delta:f64) -> Option<ReplayFrame> {
+    async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayFrame> {
         if self.move_playfield.is_some() {
             {
                 let settings = &mut get_settings_mut!().standard_settings;
@@ -1052,7 +1052,7 @@ impl GameModeInput for OsuGame {
         }
     }
     
-    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) -> Option<ReplayFrame> {
+    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f32)>) -> Option<ReplayFrame> {
         self.use_controller_cursor = true;
 
         let mut new_pos = self.mouse_pos;
@@ -1065,18 +1065,18 @@ impl GameModeInput for OsuGame {
                     // -1.0 to 1.0
                     // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.x = playfield.pos.x + f64::lerp(0.0, playfield.size.x, normalized);
+                    new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
                 },
                 Some(ControllerAxis::Left_Y) => {
                     let normalized = (value + 1.0) / 2.0;
-                    new_pos.y = playfield.pos.y + f64::lerp(0.0, playfield.size.y, normalized);
+                    new_pos.y = playfield.pos.y + f32::lerp(0.0, playfield.size.y, normalized);
                 },
                 _ => {},
             }
         }
 
         let new_pos = scaling_helper.descale_coords(new_pos);
-        Some(ReplayFrame::MousePos(new_pos.x as f32, new_pos.y as f32))
+        Some(ReplayFrame::MousePos(new_pos.x, new_pos.y))
     }
 
 }
@@ -1086,7 +1086,7 @@ impl GameModeProperties for OsuGame {
     fn playmode(&self) -> PlayMode { "osu".to_owned() }
     fn end_time(&self) -> f32 { self.end_time }
     fn show_cursor(&self) -> bool { true }
-    fn ripple_size(&self) -> Option<f64> {
+    fn ripple_size(&self) -> Option<f32> {
         Some(self.scaling_helper.scaled_circle_size.x)
     }
 

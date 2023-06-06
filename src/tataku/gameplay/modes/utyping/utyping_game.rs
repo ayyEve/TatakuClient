@@ -19,7 +19,7 @@ const BAR_SPACING:f32 = 4.0;
 
 /// bc sv is bonked, divide it by this amount
 const SV_FACTOR:f32 = 700.0;
-const NOTE_DEPTH_RANGE:Range<f64> = 0.0..1000.0;
+const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
 
 pub struct UTypingGame {
     // lists
@@ -38,8 +38,8 @@ pub struct UTypingGame {
 }
 impl UTypingGame {
     #[inline]
-    pub fn get_depth(time: f32) -> f64 {
-        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time as f64)
+    pub fn get_depth(time: f32) ->f32 {
+        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
     }
     // pub fn next_note(&mut self) {self.note_index += 1}
 }
@@ -225,10 +225,11 @@ impl GameMode for UTypingGame {
 
         autoplay_list
     }
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
-        list.push(self.game_settings.get_playfield(args.window_size[0], manager.current_timing_point().kiai));
+        let window_size = WindowSize::get();
+        list.push(self.game_settings.get_playfield(window_size.x, manager.current_timing_point().kiai));
 
         // draw the hit area
         list.push(Circle::new(
@@ -240,10 +241,10 @@ impl GameMode for UTypingGame {
         ));
 
         // draw notes
-        for note in self.notes.iter_mut() { note.draw(args, list).await; }
+        for note in self.notes.iter_mut() { note.draw(list).await; }
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(args, list); }
+        for tb in self.timing_bars.iter_mut() { tb.draw(list); }
     }
 
 
@@ -361,7 +362,7 @@ impl GameMode for UTypingGame {
 impl GameModeInput for UTypingGame {
     async fn key_down(&mut self, _key:Key) -> Option<ReplayFrame> { None }
     
-    async fn key_up(&mut self, _key:piston::Key) -> Option<ReplayFrame> { None }
+    async fn key_up(&mut self, _key:Key) -> Option<ReplayFrame> { None }
 
     async fn on_text(&mut self, text: &String, _mods: &KeyModifiers) -> Option<ReplayFrame> {
         if let Some(c) = text.chars().next() {
@@ -378,11 +379,11 @@ impl GameModeProperties for UTypingGame {
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}
 
-    fn timing_bar_things(&self) -> Vec<(f32,Color)> {
+    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
         vec![
-            (self.hitwindow_100, [0.3411, 0.8901, 0.0745, 1.0].into()),
-            (self.hitwindow_300, [0.1960, 0.7372, 0.9058, 1.0].into()),
-            (self.hitwindow_miss, [0.8549, 0.6823, 0.2745, 1.0].into())
+            (self.hitwindow_100,  Color::new(0.3411, 0.8901, 0.0745, 1.0)),
+            (self.hitwindow_300,  Color::new(0.1960, 0.7372, 0.9058, 1.0)),
+            (self.hitwindow_miss, Color::new(0.8549, 0.6823, 0.2745, 1.0))
         ]
     }
     

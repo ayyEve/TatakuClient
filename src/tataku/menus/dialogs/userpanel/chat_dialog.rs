@@ -1,14 +1,13 @@
 #![allow(dead_code, unused, non_snake_case)]
-use ayyeve_piston_ui::prelude::ScrollableGettersSetters;
 use futures_util::SinkExt;
 use crate::prelude::*;
 
 //TODO: proper window size
 
-const INPUT_HEIGHT:f64 = 45.0;
+const INPUT_HEIGHT:f32 = 45.0;
 
 /// how many pixels away from the thing can it be to resize?
-const RESIZE_LENIENCE: f64 = 3.0;
+const RESIZE_LENIENCE:f32 = 3.0;
 
 
 pub struct Chat {
@@ -20,15 +19,15 @@ pub struct Chat {
     // scrollables
     channel_scroll: ScrollableArea,
     message_scroll: ScrollableArea,
-    input: TextInput<Font2, Text>,
+    input: TextInput,
 
     pub selected_channel: Option<ChatChannel>,
 
     // TODO: unread messages
 
     // sizes
-    pub chat_height: f64,
-    pub channel_list_width: f64,
+    pub chat_height: f32,
+    pub channel_list_width: f32,
 
     // resizing helpers
     width_resize: bool,
@@ -85,7 +84,7 @@ impl Chat {
         self.message_scroll.on_mouse_move(self.message_scroll.get_pos() + Vector2::ONE);
 
         // do a negative max scroll
-        self.message_scroll.on_scroll(-f64::MAX);
+        self.message_scroll.on_scroll(-f32::MAX);
     }
 }
 
@@ -107,13 +106,13 @@ impl Dialog<Game> for Chat {
     }
     fn should_close(&self) -> bool {self.should_close}
 
-    async fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == &Key::Escape {
+    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        if key == Key::Escape {
             self.should_close = true;
             return true;
         }
 
-        if key == &Key::Return {
+        if key == Key::Return {
             let send_text = self.input.get_text();
             self.input.set_text(String::new());
 
@@ -130,12 +129,12 @@ impl Dialog<Game> for Chat {
             return true;
         }
 
-        self.input.on_key_press(*key, *mods);
+        self.input.on_key_press(key, *mods);
 
         true
     }
-    async fn on_key_release(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.input.on_key_release(*key);
+    async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.input.on_key_release(key);
         true
     }
     async fn on_text(&mut self, text:&String) -> bool {
@@ -143,9 +142,9 @@ impl Dialog<Game> for Chat {
         true
     }
 
-    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
         // check if a channel was clicked
-        if let Some(channel_name) = self.channel_scroll.on_click_tagged(*pos, *button, *mods) {
+        if let Some(channel_name) = self.channel_scroll.on_click_tagged(pos, button, *mods) {
 
             // find the channel name in the list
             for (channel, message_list) in self.messages.iter() {
@@ -161,7 +160,7 @@ impl Dialog<Game> for Chat {
                     self.message_scroll.add_item(Box::new(MessageScroll::new(
                         m.clone(),
                         self.window_size.x - self.channel_list_width,
-                        30
+                        30.0
                     )));
                 }
             }
@@ -172,7 +171,7 @@ impl Dialog<Game> for Chat {
             return true;
         }
 
-        self.input.on_click(*pos, *button, *mods);
+        self.input.on_click(pos, button, *mods);
         //TODO: check messages click?
 
         if self.height_resize_hover {
@@ -184,7 +183,7 @@ impl Dialog<Game> for Chat {
 
         true
     }
-    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         self.height_resize = false;
         self.width_resize = false;
         self.width_resize_hover = false;
@@ -192,9 +191,9 @@ impl Dialog<Game> for Chat {
         true
     }
 
-    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
-        self.channel_scroll.on_mouse_move(*pos);
-        self.message_scroll.on_mouse_move(*pos);
+    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+        self.channel_scroll.on_mouse_move(pos);
+        self.message_scroll.on_mouse_move(pos);
 
         let window_size = self.window_size.0;
         // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
@@ -244,9 +243,9 @@ impl Dialog<Game> for Chat {
         }
     }
 
-    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
-        self.channel_scroll.on_scroll(*delta);
-        self.message_scroll.on_scroll(*delta);
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
+        self.channel_scroll.on_scroll(delta);
+        self.message_scroll.on_scroll(delta);
 
         true
     }
@@ -281,7 +280,7 @@ impl Dialog<Game> for Chat {
                     self.channel_scroll.add_item(Box::new(ChannelScroll::new(
                         channel.clone(), 
                         self.channel_list_width, 
-                        30
+                        30.0
                     )));
                     continue;
                 }
@@ -298,7 +297,7 @@ impl Dialog<Game> for Chat {
                                 self.message_scroll.add_item(Box::new(MessageScroll::new(
                                     message.clone(),
                                     window_size.x - self.channel_list_width,
-                                    30
+                                    30.0
                                 )));
                                 scroll_pending = true;
                             }
@@ -320,9 +319,7 @@ impl Dialog<Game> for Chat {
         self.input.set_selected(true);
     }
 
-    async fn draw(&mut self, args:&piston::RenderArgs, depth: &f64, list: &mut RenderableCollection) {
-        let args = *args;
-        let depth = *depth;
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
         let window_size = self.window_size.0;
 
         // draw backgrounds
@@ -362,9 +359,9 @@ impl Dialog<Game> for Chat {
             ))
         }
 
-        self.channel_scroll.draw(args, Vector2::ZERO, depth, list);
-        self.message_scroll.draw(args, Vector2::ZERO, depth, list);
-        self.input.draw(args, Vector2::ZERO, depth - 10.0, list);
+        self.channel_scroll.draw(Vector2::ZERO, depth, list);
+        self.message_scroll.draw(Vector2::ZERO, depth, list);
+        self.input.draw(Vector2::ZERO, depth - 10.0, list);
     }
 }
 
@@ -446,32 +443,32 @@ struct ChannelScroll {
     tag: String,
 
     channel: ChatChannel,
-    font_size: FontSize,
-    font: Font2,
+    font_size: f32,
+    font: Font,
 }
 impl ChannelScroll {
-    fn new(channel: ChatChannel, width: f64, font_size: u32) -> Self {
+    fn new(channel: ChatChannel, width: f32, font_size: f32) -> Self {
         Self {
             tag: channel.get_name(),
             channel,
-            font_size: FontSize::new(font_size as f32).unwrap(),
+            font_size,
 
             hover: false,
             selected: false,
             pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size as f64),
+            size: Vector2::new(width, font_size),
             font: get_font(),
         }
     }
 }
 impl ScrollableItem for ChannelScroll {
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
 
         let text = Text::new(
             if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
             parent_depth,
             self.pos + pos_offset,
-            self.font_size.0 as u32,
+            self.font_size,
             self.channel.get_name(),
             self.font.clone()
         );
@@ -487,29 +484,29 @@ struct MessageScroll {
     hover: bool,
 
     message: ChatMessage,
-    font_size: FontSize,
-    font: Font2,
+    font_size: f32,
+    font: Font,
 }
 impl MessageScroll {
-    fn new(message: ChatMessage, width: f64, font_size: u32) -> Self {
+    fn new(message: ChatMessage, width: f32, font_size: f32) -> Self {
         Self {
             message,
-            font_size: FontSize::new(font_size as f32).unwrap(),
+            font_size,
 
             hover: false,
             pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size as f64),
+            size: Vector2::new(width, font_size),
             font: get_font(),
         }
     }
 }
 impl ScrollableItem for MessageScroll {
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         let text = Text::new(
             Color::BLACK,
             parent_depth,
             self.pos + pos_offset,
-            self.font_size.0 as u32,
+            self.font_size,
             self.message.get_formatted_text(),
             self.font.clone()
         );

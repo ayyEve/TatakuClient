@@ -10,27 +10,27 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     fn name(&self) -> &'static str {""}
 
     async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection);
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection);
 
     // input handlers
-    async fn on_mouse_move(&mut self, _pos:&Vector2, _g:&mut G) {}
-    async fn on_mouse_scroll(&mut self, _delta:&f64, _g:&mut G) -> bool {false}
-    async fn on_mouse_down(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
-    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+    async fn on_mouse_move(&mut self, _pos:Vector2, _g:&mut G) {}
+    async fn on_mouse_scroll(&mut self, _delta:f32, _g:&mut G) -> bool {false}
+    async fn on_mouse_down(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+    async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
 
     async fn on_text(&mut self, _text:&String) -> bool {false}
-    async fn on_key_press(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
-    async fn on_key_release(&mut self, _key:&Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+    async fn on_key_press(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
+    async fn on_key_release(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 
     async fn on_controller_press(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
     async fn on_controller_release(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
-    async fn on_controller_axis(&mut self, _controller: &Box<dyn Controller>, _axis_data: &HashMap<u8, (bool, f64)>) {}
+    async fn on_controller_axis(&mut self, _controller: &Box<dyn Controller>, _axis_data: &HashMap<u8, (bool, f32)>) {}
 
     fn string_function1(&mut self, _val: String) {}
     // fn string_function2(&mut self, _val: String) {}
 
-    fn draw_background(&mut self, depth: f64, color:Color, list: &mut RenderableCollection) {
+    fn draw_background(&mut self, depth: f32, color:Color, list: &mut RenderableCollection) {
         let bounds = self.get_bounds();
         list.push(Rectangle::new(
             color.alpha(0.8),

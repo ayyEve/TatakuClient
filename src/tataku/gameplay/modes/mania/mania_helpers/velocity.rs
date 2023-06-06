@@ -6,13 +6,13 @@ pub struct SliderVelocity {
     pub time: f32,
     
     /// Velocity multiplier
-    pub slider_velocity: f64,
+    pub slider_velocity: f32,
 }
 impl From<QuaverSliderVelocity> for SliderVelocity {
     fn from(s: QuaverSliderVelocity) -> Self {
         Self {
             time: s.start_time,
-            slider_velocity: s.multiplier,
+            slider_velocity: s.multiplier as f32,
         }
     }
 }
@@ -20,14 +20,14 @@ impl From<QuaverSliderVelocity> for SliderVelocity {
 #[derive(Debug, Clone)]
 pub struct PositionPoint {
     pub time: f32,
-    pub position: f64
+    pub position: f32
 }
 
 impl Default for PositionPoint {
     fn default() -> Self {
         Self {
             time: -LEAD_IN_TIME,
-            position: -LEAD_IN_TIME as f64,
+            position: -LEAD_IN_TIME,
         }
     }
 }

@@ -7,6 +7,7 @@ extern crate log;
 mod engine;
 mod tataku;
 mod prelude;
+mod interface;
 pub mod commits;
 
 // folders
@@ -99,14 +100,16 @@ async fn start_game() {
     let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
 
     // setup window
-    trace!("creating window");
-    let mut window = GameWindow::start(render_queue_receiver, game_event_sender);
+    main_thread.spawn_local(async move {
+        info!("init tex load");
+        texture_load_init();
 
-    // texture load loop
-    main_thread.spawn_local(async {
-        info!("starting texture load loop");
-        texture_load_loop().await;
-        warn!("texture loop closed");
+        info!("creating window");
+        let (w, e) = GameWindow::new(render_queue_receiver, game_event_sender).await;
+        
+        trace!("window running");
+        GameWindow::run(w, e).await;
+        warn!("window closed");
     });
 
     // start game
@@ -128,11 +131,6 @@ async fn start_game() {
         TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::GameClose).ok().unwrap();
     });
 
-    main_thread.spawn_local(async move {
-        trace!("window running");
-        window.run().await;
-        warn!("window closed");
-    });
 
     let _ = tokio::join!(main_thread, game);
 }

@@ -19,11 +19,11 @@ pub struct StandardSettings {
     
 
     // playfield
-    pub playfield_x_offset: f64,
-    pub playfield_y_offset: f64,
-    pub playfield_scale: f64,
-    pub playfield_snap: f64,
-    pub playfield_movelines_thickness: f64,
+    pub playfield_x_offset: f32,
+    pub playfield_y_offset: f32,
+    pub playfield_scale: f32,
+    pub playfield_snap: f32,
+    pub playfield_movelines_thickness: f32,
 
     // display
     #[Setting(text="Follow Points")]
@@ -40,7 +40,7 @@ pub struct StandardSettings {
     #[Setting(text="Ripple HitCircles")]
     pub ripple_hitcircles: bool,
     #[Setting(text="Ripple Scale", min=0.1, max=5.0)]
-    pub ripple_scale: f64,
+    pub ripple_scale: f32,
     #[Setting(text="Slider Tick Ripples Above")]
     pub slider_tick_ripples_above: bool,
     #[Setting(text="Combo Color Approach Circles")]
@@ -53,7 +53,7 @@ pub struct StandardSettings {
     pub use_skin_judgments: bool,
 }
 impl StandardSettings {
-    pub fn get_playfield(&self) -> (f64, Vector2) {
+    pub fn get_playfield(&self) -> (f32, Vector2) {
         (self.playfield_scale, Vector2::new(self.playfield_x_offset, self.playfield_y_offset))
     }
 }

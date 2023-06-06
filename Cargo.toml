@@ -12,8 +12,8 @@ build = "build/mod.rs"
 
 [features]
 # default = ["glfw_window"]
-default = ["glfw_window", "winit"]
-# default = ["glfw_window", "glutin_window"]
+# default = ["glfw_window", "winit"]
+default = ["bass_audio", "discord", "snipping"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
 discord = ["discord-rich-presence"]
@@ -24,8 +24,8 @@ debug_perf_rating = []
 log_frametimes = []
 storyboards = []
 
-glfw_window = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping", "glfw"]
-glutin_window = ["pistoncore-glutin_window", "bass_audio", "discord", "snipping", "winit", "clipboard"]
+# glfw_window = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping", "glfw"]
+# glutin_window = ["pistoncore-glutin_window", "bass_audio", "discord", "snipping", "winit"]
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
@@ -46,16 +46,19 @@ global_value_manager = "*"
 
 # gl/piston etc
 # careful when verison bumping these
-gl = "0.13"
+# gl = "0.13"
 image = "*"
 
-glfw = { version = "0.47", features = ["image"], optional = true }
-pistoncore-glfw_window = { version = "0.77", optional=true }
+# glfw = { version = "0.47", features = ["image"], optional = true }
+# pistoncore-glfw_window = { version = "0.77", optional=true }
 
-winit = {version = "0.27", optional = true}
-pistoncore-glutin_window = { version = "0.70.1", optional=true }
 
-ayyeve-piston-ui = "0.7"
+# pistoncore-glutin_window = { version = "0.70.1", optional=true }
+
+# pistoncore-input = "*"
+
+
+# ayyeve-piston-ui = "0.7"
 fontdue = "0.7"
 rectangle-pack = "0.4"
 lyon_tessellation = "*"
@@ -65,6 +68,7 @@ wgpu = "*"
 raw-window-handle = "0.5"
 bytemuck = { version = "1.12", features = [ "derive" ] }
 cgmath = "*"
+winit = {version = "0.27", features = ["serde"]}
 
 # bass audio
 bass-rs = { version="0.2", optional = true }
@@ -97,8 +101,8 @@ base64 = "*"
 fs_extra = "1.2.0"
 deepsize = { version = "*"}
 radix_fmt = "1"
+clipboard = "0.5"
 
-clipboard = { version = "0.5", optional = true }
 
 # logging
 tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }

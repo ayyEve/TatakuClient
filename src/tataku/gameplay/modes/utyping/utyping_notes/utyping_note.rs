@@ -2,7 +2,7 @@ use crate::prelude::*;
 use super::super::prelude::*;
 // use super::BAR_COLOR;
 
-const NOTE_BORDER_SIZE:f64 = 2.0;
+const NOTE_BORDER_SIZE:f32 = 2.0;
 const GRAVITY_SCALING:f32 = 400.0;
 
 // note
@@ -11,7 +11,7 @@ const GRAVITY_SCALING:f32 = 400.0;
 pub struct UTypingNote {
     pos: Vector2,
     time: f32, // ms
-    depth: f64,
+    depth: f32,
     hit_time: f32,
     // cutoff_time: f32,
 
@@ -109,14 +109,14 @@ impl HitObject for UTypingNote {
             else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
             else {0.0};
         
-        self.pos = self.settings.hit_position + Vector2::new(((self.time - beatmap_time) * self.speed) as f64, y as f64);
+        self.pos = self.settings.hit_position + Vector2::new((self.time - beatmap_time) * self.speed, y);
 
         if let Some(image) = &mut self.image {
             image.set_pos(self.pos)
         }
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 { return }
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
         let size = Vector2::new(self.settings.note_radius, self.settings.note_radius);
 
@@ -138,7 +138,7 @@ impl HitObject for UTypingNote {
             Color::BLACK,
             self.depth,
             self.pos,
-            32,
+            32.0,
             // self.romaji.clone(), //
             self.text.clone(),
             get_fallback_font()
@@ -169,7 +169,7 @@ impl HitObject for UTypingNote {
                 Color::BLACK,
                 self.depth,
                 self.pos,
-                32,
+                32.0,
                 i.clone(),
                 get_fallback_font()
             );
@@ -185,7 +185,7 @@ impl HitObject for UTypingNote {
                 Color::BLACK,
                 self.depth,
                 self.pos,
-                32,
+                32.0,
                 "...".to_owned(),
                 get_fallback_font()
             );
@@ -251,7 +251,7 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    async fn new(_settings: &Arc<TaikoSettings>, depth: f64) -> Option<Self> {
+    async fn new(_settings: &Arc<TaikoSettings>, depth: f32) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 

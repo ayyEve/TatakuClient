@@ -34,11 +34,11 @@ impl InnerUIElement for LeaderboardElement {
 
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         // draw scores
-        let args = RenderArgs {
-            ext_dt: 0.0,
-            window_size: [0.0, 0.0],
-            draw_size: [0, 0],
-        };
+        // let args = RenderArgs {
+        //     ext_dt: 0.0,
+        //     window_size: [0.0, 0.0],
+        //     draw_size: [0, 0],
+        // };
 
         let mut is_pb = true;
 
@@ -60,7 +60,7 @@ impl InnerUIElement for LeaderboardElement {
             }
 
             l.set_pos(base_pos);
-            l.draw(args, Vector2::ZERO, 0.0, list);
+            l.draw(Vector2::ZERO, 0.0, list);
             base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 

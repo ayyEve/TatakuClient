@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 /// how wide is a timing bar
-const BAR_WIDTH:f64 = 4.0;
+const BAR_WIDTH:f32 = 4.0;
 
 /// timing bar color
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -30,13 +30,13 @@ impl TimingBar {
     }
 
     pub fn update(&mut self, time:f32) {
-        self.pos.x = self.settings.hit_position.x + ((self.time - time) * self.speed) as f64 - BAR_WIDTH / 2.0;
+        self.pos.x = self.settings.hit_position.x + ((self.time - time) * self.speed) - BAR_WIDTH / 2.0;
     }
 
-    pub fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection){
-        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > args.window_size[0] {return}
+    pub fn draw(&mut self, list: &mut RenderableCollection){
+        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 1000000.0 {return}
 
-        const DEPTH:f64 = 1001.5;
+        const DEPTH:f32 = 1001.5;
 
         list.push(Rectangle::new(
             BAR_COLOR,

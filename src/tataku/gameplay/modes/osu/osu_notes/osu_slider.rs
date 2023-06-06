@@ -1,7 +1,9 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const SLIDER_DOT_RADIUS:f64 = 8.0;
+const SLIDER_DOT_RADIUS:f32 = 8.0;
+const BORDER_RADIUS:f32 = 6.0;
+const BORDER_COLOR:Color = Color::WHITE;
 
 pub struct OsuSlider {
     /// slider definition for this slider
@@ -39,7 +41,7 @@ pub struct OsuSlider {
     /// combo number
     combo_num: u16,
     /// note size
-    radius: f64,
+    radius: f32,
     
     /// was the start checked?
     start_checked: bool,
@@ -59,9 +61,9 @@ pub struct OsuSlider {
     mouse_pos: Vector2,
 
     /// slider curve depth
-    slider_depth: f64,
+    slider_depth: f32,
     /// start/end circle depth
-    circle_depth: f64,
+    circle_depth: f32,
     /// when should the note start being drawn (specifically the )
     time_preempt: f32,
     hitwindow_miss: f32,
@@ -100,7 +102,7 @@ pub struct OsuSlider {
     sliderdot_hitsound: Hitsound
 }
 impl OsuSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f64, circle_depth:f64, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, slider_depth:f32, circle_depth:f32, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -190,7 +192,7 @@ impl OsuSlider {
         }
         // let skin = SkinManager::current_skin_config().await;
 
-        let mut list:Vec<Box<dyn Renderable>> = Vec::new();
+        let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
         let window_size = WindowSize::get().0;
         
         // info!("{:?}", skin.slider_track_override);
@@ -203,8 +205,6 @@ impl OsuSlider {
             // color
         // });
 
-        const BORDER_RADIUS:f64 = 6.0;
-        const BORDER_COLOR:Color = Color::WHITE;
 
         let border_color = BORDER_COLOR; //skin.slider_border.unwrap_or(BORDER_COLOR);
 
@@ -258,21 +258,21 @@ impl OsuSlider {
             }
             
         }
-        
-        // draw it to the render texture
-        if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x, window_size.y, |rt, g| {
-            use graphics::Graphics;
-            let c = g.draw_begin(rt.viewport());
-            g.clear_color(Color::TRANSPARENT_WHITE.into());
-            for i in list { i.draw(g, c); }
-            g.draw_end();
-        }).await {
-            slider_body_render_target.image.origin = Vector2::ZERO;
-            slider_body_render_target.image.depth = self.slider_depth;
-            self.slider_body_render_target = Some(slider_body_render_target);
-        } else {
-            self.slider_body_render_target_failed = Some(self.map_time);
-        }
+        //TODO:render targets
+        // // draw it to the render texture
+        // if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x, window_size.y, |rt, g| {
+        //     use graphics::Graphics;
+        //     let c = g.draw_begin(rt.viewport());
+        //     g.clear_color(Color::TRANSPARENT_WHITE.into());
+        //     for i in list { i.draw(g, c); }
+        //     g.draw_end();
+        // }).await {
+        //     slider_body_render_target.image.origin = Vector2::ZERO;
+        //     slider_body_render_target.image.depth = self.slider_depth;
+        //     self.slider_body_render_target = Some(slider_body_render_target);
+        // } else {
+        //     self.slider_body_render_target_failed = Some(self.map_time);
+        // }
     }
 
     async fn make_dots(&mut self) {
@@ -327,7 +327,7 @@ impl OsuSlider {
             ));
 
             let duration = 500.0;
-            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true,  None);
+            group.ripple(0.0, duration, time, self.standard_settings.ripple_scale, true,  None);
 
             self.shapes.push(group);
         }
@@ -365,9 +365,8 @@ impl HitObject for OsuSlider {
         self.map_time = beatmap_time;
 
         // update shapes
-        let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
-            shape.update(time);
+            shape.update(beatmap_time);
             shape.visible()
         });
 
@@ -457,7 +456,7 @@ impl HitObject for OsuSlider {
 
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             // shape.draw(list)
@@ -531,12 +530,12 @@ impl HitObject for OsuSlider {
             }
         }
 
-        // slider body
-        if let Some(rt) = &self.slider_body_render_target {
-            let mut b = rt.image.clone();
-            b.color.a = alpha;
-            list.push(b);
-        }
+        // // slider body
+        // if let Some(rt) = &self.slider_body_render_target {
+        //     let mut b = rt.image.clone();
+        //     b.color.a = alpha;
+        //     list.push(b);
+        // }
 
         
         // start and end circles
@@ -875,15 +874,15 @@ struct SliderDot {
     pos: Vector2,
     checked: bool,
     hit: bool,
-    depth: f64,
-    scale: f64,
+    depth: f32,
+    scale: f32,
 
     /// which slide "layer" is this on?
     slide_layer: u64,
     dot_image: Option<Image>
 }
 impl SliderDot {
-    pub async fn new(time:f32, pos:Vector2, depth: f64, scale: f64, slide_layer: u64) -> SliderDot {
+    pub async fn new(time:f32, pos:Vector2, depth: f32, scale: f32, slide_layer: u64) -> SliderDot {
         SliderDot {
             time,
             pos,
@@ -897,7 +896,7 @@ impl SliderDot {
         }
     }
     /// returns true if the hitsound should play
-    pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f64) -> Option<bool> {
+    pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f32) -> Option<bool> {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
             self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * 2.0;

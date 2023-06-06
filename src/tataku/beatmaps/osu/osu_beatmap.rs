@@ -202,8 +202,8 @@ impl OsuBeatmap {
                     let mut split = line.split(",");
                     if split.clone().count() < 2 { continue } // skip empty lines
 
-                    let x = split.next().unwrap().parse::<f64>().unwrap();
-                    let y = split.next().unwrap().parse::<f64>().unwrap();
+                    let x = split.next().unwrap().parse::<f32>().unwrap();
+                    let y = split.next().unwrap().parse::<f32>().unwrap();
                     let time = split.next().unwrap().parse::<f32>().unwrap();
 
                     if time < start_time {

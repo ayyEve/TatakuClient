@@ -40,7 +40,7 @@ impl Default for PanelUser {
 }
 
 impl ScrollableItem for PanelUser {
-    fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos:Vector2, depth:f32, list: &mut RenderableCollection) {
         let font = get_font();
         let pos = self.pos + pos;
 
@@ -59,7 +59,7 @@ impl ScrollableItem for PanelUser {
             Color::WHITE,
             depth - 1.0,
             pos + USERNAME_OFFSET,
-            20,
+            20.0,
             self.user.username.clone(),
             font.clone()
         ));
@@ -73,7 +73,7 @@ impl ScrollableItem for PanelUser {
                 Color::BLACK,
                 depth - 1.0,
                 pos + USERNAME_OFFSET + Vector2::new(0.0, 20.0),
-                20,
+                20.0,
                 action_text.clone(),
                 font.clone()
             ));

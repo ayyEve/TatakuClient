@@ -12,6 +12,8 @@ use chrono::{
 // const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
 
 const MENU_ITEM_COUNT:usize = 2;
+const TITLE_STRING_Y:f32 = 20.0;
+const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 
 pub struct ScoreMenu {
     score: IngameScore,
@@ -19,7 +21,7 @@ pub struct ScoreMenu {
     score_mods: String,
 
     beatmap: Arc<BeatmapMeta>,
-    buttons: Vec<MenuButton<Font2, Text>>,
+    buttons: Vec<MenuButton>,
 
     // graph: Graph<Font2, Text>,
 
@@ -170,7 +172,6 @@ impl ScoreMenu {
 
 #[async_trait]
 impl AsyncMenu<Game> for ScoreMenu {
-
     async fn update(&mut self, _game:&mut Game) {
         if self.score_submit_response.is_none() {
             if let Some(t) = &self.score_submit {
@@ -181,13 +182,11 @@ impl AsyncMenu<Game> for ScoreMenu {
         }
     }
 
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let font = get_font();
 
         let depth = 0.0;
         
-        const TITLE_STRING_Y:f64 = 20.0;
-        const TITLE_STRING_FONT_SIZE:u32 = 30;
         
         // draw beatmap title string
         list.push(Text::new(
@@ -207,7 +206,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             Color::BLACK,
             depth + 1.0,
             current_pos,
-            30,
+            30.0,
             format!("Score: {}", format_number(self.score.score.score)),
             font.clone()
         ));
@@ -218,7 +217,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                 *color,
                 depth + 1.0,
                 current_pos,
-                30,
+                30.0,
                 format!("{str}: {}", format_number(*count)),
                 font.clone()
             ));
@@ -242,7 +241,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                         Color::BLACK,
                         depth + 1.0,
                         current_pos,
-                        30,
+                        30.0,
                         str,
                         font.clone()
                     ));
@@ -263,7 +262,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                         Color::BLACK,
                         depth + 1.0,
                         current_pos,
-                        30,
+                        30.0,
                         format!("Score not submitted: {str}"),
                         font.clone()
                     ));
@@ -278,7 +277,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                             Color::BLACK,
                             depth + 1.0,
                             current_pos,
-                            30,
+                            30.0,
                             str,
                             font.clone()
                         ));
@@ -291,12 +290,12 @@ impl AsyncMenu<Game> for ScoreMenu {
 
         // draw buttons
         for b in self.buttons.iter_mut() {
-            b.draw(args, Vector2::ZERO, depth, list)
+            b.draw(Vector2::ZERO, depth, list)
         }
 
 
         // // graph
-        // self.graph.draw(args, Vector2::ZERO, depth, &mut list);
+        // self.graph.draw(Vector2::ZERO, depth, &mut list);
         
         // draw background so score info is readable
         list.push(visibility_bg(
@@ -307,8 +306,8 @@ impl AsyncMenu<Game> for ScoreMenu {
 
 
         if let Some(stat) = self.stats.get(self.selected_stat) {
-            const PAD:f64 = 20.0;
-            let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE as f64 + PAD);
+            const PAD:f32 = 20.0;
+            let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
             let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
 
             let bounds = Rectangle::bounds_only(pos, size);

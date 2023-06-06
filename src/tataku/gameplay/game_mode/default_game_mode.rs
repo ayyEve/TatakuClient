@@ -11,7 +11,7 @@ impl GameMode for NoMode {
 
     async fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
     async fn update(&mut self, _:&mut IngameManager, _: f32) -> Vec<ReplayFrame> { Vec::new() }
-    async fn draw(&mut self, _:RenderArgs, _:&mut IngameManager, _: &mut RenderableCollection) {}
+    async fn draw(&mut self, _:&mut IngameManager, _: &mut RenderableCollection) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     async fn reset(&mut self, _:&Beatmap) {}
     async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}
@@ -24,8 +24,8 @@ impl GameMode for NoMode {
 
 #[async_trait]
 impl GameModeInput for NoMode {
-    async fn key_down(&mut self, _:piston::Key) -> Option<ReplayFrame> { None }
-    async fn key_up(&mut self, _:piston::Key) -> Option<ReplayFrame> { None }
+    async fn key_down(&mut self, _:Key) -> Option<ReplayFrame> { None }
+    async fn key_up(&mut self, _:Key) -> Option<ReplayFrame> { None }
 }
 
 impl GameModeProperties for NoMode {

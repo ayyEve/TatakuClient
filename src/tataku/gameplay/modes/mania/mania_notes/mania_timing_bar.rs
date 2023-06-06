@@ -3,8 +3,8 @@ use super::super::prelude::*;
 
 // timing bar consts
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
-const BAR_HEIGHT:f64 = 4.0; // how tall is a timing bar
-const BAR_DEPTH:f64 = -90.0;
+const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
+const BAR_DEPTH:f32 = -90.0;
 
 
 // timing bar struct
@@ -12,23 +12,23 @@ const BAR_DEPTH:f64 = -90.0;
 #[derive(Clone)]
 pub struct TimingBar {
     time: f32,
-    speed: f64,
+    speed: f32,
     pos: Vector2,
     size: Vector2,
 
     playfield: Arc<ManiaPlayfield>,
 
-    relative_y: f64,
+    relative_y: f32,
     position_function: Arc<Vec<PositionPoint>>,
     position_function_index: usize,
 }
 impl TimingBar {
-    pub fn new(time:f32, width:f64, x:f64, playfield: Arc<ManiaPlayfield>) -> TimingBar {
+    pub fn new(time:f32, width:f32, x:f32, playfield: Arc<ManiaPlayfield>) -> TimingBar {
         TimingBar {
             time, 
             size: Vector2::new(width, BAR_HEIGHT),
             speed: 1.0,
-            pos: Vector2::new(x, 0.0),
+            pos: Vector2::with_x(x),
             relative_y: 0.0,
 
             position_function: Arc::new(Vec::new()),
@@ -38,11 +38,11 @@ impl TimingBar {
         }
     }
 
-    pub fn set_sv(&mut self, sv:f64) {
+    pub fn set_sv(&mut self, sv:f32) {
         self.speed = sv;
     }
 
-    fn y_at(&mut self, time: f32) -> f64 {
+    fn y_at(&mut self, time: f32) -> f32 {
         let speed = self.speed * if self.playfield.upside_down {-1.0} else {1.0};
 
         self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
@@ -62,7 +62,7 @@ impl TimingBar {
         // self.pos = HIT_POSITION + Vector2::new(( - BAR_WIDTH / 2.0, -PLAYFIELD_RADIUS);
     }
 
-    pub fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return }
 
         list.push(Rectangle::new(

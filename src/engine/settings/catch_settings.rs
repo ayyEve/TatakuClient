@@ -1,4 +1,4 @@
-use crate::prelude::piston::Key;
+use crate::prelude::Key;
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

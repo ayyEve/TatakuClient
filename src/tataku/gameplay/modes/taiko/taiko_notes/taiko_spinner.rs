@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const SPINNER_RADIUS:f64 = 200.0;
+const SPINNER_RADIUS:f32 = 200.0;
 
 #[derive(Clone)]
 pub struct TaikoSpinner {
@@ -14,7 +14,7 @@ pub struct TaikoSpinner {
     end_time: f32, // ms
     speed: f32,
 
-    depth: f64,
+    depth: f32,
     settings: Arc<TaikoSettings>,
     playfield: Arc<TaikoPlayfield>,
 
@@ -60,10 +60,10 @@ impl HitObject for TaikoSpinner {
     }
 
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos = self.settings.hit_position + Vector2::new(self.x_at(beatmap_time) as f64, 0.0);
+        self.pos = self.settings.hit_position + Vector2::with_x(self.x_at(beatmap_time));
         if beatmap_time > self.end_time { self.complete = true }
     }
-    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }
 
@@ -85,7 +85,7 @@ impl HitObject for TaikoSpinner {
                 Color::WHITE,
                 -5.0,
                 spinner_position,
-                SPINNER_RADIUS * (self.hit_count as f64 / self.hits_required as f64),
+                SPINNER_RADIUS * (self.hit_count as f32 / self.hits_required as f32),
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             ));
             

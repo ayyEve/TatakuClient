@@ -3,8 +3,8 @@ use super::MusicBox;
 use super::menu_button::MainMenuButton;
 
 const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
-const Y_MARGIN: f64 = 20.0;
-const Y_OFFSET: f64 = 10.0;
+const Y_MARGIN:f32 = 20.0;
+const Y_OFFSET:f32 = 10.0;
 
 const MENU_HIDE_TIMER:f32 = 5_000.0;
 // const COOKIE_HIDE_TIMER:f32 = 10_000.0;
@@ -290,20 +290,20 @@ impl AsyncMenu<Game> for MainMenu {
 
     }
 
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let pos_offset = Vector2::ZERO;
         let depth = 0.0;
 
         // draw interactables
         for i in self.interactables(true) {
-            i.draw(args, pos_offset, depth, list)
+            i.draw(pos_offset, depth, list)
         }
 
         // visualization
         let mid = self.window_size.0 / 2.0;
-        self.visualization.draw(args, mid, depth + 10.0, list).await;
+        self.visualization.draw(mid, depth + 10.0, list).await;
 
-        self.menu_game.draw(args, list).await;
+        self.menu_game.draw(list).await;
 
         self.song_display.draw(list);
         
@@ -376,7 +376,7 @@ impl AsyncMenu<Game> for MainMenu {
         }
     }
 
-    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         self.reset_timer();
         if mods.ctrl && key == Key::N {
             NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
@@ -409,10 +409,10 @@ impl AsyncMenu<Game> for MainMenu {
         
         if mods.alt {
             let new_mode = match key {
-                Key::D1 => Some("osu".to_owned()),
-                Key::D2 => Some("taiko".to_owned()),
-                Key::D3 => Some("catch".to_owned()),
-                Key::D4 => Some("mania".to_owned()),
+                Key::Key1 => Some("osu".to_owned()),
+                Key::Key2 => Some("taiko".to_owned()),
+                Key::Key3 => Some("catch".to_owned()),
+                Key::Key4 => Some("mania".to_owned()),
                 _ => None
             };
 

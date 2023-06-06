@@ -9,5 +9,5 @@ pub use scatter::*;
 
 use crate::prelude::*;
 pub trait StatsGraph: Send + Sync {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection);
+    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection);
 }

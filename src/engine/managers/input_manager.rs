@@ -1,17 +1,17 @@
-use piston::Event;
-use piston::TextEvent;
-use piston::FocusEvent;
-use piston::ButtonEvent;
-use piston::ResizeEvent;
-use piston::input::Button;
-use piston::MouseScrollEvent;
-use piston::MouseCursorEvent;
-use piston::input::ButtonState;
+// use piston::Event;
+// use piston::TextEvent;
+// use piston::FocusEvent;
+// use piston::ButtonEvent;
+// use piston::ResizeEvent;
+// use piston::input::Button;
+// use piston::MouseScrollEvent;
+// use piston::MouseCursorEvent;
+// use piston::input::ButtonState;
 
 use crate::prelude::*;
 pub struct InputManager {
     pub mouse_pos: Vector2,
-    pub scroll_delta: f64,
+    pub scroll_delta: f32,
     pub mouse_moved: bool,
 
     pub mouse_buttons: HashSet<MouseButton>,
@@ -28,7 +28,7 @@ pub struct InputManager {
     pub controller_up: HashMap<u32, HashSet<u8>>,
     /// index is controller id
     /// value index is axis id, value value is (changed, value)
-    pub controller_axis: HashMap<u32, HashMap<u8, (bool, f64)>>,
+    pub controller_axis: HashMap<u32, HashMap<u8, (bool, f32)>>,
 
     /// currently pressed keys
     keys: HashSet<Key>,
@@ -114,120 +114,124 @@ impl InputManager {
         self.double_tap_protection = protection;
     }
 
-    pub fn handle_events(&mut self, e:Event) {
-        if let Some(button) = e.button_args() {
-            match (button.button, button.state) {
-                (Button::Keyboard(key), ButtonState::Press) => {
-                    let mut ok_to_continue = true;
+    pub fn handle_events(&mut self, e:GameWindowEvent) {
 
-                    if let Some(check) = self.double_tap_protection {
-                        if let Some((press_time, is_double_tap)) = self.last_key_press.get_mut(&key) {
-                            let since = press_time.as_millis();
-                            if since <= check {
-                                warn!("stopped a doubletap of duration {since:.4}ms");
-                                ok_to_continue = false;
-                                *is_double_tap = false;
-                            }
+        match e {
+            // window events
+            GameWindowEvent::GotFocus => self.window_change_focus = Some(true),
+            GameWindowEvent::LostFocus => self.window_change_focus = Some(false),
+            GameWindowEvent::Resized(new_size) => {
+                if new_size == Vector2::ZERO { return }
+                GlobalValueManager::update(Arc::new(WindowSize(new_size)));
+            }
+
+            // GameWindowEvent::Minimized => {},
+            // GameWindowEvent::Closed => {}
+            // GameWindowEvent::FileHover(_) => {},
+            // GameWindowEvent::FileDrop(_) => {},
+
+            // keyboard input
+            GameWindowEvent::KeyPress(key) if !self.keys.contains(&key) => {
+                
+                let mut ok_to_continue = true;
+
+                if let Some(check) = self.double_tap_protection {
+                    if let Some((press_time, is_double_tap)) = self.last_key_press.get_mut(&key) {
+                        let since = press_time.as_millis();
+                        if since <= check {
+                            warn!("stopped a doubletap of duration {since:.4}ms");
+                            ok_to_continue = false;
+                            *is_double_tap = false;
                         }
                     }
-
-                    if ok_to_continue {
-                        self.keys.insert(key);
-                        self.keys_down.insert((key, Instant::now()));
-                        self.last_key_press.insert(key, (Instant::now(), false));
-                    }
                 }
-                (Button::Keyboard(key), ButtonState::Release) => {
-                    let mut ok_to_continue = true;
 
-                    if self.double_tap_protection.is_some() {
-                        if let Some((_, is_double_tap)) = self.last_key_press.get(&key) {
-                            if *is_double_tap {
-                                ok_to_continue = false;
-                            }
+                if ok_to_continue {
+                    self.keys.insert(key);
+                    self.keys_down.insert((key, Instant::now()));
+                    self.last_key_press.insert(key, (Instant::now(), false));
+                }
+            }
+            GameWindowEvent::KeyRelease(key) => {
+                let mut ok_to_continue = true;
+
+                if self.double_tap_protection.is_some() {
+                    if let Some((_, is_double_tap)) = self.last_key_press.get(&key) {
+                        if *is_double_tap {
+                            ok_to_continue = false;
                         }
                     }
-                    
-
-                    if ok_to_continue {
-                        self.keys.remove(&key);
-                        self.keys_up.insert((key, Instant::now()));
-                        // self.last_key_press.remove(&key);
-                    } else {
-                        self.last_key_press.remove(&key);
-                    }
                 }
-                (Button::Mouse(mb), ButtonState::Press) => {
-                    self.mouse_buttons.insert(mb);
-                    self.mouse_down.insert((mb, Instant::now()));
+                
+                if ok_to_continue {
+                    self.keys.remove(&key);
+                    self.keys_up.insert((key, Instant::now()));
+                    // self.last_key_press.remove(&key);
+                } else {
+                    self.last_key_press.remove(&key);
                 }
-                (Button::Mouse(mb), ButtonState::Release) => {
-                    self.mouse_buttons.remove(&mb);
-                    self.mouse_up.insert((mb, Instant::now()));
-                }
-
-                _ => {}
             }
-        }
+            GameWindowEvent::Text(text) => self.text_cache += &text,
 
-        e.mouse_cursor(|[x, y]| {
-            let incoming = Vector2::new(x, y);
-            if incoming == self.mouse_pos { return }
-            self.mouse_moved = true;
-            self.mouse_pos = incoming;
-        });
-
-        e.mouse_scroll(|d| { self.scroll_delta += d[1]} );
-        if let Some(e) = e.text_args() { self.text_cache += &e; }
-        if let Some(has_focus) = e.focus_args() { self.window_change_focus = Some(has_focus); }
-        if let Some(thing) = e.resize_args() { 
-            let val:Vector2 = thing.window_size.into();
-            if val.x == 0.0 || val.y == 0.0 { return }
-
-            GlobalValueManager::update(Arc::new(WindowSize(val)));
-        }
-
-        // e.text(|text| debug!("Typed '{}'", text));
-    }
-
-    pub fn handle_controller_events(&mut self, e:Event, controller_name: String) {
-        use piston::ControllerAxisEvent;
-
-        if let Some(axis) = e.controller_axis_args() {
-            // debug!("got controller axis: {:?}", axis);
-            let id = axis.axis;
-            let value = axis.position;
-            let controller_id = axis.id;
-            self.verify_controller_index_exists(controller_id, controller_name);
-
-            let map = self.controller_axis.get_mut(&controller_id).unwrap();
-            if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
-                map.insert(id, (true, value));
+            // mouse input
+            GameWindowEvent::MousePress(mb) => {
+                self.mouse_buttons.insert(mb);
+                self.mouse_down.insert((mb, Instant::now()));
             }
-        } else if let Some(button) = e.button_args() {
-            match (button.button, button.state) {
-                (Button::Controller(cb), ButtonState::Press) => {
-                    // debug!("press: c: {}, b: {}", cb.id, cb.button);
-                    self.verify_controller_index_exists(cb.id, controller_name);
-                    self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
-                    self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
-                }
-                (Button::Controller(cb), ButtonState::Release) => {
-                    // debug!("release: c: {}, b: {}", cb.id, cb.button);
-                    self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
-                    self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
-                }
-                _ => {}
+            GameWindowEvent::MouseRelease(mb) => {
+                self.mouse_buttons.remove(&mb);
+                self.mouse_up.insert((mb, Instant::now()));
             }
+            GameWindowEvent::MouseMove(mouse_pos) => {
+                if mouse_pos == self.mouse_pos { return }
+                self.mouse_moved = true;
+                self.mouse_pos = mouse_pos;
+            }
+            GameWindowEvent::MouseScroll(delta) => self.scroll_delta += delta,
+
+            _ => {}
         }
 
     }
+
+    // pub fn handle_controller_events(&mut self, e:Event, controller_name: String) {
+    //     use input::ControllerAxisEvent;
+
+    //     if let Some(axis) = e.controller_axis_args() {
+    //         // debug!("got controller axis: {:?}", axis);
+    //         let id = axis.axis;
+    //         let value = axis.position;
+    //         let controller_id = axis.id;
+    //         self.verify_controller_index_exists(controller_id, controller_name);
+
+    //         let map = self.controller_axis.get_mut(&controller_id).unwrap();
+    //         if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
+    //             map.insert(id, (true, value));
+    //         }
+    //     } else if let Some(button) = e.button_args() {
+    //         match (button.button, button.state) {
+    //             (Button::Controller(cb), ButtonState::Press) => {
+    //                 // debug!("press: c: {}, b: {}", cb.id, cb.button);
+    //                 self.verify_controller_index_exists(cb.id, controller_name);
+    //                 self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
+    //                 self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
+    //             }
+    //             (Button::Controller(cb), ButtonState::Release) => {
+    //                 // debug!("release: c: {}, b: {}", cb.id, cb.button);
+    //                 self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
+    //                 self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
+    //             }
+    //             _ => {}
+    //         }
+    //     }
+
+    // }
 
     /// is the key currently down (not up)
     pub fn key_down(&self, k:Key) -> bool {self.keys.contains(&k)}
     pub fn get_key_mods(&self) -> KeyModifiers {
         KeyModifiers {
-            ctrl: self.key_down(Key::LCtrl) || self.key_down(Key::RCtrl),
+            ctrl: self.key_down(Key::LControl) || self.key_down(Key::RControl),
             alt: self.key_down(Key::LAlt) || self.key_down(Key::RAlt),
             shift: self.key_down(Key::LShift) || self.key_down(Key::RShift),
         }
@@ -270,7 +274,7 @@ impl InputManager {
         std::mem::take(&mut self.mouse_moved)
     }
     /// get how much the mouse wheel as scrolled (vertically) since the last check
-    pub fn get_scroll_delta(&mut self) -> f64 {
+    pub fn get_scroll_delta(&mut self) -> f32 {
         std::mem::take(&mut self.scroll_delta)
     }
 
@@ -309,7 +313,7 @@ impl InputManager {
 
     /// get all controller axes
     /// (controller, [axis_id, (changed, value)])
-    pub fn get_controller_axis(&mut self) -> Vec<(Box<dyn Controller>, HashMap<u8, (bool, f64)>)> {
+    pub fn get_controller_axis(&mut self) -> Vec<(Box<dyn Controller>, HashMap<u8, (bool, f32)>)> {
         let mut axis = Vec::new();
 
         for (c, axis_data) in self.controller_axis.iter_mut() {

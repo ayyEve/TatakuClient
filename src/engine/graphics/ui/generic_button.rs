@@ -52,7 +52,7 @@ impl GenericButtonImage {
         ));
     }
 
-    pub fn draw(&self, _args: RenderArgs, depth: f64, pos_offset: Vector2, list: &mut RenderableCollection) {
+    pub fn draw(&self, depth: f32, pos_offset: Vector2, list: &mut RenderableCollection) {
         let current_pos = self.pos + pos_offset;
 
         for mut i in [

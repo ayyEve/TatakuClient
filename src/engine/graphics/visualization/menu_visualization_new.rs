@@ -2,7 +2,7 @@ use crate::prelude::*;
 use super::Visualization;
 
 const CUTOFF:f32 = 0.1;
-const VISUALIZATION_SIZE_FACTOR:f64 = 1.2;
+const VISUALIZATION_SIZE_FACTOR:f32 = 1.2;
 
 
 // must be above this value to create a ripple
@@ -19,12 +19,12 @@ pub struct MenuVisualizationNew {
     data: Vec<FFTData>,
     timer: Instant, // external use only
 
-    bar_height: f64,
-    rotation: f64,
+    bar_height: f32,
+    rotation: f32,
 
     cookie: Image,
-    initial_inner_radius: f64,
-    current_inner_radius: f64,
+    initial_inner_radius: f32,
+    current_inner_radius: f32,
 
     ripples: Vec<TransformGroup>,
     // current_timing_point: TimingPoint,
@@ -93,7 +93,7 @@ impl MenuVisualizationNew {
             self.current_inner_radius,
             Some(Border::new(Color::WHITE, 2.0))
         ));
-        group.ripple(0.0, duration, time as f64, 2.0, true, Some(0.5));
+        group.ripple(0.0, duration, time, 2.0, true, Some(0.5));
 
         self.ripples.push(group);
     }
@@ -148,7 +148,7 @@ impl MenuVisualizationNew {
         }
 
         
-        let time = self.other_timer.as_millis64();
+        let time = self.other_timer.as_millis();
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
             ripple.visible()
@@ -181,8 +181,8 @@ impl Visualization for MenuVisualizationNew {
     fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
     fn timer(&mut self) -> &mut Instant { &mut self.timer }
 
-    async fn draw(&mut self, _args:piston::RenderArgs, pos:Vector2, depth:f64, list: &mut RenderableCollection) {
-        let since_last = self.timer.elapsed().as_secs_f64(); // not ms
+    async fn draw(&mut self, pos:Vector2, depth:f32, list: &mut RenderableCollection) {
+        let since_last = self.timer.elapsed().as_secs_f32(); // not ms
         self.update_data().await;
 
         let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
@@ -191,8 +191,8 @@ impl Visualization for MenuVisualizationNew {
         if self.data.len() < 3 { return }
 
         
-        let val = self.data[self.index].amplitude() as f64 / 500.0;
-        self.current_inner_radius = f64::lerp(min, max, val).clamp(min, max);
+        let val = self.data[self.index].amplitude() as f32 / 500.0;
+        self.current_inner_radius = f32::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;
         self.rotation += rotation_increment * since_last;
@@ -228,20 +228,20 @@ impl Visualization for MenuVisualizationNew {
         // )));
 
 
-        let a = (2.0 * PI) / self.data.len() as f64;
-        let n = (2.0 * PI * self.current_inner_radius) / self.data.len() as f64 / 2.0;
+        let a = (2.0 * PI) / self.data.len() as f32;
+        let n = (2.0 * PI * self.current_inner_radius) / self.data.len() as f32 / 2.0;
 
-        const BAR_MULT:f64 = 1.5;
+        const BAR_MULT:f32 = 1.5;
 
         for i in 1..self.data.len() {
             let val = self.data[i].amplitude();
 
             if val <= CUTOFF { continue }
 
-            let factor = (i as f64 + 2.0).log10();
-            let l = self.current_inner_radius + val as f64 * factor * self.bar_height * BAR_MULT;
+            let factor = (i as f32 + 2.0).log10();
+            let l = self.current_inner_radius + val as f32 * factor * self.bar_height * BAR_MULT;
 
-            let theta = self.rotation + a * i as f64;
+            let theta = self.rotation + a * i as f32;
             let cos = theta.cos();
             let sin = theta.sin();
             let p1 = pos + Vector2::new(

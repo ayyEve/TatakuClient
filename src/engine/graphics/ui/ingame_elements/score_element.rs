@@ -23,7 +23,7 @@ impl ScoreElement {
                 Color::BLACK,
                 0.0,
                 Vector2::ZERO,
-                30,
+                30.0,
                 crate::format_number(number),
                 get_font()
             ).measure_text()
@@ -74,7 +74,7 @@ impl InnerUIElement for ScoreElement {
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
                 pos_offset - self.bounds_size.x_portion(),
-                30 * scale.y as u32,
+                30.0 * scale.y,
                 crate::format_number(self.score),
                 get_font()
             );

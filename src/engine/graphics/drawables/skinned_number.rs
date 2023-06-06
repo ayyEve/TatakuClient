@@ -4,12 +4,12 @@ use crate::prelude::*;
 pub struct SkinnedNumber {
     pub color: Color,
     pub pos: Vector2,
-    pub rotation: f64,
+    pub rotation: f32,
     pub scale: Vector2,
 
     pub origin: Vector2,
-    pub depth: f64,
-    pub spacing_override: Option<f64>,
+    pub depth: f32,
+    pub spacing_override: Option<f32>,
 
     number_textures: Vec<Image>,
     symbol_textures: HashMap<char, Image>,
@@ -18,12 +18,12 @@ pub struct SkinnedNumber {
 
     pub number: f64,
     pub floating_precision: usize,
-    draw_state: Option<DrawState>,
+    // draw_state: Option<DrawState>,
 
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
-    pub async fn new<TN: AsRef<str>>(color:Color, depth:f64, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
+    pub async fn new<TN: AsRef<str>>(color:Color, depth:f32, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
         let rotation = 0.0;
         let scale = Vector2::ONE;
 
@@ -77,7 +77,7 @@ impl SkinnedNumber {
             floating_precision,
             spacing_override: None,
 
-            draw_state: None,
+            // draw_state: None,
         })
     }
 
@@ -118,7 +118,7 @@ impl SkinnedNumber {
         let s = self.number_as_text();
 
         let mut width = 0.0;
-        let mut max_height:f64 = 0.0;
+        let mut max_height:f32 = 0.0;
         let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
         for c in s.chars() {
@@ -138,37 +138,36 @@ impl SkinnedNumber {
     }
 
     fn number_as_text_base(num: f64, precision: usize, symbol: &Option<char>) -> String {
-            let mut s = crate::format_float(num, precision);
+        let mut s = crate::format_float(num, precision);
 
-            if precision == 0 {
-                s = s.split(".").next().unwrap().to_owned();
-            }
+        if precision == 0 {
+            s = s.split(".").next().unwrap().to_owned();
+        }
 
-            if let Some(symb) = symbol {
-                s.push(*symb);
-            }
+        if let Some(symb) = symbol {
+            s.push(*symb);
+        }
 
-            s
+        s
     }
 
-}
-impl Renderable for SkinnedNumber {
-    fn get_name(&self) -> String { "Skinned number".to_owned() }
-    fn get_depth(&self) -> f64 {self.depth}
-    fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
-
-    fn draw(&self, g: &mut GlGraphics, c: Context) {
-        self.draw_with_transparency(c, self.color.a, 0.0, g)
-    }
 }
 
 
 impl TatakuRenderable for SkinnedNumber {
-    fn draw_with_transparency(&self, mut context: Context, alpha: f32, _: f32, g: &mut GlGraphics) {
+    fn get_name(&self) -> String { "Skinned number".to_owned() }
+    fn get_depth(&self) -> f32 {self.depth}
+    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
+    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+
+    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+        self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    }
+
+    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
 
         let color = self.color.alpha(alpha);
-        context.draw_state = self.draw_state.unwrap_or(context.draw_state);
+        // context.draw_state = self.draw_state.unwrap_or(context.draw_state);
         let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
         //TODO: cache `s`
@@ -182,7 +181,7 @@ impl TatakuRenderable for SkinnedNumber {
                 t.color = color;
                 current_pos.x += t.size().x + x_spacing;
 
-                t.draw(g, context);
+                t.draw(transform, g);
             }
         }
 

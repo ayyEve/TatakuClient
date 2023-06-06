@@ -54,7 +54,7 @@ impl VolumeControl {
     }
 
 
-    pub async fn draw(&mut self, _args: RenderArgs, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, list: &mut RenderableCollection) {
         self.settings.update();
         self.window_size.update();
 
@@ -84,7 +84,7 @@ impl VolumeControl {
                 Color::BLACK,
                 -9.0,
                 window_size - Vector2::new(300.0, 90.0),
-                20,
+                20.0,
                 "Master:".to_owned(),
                 font.clone(),
             );
@@ -101,7 +101,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 90.0),
-                Vector2::new(border_size.x * self.settings.master_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.master_vol, border_size.y),
                 None
             );
 
@@ -111,7 +111,7 @@ impl VolumeControl {
                 Color::BLACK,
                 -9.0,
                 window_size - Vector2::new(300.0, 60.0),
-                20,
+                20.0,
                 "Effects:".to_owned(),
                 font.clone()
             );
@@ -128,7 +128,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 60.0),
-                Vector2::new(border_size.x * self.settings.effect_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.effect_vol, border_size.y),
                 None
             );
 
@@ -138,7 +138,7 @@ impl VolumeControl {
                 Color::BLACK,
                 -9.0,
                 window_size - Vector2::new(300.0, 30.0),
-                20,
+                20.0,
                 "Music:".to_owned(),
                 font.clone()
             );
@@ -155,7 +155,7 @@ impl VolumeControl {
                 Color::BLUE,
                 -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 30.0),
-                Vector2::new(border_size.x * self.settings.music_vol as f64, border_size.y),
+                Vector2::new(border_size.x * self.settings.music_vol, border_size.y),
                 None
             );
             
@@ -206,9 +206,9 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta:f64, mods:KeyModifiers) -> bool {
+    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> bool {
         if mods.alt {
-            self.change(delta as f32 / 10.0).await;
+            self.change(delta / 10.0).await;
             return true
         }
 

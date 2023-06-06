@@ -1,12 +1,10 @@
 /**
  * Authored by ayyEve, RPM calculation by Nebula
 */
-
-
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const SPINNER_RADIUS:f64 = 200.0;
+const SPINNER_RADIUS:f32 = 200.0;
 
 #[derive(Clone)]
 pub struct OsuSpinner {
@@ -19,19 +17,19 @@ pub struct OsuSpinner {
     missed: bool,
 
     /// display rotation of the spinner (for display only)
-    display_rotation: f64,
+    display_rotation: f32,
     /// current rotation of the spinner (for calc only)
-    rotation: f64,
+    rotation: f32,
     /// Current and previous rotation windows.
-    rotation_windows: [f64; 2],
+    rotation_windows: [f32; 2],
     /// time start of current window
     window_start: f32,
     /// how fast the spinner is spinning
-    rotation_velocity: f64,
+    rotation_velocity: f32,
     mouse_pos: Vector2,
 
     /// what was the last rotation value?
-    last_mouse_angle: f64,
+    last_mouse_angle: f32,
     /// how many rotations is needed to pass this spinner
     rotations_required: u16,
     /// how many rotations have been completed?
@@ -99,7 +97,7 @@ impl HitObject for OsuSpinner {
     fn note_type(&self) -> NoteType { NoteType::Spinner }
 
     async fn update(&mut self, beatmap_time: f32) {
-        const WINDOW_PERIOD_MILLIS: f64 = 1000.0;
+        const WINDOW_PERIOD_MILLIS: f32 = 1000.0;
 
         let mut diff = 0.0;
         let pos_diff = self.mouse_pos - self.pos;
@@ -120,7 +118,7 @@ impl HitObject for OsuSpinner {
             // longer time, without needing to store
             // a queue of frame data.
 
-            let time_delta = (beatmap_time - self.window_start) as f64;
+            let time_delta = beatmap_time - self.window_start;
             let ratio = time_delta / WINDOW_PERIOD_MILLIS;
 
             if ratio >= 1.0 {
@@ -140,14 +138,14 @@ impl HitObject for OsuSpinner {
             let current_window_proportion = ratio.fract();
             let previous_window_proportion = 1.0 - current_window_proportion;
 
-            self.window_start = beatmap_time - WINDOW_PERIOD_MILLIS as f32 * current_window_proportion as f32;
+            self.window_start = beatmap_time - WINDOW_PERIOD_MILLIS * current_window_proportion;
 
             let amount = self.rotation_windows[0] * previous_window_proportion + self.rotation_windows[1];
 
             self.rotation_velocity = amount / WINDOW_PERIOD_MILLIS;
 
             // update display rotation
-            self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update) as f64;
+            self.display_rotation += self.rotation_velocity * (beatmap_time - self.last_update);
             if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 { 
                 self.rotations_completed += 1; 
                 if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required) % 3 == 0 {
@@ -167,7 +165,7 @@ impl HitObject for OsuSpinner {
         self.current_time = beatmap_time;
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
@@ -198,14 +196,14 @@ impl HitObject for OsuSpinner {
 
         // draw another circle on top which increases in radius as the counter gets closer to the reqired
         if let Some(mut i) = self.spinner_approach.clone() {
-            i.scale = Vector2::ONE * f64::lerp(1.0, 0.0, ((self.current_time - self.time) / (self.end_time - self.time)) as f64) * self.scaling_helper.scale;
+            i.scale = Vector2::ONE * f32::lerp(1.0, 0.0, (self.current_time - self.time) / (self.end_time - self.time)) * self.scaling_helper.scale;
             list.push(i)
         } else {
             list.push(Circle::new(
                 Color::WHITE,
                 -11.0,
                 self.pos,
-                SPINNER_RADIUS * (self.rotations_completed as f64 / self.rotations_required as f64).min(1.0),
+                SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
                 border.clone()
             ));
         }
@@ -233,7 +231,7 @@ impl HitObject for OsuSpinner {
             Color::BLACK,
             -999.9,
             Vector2::ZERO,
-            30,
+            30.0,
             format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
             get_font()
         );
@@ -324,7 +322,7 @@ impl OsuHitObject for OsuSpinner {
     fn pos_at(&self, time: f32) -> Vector2 {
         if time < self.time || time >= self.end_time { return self.pos }
 
-        let r = self.last_mouse_angle + (time - self.last_update) as f64 / (4.0*PI);
+        let r = self.last_mouse_angle + (time - self.last_update) / (4.0*PI);
         self.pos + Vector2::new(
             r.cos(),
             r.sin()

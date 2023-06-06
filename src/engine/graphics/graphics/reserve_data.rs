@@ -13,8 +13,4 @@ impl<'a> ReserveData<'a> {
         for i in 0..vtx.len() { self.vtx[i] = vtx[i] }
         for i in 0..idx.len() { self.idx[i] = idx[i] }
     }
-
-    pub fn print(&self) {
-        println!("V: {:#?}\nI:{:#?}", self.vtx, self.idx);
-    }
 }

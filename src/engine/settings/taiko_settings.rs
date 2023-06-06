@@ -28,23 +28,23 @@ pub struct TaikoSettings {
 
     // size stuff
     #[Setting(text="Note Radius", min=1, max=100)]
-    pub note_radius: f64,
+    pub note_radius: f32,
     #[Setting(text="Big Note Scale", min=1, max=5)]
-    pub big_note_multiplier: f64,
+    pub big_note_multiplier: f32,
 
     /// hit area, but calculated before use
     #[serde(skip)]
     pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
-    pub hit_position_relative_height_div: f64,
-    pub hit_position_offset: [f64; 2],
+    pub hit_position_relative_height_div: f32,
+    pub hit_position_offset: [f32; 2],
 
     /// hit area raidus multiplier, 1.0 = note radius
     #[Setting(text="Hit Area Radius Scale", min=1, max=5)]
-    pub hit_area_radius_mult: f64,
+    pub hit_area_radius_mult: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     #[Setting(text="Playfield Vertical Padding", min=0, max=20)]
-    pub playfield_height_padding: f64,
+    pub playfield_height_padding: f32,
 
     #[Setting(text="Don Color")]
     pub don_color_hex: String,
@@ -61,7 +61,7 @@ pub struct TaikoSettings {
     
     /// how far above the hit position should hit indicators be?
     #[Setting(text="Hit Judgment Y-Offset", min=0, max=100)]
-    pub judgement_indicator_offset: f64,
+    pub judgement_indicator_offset: f32,
 }
 impl TaikoSettings {
     pub async fn init_settings(&mut self) {
@@ -79,10 +79,10 @@ impl TaikoSettings {
         self.kat_color = Color::from_hex(&self.kat_color_hex);
     }
 
-    pub fn get_playfield(&self, width: f64, kiai: bool) -> Rectangle {
+    pub fn get_playfield(&self, width: f32, kiai: bool) -> Rectangle {
         let height = self.note_radius * self.big_note_multiplier * 2.0 + self.playfield_height_padding;
         Rectangle::new(
-            [0.3, 0.3, 0.3, 1.0].into(),
+            Color::new(0.3, 0.3, 0.3, 1.0),
             1002.0,
             Vector2::new(0.0, self.hit_position.y - height / 2.0),
             Vector2::new(width, height),

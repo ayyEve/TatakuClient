@@ -1,19 +1,19 @@
 use crate::prelude::*;
 
 // constants
-const INFO_BAR_HEIGHT:f64 = 60.0;
-const DRAG_THRESHOLD:f64 = 50.0;
-const DRAG_FACTOR:f64 = 10.0;
+const INFO_BAR_HEIGHT:f32 = 60.0;
+const DRAG_THRESHOLD:f32 = 50.0;
+const DRAG_FACTOR:f32 = 10.0;
 
 
-const DEFAULT_HEIGHT: f64 = 768.0;
+const DEFAULT_HEIGHT: f32 = 768.0;
 
 
 pub struct BeatmapSelectMenu {
     current_scores: HashMap<String, IngameScore>,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
-    back_button: MenuButton<Font2, Text>,
+    back_button: MenuButton,
     // pending_refresh: bool,
 
     score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
@@ -25,15 +25,15 @@ pub struct BeatmapSelectMenu {
     // mouse_down: bool
 
     /// internal search box
-    search_text: TextInput<Font2, Text>,
+    search_text: TextInput,
 
     sort_method: SortBy,
     mode: PlayMode,
 
-    sort_by_dropdown: Dropdown<SortBy, Font2, Text>,
-    playmode_dropdown: Dropdown<PlayModeDropdown, Font2, Text>,
+    sort_by_dropdown: Dropdown<SortBy>,
+    playmode_dropdown: Dropdown<PlayModeDropdown>,
 
-    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod, Font2, Text>,
+    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod>,
 
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
@@ -62,7 +62,7 @@ impl BeatmapSelectMenu {
         let sort_by_dropdown = Dropdown::new(
             Vector2::new(0.0, 5.0),
             200.0,
-            FontSize::new(15.0).unwrap(),
+            15.0,
             "Sort",
             Some(sort_by),
             font.clone()
@@ -74,7 +74,7 @@ impl BeatmapSelectMenu {
         let playmode_dropdown = Dropdown::new(
             Vector2::new(205.0, 5.0),
             200.0,
-            FontSize::new(15.0).unwrap(),
+            15.0,
             "Mode",
             Some(PlayModeDropdown::Mode(mode.clone())),
             font.clone()
@@ -85,7 +85,7 @@ impl BeatmapSelectMenu {
         let leaderboard_method_dropdown = Dropdown::new(
             Vector2::new(410.0, 5.0),
             200.0, 
-            FontSize::new(15.0).unwrap(),
+            15.0,
             "Leaderboard",
             Some(leaderboard_method),
             font.clone()
@@ -566,9 +566,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     
     }
 
-    async fn draw(&mut self, args:RenderArgs, items: &mut RenderableCollection) {
+    async fn draw(&mut self, items: &mut RenderableCollection) {
         // let mut counter: usize = 0;
-        let depth: f64 = 5.0;
+        let depth = 5.0;
         // let font = get_font();
 
         // draw a bar on the top for the info
@@ -576,7 +576,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             Color::WHITE,
             depth - 1.0,
             Vector2::ZERO,
-            Vector2::new(args.window_size[0], INFO_BAR_HEIGHT),
+            Vector2::new(self.window_size.x, INFO_BAR_HEIGHT),
             Some(Border::new(Color::BLACK, 1.2))
         );
         items.push(bar_rect);
@@ -605,22 +605,22 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // }
 
         // beatmap scroll
-        self.beatmap_scroll.draw(args, Vector2::ZERO, 0.0, items);
+        self.beatmap_scroll.draw(Vector2::ZERO, 0.0, items);
 
         // leaderboard scroll
-        self.leaderboard_scroll.draw(args, Vector2::ZERO, 0.0, items);
+        self.leaderboard_scroll.draw(Vector2::ZERO, 0.0, items);
 
         // back button
-        self.back_button.draw(args, Vector2::ZERO, 0.0, items);
+        self.back_button.draw(Vector2::ZERO, 0.0, items);
 
         // everything else
         for i in self.interactables() {
-            i.draw(args, Vector2::ZERO, 0.0, items);
+            i.draw(Vector2::ZERO, 0.0, items);
         }
 
 
         // draw bg game
-        self.menu_game.draw(args, items).await;
+        self.menu_game.draw(items).await;
     }
 
     async fn on_change(&mut self, into:bool) {
@@ -726,7 +726,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.beatmap_scroll.on_mouse_move(pos);
         self.leaderboard_scroll.on_mouse_move(pos);
     }
-    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
+    async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {
         let mut h = false;
 
         h |= self.beatmap_scroll.on_scroll(delta);
@@ -744,8 +744,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
     }
 
-    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
-        use piston::Key::*;
+    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
+        use Key::*;
 
         if key == Key::M && mods.ctrl { 
             let mut found = false;
@@ -811,10 +811,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // mode change
         if mods.alt {
             let new_mode = match key {
-                D1 => Some("osu".to_owned()),
-                D2 => Some("taiko".to_owned()),
-                // D3 => Some("catch".to_owned()),
-                D4 => Some("mania".to_owned()),
+                Key1 => Some("osu".to_owned()),
+                Key2 => Some("taiko".to_owned()),
+                // Key3 => Some("catch".to_owned()),
+                Key4 => Some("mania".to_owned()),
                 _ => None
             };
 
@@ -894,7 +894,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
     }
 
-    async fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
+    async fn on_key_release(&mut self, key:Key, _game:&mut Game) {
         for i in self.interactables() {
             i.on_key_release(key);
         }
@@ -938,7 +938,7 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
         false
     }
 
-    async fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f64)>) -> bool {
+    async fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f32)>) -> bool {
         for (axis, (_, val)) in axis_data {
             if Some(ControllerAxis::Right_Y) == controller.map_axis(axis) && val.abs() > 0.1 {
                 self.beatmap_scroll.set_hover(true);

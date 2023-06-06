@@ -127,7 +127,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
     string_lower!("LastPlayMode", last_played_mode);
     bool!("MouseDisableButtons", standard_settings, ignore_mouse_buttons);
     num!("Offset", global_offset, f32);
-    if let Some((width, height)) = num!("Width", f64).zip(num!("Height", f64)) {
+    if let Some((width, height)) = num!("Width", f32).zip(num!("Height", f32)) {
         settings.window_size = [width, height] 
     }
 

@@ -5,17 +5,17 @@ use crate::prelude::*;
 #[derive(Copy, Clone, Default)]
 pub struct Transformation {
     /// how long to wait before this transform is started
-    pub offset: f64,
+    pub offset: f32,
     /// how long the tranform lasts
-    pub duration: f64,
+    pub duration: f32,
     pub trans_type: TransformType,
     pub easing_type: TransformEasing,
     
     /// when was this transform crated? (ms)
-    pub create_time: f64,
+    pub create_time: f32,
 }
 impl Transformation {
-    pub fn new(offset: f64, duration: f64, trans_type: TransformType, easing_type: TransformEasing, create_time: f64) -> Self {
+    pub fn new(offset: f32, duration: f32, trans_type: TransformType, easing_type: TransformEasing, create_time: f32) -> Self {
         Self {
             offset,
             duration,
@@ -24,11 +24,11 @@ impl Transformation {
             create_time
         }
     }
-    pub fn start_time(&self) -> f64 {
+    pub fn start_time(&self) -> f32 {
         self.create_time + self.offset
     }
     
-    pub fn get_value(&self, current_game_time: f64) -> TransformValueResult {
+    pub fn get_value(&self, current_game_time: f32) -> TransformValueResult {
         // when this transform should start
         let begin_time = self.start_time();
         // how long has elapsed? (minimum 0ms, max self.duration)
@@ -49,7 +49,7 @@ impl Transformation {
             | TransformType::BorderTransparency { start, end }
             | TransformType::PositionX { start, end }
             | TransformType::PositionY { start, end }
-            => TransformValueResult::F64(self.run_easing_fn( start, end, factor)),
+            => TransformValueResult::F64(self.run_easing_fn(start, end, factor) as f64),
 
             TransformType::Color { start, end } 
             => TransformValueResult::Color(self.run_easing_fn( start, end, factor)),
@@ -60,7 +60,7 @@ impl Transformation {
 
 
     // thank god i got this working lmao
-    pub fn run_easing_fn<I:Interpolation>(&self, current:I, target:I, factor: f64) -> I {
+    pub fn run_easing_fn<I:Interpolation>(&self, current:I, target:I, factor: f32) -> I {
         match self.easing_type {
             TransformEasing::Linear => Interpolation::lerp(current, target, factor),
 
@@ -145,15 +145,15 @@ impl Into<Color> for TransformValueResult {
 pub enum TransformType {
     None, // default
     VectorScale { start: Vector2, end: Vector2 },
-    Scale {start: f64, end: f64},
-    Rotation {start: f64, end: f64},
+    Scale {start: f32, end: f32},
+    Rotation {start: f32, end: f32},
     Color {start: Color, end: Color},
-    BorderSize {start: f64, end: f64},
-    Transparency {start: f64, end: f64},
+    BorderSize {start: f32, end: f32},
+    Transparency {start: f32, end: f32},
     Position {start: Vector2, end: Vector2},
-    PositionX {start: f64, end: f64},
-    PositionY {start: f64, end: f64},
-    BorderTransparency {start: f64, end: f64},
+    PositionX {start: f32, end: f32},
+    PositionY {start: f32, end: f32},
+    BorderTransparency {start: f32, end: f32},
 }
 impl Default for TransformType {
     fn default() -> Self {
@@ -196,9 +196,9 @@ pub enum TransformEasing {
     EaseOutCircular,
     EaseInOutCircular,
     // back
-    EaseInBack(f64, f64),
-    EaseOutBack(f64, f64),
-    EaseInOutBack(f64, f64),
+    EaseInBack(f32, f32),
+    EaseOutBack(f32, f32),
+    EaseInOutBack(f32, f32),
 }
 impl Default for TransformEasing {
     fn default() -> Self {
@@ -206,7 +206,7 @@ impl Default for TransformEasing {
     }
 }
 
-pub trait Transformable: Renderable {
+pub trait Transformable: TatakuRenderable {
     fn apply_transform(&mut self, transform: &Transformation, value: TransformValueResult);
 
     /// is this item visible

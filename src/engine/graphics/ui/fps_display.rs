@@ -26,7 +26,7 @@ impl FpsDisplay {
     /// name is what to display in text, count is which fps counter is this (only affects position)
     pub async fn new(name:&str, pos_count:u8) -> Self {
         let window_size = WindowSizeHelper::new();
-        let pos = Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f64);
+        let pos = Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f32);
 
         Self {
             count: 0,
@@ -47,7 +47,7 @@ impl FpsDisplay {
 
     pub async fn update(&mut self) {
         if self.window_size.update() {
-            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
+            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f32)
         }
         // if self.skin_helper.update() {
         //     self.number_image = SkinnedNumber::new(Color::BLACK, 0.0, self.pos, self.frametime_last_draw as f64, "fps", None, 2).await.ok();
@@ -88,7 +88,7 @@ impl FpsDisplay {
                 Color::BLACK,
                 -99_999_999.99, // should be on top of everything
                 self.pos + TEXT_PADDING,
-                12,
+                12.0,
                 format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
                 font.clone()
             ));
@@ -128,7 +128,7 @@ impl AsyncFpsDisplay {
             last: 0.0,
             timer: Instant::now(),
             name: name.to_owned(),
-            pos: Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f64),
+            pos: Vector2::new(window_size.x - SIZE.x, window_size.y - SIZE.y * (pos_count+1) as f32),
 
             frametime_last_draw: 0.0,
             window_size,
@@ -138,7 +138,7 @@ impl AsyncFpsDisplay {
 
     pub async fn update(&mut self) {
         if self.window_size.update() {
-            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f64)
+            self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f32)
         }
         
         let now = Instant::now();
@@ -162,7 +162,7 @@ impl AsyncFpsDisplay {
             Color::BLACK,
             -99_999_999.99, // should be on top of everything
             self.pos + TEXT_PADDING,
-            12,
+            12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             font.clone()
         ));

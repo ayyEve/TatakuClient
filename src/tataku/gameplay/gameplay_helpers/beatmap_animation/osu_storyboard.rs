@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 const GAME_SIZE: Vector2 = Vector2::new(640.0, 480.0);
-const DEPTH: Range<f64> = 5000.0..6000.0;
+const DEPTH: Range<f32> = 5000.0..6000.0;
 
 pub struct OsuStoryboard {
     scaling_helper: Arc<ScalingHelper>,
@@ -24,9 +24,9 @@ impl OsuStoryboard {
         }
         elements.sort_by(Element::sort);
 
-        let len = elements.len() as f64;
+        let len = elements.len() as f32;
         for (n, i) in elements.iter_mut().enumerate() {
-            let d = f64::lerp(DEPTH.start, DEPTH.end, (n as f64) / len);
+            let d = f32::lerp(DEPTH.start, DEPTH.end, (n as f32) / len);
             i.group.depth = d;
             i.window_size_changed(&scaling_helper);
         }
@@ -225,15 +225,15 @@ impl Element {
             let trans_type = match i.event {
                 StoryboardEvent::Move { start, end } => TransformType::Position { 
                     start,
-                    end
+                    end,
                 },
                 StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { 
-                    start: start_x as f64, 
-                    end:   end_x as f64
+                    start: start_x, 
+                    end:   end_x,
                 },
                 StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { 
-                    start: start_y as f64, 
-                    end:   end_y as f64
+                    start: start_y, 
+                    end:   end_y,
                 },
                 // StoryboardEvent::Move { start, end } => TransformType::Position { 
                 //     start: scale.scale_coords(start), 
@@ -252,8 +252,8 @@ impl Element {
                 // StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale as f64, end: end_scale as f64 },
                 // StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale, end: end_scale },
 
-                StoryboardEvent::Fade { start, end } => TransformType::Transparency { start: start as f64, end: end as f64 },
-                StoryboardEvent::Rotate { start_rotation, end_rotation } => TransformType::Rotation { start: start_rotation as f64, end: end_rotation as f64 },
+                StoryboardEvent::Fade { start, end } => TransformType::Transparency { start: start, end: end },
+                StoryboardEvent::Rotate { start_rotation, end_rotation } => TransformType::Rotation { start: start_rotation, end: end_rotation },
                 StoryboardEvent::Color { start_color, end_color } => TransformType::Color { start: start_color, end: end_color },
                 StoryboardEvent::Parameter { param } => match param {
                     Param::FlipHorizontal => { self.group.image_flip_horizonal = true; continue; },
@@ -266,8 +266,8 @@ impl Element {
                 _ => continue
             };
 
-            let offset = i.start_time as f64;
-            let duration = (i.end_time - i.start_time) as f64;
+            let offset = i.start_time;
+            let duration = i.end_time - i.start_time;
             earliest_start = earliest_start.min(i.start_time);
             latest_end = latest_end.max(i.end_time);
             self.group.transforms.push(Transformation::new(
@@ -298,7 +298,7 @@ impl Element {
             }
         }
 
-        self.group.update(time as f64)
+        self.group.update(time)
     }
 
     fn window_size_changed(&mut self, scale: &Arc<ScalingHelper>) {

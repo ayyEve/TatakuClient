@@ -5,7 +5,7 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     /// helpful for determining what menu this is
     fn get_name(&self) -> &str {"none"}
     async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection);
+    async fn draw(&mut self, list: &mut RenderableCollection);
 
 
     // input handlers
@@ -15,7 +15,7 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     async fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers, _g:&mut G) {}
     async fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton, _g:&mut G) {}
 
-    async fn on_scroll(&mut self, _delta:f64, _g:&mut G) {}
+    async fn on_scroll(&mut self, _delta:f32, _g:&mut G) {}
     async fn on_mouse_move(&mut self, _pos:Vector2, _g:&mut G) {}
     async fn on_key_press(&mut self, _key:Key, _g:&mut G, _mods:KeyModifiers) {}
     async fn on_key_release(&mut self, _key:Key, _g:&mut G) {}
@@ -30,5 +30,5 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
 pub trait ControllerInputMenu<G:Send+Sync>:AsyncMenu<G> + Send + Sync {
     async fn controller_down(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
     async fn controller_up(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
-    async fn controller_axis(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _axis_data: HashMap<u8, (bool, f64)>) -> bool {false}
+    async fn controller_axis(&mut self, _g:&mut Game, _controller: &Box<dyn Controller>, _axis_data: HashMap<u8, (bool, f32)>) -> bool {false}
 }

@@ -32,7 +32,7 @@ impl ModDialog {
         let font = get_font();
         let manager = ModManager::get();
         for group in new_groups {
-            scroll.add_item(Box::new(MenuSection::<Font2, Text>::new(pos, 30.0, &group.name, font.clone())));
+            scroll.add_item(Box::new(MenuSection::new(pos, 30.0, &group.name, font.clone())));
             
             for m in group.mods {
                 scroll.add_item(Box::new(ModButton::new(pos, m, &manager)));
@@ -84,12 +84,12 @@ impl Dialog<Game> for ModDialog {
         self.scroll.update();
     }
     
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
         self.draw_background(depth + 1.00000001, Color::BLACK, list);
-        self.scroll.draw(*args, Vector2::ZERO, *depth, list);
+        self.scroll.draw(Vector2::ZERO, depth, list);
     }
 
-    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         match key {
             Key::Escape => {
                 self.should_close = true;
@@ -112,22 +112,22 @@ impl Dialog<Game> for ModDialog {
         }
     }
 
-    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut Game) {
-        self.scroll.on_mouse_move(*pos);
+    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+        self.scroll.on_mouse_move(pos);
     }
 
-    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
-        self.scroll.on_scroll(*delta);
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
+        self.scroll.on_scroll(delta);
         false
     }
 
-    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.scroll.on_click(*pos, *button, *mods);
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.scroll.on_click(pos, button, *mods);
         true
     }
 
-    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.scroll.on_click_release(*pos, *button);
+    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.scroll.on_click_release(pos, button);
         true
     }
 
@@ -205,21 +205,21 @@ impl ScrollableItem for ModButton {
         }
     }
 
-    fn draw(&mut self, args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         let pos_offset = self.pos + pos_offset;
         
         let font = get_font();
         let cb_size = Vector2::new(200.0, 50.0);
 
-        let mut checkbox = Checkbox::<Font2, Text>::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, font.clone());
+        let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, font.clone());
         checkbox.set_hover(self.hover);
         checkbox.set_selected(self.selected);
 
-        let font_size = 30;
-        let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size as f64) / 2.0);
+        let font_size = 30.0;
+        let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
         let desc_text = Text::new(Color::WHITE, parent_depth, desc_pos, font_size, self.gameplay_mod.description().to_owned(), font);
 
-        checkbox.draw(args, pos_offset, parent_depth, list);
+        checkbox.draw(pos_offset, parent_depth, list);
         list.push(desc_text);
     }
 

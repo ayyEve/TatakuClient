@@ -13,18 +13,18 @@ const CONTROL_BUTTONS: &[Option<FontAwesome>] = &[
 
 const MUSIC_BOX_PADDING:Vector2 = Vector2::new(5.0, 5.0);
 const CONTROL_BUTTON_SIZE:u32 = 30;
-const CONTROL_BUTTON_MARGIN_WHEN_NONE:f64 = 15.0;
+const CONTROL_BUTTON_MARGIN_WHEN_NONE:f32 = 15.0;
 /// x margin between buttons
-const CONTROL_BUTTON_X_MARGIN:f64 = 10.0;
+const CONTROL_BUTTON_X_MARGIN:f32 = 10.0;
 
 const CONTROL_BUTTON_PADDING:Vector2 = Vector2::new(15.0, 15.0);
-const Y_BOTTOM_PADDING:f64 = 0.0;
-const X_PADDING:f64 = 0.0;
+const Y_BOTTOM_PADDING:f32 = 0.0;
+const X_PADDING:f32 = 0.0;
 
 const SKIP_AMOUNT:f32 = 500.0; // half a second?
 
-const PROGRESSBAR_HEIGHT:f64 = 5.0;
-const PROGRESSBAR_YPAD:f64 = 2.0;
+const PROGRESSBAR_HEIGHT:f32 = 5.0;
+const PROGRESSBAR_YPAD:f32 = 2.0;
 
 const PRIMARY_COLOR:Color = Color::WHITE;
 const SECONDARY_COLOR:Color = Color::new(1.0, 1.0, 1.0, 0.1);
@@ -65,7 +65,7 @@ impl MusicBox {
                     PRIMARY_COLOR,
                     0.0,
                     btn_pos + MUSIC_BOX_PADDING,
-                    CONTROL_BUTTON_SIZE,
+                    CONTROL_BUTTON_SIZE as f32,
                     format!("{}", c.get_char()),
                     font_awesome.clone()
                 );
@@ -216,11 +216,11 @@ impl ScrollableItem for MusicBox {
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT)
         ).contains(pos) {
             let rel_x = (pos - self.pos).x;
-            let pos = (rel_x / self.size.x) * self.song_duration as f64;
+            let pos = (rel_x / self.size.x) * self.song_duration;
             
             tokio::spawn(async move {
                 if let Some(song) = AudioManager::get_song().await {
-                    song.set_position(pos as f32);
+                    song.set_position(pos);
                 }
             });
         }
@@ -230,7 +230,7 @@ impl ScrollableItem for MusicBox {
 
     fn update(&mut self) {}
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         // let draw_pos = self.pos + pos_offset;
 
         // draw buttons
@@ -267,7 +267,7 @@ impl ScrollableItem for MusicBox {
             PRIMARY_COLOR,
             parent_depth,
             self.pos + pos_offset + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD),
-            Vector2::new(self.size.x * (self.song_time / self.song_duration) as f64, PROGRESSBAR_HEIGHT),
+            Vector2::new(self.size.x * (self.song_time / self.song_duration), PROGRESSBAR_HEIGHT),
             None
         ).shape(Shape::Round(2.0, 5)));
         // draw border after

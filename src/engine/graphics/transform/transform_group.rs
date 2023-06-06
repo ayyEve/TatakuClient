@@ -5,30 +5,30 @@ use crate::prelude::*;
 pub struct TransformGroup {
     pub pos: InitialCurrent<Vector2>,
     pub scale: InitialCurrent<Vector2>,
-    pub rotation: InitialCurrent<f64>,
+    pub rotation: InitialCurrent<f32>,
     pub alpha: InitialCurrent<f32>,
     pub border_alpha: InitialCurrent<f32>,
 
-    pub depth: f64,
+    pub depth: f32,
     pub origin: Vector2,
 
     pub items: Vec<Arc<dyn TatakuRenderable>>,
     pub transforms: Vec<Transformation>,
 
-    pub draw_state: Option<DrawState>,
+    // pub draw_state: Option<DrawState>,
     
     pub image_flip_horizonal: bool,
     pub image_flip_vertical: bool,
 }
 impl TransformGroup {
-    pub fn new(pos: Vector2, depth: f64) -> Self {
+    pub fn new(pos: Vector2, depth: f32) -> Self {
         Self {
             items: Vec::new(),
             transforms: Vec::new(),
             origin: Vector2::ZERO,
 
             depth, 
-            draw_state: None,
+            // draw_state: None,
 
             pos: InitialCurrent::new(pos),
             scale: InitialCurrent::new(Vector2::ONE),
@@ -45,7 +45,7 @@ impl TransformGroup {
         self.scale.both(scale);
         self
     }
-    pub fn rotation(mut self, rotation: f64) -> Self {
+    pub fn rotation(mut self, rotation: f32) -> Self {
         self.rotation.both(rotation);
         self
     }
@@ -60,7 +60,7 @@ impl TransformGroup {
     
 
 
-    pub fn update(&mut self, game_time: f64) {
+    pub fn update(&mut self, game_time: f32) {
         let mut transforms = std::mem::take(&mut self.transforms);
         transforms.retain(|transform| {
             let start_time = transform.start_time();
@@ -89,15 +89,15 @@ impl TransformGroup {
             }
             TransformType::PositionX { .. } => {
                 let val:f64 = val.into();
-                self.pos.current.x = self.pos.initial.x + val;
+                self.pos.current.x = self.pos.initial.x + val as f32;
             }
             TransformType::PositionY { .. } => {
                 let val:f64 = val.into();
-                self.pos.current.y = self.pos.initial.y + val;
+                self.pos.current.y = self.pos.initial.y + val as f32;
             }
             TransformType::Scale { .. } => {
                 let val:f64 = val.into();
-                self.scale.current = Vector2::ONE * val;
+                self.scale.current = Vector2::ONE * val as f32;
 
                 if self.image_flip_horizonal {
                     self.scale.current.x *= -1.0;
@@ -119,7 +119,7 @@ impl TransformGroup {
             }
             TransformType::Rotation { .. } => {
                 let val:f64 = val.into();
-                self.rotation.current = self.rotation.initial + val;
+                self.rotation.current = self.rotation.initial + val as f32;
             }
 
             TransformType::Transparency { .. } => {
@@ -146,14 +146,14 @@ impl TransformGroup {
 
 // premade transforms
 impl TransformGroup {
-    pub fn ripple(&mut self, offset:f64, duration:f64, time: f64, end_scale: f64, do_border_size: bool, do_transparency: Option<f32>) {
+    pub fn ripple(&mut self, offset:f32, duration:f32, time: f32, end_scale: f32, do_border_size: bool, do_transparency: Option<f32>) {
         
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
                 offset,
                 duration,
-                TransformType::Transparency {start: start_a as f64, end: 0.0},
+                TransformType::Transparency {start: start_a, end: 0.0},
                 TransformEasing::EaseOutSine,
                 time
             ));
@@ -190,14 +190,14 @@ impl TransformGroup {
     }
 
     #[allow(unused)] // will be used eventually probably
-    pub fn ripple_scale_range(&mut self, offset:f64, duration:f64, time: f64, scale: Range<f64>, border_size: Option<Range<f64>>, do_transparency: Option<f32>) {
+    pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
         
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
                 offset,
                 duration,
-                TransformType::Transparency { start: start_a as f64, end: 0.0 },
+                TransformType::Transparency { start: start_a, end: 0.0 },
                 TransformEasing::EaseOutSine,
                 time
             ));
@@ -235,33 +235,52 @@ impl TransformGroup {
 }
 
 
-impl Renderable for TransformGroup {
-    fn get_depth(&self) -> f64 { self.depth }
+impl TatakuRenderable for TransformGroup {
+    fn get_depth(&self) -> f32 { self.depth }
 
-    fn draw(&self, g: &mut GlGraphics, mut c:Context) {
-        if let Some(d) = self.draw_state {
-            c.draw_state = d;
-        }
+    fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
+        // if let Some(d) = self.draw_state {
+        //     c.draw_state = d;
+        // }
 
-        let pre_rotation = self.pos.current / self.scale.current + self.origin;
+        // let pre_rotation = self.pos.current / self.scale.current + self.origin;
+        // transform = transform
+        //     // scale to size
+        //     .scale(*self.scale)
 
-        c.transform = c.transform
-            // scale to size
-            .scale_pos(*self.scale)
+        //     // move to pos
+        //     .trans(pre_rotation)
 
-            // move to pos
-            .trans_pos(pre_rotation)
+        //     // rotate to rotate
+        //     .rot(*self.rotation as f32)
+            
+        //     // apply origin
+        //     .trans(-self.origin)
+        // ;
+
+
+        transform = transform
+            // apply origin
+            .trans(-self.origin)
 
             // rotate to rotate
-            .rot_rad(*self.rotation)
-            
-            // apply origin
-            .trans_pos(-self.origin)
+            .rot(*self.rotation)
+
+            // scale to size
+            .scale(*self.scale)
+
+            // move to pos
+            .trans(*self.pos)
         ;
+
         
         for i in self.items.iter() {
-            i.draw_with_transparency(c, *self.alpha, *self.border_alpha, g)
+            i.draw_with_transparency(*self.alpha, *self.border_alpha, transform, g)
         }
+    }
+
+    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
+        self.draw(transform, g)
     }
 }
 

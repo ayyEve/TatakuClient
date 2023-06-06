@@ -177,7 +177,7 @@ impl AsyncMenu<Game> for LoadingMenu {
         }
     }
 
-    async fn draw(&mut self, _args:piston::RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let font = get_font();
 
         // since this is just loading, we dont care about performance here
@@ -192,7 +192,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                     text_color,
                     -100.0,
                     Vector2::ZERO,
-                    32,
+                    32.0,
                     error.clone(),
                     font
                 )
@@ -203,7 +203,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                         text_color,
                         -100.0,
                         Vector2::ZERO,
-                        32,
+                        32.0,
                         format!(""),
                         font
                     )
@@ -213,7 +213,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                         text_color,
                         -100.0,
                         Vector2::ZERO,
-                        32,
+                        32.0,
                         format!("Done"),
                         font
                     )
@@ -223,7 +223,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                         text_color,
                         -100.0,
                         Vector2::ZERO,
-                        32,
+                        32.0,
                         format!("Loading Difficulties"),
                         font
                     )
@@ -233,7 +233,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                         text_color,
                         -100.0,
                         Vector2::ZERO,
-                        32,
+                        32.0,
                         format!("Loading Audio"),
                         font
                     )
@@ -243,7 +243,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                         text_color,
                         -100.0,
                         Vector2::ZERO,
-                        32,
+                        32.0,
                         format!("{} ({}/{})", 
                             if state.custom_message.is_empty() {"Loading Beatmaps"} else {&state.custom_message},
                             state.loading_done, 

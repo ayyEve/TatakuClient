@@ -2,7 +2,7 @@
 use crate::prelude::*;
 
 const SPECTATOR_ITEM_SIZE:Vector2 = Vector2::new(100.0, 40.0);
-const PADDING:f64 = 4.0;
+const PADDING:f32 = 4.0;
 
 
 pub struct SpectatorsElement {
@@ -39,12 +39,12 @@ impl InnerUIElement for SpectatorsElement {
 
         // draw spectators
         if self.spectator_cache.len() > 0 {
-            const DEPTH:f64 = -1000.0;
+            const DEPTH:f32 = -1000.0;
 
 
             list.push(visibility_bg(
                 pos_offset,
-                Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f64) * scale,
+                Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f32) * scale,
                 DEPTH
             ));
             let font = get_font();
@@ -53,8 +53,8 @@ impl InnerUIElement for SpectatorsElement {
                 list.push(Text::new(
                     Color::WHITE, 
                     DEPTH - 0.001, 
-                    pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f64) * scale,
-                    (30.0 * scale.y) as u32,
+                    pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32) * scale,
+                    30.0 * scale.y,
                     username.clone(),
                     font.clone()
                 ))

@@ -74,7 +74,7 @@ impl Default for CommonGameplaySettings {
         Self { 
             key_offset_up: Key::Equals,
             key_offset_down: Key::Minus,
-            map_restart_key: Key::Backquote,
+            map_restart_key: Key::Grave,
             map_restart_delay: 200.0,
 
             // duration bar

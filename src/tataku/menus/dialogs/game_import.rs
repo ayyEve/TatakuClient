@@ -11,8 +11,8 @@ pub struct GameImportDialog {
 
     input_scrollable: ScrollableArea,
 
-    add_button: MenuButton<Font2, Text>,
-    confirm_button: MenuButton<Font2, Text>,
+    add_button: MenuButton,
+    confirm_button: MenuButton,
 }
 impl GameImportDialog {
     pub async fn new() -> Self {
@@ -31,7 +31,7 @@ impl GameImportDialog {
             .external_games_folders
             .iter()
             .for_each(|f| {
-                scrollable.add_item(Box::new(TextInput::<Font2, Text>::new(
+                scrollable.add_item(Box::new(TextInput::new(
                     INPUT_SIZE.y_portion() + PADDING,
                     INPUT_SIZE,
                     "Game Path",
@@ -41,14 +41,14 @@ impl GameImportDialog {
             });
 
         
-        let add_button = MenuButton::<Font2, Text>::new(
+        let add_button = MenuButton::new(
             Vector2::new(0.0, BASE_SIZE.y - button_height),
             Vector2::new(100.0, button_height),
             "Add",
             font.clone()
         );
 
-        let confirm_button = MenuButton::<Font2, Text>::new(
+        let confirm_button = MenuButton::new(
             Vector2::new(120.0, BASE_SIZE.y - button_height),
             Vector2::new(100.0, button_height),
             "Done",
@@ -75,14 +75,14 @@ impl Dialog<Game> for GameImportDialog {
         Rectangle::bounds_only(self.pos, BASE_SIZE)
     }
     
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
         let pos = self.pos;
 
-        self.draw_background(*depth + 10.0, Color::WHITE, list);
+        self.draw_background(depth + 10.0, Color::WHITE, list);
 
-        self.input_scrollable.draw(*args, pos, *depth, list);
-        self.add_button.draw(*args, pos, *depth, list);
-        self.confirm_button.draw(*args, pos, *depth, list);
+        self.input_scrollable.draw(pos, depth, list);
+        self.add_button.draw(pos, depth, list);
+        self.confirm_button.draw(pos, depth, list);
     }
 
     async fn update(&mut self, _g:&mut Game) {
@@ -91,27 +91,27 @@ impl Dialog<Game> for GameImportDialog {
         self.confirm_button.update();
     }
 
-    async fn on_mouse_move(&mut self, p:&Vector2, _g:&mut Game) {
-        let p = *p - self.pos;
+    async fn on_mouse_move(&mut self, p:Vector2, _g:&mut Game) {
+        let p = p - self.pos;
         self.input_scrollable.on_mouse_move(p);
         self.add_button.on_mouse_move(p);
         self.confirm_button.on_mouse_move(p);
     }
 
-    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut Game) -> bool {
-        self.input_scrollable.on_scroll(*delta);
-        self.add_button.on_scroll(*delta);
-        self.confirm_button.on_scroll(*delta);
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
+        self.input_scrollable.on_scroll(delta);
+        self.add_button.on_scroll(delta);
+        self.confirm_button.on_scroll(delta);
         true
     }
 
-    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        let pos = *pos - self.pos;
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        let pos = pos - self.pos;
 
-        self.input_scrollable.on_click(pos, *button, *mods);
+        self.input_scrollable.on_click(pos, button, *mods);
 
-        if self.add_button.on_click(pos, *button, *mods) {
-            self.input_scrollable.add_item(Box::new(TextInput::<Font2, Text>::new(
+        if self.add_button.on_click(pos, button, *mods) {
+            self.input_scrollable.add_item(Box::new(TextInput::new(
                 INPUT_SIZE.y_portion() + PADDING,
                 INPUT_SIZE,
                 "Game Path",
@@ -120,7 +120,7 @@ impl Dialog<Game> for GameImportDialog {
             )))
         }
 
-        if self.confirm_button.on_click(pos, *button, *mods) {
+        if self.confirm_button.on_click(pos, button, *mods) {
             let mut settings = get_settings_mut!();
             settings.external_games_folders.clear();
 
@@ -141,11 +141,11 @@ impl Dialog<Game> for GameImportDialog {
         true
     }
 
-    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        let pos = *pos - self.pos;
-        self.input_scrollable.on_click_release(pos, *button);
-        self.add_button.on_click_release(pos, *button);
-        self.confirm_button.on_click_release(pos, *button);
+    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        let pos = pos - self.pos;
+        self.input_scrollable.on_click_release(pos, button);
+        self.add_button.on_click_release(pos, button);
+        self.confirm_button.on_click_release(pos, button);
         true
     }
 
@@ -154,19 +154,19 @@ impl Dialog<Game> for GameImportDialog {
         true
     }
 
-    async fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == &Key::Escape { self.should_close = true }
+    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        if key == Key::Escape { self.should_close = true }
         
-        self.input_scrollable.on_key_press(*key, *mods);
-        self.add_button.on_key_press(*key, *mods);
-        self.confirm_button.on_key_press(*key, *mods);
+        self.input_scrollable.on_key_press(key, *mods);
+        self.add_button.on_key_press(key, *mods);
+        self.confirm_button.on_key_press(key, *mods);
         
         true
     }
-    async fn on_key_release(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.input_scrollable.on_key_release(*key);
-        self.add_button.on_key_release(*key);
-        self.confirm_button.on_key_release(*key);
+    async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        self.input_scrollable.on_key_release(key);
+        self.add_button.on_key_release(key);
+        self.confirm_button.on_key_release(key);
         true
     }
 

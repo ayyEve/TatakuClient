@@ -155,9 +155,9 @@ impl MenuGameHelper {
 
     }
 
-    pub async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, list: &mut RenderableCollection) {
         if let Some(manager) = &mut self.manager {
-            manager.draw(args, list).await;
+            manager.draw(list).await;
         }
     }
 

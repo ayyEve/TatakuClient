@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const SLIDER_DOT_RADIUS:f64 = 8.0;
+const SLIDER_DOT_RADIUS:f32 = 8.0;
 
 #[derive(Clone)]
 pub struct TaikoDrumroll {
@@ -15,11 +15,11 @@ pub struct TaikoDrumroll {
     pub base_finisher: bool,
     pub finisher: bool,
     speed: f32,
-    radius: f64,
+    radius: f32,
     // TODO: figure out how to pre-calc this
-    end_x: f64,
+    end_x: f32,
 
-    depth: f64,
+    depth: f32,
     settings: Arc<TaikoSettings>,
     playfield: Arc<TaikoPlayfield>,
 
@@ -62,12 +62,12 @@ impl HitObject for TaikoDrumroll {
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.end_time }
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos.x = self.settings.hit_position.x + self.x_at(beatmap_time) as f64;
-        self.end_x = self.settings.hit_position.x + self.end_x_at(beatmap_time) as f64;
+        self.pos.x = self.settings.hit_position.x + self.x_at(beatmap_time);
+        self.end_x = self.settings.hit_position.x + self.end_x_at(beatmap_time);
         self.current_time = beatmap_time;
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 { return }
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        if self.end_x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000.0 { return }
 
         let color = Color::YELLOW;
         let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
@@ -127,15 +127,15 @@ impl HitObject for TaikoDrumroll {
         for time in self.hit_dots.iter() {
             let bounce_factor = 1.6;
 
-            let x = self.settings.hit_position.x as f32 + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32;
+            let x = self.settings.hit_position.x + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x;
             let diff = self.current_time - time;
-            let y = self.settings.hit_position.y as f32 + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
+            let y = self.settings.hit_position.y + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
 
             // flying dot
             list.push(Circle::new(
                 Color::YELLOW,
                 -1.0,
-                Vector2::new(x as f64, y as f64),
+                Vector2::new(x, y),
                 SLIDER_DOT_RADIUS,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
             ));
@@ -144,7 +144,7 @@ impl HitObject for TaikoDrumroll {
             list.push(Circle::new(
                 BAR_COLOR,
                 -1.0,
-                Vector2::new(x as f64, self.pos.y + self.radius),
+                Vector2::new(x, self.pos.y + self.radius),
                 SLIDER_DOT_RADIUS,
                 None
             ))

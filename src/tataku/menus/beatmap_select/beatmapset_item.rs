@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 
-const BEATMAP_ITEM_Y_PADDING:f64 = 5.0;
+const BEATMAP_ITEM_Y_PADDING:f32 = 5.0;
 pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(700.0, 50.0);
-const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x * 0.8, 50.0);
+const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x() * 0.8, 50.0);
 
 
 
@@ -118,7 +118,7 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
             BEATMAPSET_ITEM_SIZE * scale
         } else {
             let map_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapScale).unwrap_or(Vector2::ONE) * self.scale;
-            let count = self.beatmaps.len() as f64;
+            let count = self.beatmaps.len() as f32;
             BEATMAPSET_ITEM_SIZE * scale + 
             Vector2::with_y(
                 // button sizes
@@ -225,9 +225,9 @@ impl ScrollableItem for BeatmapsetItem {
         self.theme.update();
     }
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         let font = get_font();
-        let color = [0.2, 0.2, 0.2, 1.0].into();
+        let color = Color::new(0.2, 0.2, 0.2, 1.0);
         let text_color = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectText).unwrap_or_else(||Color::WHITE));
 
         let hovered_text_color = self.skin.song_select_active_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectTextHovered).unwrap_or_else(||text_color));
@@ -244,7 +244,7 @@ impl ScrollableItem for BeatmapsetItem {
             } else if self.selected { 
                 self.theme.get_color(ThemeColor::BeatmapSelectSetSelect).unwrap_or_else(||Color::RED)
             } else { 
-                self.theme.get_color(ThemeColor::BeatmapSelectSetBg).unwrap_or_else(||[0.2, 0.2, 0.2, 1.0].into())
+                self.theme.get_color(ThemeColor::BeatmapSelectSetBg).unwrap_or_else(||Color::new(0.2, 0.2, 0.2, 1.0))
             };
 
             button_image.pos = pos;
@@ -275,7 +275,7 @@ impl ScrollableItem for BeatmapsetItem {
             if self.selected { selected_text_color } else if self.hover {hovered_text_color} else { text_color },
             parent_depth + 4.0,
             pos + Vector2::new(20.0, 10.0) * scale,
-            (15.0 * scale.y) as u32,
+            15.0 * scale.y,
             self.display_text.clone(),
             font.clone()
         ));
@@ -305,7 +305,7 @@ impl ScrollableItem for BeatmapsetItem {
             let btn_hover_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapHoveredOffset).unwrap_or(Vector2::ZERO);
             let btn_selected_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapSelectedOffset).unwrap_or(Vector2::ZERO);
 
-            let btn_color = self.theme.get_color(ThemeColor::BeatmapSelectMapBg).unwrap_or_else(||[0.2, 0.2, 0.2, 1.0].into());
+            let btn_color = self.theme.get_color(ThemeColor::BeatmapSelectMapBg).unwrap_or_else(||Color::new(0.2, 0.2, 0.2, 1.0));
             let btn_hover_color = self.theme.get_color(ThemeColor::BeatmapSelectMapHover).unwrap_or_else(||Color::BLUE);
             let btn_select_color = self.theme.get_color(ThemeColor::BeatmapSelectMapSelect).unwrap_or_else(||Color::RED);
 
@@ -339,7 +339,7 @@ impl ScrollableItem for BeatmapsetItem {
                 } else {
                     let radius = 1.0 * btn_scale.y;
                     list.push(Rectangle::new(
-                        [0.2, 0.2, 0.2, 1.0].into(),
+                        Color::new(0.2, 0.2, 0.2, 1.0),
                         parent_depth + 5.0,
                         pos,
                         BEATMAP_ITEM_SIZE * btn_scale,
@@ -352,7 +352,7 @@ impl ScrollableItem for BeatmapsetItem {
                     if selected { selected_text_color } else { text_color },
                     parent_depth + 4.0,
                     btn_pos + Vector2::new(10.0, 5.0) * btn_scale,
-                    (12.0 * btn_scale.y) as u32,
+                    12.0 * btn_scale.y,
                     format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     font.clone()
                 ));
@@ -365,7 +365,7 @@ impl ScrollableItem for BeatmapsetItem {
                         if selected { selected_text_color } else { text_color },
                         parent_depth + 4.0,
                         btn_pos + Vector2::new(10.0, 5.0 + 20.0) * btn_scale,
-                        (12.0 * btn_scale.y) as u32,
+                        12.0 * btn_scale.y,
                         info.get_diff_string(meta, &self.mods),
                         font.clone()
                     ));

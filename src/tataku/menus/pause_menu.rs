@@ -1,15 +1,15 @@
 use crate::prelude::*;
 
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 50.0);
-const Y_MARGIN:f64 = 20.0;
-const Y_OFFSET:f64 = 10.0;
+const Y_MARGIN:f32 = 20.0;
+const Y_OFFSET:f32 = 10.0;
 
 pub struct PauseMenu {
     // beatmap: Arc<Mutex<Beatmap>>,
     manager: IngameManager,
-    continue_button: MenuButton<Font2, Text>,
-    retry_button: MenuButton<Font2, Text>,
-    exit_button: MenuButton<Font2, Text>,
+    continue_button: MenuButton,
+    retry_button: MenuButton,
+    exit_button: MenuButton,
     is_fail_menu: bool,
 
     selected_index: i8,
@@ -82,7 +82,7 @@ impl AsyncMenu<Game> for PauseMenu {
         self.manager.window_size_changed(window_size).await;
     }
     
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let pos_offset = Vector2::ZERO;
         let depth = 0.0;
 
@@ -90,13 +90,12 @@ impl AsyncMenu<Game> for PauseMenu {
             list.push(bg)
         }
 
-
         // draw buttons
         if !self.is_fail_menu {
-            self.continue_button.draw(args, pos_offset, depth, list);
+            self.continue_button.draw(pos_offset, depth, list);
         }
-        self.retry_button.draw(args, pos_offset, depth, list);
-        self.exit_button.draw(args, pos_offset, depth, list);
+        self.retry_button.draw(pos_offset, depth, list);
+        self.exit_button.draw(pos_offset, depth, list);
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
@@ -122,8 +121,8 @@ impl AsyncMenu<Game> for PauseMenu {
         self.exit_button.on_mouse_move(pos);
     }
 
-    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, _mods:KeyModifiers) {
-        if key == piston::Key::Escape {
+    async fn on_key_press(&mut self, key:Key, game:&mut Game, _mods:KeyModifiers) {
+        if key == Key::Escape {
             if self.is_fail_menu {
                 self.exit(game).await;
             } else {

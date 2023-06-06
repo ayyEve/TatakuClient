@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct DurationBarElement {
     common_game_settings: Arc<CommonGameplaySettings>,
-    duration_ratio: f64,
+    duration_ratio: f32,
     window_size: Arc<WindowSize>
 }
 impl DurationBarElement {
@@ -26,7 +26,7 @@ impl InnerUIElement for DurationBarElement {
 
     fn update(&mut self, manager: &mut IngameManager) {
         self.window_size = WindowSize::get();
-        self.duration_ratio = (manager.time()/manager.end_time) as f64
+        self.duration_ratio = manager.time() / manager.end_time
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {

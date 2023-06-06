@@ -78,7 +78,7 @@ impl StoryboardElementDef {
         let Some(filepath) = split.next() else { return None };
         let Some(x) = split.next().and_then(|s|s.parse::<i32>().ok()) else { return None };
         let Some(y) = split.next().and_then(|s|s.parse::<i32>().ok()) else { return None };
-        let pos = Vector2::new(x as f64, y as f64);
+        let pos = Vector2::new(x as f32, y as f32);
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {
@@ -315,10 +315,10 @@ impl StoryboardDef {
                     StoryboardEvent::Fade { start, end }
                 }
                 "M" => {
-                    parse_or_continue!(start_x, f64);
-                    parse_or_continue!(start_y, f64);
-                    parse_or_continue!(end_x, f64, start_x);
-                    parse_or_continue!(end_y, f64, start_y);
+                    parse_or_continue!(start_x, f32);
+                    parse_or_continue!(start_y, f32);
+                    parse_or_continue!(end_x, f32, start_x);
+                    parse_or_continue!(end_y, f32, start_y);
                     let start = Vector2::new(start_x, start_y);
                     let end = Vector2::new(end_x, end_y);
                     StoryboardEvent::Move { start, end }
@@ -341,10 +341,10 @@ impl StoryboardDef {
                 }
 
                 "V" => {
-                    parse_or_continue!(start_scale_x, f64);
-                    parse_or_continue!(start_scale_y, f64);
-                    parse_or_continue!(end_scale_x, f64, start_scale_x);
-                    parse_or_continue!(end_scale_y, f64, start_scale_y);
+                    parse_or_continue!(start_scale_x, f32);
+                    parse_or_continue!(start_scale_y, f32);
+                    parse_or_continue!(end_scale_x, f32, start_scale_x);
+                    parse_or_continue!(end_scale_y, f32, start_scale_y);
                     let start_scale = Vector2::new(start_scale_x, start_scale_y);
                     let end_scale = Vector2::new(end_scale_x, end_scale_y);
                     StoryboardEvent::VectorScale { start_scale, end_scale}

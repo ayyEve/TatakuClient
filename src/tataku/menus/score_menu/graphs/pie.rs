@@ -23,7 +23,7 @@ impl PieGraph {
 }
 
 impl StatsGraph for PieGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
         let radius = size.x / 2.0;
@@ -50,7 +50,7 @@ impl StatsGraph for PieGraph {
         let mut last_theta = -PI / 2.0;
 
         for i in self.data.iter().rev() {
-            let theta = (i.get_value() / self.sum) as f64 * 2.0 * PI;
+            let theta = (i.get_value() / self.sum) * 2.0 * PI;
 
             // arc
             list.push(Sector::new(

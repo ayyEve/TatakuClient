@@ -45,16 +45,16 @@ impl Dialog<Game> for UserPanel {
         )
     }
     
-    async fn on_key_press(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_key_press(key, mods, game).await;
 
-        if key == &Key::Escape {
+        if key == Key::Escape {
             self.should_close = true;
             return true;
         }
         true
     }
-    async fn on_key_release(&mut self, key:&Key, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_key_release(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_key_release(key, mods, game).await;
         true
     }
@@ -62,10 +62,10 @@ impl Dialog<Game> for UserPanel {
         self.chat.on_text(text).await
     }
 
-    async fn on_mouse_down(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_mouse_down(pos, button, mods, game).await;
         for (_, i) in self.users.iter_mut() {
-            if i.on_click(*pos, *button, *mods) {
+            if i.on_click(pos, button, *mods) {
                 let user_id = i.user.user_id;
                 let username = i.user.username.clone();
 
@@ -104,19 +104,19 @@ impl Dialog<Game> for UserPanel {
         }
         true
     }
-    async fn on_mouse_up(&mut self, pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_mouse_up(pos, button, mods, game).await;
         true
     }
-    async fn on_mouse_scroll(&mut self, delta:&f64, game:&mut Game) -> bool {
+    async fn on_mouse_scroll(&mut self, delta:f32, game:&mut Game) -> bool {
         self.chat.on_mouse_scroll(delta, game).await
     }
 
-    async fn on_mouse_move(&mut self, pos:&Vector2, game:&mut Game) {
+    async fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
         self.chat.on_mouse_move(pos, game).await;
 
         for (_, i) in self.users.iter_mut() {
-            i.on_mouse_move(*pos)
+            i.on_mouse_move(pos)
         }
     }
 
@@ -153,19 +153,19 @@ impl Dialog<Game> for UserPanel {
         }
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
-        self.chat.draw(args, depth, list).await;
+    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
+        self.chat.draw(depth, list).await;
         //TODO: move the set_pos code to update or smth
         let mut counter = 0;
         
         for (_, u) in self.users.iter_mut() {
             let users_per_col = 2;
-            let x = USER_ITEM_SIZE.x * (counter % users_per_col) as f64;
-            let y = USER_ITEM_SIZE.y * (counter / users_per_col) as f64;
+            let x = USER_ITEM_SIZE.x * (counter % users_per_col) as f32;
+            let y = USER_ITEM_SIZE.y * (counter / users_per_col) as f32;
             u.set_pos(Vector2::new(x, y));
 
             counter += 1;
-            u.draw(*args, Vector2::ZERO, *depth, list);
+            u.draw(Vector2::ZERO, depth, list);
         }
         
     }

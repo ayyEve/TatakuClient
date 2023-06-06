@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 
 const HIT_TIMING_BAR_SIZE:Vector2 = Vector2::new(300.0, 30.0);
-const HIT_TIMING_BAR_POS:Vector2 = Vector2::new(200.0 - HIT_TIMING_BAR_SIZE.x / 2.0, -(DURATION_HEIGHT + 3.0 + HIT_TIMING_BAR_SIZE.y + 5.0));
+const HIT_TIMING_BAR_POS:Vector2 = Vector2::new(200.0 - HIT_TIMING_BAR_SIZE.x() / 2.0, -(DURATION_HEIGHT + 3.0 + HIT_TIMING_BAR_SIZE.y() + 5.0));
 /// how long should a hit timing line last
 pub const HIT_TIMING_DURATION:f32 = 1_000.0;
 /// how long to fade out for
@@ -21,7 +21,7 @@ pub struct JudgementBarElement {
     game_time: f32
 }
 impl JudgementBarElement {
-    pub fn new(mut judgment_colors: Vec<(f32,Color)>) -> Self {
+    pub fn new(mut judgment_colors: Vec<(f32, Color)>) -> Self {
         judgment_colors.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         let miss_window = judgment_colors.iter().fold(0f32, |biggest, (w, _)| biggest.max(*w));
 
@@ -71,7 +71,7 @@ impl InnerUIElement for JudgementBarElement {
         
         // draw other hit windows
         for (window, color) in &self.judgment_colors {
-            let width = (window / self.miss_window) as f64 * timing_bar_size.x;
+            let width = (window / self.miss_window) * timing_bar_size.x;
             
             list.push(Rectangle::new(
                 *color,
@@ -86,7 +86,7 @@ impl InnerUIElement for JudgementBarElement {
         for &(hit_time, mut diff) in self.hitbar_timings.iter() {
             diff = if diff < 0.0 { diff.max(-self.miss_window) } else { diff.min(self.miss_window) };
 
-            let pos = (diff / self.miss_window) as f64 * (timing_bar_size.x / 2.0);
+            let pos = (diff / self.miss_window) * (timing_bar_size.x / 2.0);
             // let pos = (diff / self.miss_window) as f64 * (HIT_TIMING_BAR_SIZE.x / 2.0);
 
 

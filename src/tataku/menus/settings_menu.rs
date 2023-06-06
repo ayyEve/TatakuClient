@@ -1,9 +1,9 @@
 use crate::prelude::*;
 
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 50.0);
-const SECTION_XOFFSET:f64 = 30.0;
-const SCROLLABLE_YOFFSET:f64 = 20.0;
-const WIDTH:f64 = 600.0;
+const SECTION_XOFFSET:f32 = 30.0;
+const SCROLLABLE_YOFFSET:f32 = 20.0;
+const WIDTH:f32 = 600.0;
 
 pub struct SettingsMenu {
     scroll_area: ScrollableArea,
@@ -17,7 +17,7 @@ pub struct SettingsMenu {
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
         let settings = get_settings!().clone();
-        let p = Vector2::new(SECTION_XOFFSET, 0.0); // scroll area edits the y
+        let p = Vector2::with_x(SECTION_XOFFSET); // scroll area edits the y
         let window_size = WindowSize::get();
 
         let (sender, change_receiver) = std::sync::mpsc::sync_channel(100);
@@ -34,11 +34,11 @@ impl SettingsMenu {
         //TODO: make these not part of the scrollable?!?!
 
         // revert button
-        let mut revert_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Revert", font.clone());
+        let mut revert_button = MenuButton::new(p, BUTTON_SIZE, "Revert", font.clone());
         revert_button.set_tag("revert");
 
         // done button
-        let mut done_button = MenuButton::<Font2, Text>::new(p, BUTTON_SIZE, "Done", font.clone());
+        let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done", font.clone());
         done_button.set_tag("done");
 
         scroll_area.add_item(Box::new(revert_button));
@@ -126,8 +126,8 @@ impl AsyncMenu<Game> for SettingsMenu {
     }
 
     
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        self.scroll_area.draw(args, Vector2::ZERO, 0.0, list);
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.scroll_area.draw(Vector2::ZERO, 0.0, list);
 
         // background
         list.push(visibility_bg(
@@ -136,7 +136,7 @@ impl AsyncMenu<Game> for SettingsMenu {
             10.0
         ));
         
-        self.menu_game.draw(args, list).await;
+        self.menu_game.draw(list).await;
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
@@ -153,10 +153,10 @@ impl AsyncMenu<Game> for SettingsMenu {
         self.scroll_area.on_click_release(pos, button);
     }
 
-    async fn on_key_press(&mut self, key:piston::Key, game:&mut Game, mods:KeyModifiers) {
+    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         self.scroll_area.on_key_press(key, mods);
 
-        if key == piston::Key::Escape {
+        if key == Key::Escape {
             self.finalize(game).await;
             // let menu = game.menus.get("main").unwrap().clone();
             game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
@@ -164,7 +164,7 @@ impl AsyncMenu<Game> for SettingsMenu {
         }
     }
 
-    async fn on_key_release(&mut self, key:piston::Key, _game:&mut Game) {
+    async fn on_key_release(&mut self, key:Key, _game:&mut Game) {
         self.scroll_area.on_key_release(key);
     }
 
@@ -196,7 +196,7 @@ impl AsyncMenu<Game> for SettingsMenu {
         self.scroll_area.update()
     }
     async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {self.scroll_area.on_mouse_move(pos)}
-    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
+    async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {self.scroll_area.on_scroll(delta);}
     async fn on_text(&mut self, text:String) {self.scroll_area.on_text(text)}
 }
 impl ControllerInputMenu<Game> for SettingsMenu {

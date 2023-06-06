@@ -1,13 +1,9 @@
 use crate::prelude::*;
 
 use lyon_tessellation::math::Point;
-use raw_window_handle:: {
-    HasRawWindowHandle,
-    HasRawDisplayHandle
-};
-use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension};
-// use wgpu::util::DeviceExt;
-use winit::window::Window;
+use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
+
+const LAYER_COUNT:u32 = 10;
 
 pub struct GraphicsState {
     surface: wgpu::Surface,
@@ -37,7 +33,7 @@ pub struct GraphicsState {
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
-    async fn new(window: impl HasRawWindowHandle + HasRawDisplayHandle, settings: &Settings, size: [u32;2]) -> Self {
+    pub async fn new (window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
         let window_size = settings.window_size;
         let window_size = Vector2::new(window_size[0], window_size[1]);
 
@@ -51,7 +47,7 @@ impl GraphicsState {
         //
         // The surface needs to live as long as the window that created it.
         // State owns the window so this should be safe.
-        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        let surface = unsafe {instance.create_surface(window).unwrap()};
 
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
@@ -142,7 +138,7 @@ impl GraphicsState {
                     },
                     // count: None,
                     // count: std::num::NonZeroU32::new(layers),
-                    count: std::num::NonZeroU32::new(3),
+                    count: std::num::NonZeroU32::new(LAYER_COUNT),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
@@ -193,7 +189,8 @@ impl GraphicsState {
                 label: Some("diffuse_bind_group"),
             }
         );
-
+        
+        
 
         // let x = WgpuTexture::load_texture(&device, &queue, &texture_bind_group_layout);
 
@@ -259,8 +256,8 @@ impl GraphicsState {
         }); 
 
 
-        let atlas_size = device.limits().max_texture_dimension_2d.min(4096);
-        let atlas_layers = 3;
+        let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
+        let atlas_layers = LAYER_COUNT;
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, atlas_layers);
 
 
@@ -305,14 +302,16 @@ impl GraphicsState {
             self.surface.configure(&self.device, &self.config);
 
 
-            let window_size = Vector2::new(new_size.width as f64, new_size.height as f64);
+            let window_size = Vector2::new(new_size.width as f32, new_size.height as f32);
             let projection = Self::create_projection(window_size);
+
+            info!("new proj: {projection:?}");
             self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&projection.to_raw()));
         }
     }
 
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -462,23 +461,23 @@ impl GraphicsState {
     }
 
 
-    pub fn load_texture_path(&mut self, tex_name: &String, file_path: impl AsRef<Path>) -> TatakuResult<TextureReference> {
+    pub fn load_texture_path(&mut self, file_path: impl AsRef<Path>) -> TatakuResult<TextureReference> {
         let bytes = std::fs::read(file_path.as_ref())?;
-        self.load_texture_bytes(tex_name, bytes)
+        self.load_texture_bytes(bytes)
     }
 
-    pub fn load_texture_bytes(&mut self, tex_name: &String, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
+    pub fn load_texture_bytes(&mut self, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
         let diffuse_image = image::load_from_memory(data.as_ref())?;
         let diffuse_rgba = diffuse_image.to_rgba8();
 
         use image::GenericImageView;
         let (width, height) = diffuse_image.dimensions();
 
-        self.load_texture_rgba(tex_name, &diffuse_rgba.to_vec(), width, height)
+        self.load_texture_rgba(&diffuse_rgba.to_vec(), width, height)
     }
 
-    pub fn load_texture_rgba(&mut self, tex_name: &String, data: &Vec<u8>, width: u32, height: u32) -> TatakuResult<TextureReference> {
-        let Some(info) = self.atlas.try_insert(tex_name, width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+    pub fn load_texture_rgba(&mut self, data: &Vec<u8>, width: u32, height: u32) -> TatakuResult<TextureReference> {
+        let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
         let texture_size = wgpu::Extent3d {
             width,
             height,
@@ -511,6 +510,83 @@ impl GraphicsState {
         Ok(info)
     }
 
+    pub fn load_texture_rgba_many(&mut self, data: Vec<(&Vec<u8>, u32, u32)>) -> TatakuResult<Vec<TextureReference>> {
+        let (data, infos):(Vec<&Vec<u8>>, Vec<(u32, u32)>) = data.into_iter().map(|(data, w, h)|(data, (w, h))).unzip();
+
+        let Some(info) = self.atlas.try_insert_many(&infos) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+        for (info, data) in info.iter().zip(data.into_iter()) {
+            let width = info.width;
+            let height = info.height;
+
+            let texture_size = wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            };
+
+            self.queue.write_texture(
+                // Tells wgpu where to copy the pixel data
+                wgpu::ImageCopyTexture {
+                    texture: &self.atlas.tex.textures.get(info.layer as usize).unwrap().0,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: info.x,
+                        y: info.y,
+                        z: 0
+                    },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                // The actual pixel data
+                data,
+                // The layout of the texture
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * width),
+                    rows_per_image: Some(height),
+                },
+                texture_size,
+            );
+        }
+        
+
+        Ok(info)
+    }
+
+
+    pub async fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
+        let tex = self.surface.get_current_texture().unwrap();
+        let (w, h) = (tex.texture.width(), tex.texture.height());
+
+        let size = (w * h * 4) as u64;
+        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Screenshot Buffer"),
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            size,
+            mapped_at_creation: false,
+        }); 
+
+        let tex_buffer = ImageCopyBuffer {
+            buffer: &buffer,
+            layout: wgpu::ImageDataLayout { 
+                offset: 0, 
+                bytes_per_row: Some(w*4), 
+                rows_per_image: Some(h)
+            },
+        };
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
+        encoder.copy_texture_to_buffer(tex.texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
+        self.queue.submit(Some(encoder.finish()));
+
+        let slice = buffer.slice(..);
+        let (s, r) = tokio::sync::oneshot::channel();
+        slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+
+        r.await.unwrap();
+        let data = slice.get_mapped_range();
+        self.device.poll(wgpu::Maintain::Wait);
+        callback((data.to_vec(), w, h));
+    }
 }
 
 
@@ -539,7 +615,7 @@ impl GraphicsState {
         })
     }
 
-    fn begin(&mut self) {
+    pub fn begin(&mut self) {
         // Go through all recorded buffers, and set their used counts to 0, resetting them for the next use
         for i in self.recorded_buffers.iter_mut() {
             i.used_indices = 0;
@@ -552,7 +628,7 @@ impl GraphicsState {
         // self.started = true;
     }
 
-    fn end(&mut self) {
+    pub fn end(&mut self) {
         self.dump();
     }
 
@@ -609,6 +685,7 @@ impl GraphicsState {
         transform: Matrix
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let depth = 0.0;
         
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -659,6 +736,8 @@ impl GraphicsState {
         transform: Matrix
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let depth = 0.0;
+
         let tex_coords = [0.0, 0.0];
         let tex_index = -1;
         let color = color.into();
@@ -701,9 +780,10 @@ impl GraphicsState {
 
 }
 
+
 // draw helpers
 impl GraphicsState {
-    pub fn draw_circle(&mut self, depth: f32, radius: f64, color: Color, border: Option<&Border>, resolution: u32, transform: Matrix) {
+    pub fn draw_circle(&mut self, depth: f32, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix) {
         if let Some(border) = border {
             self.draw_circle(depth, radius + border.radius, border.color, None, resolution, transform)
         }
@@ -714,14 +794,16 @@ impl GraphicsState {
         let n = resolution;
 
         let points = (0..n).map(|i| {
-            let angle = i as f64 / n as f64 * (PI * 2.0);
+            let angle = i as f32 / n as f32 * (PI * 2.0) as f32;
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
         self.tesselate_polygon(points, depth, color, transform);
     }
 
-    pub fn draw_line(&mut self, line: [f64; 4], thickness: f64, depth: f32, color: Color, transform: Matrix) {
+    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix) {
+        return; 
+
         let resolution = 2;
         let n = resolution * 2;
         
@@ -729,8 +811,8 @@ impl GraphicsState {
         let (x1, y1, x2, y2) = (line[0], line[1], line[2], line[3]);
         let (dx, dy) = (x2 - x1, y2 - y1);
         let w = (dx * dx + dy * dy).sqrt();
-        let pos1 = cgmath::Vector3::new(x1 as f32, y1 as f32, 0.0);
-        let d = cgmath::Vector2::new(dx as f32, dy as f32);
+        let pos1 = cgmath::Vector3::new(x1, y1, 0.0);
+        let d = Vector2::new(dx, dy);
         
         let m = transform * Matrix::from_translation(pos1) * Matrix::from_orient(d);
         let points = (0..n).map(|j| {
@@ -744,18 +826,18 @@ impl GraphicsState {
                     // point of half circle.
                     // This requires an angle offset since
                     // the other end of line is the first half circle.
-                    let angle = (j - resolution) as f64 / (resolution - 1) as f64 * PI + PI;
+                    let angle = (j - resolution) as f32 / (resolution - 1) as f32 * PI + PI;
                     // Rotate 90 degrees since the line is horizontal.
                     let angle = angle + PI / 2.0;
-                    Vector2::new(w + angle.cos() * radius, angle.sin() * radius)
+                    Vector2::new(w + angle.cos() as f32 * radius, angle.sin() as f32 * radius)
                 }
                 j => {
                     // Compute the angle to match start and end
                     // point of half circle.
-                    let angle = j as f64 / (resolution - 1) as f64 * PI;
+                    let angle = j as f32 / (resolution - 1) as f32 * PI;
                     // Rotate 90 degrees since the line is horizontal.
                     let angle = angle + PI / 2.0;
-                    Vector2::new(angle.cos() * radius, angle.sin() * radius)
+                    Vector2::new(angle.cos() as f32  * radius, angle.sin() as f32  * radius)
                 }
             }
         });
@@ -775,6 +857,7 @@ impl GraphicsState {
 
     fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix) {
         let mut path = lyon_tessellation::path::Path::builder();
+        let depth = 0.0;
 
         let mut started = false;
         for p in polygon {
@@ -849,7 +932,7 @@ async fn test() {
 
     let mut state = GraphicsState::new(&window, &settings, size).await;
 
-    let tex = state.load_texture_path(&"test_tex".to_owned(), "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").expect("failed to load tex");
+    let tex = state.load_texture_path("C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").expect("failed to load tex");
     println!("got tex data {tex:?}");
 
 
@@ -864,14 +947,14 @@ async fn test() {
         fn draw(&self, state: &mut GraphicsState) {
             let depth = 0.0;
             let m = 
-                Matrix::from_translation(Vector3::new(self.position.x as f32, self.position.y as f32, depth))
-                * Matrix::from_nonuniform_scale(self.scale.x as f32, self.scale.y as f32, 1.0)
+                Matrix::from_translation(Vector3::new(self.position.x, self.position.y, depth))
+                * Matrix::from_nonuniform_scale(self.scale.x, self.scale.y, 1.0)
                 * Matrix::from_angle_z(cgmath::Rad(self.rotation))
             ;
             
             // state.draw_circle(depth, 100.0, Color::GREEN, None, 100, m);
 
-            let angle = PI / 3.0;
+            let angle = PI as f32 / 3.0;
             let p2 = Vector2::from_angle(angle) * 100.0;
             let line = [0.0, 0.0, p2.x, p2.y];
             state.draw_line(line, 5.0, depth, Color::RED, m);
@@ -897,10 +980,11 @@ async fn test() {
             
             WindowEvent::CursorMoved { position, .. } => {
                 mouse_pos = Vector2::new(
-                    position.x as f64,
-                    position.y as f64,
+                    position.x as f32,
+                    position.y as f32,
                 )
             }
+
 
             WindowEvent::MouseInput { state: ElementState::Pressed, button: winit::event::MouseButton::Left, .. } => {
                 println!("mouse: {mouse_pos:?}");

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-const FONT_SIZE:f64 = 30.0;
+const FONT_SIZE:f32 = 30.0;
 const MAX_CHARS:usize = 7; // 1 for neg, 1 for colon, 2 for secs, 3 for mins
-const SIZE:Vector2 = Vector2::new(FONT_SIZE * MAX_CHARS as f64, FONT_SIZE);
+const SIZE:Vector2 = Vector2::new(FONT_SIZE * MAX_CHARS as f32, FONT_SIZE);
 
 pub struct RemainingElement {
     // elapsed_image: Option<SkinnedNumber>,
@@ -61,7 +61,7 @@ impl InnerUIElement for RemainingElement {
             Color::WHITE,
             0.0,
             Vector2::ZERO,
-            (30.0 * scale.x) as u32,
+            30.0 * scale.x,
             format!("{sign}{mins:02}:{secs:02}"),
             get_font()
         );

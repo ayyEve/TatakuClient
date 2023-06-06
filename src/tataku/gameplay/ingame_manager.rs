@@ -6,7 +6,7 @@ pub const LEAD_IN_TIME:f32 = 1000.0;
 /// how long should center text be drawn for?
 const CENTER_TEXT_DRAW_TIME:f32 = 2_000.0;
 /// how tall is the duration bar
-pub const DURATION_HEIGHT:f64 = 35.0;
+pub const DURATION_HEIGHT:f32 = 35.0;
 
 /// ms between spectator score sync packets
 const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
@@ -445,7 +445,7 @@ impl IngameManager {
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
         if self.failed {
-            let new_rate = f64::lerp(self.game_speed() as f64, 0.0, (self.time() - self.failed_time) as f64 / 1000.0) as f32;
+            let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
             if new_rate <= 0.05 {
                 self.song.pause();
@@ -500,17 +500,17 @@ impl IngameManager {
         self.animation = anim;
     }
 
-    pub async fn draw(&mut self, args: RenderArgs, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, list: &mut RenderableCollection) {
         let time = self.time();
 
         // draw gamemode
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.draw(args, self, list).await;
+        gamemode.draw(self, list).await;
         self.gamemode = gamemode;
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.draw(&args, &0.0, list).await;
+            ui_editor.draw(0.0, list).await;
         } 
 
 
@@ -1017,7 +1017,7 @@ impl IngameManager {
     pub async fn key_down(&mut self, key:Key, mods: KeyModifiers) {
         if (self.replaying || self.current_mods.has_autoplay()) && !self.menu_background {
             // check replay-only keys
-            if key == piston::Key::Escape {
+            if key == Key::Escape {
                 self.started = false;
                 self.completed = true;
                 return;
@@ -1044,7 +1044,7 @@ impl IngameManager {
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_key_press(&key, &mods, &mut ()).await;
+            ui_editor.on_key_press(key, &mods, &mut ()).await;
             if key == Key::F9 {
                 ui_editor.should_close = true;
 
@@ -1102,7 +1102,7 @@ impl IngameManager {
 
         self.handle_input(frame).await;
     }
-    pub async fn key_up(&mut self, key:piston::Key) {
+    pub async fn key_up(&mut self, key:Key) {
         if self.failed { return }
         
         // check map restart key
@@ -1114,7 +1114,7 @@ impl IngameManager {
         let frame = self.gamemode.key_up(key).await;
         self.handle_input(frame).await;
     }
-    pub async fn on_text(&mut self, text:&String, mods: &ayyeve_piston_ui::menu::KeyModifiers) {
+    pub async fn on_text(&mut self, text:&String, mods: &KeyModifiers) {
         if self.failed { return }
         let frame = self.gamemode.on_text(text, mods).await;
         self.handle_input(frame).await;
@@ -1123,7 +1123,7 @@ impl IngameManager {
     
     pub async fn mouse_move(&mut self, pos:Vector2) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_move(&pos, &mut ()).await;
+            ui_editor.on_mouse_move(pos, &mut ()).await;
         }
 
         if self.failed { return }
@@ -1131,9 +1131,9 @@ impl IngameManager {
         let frame = self.gamemode.mouse_move(pos).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_down(&mut self, btn:piston::MouseButton) {
+    pub async fn mouse_down(&mut self, btn:MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_down(&Vector2::ZERO, &btn, &KeyModifiers::default(), &mut ()).await;
+            ui_editor.on_mouse_down(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 
@@ -1141,9 +1141,9 @@ impl IngameManager {
         let frame = self.gamemode.mouse_down(btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_up(&mut self, btn:piston::MouseButton) {
+    pub async fn mouse_up(&mut self, btn:MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_up(&Vector2::ZERO, &btn, &KeyModifiers::default(), &mut ()).await;
+            ui_editor.on_mouse_up(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return
         }
 
@@ -1151,9 +1151,9 @@ impl IngameManager {
         let frame = self.gamemode.mouse_up(btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_scroll(&mut self, delta:f64) {
+    pub async fn mouse_scroll(&mut self, delta:f32) {
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_mouse_scroll(&delta, &mut ()).await;
+            ui_editor.on_mouse_scroll(delta, &mut ()).await;
         } 
 
         if self.failed { return }
@@ -1172,7 +1172,7 @@ impl IngameManager {
         let frame = self.gamemode.controller_release(c, btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f64)>) {
+    pub async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f32)>) {
         if self.failed { return }
         let frame = self.gamemode.controller_axis(c, axis_data).await;
         self.handle_input(frame).await;

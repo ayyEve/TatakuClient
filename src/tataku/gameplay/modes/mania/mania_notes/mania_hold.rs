@@ -1,15 +1,15 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const MANIA_SLIDER_DEPTH: f64 = 100.1;
+const MANIA_SLIDER_DEPTH:f32 = 100.1;
 
 pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
     end_time: f32, // ms
 
-    start_relative_pos: f64,
-    end_relative_pos: f64,
+    start_relative_pos: f32,
+    end_relative_pos: f32,
     column: u8,
     color: Color,
 
@@ -21,9 +21,9 @@ pub struct ManiaHold {
     position_function: Arc<Vec<PositionPoint>>,
     position_function_index: usize,
 
-    sv_mult: f64,
+    sv_mult: f32,
     //TODO: figure out how to pre-calc this
-    end_y: f64,
+    end_y: f32,
 
     playfield: Arc<ManiaPlayfield>,
 
@@ -37,9 +37,9 @@ pub struct ManiaHold {
 }
 impl ManiaHold {
     pub async fn new(
-        time:f32, end_time:f32, column: u8, color: Color, x:f64, 
+        time:f32, end_time:f32, column: u8, color: Color, x:f32, 
         
-        sv_mult: f64,
+        sv_mult: f32,
         
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
@@ -74,7 +74,7 @@ impl ManiaHold {
         }
     }
 
-    fn y_at(&mut self, beatmap_time: f32) -> (f64, f64) {
+    fn y_at(&mut self, beatmap_time: f32) -> (f32, f32) {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
         let rel_start = self.start_relative_pos;
@@ -123,7 +123,7 @@ impl HitObject for ManiaHold {
         }
 
     }
-    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
@@ -307,7 +307,7 @@ impl ManiaHitObject for ManiaHold {
     //
     fn miss(&mut self, _time:f32) {}
 
-    fn set_sv_mult(&mut self, sv: f64) {
+    fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 

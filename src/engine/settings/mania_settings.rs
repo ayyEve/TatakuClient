@@ -24,7 +24,7 @@ pub struct ManiaSettings {
     pub judgements_per_column: bool,
     
     /// how far from the hit position should hit indicators be?
-    pub judgement_indicator_offset: f64,
+    pub judgement_indicator_offset: f32,
     
     pub use_skin_judgments: bool,
 }
@@ -80,22 +80,22 @@ pub struct ManiaPlayfieldSettings {
     /// y pos of the hit area
     /// 
     /// if not upside-down, y is window_height - this
-    pub hit_pos: f64,
+    pub hit_pos: f32,
 
     /// how wide is a note column?
-    pub column_width: f64,
+    pub column_width: f32,
 
     /// how wide is the gap between columns?
-    pub column_spacing: f64,
+    pub column_spacing: f32,
 
     /// how tall is a note?
-    pub note_height: f64,
+    pub note_height: f32,
 
     /// how offset is the playfield?
-    pub x_offset: f64,
+    pub x_offset: f32,
 
     /// how thicc is the note border?
-    pub note_border_width: f64,
+    pub note_border_width: f32,
 
     /// do the notes scroll up?
     pub upside_down: bool,

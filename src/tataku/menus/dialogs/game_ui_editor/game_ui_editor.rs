@@ -1,6 +1,6 @@
 use crate::prelude::*;
 const PAIN:bool = true;
-const TEXT_SIZE:f64 = 30.0;
+const TEXT_SIZE:f32 = 30.0;
 
 pub struct GameUIEditorDialog {
     pub should_close: bool,
@@ -87,24 +87,24 @@ impl Dialog<()> for GameUIEditorDialog {
         self.should_close
     }
 
-    async fn on_mouse_move(&mut self, pos:&Vector2, _g:&mut ()) {
-        self.mouse_pos = *pos;
+    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut ()) {
+        self.mouse_pos = pos;
         self.sidebar.on_mouse_move(self.mouse_pos);
 
         if let Some((index, old_pos, mouse_start)) = self.mouse_down {
             let ele = &mut self.elements[index];
             
-            let change = old_pos + (*pos - mouse_start);
+            let change = old_pos + (pos - mouse_start);
 
             ele.pos_offset = change;
         }
     }
 
-    async fn on_mouse_down(&mut self, _pos:&Vector2, button:&MouseButton, mods:&KeyModifiers, _g:&mut ()) -> bool {
+    async fn on_mouse_down(&mut self, _pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut ()) -> bool {
         let pos = self.mouse_pos;
 
-        if !self.sidebar.on_click(pos, *button, *mods) {
-            if button == &MouseButton::Left {
+        if !self.sidebar.on_click(pos, button, *mods) {
+            if button == MouseButton::Left {
                 if let Some((i, ele)) = self.find_ele_under_mouse() {
                     self.mouse_down = Some((i, ele.pos_offset, pos));
                 }
@@ -115,7 +115,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_mouse_up(&mut self, _pos:&Vector2, _button:&MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         // let pos = self.mouse_pos;
 
         if let Some((i, _, _)) = self.mouse_down {
@@ -128,10 +128,10 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_mouse_scroll(&mut self, delta:&f64, _g:&mut ()) -> bool {
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut ()) -> bool {
 
         if PAIN {
-            let delta = (*delta) / 5.0;
+            let delta = delta / 5.0;
 
             if let Some((index, _, _)) = self.mouse_down {
                 let ele = &mut self.elements[index];
@@ -152,8 +152,8 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
-        if key == &Key::V {
+    async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+        if key == Key::V {
             if self.mouse_down.is_none() {
                 if let Some((_, ele)) = self.find_ele_under_mouse() {
                     reset_element(ele).await;
@@ -162,7 +162,7 @@ impl Dialog<()> for GameUIEditorDialog {
         }
         
         
-        if key == &Key::S {
+        if key == Key::S {
             if self.mouse_down.is_none() {
                 let y = self.sidebar.get_pos().y;
 
@@ -200,8 +200,8 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn draw(&mut self, args:&RenderArgs, depth: &f64, list: &mut RenderableCollection) {
-        self.sidebar.draw(*args, Vector2::ZERO, *depth-9999999999999999999999.0, list);
+    async fn draw(&mut self, depth:f32, list: &mut RenderableCollection) {
+        self.sidebar.draw(Vector2::ZERO, depth-9999999999999999999999.0, list);
         list.push(Rectangle::new(
             Color::BLACK.alpha(0.8),
             -9999999999999999999999.0,
@@ -283,8 +283,8 @@ impl UISideBarElement {
     }
 }
 impl ScrollableItem for UISideBarElement {
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
-        let text = Text::new(Color::WHITE, parent_depth, self.pos + pos_offset, TEXT_SIZE as u32, self.display_name.clone(), get_font());
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+        let text = Text::new(Color::WHITE, parent_depth, self.pos + pos_offset, TEXT_SIZE, self.display_name.clone(), get_font());
         
         let color = if self.hover {Color::BLUE} else {Color::RED};
         let mut r = Rectangle::bounds_only(self.pos + pos_offset, text.measure_text());

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-const BANNER_DEPTH: f64 = -99000.0;
-const BANNER_WPADDING:f64 = 5.0;
+const BANNER_DEPTH: f32 = -99000.0;
+const BANNER_WPADDING:f32 = 5.0;
 
 
 /// how long of a buffer should we have? (ms)
@@ -301,14 +301,14 @@ impl SpectatorManager {
         }
     }
 
-    pub async fn draw(&mut self, args: RenderArgs, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, list: &mut RenderableCollection) {
         if let Some(manager) = self.game_manager.as_mut() {
-            manager.draw(args, list).await
+            manager.draw(list).await
         }
 
         // draw score menu
         if let Some(menu) = self.score_menu.as_mut() {
-            menu.draw(args, list).await
+            menu.draw(list).await
         }
         
         // draw spectator banner
@@ -325,7 +325,7 @@ impl SpectatorManager {
         }
     }
 
-    pub async fn mouse_scroll(&mut self, delta: f64, game:&mut Game) {
+    pub async fn mouse_scroll(&mut self, delta: f32, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
             manager.mouse_scroll(delta).await
         }
@@ -361,9 +361,9 @@ impl SpectatorManager {
         }
     }
 
-    pub async fn key_down(&mut self, key:piston::Key, mods:KeyModifiers, game:&mut Game) {
+    pub async fn key_down(&mut self, key:Key, mods:KeyModifiers, game:&mut Game) {
         // check if we need to close something
-        if key == piston::Key::Escape {
+        if key == Key::Escape {
             // if the score menu is open, close it and leave.
             if self.score_menu.is_some() {
                 self.score_menu = None;
@@ -392,7 +392,7 @@ impl SpectatorManager {
             menu.on_key_press(key, game, mods).await;
         }
     }
-    pub async fn key_up(&mut self, key:piston::Key, _mods:KeyModifiers, game:&mut Game) {
+    pub async fn key_up(&mut self, key:Key, _mods:KeyModifiers, game:&mut Game) {
         if let Some(manager) = self.game_manager.as_mut() {
             manager.key_up(key).await
         }
@@ -419,7 +419,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
         Color::BLACK,
         BANNER_DEPTH,
         Vector2::ZERO, // centered anyways
-        32,
+        32.0,
         text.to_owned(),
         font.clone()
     );

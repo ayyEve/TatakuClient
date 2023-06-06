@@ -32,11 +32,11 @@ impl ScatterGraph {
         }
     }
 
-    fn map_point(&self, point: f32, size: Vector2) -> f64 {
-        (self.max - point.clamp(self.min, self.max)) as f64 * size.y / (self.max - self.min).abs() as f64
+    fn map_point(&self, point: f32, size: Vector2) -> f32 {
+        (self.max - point.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()
     }
-    fn map_points(&self, data: &Vec<f32>, size: Vector2) -> Vec<f64> {
-        data.iter().map(|x| (self.max - x.clamp(self.min, self.max)) as f64 * size.y / (self.max - self.min).abs() as f64).collect()
+    fn map_points(&self, data: &Vec<f32>, size: Vector2) -> Vec<f32> {
+        data.iter().map(|x| (self.max - x.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()).collect()
     }
 
 
@@ -44,7 +44,7 @@ impl ScatterGraph {
 
 
 impl StatsGraph for ScatterGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f64, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
 
@@ -82,13 +82,13 @@ impl StatsGraph for ScatterGraph {
                 }
                 MenuStatsValue::List(points) => {
                     let mapped_points = self.map_points(&points, size);
-                    let x_step = size.x / mapped_points.len() as f64;
+                    let x_step = size.x / mapped_points.len() as f32;
 
                     for (n, &y) in mapped_points.iter().enumerate() {
                         let mut c = Circle::new(
                             i.color,
                             depth,
-                            pos + Vector2::new(x_step * n as f64, y),
+                            pos + Vector2::new(x_step * n as f32, y),
                             2.0,
                             None
                         );

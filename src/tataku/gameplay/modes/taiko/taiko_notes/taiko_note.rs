@@ -5,7 +5,7 @@ use super::super::prelude::*;
 pub struct TaikoNote {
     pos: Vector2,
     time: f32, // ms
-    depth: f64,
+    depth: f32,
     hit_time: f32,
     hit_type: HitType,
     base_finisher: bool,
@@ -72,15 +72,15 @@ impl HitObject for TaikoNote {
             else { 0.0 };
 
         let x = self.x_at(beatmap_time);
-        self.pos = self.settings.hit_position + Vector2::new(x as f64, y as f64);
+        self.pos = self.settings.hit_position + Vector2::new(x, y);
 
         if let Some(image) = &mut self.image {
             image.set_pos(self.pos)
         }
         
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > args.window_size[0] as f64 { return }
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 1000000.0 { return }
 
         if let Some(image) = &mut self.image {
             image.draw(list);

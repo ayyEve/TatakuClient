@@ -7,16 +7,16 @@
 use crate::prelude::*;
 use tokio::sync::mpsc::{Sender, Receiver, channel};
 
-const TRAIL_CREATE_TIMER:f64 = 10.0;
-const TRAIL_FADEOUT_TIMER_START:f64 = 20.0;
-const TRAIL_FADEOUT_TIMER_DURATION:f64 = 100.0;
+const TRAIL_CREATE_TIMER:f32 = 10.0;
+const TRAIL_FADEOUT_TIMER_START:f32 = 20.0;
+const TRAIL_FADEOUT_TIMER_DURATION:f32 = 100.0;
 
-const TRAIL_CREATE_TIMER_IF_MIDDLE:f64 = 0.1;
-const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f64 = 20.0;
-const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f64 = 500.0;
+const TRAIL_CREATE_TIMER_IF_MIDDLE:f32 = 0.1;
+const TRAIL_FADEOUT_TIMER_START_IF_MIDDLE:f32 = 20.0;
+const TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE:f32 = 500.0;
 
-const DEFAULT_CURSOR_SIZE:f64 = 10.0;
-const PRESSED_CURSOR_SCALE:f64 = 1.2;
+const DEFAULT_CURSOR_SIZE:f32 = 10.0;
+const PRESSED_CURSOR_SCALE:f32 = 1.2;
 
 
 static CURSOR_EVENT_QUEUE:OnceCell<Sender<CursorEvent>> = OnceCell::const_new();
@@ -30,20 +30,20 @@ pub struct CursorManager {
     pub color: Color,
     pub border_color: Color,
     ripple_color: Color,
-    ripple_radius_override: Option<f64>,
+    ripple_radius_override: Option<f32>,
     // ripple_image: Option<Image>,
 
-    cursor_rotation: f64,
+    cursor_rotation: f32,
 
     pub cursor_image: Option<Image>,
     pub cursor_middle_image: Option<Image>,
     pub cursor_trail_image: Option<Image>,
     pub trail_images: Vec<TransformGroup>,
-    last_trail_time: f64,
+    last_trail_time: f32,
 
-    trail_create_timer: f64,
-    trail_fadeout_timer_start: f64,
-    trail_fadeout_timer_duration: f64,
+    trail_create_timer: f32,
+    trail_fadeout_timer_start: f32,
+    trail_fadeout_timer_duration: f32,
 
     // event_receiver: Arc<Receiver<CursorEvent>>,
     event_receiver: Receiver<CursorEvent>,
@@ -68,18 +68,18 @@ impl CursorManager {
     pub async fn new() -> Self {
         let mut cursor_image = SkinManager::get_texture("cursor", true).await;
         if let Some(cursor) = &mut cursor_image {
-            cursor.depth = -f64::MAX;
+            cursor.depth = -f32::MAX;
         }
 
         let mut cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
         if let Some(trail) = &mut cursor_trail_image {
-            trail.depth = (-f64::MAX) + 50.0;
+            trail.depth = (-f32::MAX) + 50.0;
         }
 
 
         let mut cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
         if let Some(cursor) = &mut cursor_middle_image {
-            cursor.depth = -f64::MAX;
+            cursor.depth = -f32::MAX;
         }
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if cursor_middle_image.is_some() {
@@ -150,19 +150,19 @@ impl CursorManager {
 
         self.cursor_rotation = 0.0;
         if let Some(trail) = &mut self.cursor_trail_image {
-            trail.depth = (-f64::MAX) + 50.0;
+            trail.depth = (-f32::MAX) + 50.0;
         }
         if let Some(cursor) = &mut self.cursor_image {
-            cursor.depth = -f64::MAX;
+            cursor.depth = -f32::MAX;
         }
         
         if let Some(cursor) = &mut self.cursor_middle_image {
-            cursor.depth = -f64::MAX;
+            cursor.depth = -f32::MAX;
         }
     }
 
 
-    pub async fn update(&mut self, time: f64) {
+    pub async fn update(&mut self, time: f32) {
 
         // check settings update 
         if self.settings.update() {
@@ -218,7 +218,7 @@ impl CursorManager {
         }
 
         if self.current_skin.cursor_rotate {
-            self.cursor_rotation -= 0.0003 * (time - self.time.as_millis64())
+            self.cursor_rotation -= 0.0003 * (time - self.time.as_millis())
         }
 
         // trail stuff
@@ -236,7 +236,7 @@ impl CursorManager {
                 let count = (dist / width).ceil() as i32;
 
                 for i in 0..count {
-                    let pos = Vector2::lerp(self.last_pos, self.pos, i as f64 / count as f64);
+                    let pos = Vector2::lerp(self.last_pos, self.pos, i as f32 / count as f32);
                     self.trail_images.push(Self::make_trail_group(
                         pos, 
                         trail.clone(), 
@@ -274,7 +274,7 @@ impl CursorManager {
         });
 
         // update ripples
-        let time = self.time.as_millis64();
+        let time = self.time.as_millis();
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
             ripple.visible()
@@ -322,13 +322,13 @@ impl CursorManager {
         } else {
             list.push(Circle::new(
                 self.color,
-                -f64::MAX,
+                -f32::MAX,
                 self.pos,
                 radius * self.settings.cursor_scale,
                 if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
                         self.border_color,
-                        self.settings.cursor_border as f64
+                        self.settings.cursor_border
                     ))
                 } else { None }
             ));
@@ -349,7 +349,7 @@ impl CursorManager {
     fn add_ripple(&mut self) {
         let mut group = TransformGroup::new(self.pos, 1000.0).alpha(0.0).border_alpha(1.0);
         let duration = 500.0;
-        let time = self.time.elapsed().as_secs_f64() * 1000.0;
+        let time = self.time.as_millis();
 
         // if let Some(mut ripple) = self.ripple_image.clone() {
 
@@ -394,7 +394,7 @@ impl CursorManager {
     }
 
 
-    fn make_trail_group(pos: Vector2, mut trail: Image, start: f64, duration: f64, scale:Vector2, time: f64) -> TransformGroup {
+    fn make_trail_group(pos: Vector2, mut trail: Image, start: f32, duration: f32, scale:Vector2, time: f32) -> TransformGroup {
         trail.scale = scale;
         let mut g = TransformGroup::new(pos, trail.depth).alpha(1.0).border_alpha(0.0);
         g.transforms.push(Transformation::new(
@@ -437,7 +437,7 @@ impl CursorManager {
     pub fn show_system_cursor(show: bool) {
         Self::add_event(CursorEvent::ShowSystemCursor(show));
     }
-    pub fn set_ripple_override(radius: Option<f64>) {
+    pub fn set_ripple_override(radius: Option<f32>) {
         Self::add_event(CursorEvent::OverrideRippleRadius(radius));
     }
 }
@@ -450,6 +450,6 @@ pub enum CursorEvent {
     SetPos(Vector2, bool),
     ShowSystemCursor(bool),
     SetVisible(bool),
-    OverrideRippleRadius(Option<f64>),
+    OverrideRippleRadius(Option<f32>),
 }
 

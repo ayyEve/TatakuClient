@@ -24,7 +24,7 @@ impl PerformanceElement {
                 Color::BLACK,
                 0.0,
                 Vector2::ZERO,
-                30,
+                30.0,
                 crate::format_float(number, 2),
                 get_font()
             ).measure_text()
@@ -76,7 +76,7 @@ impl InnerUIElement for PerformanceElement {
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 0.0,
                 pos_offset - self.bounds_size.x_portion(),
-                30 * scale.y as u32,
+                30.0 * scale.y,
                 format!("{:.2}", self.perf),
                 get_font()
             );

@@ -341,7 +341,7 @@ impl OsuReplay {
 
             for f in replay_frames.iter() {
                 // check mouse pos
-                let mouse_pos = Vector2::new(f.x as f64, f.y as f64);
+                let mouse_pos = Vector2::new(f.x, f.y);
                 if last_mouse_pos != mouse_pos {
                     last_mouse_pos = mouse_pos;
                     replay.frames.push((f.time as f32, ReplayFrame::MousePos(f.x, f.y)));

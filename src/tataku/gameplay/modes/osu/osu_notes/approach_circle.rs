@@ -1,14 +1,14 @@
 use crate::prelude::*;
 
-const APPROACH_CIRCLE_MULT:f64 = 4.0;
+const APPROACH_CIRCLE_MULT:f32 = 4.0;
 
 pub struct ApproachCircle {
     image: Option<Image>,
     base_pos: Vector2,
     pos: Vector2,
-    radius: f64,
+    radius: f32,
     scaling_helper: Arc<ScalingHelper>,
-    depth: f64,
+    depth: f32,
     alpha: f32,
     color: Color,
 
@@ -17,7 +17,7 @@ pub struct ApproachCircle {
     time_diff: f32,
 }
 impl ApproachCircle {
-    pub fn new(base_pos:Vector2, time: f32, radius:f64, preempt:f32, depth:f64, color: Color, scaling_helper: Arc<ScalingHelper>) -> Self {
+    pub fn new(base_pos:Vector2, time: f32, radius:f32, preempt:f32, depth:f32, color: Color, scaling_helper: Arc<ScalingHelper>) -> Self {
         Self {
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),
@@ -33,7 +33,7 @@ impl ApproachCircle {
             time_diff: time
         }
     }
-    pub fn scale_changed(&mut self, new_scale: Arc<ScalingHelper>, new_radius: f64) {
+    pub fn scale_changed(&mut self, new_scale: Arc<ScalingHelper>, new_radius: f32) {
         self.scaling_helper = new_scale;
         self.pos = self.scaling_helper.scale_coords(self.base_pos);
         self.radius = new_radius;
@@ -53,8 +53,8 @@ impl ApproachCircle {
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
-        let lerp_amount = self.time_diff as f64 / self.preempt as f64;
-        let scale = f64::lerp(1.0, APPROACH_CIRCLE_MULT, lerp_amount); // TODO: allow other lerps?
+        let lerp_amount = self.time_diff / self.preempt;
+        let scale = f32::lerp(1.0, APPROACH_CIRCLE_MULT, lerp_amount); // TODO: allow other lerps?
 
         if let Some(mut tex) = self.image.clone() {
             tex.depth = self.depth - 100.0;

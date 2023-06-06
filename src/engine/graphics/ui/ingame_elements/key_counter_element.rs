@@ -38,7 +38,7 @@ impl InnerUIElement for KeyCounterElement {
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE);
         Rectangle::bounds_only(
             -box_size,
-            Vector2::new(box_size.x, box_size.y * self.counter.key_order.len() as f64)
+            Vector2::new(box_size.x, box_size.y * self.counter.key_order.len() as f32)
         )
     }
     
@@ -72,7 +72,7 @@ impl InnerUIElement for KeyCounterElement {
         //TODO: center properly somehow
         for i in 0..self.counter.key_order.len() {
             let info = &self.counter.keys[&self.counter.key_order[i]];
-            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f64);
+            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f32);
             let box_width;
 
             if let Some(btn) = &self.button_image {
@@ -107,7 +107,7 @@ impl InnerUIElement for KeyCounterElement {
                 Color::WHITE,
                 -100.1,
                 pos,
-                (20.0 * scale.x) as u32,
+                20.0 * scale.x,
                 if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
                 font.clone()
             );
@@ -115,7 +115,7 @@ impl InnerUIElement for KeyCounterElement {
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10
             if text_size.x >= max_width {
-                text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
+                text.font_size = (20.0 * scale.x * max_width / text_size.x) as f32;
             }
 
             text.center_text(&Rectangle::bounds_only(pos, box_size));

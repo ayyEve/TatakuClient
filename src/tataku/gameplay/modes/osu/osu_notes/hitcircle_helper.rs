@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
-
 /// needed to fix text hitcircle skins
-const TEXT_SCALE:f64 = 0.8;
+const TEXT_SCALE:f32 = 0.8;
 
 #[derive(Clone)]
 pub struct HitCircleImageHelper {
@@ -16,7 +15,7 @@ pub struct HitCircleImageHelper {
 
     pub scaling_helper: Arc<ScalingHelper>,
     alpha: f32,
-    depth: f64,
+    depth: f32,
     color: Color,
     
     /// combo num text cache
@@ -26,7 +25,7 @@ pub struct HitCircleImageHelper {
     skin_settings: Arc<SkinSettings>,
 }
 impl HitCircleImageHelper {
-    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, depth: f64, color: Color, combo_num: u16) -> Self {
+    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, depth: f32, color: Color, combo_num: u16) -> Self {
         let skin_settings = SkinManager::current_skin_config().await;
         
         let mut s = Self {
@@ -81,7 +80,7 @@ impl HitCircleImageHelper {
         ).await.ok();
 
         if let Some(combo) = &mut self.combo_image {
-            combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f64));
+            combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             combo.scale = Vector2::ONE * self.scaling_helper.scaled_cs * TEXT_SCALE;
             combo.center_text(&rect);
             self.combo_text = None;
@@ -92,7 +91,7 @@ impl HitCircleImageHelper {
                 Color::BLACK,
                 self.depth - 0.0000001,
                 self.pos,
-                radius as u32,
+                radius,
                 self.combo_num.to_string(),
                 get_font()
             );
@@ -124,12 +123,12 @@ impl HitCircleImageHelper {
         let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         
         if let Some(image) = &mut self.combo_image {
-            image.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f64));
+            image.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             image.scale = scale * TEXT_SCALE;
             image.center_text(&rect);
         }
         if let Some(text) = &mut self.combo_text {
-            text.font_size = FontSize(radius as f32);
+            text.font_size = radius as f32;
             text.center_text(&rect)
         }
 
@@ -222,7 +221,7 @@ impl HitCircleImageHelper {
         
 
         // make it ripple and add it to the list
-        circle_group.ripple_scale_range(0.0, 500.0, time as f64, scale, None, Some(0.5));
+        circle_group.ripple_scale_range(0.0, 500.0, time, scale, None, Some(0.5));
         circle_group
     }
 }

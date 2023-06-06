@@ -9,10 +9,10 @@ pub const DIRECT_ITEM_SIZE:Vector2 = Vector2::new(500.0, 80.0);
 
 // download item is a queue item
 const DOWNLOAD_ITEM_SIZE:Vector2 = Vector2::new(300.0, 40.0);
-const DOWNLOAD_ITEM_YMARGIN:f64 = 30.0;
-const DOWNLOAD_ITEM_YOFFSET:f64 = SEARCH_BAR_HEIGHT + 10.0;
-const DOWNLOAD_ITEM_XOFFSET:f64 = 5.0;
-const SEARCH_BAR_HEIGHT:f64 = 50.0;
+const DOWNLOAD_ITEM_YMARGIN:f32 = 30.0;
+const DOWNLOAD_ITEM_YOFFSET:f32 = SEARCH_BAR_HEIGHT + 10.0;
+const DOWNLOAD_ITEM_XOFFSET:f32 = 5.0;
+const SEARCH_BAR_HEIGHT:f32 = 50.0;
 
 //TODO: properly implement this lol
 const MAX_CONCURRENT_DOWNLOADS:usize = 5;
@@ -35,7 +35,7 @@ pub struct DirectMenu {
     old_audio: Option<Option<(String, f32)>>,
 
     /// search input
-    search_bar: TextInput<Font2, Text>,
+    search_bar: TextInput,
 
     /// current search api
     current_api: Box<dyn DirectApi>,
@@ -63,7 +63,7 @@ impl DirectMenu {
             selected: None,
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "",get_font()),
+            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "", get_font()),
             current_api: Box::new(OsuDirect::new()),
 
             mode,
@@ -187,21 +187,21 @@ impl AsyncMenu<Game> for DirectMenu {
         }
     }
 
-    async fn draw(&mut self, args:piston::RenderArgs, list: &mut RenderableCollection) {
-        self.scroll_area.draw(args, Vector2::ZERO, 0.0, list);
-        self.search_bar.draw(args, Vector2::ZERO, -90.0, list);
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.scroll_area.draw(Vector2::ZERO, 0.0, list);
+        self.search_bar.draw(Vector2::ZERO, -90.0, list);
 
         // draw download items
         if self.downloading.len() > 0 {
 
-            let x = args.window_size[0] - (DOWNLOAD_ITEM_SIZE.x + DOWNLOAD_ITEM_XOFFSET);
+            let x = self.window_size.x - (DOWNLOAD_ITEM_SIZE.x + DOWNLOAD_ITEM_XOFFSET);
 
             // side bar background and border if hover
             list.push(Rectangle::new(
                 Color::WHITE,
                 3.0,
                 Vector2::new(x, DOWNLOAD_ITEM_YOFFSET),
-                Vector2::new(DOWNLOAD_ITEM_SIZE.x, args.window_size[1] - DOWNLOAD_ITEM_YOFFSET * 2.0),
+                Vector2::new(DOWNLOAD_ITEM_SIZE.x, self.window_size.y - DOWNLOAD_ITEM_YOFFSET * 2.0),
                 Some(Border::new(Color::BLACK, 1.8))
             ));
             
@@ -224,7 +224,7 @@ impl AsyncMenu<Game> for DirectMenu {
                     Color::BLACK,
                     1.0,
                     pos + Vector2::new(0.0, 15.0),
-                    15,
+                    15.0,
                     format!("{} (Downloading)", i.title()),
                     font.clone()
                 ));
@@ -248,7 +248,7 @@ impl AsyncMenu<Game> for DirectMenu {
                     Color::BLACK,
                     1.0,
                     pos + Vector2::new(0.0, 15.0),
-                    15,
+                    15.0,
                     format!("{} (Waiting...)", i.title()),
                     font.clone()
                 ));
@@ -258,7 +258,7 @@ impl AsyncMenu<Game> for DirectMenu {
         }
     }
     
-    async fn on_scroll(&mut self, delta:f64, _game:&mut Game) {
+    async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {
         self.scroll_area.on_scroll(delta);
     }
 
@@ -290,17 +290,17 @@ impl AsyncMenu<Game> for DirectMenu {
     }
 
     async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
-        use piston::Key::*;
+        use Key::*;
         self.search_bar.on_key_press(key, mods);
         if key == Escape {return self.back(game).await}
 
 
         if mods.alt {
             let new_mode = match key {
-                D1 => Some("osu".to_owned()),
-                D2 => Some("taiko".to_owned()),
-                D3 => Some("catch".to_owned()),
-                D4 => Some("mania".to_owned()),
+                Key1 => Some("osu".to_owned()),
+                Key2 => Some("taiko".to_owned()),
+                Key3 => Some("catch".to_owned()),
+                Key4 => Some("mania".to_owned()),
                 _ => None
             };
 

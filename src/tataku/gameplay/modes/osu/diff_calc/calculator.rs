@@ -8,7 +8,7 @@ pub struct OsuDifficultyCalculator {
     notes: Vec<OsuDifficultyHitObject>,
 }
 impl OsuDifficultyCalculator {
-    fn calc_aim(&mut self, mods: &ModManager) -> TatakuResult<Vec<f64>> {
+    fn calc_aim(&mut self, mods: &ModManager) -> TatakuResult<Vec<f32>> {
         let mut start_bucket_time = self.notes.first().unwrap().time;
 
         let bucket_length = BUCKET_LENGTH * mods.get_speed();
@@ -138,7 +138,7 @@ impl DiffCalc for OsuDifficultyCalculator {
         let mut diff = Vec::new();
 
         for (&strain, &density) in aim.iter().zip(note_density.iter()) {
-            let strain_value = (strain as f32).powf(1.75);
+            let strain_value = strain.powf(1.75);
             let density_value = density;
 
             let combined = strain_value + density_value;

@@ -3,7 +3,7 @@ use super::super::prelude::*;
 
 pub struct ManiaNote {
     pos: Vector2,
-    relative_y: f64,
+    relative_y: f32,
     time: f32, // ms
     column: u8,
     color: Color,
@@ -15,7 +15,7 @@ pub struct ManiaNote {
     position_function: Arc<Vec<PositionPoint>>,
     position_function_index: usize,
 
-    sv_mult: f64,
+    sv_mult: f32,
 
     playfield: Arc<ManiaPlayfield>,
     note_image: Option<Image>,
@@ -25,9 +25,9 @@ pub struct ManiaNote {
 }
 impl ManiaNote {
     pub async fn new(
-        time:f32, column:u8, color: Color, x:f64, 
+        time:f32, column:u8, color: Color, x:f32, 
         
-        sv_mult: f64,
+        sv_mult: f32,
 
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
@@ -56,7 +56,7 @@ impl ManiaNote {
         }
     }
 
-    fn y_at(&mut self, time: f32) -> f64 {
+    fn y_at(&mut self, time: f32) -> f32 {
         let speed = self.sv_mult * if self.playfield.upside_down {-1.0} else {1.0};
 
         self.playfield.hit_y() - (self.relative_y - ManiaGame::pos_at(&self.position_function, time, &mut self.position_function_index)) * speed
@@ -71,8 +71,8 @@ impl HitObject for ManiaNote {
     async fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time);
     }
-    async fn draw(&mut self, args:RenderArgs, list: &mut RenderableCollection) {
-        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > args.window_size[1] as f64 { return }
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > 100000.0 { return } // || self.pos.y > args.window_size[1] as f64 { return }
         if self.hit { return }
         
         
@@ -130,7 +130,7 @@ impl ManiaHitObject for ManiaNote {
         self.hit_time = time;
     }
 
-    fn set_sv_mult(&mut self, sv: f64) {
+    fn set_sv_mult(&mut self, sv: f32) {
         self.sv_mult = sv;
     }
 

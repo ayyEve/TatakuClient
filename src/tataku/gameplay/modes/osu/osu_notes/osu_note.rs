@@ -22,9 +22,9 @@ pub struct OsuNote {
     combo_num: u16,
 
     /// note depth
-    base_depth: f64,
+    base_depth: f32,
     /// note radius (scaled by cs and size)
-    radius: f64,
+    radius: f32,
     /// when the hitcircle should start being drawn
     time_preempt: f32,
     /// what is the scaling value? needed for approach circle
@@ -47,7 +47,7 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f64, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f32, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -112,14 +112,13 @@ impl HitObject for OsuNote {
         self.map_time = beatmap_time;
         self.approach_circle.update(beatmap_time, self.get_alpha());
         
-        let time = beatmap_time as f64;
         self.shapes.retain_mut(|shape| {
-            shape.update(time);
+            shape.update(beatmap_time);
             shape.visible()
         });
     }
 
-    async fn draw(&mut self, _args:RenderArgs, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             // shape.draw(list)
@@ -220,7 +219,7 @@ impl OsuHitObject for OsuNote {
             ));
 
             let duration = 500.0;
-            group.ripple(0.0, duration, time as f64, self.standard_settings.ripple_scale, true, None);
+            group.ripple(0.0, duration, time, self.standard_settings.ripple_scale, true, None);
 
             self.shapes.push(group);
         }

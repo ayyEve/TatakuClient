@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct HealthBarElement {
     common_game_settings: Arc<CommonGameplaySettings>,
-    health_ratio: f64,
+    health_ratio: f32,
     window_size: Arc<WindowSize>,
 
     healthbar_image: Option<Image>,
@@ -43,7 +43,7 @@ impl InnerUIElement for HealthBarElement {
     
     fn update(&mut self, manager: &mut IngameManager) {
         self.window_size = WindowSize::get();
-        self.health_ratio = manager.health.get_ratio() as f64
+        self.health_ratio = manager.health.get_ratio();
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
@@ -60,21 +60,21 @@ impl InnerUIElement for HealthBarElement {
                 list.push(bg);
             }
         
-            let snip = DrawState::default().scissor([
-                pos_offset.x as u32,
-                pos_offset.y as u32,
-                (bg_size.x * percent) as u32,
-                bg_size.y as u32
-            ]);
+            // let snip = DrawState::default().scissor([
+            //     pos_offset.x as u32,
+            //     pos_offset.y as u32,
+            //     (bg_size.x * percent) as u32,
+            //     bg_size.y as u32
+            // ]);
             fill.depth = 1.0;
             fill.pos = pos_offset;
             fill.set_size(bg_size);
-            fill.set_draw_state(Some(snip));
+            // fill.set_draw_state(Some(snip));
             list.push(fill);
 
         } else {
             let len = self.common_game_settings.healthbar_colors.len();
-            let index = ((len as f64 * percent) as usize).min(len - 1);
+            let index = ((len as f32 * percent) as usize).min(len - 1);
 
             // bg
             list.push(Rectangle::new(

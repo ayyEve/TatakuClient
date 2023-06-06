@@ -2,7 +2,7 @@ use crate::prelude::*;
 use chrono::{ Datelike, Timelike };
 
 /// how long do transitions between gamemodes last?
-const TRANSITION_TIME:u64 = 500;
+const TRANSITION_TIME:f32 = 500.0;
 
 pub struct Game {
     // engine things
@@ -26,7 +26,7 @@ pub struct Game {
     // transition
     transition: Option<GameState>,
     transition_last: Option<GameState>,
-    transition_timer: u64,
+    transition_timer: f32,
 
     // misc
     game_start: Instant,
@@ -71,7 +71,7 @@ impl Game {
             // transition
             transition: None,
             transition_last: None,
-            transition_timer: 0,
+            transition_timer: 0.0,
 
             // misc
             game_start: Instant::now(),
@@ -99,7 +99,7 @@ impl Game {
 
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
-        // GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
+        GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
         GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
 
         Self::load_theme(&self.settings.theme);
@@ -173,13 +173,14 @@ impl Game {
             while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
-                    GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
+                    // GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
                     
                     GameEvent::DragAndDrop(path) => self.handle_file_drop(path).await,
                     GameEvent::WindowClosed => { 
                         self.close_game(); 
                         return
                     }
+                    _ => {}
                 }
             }
 
@@ -252,13 +253,13 @@ impl Game {
                 draw_timer = now;
                 last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * DRAW_DAMPENING_FACTOR;
 
-                let window_size:[f64;2] = self.window_size.0.into();
-                let args = RenderArgs {
-                    ext_dt: 0.0,
-                    window_size,
-                    draw_size: [window_size[0] as u32, window_size[1] as u32],
-                };
-                self.draw(args).await;
+                // let window_size:[f64;2] = self.window_size.0.into();
+                // let args = RenderArgs {
+                //     ext_dt: 0.0,
+                //     window_size,
+                //     draw_size: [window_size[0] as u32, window_size[1] as u32],
+                // };
+                self.draw().await;
             }
 
         }
@@ -270,9 +271,9 @@ impl Game {
     }
 
     async fn update(&mut self, _delta:f64) {
-        let elapsed = self.game_start.elapsed().as_millis() as u64;
+        let elapsed = self.game_start.as_millis();
         // update the cursor
-        self.cursor_manager.update(elapsed as f64).await;
+        self.cursor_manager.update(elapsed).await;
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -522,8 +523,8 @@ impl Game {
         for d in dialog_list.iter_mut().rev() {
             // kb events
 
-            async_retain!(keys_down, k, !d.on_key_press(k, &mods, self).await);
-            async_retain!(keys_up, k, !d.on_key_release(k,  &mods, self).await);
+            async_retain!(keys_down, k, !d.on_key_press(*k, &mods, self).await);
+            async_retain!(keys_up, k, !d.on_key_release(*k,  &mods, self).await);
 
             async_retain!(controller_down, k, !d.on_controller_press(&k.0, k.1).await);
             async_retain!(controller_up, k, !d.on_controller_release(&k.0, k.1).await);
@@ -535,11 +536,11 @@ impl Game {
             if !text.is_empty() && d.on_text(&text).await {text = String::new()}
 
             // mouse events
-            if mouse_moved {d.on_mouse_move(&mouse_pos, self).await}
+            if mouse_moved {d.on_mouse_move(mouse_pos, self).await}
             if d.get_bounds().contains(mouse_pos) {
-                async_retain!(mouse_down, button, !d.on_mouse_down(&mouse_pos, &button, &mods, self).await);
-                async_retain!(mouse_up, button, !d.on_mouse_up(&mouse_pos, &button, &mods, self).await);
-                if scroll_delta != 0.0 && d.on_mouse_scroll(&scroll_delta, self).await {scroll_delta = 0.0}
+                async_retain!(mouse_down, button, !d.on_mouse_down(mouse_pos, *button, &mods, self).await);
+                async_retain!(mouse_up, button, !d.on_mouse_up(mouse_pos, *button, &mods, self).await);
+                if scroll_delta != 0.0 && d.on_mouse_scroll(scroll_delta, self).await {scroll_delta = 0.0}
 
                 mouse_down.clear();
                 mouse_up.clear();
@@ -691,7 +692,7 @@ impl Game {
 
             GameState::None => {
                 // might be transitioning
-                if self.transition.is_some() && elapsed - self.transition_timer > TRANSITION_TIME / 2 {
+                if self.transition.is_some() && elapsed - self.transition_timer > TRANSITION_TIME / 2.0 {
 
                     let trans = std::mem::take(&mut self.transition);
                     self.queue_state_change(trans.unwrap());
@@ -818,9 +819,9 @@ impl Game {
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
     }
 
-    async fn draw(&mut self, args: RenderArgs) {
+    async fn draw(&mut self) {
         // let timer = Instant::now();
-        let elapsed = self.game_start.elapsed().as_millis() as u64;
+        let elapsed = self.game_start.as_millis();
 
         let mut render_queue = RenderableCollection::new();
 
@@ -837,21 +838,21 @@ impl Game {
 
         // mode
         match &mut self.current_state {
-            GameState::Ingame(manager) => manager.draw(args, &mut render_queue).await,
+            GameState::Ingame(manager) => manager.draw(&mut render_queue).await,
             GameState::InMenu(menu) => {
-                menu.draw(args, &mut render_queue).await;
+                menu.draw(&mut render_queue).await;
                 if menu.get_name() == "main_menu" {
                     draw_bg_dim = false;
                 }
             },
-            GameState::Spectating(manager) => manager.draw(args, &mut render_queue).await,
+            GameState::Spectating(manager) => manager.draw(&mut render_queue).await,
             _ => {}
         }
 
         if draw_bg_dim {
             render_queue.push(Rectangle::new(
                 Color::BLACK.alpha(self.settings.background_dim),
-                f64::MAX - 1.0,
+                f32::MAX - 1.0,
                 Vector2::ZERO,
                 self.window_size.0,
                 None
@@ -859,18 +860,18 @@ impl Game {
         }
 
         // transition
-        if self.transition_timer > 0 && elapsed - self.transition_timer < TRANSITION_TIME {
+        if self.transition_timer > 0.0 && elapsed - self.transition_timer < TRANSITION_TIME {
             // probably transitioning
 
             // draw fade in rect
-            let diff = elapsed as f64 - self.transition_timer as f64;
+            let diff = elapsed - self.transition_timer;
 
-            let mut alpha = diff / (TRANSITION_TIME as f64 / 2.0);
-            if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME as f64}
+            let mut alpha = diff / (TRANSITION_TIME / 2.0);
+            if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME}
 
             render_queue.push(Rectangle::new(
-                [0.0, 0.0, 0.0, alpha as f32].into(),
-                -f64::MAX,
+                Color::new(0.0, 0.0, 0.0, alpha),
+                -f32::MAX,
                 Vector2::ZERO,
                 self.window_size.0,
                 None
@@ -878,7 +879,7 @@ impl Game {
 
             // draw old mode
             match (&self.current_state, &mut self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(args, &mut render_queue).await,
+                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
                 _ => {}
             }
         }
@@ -886,15 +887,15 @@ impl Game {
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
         let mut current_depth = -50_000_000.0;
-        const DIALOG_DEPTH_DIFF:f64 = 50.0;
+        const DIALOG_DEPTH_DIFF:f32 = 50.0;
         for d in dialog_list.iter_mut() { //.rev() {
-            d.draw(&args, &current_depth, &mut render_queue).await;
+            d.draw(current_depth, &mut render_queue).await;
             current_depth += DIALOG_DEPTH_DIFF;
         }
         self.dialogs = dialog_list;
 
         // volume control
-        self.volume_controller.draw(args, &mut render_queue).await;
+        self.volume_controller.draw(&mut render_queue).await;
 
         // draw fps's
         self.fps_display.draw(&mut render_queue);
@@ -954,8 +955,8 @@ impl Game {
         self.dialogs.push(dialog)
     }
 
-    pub async fn handle_file_drop(&mut self, path: PathBuf) {
-        let path = path.as_path();
+    pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
+        let path = path.as_ref();
         let filename = path.file_name();
 
         if let Some(ext) = path.extension() {
@@ -1098,12 +1099,12 @@ impl Default for GameState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum GameEvent {
     WindowClosed,
-    WindowEvent(piston::Event),
-    DragAndDrop(PathBuf),
+    WindowEvent(GameWindowEvent),
+    DragAndDrop(String),
     /// controller event, controller name
     #[allow(unused)]
-    ControllerEvent(piston::Event, String)
+    ControllerEvent(GameWindowEvent, String)
 }

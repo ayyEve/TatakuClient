@@ -205,7 +205,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         let mut add = true;
 
         if let Some(category) = setting.category {
-            lines.push(format!("list.push(Box::new(MenuSection::<Font2, Text>::new(p, 80.0, \"{category}\", font.clone())));"));
+            lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", font.clone())));"));
         }
 
         // comment what this item is
@@ -216,7 +216,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::Bool => {
                 let w = float(setting.width.unwrap_or(600.0));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = Checkbox::<Font2, Text>::new(p, {size}, \"{text}\", self.{val}, font.clone());"));
+                lines.push(format!("let mut i = Checkbox::new(p, {size}, \"{text}\", self.{val}, font.clone());"));
 
                 thingy!(val2, val, bool);
             }
@@ -242,7 +242,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 };
 
                 // TODO: snapping?
-                lines.push(format!("let mut i = Slider::<Font2, Text>::new(p, {size}, \"{text}\", self.{val} as f64, {range}, None, font.clone());"));
+                lines.push(format!("let mut i = Slider::new(p, {size}, \"{text}\", self.{val} as f64, {range}, None, font.clone());"));
 
                 thingy!(val2, val, t, Slider);
             }
@@ -252,7 +252,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
                 
-                lines.push(format!("let mut i = TextInput::<Font2, Text>::new(p, {size}, \"{text}\", &self.{val}, font.clone());"));
+                lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{val}, font.clone());"));
                     
                 if setting.password_input == Some(true) {
                     lines.push("i.is_password = true;".to_owned());
@@ -265,7 +265,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::Key => {
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = KeyButton::<Font2, Text>::new(p, {size}, self.{val}, \"{text}\", font.clone());"));
+                lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{val}, \"{text}\", font.clone());"));
 
                 thingy!(val2, val, Key);
             }
@@ -273,7 +273,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             // dropdown menu (obviously)
             SettingsType::Dropdown(enum_name) => {
                 let width = float(setting.width.unwrap_or(WIDTH));
-                let font_size = "FontSize::new(20.0).unwrap()";
+                let font_size = "20.0";
             
                 let e = if let Some(s) = setting.dropdown_value.clone() {
                     format!("{enum_name}::{s}(self.{val}.clone())")
@@ -281,7 +281,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                     format!("self.{val}.clone()")
                 };
 
-                lines.push(format!("let mut i = Dropdown::<{enum_name}, Font2, Text>::new(p, {width}, {font_size}, \"{text}\", Some({e}), font.clone());"));
+                lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(p, {width}, {font_size}, \"{text}\", Some({e}), font.clone());"));
 
                 if let Some(override_) = setting.dropdown_value {
                     thingy!(val2, val, enum_name, override_, Dropdown);
@@ -303,7 +303,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::Button => {
                 let w = float(setting.width.unwrap_or(600.0));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = MenuButton::<Font2, Text>::new(p, {size}, \"{text}\", font.clone());"));
+                lines.push(format!("let mut i = MenuButton::new(p, {size}, \"{text}\", font.clone());"));
                 if let Some(action) = setting.action {
                     lines.push(format!("i.on_click = Arc::new({action});"));
                 }

@@ -114,7 +114,7 @@ impl Curve {
     
         if length_next != length_previous {
             let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1) 
-                * ((length - length_previous) / (length_next - length_previous)) as f64;
+                * ((length - length_previous) / (length_next - length_previous)) as f32;
             res = res + n;
         }
 
@@ -172,7 +172,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
                 let mut curve = Vec::new();
                 for k in 0..=SLIDER_DETAIL_LEVEL {
-                    curve.push(catmull_rom(v1, v2, v3, v4, k as f64 / SLIDER_DETAIL_LEVEL as f64));
+                    curve.push(catmull_rom(v1, v2, v3, v4, k as f32 / SLIDER_DETAIL_LEVEL as f32));
                 }
                 path.push(CurveSegment::Catmull { curve })
             }
@@ -255,7 +255,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
             curve.push(a);
 
             for i in 0..segments {
-                let progress = i as f64 / segments as f64;
+                let progress = i as f32 / segments as f32;
                 let t = t_final * progress + t_initial * (1.0 - progress);
                 let new_point = circle_point(center, radius, t);
                 curve.push(new_point);
@@ -319,7 +319,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
     curve
 }
 
-fn catmull_rom(value1:Vector2, value2:Vector2, value3:Vector2, value4:Vector2, amount:f64) -> Vector2 {
+fn catmull_rom(value1:Vector2, value2:Vector2, value3:Vector2, value4:Vector2, amount:f32) -> Vector2 {
     let num = amount * amount;
     let num2 = amount * num;
     let mut result = Vector2::ZERO;

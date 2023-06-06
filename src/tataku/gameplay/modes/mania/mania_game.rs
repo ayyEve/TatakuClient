@@ -11,10 +11,10 @@
 use crate::prelude::*;
 use super::prelude::*;
 
-const FIELD_DEPTH:f64 = 110.0;
-const HIT_AREA_DEPTH: f64 = 99.9;
+const FIELD_DEPTH:f32 = 110.0;
+const HIT_AREA_DEPTH: f32 = 99.9;
 
-pub const MANIA_NOTE_DEPTH: f64 = 100.0;
+pub const MANIA_NOTE_DEPTH: f32 = 100.0;
 
 
 pub struct ManiaGame {
@@ -31,7 +31,7 @@ pub struct ManiaGame {
     column_states: Vec<bool>,
 
     end_time: f32,
-    sv_mult: f64,
+    sv_mult: f32,
     column_count: u8,
 
     auto_helper: ManiaAutoHelper,
@@ -68,7 +68,7 @@ impl ManiaGame {
         if slider_velocities.is_empty() {
             position_function.push(PositionPoint { 
                 time: self.end_time,
-                position: self.end_time as f64,
+                position: self.end_time,
             });
 
             self.position_function = Arc::new(position_function);
@@ -102,7 +102,7 @@ impl ManiaGame {
 
             let dt = sv.time - last_pos.time;
             
-            let dy = last_velocity * dt as f64;
+            let dy = last_velocity * dt;
 
             let y = last_pos.position;
 
@@ -189,7 +189,7 @@ impl ManiaGame {
     }
 
     
-    pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f64 {
+    pub fn pos_at(position_function: &Arc<Vec<PositionPoint>>, time: f32, current_index: &mut usize) -> f32 {
         let (index, b) = position_function.iter().enumerate().skip(*current_index).find(|(_, p)| time < p.time)
             .unwrap_or_else(|| {
                 (position_function.len() - 1, position_function.last().unwrap())
@@ -199,7 +199,7 @@ impl ManiaGame {
         if index == 0 { return 0.0 }; // bad fix while neb fixes this
         let a = &position_function[index - 1];
 
-        f64::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f64)
+        f32::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f32)
     }
 
 
@@ -216,14 +216,14 @@ impl ManiaGame {
 
         let window_size = playfield.window_size;
         
-        let total_width = column_count as f64 * playfield.column_width;
+        let total_width = column_count as f32 * playfield.column_width;
         let x_offset = playfield.x_offset + (window_size.x - total_width) / 2.0;
 
         let pos = Vector2::new(
             x_offset + playfield.x_offset + if game_settings.judgements_per_column {
-                (playfield.column_width + playfield.column_spacing) * column as f64 + playfield.column_width / 2.0
+                (playfield.column_width + playfield.column_spacing) * column as f32 + playfield.column_width / 2.0
             } else {
-            ((playfield.column_width + playfield.column_spacing) * column_count as f64) / 2.0
+            ((playfield.column_width + playfield.column_spacing) * column_count as f32) / 2.0
             },
 
             if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {window_size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
@@ -368,7 +368,7 @@ impl GameMode for ManiaGame {
 
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed as f64,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
@@ -397,7 +397,7 @@ impl GameMode for ManiaGame {
                 // add notes
                 for note in beatmap.notes.iter() {
                     // if metadata.mode == "mania" {
-                        let column = ((note.pos.x * s.column_count as f64 / 512.0).floor() as u8).min(column_count - 1);
+                        let column = ((note.pos.x * s.column_count as f32 / 512.0).floor() as u8).min(column_count - 1);
                         let x = s.playfield.col_pos(column);
                         // warn!("{}, {:?}", note.hitsound, note.hitsamples);
 
@@ -414,7 +414,7 @@ impl GameMode for ManiaGame {
                     // }
                 }
                 for hold in beatmap.holds.iter() {
-                    let column = (hold.pos.x * s.column_count as f64 / 512.0).floor() as u8;
+                    let column = (hold.pos.x * s.column_count as f32 / 512.0).floor() as u8;
                     let x = s.playfield.col_pos(column);
                     s.columns[column as usize].push(Box::new(ManiaHold::new(
                         hold.time,
@@ -453,7 +453,7 @@ impl GameMode for ManiaGame {
 
                 s.integrate_velocity(beatmap.timing_points.iter().filter(|b| b.is_inherited()).map(|&b| SliderVelocity {
                     time: b.time,
-                    slider_velocity: 100.0 / (-b.beat_length as f64) 
+                    slider_velocity: 100.0 / (-b.beat_length) 
                 }).collect());
 
                 s
@@ -485,7 +485,7 @@ impl GameMode for ManiaGame {
                     
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed as f64,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
@@ -568,7 +568,7 @@ impl GameMode for ManiaGame {
                     
                     end_time: 0.0,
 
-                    sv_mult: map_preferences.scroll_speed as f64,
+                    sv_mult: map_preferences.scroll_speed,
                     column_count,
 
                     auto_helper,
@@ -785,7 +785,7 @@ impl GameMode for ManiaGame {
         Vec::new()
     }
     
-    async fn draw(&mut self, args:RenderArgs, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let window_size = self.playfield.window_size;
 
         // playfield
@@ -833,11 +833,11 @@ impl GameMode for ManiaGame {
 
         // draw notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.draw(args, list).await }
+            for note in col.iter_mut() { note.draw(list).await }
         }
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(args, list) }
+        for tb in self.timing_bars.iter_mut() { tb.draw(list) }
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
@@ -890,7 +890,7 @@ impl GameMode for ManiaGame {
             let step = beatmap.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
-            let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f64 - self.playfield.column_spacing;
+            let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f32 - self.playfield.column_spacing;
 
             loop {
                 // if theres a bpm change, adjust the current time to that of the bpm change
@@ -984,13 +984,13 @@ impl GameMode for ManiaGame {
 #[async_trait]
 impl GameModeInput for ManiaGame {
 
-    async fn key_down(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta as f64;
+                self.sv_mult += self.game_settings.sv_change_delta as f32;
             } else {
-                self.sv_mult -= self.game_settings.sv_change_delta as f64;
+                self.sv_mult -= self.game_settings.sv_change_delta as f32;
             }
             self.map_preferences.scroll_speed = self.sv_mult as f32;
 
@@ -1015,7 +1015,7 @@ impl GameModeInput for ManiaGame {
         Some(ReplayFrame::Press(game_key))
     }
     
-    async fn key_up(&mut self, key:piston::Key) -> Option<ReplayFrame> {
+    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
         let mut game_key = KeyPress::RightDon;
 
         let keys = &self.game_settings.keys[(self.column_count-1) as usize];
@@ -1126,18 +1126,18 @@ impl ManiaPlayfield {
         }
     }
 
-    pub fn hit_y(&self) -> f64 {
+    pub fn hit_y(&self) -> f32 {
         if self.upside_down {
             self.hit_pos
         } else {
             self.window_size.y - self.hit_pos
         }
     }
-    pub fn col_pos(&self, col: u8) -> f64 {
-        let total_width = self.col_count as f64 * self.column_width;
+    pub fn col_pos(&self, col: u8) -> f32 {
+        let total_width = self.col_count as f32 * self.column_width;
         let x_offset = self.x_offset + (self.window_size.x - total_width) / 2.0;
 
-        x_offset + self.x_offset + (self.column_width + self.column_spacing) * col as f64
+        x_offset + self.x_offset + (self.column_width + self.column_spacing) * col as f32
     }
 }
 

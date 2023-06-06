@@ -1,5 +1,3 @@
-
-
 use crate::prelude::*;
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
@@ -31,7 +29,7 @@ impl InnerUIElement for JudgementCounterElement {
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE);
         Rectangle::bounds_only(
             -box_size,
-            Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f64)
+            Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f32)
         )
     }
     
@@ -62,7 +60,7 @@ impl InnerUIElement for JudgementCounterElement {
         let base_pos = pos_offset - BOX_SIZE;
 
         for (i, (txt, count)) in self.hit_counts.iter().enumerate() {
-            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f64);
+            let pos = base_pos + Vector2::new(0.0, box_size.y * i as f32);
             let box_width;
 
             if let Some(mut btn) = self.button_image.clone() {
@@ -93,14 +91,14 @@ impl InnerUIElement for JudgementCounterElement {
                 Color::WHITE,
                 -100.1,
                 pos,
-                (20.0 * scale.y) as u32,
+                20.0 * scale.y,
                 if count == &0 {txt.clone()} else {format!("{}", count)},
                 font.clone()
             );
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10
             if text_size.x >= max_width {
-                text.font_size = FontSize::new((20.0 * scale.x * max_width / text_size.x) as f32).unwrap();
+                text.font_size = (20.0 * scale.x * max_width / text_size.x) as f32;
             }
             text.center_text(&Rectangle::bounds_only(pos, box_size));
 

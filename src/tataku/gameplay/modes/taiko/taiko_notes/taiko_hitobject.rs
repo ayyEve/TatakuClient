@@ -63,7 +63,7 @@ pub struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    pub async fn new(settings: &Arc<TaikoSettings>, depth: f64, hit_type: HitType, finisher: bool) -> Option<Self> {
+    pub async fn new(settings: &Arc<TaikoSettings>, depth: f32, hit_type: HitType, finisher: bool) -> Option<Self> {
         let color = match hit_type {
             HitType::Don => settings.don_color,
             HitType::Kat => settings.kat_color,
@@ -104,8 +104,8 @@ impl HitCircleImageHelper {
     }
 
     pub fn set_pos(&mut self, pos: Vector2) {
-        self.circle.pos  = truncate(pos);
-        self.overlay.pos = truncate(pos);
+        self.circle.pos  = pos; // truncate(pos);
+        self.overlay.pos = pos; // truncate(pos);
     }
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         list.push(self.circle.clone());
@@ -128,9 +128,9 @@ impl HitCircleImageHelper {
 
 
 
-fn truncate(v: Vector2) -> Vector2 {
-    Vector2::new(
-        v.x.trunc(),
-        v.y.trunc()
-    )
-}
+// fn truncate(v: Vector2) -> Vector2 {
+//     Vector2::new(
+//         v.x.trunc(),
+//         v.y.trunc()
+//     )
+// }

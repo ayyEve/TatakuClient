@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 
-pub const LEADERBOARD_PADDING:f64 = 100.0;
+pub const LEADERBOARD_PADDING:f32 = 100.0;
 pub const LEADERBOARD_POS:Vector2 = Vector2::new(10.0, LEADERBOARD_PADDING);
 pub const LEADERBOARD_ITEM_SIZE:Vector2 = Vector2::new(200.0, 50.0);
 
@@ -15,7 +15,7 @@ pub struct LeaderboardItem {
     tag: String,
 
     score: IngameScore,
-    font: Font2,
+    font: Font,
 
     score_mods: String,
 
@@ -66,7 +66,7 @@ impl ScrollableItem for LeaderboardItem {
         self.theme.update();
     }
 
-    fn draw(&mut self, _args:RenderArgs, pos_offset:Vector2, parent_depth:f64, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         const PADDING:Vector2 = Vector2::new(5.0, 5.0);
 
         let now = chrono::Utc::now().timestamp() as u64;
@@ -108,7 +108,7 @@ impl ScrollableItem for LeaderboardItem {
         } else {
             // bounding rect
             list.push(Rectangle::new(
-                [0.2, 0.2, 0.2, 1.0].into(),
+                Color::new(0.2, 0.2, 0.2, 1.0),
                 parent_depth + 5.0,
                 self.pos + pos_offset,
                 LEADERBOARD_ITEM_SIZE * self.ui_scale,
@@ -122,7 +122,7 @@ impl ScrollableItem for LeaderboardItem {
             text_color,
             parent_depth + 4.0,
             self.pos + pos_offset + PADDING * self.ui_scale,
-            (15.0 * self.ui_scale.y) as u32,
+            15.0 * self.ui_scale.y,
             format!("{}: {}", self.score.username, crate::format_number(self.score.score.score)),
             self.font.clone()
         ));
@@ -132,7 +132,7 @@ impl ScrollableItem for LeaderboardItem {
             text_color,
             parent_depth + 4.0,
             self.pos + pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * self.ui_scale,
-            (12.0 * self.ui_scale.y) as u32,
+            12.0 * self.ui_scale.y,
             format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods),
             self.font.clone()
         ));
