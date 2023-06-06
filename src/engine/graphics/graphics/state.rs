@@ -5,6 +5,8 @@ use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer
 
 const LAYER_COUNT:u32 = 10;
 
+pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
+
 pub struct GraphicsState {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -25,7 +27,7 @@ pub struct GraphicsState {
     // texture_bind_group: wgpu::BindGroup,
     projection_matrix_bind_group: wgpu::BindGroup,
     projection_matrix_buffer: wgpu::Buffer,
-    texture_bind_group_layout: wgpu::BindGroupLayout,
+    // texture_bind_group_layout: wgpu::BindGroupLayout,
 
     sampler: wgpu::Sampler,
 
@@ -33,7 +35,7 @@ pub struct GraphicsState {
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
-    pub async fn new (window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
+    pub async fn new(window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
         let window_size = settings.window_size;
         let window_size = Vector2::new(window_size[0], window_size[1]);
 
@@ -60,7 +62,7 @@ impl GraphicsState {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY,
+                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                 // WebGL doesn't support all of wgpu's features, so if
                 // we're building for the web we'll have to disable some.
                 limits: if cfg!(target_arch = "wasm32") {
@@ -98,31 +100,6 @@ impl GraphicsState {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader.wgsl").into()),
         });
-
-
-        // let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        //     label: Some("Texture/Sampler bind group layout"),
-        //     entries: &[
-        //         wgpu::BindGroupLayoutEntry {
-        //             binding: 0,
-        //             visibility: wgpu::ShaderStages::FRAGMENT,
-        //             ty: wgpu::BindingType::Texture {
-        //                 multisampled: false,
-        //                 view_dimension: wgpu::TextureViewDimension::D2Array,
-        //                 sample_type: wgpu::TextureSampleType::Float { filterable: true },
-        //             },
-        //             count: None,
-        //         },
-        //         wgpu::BindGroupLayoutEntry {
-        //             binding: 1,
-        //             visibility: wgpu::ShaderStages::FRAGMENT,
-        //             // This should match the filterable field of the
-        //             // corresponding Texture entry above.
-        //             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-        //             count: None,
-        //         },
-        //     ]
-        // });
         
         let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
@@ -132,8 +109,7 @@ impl GraphicsState {
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        // view_dimension: wgpu::TextureViewDimension::D2,
+                        view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: false,
                     },
                     // count: None,
@@ -189,11 +165,6 @@ impl GraphicsState {
                 label: Some("diffuse_bind_group"),
             }
         );
-        
-        
-
-        // let x = WgpuTexture::load_texture(&device, &queue, &texture_bind_group_layout);
-
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
@@ -249,7 +220,6 @@ impl GraphicsState {
             address_mode_v: wgpu::AddressMode::ClampToBorder,
             address_mode_w: wgpu::AddressMode::ClampToBorder,
             mag_filter: wgpu::FilterMode::Linear,
-            // mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
@@ -287,10 +257,9 @@ impl GraphicsState {
             // texture_bind_group: atlas_texture.bind_group,
             projection_matrix_bind_group,
             projection_matrix_buffer,
-            texture_bind_group_layout
+            // texture_bind_group_layout
         };
         s.create_render_buffer();
-
         s
     }
 
@@ -311,9 +280,16 @@ impl GraphicsState {
     }
 
 
+
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // don't draw if our draw surface has no area
+        if output.texture.width() == 0 || output.texture.height() == 0 {
+            return Ok(())
+        }
+
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -354,12 +330,17 @@ impl GraphicsState {
     fn create_projection(window_size: Vector2) -> Matrix {
         let sx = (2.0 / window_size.x) as f32;
         let sy = (-2.0 / window_size.y) as f32;
+
+        let far = MAX_DEPTH;
+        let near = -far;
+
+        let depth_range = 1.0 / (far - near);
         
         [
             [sx, 0.0, 0.0, 0.0],
             [0.0, sy, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [-1.0, 1.0, 0.0, 1.0]
+            [0.0, 0.0, depth_range, 0.0],
+            [-1.0, 1.0, -near * depth_range, 1.0]
         ].into()
     }
 
@@ -400,7 +381,7 @@ impl GraphicsState {
             
             let view = texture.create_view(&wgpu::TextureViewDescriptor {
                 label: Some("pain and suffering"),
-                dimension: Some(TextureViewDimension::D2Array),
+                dimension: Some(TextureViewDimension::D2),
                 base_array_layer: 0,
                 // array_layer_count: Some(3),
 
@@ -682,39 +663,56 @@ impl GraphicsState {
         rect: [f32; 4],
         depth: f32,
         color: Color,
+        h_flip: bool,
+        v_flip: bool,
         transform: Matrix
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
-        let depth = 0.0;
+        let depth = Self::map_depth(depth);
         
         let [x, y, w, h] = rect;
         let color = color.into();
 
+        
+        let mut tl = tex.uvs.tl.into();
+        let mut tr = tex.uvs.tr.into();
+        let mut bl = tex.uvs.bl.into();
+        let mut br = tex.uvs.br.into();
+
+        if h_flip {
+            std::mem::swap(&mut tl, &mut tr);
+            std::mem::swap(&mut bl, &mut br);
+        }
+        if v_flip {
+            std::mem::swap(&mut tl, &mut bl);
+            std::mem::swap(&mut tr, &mut br);
+        }
+
         reserved.copy_in(&mut [
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
-                tex_coords: tex.uvs.tl.into(),
+                tex_coords: tl,
                 tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
-                tex_coords: tex.uvs.tr.into(),
+                tex_coords: tr,
                 tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
-                tex_coords: tex.uvs.bl.into(),
+                tex_coords: bl,
                 tex_index: tex.layer as i32,
                 color
             },
             Vertex {
                 //     .position = position + (size * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
-                tex_coords: tex.uvs.br.into(),
+                tex_coords: br,
                 tex_index: tex.layer as i32,
                 color
             }
@@ -736,7 +734,7 @@ impl GraphicsState {
         transform: Matrix
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
-        let depth = 0.0;
+        let depth = Self::map_depth(depth);
 
         let tex_coords = [0.0, 0.0];
         let tex_index = -1;
@@ -798,66 +796,80 @@ impl GraphicsState {
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
-        self.tesselate_polygon(points, depth, color, transform);
+        self.tesselate_polygon(points, depth, color, transform, border);
     }
 
     pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix) {
-        return; 
-
-        let resolution = 2;
-        let n = resolution * 2;
+        let points = vec![Vector2::new(line[0], line[1]), Vector2::new(line[2], line[3])].into_iter();
+        self.tesselate_polygon(points, depth, color, transform, Some(Border::new(color, thickness)));
         
-        let radius = thickness;
-        let (x1, y1, x2, y2) = (line[0], line[1], line[2], line[3]);
-        let (dx, dy) = (x2 - x1, y2 - y1);
-        let w = (dx * dx + dy * dy).sqrt();
-        let pos1 = cgmath::Vector3::new(x1, y1, 0.0);
-        let d = Vector2::new(dx, dy);
-        
-        let m = transform * Matrix::from_translation(pos1) * Matrix::from_orient(d);
-        let points = (0..n).map(|j| {
-            // Detect the half circle from index.
-            // There is one half circle at each end of the line.
-            // Together they form a full circle if
-            // the length of the line is zero.
-            match j {
-                j if j >= resolution => {
-                    // Compute the angle to match start and end
-                    // point of half circle.
-                    // This requires an angle offset since
-                    // the other end of line is the first half circle.
-                    let angle = (j - resolution) as f32 / (resolution - 1) as f32 * PI + PI;
-                    // Rotate 90 degrees since the line is horizontal.
-                    let angle = angle + PI / 2.0;
-                    Vector2::new(w + angle.cos() as f32 * radius, angle.sin() as f32 * radius)
-                }
-                j => {
-                    // Compute the angle to match start and end
-                    // point of half circle.
-                    let angle = j as f32 / (resolution - 1) as f32 * PI;
-                    // Rotate 90 degrees since the line is horizontal.
-                    let angle = angle + PI / 2.0;
-                    Vector2::new(angle.cos() as f32  * radius, angle.sin() as f32  * radius)
-                }
-            }
-        });
 
-        self.tesselate_polygon(points, depth, color, m);
+        // return; 
+
+        // let resolution = 2;
+        // let n = resolution * 2;
+        
+        // let radius = thickness;
+        // let (x1, y1, x2, y2) = (line[0], line[1], line[2], line[3]);
+        // let (dx, dy) = (x2 - x1, y2 - y1);
+        // let w = (dx * dx + dy * dy).sqrt();
+        // let pos1 = cgmath::Vector3::new(x1, y1, 0.0);
+        // let d = Vector2::new(dx, dy);
+        
+        // let m = transform * Matrix::from_translation(pos1) * Matrix::from_orient(d);
+        // let points = (0..n).map(|j| {
+        //     // Detect the half circle from index.
+        //     // There is one half circle at each end of the line.
+        //     // Together they form a full circle if
+        //     // the length of the line is zero.
+        //     match j {
+        //         j if j >= resolution => {
+        //             // Compute the angle to match start and end
+        //             // point of half circle.
+        //             // This requires an angle offset since
+        //             // the other end of line is the first half circle.
+        //             let angle = (j - resolution) as f32 / (resolution - 1) as f32 * PI + PI;
+        //             // Rotate 90 degrees since the line is horizontal.
+        //             let angle = angle + PI / 2.0;
+        //             Vector2::new(w + angle.cos() as f32 * radius, angle.sin() as f32 * radius)
+        //         }
+        //         j => {
+        //             // Compute the angle to match start and end
+        //             // point of half circle.
+        //             let angle = j as f32 / (resolution - 1) as f32 * PI;
+        //             // Rotate 90 degrees since the line is horizontal.
+        //             let angle = angle + PI / 2.0;
+        //             Vector2::new(angle.cos() as f32  * radius, angle.sin() as f32  * radius)
+        //         }
+        //     }
+        // });
+
+        // self.tesselate_polygon(points, depth, color, m, None);
     }
 
-    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<&Border>, color: Color, transform: Matrix) {
+    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, color: Color, transform: Matrix) {
+        if let Some(border) = border {
+            let [x, y, w, h] = rect;
+            let points = [
+                Vector2::new(x, y),
+                Vector2::new(x+w, y),
+                Vector2::new(x+w, y+h),
+                Vector2::new(x, y+h),
+            ].into_iter();
+            self.tesselate_polygon(points, depth, color, transform, Some(border));
+        }
         self.reserve_quad(rect, depth, color, transform)
     }
 
-    pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, transform: Matrix) {
+    pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, depth, color, transform)
+        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform)
     }
 
 
-    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix) {
+    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix, border: Option<Border>) {
         let mut path = lyon_tessellation::path::Path::builder();
-        let depth = 0.0;
+        let depth = Self::map_depth(depth);
 
         let mut started = false;
         for p in polygon {
@@ -877,15 +889,31 @@ impl GraphicsState {
         {
             let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
 
-            // Create the tessellator.
-            let mut tessellator = lyon_tessellation::FillTessellator::new();
+            let result = if let Some(border) = border {
+                // Create the tessellator.
+                let mut tessellator = lyon_tessellation::StrokeTessellator::new();
 
-            // Compute the tessellation.
-            let result = tessellator.tessellate_path(
-                &path,
-                &lyon_tessellation::FillOptions::default(),
-                &mut vertex_builder
-            );
+                let mut options = lyon_tessellation::StrokeOptions::default();
+                options.line_width = border.radius;
+
+                // Compute the tessellation.
+                tessellator.tessellate_path(
+                    &path,
+                    &options,
+                    &mut vertex_builder
+                )
+            } else {
+                // Create the tessellator.
+                let mut tessellator = lyon_tessellation::FillTessellator::new();
+
+                // Compute the tessellation.
+                tessellator.tessellate_path(
+                    &path,
+                    &lyon_tessellation::FillOptions::default(),
+                    &mut vertex_builder
+                )
+            };
+
             assert!(result.is_ok());
         }
 
@@ -904,6 +932,8 @@ impl GraphicsState {
         reserved.copy_in(&mut vertices, &mut indices);
     }
 
+
+    fn map_depth(d: f32) -> f32 { d }
 }
 
 
@@ -914,6 +944,18 @@ pub struct WgpuTexture {
     // pub texture_view: wgpu::TextureView,
     pub bind_group: wgpu::BindGroup,
 }
+
+
+// pub struct RenderableSurface {
+//     projection: wgpu::BindGroup,
+//     recorded_buffers: Vec<RenderBuffer>,
+//     texture: wgpu::TextureView
+// }
+// impl RenderableSurface {
+
+// }
+
+
 
 #[tokio::test]
 async fn test() {
@@ -960,7 +1002,7 @@ async fn test() {
             state.draw_line(line, 5.0, depth, Color::RED, m);
 
 
-            state.draw_tex(&self.tex, depth, Color::WHITE, m);
+            state.draw_tex(&self.tex, depth, Color::WHITE, false, false, m);
         }
     }
 
@@ -1012,7 +1054,7 @@ async fn test() {
             // } => t.position.y += 100.0,
             
             _ => {}
-        },
+        }
 
         Event::RedrawRequested(window_id) if window_id == window.id() => {
             state.begin();
@@ -1030,7 +1072,7 @@ async fn test() {
                 // All other errors (Outdated, Timeout) should be resolved by the next frame
                 Err(e) => eprintln!("error: {:?}", e),
             }
-        },
+        }
 
         Event::MainEventsCleared => {
             // RedrawRequested will only trigger once, unless we manually
@@ -1042,4 +1084,4 @@ async fn test() {
     });
 
 }
- 
+

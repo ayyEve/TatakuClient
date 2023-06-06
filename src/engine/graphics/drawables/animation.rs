@@ -99,7 +99,7 @@ impl Animation {
     pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f32, size: Vector2) -> TatakuResult<Self> {
         let mut frames = Vec::new();
         for p in paths {
-            frames.push(load_texture(p).await?);
+            frames.push(GameWindow::load_texture(p).await?);
         }
 
         Ok(Self::new(pos, depth, size, frames, delays, Vector2::ONE))
@@ -118,12 +118,26 @@ impl TatakuRenderable for Animation {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
+
+        let mut scale = self.scale;
+        let mut h_flip = false;
+        let mut v_flip = false;
+
+        if scale.x < 0.0 {
+            scale.x = scale.x.abs();
+            h_flip = true;
+        }
+        if scale.y < 0.0 {
+            scale.y = scale.y.abs();
+            v_flip = true;
+        }
+
         let transform = transform
             // move to pos
             .trans(self.pos)
 
             // scale to size
-            .scale(self.scale * self.base_scale)
+            .scale(scale * self.base_scale)
 
             // rotate to rotate
             .rot(self.rotation)
@@ -133,7 +147,7 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.depth as f32, self.color, transform);
+        g.draw_tex(image, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform);
         // graphics::Image::new()
         //     .color(self.color.alpha(alpha).into())
         //     .draw(image, &self.draw_state.unwrap_or(c.draw_state), transform, g)

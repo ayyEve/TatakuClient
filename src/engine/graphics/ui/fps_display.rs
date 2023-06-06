@@ -86,7 +86,7 @@ impl FpsDisplay {
         // } else {
             list.push(Text::new(
                 Color::BLACK,
-                -99_999_999.99, // should be on top of everything
+                -MAX_DEPTH, // should be on top of everything
                 self.pos + TEXT_PADDING,
                 12.0,
                 format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
@@ -94,8 +94,8 @@ impl FpsDisplay {
             ));
         // }
 
+        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) - 0.1));
 
-        list.push(visibility_bg(self.pos, SIZE, -99_999_999.98));
     }
 }
 
@@ -160,13 +160,13 @@ impl AsyncFpsDisplay {
 
         list.push(Text::new(
             Color::BLACK,
-            -99_999_999.99, // should be on top of everything
+            -MAX_DEPTH, // should be on top of everything
             self.pos + TEXT_PADDING,
             12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             font.clone()
         ));
 
-        list.push(visibility_bg(self.pos, SIZE, -99_999_999.98));
+        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) - 0.1));
     }
 }

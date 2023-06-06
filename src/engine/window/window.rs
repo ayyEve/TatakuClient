@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use image::RgbaImage;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoopBuilder, EventLoop},
@@ -6,16 +7,17 @@ use winit::{
     platform::windows::EventLoopBuilderExtWindows
 };
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
+use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
 
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
 
-pub static GAME_EVENT_SENDER: OnceCell<tokio::sync::mpsc::Sender<GameEvent>> = OnceCell::const_new();
+pub static GAME_EVENT_SENDER: OnceCell<Sender<GameEvent>> = OnceCell::const_new();
 pub static WINDOW_EVENT_QUEUE:OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
 static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
 pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
-
+pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
 lazy_static::lazy_static! {
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -41,16 +43,19 @@ pub struct GameWindow {
     frametime_logger: FrameTimeLogger,
 
     close_pending: bool,
+    texture_load_receiver: UnboundedReceiver<LoadImage>
 }
-
 impl GameWindow {
-    pub async fn new(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, gane_event_sender: tokio::sync::mpsc::Sender<GameEvent>) -> (Self, EventLoop<()>) {
+    pub async fn new(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
-        let size = [settings.window_size[0] as u32, settings.window_size[1] as u32];
-
         
         let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
         let window: winit::window::Window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
+        
+        
+        let (texture_load_sender, texture_load_receiver) = unbounded_channel();
+        TEXTURE_LOAD_QUEUE.set(texture_load_sender).ok().expect("bad");
+        trace!("texture load queue set");
 
 
         let [ww, wh]: [f32; 2] = window.inner_size().into();
@@ -95,7 +100,7 @@ impl GameWindow {
         unsafe {
             // let _ = GRAPHICS.set(graphics);
             let _ = RENDER_EVENT_RECEIVER.set(render_event_receiver);
-            let _ = GAME_EVENT_SENDER.set(gane_event_sender);
+            let _ = GAME_EVENT_SENDER.set(game_event_sender);
 
             // gl::Enable(gl::DEBUG_OUTPUT);
             // gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
@@ -116,6 +121,7 @@ impl GameWindow {
             graphics,
 
             window_event_receiver,
+            texture_load_receiver,
             settings,
 
             frametime_timer: now,
@@ -177,7 +183,7 @@ impl GameWindow {
                         winit::event::WindowEvent::DroppedFile(d) => GameWindowEvent::FileDrop(d),
                         winit::event::WindowEvent::HoveredFile(d) => GameWindowEvent::FileHover(d),
                         // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
-                        winit::event::WindowEvent::ReceivedCharacter(c) => GameWindowEvent::Text(c.to_string()),
+                        winit::event::WindowEvent::ReceivedCharacter(c) if !c.is_control() => GameWindowEvent::Text(c.to_string()),
                         winit::event::WindowEvent::Focused(true) => GameWindowEvent::GotFocus,
                         winit::event::WindowEvent::Focused(false) => GameWindowEvent::LostFocus,
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Pressed, .. }, .. } => GameWindowEvent::KeyPress(key),
@@ -220,7 +226,7 @@ impl GameWindow {
                         }
                     }
 
-                    check_texture_load_loop(&mut self.graphics);
+                    self.check_texture_load_loop();
 
                     if let Ok(event) = self.window_event_receiver.try_recv() {
                         match event {
@@ -259,7 +265,9 @@ impl GameWindow {
                     self.render();
                     self.frametime_logger.add(now.as_millis());
 
-
+                    if self.close_pending {
+                        *control_flow = ControlFlow::Exit;
+                    }
                     return
                 }
                 
@@ -334,20 +342,6 @@ impl GameWindow {
         // }
     }
     
-    fn render(&mut self) {
-        render(self);
-        
-        // let draw_size = self.window.get_draw_size();
-
-        // let args = RenderArgs {
-        //     ext_dt: 0.0,
-        //     window_size: self.window.get_size().into(),
-        //     draw_size: [draw_size.x as u32, draw_size.y as u32],
-        // };
-
-        // render(self.window.get_buffer_swappable(), args, &mut self.frametime_timer);
-    }
-
     async fn screenshot(&mut self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
         self.graphics.screenshot(move |(window_data, width, height)| {
             // screenshot is upside down
@@ -384,6 +378,161 @@ impl GameWindow {
     fn apply_vsync(&mut self) {
         // self.window.set_vsync(self.settings.vsync);
     }
+
+
+    fn check_texture_load_loop(&mut self) {
+        let Ok(method) = self.texture_load_receiver.try_recv() else { return };
+
+        match method {
+            LoadImage::GameClose => { return; }
+            LoadImage::Path(path, on_done) => {
+                on_done.send(self.graphics.load_texture_path(&path)).expect("poopy");
+            }
+            LoadImage::Image(data, on_done) => {
+                on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy");
+            }
+            LoadImage::Font(font, font_size, on_done) => {
+                let font_size = FontSize::new(font_size);
+                let mut characters = font.characters.write();
+
+                for (&char, _codepoint) in font.font.chars() {
+                    // generate glyph data
+                    let (metrics, bitmap) = font.font.rasterize(char, font_size.f32());
+
+                    // bitmap is a vec of grayscale pixels
+                    // we need to turn that into rgba bytes
+                    // TODO: could reduce ram usage during font rasterization if this is moved to where the tex is actually loaded
+                    let mut data = Vec::with_capacity(bitmap.len() * 4);
+                    bitmap.into_iter().for_each(|gray| {
+                        data.push(255); // r
+                        data.push(255); // g
+                        data.push(255); // b
+                        data.push(gray); // a
+                    });
+                    
+                    // char_data.push((char, data, metrics))
+                    let Ok(texture) = self.graphics.load_texture_rgba(&data, metrics.width as u32, metrics.height as u32) else {panic!("eve broke fonts")};
+                    
+                    let char_data = CharData { texture, metrics };
+                    characters.insert((font_size.u32(), char), char_data);
+                }
+
+                // if let Ok(datas) = state.load_texture_rgba_many(char_data.iter().map(|(_, data, m)|(data, m.width as u32, m.height as u32)).collect()) {
+                //     for (texture, (char, _, metrics)) in datas.into_iter().zip(char_data.into_iter()) {
+                //         // setup data
+
+                //         // insert data
+                //     }
+
+                //     font.loaded_sizes.write().insert(font_size.u32());
+                // } else {
+                //     panic!("no atlas space for font")
+                // }
+
+                on_done.send(Ok(())).expect("uh oh");
+            }
+
+            // LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
+            //     // match RenderTarget::new_main_thread(w, h) {
+            //     //     Ok(mut render_target) => {
+            //     //         let graphics = graphics();
+            //     //         render_target.bind();
+            //     //         callback(&mut render_target, graphics);
+            //     //         render_target.unbind();
+
+            //     //         render_targets.push(render_target.render_target_data.clone());
+            //     //         image_data.push(render_target.image.tex.clone());
+
+            //     //         if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
+            //     //     }
+            //     //     Err(e) => {
+            //     //         if let Err(_) = on_done.send(Err(e)) { error!("uh oh") }
+            //     //     }
+            //     // }
+            // }
+
+            // LoadImage::UpdateRenderTarget(mut render_target, on_done, callback) => {
+            //     // render_target.bind();
+            //     // let graphics = graphics();
+            //     // callback(&mut render_target, graphics);
+            //     // render_target.unbind();
+
+            //     // if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") };
+            // }
+        }
+
+        trace!("Done loading tex");
+        
+    
+    }
+
+
+    pub fn render(&mut self) {
+        unsafe {
+            if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
+                match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
+                    TatakuRenderEvent::None => {},
+                    TatakuRenderEvent::Draw(data) => {
+
+                        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
+                        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
+                        RENDER_COUNT.fetch_add(1, SeqCst);
+
+                        let transform = Matrix::identity();
+                        
+                        // use this for snipping
+                        #[cfg(feature="snipping")] {
+                            // let orig_c = graphics.draw_begin(args.viewport());
+                            self.graphics.begin();
+
+                            for i in data.iter() {
+                                // let mut drawstate_changed = false;
+                                // let mut c = orig_c;
+
+                                // if let Some(ds) = i.get_draw_state() {
+                                //     drawstate_changed = true;
+                                //     // println!("ic: {:?}", ic);
+                                //     graphics.draw_end();
+                                //     graphics.draw_begin(args.viewport());
+                                //     graphics.use_draw_state(&ds);
+                                //     c.draw_state = ds;
+                                // }
+                                
+                                // graphics.use_draw_state(&c.draw_state);
+                                // i.draw(graphics, c);
+                                i.draw(transform, &mut self.graphics);
+
+                                // if drawstate_changed {
+                                //     graphics.draw_end();
+                                //     graphics.draw_begin(args.viewport());
+                                //     graphics.use_draw_state(&orig_c.draw_state);
+                                // }
+                            }
+
+                            self.graphics.end();
+                        }
+
+
+                        #[cfg(not(feature="snipping"))] {
+                            let c = graphics.draw_begin(args.viewport());
+                            graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
+                            
+                            for i in data.iter() {
+                                i.draw(graphics, c);
+                            }
+                            
+                            graphics.draw_end();
+                        }
+
+                        let _ = self.graphics.render(); //.expect("couldnt draw");
+                    }
+                }
+            }
+
+        }
+    }
+
+
 }
 
 // static fns (mostly helpers)
@@ -391,83 +540,79 @@ impl GameWindow {
     pub fn refresh_monitors() {
         let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::RefreshMonitors);
     }
-}
 
+    
+    pub async fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<TextureReference> {
+        let path = path.as_ref().to_string_lossy().to_string();
+        trace!("loading tex {}", path);
 
-pub fn render(window: &mut GameWindow) {
-    unsafe {
-        if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
-            match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
-                TatakuRenderEvent::None => {},
-                TatakuRenderEvent::Draw(data) => {
+        let (sender, mut receiver) = unbounded_channel();
+        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Path(path, sender)).ok().expect("no?");
 
-                    // let graphics = graphics();
+        if let Some(t) = receiver.recv().await {
+            t
+        } else {
+            Err(TatakuError::String("idk".to_owned()))
+        }
+    }
 
-                    let frametime = (window.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
-                    RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
-                    RENDER_COUNT.fetch_add(1, SeqCst);
+    pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
+        trace!("loading tex data");
 
-                    let transform = Matrix::identity();
-                    
-                    // use this for snipping
-                    #[cfg(feature="snipping")] {
-                        // let orig_c = graphics.draw_begin(args.viewport());
-                        // graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-                        window.graphics.begin();
+        let (sender, mut receiver) = unbounded_channel();
+        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Image(data, sender)).ok().expect("no?");
 
-                        for i in data.iter() {
-                            // let mut drawstate_changed = false;
-                            // let mut c = orig_c;
+        if let Some(t) = receiver.recv().await {
+            t
+        } else {
+            Err(TatakuError::String("idk".to_owned()))
+        }
+    }
 
-                            // if let Some(ds) = i.get_draw_state() {
-                            //     drawstate_changed = true;
-                            //     // println!("ic: {:?}", ic);
-                            //     graphics.draw_end();
-                            //     graphics.draw_begin(args.viewport());
-                            //     graphics.use_draw_state(&ds);
-                            //     c.draw_state = ds;
-                            // }
-                            
-                            // graphics.use_draw_state(&c.draw_state);
-                            // i.draw(graphics, c);
-                            i.draw(transform, &mut window.graphics);
+    pub fn load_font_data(font: Font, size:f32) -> TatakuResult<()> {
+        // info!("loading font char ('{ch}',{size})");
+        let (sender, mut receiver) = unbounded_channel();
+        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Font(font, size, sender)).ok().expect("no?");
 
-                            // if drawstate_changed {
-                            //     graphics.draw_end();
-                            //     graphics.draw_begin(args.viewport());
-                            //     graphics.use_draw_state(&orig_c.draw_state);
-                            // }
-                        }
-
-                        window.graphics.end();
-                    }
-
-
-                    #[cfg(not(feature="snipping"))] {
-                        let c = graphics.draw_begin(args.viewport());
-                        graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-                        
-                        for i in data.iter() {
-                            i.draw(graphics, c);
-                        }
-                        
-                        graphics.draw_end();
-                    }
-
-                    window.graphics.render().expect("couldnt draw");
-                    // loop {
-                    //     let e = gl::GetError();
-                    //     if e == gl::NO_ERROR { break }
-                    //     println!("gl error: {e}");
-                    // }
-                    
-                    // window.swap_buffers()
-                }
+        loop {
+            match receiver.try_recv() {
+                Ok(_t) => {
+                    return Ok(())
+                },
+                Err(_) => {},
             }
         }
-
     }
+
+
+    // pub async fn create_render_target(size: (f64, f64), callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
+    //     trace!("create render target");
+
+    //     let (sender, mut receiver) = unbounded_channel();
+    //     get_texture_load_queue()?.send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
+
+    //     if let Some(t) = receiver.recv().await {
+    //         t
+    //     } else {
+    //         Err(TatakuError::String("idk".to_owned()))
+    //     }
+    // }
+
+    // pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
+    //     trace!("update render target");
+
+    //     let (sender, mut receiver) = unbounded_channel();
+    //     get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+
+    //     if let Some(t) = receiver.recv().await {
+    //         t
+    //     } else {
+    //         Err(TatakuError::String("idk".to_owned()))
+    //     }
+    // }
 }
+
+
 
 
 
@@ -540,4 +685,22 @@ fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
         MouseScrollDelta::LineDelta(_, y) => y,
         MouseScrollDelta::PixelDelta(p) => p.y as f32,
     }
+}
+
+
+
+
+pub enum LoadImage {
+    GameClose,
+    Path(String, UnboundedSender<TatakuResult<TextureReference>>),
+    Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
+    Font(Font, f32, UnboundedSender<TatakuResult<()>>),
+
+    // CreateRenderTarget((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
+    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
+}
+
+
+fn get_texture_load_queue<'a>() -> TatakuResult<&'a UnboundedSender<LoadImage>> {
+    TEXTURE_LOAD_QUEUE.get().ok_or(TatakuError::String("texture load queue not set".to_owned()))
 }

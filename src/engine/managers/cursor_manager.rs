@@ -68,18 +68,18 @@ impl CursorManager {
     pub async fn new() -> Self {
         let mut cursor_image = SkinManager::get_texture("cursor", true).await;
         if let Some(cursor) = &mut cursor_image {
-            cursor.depth = -f32::MAX;
+            cursor.depth = -MAX_DEPTH;
         }
 
         let mut cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
         if let Some(trail) = &mut cursor_trail_image {
-            trail.depth = (-f32::MAX) + 50.0;
+            trail.depth = (-MAX_DEPTH) + 50.0;
         }
 
 
         let mut cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
         if let Some(cursor) = &mut cursor_middle_image {
-            cursor.depth = -f32::MAX;
+            cursor.depth = -MAX_DEPTH;
         }
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if cursor_middle_image.is_some() {
@@ -150,14 +150,14 @@ impl CursorManager {
 
         self.cursor_rotation = 0.0;
         if let Some(trail) = &mut self.cursor_trail_image {
-            trail.depth = (-f32::MAX) + 50.0;
+            trail.depth = (-MAX_DEPTH) + 50.0;
         }
         if let Some(cursor) = &mut self.cursor_image {
-            cursor.depth = -f32::MAX;
+            cursor.depth = -MAX_DEPTH;
         }
         
         if let Some(cursor) = &mut self.cursor_middle_image {
-            cursor.depth = -f32::MAX;
+            cursor.depth = -MAX_DEPTH;
         }
     }
 
@@ -322,7 +322,7 @@ impl CursorManager {
         } else {
             list.push(Circle::new(
                 self.color,
-                -f32::MAX,
+                -MAX_DEPTH,
                 self.pos,
                 radius * self.settings.cursor_scale,
                 if self.settings.cursor_border > 0.0 {

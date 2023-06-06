@@ -171,7 +171,11 @@ impl InputManager {
                     self.last_key_press.remove(&key);
                 }
             }
-            GameWindowEvent::Text(text) => self.text_cache += &text,
+            GameWindowEvent::Text(text) => {
+        // text.chars().next().unwrap().is_ascii_control()                
+        //         println!("got text {:?}", text.as_bytes());
+                self.text_cache += &text
+            }
 
             // mouse input
             GameWindowEvent::MousePress(mb) => {

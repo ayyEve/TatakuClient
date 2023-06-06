@@ -1,136 +1,79 @@
 use crate::prelude::*;
-use rectangle_pack::*;
-use std::collections::BTreeMap;
+use guillotiere::*;
 
 pub type TextureReference = AtlasData;
+
+const PADDING: u32 = 1;
 
 pub struct Atlas {
     entries: Vec<AtlasData>,
     available_width: u32,
     available_height: u32,
-    // available_layers: u32,
 
-    bins: BTreeMap<usize, TargetBin>,
+    allocators: Vec<AtlasAllocator>,
 
     pub(super) tex: WgpuTexture,
+
+    empty_tex: TextureReference,
 }
 impl Atlas {
     pub fn new(width: u32, height: u32, layers: u32, tex: WgpuTexture) -> Self {
-        let mut bins = BTreeMap::new();
-        bins.insert(0, TargetBin::new(width, height, layers));
+        let allocators =  (0..layers).map(|_|AtlasAllocator::new(size2(width as i32, height as i32))).collect();
 
+        let empty_tex = TextureReference {
+            id: AllocId::deserialize(0),
+            x: 0,
+            y: 0,
+            layer: 0,
+            width: 0,
+            height: 0,
+            uvs: Uvs::new(0,0,0,0,1,1),
+        };
+        
         Self {
             entries: Vec::new(),
             available_width: width,
             available_height: height,
-            // available_layers: layers,
-            bins,
-            tex
+            allocators,
+            tex,
+            empty_tex
         }
     }
 
-    // pub fn get_data(&self, tex: &String) -> Option<&AtlasData> {
-    //     self.entries.get(tex)
-    // }
-
     pub fn try_insert(&mut self, width: u32, height:u32) -> Option<AtlasData> {
-        let mut rects_to_place = GroupedRectsToPlace::<usize>::new();
-        rects_to_place.push_rect(
-            0,
-            None,
-            RectToInsert::new(width, height, 1)
-        );
-
-        let info = pack_rects(
-            &rects_to_place,
-            &mut self.bins,
-            &volume_heuristic,
-            &contains_smallest_box
-        ).ok()?;
-        let (_, info) = info.packed_locations().get(&0)?;
-
-        let max_size = [self.available_width as f32, self.available_height as f32];
-
-        let x = info.x() as f32;
-        let y = info.y() as f32;
-        // let z = info.z() as f32;
-        let w = info.width() as f32;
-        let h = info.height() as f32;
-        
-        let atlas_data = AtlasData {
-            x: info.x(),
-            y: info.y(),
-            layer: info.z(),
-            width: info.width(),
-            height: info.height(),
-
-            uvs: Uvs {
-                tl: [x, y],
-                tr: [x + w, y],
-                bl: [x, y + h],
-                br: [x + w, y + h],
-            }.div(max_size),
-        };
-        self.entries.push(atlas_data);
-
-        Some(atlas_data)
+        if width == 0 || height == 0 { return Some(self.empty_tex) }
+        self.allocators
+            .iter_mut()
+            .enumerate()
+            .find_map(|(n, alloc)| alloc.allocate(size2((width + PADDING * 2) as i32, (height + PADDING * 2) as i32)).map(|a|(n as u32, a)))
+            .map(|(layer, i)| AtlasData::new(i, layer, self.available_width, self.available_height))
     }
     
     pub fn try_insert_many(&mut self, data: &Vec<(u32, u32)>) -> Option<Vec<AtlasData>> {
-        let mut rects_to_place = GroupedRectsToPlace::<usize>::new();
+        let entries = data
+            .iter()
+            .filter_map(|(w, h)| self.try_insert(*w, *h))
+            .collect::<Vec<_>>();
 
-        for (id, (width, height)) in data.iter().enumerate() {
-            rects_to_place.push_rect(
-                id,
-                None,
-                RectToInsert::new(*width, *height, 1)
-            );
+        if entries.len() != data.len() {
+            error!("not enough room in atlas! {} != {}", entries.len(), data.len());
+            return None
         }
 
-        let info = pack_rects(
-            &rects_to_place,
-            &mut self.bins,
-            &volume_heuristic,
-            &contains_smallest_box
-        ).ok()?;
-
-        let max_size = [self.available_width as f32, self.available_height as f32];
-
-        let mut data = info.packed_locations().into_iter().map(|(&id, (_, info))|{
-            let x = info.x() as f32;
-            let y = info.y() as f32;
-            // let z = info.z() as f32;
-            let w = info.width() as f32;
-            let h = info.height() as f32;
-            
-            let atlas_data = AtlasData {
-                x: info.x(),
-                y: info.y(),
-                layer: info.z(),
-                width: info.width(),
-                height: info.height(),
-
-                uvs: Uvs {
-                    tl: [x, y],
-                    tr: [x + w, y],
-                    bl: [x, y + h],
-                    br: [x + w, y + h],
-                }.div(max_size),
-            };
-
-            self.entries.push(atlas_data);
-            (id, atlas_data)
-        }).collect::<Vec<_>>();
-
-        data.sort_by(|(a,_), (b,_)|a.cmp(b));
-
-        Some(data.into_iter().map(|(_,a)|a).collect())
+        self.entries.extend(entries.iter());
+        Some(entries)
     }
     
+    fn remove_entry(&mut self, entry: TextureReference) {
+        if entry.is_empty() { return }
+        self.allocators.get_mut(entry.layer as usize).unwrap().deallocate(entry.id);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct AtlasData {
+    id: AllocId,
+
     pub x: u32,
     pub y: u32,
     pub layer: u32,
@@ -138,6 +81,32 @@ pub struct AtlasData {
     pub width: u32,
     pub height: u32,
     pub uvs: Uvs,
+}
+impl AtlasData {
+    fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height:u32) -> Self {
+        let [x, y] = alloc_info.rectangle.min.to_array();
+        let [x2, y2] = alloc_info.rectangle.max.to_array();
+        let [x, y, x2, y2] = [x as u32 + PADDING, y as u32 + PADDING, x2 as u32 - PADDING, y2 as u32 - PADDING];
+
+        let w = x2 - x;
+        let h = y2 - y;
+        
+        AtlasData {
+            id: alloc_info.id,
+
+            x,
+            y,
+            layer,
+            width: w,
+            height: h,
+
+            uvs: Uvs::new(x, y, w, h, total_width, total_height),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.width == 0 || self.height == 0
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -148,6 +117,16 @@ pub struct Uvs {
     pub br: [f32; 2],
 }
 impl Uvs {
+    fn new(x:u32, y:u32, w:u32, h:u32, total_w:u32, total_h:u32) -> Self {
+        let [x, y, w, h] = [x as f32, y as f32, w as f32, h as f32];
+
+        Self {
+            tl: [x, y],
+            tr: [x + w, y],
+            bl: [x, y + h],
+            br: [x + w, y + h],
+        }.div([total_w as f32, total_h as f32])
+    }
     fn div(mut self, max_size: [f32; 2]) -> Self {
         self.tl = div(self.tl, max_size);
         self.tr = div(self.tr, max_size);

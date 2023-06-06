@@ -39,39 +39,20 @@ fn vs_main(
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(1) @binding(0) var t: texture_2d_array<f32>;
+@group(1) @binding(0) var t: binding_array<texture_2d<f32>>;
 //The sampler we're using to sample the texture
 @group(1) @binding(1) var s: sampler;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
-    let ts = textureSample(t, s, input.tex_coord, input.tex_index);
+    var i = input.tex_index;
+    if (i == -1) { i = 0; }
+
+    let ts = textureSample(t[i], s, input.tex_coord);
     // idk how to make it not use the sampler for non-textures, so we do this instead
     if (input.tex_index == -1) {
-        return toLinear(input.vertex_col);
+        return input.vertex_col;
     } else {
-        return toLinear(ts * input.vertex_col);
+        return ts * input.vertex_col;
     }
-}
-
-fn toLinear(sRGB: vec4<f32>) -> vec4<f32> {
-    var cutoff: vec4<f32> = vec4<f32>(0.0);
-
-    if(sRGB.r < 0.04045) {
-        cutoff.r = 1.0;
-    }
-    if(sRGB.g < 0.04045) {
-        cutoff.g = 1.0;
-    }
-    if(sRGB.b < 0.04045) {
-        cutoff.b = 1.0;
-    }
-    if(sRGB.a < 0.04045) {
-        cutoff.a = 1.0;
-    }
-
-	var higher: vec4<f32> = pow((sRGB + vec4<f32>(0.055))/vec4<f32>(1.055), vec4<f32>(2.4));
-	var lower: vec4<f32> = sRGB/vec4<f32>(12.92);
-
-	return mix(higher, lower, cutoff);
 }

@@ -130,8 +130,8 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: 
                 }
             }
 
-            let tex = load_texture_data(img).await.expect("no atlas"); //.ok()?;
-            let img = Some(Image::new(Vector2::ZERO, f32::MAX, tex, base_scale));
+            let tex = GameWindow::load_texture_data(img).await.expect("no atlas"); //.ok()?;
+            let img = Some(Image::new(Vector2::ZERO, MAX_DEPTH, tex, base_scale));
             img
         }
         Err(e) => {

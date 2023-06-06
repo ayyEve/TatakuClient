@@ -84,10 +84,9 @@ impl Font {
         trace!("loading font {} with size {}", self.name, font_size.f32());
         
         // send tex load request to main thread, and wait for it to complete
-        if let Err(e) = load_font_data(self.clone(), font_size.f32()) {
+        if let Err(e) = GameWindow::load_font_data(self.clone(), font_size.f32()) {
             error!("error loading font {}", e);
         }
-    
     }
 
     pub fn get_char(&self, font_size: f32, c: char) -> Option<CharData> {
@@ -129,26 +128,12 @@ impl Font {
         graphics: &mut GraphicsState
     ) {
         let Some(character) = self.get_char(font_size, ch) else { return; };
-        // debug!("attempting to draw {ch} with tex id {}", character.texture.get_id());
         
         let ch_x = *x + character.metrics.xmin as f32;
         let ch_y = *y - (character.metrics.height as f32 + character.metrics.ymin as f32); // y = -metrics.bounds.height - metrics.bounds.ymin
 
         // info!("draw char '{ch}' with data {:?} at {x},{y}", character.metrics);
-        graphics.draw_tex(&character.texture, 0.0, color, transform.trans(Vector2::new(ch_x, ch_y)));
-        // let mut image = graphics::Image::new_color(color.into());
-        // image = image.src_rect([
-        //     character.pos.x,
-        //     character.pos.y,
-        //     character.size.x,
-        //     character.size.y,
-        // ]);
-        // image.draw(
-        //     &character.texture,
-        //     draw_state,
-        //     transform.trans(ch_x, ch_y),
-        //     graphics,
-        // );
+        graphics.draw_tex(&character.texture, 0.0, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)));
 
         *x += character.metrics.advance_width;
         // *y += character.metrics.advance_height as f64;
@@ -158,10 +143,7 @@ impl Font {
 
 #[derive(Clone)]
 pub struct CharData {
-    // pub texture: Arc<Texture>,
     pub texture: TextureReference,
-    // pub pos: Vector2,
-    // pub size: Vector2,
     pub metrics: fontdue::Metrics
 }
 impl Into<FontCharacter> for CharData {
@@ -177,7 +159,7 @@ impl Into<FontCharacter> for CharData {
     }
 }
 
-
+/// font size helper since f32 isnt hash
 pub struct FontSize(f32, u32);
 impl FontSize {
     pub fn new(f:f32) -> Self {
@@ -190,19 +172,3 @@ impl FontSize {
         self.0
     }
 }
-
-
-
-// impl TextRender<Font> for Text {
-//     fn new(color:Color, depth:f64, pos: Vector2, font_size: <Font as FontRender>::Size, text: String, font: Font) -> Self where Self:Sized {
-//         Text::new(color, depth, pos, font_size.0 as u32, text, font)
-//     }
-
-//     fn measure_text(&self) -> Vector2 {
-//         Text::measure_text(&self)
-//     }
-
-//     fn center_text(&mut self, rect:Rectangle) {
-//         Text::center_text(self, &rect)
-//     }
-// }

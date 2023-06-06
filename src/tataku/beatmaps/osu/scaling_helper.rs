@@ -71,7 +71,7 @@ impl ScalingHelper {
 
         let playfield_scaled_with_cs_border = Rectangle::new(
             Color::new(0.2, 0.2, 0.2, 0.5),
-            f32::MAX-4.0,
+            MAX_DEPTH-4.0,
             scaled_pos_offset - circle_size,
             playfield_size * scale + circle_size * 2.0,
             None

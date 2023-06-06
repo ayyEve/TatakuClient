@@ -70,6 +70,7 @@ impl TatakuRenderable for Rectangle {
     fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
         // TODO: this!
         // r.shape = self.shape;
+        let border = self.border.map(|mut b|{b.color.a = border_alpha; b});
 
         // if let Some(mut b) = self.border { 
         //     b.color.a = border_alpha;
@@ -93,7 +94,7 @@ impl TatakuRenderable for Rectangle {
             .trans(self.pos)
         ;
 
-        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, None, self.color, transform)
+        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.color.alpha(alpha), transform)
 
         // r.draw(
         //     [0.0, 0.0, self.size.x, self.size.y], 

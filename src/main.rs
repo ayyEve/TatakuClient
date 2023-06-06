@@ -101,9 +101,6 @@ async fn start_game() {
 
     // setup window
     main_thread.spawn_local(async move {
-        info!("init tex load");
-        texture_load_init();
-
         info!("creating window");
         let (w, e) = GameWindow::new(render_queue_receiver, game_event_sender).await;
         

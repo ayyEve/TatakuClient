@@ -852,7 +852,7 @@ impl Game {
         if draw_bg_dim {
             render_queue.push(Rectangle::new(
                 Color::BLACK.alpha(self.settings.background_dim),
-                f32::MAX - 1.0,
+                MAX_DEPTH - 1.0,
                 Vector2::ZERO,
                 self.window_size.0,
                 None
@@ -871,7 +871,7 @@ impl Game {
 
             render_queue.push(Rectangle::new(
                 Color::new(0.0, 0.0, 0.0, alpha),
-                -f32::MAX,
+                -MAX_DEPTH,
                 Vector2::ZERO,
                 self.window_size.0,
                 None

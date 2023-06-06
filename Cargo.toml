@@ -44,24 +44,12 @@ triple_buffer = "6.0"
 crossbeam = "*"
 global_value_manager = "*"
 
-# gl/piston etc
-# careful when verison bumping these
-# gl = "0.13"
+
 image = "*"
-
-# glfw = { version = "0.47", features = ["image"], optional = true }
-# pistoncore-glfw_window = { version = "0.77", optional=true }
-
-
-# pistoncore-glutin_window = { version = "0.70.1", optional=true }
-
-# pistoncore-input = "*"
-
-
-# ayyeve-piston-ui = "0.7"
 fontdue = "0.7"
-rectangle-pack = "0.4"
 lyon_tessellation = "*"
+guillotiere = "*"
+# rectangle-pack = "0.4"
 
 
 wgpu = "*"
