@@ -9,12 +9,8 @@ use winit::{
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
 
-/// background color
-const GFX_CLEAR_COLOR:Color = Color::BLACK;
-
-
 pub static GAME_EVENT_SENDER: OnceCell<Sender<GameEvent>> = OnceCell::const_new();
-pub static WINDOW_EVENT_QUEUE:OnceCell<SyncSender<WindowEvent>> = OnceCell::const_new();
+pub static WINDOW_EVENT_QUEUE:OnceCell<SyncSender<Game2WindowEvent>> = OnceCell::const_new();
 static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
 pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
 pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
@@ -34,7 +30,7 @@ pub struct GameWindow {
     event_loop: winit::event_loop::EventLoopProxy<()>,
     graphics: GraphicsState,
 
-    window_event_receiver: Receiver<WindowEvent>,
+    window_event_receiver: Receiver<Game2WindowEvent>,
 
     frametime_timer: Instant,
     input_timer: Instant,
@@ -230,12 +226,12 @@ impl GameWindow {
 
                     if let Ok(event) = self.window_event_receiver.try_recv() {
                         match event {
-                            WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
-                            WindowEvent::HideCursor => self.window.set_cursor_visible(false),
-                            WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
+                            Game2WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
+                            Game2WindowEvent::HideCursor => self.window.set_cursor_visible(false),
+                            Game2WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
         
-                            WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
-                            WindowEvent::SetClipboard(text) => {
+                            Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+                            Game2WindowEvent::SetClipboard(text) => {
                                 use clipboard::{ClipboardProvider, ClipboardContext};
         
                                 let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
@@ -247,9 +243,9 @@ impl GameWindow {
                                 }
                             },
         
-                            WindowEvent::CloseGame => { close_window!(self); },
+                            Game2WindowEvent::CloseGame => { close_window!(self); },
                             // WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze).await,
-                            WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
+                            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
                             _ => {}
                         }
@@ -417,53 +413,46 @@ impl GameWindow {
                     characters.insert((font_size.u32(), char), char_data);
                 }
 
-                // if let Ok(datas) = state.load_texture_rgba_many(char_data.iter().map(|(_, data, m)|(data, m.width as u32, m.height as u32)).collect()) {
-                //     for (texture, (char, _, metrics)) in datas.into_iter().zip(char_data.into_iter()) {
-                //         // setup data
-
-                //         // insert data
-                //     }
-
-                //     font.loaded_sizes.write().insert(font_size.u32());
-                // } else {
-                //     panic!("no atlas space for font")
-                // }
-
                 on_done.send(Ok(())).expect("uh oh");
             }
 
-            // LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
-            //     // match RenderTarget::new_main_thread(w, h) {
-            //     //     Ok(mut render_target) => {
-            //     //         let graphics = graphics();
-            //     //         render_target.bind();
-            //     //         callback(&mut render_target, graphics);
-            //     //         render_target.unbind();
+            LoadImage::FreeTexture(tex) => {
+                self.graphics.free_tex(tex);
+            }
 
-            //     //         render_targets.push(render_target.render_target_data.clone());
-            //     //         image_data.push(render_target.image.tex.clone());
+            LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
+                let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, callback);
+                on_done.send(rt.ok_or(TatakuError::String("failed".to_owned()))).ok().expect("uh oh");
+                
+                // match RenderTarget::new_main_thread(w, h) {
+                //     Ok(mut render_target) => {
+                //         let graphics = graphics();
+                //         render_target.bind();
+                //         callback(&mut render_target, graphics);
+                //         render_target.unbind();
 
-            //     //         if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
-            //     //     }
-            //     //     Err(e) => {
-            //     //         if let Err(_) = on_done.send(Err(e)) { error!("uh oh") }
-            //     //     }
-            //     // }
-            // }
+                //         render_targets.push(render_target.render_target_data.clone());
+                //         image_data.push(render_target.image.tex.clone());
 
-            // LoadImage::UpdateRenderTarget(mut render_target, on_done, callback) => {
-            //     // render_target.bind();
-            //     // let graphics = graphics();
-            //     // callback(&mut render_target, graphics);
-            //     // render_target.unbind();
+                //         if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
+                //     }
+                //     Err(e) => {
+                //         if let Err(_) = on_done.send(Err(e)) { error!("uh oh") }
+                //     }
+                // }
+            }
 
-            //     // if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") };
-            // }
+            LoadImage::UpdateRenderTarget(mut render_target, on_done, callback) => {
+                // render_target.bind();
+                // let graphics = graphics();
+                // callback(&mut render_target, graphics);
+                // render_target.unbind();
+
+                // if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") };
+            }
         }
 
-        trace!("Done loading tex");
-        
-    
+        trace!("Done loading tex")
     }
 
 
@@ -524,7 +513,7 @@ impl GameWindow {
                             graphics.draw_end();
                         }
 
-                        let _ = self.graphics.render(); //.expect("couldnt draw");
+                        let _ = self.graphics.render_current_surface(); //.expect("couldnt draw");
                     }
                 }
             }
@@ -538,7 +527,7 @@ impl GameWindow {
 // static fns (mostly helpers)
 impl GameWindow {
     pub fn refresh_monitors() {
-        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::RefreshMonitors);
+        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::RefreshMonitors);
     }
 
     
@@ -576,40 +565,44 @@ impl GameWindow {
 
         loop {
             match receiver.try_recv() {
-                Ok(_t) => {
-                    return Ok(())
-                },
+                Ok(_t) => return Ok(()),
                 Err(_) => {},
             }
         }
     }
 
 
-    // pub async fn create_render_target(size: (f64, f64), callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
-    //     trace!("create render target");
+    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+        trace!("create render target");
 
-    //     let (sender, mut receiver) = unbounded_channel();
-    //     get_texture_load_queue()?.send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
+        let (sender, mut receiver) = unbounded_channel();
+        get_texture_load_queue()?.send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
 
-    //     if let Some(t) = receiver.recv().await {
-    //         t
-    //     } else {
-    //         Err(TatakuError::String("idk".to_owned()))
-    //     }
-    // }
+        if let Some(t) = receiver.recv().await {
+            t
+        } else {
+            Err(TatakuError::String("idk".to_owned()))
+        }
+    }
 
-    // pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut RenderTarget, &mut GlGraphics) + Send + 'static) -> TatakuResult<RenderTarget> {
-    //     trace!("update render target");
+    pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+        trace!("update render target");
 
-    //     let (sender, mut receiver) = unbounded_channel();
-    //     get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+        let (sender, mut receiver) = unbounded_channel();
+        get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
 
-    //     if let Some(t) = receiver.recv().await {
-    //         t
-    //     } else {
-    //         Err(TatakuError::String("idk".to_owned()))
-    //     }
-    // }
+        if let Some(t) = receiver.recv().await {
+            t
+        } else {
+            Err(TatakuError::String("idk".to_owned()))
+        }
+    }
+
+
+    pub fn free_render_target(tex: TextureReference) -> TatakuResult {
+        get_texture_load_queue()?.send(LoadImage::FreeTexture(tex)).ok().expect("no?");
+        Ok(())
+    }
 }
 
 
@@ -629,7 +622,7 @@ impl Default for TatakuRenderEvent {
 
 
 #[allow(unused)]
-pub enum WindowEvent {
+pub enum Game2WindowEvent {
     ShowCursor,
     HideCursor,
     RequestAttention,
@@ -695,9 +688,10 @@ pub enum LoadImage {
     Path(String, UnboundedSender<TatakuResult<TextureReference>>),
     Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
     Font(Font, f32, UnboundedSender<TatakuResult<()>>),
+    FreeTexture(TextureReference),
 
-    // CreateRenderTarget((f64, f64), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
-    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut RenderTarget, &mut GlGraphics) + Send>),
+    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
+    UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
 }
 
 

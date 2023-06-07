@@ -392,7 +392,7 @@ impl Game {
         // screenshot
         if keys_down.contains(&Key::F12) {
             let (f, b) = Bomb::new();
-            WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::TakeScreenshot(f)).unwrap();
+            WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::TakeScreenshot(f)).unwrap();
 
             tokio::spawn(async move {
                 macro_rules! check {
@@ -462,7 +462,7 @@ impl Game {
                                                 Ok(id) => {
                                                     let url = format!("{}/screenshots/{id}", settings.score_url);
                                                     // copy to clipboard
-                                                    if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::SetClipboard(url.clone())) {
+                                                    if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::SetClipboard(url.clone())) {
                                                         println!("error copying to clipboard: {e}");
                                                         NotificationManager::add_notification(Notification::new(
                                                             format!("Screenshot uploaded {url}"), 
@@ -711,7 +711,7 @@ impl Game {
                 self.settings.save().await;
                 self.current_state = GameState::Closing;
                 
-                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(WindowEvent::CloseGame) {
+                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::CloseGame) {
                     panic!("no: {}", e)
                 }
             }

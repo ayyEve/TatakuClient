@@ -12,12 +12,10 @@ pub struct Atlas {
 
     allocators: Vec<AtlasAllocator>,
 
-    pub(super) tex: WgpuTexture,
-
     empty_tex: TextureReference,
 }
 impl Atlas {
-    pub fn new(width: u32, height: u32, layers: u32, tex: WgpuTexture) -> Self {
+    pub fn new(width: u32, height: u32, layers: u32) -> Self {
         let allocators =  (0..layers).map(|_|AtlasAllocator::new(size2(width as i32, height as i32))).collect();
 
         let empty_tex = TextureReference {
@@ -35,7 +33,6 @@ impl Atlas {
             available_width: width,
             available_height: height,
             allocators,
-            tex,
             empty_tex
         }
     }
@@ -64,7 +61,7 @@ impl Atlas {
         Some(entries)
     }
     
-    fn remove_entry(&mut self, entry: TextureReference) {
+    pub fn remove_entry(&mut self, entry: TextureReference) {
         if entry.is_empty() { return }
         self.allocators.get_mut(entry.layer as usize).unwrap().deallocate(entry.id);
     }

@@ -68,14 +68,9 @@ impl TatakuRenderable for Rectangle {
     }
 
     fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
-        // TODO: this!
+        // TODO: shapes
         // r.shape = self.shape;
         let border = self.border.map(|mut b|{b.color.a = border_alpha; b});
-
-        // if let Some(mut b) = self.border { 
-        //     b.color.a = border_alpha;
-        //     r.border = Some(b.into())
-        // }
         
         let transform = transform
             // apply origin
@@ -95,13 +90,6 @@ impl TatakuRenderable for Rectangle {
         ;
 
         g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.color.alpha(alpha), transform)
-
-        // r.draw(
-        //     [0.0, 0.0, self.size.x, self.size.y], 
-        //     &self.draw_state.unwrap_or(c.draw_state), 
-        //     transform, 
-        //     g
-        // );
     }
 }
 

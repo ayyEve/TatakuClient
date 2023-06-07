@@ -207,7 +207,6 @@ impl OsuSlider {
 
 
         let border_color = BORDER_COLOR; //skin.slider_border.unwrap_or(BORDER_COLOR);
-
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
         // starting point
@@ -258,21 +257,22 @@ impl OsuSlider {
             }
             
         }
-        //TODO:render targets
-        // // draw it to the render texture
-        // if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x, window_size.y, |rt, g| {
-        //     use graphics::Graphics;
-        //     let c = g.draw_begin(rt.viewport());
-        //     g.clear_color(Color::TRANSPARENT_WHITE.into());
-        //     for i in list { i.draw(g, c); }
-        //     g.draw_end();
-        // }).await {
-        //     slider_body_render_target.image.origin = Vector2::ZERO;
-        //     slider_body_render_target.image.depth = self.slider_depth;
-        //     self.slider_body_render_target = Some(slider_body_render_target);
-        // } else {
-        //     self.slider_body_render_target_failed = Some(self.map_time);
-        // }
+        // TODO:render targets
+        // draw it to the render texture
+        if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x as u32, window_size.y as u32, |state, matrix| {
+            // use graphics::Graphics;
+            // let c = g.draw_begin(rt.viewport());
+            // g.clear_color(Color::TRANSPARENT_WHITE.into());
+            for i in list { i.draw(matrix, state); }
+            // g.draw_end();
+
+        }).await {
+            slider_body_render_target.image.origin = Vector2::ZERO;
+            slider_body_render_target.image.depth = self.slider_depth;
+            self.slider_body_render_target = Some(slider_body_render_target);
+        } else {
+            self.slider_body_render_target_failed = Some(self.map_time);
+        }
     }
 
     async fn make_dots(&mut self) {
@@ -473,7 +473,6 @@ impl HitObject for OsuSlider {
         if self.map_time < self.time {
             // timing circle
             self.approach_circle.draw(list);
-
         } else if self.map_time < self.curve.end_time {
             let rotation = PI * 2.0 - (self.pos_at(self.map_time + 0.1) - self.slider_ball_pos).atan2();
             // slider ball
@@ -530,12 +529,13 @@ impl HitObject for OsuSlider {
             }
         }
 
-        // // slider body
-        // if let Some(rt) = &self.slider_body_render_target {
-        //     let mut b = rt.image.clone();
-        //     b.color.a = alpha;
-        //     list.push(b);
-        // }
+        // slider body
+        if let Some(rt) = &self.slider_body_render_target {
+            let mut b = rt.image.clone();
+            b.color.a = alpha;
+            b.scale.y *= -1.0;
+            list.push(b);
+        }
 
         
         // start and end circles

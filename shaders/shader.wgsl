@@ -3,19 +3,19 @@ struct VertexOutputs {
     @builtin(position) position: vec4<f32>,
     //The texture cooridnate of the vertex
     @location(0) tex_coord: vec2<f32>,
-    //The color of the vertex
+    // The index of the texture
     @location(1) tex_index: i32,
     //The color of the vertex
-    @location(2) vertex_col: vec4<f32>
+    @location(2) vertex_col: vec4<f32>,
 }
 
 struct FragmentInputs {
-    //Texture coordinate
+    // Texture coordinate
     @location(0) tex_coord: vec2<f32>,
     // texture index
     @location(1) tex_index: i32,
-    //The Vertex color
-    @location(2) vertex_col: vec4<f32>
+    // The Vertex color
+    @location(2) vertex_col: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> projection_matrix: mat4x4<f32>;
@@ -39,7 +39,7 @@ fn vs_main(
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(1) @binding(0) var t: binding_array<texture_2d<f32>>;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 //The sampler we're using to sample the texture
 @group(1) @binding(1) var s: sampler;
 
@@ -47,8 +47,9 @@ fn vs_main(
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     var i = input.tex_index;
     if (i == -1) { i = 0; }
+    
+    var ts = textureSample(textures[i], s, input.tex_coord);
 
-    let ts = textureSample(t[i], s, input.tex_coord);
     // idk how to make it not use the sampler for non-textures, so we do this instead
     if (input.tex_index == -1) {
         return input.vertex_col;

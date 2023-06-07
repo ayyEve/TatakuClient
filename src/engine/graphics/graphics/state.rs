@@ -3,9 +3,15 @@ use crate::prelude::*;
 use lyon_tessellation::math::Point;
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
 
+
+// the sum of these two must not go past 16
 const LAYER_COUNT:u32 = 10;
+const RENDER_TARGET_LAYERS:u32 = 5;
 
 pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
+
+/// background color
+const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
 pub struct GraphicsState {
     surface: wgpu::Surface,
@@ -25,13 +31,17 @@ pub struct GraphicsState {
 
 
     // texture_bind_group: wgpu::BindGroup,
-    projection_matrix_bind_group: wgpu::BindGroup,
+    projection_matrix: Matrix,
     projection_matrix_buffer: wgpu::Buffer,
+    projection_matrix_bind_group: wgpu::BindGroup,
     // texture_bind_group_layout: wgpu::BindGroupLayout,
 
     sampler: wgpu::Sampler,
 
     atlas: Atlas,
+    render_target_atlas: Atlas,
+
+    atlas_texture: WgpuTexture,
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
@@ -114,7 +124,7 @@ impl GraphicsState {
                     },
                     // count: None,
                     // count: std::num::NonZeroU32::new(layers),
-                    count: std::num::NonZeroU32::new(LAYER_COUNT),
+                    count: std::num::NonZeroU32::new(LAYER_COUNT + RENDER_TARGET_LAYERS),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
@@ -142,11 +152,11 @@ impl GraphicsState {
             ]
         });
 
-        let projection = Self::create_projection(window_size);
+        let projection_matrix = Self::create_projection(window_size, true);
         let projection_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Projection Matrix Buffer"),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            contents: bytemuck::cast_slice(&projection.to_raw()),
+            contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
         });
 
         let projection_matrix_bind_group = device.create_bind_group(
@@ -227,16 +237,11 @@ impl GraphicsState {
 
 
         let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
-        let atlas_layers = LAYER_COUNT;
-        let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, atlas_layers);
+        let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
 
 
-        let atlas = Atlas::new(
-            atlas_size,
-            atlas_size,
-            atlas_layers,
-            atlas_texture
-        );
+        let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
+        let render_target_atlas = Atlas::new(atlas_size, atlas_size, RENDER_TARGET_LAYERS);
 
         let mut s = Self {
             surface,
@@ -246,6 +251,8 @@ impl GraphicsState {
             render_pipeline,
             sampler,
             atlas,
+            render_target_atlas,
+            atlas_texture,
 
             recorded_buffers: Vec::with_capacity(3),
             queued_buffers: Vec::with_capacity(3),
@@ -255,8 +262,9 @@ impl GraphicsState {
 
 
             // texture_bind_group: atlas_texture.bind_group,
-            projection_matrix_bind_group,
+            projection_matrix,
             projection_matrix_buffer,
+            projection_matrix_bind_group,
             // texture_bind_group_layout
         };
         s.create_render_buffer();
@@ -272,36 +280,51 @@ impl GraphicsState {
 
 
             let window_size = Vector2::new(new_size.width as f32, new_size.height as f32);
-            let projection = Self::create_projection(window_size);
+            self.projection_matrix = Self::create_projection(window_size, true);
 
-            info!("new proj: {projection:?}");
-            self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&projection.to_raw()));
+            // info!("new proj: {:?}", self.projection_matrix);
+            self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
         }
     }
 
 
-
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        
+        // // don't draw if our draw surface has no area
+        if output.texture.width() == 0 || output.texture.height() == 0 { return Ok(()) }
 
-        // don't draw if our draw surface has no area
-        if output.texture.width() == 0 || output.texture.height() == 0 {
-            return Ok(())
-        }
+        let renderable = RenderableSurface {
+            texture: &view,
+            clear_color: GFX_CLEAR_COLOR,
+        };
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        self.render(&renderable)?;
+
+        output.present();
+
+        Ok(())
+    }
+
+    pub fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
+        // let output = self.surface.get_current_texture()?;
+        // let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // // don't draw if our draw surface has no area
+        // if renderable.texture.width() == 0 || output.texture.height() == 0 { return Ok(()) }
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
         
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &renderable.texture,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.1, g: 0.2, b: 0.3, a: 1.0 }),
+                        load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
+                        // load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.1, g: 0.2, b: 0.3, a: 1.0 }),
                         store: true,
                     },
                 })],
@@ -310,7 +333,8 @@ impl GraphicsState {
 
             render_pass.set_pipeline(&self.render_pipeline); 
             render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.atlas.tex.bind_group, &[]);
+            // render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
 
             for recorded_buffer in self.recorded_buffers.iter() {
                 render_pass.set_vertex_buffer(0, recorded_buffer.vertex_buffer.slice(..));
@@ -321,41 +345,151 @@ impl GraphicsState {
 
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        // output.present();
 
         Ok(())
     }
 
 
-    fn create_projection(window_size: Vector2) -> Matrix {
-        let sx = (2.0 / window_size.x) as f32;
-        let sy = (-2.0 / window_size.y) as f32;
+    fn create_projection(draw_size: Vector2, v_flip: bool) -> Matrix {
+        let sx = (2.0 / draw_size.x) as f32;
+        let sy = (-2.0 / draw_size.y) as f32;
 
+        let mut transform = Matrix::identity();
+        // if !v_flip {
+        //     transform = transform.scale(Vector2::new(0.0, -2.0)).trans(Vector2::new(0.0, -draw_size.y / 2.0)) 
+        // }
+
+        // setup depth range
         let far = MAX_DEPTH;
         let near = -far;
-
         let depth_range = 1.0 / (far - near);
         
-        [
+        let proj:Matrix = [
             [sx, 0.0, 0.0, 0.0],
             [0.0, sy, 0.0, 0.0],
             [0.0, 0.0, depth_range, 0.0],
             [-1.0, 1.0, -near * depth_range, 1.0]
-        ].into()
+        ].into();
+
+        proj * transform
     }
 
+
+    pub fn create_render_target(&mut self, w:u32, h: u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
+        // find space in the render target atlas
+        let mut atlased = self.render_target_atlas.try_insert(w, h)?;
+
+        // offset the texture layer so it accesses the render target atlas
+        atlased.layer += LAYER_COUNT;
+
+        // create a projection and render target
+        let projection = Self::create_projection(Vector2::new(w as f32, h as f32), false);
+        let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
+
+        // queue rendering the data to it
+        self.update_render_target(target.clone(), do_render);
+
+        // return the new render target
+        Some(target)
+    }
+    pub fn update_render_target(&mut self, target: RenderTarget, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
+        // get the texture this target was written to
+        let textures = self.atlas_texture.textures.clone();
+        let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
+
+        // write the projection matrix
+        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
+        self.queue.submit([].into_iter());
+
+        let width = target.width;
+        let height = target.height;
+
+        // create a temporary texture to render to this target to
+        let texture = self.device.create_texture(
+            &wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                // Most images are stored using sRGB so we need to reflect that here.
+                format: self.config.format,
+                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+                // COPY_DST means that we want to copy data to this texture
+                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                label: Some("render_target_temp_tex"),
+                // This is the same as with the SurfaceConfig. It
+                // specifies what texture formats can be used to
+                // create TextureViews for this texture. The base
+                // texture format (Rgba8UnormSrgb in this case) is
+                // always supported. Note that using a different
+                // texture format is not supported on the WebGL2
+                // backend.
+                view_formats: &[],
+            }
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("render_target_temp_tex_view"),
+            dimension: Some(TextureViewDimension::D2),
+            base_array_layer: 0,
+
+            ..Default::default()
+        });
+
+        // create renderable surface
+        let renderable = RenderableSurface {
+            texture: &view,
+            clear_color: target.clear_color,
+        };
+
+        // clear buffers
+        self.begin();
+
+        // fill buffers
+        let transform = Matrix::identity();
+        do_render(self, transform);
+
+        // complete buffers
+        self.end();
+
+        // perform render
+        let _ = self.render(&renderable);
+
+
+        // copy render to atlas
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
+
+        let mut dest = atlas_tex.as_image_copy();
+        dest.origin.x = target.texture.x;
+        dest.origin.y = target.texture.y;
+        
+        encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
+        self.queue.submit(Some(encoder.finish()));
+
+        // remove temp texture
+        texture.destroy();
+
+        // reapply the window projection matrix
+        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
+
+    }
 }
 
 // texture stuff
 impl GraphicsState {
-    fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, layers: u32) -> WgpuTexture {
+    fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, format: wgpu::TextureFormat) -> WgpuTexture {
         let texture_size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
-        let textures = (0..layers).map(|_| {
+        let textures = (0..(LAYER_COUNT+RENDER_TARGET_LAYERS)).map(|_| {
             let texture = device.create_texture(
                 &wgpu::TextureDescriptor {
                     size: texture_size,
@@ -363,10 +497,10 @@ impl GraphicsState {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     // Most images are stored using sRGB so we need to reflect that here.
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    format, //wgpu::TextureFormat::Rgba8UnormSrgb,
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
                     label: Some("texture_atlas"),
                     // This is the same as with the SurfaceConfig. It
                     // specifies what texture formats can be used to
@@ -383,15 +517,45 @@ impl GraphicsState {
                 label: Some("pain and suffering"),
                 dimension: Some(TextureViewDimension::D2),
                 base_array_layer: 0,
-                // array_layer_count: Some(3),
 
                 ..Default::default()
             });
             (texture, view)
-        }).collect::<Vec<_>>();
+        })
+        // .chain((0..RENDER_TARGET_LAYERS).map(|_| {
+        //     let texture = device.create_texture(
+        //         &wgpu::TextureDescriptor {
+        //             size: texture_size,
+        //             mip_level_count: 1,
+        //             sample_count: 1,
+        //             dimension: wgpu::TextureDimension::D2,
+        //             // Most images are stored using sRGB so we need to reflect that here.
+        //             format,
+        //             // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+        //             // COPY_DST means that we want to copy data to this texture
+        //             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        //             label: Some("render_target_texture_atlas"),
+        //             // This is the same as with the SurfaceConfig. It
+        //             // specifies what texture formats can be used to
+        //             // create TextureViews for this texture. The base
+        //             // texture format (Rgba8UnormSrgb in this case) is
+        //             // always supported. Note that using a different
+        //             // texture format is not supported on the WebGL2
+        //             // backend.
+        //             view_formats: &[],
+        //         }
+        //     );
+        //     let view = texture.create_view(&wgpu::TextureViewDescriptor {
+        //         label: Some("pain and suffering"),
+        //         dimension: Some(TextureViewDimension::D2),
+        //         base_array_layer: 0,
+        //         ..Default::default()
+        //     });
+        //     (texture, view)
+        // }))
+        .collect::<Vec<_>>();
 
         let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
-        
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("texture array bind group"),
             layout: &layout,
@@ -403,40 +567,12 @@ impl GraphicsState {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(sampler),
-                },
-                // wgpu::BindGroupEntry {
-                //     binding: 2,
-                //     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                //         buffer: &texture_index_buffer,
-                //         offset: 0,
-                //         size: Some(NonZeroU64::new(4).unwrap()),
-                //     }),
-                // },
+                }
             ],
         });
 
-        // let bind_group = device.create_bind_group(
-        //     &wgpu::BindGroupDescriptor {
-        //         layout: &layout,
-        //         entries: &[
-        //             wgpu::BindGroupEntry {
-        //                 binding: 0,
-        //                 resource: wgpu::BindingResource::TextureView(&texture_view),
-        //             },
-        //             wgpu::BindGroupEntry {
-        //                 binding: 1,
-        //                 resource: wgpu::BindingResource::Sampler(sampler),
-        //             }
-        //         ],
-        //         label: Some("diffuse_bind_group"),
-        //     }
-        // );
-        
-
         WgpuTexture {
-            textures,
-            // texture,
-            // texture_view,
+            textures: Arc::new(textures),
             bind_group
         }
     }
@@ -465,10 +601,12 @@ impl GraphicsState {
             depth_or_array_layers: 1,
         };
 
+        let data = data.chunks_exact(4).map(|b|cast_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>();
+
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
             wgpu::ImageCopyTexture {
-                texture: &self.atlas.tex.textures.get(info.layer as usize).unwrap().0,
+                texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: info.x,
@@ -478,7 +616,7 @@ impl GraphicsState {
                 aspect: wgpu::TextureAspect::All,
             },
             // The actual pixel data
-            data,
+            &data,
             // The layout of the texture
             wgpu::ImageDataLayout {
                 offset: 0,
@@ -504,11 +642,20 @@ impl GraphicsState {
                 height,
                 depth_or_array_layers: 1,
             };
+            
+            let data = data.chunks_exact(4).map(|a| {
+                let r = a[0];
+                let g = a[1];
+                let b = a[2];
+                let a = a[3];
+                
+                [b,g,r,a]
+            }).flatten().collect::<Vec<_>>();
 
             self.queue.write_texture(
                 // Tells wgpu where to copy the pixel data
                 wgpu::ImageCopyTexture {
-                    texture: &self.atlas.tex.textures.get(info.layer as usize).unwrap().0,
+                    texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                     mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: info.x,
@@ -518,7 +665,7 @@ impl GraphicsState {
                     aspect: wgpu::TextureAspect::All,
                 },
                 // The actual pixel data
-                data,
+                &data,
                 // The layout of the texture
                 wgpu::ImageDataLayout {
                     offset: 0,
@@ -533,6 +680,14 @@ impl GraphicsState {
         Ok(info)
     }
 
+    pub fn free_tex(&mut self, mut tex: TextureReference) {
+        if tex.layer >= LAYER_COUNT {
+            tex.layer -= LAYER_COUNT;
+            self.render_target_atlas.remove_entry(tex)
+        } else {
+            self.atlas.remove_entry(tex)
+        }
+    }
 
     pub async fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
         let tex = self.surface.get_current_texture().unwrap();
@@ -688,33 +843,34 @@ impl GraphicsState {
             std::mem::swap(&mut tr, &mut br);
         }
 
+        let tex_index = tex.layer as i32;
         reserved.copy_in(&mut [
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords: tl,
-                tex_index: tex.layer as i32,
-                color
+                tex_index,
+                color,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords: tr,
-                tex_index: tex.layer as i32,
-                color
+                tex_index,
+                color,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords: bl,
-                tex_index: tex.layer as i32,
-                color
+                tex_index,
+                color,
             },
             Vertex {
                 //     .position = position + (size * scale),
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords: br,
-                tex_index: tex.layer as i32,
-                color
+                tex_index,
+                color,
             }
         ], &mut [
             0 + reserved.idx_offset as u32,
@@ -746,25 +902,25 @@ impl GraphicsState {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords,
                 tex_index,
-                color
+                color,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords,
                 tex_index,
-                color
+                color,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
-                color
+                color,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
-                color
+                color,
             }
         ], &mut [
             0 + reserved.idx_offset as u32,
@@ -792,7 +948,7 @@ impl GraphicsState {
         let n = resolution;
 
         let points = (0..n).map(|i| {
-            let angle = i as f32 / n as f32 * (PI * 2.0) as f32;
+            let angle = i as f32 / n as f32 * (PI * 2.0);
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
@@ -863,7 +1019,7 @@ impl GraphicsState {
 
     pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform)
+        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform);
     }
 
 
@@ -939,22 +1095,49 @@ impl GraphicsState {
 
 
 pub struct WgpuTexture {
-    textures: Vec<(wgpu::Texture, wgpu::TextureView)>,
+    pub textures: Arc<Vec<(wgpu::Texture, wgpu::TextureView)>>,
     // texture: wgpu::Texture,
     // pub texture_view: wgpu::TextureView,
     pub bind_group: wgpu::BindGroup,
 }
 
 
-// pub struct RenderableSurface {
-//     projection: wgpu::BindGroup,
-//     recorded_buffers: Vec<RenderBuffer>,
-//     texture: wgpu::TextureView
-// }
-// impl RenderableSurface {
+pub struct RenderableSurface<'a> {
+    texture: &'a wgpu::TextureView,
+    clear_color: Color,
+}
+impl<'a> RenderableSurface<'a> {
+    fn new() -> Self {
+        todo!()
+    }
+    fn get_clear_color(&self) -> wgpu::Color {
+        wgpu::Color { 
+            r: self.clear_color.r as f64, 
+            g: self.clear_color.g as f64, 
+            b: self.clear_color.b as f64, 
+            a: self.clear_color.a as f64 
+        }
+    }
+}
 
-// }
 
+fn cast_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
+    // incoming is rgba8
+    let r = bytes.get(0).cloned().unwrap_or_default();
+    let g = bytes.get(1).cloned().unwrap_or_default();
+    let b = bytes.get(2).cloned().unwrap_or_default();
+    let a = bytes.get(3).cloned().unwrap_or_default();
+
+    match format {
+        // pretend this is all it can be for now
+        wgpu::TextureFormat::Bgra8Unorm
+        | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+
+        // just default to rgba otherwise and cry if its not
+        _ => [r, g, b, a]
+    }
+
+}
 
 
 #[tokio::test]
@@ -1063,7 +1246,7 @@ async fn test() {
             }
             state.end();
 
-            match state.render() {
+            match state.render_current_surface() {
                 Ok(_) => {}
                 // Reconfigure the surface if lost
                 // Err(wgpu::SurfaceError::Lost) => state.resize(state.size),

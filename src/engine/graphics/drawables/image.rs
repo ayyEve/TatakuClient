@@ -85,7 +85,6 @@ impl Image {
             self.pos = (size - self.size()) / 2.0;
         }
     }
-
 }
 
 impl TatakuRenderable for Image {
@@ -100,16 +99,16 @@ impl TatakuRenderable for Image {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-        // let mut scale = self.scale;
+        let mut scale = self.scale;
         let mut h_flip = false;
         let mut v_flip = false;
 
-        if self.scale.x < 0.0 {
-            // scale.x = scale.x.abs();
+        if scale.x < 0.0 {
+            scale.x = scale.x.abs();
             h_flip = true;
         }
-        if self.scale.y < 0.0 {
-            // scale.y = scale.y.abs();
+        if scale.y < 0.0 {
+            scale.y = scale.y.abs();
             v_flip = true;
         }
 
@@ -121,7 +120,7 @@ impl TatakuRenderable for Image {
             .rot(self.rotation)
 
             // scale to size
-            .scale(self.scale)
+            .scale(scale)
 
             // move to pos
             .trans(self.pos)
