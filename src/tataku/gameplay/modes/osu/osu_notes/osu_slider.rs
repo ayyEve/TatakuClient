@@ -524,7 +524,7 @@ impl HitObject for OsuSlider {
                     self.circle_depth - 0.0000001,
                     self.slider_ball_pos,
                     self.radius * 2.0,
-                    Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha),2.0)
+                    Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha), 2.0)
                 )));
             }
         }

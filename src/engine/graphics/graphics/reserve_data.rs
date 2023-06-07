@@ -6,7 +6,7 @@ pub struct ReserveData<'a> {
     pub idx_offset: u64,
 }
 impl<'a> ReserveData<'a> {
-    pub fn copy_in(&mut self, vtx: &mut [Vertex], idx: &mut [u32]) {
+    pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {
         // std::mem::swap(vtx, self.vtx);
         // std::mem::swap(idx, self.idx);
 

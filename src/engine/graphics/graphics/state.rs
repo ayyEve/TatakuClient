@@ -1,11 +1,10 @@
 use crate::prelude::*;
-
 use lyon_tessellation::math::Point;
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
 
 
 // the sum of these two must not go past 16
-const LAYER_COUNT:u32 = 10;
+const LAYER_COUNT:u32 = 5;
 const RENDER_TARGET_LAYERS:u32 = 5;
 
 pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
@@ -36,6 +35,7 @@ pub struct GraphicsState {
     projection_matrix_bind_group: wgpu::BindGroup,
     // texture_bind_group_layout: wgpu::BindGroupLayout,
 
+    #[allow(unused)]
     sampler: wgpu::Sampler,
 
     atlas: Atlas,
@@ -152,7 +152,7 @@ impl GraphicsState {
             ]
         });
 
-        let projection_matrix = Self::create_projection(window_size, true);
+        let projection_matrix = Self::create_projection(window_size);
         let projection_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Projection Matrix Buffer"),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
@@ -280,7 +280,7 @@ impl GraphicsState {
 
 
             let window_size = Vector2::new(new_size.width as f32, new_size.height as f32);
-            self.projection_matrix = Self::create_projection(window_size, true);
+            self.projection_matrix = Self::create_projection(window_size);
 
             // info!("new proj: {:?}", self.projection_matrix);
             self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
@@ -351,28 +351,21 @@ impl GraphicsState {
     }
 
 
-    fn create_projection(draw_size: Vector2, v_flip: bool) -> Matrix {
+    fn create_projection(draw_size: Vector2) -> Matrix {
         let sx = (2.0 / draw_size.x) as f32;
         let sy = (-2.0 / draw_size.y) as f32;
-
-        let mut transform = Matrix::identity();
-        // if !v_flip {
-        //     transform = transform.scale(Vector2::new(0.0, -2.0)).trans(Vector2::new(0.0, -draw_size.y / 2.0)) 
-        // }
 
         // setup depth range
         let far = MAX_DEPTH;
         let near = -far;
         let depth_range = 1.0 / (far - near);
         
-        let proj:Matrix = [
+        [
             [sx, 0.0, 0.0, 0.0],
             [0.0, sy, 0.0, 0.0],
             [0.0, 0.0, depth_range, 0.0],
             [-1.0, 1.0, -near * depth_range, 1.0]
-        ].into();
-
-        proj * transform
+        ].into()
     }
 
 
@@ -384,7 +377,7 @@ impl GraphicsState {
         atlased.layer += LAYER_COUNT;
 
         // create a projection and render target
-        let projection = Self::create_projection(Vector2::new(w as f32, h as f32), false);
+        let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
         let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
 
         // queue rendering the data to it
@@ -629,57 +622,6 @@ impl GraphicsState {
         Ok(info)
     }
 
-    pub fn load_texture_rgba_many(&mut self, data: Vec<(&Vec<u8>, u32, u32)>) -> TatakuResult<Vec<TextureReference>> {
-        let (data, infos):(Vec<&Vec<u8>>, Vec<(u32, u32)>) = data.into_iter().map(|(data, w, h)|(data, (w, h))).unzip();
-
-        let Some(info) = self.atlas.try_insert_many(&infos) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
-        for (info, data) in info.iter().zip(data.into_iter()) {
-            let width = info.width;
-            let height = info.height;
-
-            let texture_size = wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            };
-            
-            let data = data.chunks_exact(4).map(|a| {
-                let r = a[0];
-                let g = a[1];
-                let b = a[2];
-                let a = a[3];
-                
-                [b,g,r,a]
-            }).flatten().collect::<Vec<_>>();
-
-            self.queue.write_texture(
-                // Tells wgpu where to copy the pixel data
-                wgpu::ImageCopyTexture {
-                    texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: info.x,
-                        y: info.y,
-                        z: 0
-                    },
-                    aspect: wgpu::TextureAspect::All,
-                },
-                // The actual pixel data
-                &data,
-                // The layout of the texture
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * width),
-                    rows_per_image: Some(height),
-                },
-                texture_size,
-            );
-        }
-        
-
-        Ok(info)
-    }
-
     pub fn free_tex(&mut self, mut tex: TextureReference) {
         if tex.layer >= LAYER_COUNT {
             tex.layer -= LAYER_COUNT;
@@ -828,7 +770,6 @@ impl GraphicsState {
         let [x, y, w, h] = rect;
         let color = color.into();
 
-        
         let mut tl = tex.uvs.tl.into();
         let mut tr = tex.uvs.tr.into();
         let mut bl = tex.uvs.bl.into();
@@ -844,7 +785,8 @@ impl GraphicsState {
         }
 
         let tex_index = tex.layer as i32;
-        reserved.copy_in(&mut [
+        let offset = reserved.idx_offset as u32;
+        reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords: tl,
@@ -872,17 +814,17 @@ impl GraphicsState {
                 tex_index,
                 color,
             }
-        ], &mut [
-            0 + reserved.idx_offset as u32,
-            2 + reserved.idx_offset as u32,
-            1 + reserved.idx_offset as u32,
-            1 + reserved.idx_offset as u32,
-            2 + reserved.idx_offset as u32,
-            3 + reserved.idx_offset as u32,
+        ], &[
+            0 + offset,
+            2 + offset,
+            1 + offset,
+            1 + offset,
+            2 + offset,
+            3 + offset,
         ]);
     }
 
-    fn reserve_quad(
+    fn reserve_rect(
         &mut self,
         rect: [f32; 4],
         depth: f32,
@@ -897,7 +839,8 @@ impl GraphicsState {
         let color = color.into();
 
         let [x, y, w, h] = rect;
-        reserved.copy_in(&mut [
+        let offset = reserved.idx_offset as u32;
+        reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords,
@@ -922,15 +865,47 @@ impl GraphicsState {
                 tex_index,
                 color,
             }
-        ], &mut [
-            0 + reserved.idx_offset as u32,
-            2 + reserved.idx_offset as u32,
-            1 + reserved.idx_offset as u32,
-            1 + reserved.idx_offset as u32,
-            2 + reserved.idx_offset as u32,
-            3 + reserved.idx_offset as u32,
+        ], &[
+            0 + offset,
+            2 + offset,
+            1 + offset,
+            1 + offset,
+            2 + offset,
+            3 + offset,
         ]);
     }
+
+
+    fn reserve_quad(
+        &mut self,
+        quad: [Vector2; 4],
+        depth: f32,
+        color: Color,
+        transform: Matrix
+    ) {
+        let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let depth = Self::map_depth(depth);
+        let color = color.into();
+
+        let vertices = quad.into_iter().map(|p|Vertex {
+            position: transform.mul_v3(Vector3::new(p.x, p.y, depth)).into(),
+            tex_coords: [0.0, 0.0],
+            tex_index: -1,
+            color,
+        }).collect::<Vec<_>>();
+        
+        let offset = reserved.idx_offset as u32;
+        reserved.copy_in(&vertices, &[
+            0 + offset,
+            2 + offset,
+            1 + offset,
+
+            1 + offset,
+            2 + offset,
+            3 + offset,
+        ]);
+    }
+
 
 }
 
@@ -938,69 +913,52 @@ impl GraphicsState {
 // draw helpers
 impl GraphicsState {
     pub fn draw_circle(&mut self, depth: f32, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix) {
-        if let Some(border) = border {
-            self.draw_circle(depth, radius + border.radius, border.color, None, resolution, transform)
+        let n = resolution;
+
+        // border 
+        if let Some(border) = border.filter(|b|b.color.a >= 0.0) {
+            let radius = radius + border.radius;
+            let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+            let (cw, ch) = (0.5 * w, 0.5 * h);
+            let (cx, cy) = (x + cw, y + ch);
+            let points = (0..n).map(|i| {
+                let angle = i as f32 / n as f32 * (PI * 2.0);
+                Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+            });
+
+            self.tesselate_polygon(points, depth, border.color, transform, Some(border.radius));
         }
 
+        // minor optimization
+        if color.a <= 0.0 { return }
+
+        // fill
         let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
         let (cw, ch) = (0.5 * w, 0.5 * h);
         let (cx, cy) = (x + cw, y + ch);
-        let n = resolution;
-
         let points = (0..n).map(|i| {
             let angle = i as f32 / n as f32 * (PI * 2.0);
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
-        self.tesselate_polygon(points, depth, color, transform, border);
+        self.tesselate_polygon(points, depth, color, transform, None);
+        
     }
 
     pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix) {
-        let points = vec![Vector2::new(line[0], line[1]), Vector2::new(line[2], line[3])].into_iter();
-        self.tesselate_polygon(points, depth, color, transform, Some(Border::new(color, thickness)));
-        
+        let p1 = Vector2::new(line[0], line[1]);
+        let p2 = Vector2::new(line[2], line[3]);
 
-        // return; 
+        let n = p2 - p1;
+        let n = Vector2::new(-n.y, n.x).normalize() * thickness;
+    
+        let n0 = p1 + n;
+        let n1 = p2 + n;
+        let n2 = p1 - n;
+        let n3 = p2 - n;
 
-        // let resolution = 2;
-        // let n = resolution * 2;
-        
-        // let radius = thickness;
-        // let (x1, y1, x2, y2) = (line[0], line[1], line[2], line[3]);
-        // let (dx, dy) = (x2 - x1, y2 - y1);
-        // let w = (dx * dx + dy * dy).sqrt();
-        // let pos1 = cgmath::Vector3::new(x1, y1, 0.0);
-        // let d = Vector2::new(dx, dy);
-        
-        // let m = transform * Matrix::from_translation(pos1) * Matrix::from_orient(d);
-        // let points = (0..n).map(|j| {
-        //     // Detect the half circle from index.
-        //     // There is one half circle at each end of the line.
-        //     // Together they form a full circle if
-        //     // the length of the line is zero.
-        //     match j {
-        //         j if j >= resolution => {
-        //             // Compute the angle to match start and end
-        //             // point of half circle.
-        //             // This requires an angle offset since
-        //             // the other end of line is the first half circle.
-        //             let angle = (j - resolution) as f32 / (resolution - 1) as f32 * PI + PI;
-        //             // Rotate 90 degrees since the line is horizontal.
-        //             let angle = angle + PI / 2.0;
-        //             Vector2::new(w + angle.cos() as f32 * radius, angle.sin() as f32 * radius)
-        //         }
-        //         j => {
-        //             // Compute the angle to match start and end
-        //             // point of half circle.
-        //             let angle = j as f32 / (resolution - 1) as f32 * PI;
-        //             // Rotate 90 degrees since the line is horizontal.
-        //             let angle = angle + PI / 2.0;
-        //             Vector2::new(angle.cos() as f32  * radius, angle.sin() as f32  * radius)
-        //         }
-        //     }
-        // });
-
-        // self.tesselate_polygon(points, depth, color, m, None);
+        let quad = [ n0, n2, n1, n3 ];
+        self.reserve_quad(quad, depth, color, transform);
     }
 
     pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, color: Color, transform: Matrix) {
@@ -1012,9 +970,10 @@ impl GraphicsState {
                 Vector2::new(x+w, y+h),
                 Vector2::new(x, y+h),
             ].into_iter();
-            self.tesselate_polygon(points, depth, color, transform, Some(border));
+            self.tesselate_polygon(points, depth, border.color, transform, Some(border.radius));
         }
-        self.reserve_quad(rect, depth, color, transform)
+
+        self.reserve_rect(rect, depth, color, transform)
     }
 
     pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix) {
@@ -1023,7 +982,7 @@ impl GraphicsState {
     }
 
 
-    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix, border: Option<Border>) {
+    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix, border: Option<f32>) {
         let mut path = lyon_tessellation::path::Path::builder();
         let depth = Self::map_depth(depth);
 
@@ -1045,12 +1004,12 @@ impl GraphicsState {
         {
             let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
 
-            let result = if let Some(border) = border {
+            let result = if let Some(radius) = border {
                 // Create the tessellator.
                 let mut tessellator = lyon_tessellation::StrokeTessellator::new();
 
                 let mut options = lyon_tessellation::StrokeOptions::default();
-                options.line_width = border.radius;
+                options.line_width = radius;
 
                 // Compute the tessellation.
                 tessellator.tessellate_path(
@@ -1068,9 +1027,12 @@ impl GraphicsState {
                     &lyon_tessellation::FillOptions::default(),
                     &mut vertex_builder
                 )
-            };
+            }; 
+            if let Err(e) = result {
+                error!("Tesselator error: {e}");
+                return;
+            }
 
-            assert!(result.is_ok());
         }
 
         // convert vertices and indices to their proper values
