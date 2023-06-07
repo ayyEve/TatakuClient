@@ -27,7 +27,6 @@ lazy_static::lazy_static! {
 
 pub struct GameWindow {
     window: winit::window::Window,
-    event_loop: winit::event_loop::EventLoopProxy<()>,
     graphics: GraphicsState,
 
     window_event_receiver: Receiver<Game2WindowEvent>,
@@ -47,7 +46,6 @@ impl GameWindow {
         
         let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
         let window: winit::window::Window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
-        
         
         let (texture_load_sender, texture_load_receiver) = unbounded_channel();
         TEXTURE_LOAD_QUEUE.set(texture_load_sender).ok().expect("bad");
@@ -94,26 +92,14 @@ impl GameWindow {
         }
         
         unsafe {
-            // let _ = GRAPHICS.set(graphics);
             let _ = RENDER_EVENT_RECEIVER.set(render_event_receiver);
             let _ = GAME_EVENT_SENDER.set(game_event_sender);
-
-            // gl::Enable(gl::DEBUG_OUTPUT);
-            // gl::Enable(gl::DEBUG_OUTPUT_SYNCHRONOUS);
-            // extern "system" fn gl_callback(_src:u32, _t:u32, _id:u32, _severity:u32, _len:i32, msg: *const i8, _p: *mut std::ffi::c_void) {
-            //     let e = unsafe { std::ffi::CStr::from_ptr(msg).to_string_lossy().to_string() };
-            //     if e.starts_with("Buffer detailed info") { return }
-            //     error!("gl: {e}")
-            // }
-            // gl::DebugMessageCallback(gl_callback, 0u8 as *const std::ffi::c_void);
         }
 
-        let proxy = event_loop.create_proxy();
 
         let now = Instant::now();
         let s = Self {
             window,
-            event_loop: proxy,
             graphics,
 
             window_event_receiver,
@@ -132,6 +118,7 @@ impl GameWindow {
 
     pub async fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) {
         // fire event so things get moved around correctly
+        // what??
         let settings = get_settings!().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
@@ -141,24 +128,14 @@ impl GameWindow {
         // self.window.set_raw_mouse_input(settings.raw_mouse_input);
         // self.window.set_vsync(settings.vsync);
 
-        // self.event_loop.send_event(());
-
-        macro_rules! close_window {
-            (self) => {
-                // self.close();
-                
-                self.close_pending = true;
-                let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowClosed);
-                self.frametime_logger.write();
-                return;
-            }
-        }
-        
         self.refresh_monitors_inner();
         self.apply_fullscreen();
         self.apply_vsync();
 
         event_loop.run(move |event, _b, control_flow| {
+            self.update();
+            if self.close_pending { *control_flow = ControlFlow::Exit; }
+
             let event = match event {
                 Event::WindowEvent { window_id:_, event } => {
                     match event {
@@ -196,7 +173,6 @@ impl GameWindow {
                         // winit::event::WindowEvent::AxisMotion { device_id, axis, value } => todo!(),
                         winit::event::WindowEvent::Touch(t) => GameWindowEvent::MouseMove(Vector2::new(t.location.x as f32, t.location.y as f32)),
                         // winit::event::WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => todo!(),
-                        // winit::event::WindowEvent::ThemeChanged(_) => todo!(),
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
                     
                         _ => return
@@ -208,65 +184,12 @@ impl GameWindow {
                     GameWindowEvent::Closed
                 }
                 
-                Event::MainEventsCleared => {
-                    let old_fullscreen = self.settings.fullscreen_monitor;
-                    let old_vsync = self.settings.vsync;
-
-                    if self.settings.update() {
-                        if self.settings.fullscreen_monitor != old_fullscreen {
-                            self.apply_fullscreen();
-                        }
-
-                        if self.settings.vsync != old_vsync {
-                            self.apply_vsync();
-                        }
-                    }
-
-                    self.check_texture_load_loop();
-
-                    if let Ok(event) = self.window_event_receiver.try_recv() {
-                        match event {
-                            Game2WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
-                            Game2WindowEvent::HideCursor => self.window.set_cursor_visible(false),
-                            Game2WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
-        
-                            Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
-                            Game2WindowEvent::SetClipboard(text) => {
-                                use clipboard::{ClipboardProvider, ClipboardContext};
-        
-                                let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
-                                match ctx {
-                                    Ok(mut ctx) => if let Err(e) = ctx.set_contents(text) {
-                                        error!("[Clipboard] Error: {:?}", e);
-                                    }
-                                    Err(e) => error!("[Clipboard] Error: {:?}", e),
-                                }
-                            },
-        
-                            Game2WindowEvent::CloseGame => { close_window!(self); },
-                            // WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze).await,
-                            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
-
-                            _ => {}
-                        }
-                    }
-        
-                    // increment input frametime stuff
-                    let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
-                    INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
-                    INPUT_COUNT.fetch_add(1, SeqCst);
-        
-                    // actually render
-                    let now = Instant::now();
-                    self.render();
-                    self.frametime_logger.add(now.as_millis());
-
-                    if self.close_pending {
-                        *control_flow = ControlFlow::Exit;
-                    }
-                    return
-                }
+                Event::MainEventsCleared => { return }
                 
+                Event::RedrawRequested(_) => {
+                    self.render();
+                    return;
+                }
                 // Event::DeviceEvent { device_id, event } => todo!(),
                 _ => return
             };
@@ -277,65 +200,65 @@ impl GameWindow {
                 let _ = game_event_sender.send(GameEvent::WindowEvent(event)).await;
             });
         });
+    }
 
+    fn update(&mut self) {
+        let old_fullscreen = self.settings.fullscreen_monitor;
+        let old_vsync = self.settings.vsync;
 
-        // loop {
-        //     // // poll window events
-        //     // while let Some(e) = self.window.poll_event() {
-        //     //     if e == GameWindowEvent::Closed { close_window!(self); }
-        //     //     // if e.close_args().is_some() {  }
+        if self.settings.update() {
+            if self.settings.fullscreen_monitor != old_fullscreen {
+                self.apply_fullscreen();
+            }
 
-        //     //     // controller input, only works with glfw though
-        //     //     if let Some(event) = self.window.check_controller_input(&e) {
-        //     //         let _ = GAME_EVENT_SENDER.get().unwrap().try_send(event);
-        //     //     }
+            if self.settings.vsync != old_vsync {
+                self.apply_vsync();
+            }
+        }
 
-        //     //     if let GameWindowEvent::FileDrop(d) = &e {
-        //     //         let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::DragAndDrop(d.clone()));
-        //     //         continue
-        //     //     }
+        self.check_texture_load_loop();
 
+        if let Ok(event) = self.window_event_receiver.try_recv() {
+            match event {
+                Game2WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
+                Game2WindowEvent::HideCursor => self.window.set_cursor_visible(false),
+                Game2WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
 
-        //     //     let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowEvent(e));
-        //     // }
+                Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+                Game2WindowEvent::SetClipboard(text) => {
+                    use clipboard::{ClipboardProvider, ClipboardContext};
 
-        //     // check render-side events
-        //     if let Ok(event) = self.window_event_receiver.try_recv() {
-        //         match event {
-        //             WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
-        //             WindowEvent::HideCursor => self.window.set_cursor_visible(false),
-        //             WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
+                    let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+                    match ctx {
+                        Ok(mut ctx) => if let Err(e) = ctx.set_contents(text) {
+                            error!("[Clipboard] Error: {:?}", e);
+                        }
+                        Err(e) => error!("[Clipboard] Error: {:?}", e),
+                    }
+                },
 
-        //             WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
-        //             WindowEvent::SetClipboard(text) => {
-        //                 use clipboard::{ClipboardProvider, ClipboardContext};
+                Game2WindowEvent::CloseGame => { 
+                    self.close_pending = true;
+                    let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowClosed);
+                    self.frametime_logger.write();
+                }
 
-        //                 let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
-        //                 match ctx {
-        //                     Ok(mut ctx) => if let Err(e) = ctx.set_contents(text) {
-        //                         error!("[Clipboard] Error: {:?}", e);
-        //                     }
-        //                     Err(e) => error!("[Clipboard] Error: {:?}", e),
-        //                 }
-        //             },
+                // WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze).await,
+                Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
-        //             WindowEvent::CloseGame => { close_window!(self); },
-        //             WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze).await,
-        //             WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
-        //         }
-        //     }
+                _ => {}
+            }
+        }
 
-        //     // increment input frametime stuff
-        //     let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
-        //     INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
-        //     INPUT_COUNT.fetch_add(1, SeqCst);
+        // increment input frametime stuff
+        let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
+        INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
+        INPUT_COUNT.fetch_add(1, SeqCst);
 
-        //     // actually render
-        //     let now = Instant::now();
-        //     self.render().await;
-        //     self.frametime_logger.add(now.as_millis());
-        //     tokio::task::yield_now().await;
-        // }
+        // actually render
+        let now = Instant::now();
+        self.window.request_redraw();
+        self.frametime_logger.add(now.as_millis());
     }
     
     async fn screenshot(&mut self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
@@ -423,33 +346,11 @@ impl GameWindow {
             LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
                 let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, callback);
                 on_done.send(rt.ok_or(TatakuError::String("failed".to_owned()))).ok().expect("uh oh");
-                
-                // match RenderTarget::new_main_thread(w, h) {
-                //     Ok(mut render_target) => {
-                //         let graphics = graphics();
-                //         render_target.bind();
-                //         callback(&mut render_target, graphics);
-                //         render_target.unbind();
-
-                //         render_targets.push(render_target.render_target_data.clone());
-                //         image_data.push(render_target.image.tex.clone());
-
-                //         if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") }
-                //     }
-                //     Err(e) => {
-                //         if let Err(_) = on_done.send(Err(e)) { error!("uh oh") }
-                //     }
-                // }
             }
 
-            LoadImage::UpdateRenderTarget(mut render_target, on_done, callback) => {
-                // render_target.bind();
-                // let graphics = graphics();
-                // callback(&mut render_target, graphics);
-                // render_target.unbind();
-
-                // if let Err(_) = on_done.send(Ok(render_target)) { error!("uh oh") };
-            }
+            // LoadImage::UpdateRenderTarget(target, on_done, callback) => {
+            //     self.graphics.update_render_target(target, callback);
+            // }
         }
 
         trace!("Done loading tex")
@@ -457,70 +358,64 @@ impl GameWindow {
 
 
     pub fn render(&mut self) {
-        unsafe {
-            if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
-                match RENDER_EVENT_RECEIVER.get_mut().unwrap().read() {
-                    TatakuRenderEvent::None => {},
-                    TatakuRenderEvent::Draw(data) => {
+        let data = unsafe {
+            let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
+            let TatakuRenderEvent::Draw(data) = RENDER_EVENT_RECEIVER.get_mut().unwrap().read() else { return };
+            data
+        };
 
-                        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
-                        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
-                        RENDER_COUNT.fetch_add(1, SeqCst);
+        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
+        RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
+        RENDER_COUNT.fetch_add(1, SeqCst);
 
-                        let transform = Matrix::identity();
-                        
-                        // use this for snipping
-                        #[cfg(feature="snipping")] {
-                            // let orig_c = graphics.draw_begin(args.viewport());
-                            self.graphics.begin();
+        let transform = Matrix::identity();
+        
+        // use this for snipping
+        #[cfg(feature="snipping")] {
+            // let orig_c = graphics.draw_begin(args.viewport());
+            self.graphics.begin();
 
-                            for i in data.iter() {
-                                // let mut drawstate_changed = false;
-                                // let mut c = orig_c;
+            for i in data.iter() {
+                // let mut drawstate_changed = false;
+                // let mut c = orig_c;
 
-                                // if let Some(ds) = i.get_draw_state() {
-                                //     drawstate_changed = true;
-                                //     // println!("ic: {:?}", ic);
-                                //     graphics.draw_end();
-                                //     graphics.draw_begin(args.viewport());
-                                //     graphics.use_draw_state(&ds);
-                                //     c.draw_state = ds;
-                                // }
-                                
-                                // graphics.use_draw_state(&c.draw_state);
-                                // i.draw(graphics, c);
-                                i.draw(transform, &mut self.graphics);
+                // if let Some(ds) = i.get_draw_state() {
+                //     drawstate_changed = true;
+                //     // println!("ic: {:?}", ic);
+                //     graphics.draw_end();
+                //     graphics.draw_begin(args.viewport());
+                //     graphics.use_draw_state(&ds);
+                //     c.draw_state = ds;
+                // }
+                
+                // graphics.use_draw_state(&c.draw_state);
+                i.draw(transform, &mut self.graphics);
 
-                                // if drawstate_changed {
-                                //     graphics.draw_end();
-                                //     graphics.draw_begin(args.viewport());
-                                //     graphics.use_draw_state(&orig_c.draw_state);
-                                // }
-                            }
-
-                            self.graphics.end();
-                        }
-
-
-                        #[cfg(not(feature="snipping"))] {
-                            let c = graphics.draw_begin(args.viewport());
-                            graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-                            
-                            for i in data.iter() {
-                                i.draw(graphics, c);
-                            }
-                            
-                            graphics.draw_end();
-                        }
-
-                        let _ = self.graphics.render_current_surface(); //.expect("couldnt draw");
-                    }
-                }
+                // if drawstate_changed {
+                //     graphics.draw_end();
+                //     graphics.draw_begin(args.viewport());
+                //     graphics.use_draw_state(&orig_c.draw_state);
+                // }
             }
 
+            self.graphics.end();
         }
-    }
 
+
+        #[cfg(not(feature="snipping"))] {
+            let c = graphics.draw_begin(args.viewport());
+            graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
+            
+            for i in data.iter() {
+                i.draw(graphics, c);
+            }
+            
+            graphics.draw_end();
+        }
+
+        // apply
+        let _ = self.graphics.render_current_surface(); //.expect("couldnt draw");
+    }
 
 }
 
@@ -585,18 +480,18 @@ impl GameWindow {
         }
     }
 
-    pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
-        trace!("update render target");
+    // pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+    //     trace!("update render target");
 
-        let (sender, mut receiver) = unbounded_channel();
-        get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+    //     let (sender, mut receiver) = unbounded_channel();
+    //     get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
 
-        if let Some(t) = receiver.recv().await {
-            t
-        } else {
-            Err(TatakuError::String("idk".to_owned()))
-        }
-    }
+    //     if let Some(t) = receiver.recv().await {
+    //         t
+    //     } else {
+    //         Err(TatakuError::String("idk".to_owned()))
+    //     }
+    // }
 
 
     pub fn free_render_target(tex: TextureReference) -> TatakuResult {
@@ -691,7 +586,7 @@ pub enum LoadImage {
     FreeTexture(TextureReference),
 
     CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-    UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
+    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
 }
 
 

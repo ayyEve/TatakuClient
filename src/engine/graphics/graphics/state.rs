@@ -1,7 +1,8 @@
+use std::backtrace::Backtrace;
+
 use crate::prelude::*;
 use lyon_tessellation::math::Point;
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
-
 
 // the sum of these two must not go past 16
 const LAYER_COUNT:u32 = 5;
@@ -59,11 +60,11 @@ impl GraphicsState {
         //
         // The surface needs to live as long as the window that created it.
         // State owns the window so this should be safe.
-        let surface = unsafe {instance.create_surface(window).unwrap()};
+        let surface = unsafe { instance.create_surface(window).unwrap() };
 
         let adapter = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             },
@@ -99,7 +100,7 @@ impl GraphicsState {
             format: surface_format,
             width: size[0],
             height: size[1],
-            present_mode: surface_caps.present_modes[0],
+            present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
@@ -235,10 +236,8 @@ impl GraphicsState {
             ..Default::default()
         }); 
 
-
         let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
-
 
         let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
         let render_target_atlas = Atlas::new(atlas_size, atlas_size, RENDER_TARGET_LAYERS);
@@ -273,16 +272,12 @@ impl GraphicsState {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
-            // self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
-
             let window_size = Vector2::new(new_size.width as f32, new_size.height as f32);
             self.projection_matrix = Self::create_projection(window_size);
-
-            // info!("new proj: {:?}", self.projection_matrix);
             self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
         }
     }
@@ -301,7 +296,6 @@ impl GraphicsState {
         };
 
         self.render(&renderable)?;
-
         output.present();
 
         Ok(())
@@ -675,6 +669,9 @@ impl GraphicsState {
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
     fn create_render_buffer(&mut self) {
+        let b = Backtrace::capture();
+        info!("Creating buffer: {b}");
+
         self.queued_buffers.push(RenderBuffer {
             vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Vertex Buffer"),
@@ -1069,9 +1066,6 @@ pub struct RenderableSurface<'a> {
     clear_color: Color,
 }
 impl<'a> RenderableSurface<'a> {
-    fn new() -> Self {
-        todo!()
-    }
     fn get_clear_color(&self) -> wgpu::Color {
         wgpu::Color { 
             r: self.clear_color.r as f64, 
@@ -1102,6 +1096,7 @@ fn cast_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
 }
 
 
+#[allow(unused)]
 #[tokio::test]
 async fn test() {
     use winit::{

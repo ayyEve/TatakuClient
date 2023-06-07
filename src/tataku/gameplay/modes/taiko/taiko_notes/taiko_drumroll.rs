@@ -95,6 +95,7 @@ impl HitObject for TaikoDrumroll {
             let mut start = image.clone();
             start.pos = self.pos + Vector2::new(0.0, self.radius);
             start.scale.x *= -1.0;
+            start.origin.x = start.tex_size().x;
             list.push(start);
 
             // end

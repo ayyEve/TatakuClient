@@ -21,7 +21,7 @@ const NOTIF_BG_COLOR:Color = Color::new(0.0, 0.0, 0.0, 0.6);
 
 
 lazy_static::lazy_static! {
-    pub static ref NOTIFICATION_MANAGER: Arc<AsyncMutex<NotificationManager>> = Arc::new(AsyncMutex::new(NotificationManager::new()));
+    pub static ref NOTIFICATION_MANAGER: Arc<AsyncRwLock<NotificationManager>> = Arc::new(AsyncRwLock::new(NotificationManager::new()));
 }
 
 
@@ -36,7 +36,7 @@ pub struct NotificationManager {
 }
 impl NotificationManager { // static
     pub async fn add_notification(notif: Notification) {
-        NOTIFICATION_MANAGER.lock().await.pending_notifs.push(notif);
+        NOTIFICATION_MANAGER.write().await.pending_notifs.push(notif);
     }
     pub async fn add_text_notification(text: impl ToString, duration: f32, color: Color) {
         let text = text.to_string();
@@ -89,7 +89,7 @@ impl NotificationManager { // non-static
         });
     }
 
-    pub fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&self, list: &mut RenderableCollection) {
         let mut current_pos = self.window_size.0;
 
         for i in self.processed_notifs.iter().rev() {

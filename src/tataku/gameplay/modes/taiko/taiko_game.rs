@@ -7,10 +7,10 @@
  * 
  * 
  * depths:
- *  notes: 0..1000
- *  hit area: 1001
- *  timing bars: 1001.5
  *  playfield: 1002
+ *  timing bars: 1001.5
+ *  hit area: 1001
+ *  notes: 0..1000
  *  hit indicators: -1
  *  judgement indicators: -2
  *  spinners: -5
@@ -18,6 +18,16 @@
 
 use crate::prelude::*;
 use super::prelude::*;
+
+// depths
+// const PLAYFIELD_DEPTH:f32 = 8002.0;
+// const HIT_AREA_DEPTH:f32 = 8001.0;
+// const TIMING_BAR_DEPTH:f32 = 8001.5;
+// const NOTE_DEPTH_RANGE:Range<f32> = 0.0..8000.0;
+// const HIT_INDICATOR_DEPTH: f32 = -1.0;
+const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
+
+
 
 /// timing bar color
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0);
@@ -38,7 +48,6 @@ pub(super) const TAIKO_NOTE_TEX_SIZE:Vector2 = Vector2::new(128.0, 128.0);
 pub(super) const TAIKO_JUDGEMENT_TEX_SIZE:Vector2 = Vector2::new(150.0, 150.0);
 pub(super) const TAIKO_HIT_INDICATOR_TEX_SIZE:Vector2 = Vector2::new(90.0, 198.0);
 
-const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
 
 pub const FINISHER_LENIENCY:f32 = 20.0; // ms
 pub const NOTE_BORDER_SIZE:f32 = 2.0;

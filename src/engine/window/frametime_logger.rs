@@ -1,10 +1,13 @@
-#[derive(Default)]
+
 pub struct FrameTimeLogger {
     #[cfg(feature="log_frametimes")]
     frametimes: Vec<f32>
 }
 impl FrameTimeLogger {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self { Self {
+        #[cfg(feature="log_frametimes")]
+        frametimes: Vec::new(),
+    } }
 
     pub fn add(&mut self, _time: f32) {
         #[cfg(feature="log_frametimes")]

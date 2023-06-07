@@ -94,8 +94,7 @@ impl FpsDisplay {
             ));
         // }
 
-        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) - 0.1));
-
+        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) + 10.0));
     }
 }
 
@@ -167,6 +166,6 @@ impl AsyncFpsDisplay {
             font.clone()
         ));
 
-        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) - 0.1));
+        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) + 10.0));
     }
 }

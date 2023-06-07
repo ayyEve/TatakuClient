@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use guillotiere::*;
 
 pub type TextureReference = AtlasData;
@@ -6,7 +5,6 @@ pub type TextureReference = AtlasData;
 const PADDING: u32 = 1;
 
 pub struct Atlas {
-    entries: Vec<AtlasData>,
     available_width: u32,
     available_height: u32,
 
@@ -29,7 +27,6 @@ impl Atlas {
         };
         
         Self {
-            entries: Vec::new(),
             available_width: width,
             available_height: height,
             allocators,
@@ -44,21 +41,6 @@ impl Atlas {
             .enumerate()
             .find_map(|(n, alloc)| alloc.allocate(size2((width + PADDING * 2) as i32, (height + PADDING * 2) as i32)).map(|a|(n as u32, a)))
             .map(|(layer, i)| AtlasData::new(i, layer, self.available_width, self.available_height))
-    }
-    
-    pub fn try_insert_many(&mut self, data: &Vec<(u32, u32)>) -> Option<Vec<AtlasData>> {
-        let entries = data
-            .iter()
-            .filter_map(|(w, h)| self.try_insert(*w, *h))
-            .collect::<Vec<_>>();
-
-        if entries.len() != data.len() {
-            error!("not enough room in atlas! {} != {}", entries.len(), data.len());
-            return None
-        }
-
-        self.entries.extend(entries.iter());
-        Some(entries)
     }
     
     pub fn remove_entry(&mut self, entry: TextureReference) {

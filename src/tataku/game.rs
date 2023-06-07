@@ -172,10 +172,10 @@ impl Game {
         loop {
             while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
+                    GameEvent::WindowEvent(GameWindowEvent::FileDrop(path)) => self.handle_file_drop(path).await,
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     // GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
                     
-                    GameEvent::DragAndDrop(path) => self.handle_file_drop(path).await,
                     GameEvent::WindowClosed => { 
                         self.close_game(); 
                         return
@@ -347,7 +347,7 @@ impl Game {
 
         if mouse_down.len() > 0 {
             // check notifs
-            if NOTIFICATION_MANAGER.lock().await.on_click(mouse_pos, self) {
+            if NOTIFICATION_MANAGER.write().await.on_click(mouse_pos, self) {
                 mouse_down.clear();
             }
         }
@@ -808,7 +808,7 @@ impl Game {
         }
 
         // update the notification manager
-        NOTIFICATION_MANAGER.lock().await.update().await;
+        NOTIFICATION_MANAGER.write().await.update().await;
 
 
         if let Ok(manager) = &mut ONLINE_MANAGER.try_write() {
@@ -886,7 +886,7 @@ impl Game {
 
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
-        let mut current_depth = -50_000_000.0;
+        let mut current_depth = -MAX_DEPTH / 2.0;
         const DIALOG_DEPTH_DIFF:f32 = 50.0;
         for d in dialog_list.iter_mut() { //.rev() {
             d.draw(current_depth, &mut render_queue).await;
@@ -905,7 +905,7 @@ impl Game {
         // self.input_update_display.draw(&mut self.render_queue);
 
         // draw the notification manager
-        NOTIFICATION_MANAGER.lock().await.draw(&mut render_queue);
+        NOTIFICATION_MANAGER.read().await.draw(&mut render_queue);
 
         // draw cursor
         // let mouse_pressed = self.input_manager.mouse_buttons.len() > 0 
@@ -1103,7 +1103,6 @@ impl Default for GameState {
 pub enum GameEvent {
     WindowClosed,
     WindowEvent(GameWindowEvent),
-    DragAndDrop(String),
     /// controller event, controller name
     #[allow(unused)]
     ControllerEvent(GameWindowEvent, String)

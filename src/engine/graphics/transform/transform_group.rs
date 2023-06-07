@@ -243,22 +243,6 @@ impl TatakuRenderable for TransformGroup {
         //     c.draw_state = d;
         // }
 
-        // let pre_rotation = self.pos.current / self.scale.current + self.origin;
-        // transform = transform
-        //     // scale to size
-        //     .scale(*self.scale)
-
-        //     // move to pos
-        //     .trans(pre_rotation)
-
-        //     // rotate to rotate
-        //     .rot(*self.rotation as f32)
-            
-        //     // apply origin
-        //     .trans(-self.origin)
-        // ;
-
-
         transform = transform
             // apply origin
             .trans(-self.origin)
@@ -279,7 +263,7 @@ impl TatakuRenderable for TransformGroup {
         }
     }
 
-    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
+    fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
         self.draw(transform, g)
     }
 }
