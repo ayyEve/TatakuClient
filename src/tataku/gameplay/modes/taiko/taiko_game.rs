@@ -885,9 +885,6 @@ impl GameMode for TaikoGame {
                 i.scale = scale;
             }
         }
-        
-
-
 
     }
     
@@ -900,22 +897,28 @@ impl GameMode for TaikoGame {
             don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.taiko_settings.hit_position;
 
-            self.left_don_image = Some(don.clone());
-            self.left_don_image.as_mut().unwrap().scale = scale;
-
-            self.right_don_image = Some(don.clone());
-            self.right_don_image.as_mut().unwrap().scale = scale * Vector2::new(-1.0, 1.0);
+            let mut ldon = don.clone();
+            ldon.scale = scale;
+            self.left_don_image = Some(ldon);
+            
+            let mut rdon = don.clone();
+            rdon.scale = scale * Vector2::new(-1.0, 1.0);
+            rdon.origin.x = 0.0;
+            self.right_don_image = Some(rdon);
         }
         if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
             kat.depth = -1.0;
             kat.origin.x = 0.0;
             kat.pos = self.taiko_settings.hit_position;
             
-            self.left_kat_image = Some(kat.clone());
-            self.left_kat_image.as_mut().unwrap().scale = scale * Vector2::new(-1.0, 1.0);
+            let mut lkat = kat.clone();
+            lkat.scale = scale * Vector2::new(-1.0, 1.0);
+            lkat.origin.x = lkat.tex_size().x;
+            self.left_kat_image = Some(lkat);
 
-            self.right_kat_image = Some(kat.clone());
-            self.right_kat_image.as_mut().unwrap().scale = scale;
+            let mut rkat = kat.clone();
+            rkat.scale = scale;
+            self.right_kat_image = Some(rkat);
         }
 
         self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
