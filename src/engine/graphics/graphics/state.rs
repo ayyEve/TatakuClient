@@ -1,5 +1,3 @@
-use std::backtrace::Backtrace;
-
 use crate::prelude::*;
 use lyon_tessellation::math::Point;
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
@@ -13,7 +11,7 @@ pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
-pub type Scissor = Option<[f32;4]>;
+pub type Scissor = Option<[f32; 4]>;
 
 pub struct GraphicsState {
     surface: wgpu::Surface,
@@ -30,6 +28,7 @@ pub struct GraphicsState {
     //The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
     cpu_vtx: Vec<Vertex>,
     cpu_idx: Vec<u32>,
+    cpu_scissor: Vec<[f32;4]>,
 
 
     // texture_bind_group: wgpu::BindGroup,
@@ -37,6 +36,8 @@ pub struct GraphicsState {
     projection_matrix_buffer: wgpu::Buffer,
     projection_matrix_bind_group: wgpu::BindGroup,
     // texture_bind_group_layout: wgpu::BindGroupLayout,
+
+    scissor_buffer_layout: wgpu::BindGroupLayout,
 
     #[allow(unused)]
     sampler: wgpu::Sampler,
@@ -75,7 +76,7 @@ impl GraphicsState {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | wgpu::Features::BUFFER_BINDING_ARRAY | wgpu::Features::STORAGE_RESOURCE_BINDING_ARRAY,
                 // WebGL doesn't support all of wgpu's features, so if
                 // we're building for the web we'll have to disable some.
                 limits: if cfg!(target_arch = "wasm32") {
@@ -145,7 +146,7 @@ impl GraphicsState {
                     ty: wgpu::BindingType::Buffer { 
                         ty: wgpu::BufferBindingType::Uniform, 
                         has_dynamic_offset: false, 
-                        min_binding_size: Some(unsafe{std::num::NonZeroU64::new_unchecked(proj_matrix_size)})
+                        min_binding_size: std::num::NonZeroU64::new(proj_matrix_size)
                     },
                     count: None,
                 },
@@ -168,7 +169,7 @@ impl GraphicsState {
                         resource: wgpu::BindingResource::Buffer(BufferBinding {
                             buffer: &projection_matrix_buffer,
                             offset: 0,
-                            size: Some(unsafe{std::num::NonZeroU64::new_unchecked(proj_matrix_size)})
+                            size: std::num::NonZeroU64::new(proj_matrix_size)
                         }),
                     },
                 ],
@@ -176,11 +177,29 @@ impl GraphicsState {
             }
         );
 
+
+        let scissor_buffer_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("scissor buffer group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer { 
+                        ty: wgpu::BufferBindingType::Storage { read_only: false }, 
+                        has_dynamic_offset: false, 
+                        min_binding_size: std::num::NonZeroU64::new(Self::QUAD_PER_BUF * std::mem::size_of::<[f32; 4]>() as u64)
+                    },
+                    count: None,
+                },
+            ],
+        });
+
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
                 &projection_matrix_bind_group_layout,
                 &texture_bind_group_layout, 
+                &scissor_buffer_layout
             ],
             push_constant_ranges: &[],
         });
@@ -257,12 +276,14 @@ impl GraphicsState {
             recording_buffer: None,
             cpu_vtx: vec![Vertex::default(); Self::VTX_PER_BUF as usize],
             cpu_idx: vec![0; Self::IDX_PER_BUF as usize],
+            cpu_scissor: vec![[0.0; 4]; Self::QUAD_PER_BUF as usize],
 
 
             // texture_bind_group: atlas_texture.bind_group,
             projection_matrix,
             projection_matrix_buffer,
             projection_matrix_bind_group,
+            scissor_buffer_layout,
             // texture_bind_group_layout
         };
         s.create_render_buffer();
@@ -319,12 +340,15 @@ impl GraphicsState {
 
             render_pass.set_pipeline(&self.render_pipeline); 
             render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
-            // render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
             render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
 
             for recorded_buffer in self.recorded_buffers.iter() {
+                // bind scissors
+                render_pass.set_bind_group(2, &recorded_buffer.scissor_buffer_bind_group, &[]);
+
                 render_pass.set_vertex_buffer(0, recorded_buffer.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(recorded_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+
                 render_pass.draw_indexed(0..recorded_buffer.used_indices as u32, 0, 0..1);
             }
         }
@@ -661,8 +685,23 @@ impl GraphicsState {
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
     fn create_render_buffer(&mut self) {
-        let b = Backtrace::capture();
-        info!("Creating buffer: {b}");
+        let scissor_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Scissor Buffer"),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            size: Self::QUAD_PER_BUF * std::mem::size_of::<[f32; 4]>() as u64,
+            mapped_at_creation: false,
+        });
+
+        let scissor_buffer_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Scissor buffer bind group"),
+            layout: &self.scissor_buffer_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(scissor_buffer.as_entire_buffer_binding()),
+                },
+            ],
+        });
 
         self.queued_buffers.push(RenderBuffer {
             vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -677,8 +716,12 @@ impl GraphicsState {
                 size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
                 mapped_at_creation: false,
             }),
+            scissor_buffer,
+            scissor_buffer_bind_group,
             used_vertices: 0,
             used_indices: 0,
+            // offset by 1 since index 0 should always be [0.0;4], since it means no scissor
+            used_scissors: 0,
         })
     }
 
@@ -687,6 +730,7 @@ impl GraphicsState {
         for i in self.recorded_buffers.iter_mut() {
             i.used_indices = 0;
             i.used_vertices = 0;
+            i.used_scissors = 0;
         }
         
         // Move all recorded buffers into the queued buffers list
@@ -704,6 +748,7 @@ impl GraphicsState {
             if recording_buffer.used_indices != 0 {
                 self.queue.write_buffer(&recording_buffer.vertex_buffer, 0, bytemuck::cast_slice(&self.cpu_vtx));
                 self.queue.write_buffer(&recording_buffer.index_buffer, 0, bytemuck::cast_slice(&self.cpu_idx));
+                self.queue.write_buffer(&recording_buffer.scissor_buffer, 0, bytemuck::cast_slice(&self.cpu_scissor));
                 self.recorded_buffers.push(recording_buffer);
             } else {
                 self.queued_buffers.push(recording_buffer);
@@ -711,11 +756,12 @@ impl GraphicsState {
         }
     }
 
-
+    /// returns reserve data and scissor index if applicable
     fn reserve(
         &mut self,
         vtx_count: u64,
         idx_count: u64,
+        scissor: Scissor,
     ) -> Option<ReserveData> {
         let mut recording_buffer = self.recording_buffer.as_mut()?;
 
@@ -734,11 +780,24 @@ impl GraphicsState {
 
         recording_buffer.used_indices += idx_count;
         recording_buffer.used_vertices += vtx_count;
+        let mut scissor_index = 0;
+
+        if let Some(scissor) = scissor {
+            self.cpu_scissor[recording_buffer.used_scissors as usize] = [
+                scissor[0], 
+                scissor[1],
+                scissor[0] + scissor[2],
+                scissor[1] + scissor[3]
+            ];
+            recording_buffer.used_scissors += 1;
+            scissor_index = recording_buffer.used_scissors;
+        }
         
         Some(ReserveData {
             vtx: &mut self.cpu_vtx[(recording_buffer.used_vertices - vtx_count) as usize .. recording_buffer.used_vertices as usize],
             idx: &mut self.cpu_idx[(recording_buffer.used_indices - idx_count) as usize .. recording_buffer.used_indices as usize],
-            idx_offset: recording_buffer.used_vertices - vtx_count
+            idx_offset: recording_buffer.used_vertices - vtx_count,
+            scissor_index: scissor_index as u32,
         })
     }
 
@@ -754,7 +813,7 @@ impl GraphicsState {
         transform: Matrix,
         scissor: Scissor,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
         let depth = Self::map_depth(depth);
         
         let [x, y, w, h] = rect;
@@ -776,14 +835,14 @@ impl GraphicsState {
 
         let tex_index = tex.layer as i32;
         let offset = reserved.idx_offset as u32;
-        let scissor = scissor.unwrap_or_default();
+        let scissor_index = reserved.scissor_index;
         reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords: tl,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
@@ -791,7 +850,7 @@ impl GraphicsState {
                 tex_coords: tr,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
@@ -799,7 +858,7 @@ impl GraphicsState {
                 tex_coords: bl,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 //     .position = position + (size * scale),
@@ -807,7 +866,7 @@ impl GraphicsState {
                 tex_coords: br,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             }
         ], &[
             0 + offset,
@@ -827,8 +886,10 @@ impl GraphicsState {
         transform: Matrix,
         scissor: Scissor,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
         let depth = Self::map_depth(depth);
+
+        // self.reserve_quad([Vector2::ONE;4], depth, color, transform, scissor);
 
         let tex_coords = [0.0, 0.0];
         let tex_index = -1;
@@ -836,35 +897,35 @@ impl GraphicsState {
 
         let [x, y, w, h] = rect;
         let offset = reserved.idx_offset as u32;
-        let scissor = scissor.unwrap_or_default();
+        let scissor_index = reserved.scissor_index;
         reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
-                scissor,
+                scissor_index,
             }
         ], &[
             0 + offset,
@@ -876,7 +937,7 @@ impl GraphicsState {
         ]);
     }
 
-
+    // quad is tl,tr, bl,br
     fn reserve_quad(
         &mut self,
         quad: [Vector2; 4],
@@ -885,14 +946,14 @@ impl GraphicsState {
         transform: Matrix,
         scissor: Scissor,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6) else { return };
+        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
         let depth = Self::map_depth(depth);
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p|Vertex {
             position: transform.mul_v3(Vector3::new(p.x, p.y, depth)).into(),
             color,
-            scissor: scissor.unwrap_or_default(),
+            scissor_index: reserved.scissor_index,
             ..Default::default()
         }).collect::<Vec<_>>();
         
@@ -991,10 +1052,10 @@ impl GraphicsState {
         let mut started = false;
         for p in polygon {
             if !started {
-                path.begin(Point::new(p.x as f32, p.y as f32));
+                path.begin(Point::new(p.x, p.y));
                 started = true
             }
-            path.line_to(Point::new(p.x as f32, p.y as f32));
+            path.line_to(Point::new(p.x, p.y));
         }
         path.end(true);
         let path = path.build();
@@ -1037,17 +1098,18 @@ impl GraphicsState {
 
         }
 
+        let mut reserved = self.reserve(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor).expect("nope");
+
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
                 position: [n.x, n.y, depth],
                 color: [color.r, color.g, color.b, color.a],
-                scissor: scissor.unwrap_or_default(),
+                scissor_index: reserved.scissor_index,
                 ..Default::default()
             }.apply_matrix(&transform)
         ).collect::<Vec<_>>();
         
         // insert the vertices and indices into the render buffer
-        let mut reserved = self.reserve(vertices.len() as u64, buffers.indices.len() as u64).expect("nope");
         let mut indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
         reserved.copy_in(&mut vertices, &mut indices);
     }
@@ -1229,4 +1291,3 @@ async fn test() {
     });
 
 }
-
