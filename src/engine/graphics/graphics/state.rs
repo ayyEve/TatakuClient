@@ -305,6 +305,16 @@ impl GraphicsState {
         }
     }
 
+    pub fn set_vsync(&mut self, enable: bool) {
+        if enable {
+            self.config.present_mode = wgpu::PresentMode::AutoVsync;
+        } else {
+            self.config.present_mode = wgpu::PresentMode::AutoNoVsync;
+        }
+
+        self.surface.configure(&self.device, &self.config);
+    }
+
 
     pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;

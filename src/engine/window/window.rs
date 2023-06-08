@@ -38,7 +38,10 @@ pub struct GameWindow {
     frametime_logger: FrameTimeLogger,
 
     close_pending: bool,
-    texture_load_receiver: UnboundedReceiver<LoadImage>
+    texture_load_receiver: UnboundedReceiver<LoadImage>,
+
+    // helper for raw mouse input
+    mouse_pos: Option<Vector2>,
 }
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
@@ -110,7 +113,8 @@ impl GameWindow {
             input_timer: now,
 
             frametime_logger: FrameTimeLogger::new(),
-            close_pending: false
+            close_pending: false,
+            mouse_pos: None,
         };
         
         (s, event_loop)
@@ -126,7 +130,6 @@ impl GameWindow {
 
         self.window.set_inner_size(to_size(self.settings.window_size.into()));
         // self.window.set_raw_mouse_input(settings.raw_mouse_input);
-        // self.window.set_vsync(settings.vsync);
 
         self.refresh_monitors_inner();
         self.apply_fullscreen();
@@ -136,6 +139,7 @@ impl GameWindow {
             self.update();
             if self.close_pending { *control_flow = ControlFlow::Exit; }
 
+            let raw_mouse = self.settings.raw_mouse_input;
             let event = match event {
                 Event::WindowEvent { window_id:_, event } => {
                     match event {
@@ -163,9 +167,16 @@ impl GameWindow {
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Released, .. }, .. } => GameWindowEvent::KeyRelease(key),
                         // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
                         // winit::event::WindowEvent::Ime(_) => todo!(),
-                        winit::event::WindowEvent::CursorMoved { position, .. } => GameWindowEvent::MouseMove(Vector2::new(position.x as f32, position.y as f32)),
-                        // winit::event::WindowEvent::CursorEntered { device_id } => todo!(),
-                        // winit::event::WindowEvent::CursorLeft { device_id } => todo!(),
+                        winit::event::WindowEvent::CursorMoved { position, .. } if !raw_mouse || (raw_mouse && self.mouse_pos.is_none()) => {
+                            let p = Vector2::new(position.x as f32, position.y as f32);
+                            self.mouse_pos = Some(p); 
+                            // self.window.set_cursor_position(position)
+
+                            // if raw_mouse {error!("setting mouse pos to {p:?}")}
+                            GameWindowEvent::MouseMove(p)
+                        }
+                        // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
+                        winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
                         winit::event::WindowEvent::MouseWheel { delta, .. } => GameWindowEvent::MouseScroll(delta2f32(delta)),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => GameWindowEvent::MousePress(button),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => GameWindowEvent::MouseRelease(button),
@@ -178,7 +189,30 @@ impl GameWindow {
                         _ => return
                     }
                 }
-    
+                
+                Event::DeviceEvent { device_id:_, event } => {
+                    match event {
+                        // DeviceEvent::Added => todo!(),
+                        // DeviceEvent::Removed => todo!(),
+                        DeviceEvent::MouseMotion { delta: (x, y) } if raw_mouse => {
+                            if let Some(mouse_pos) = self.mouse_pos.as_mut() {
+                                mouse_pos.x += x as f32;
+                                mouse_pos.y += y as f32;
+                                GameWindowEvent::MouseMove(*mouse_pos)
+                            } else {
+                                return
+                            }
+                        }
+                        // DeviceEvent::MouseWheel { delta } => todo!(),
+                        // DeviceEvent::Motion { axis, value } => todo!(),
+                        // DeviceEvent::Button { button, state } => todo!(),
+                        // DeviceEvent::Key(_) => todo!(),
+                        // DeviceEvent::Text { codepoint } => todo!(),
+
+                        _ => return 
+                    }
+                }
+                
                 Event::UserEvent(_) => {
                     *control_flow = ControlFlow::Exit;
                     GameWindowEvent::Closed
@@ -243,10 +277,8 @@ impl GameWindow {
                     self.frametime_logger.write();
                 }
 
-                Game2WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
+                Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
                 Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
-
-                _ => {}
             }
         }
 
@@ -261,19 +293,6 @@ impl GameWindow {
         self.frametime_logger.add(now.as_millis());
     }
     
-    fn screenshot(&mut self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
-        self.graphics.screenshot(move |(window_data, width, height)| {
-            // screenshot is upside down
-            // let mut window_data2 = Vec::new();
-            // for i in (0..window_data.len()).step_by(3 * width as usize).rev() {
-            //     window_data2.extend(window_data[i..i + 3 * width as usize].iter());
-            // }
-            
-
-            // send it off
-            fuze.ignite((window_data, width, height));
-        });
-    }
 
 
     fn refresh_monitors_inner(&mut self) {
@@ -296,7 +315,7 @@ impl GameWindow {
     }
 
     fn apply_vsync(&mut self) {
-        // self.window.set_vsync(self.settings.vsync);
+        self.graphics.set_vsync(self.settings.vsync);
     }
 
 
@@ -434,11 +453,7 @@ impl GameWindow {
         let (sender, mut receiver) = unbounded_channel();
         send_texture_load_event(LoadImage::Path(path, sender));
 
-        if let Some(t) = receiver.recv().await {
-            t
-        } else {
-            Err(TatakuError::String("idk".to_owned()))
-        }
+        receiver.recv().await.unwrap()
     }
 
     pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
