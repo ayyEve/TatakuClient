@@ -13,6 +13,8 @@ pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 
+pub type Scissor = Option<[f32;4]>;
+
 pub struct GraphicsState {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -88,9 +90,6 @@ impl GraphicsState {
         
 
         let surface_caps = surface.get_capabilities(&adapter);
-        // Shader code in this tutorial assumes an sRGB surface texture. Using a different
-        // one will result all the colors coming out darker. If you want to support non
-        // sRGB surfaces, you'll need to account for that when drawing to the frame.
         let surface_format = surface_caps.formats.iter()
             .copied()
             .find(|f| f.is_srgb())
@@ -302,12 +301,6 @@ impl GraphicsState {
     }
 
     pub fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
-        // let output = self.surface.get_current_texture()?;
-        // let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        // // don't draw if our draw surface has no area
-        // if renderable.texture.width() == 0 || output.texture.height() == 0 { return Ok(()) }
-
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
         
         {
@@ -318,7 +311,6 @@ impl GraphicsState {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        // load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.1, g: 0.2, b: 0.3, a: 1.0 }),
                         store: true,
                     },
                 })],
@@ -759,7 +751,8 @@ impl GraphicsState {
         color: Color,
         h_flip: bool,
         v_flip: bool,
-        transform: Matrix
+        transform: Matrix,
+        scissor: Scissor,
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
         let depth = Self::map_depth(depth);
@@ -783,12 +776,14 @@ impl GraphicsState {
 
         let tex_index = tex.layer as i32;
         let offset = reserved.idx_offset as u32;
+        let scissor = scissor.unwrap_or_default();
         reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords: tl,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
@@ -796,6 +791,7 @@ impl GraphicsState {
                 tex_coords: tr,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
@@ -803,6 +799,7 @@ impl GraphicsState {
                 tex_coords: bl,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 //     .position = position + (size * scale),
@@ -810,6 +807,7 @@ impl GraphicsState {
                 tex_coords: br,
                 tex_index,
                 color,
+                scissor,
             }
         ], &[
             0 + offset,
@@ -826,7 +824,8 @@ impl GraphicsState {
         rect: [f32; 4],
         depth: f32,
         color: Color,
-        transform: Matrix
+        transform: Matrix,
+        scissor: Scissor,
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
         let depth = Self::map_depth(depth);
@@ -837,30 +836,35 @@ impl GraphicsState {
 
         let [x, y, w, h] = rect;
         let offset = reserved.idx_offset as u32;
+        let scissor = scissor.unwrap_or_default();
         reserved.copy_in(&[
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
+                scissor,
             },
             Vertex {
                 position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
                 tex_coords,
                 tex_index,
                 color,
+                scissor,
             }
         ], &[
             0 + offset,
@@ -878,7 +882,8 @@ impl GraphicsState {
         quad: [Vector2; 4],
         depth: f32,
         color: Color,
-        transform: Matrix
+        transform: Matrix,
+        scissor: Scissor,
     ) {
         let Some(mut reserved) = self.reserve(4, 6) else { return };
         let depth = Self::map_depth(depth);
@@ -886,9 +891,9 @@ impl GraphicsState {
 
         let vertices = quad.into_iter().map(|p|Vertex {
             position: transform.mul_v3(Vector3::new(p.x, p.y, depth)).into(),
-            tex_coords: [0.0, 0.0],
-            tex_index: -1,
             color,
+            scissor: scissor.unwrap_or_default(),
+            ..Default::default()
         }).collect::<Vec<_>>();
         
         let offset = reserved.idx_offset as u32;
@@ -909,7 +914,7 @@ impl GraphicsState {
 
 // draw helpers
 impl GraphicsState {
-    pub fn draw_circle(&mut self, depth: f32, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix) {
+    pub fn draw_circle(&mut self, depth: f32, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
         let n = resolution;
 
         // border 
@@ -923,7 +928,7 @@ impl GraphicsState {
                 Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             });
 
-            self.tesselate_polygon(points, depth, border.color, transform, Some(border.radius));
+            self.tesselate_polygon(points, depth, border.color, Some(border.radius), transform, scissor);
         }
 
         // minor optimization
@@ -938,11 +943,11 @@ impl GraphicsState {
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
-        self.tesselate_polygon(points, depth, color, transform, None);
+        self.tesselate_polygon(points, depth, color, None, transform, scissor);
         
     }
 
-    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix) {
+    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix, scissor: Scissor) {
         let p1 = Vector2::new(line[0], line[1]);
         let p2 = Vector2::new(line[2], line[3]);
 
@@ -955,10 +960,10 @@ impl GraphicsState {
         let n3 = p2 - n;
 
         let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, depth, color, transform);
+        self.reserve_quad(quad, depth, color, transform, scissor);
     }
 
-    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, color: Color, transform: Matrix) {
+    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, color: Color, transform: Matrix, scissor: Scissor) {
         if let Some(border) = border {
             let [x, y, w, h] = rect;
             let points = [
@@ -967,19 +972,19 @@ impl GraphicsState {
                 Vector2::new(x+w, y+h),
                 Vector2::new(x, y+h),
             ].into_iter();
-            self.tesselate_polygon(points, depth, border.color, transform, Some(border.radius));
+            self.tesselate_polygon(points, depth, border.color, Some(border.radius), transform, scissor);
         }
 
-        self.reserve_rect(rect, depth, color, transform)
+        self.reserve_rect(rect, depth, color, transform, scissor)
     }
 
-    pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix) {
+    pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform);
+        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform, scissor);
     }
 
 
-    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, transform: Matrix, border: Option<f32>) {
+    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         let mut path = lyon_tessellation::path::Path::builder();
         let depth = Self::map_depth(depth);
 
@@ -1035,9 +1040,9 @@ impl GraphicsState {
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
                 position: [n.x, n.y, depth],
-                tex_coords: [0.0, 0.0],
-                tex_index: -1,
-                color: [color.r, color.g, color.b, color.a]
+                color: [color.r, color.g, color.b, color.a],
+                scissor: scissor.unwrap_or_default(),
+                ..Default::default()
             }.apply_matrix(&transform)
         ).collect::<Vec<_>>();
         
@@ -1139,10 +1144,10 @@ async fn test() {
             let angle = PI as f32 / 3.0;
             let p2 = Vector2::from_angle(angle) * 100.0;
             let line = [0.0, 0.0, p2.x, p2.y];
-            state.draw_line(line, 5.0, depth, Color::RED, m);
+            state.draw_line(line, 5.0, depth, Color::RED, m, None);
 
 
-            state.draw_tex(&self.tex, depth, Color::WHITE, false, false, m);
+            state.draw_tex(&self.tex, depth, Color::WHITE, false, false, m, None);
         }
     }
 

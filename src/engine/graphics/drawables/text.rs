@@ -16,7 +16,7 @@ pub struct Text {
     pub text_colors: Vec<Color>,
     pub fonts: Vec<Font>,
 
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 }
 impl Text {
     pub fn new(color:Color, depth:f32, pos: Vector2, font_size: f32, text: String, font: Font) -> Text {
@@ -40,7 +40,7 @@ impl Text {
             text,
             fonts,
             text_colors: Vec::new(),
-            // draw_state: None,
+            scissor: None,
         }
     }
     
@@ -60,8 +60,8 @@ impl Text {
 impl TatakuRenderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size) }
     fn get_depth(&self) -> f32 { self.depth }
-    // fn get_draw_state(&self) -> Option<DrawState> { self.draw_state }
-    // fn set_draw_state(&mut self, c:Option<DrawState>) { self.draw_state = c }
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -101,7 +101,7 @@ impl TatakuRenderable for Text {
             font_size, 
             &self.fonts, 
             2.0,
-            // &self.draw_state.unwrap_or(c.draw_state), 
+            self.scissor, 
             transform, 
             g
         );
@@ -146,7 +146,7 @@ pub fn draw_text<T: DrawableText> (
     font_size: f32,
     font_caches: &Vec<Font>, 
     line_spacing: f32,
-    // draw_state: &graphics::DrawState, 
+    scissor: Scissor,
     transform: Matrix, 
     g: &mut GraphicsState
 ) {
@@ -176,7 +176,7 @@ pub fn draw_text<T: DrawableText> (
                     ch, 
                     [&mut x, &mut y], 
                     color, 
-                    // draw_state, 
+                    scissor,
                     transform, 
                     g
                 );

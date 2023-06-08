@@ -18,7 +18,7 @@ pub struct Animation {
     pub frame_index: usize,
     pub frame_delays: Vec<f32>,
 
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 
     // current
     pub color: Color,
@@ -44,6 +44,7 @@ impl Animation {
             rotation,
             color,
             base_scale,
+            scissor: None,
 
             frames,
             frame_index: 0,
@@ -105,14 +106,12 @@ impl Animation {
         Ok(Self::new(pos, depth, size, frames, delays, Vector2::ONE))
     }
 }
-// impl Renderable for Animation {
-// }
-
 impl TatakuRenderable for Animation {
     fn get_depth(&self) -> f32 {self.depth}
 
-    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
@@ -146,9 +145,6 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform);
-        // graphics::Image::new()
-        //     .color(self.color.alpha(alpha).into())
-        //     .draw(image, &self.draw_state.unwrap_or(c.draw_state), transform, g)
+        g.draw_tex(image, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
     }
 }

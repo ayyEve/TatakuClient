@@ -1,12 +1,13 @@
 use crate::prelude::*;
 
 #[repr(C)]
-#[derive(Copy, Clone, Default, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub tex_index: i32,
     pub color: [f32; 4],
+    pub scissor: [f32; 4]
 }
 impl Vertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
@@ -34,8 +35,14 @@ impl Vertex {
                 },
                 // color
                 wgpu::VertexAttribute {
-                    offset: (std::mem::size_of::<[f32;3]>() + std::mem::size_of::<[f32;2]>()+ std::mem::size_of::<i32>()) as wgpu::BufferAddress,
+                    offset: (std::mem::size_of::<[f32;3]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>()) as wgpu::BufferAddress,
                     shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                // scissor
+                wgpu::VertexAttribute {
+                    offset: (std::mem::size_of::<[f32;3]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>() + std::mem::size_of::<[f32;4]>()) as wgpu::BufferAddress,
+                    shader_location: 4,
                     format: wgpu::VertexFormat::Float32x4,
                 },
             ]
@@ -49,5 +56,17 @@ impl Vertex {
         self.position = [new_pos.x, new_pos.y, new_pos.z];
 
         self
+    }
+}
+
+impl Default for Vertex {
+    fn default() -> Self {
+        Self {
+            position: [0.0; 3],
+            tex_coords: [0.0; 2],
+            tex_index: -1,
+            color: [0.0; 4],
+            scissor: [0.0; 4],
+        }
     }
 }

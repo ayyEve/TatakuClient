@@ -8,7 +8,7 @@ pub struct Rectangle {
     pub scale: Vector2,
 
     pub origin: Vector2,
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 
     pub shape: Shape,
 
@@ -28,6 +28,7 @@ impl Rectangle {
             scale,
             rotation,
             shape: Shape::Square,
+            scissor: None,
 
             depth,
             size,
@@ -59,8 +60,8 @@ impl Rectangle {
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
     fn get_depth(&self) -> f32 {self.depth}
-    // fn get_draw_state(&self) -> Option<DrawState> { self.draw_state }
-    // fn set_draw_state(&mut self, c:Option<DrawState>) { self.draw_state = c }
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
@@ -89,7 +90,7 @@ impl TatakuRenderable for Rectangle {
             .trans(self.pos)
         ;
 
-        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.color.alpha(alpha), transform)
+        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.color.alpha(alpha), transform, self.scissor)
     }
 }
 

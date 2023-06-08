@@ -9,7 +9,7 @@ pub struct Circle {
     pub pos: Vector2,
     pub radius: f32,
 
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 
     pub border: Option<Border>,
     pub resolution: u32,
@@ -23,6 +23,7 @@ impl Circle {
             color,
             pos,
             radius,
+            scissor: None,
 
             border,
             // draw_state: None,
@@ -34,8 +35,9 @@ impl Circle {
 impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
     fn get_depth(&self) -> f32 {self.depth}
-    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
@@ -50,7 +52,7 @@ impl TatakuRenderable for Circle {
             .trans(self.pos);
 
 
-        g.draw_circle(self.depth as f32, self.radius, self.color.alpha(alpha), border, self.resolution, transform);
+        g.draw_circle(self.depth as f32, self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.scissor);
 
         // graphics::ellipse::Ellipse {
         //     color: self.color.alpha(alpha).into(),

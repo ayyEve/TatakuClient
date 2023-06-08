@@ -11,7 +11,7 @@ pub struct Image {
     // origin of rotation in px, relative to image position
     pub origin: Vector2,
 
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 
     pub color: Color,
     pub pos: Vector2,
@@ -38,7 +38,7 @@ impl Image {
             depth,
             origin,
             tex,
-            // draw_state: None,
+            scissor: None,
             base_scale
         }
     }
@@ -91,8 +91,8 @@ impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
     fn get_depth(&self) -> f32 { self.depth }
 
-    // fn get_draw_state(&self) -> Option<DrawState> { self.draw_state }
-    // fn set_draw_state(&mut self, c:Option<DrawState>) { self.draw_state = c }
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -126,6 +126,6 @@ impl TatakuRenderable for Image {
             .trans(self.pos)
         ;
 
-        g.draw_tex(&self.tex, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform);
+        g.draw_tex(&self.tex, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
     }
 }

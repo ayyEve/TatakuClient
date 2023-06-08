@@ -66,6 +66,14 @@ impl InnerUIElement for HealthBarElement {
             //     (bg_size.x * percent) as u32,
             //     bg_size.y as u32
             // ]);
+
+            
+            fill.set_scissor(Some([
+                pos_offset.x, 
+                pos_offset.y, 
+                bg_size.x * percent, 
+                bg_size.y
+            ]));
             fill.depth = 1.0;
             fill.pos = pos_offset;
             fill.set_size(bg_size);

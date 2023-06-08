@@ -123,7 +123,7 @@ impl Font {
         ch: char, 
         [x, y]: [&mut f32; 2], 
         color: Color, 
-        // draw_state: &graphics::DrawState, 
+        scissor: Scissor,
         transform: Matrix, 
         graphics: &mut GraphicsState
     ) {
@@ -133,7 +133,7 @@ impl Font {
         let ch_y = *y - (character.metrics.height as f32 + character.metrics.ymin as f32); // y = -metrics.bounds.height - metrics.bounds.ymin
 
         // info!("draw char '{ch}' with data {:?} at {x},{y}", character.metrics);
-        graphics.draw_tex(&character.texture, 0.0, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)));
+        graphics.draw_tex(&character.texture, 0.0, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)), scissor);
 
         *x += character.metrics.advance_width;
         // *y += character.metrics.advance_height as f64;
