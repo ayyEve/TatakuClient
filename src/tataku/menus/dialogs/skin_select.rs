@@ -31,9 +31,7 @@ impl SkinSelect {
 
                 trace!("skin changing to {}", s);
                 self.current_skin = s.clone();
-                tokio::spawn(async move {
-                    SkinManager::change_skin(s, true).await;
-                });
+                get_settings_mut!().current_skin = s;
             }
         }
     }

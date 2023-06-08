@@ -3,8 +3,8 @@ use lyon_tessellation::math::Point;
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
 
 // the sum of these two must not go past 16
-const LAYER_COUNT:u32 = 5;
-const RENDER_TARGET_LAYERS:u32 = 5;
+const LAYER_COUNT:u32 = 2;
+const RENDER_TARGET_LAYERS:u32 = 2;
 
 pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
@@ -16,7 +16,7 @@ pub type Scissor = Option<[f32; 4]>;
 pub struct GraphicsState {
     surface: wgpu::Surface,
     device: wgpu::Device,
-    queue: wgpu::Queue,
+    queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
     
     render_pipeline: wgpu::RenderPipeline,
@@ -46,6 +46,8 @@ pub struct GraphicsState {
     render_target_atlas: Atlas,
 
     atlas_texture: WgpuTexture,
+
+    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static>>
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
@@ -96,7 +98,7 @@ impl GraphicsState {
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             format: surface_format,
             width: size[0],
             height: size[1],
@@ -263,7 +265,7 @@ impl GraphicsState {
         let mut s = Self {
             surface,
             device,
-            queue,
+            queue: Arc::new(queue),
             config,
             render_pipeline,
             sampler,
@@ -285,6 +287,7 @@ impl GraphicsState {
             projection_matrix_bind_group,
             scissor_buffer_layout,
             // texture_bind_group_layout
+            screenshot_pending: None
         };
         s.create_render_buffer();
         s
@@ -316,6 +319,8 @@ impl GraphicsState {
         };
 
         self.render(&renderable)?;
+        self.check_screenshot(&output);
+
         output.present();
 
         Ok(())
@@ -504,7 +509,7 @@ impl GraphicsState {
                     // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                     // COPY_DST means that we want to copy data to this texture
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                    label: Some("texture_atlas"),
+                    label: Some("atlas_texture"),
                     // This is the same as with the SurfaceConfig. It
                     // specifies what texture formats can be used to
                     // create TextureViews for this texture. The base
@@ -517,7 +522,7 @@ impl GraphicsState {
             );
             
             let view = texture.create_view(&wgpu::TextureViewDescriptor {
-                label: Some("pain and suffering"),
+                label: Some("atlas_texture_view"),
                 dimension: Some(TextureViewDimension::D2),
                 base_array_layer: 0,
 
@@ -604,7 +609,7 @@ impl GraphicsState {
             depth_or_array_layers: 1,
         };
 
-        let data = data.chunks_exact(4).map(|b|cast_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>();
+        let data = data.chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>();
 
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
@@ -640,10 +645,15 @@ impl GraphicsState {
             self.atlas.remove_entry(tex)
         }
     }
-
-    pub async fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
-        let tex = self.surface.get_current_texture().unwrap();
-        let (w, h) = (tex.texture.width(), tex.texture.height());
+    
+    pub fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
+        self.screenshot_pending = Some(Box::new(callback));
+    }
+    fn check_screenshot(&mut self, surface: &wgpu::SurfaceTexture) {
+        let Some(callback) = std::mem::take(&mut self.screenshot_pending) else {return};
+        
+        let (w, h) = (surface.texture.width(), surface.texture.height());
+        let format = surface.texture.format();
 
         let size = (w * h * 4) as u64;
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -651,29 +661,35 @@ impl GraphicsState {
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             size,
             mapped_at_creation: false,
-        }); 
+        });
 
+        let bpr = w*4;
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
             layout: wgpu::ImageDataLayout { 
                 offset: 0, 
-                bytes_per_row: Some(w*4), 
+                bytes_per_row: Some(bpr + bpr % 256), 
                 rows_per_image: Some(h)
             },
         };
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
-        encoder.copy_texture_to_buffer(tex.texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
+        encoder.copy_texture_to_buffer(surface.texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
         self.queue.submit(Some(encoder.finish()));
+        let queue = self.queue.clone();
 
-        let slice = buffer.slice(..);
-        let (s, r) = tokio::sync::oneshot::channel();
-        slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+        tokio::spawn(async move {
+            let slice = buffer.slice(..);
 
-        r.await.unwrap();
-        let data = slice.get_mapped_range();
-        self.device.poll(wgpu::Maintain::Wait);
-        callback((data.to_vec(), w, h));
+            let (s, r) = tokio::sync::oneshot::channel();
+            slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
+            queue.submit(None);
+            
+            r.await.unwrap();
+            let data = slice.get_mapped_range().chunks_exact(4).map(|b|cast_to_rgba_bytes(b, format)).flatten().collect();
+            
+            callback((data, w, h));
+        });
     }
 }
 
@@ -1144,7 +1160,7 @@ impl<'a> RenderableSurface<'a> {
 }
 
 
-fn cast_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
+fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
     // incoming is rgba8
     let r = bytes.get(0).cloned().unwrap_or_default();
     let g = bytes.get(1).cloned().unwrap_or_default();
@@ -1159,6 +1175,27 @@ fn cast_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {
         // just default to rgba otherwise and cry if its not
         _ => [r, g, b, a]
     }
+
+}
+
+fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
+    // pretend incoming is bgra8
+    let b = bytes.get(1).cloned().unwrap_or_default();
+    let g = bytes.get(1).cloned().unwrap_or_default();
+    let r = bytes.get(2).cloned().unwrap_or_default();
+    let a = bytes.get(3).cloned().unwrap_or_default();
+
+    [r,g,b,a]
+
+    // match format {
+    //     // pretend this is all it can be for now
+    //     wgpu::TextureFormat::Bgra8Unorm
+    //     | wgpu::TextureFormat::Bgra8UnormSrgb => [b, g, r, a],
+    //     wgpu::TextureFormat::Rgba8Unorm
+
+    //     // just default to rgba otherwise and cry if its not
+    //     _ => [r, g, b, a]
+    // }
 
 }
 

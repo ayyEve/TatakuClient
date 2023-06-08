@@ -243,7 +243,7 @@ impl GameWindow {
                     self.frametime_logger.write();
                 }
 
-                // WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze).await,
+                Game2WindowEvent::TakeScreenshot(fuze) => self.screenshot(fuze),
                 Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
                 _ => {}
@@ -261,17 +261,18 @@ impl GameWindow {
         self.frametime_logger.add(now.as_millis());
     }
     
-    async fn screenshot(&mut self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
+    fn screenshot(&mut self, fuze: Fuze<(Vec<u8>, u32, u32)>) {
         self.graphics.screenshot(move |(window_data, width, height)| {
             // screenshot is upside down
-            let mut window_data2 = Vec::new();
-            for i in (0..window_data.len()).step_by(3 * width as usize).rev() {
-                window_data2.extend(window_data[i..i + 3 * width as usize].iter());
-            }
+            // let mut window_data2 = Vec::new();
+            // for i in (0..window_data.len()).step_by(3 * width as usize).rev() {
+            //     window_data2.extend(window_data[i..i + 3 * width as usize].iter());
+            // }
+            
 
             // send it off
-            fuze.ignite((window_data2, width, height));
-        }).await;
+            fuze.ignite((window_data, width, height));
+        });
     }
 
 
@@ -431,7 +432,7 @@ impl GameWindow {
         trace!("loading tex {}", path);
 
         let (sender, mut receiver) = unbounded_channel();
-        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Path(path, sender)).ok().expect("no?");
+        send_texture_load_event(LoadImage::Path(path, sender));
 
         if let Some(t) = receiver.recv().await {
             t
@@ -444,19 +445,17 @@ impl GameWindow {
         trace!("loading tex data");
 
         let (sender, mut receiver) = unbounded_channel();
-        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Image(data, sender)).ok().expect("no?");
+        send_texture_load_event(LoadImage::Image(data, sender));
 
-        if let Some(t) = receiver.recv().await {
-            t
-        } else {
-            Err(TatakuError::String("idk".to_owned()))
-        }
+        // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
+        receiver.recv().await.unwrap()
     }
 
+    // this is called from functions without real access to async, so we have to be dumb here
     pub fn load_font_data(font: Font, size:f32) -> TatakuResult<()> {
         // info!("loading font char ('{ch}',{size})");
         let (sender, mut receiver) = unbounded_channel();
-        get_texture_load_queue().expect("no tex load queue").send(LoadImage::Font(font, size, sender)).ok().expect("no?");
+        send_texture_load_event(LoadImage::Font(font, size, sender));
 
         loop {
             match receiver.try_recv() {
@@ -471,13 +470,9 @@ impl GameWindow {
         trace!("create render target");
 
         let (sender, mut receiver) = unbounded_channel();
-        get_texture_load_queue()?.send(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))).ok().expect("no?");
+        send_texture_load_event(LoadImage::CreateRenderTarget(size, sender, Box::new(callback)));
 
-        if let Some(t) = receiver.recv().await {
-            t
-        } else {
-            Err(TatakuError::String("idk".to_owned()))
-        }
+        receiver.recv().await.unwrap()
     }
 
     // pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
@@ -494,9 +489,8 @@ impl GameWindow {
     // }
 
 
-    pub fn free_render_target(tex: TextureReference) -> TatakuResult {
-        get_texture_load_queue()?.send(LoadImage::FreeTexture(tex)).ok().expect("no?");
-        Ok(())
+    pub fn free_texture(tex: TextureReference) {
+        send_texture_load_event(LoadImage::FreeTexture(tex));
     }
 }
 
@@ -590,6 +584,10 @@ pub enum LoadImage {
 }
 
 
-fn get_texture_load_queue<'a>() -> TatakuResult<&'a UnboundedSender<LoadImage>> {
-    TEXTURE_LOAD_QUEUE.get().ok_or(TatakuError::String("texture load queue not set".to_owned()))
+fn send_texture_load_event<'a>(event: LoadImage) {
+    TEXTURE_LOAD_QUEUE
+    .get()
+    .ok_or(TatakuError::String("texture load queue not set".to_owned())).unwrap()
+    .send(event)
+    .map_err(|_|TatakuError::String("couldnt send event".to_owned())).expect("Couldnt send texture load event");
 }

@@ -214,7 +214,7 @@ impl Game {
                 }
 
                 if self.settings.current_skin != self.last_skin {
-                    SkinManager::change_skin(self.settings.current_skin.clone(), false).await;
+                    SkinManager::change_skin(self.settings.current_skin.clone()).await;
                     self.last_skin = self.settings.current_skin.clone();
                 }
 
@@ -279,6 +279,12 @@ impl Game {
         if let Some(loader) = self.background_loader.clone() {
             if let Some(image) = loader.check().await {
                 self.background_loader = None;
+
+                // unload the old image so the atlas can reuse the space
+                if let Some(old_img) = std::mem::take(&mut self.background_image) {
+                    GameWindow::free_texture(old_img.tex);
+                }
+
                 self.background_image = image;
                 
                 if self.background_image.is_none() && self.wallpapers.len() > 0 {
@@ -427,7 +433,7 @@ impl Game {
                         // save as png
                         let w = &mut std::io::BufWriter::new(file);
                         let mut encoder = png::Encoder::new(w, *width, *height);
-                        encoder.set_color(png::ColorType::Rgb);
+                        encoder.set_color(png::ColorType::Rgba);
 
                         let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
                         check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));
@@ -933,7 +939,7 @@ impl Game {
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
         // let mut helper = BenchmarkHelper::new("loaad image");
         let filename = beatmap.image_filename.clone();
-        let f = async move { load_image(filename, false, Vector2::ONE).await };
+        let f = load_image(filename, false, Vector2::ONE);
         self.background_loader = Some(AsyncLoader::new(f));
 
         // self.background_image = load_image(&beatmap.image_filename, false).await;

@@ -50,7 +50,7 @@ impl RenderTarget {
 
 
     pub async fn update(&self, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
-
+        
     }
 
 }
@@ -58,7 +58,7 @@ impl Drop for RenderTarget {
     fn drop(&mut self) {
         if Arc::strong_count(&self._drop_check) == 1 {
             // info!("render target dropped");
-            GameWindow::free_render_target(self.texture);
+            GameWindow::free_texture(self.texture);
         }
     }
 }

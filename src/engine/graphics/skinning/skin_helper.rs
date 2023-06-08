@@ -66,16 +66,14 @@ impl SkinManager {
         SKIN_MANAGER.read().await.current_skin_config.clone()
     }
 
-    pub async fn change_skin(new_skin:String, set_settings: bool) {
+    pub async fn change_skin(new_skin:String) {
         let mut s = SKIN_MANAGER.write().await;
         if s.last_skin == new_skin { return }
-        if set_settings {
-            let mut s = get_settings_mut!();
-            s.current_skin = new_skin.clone();
-        }
         s.last_skin = new_skin.clone();
         s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
-        s.texture_cache.clear();
+
+        // free up the last skin's images in the atlas for reuse
+        std::mem::take(&mut s.texture_cache).into_iter().filter_map(|(_, i)| i.map(|i|i.tex)).for_each(GameWindow::free_texture);
 
         GlobalValueManager::update(Arc::new(CurrentSkin(s.current_skin_config.clone())));
     }
