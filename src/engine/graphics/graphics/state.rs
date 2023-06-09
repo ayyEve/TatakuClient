@@ -809,6 +809,7 @@ impl GraphicsState {
         let mut scissor_index = 0;
 
         if let Some(scissor) = scissor {
+            // map from [x,y,w,h] to [x1,y1,x2,y2]
             self.cpu_scissor[recording_buffer.used_scissors as usize] = [
                 scissor[0], 
                 scissor[1],
@@ -941,7 +942,35 @@ impl GraphicsState {
 
 // draw helpers
 impl GraphicsState {
-    pub fn draw_circle(&mut self, depth: f32, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
+
+    /// draw an arc with the center at 0,0
+    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, depth: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor) {
+        let n = resolution;
+        
+        // minor optimization
+        if color.a <= 0.0 { return }
+
+        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+        let (cw, ch) = (0.5 * w, 0.5 * h);
+        let (cx, cy) = (x + cw, y + ch);
+
+        let mut path = lyon_tessellation::path::Path::builder();
+        for i in 0..=n {
+            let angle = f32::lerp(start, end, i as f32 / n as f32);
+            let p = Point::new(cx + angle.cos() * cw, cy + angle.sin() * ch);
+            if i == 0 { 
+                path.begin(p); 
+            } else {
+                path.line_to(p);
+            }
+        }
+        path.end(false);
+        let path = path.build();
+
+        self.tessellate_path(path, depth, color, None, transform, scissor);
+    }
+
+    pub fn draw_circle(&mut self, radius: f32, depth: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
         let n = resolution;
 
         // border 
@@ -955,7 +984,7 @@ impl GraphicsState {
                 Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             });
 
-            self.tesselate_polygon(points, depth - 1.0, border.color, Some(border.radius), transform, scissor);
+            self.tessellate_polygon(points, depth - 1.0, border.color, Some(border.radius), transform, scissor);
         }
 
         // minor optimization
@@ -970,7 +999,7 @@ impl GraphicsState {
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
-        self.tesselate_polygon(points, depth, color, None, transform, scissor);
+        self.tessellate_polygon(points, depth, color, None, transform, scissor);
         
     }
 
@@ -1017,6 +1046,9 @@ impl GraphicsState {
             // self.tesselate_polygon(points, depth-10.0, border.color, Some(border.radius), transform, scissor);
         }
 
+        // minor optimization
+        if color.a <= 0.0 { return }
+
         // self.reserve_rect(rect, depth, color, transform, scissor);
         self.tessellate_path(path, depth, color, None, transform, scissor)
     }
@@ -1027,19 +1059,12 @@ impl GraphicsState {
     }
 
 
-    fn tesselate_polygon(&mut self, polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
-        let mut path = lyon_tessellation::path::Path::builder();
+    fn tessellate_polygon(&mut self, mut polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         let depth = Self::map_depth(depth);
-
-        let mut started = false;
-        for p in polygon {
-            let p = Point::new(p.x, p.y);
-            if !started {
-                path.begin(p);
-                started = true
-            }
-            path.line_to(p);
-        }
+        
+        let mut path = lyon_tessellation::path::Path::builder();
+        path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
+        for p in polygon { path.line_to(Point::new(p.x, p.y)); }
         path.end(true);
         let path = path.build();
 

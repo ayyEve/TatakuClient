@@ -35,7 +35,6 @@ impl Animation {
 
         let rotation = 0.0;
         let color = Color::WHITE;
-
         let origin = tex_size / 2.0;
 
         Self {

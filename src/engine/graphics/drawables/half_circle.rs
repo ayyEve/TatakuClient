@@ -7,6 +7,7 @@ pub struct HalfCircle {
     pub depth: f32,
     pub radius: f32,
     pub left_side: bool,
+    pub scissor: Scissor
     // draw_state: Option<DrawState>,
 }
 impl HalfCircle {
@@ -17,6 +18,7 @@ impl HalfCircle {
             depth,
             radius,
             left_side,
+            scissor: None
             // draw_state: None,
         }
     }
@@ -25,15 +27,26 @@ impl HalfCircle {
 impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
     fn get_depth(&self) -> f32 {self.depth}
-    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+    fn get_scissor(&self) -> Scissor {self.scissor}
+    fn set_scissor (&mut self, s:Scissor) {self.scissor = s}
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-        let start_angle:f32 = if self.left_side {std::f32::consts::PI/2.0} else {std::f32::consts::PI*1.5} as f32;
+        let start_angle = if self.left_side { PI / 2.0 } else { PI * 1.5 };
+
+        g.draw_arc(
+            start_angle, 
+            start_angle+PI, 
+            self.radius, 
+            self.depth, 
+            self.color.alpha(alpha), 
+            20, 
+            transform.trans(self.pos), 
+            self.scissor
+        )
 
         // TODO: this
         // graphics::CircleArc::new(

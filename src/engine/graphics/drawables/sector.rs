@@ -12,7 +12,7 @@ pub struct Sector {
     pub scale: Vector2,
     pub color: Color,
 
-    // draw_state: Option<DrawState>,
+    scissor: Scissor,
 
     pub border: Option<Border>
 }
@@ -31,26 +31,35 @@ impl Sector {
             scale,
 
             border,
-            // draw_state: None,
+            scissor: None
         }
     }
 }
 
 impl TatakuRenderable for Sector {
     fn get_name(&self) -> String { "Sector".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
-    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+    fn get_depth(&self) -> f32 { self.depth }
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
+        g.draw_arc(
+            self.start,
+            self.end,
+            self.radius,
+            self.depth,
+            self.color.alpha(alpha),
+            20,
+            transform.scale(self.scale).trans(self.pos),
+            self.scissor
+        )
 
         //TODO: this!
         // let r = self.scale * self.radius;
-
         // graphics::CircleArc::new(
         //     self.color.alpha(alpha).into(), 
         //     self.radius / 4.0,
