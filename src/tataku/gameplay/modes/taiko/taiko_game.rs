@@ -818,17 +818,16 @@ impl GameMode for TaikoGame {
     }
 
     async fn fit_to_area(&mut self, pos:Vector2, mut size:Vector2) {
-        size.x = self.playfield.size.x;
-        self.playfield = Arc::new(TaikoPlayfield { pos, size });
+        // self.playfield = Arc::new(TaikoPlayfield { pos, size });
         
-        // update notes
-        for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
-            note.playfield_changed(self.playfield.clone());
-        }
+        // // update notes
+        // for note in self.notes.iter_mut().chain(self.other_notes.iter_mut()) { 
+        //     note.playfield_changed(self.playfield.clone());
+        // }
         
-        for tb in self.timing_bars.iter_mut() {
-            tb.playfield_changed(self.playfield.clone());
-        }
+        // for tb in self.timing_bars.iter_mut() {
+        //     tb.playfield_changed(self.playfield.clone());
+        // }
     }
 
 

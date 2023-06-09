@@ -1015,7 +1015,7 @@ impl GraphicsState {
                 Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             });
 
-            self.tesselate_polygon(points, depth, border.color, Some(border.radius), transform, scissor);
+            self.tesselate_polygon(points, depth - 1.0, border.color, Some(border.radius), transform, scissor);
         }
 
         // minor optimization
@@ -1059,10 +1059,10 @@ impl GraphicsState {
                 Vector2::new(x+w, y+h),
                 Vector2::new(x, y+h),
             ].into_iter();
-            self.tesselate_polygon(points, depth, border.color, Some(border.radius), transform, scissor);
+            self.tesselate_polygon(points, depth-10.0, border.color, Some(border.radius), transform, scissor);
         }
 
-        self.reserve_rect(rect, depth, color, transform, scissor)
+        self.reserve_rect(rect, depth, color, transform, scissor);
     }
 
     pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {

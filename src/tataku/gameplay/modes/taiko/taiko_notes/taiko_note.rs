@@ -80,7 +80,7 @@ impl HitObject for TaikoNote {
         
     }
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 1000000.0 { return }
+        if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
 
         if let Some(image) = &mut self.image {
             image.draw(list);

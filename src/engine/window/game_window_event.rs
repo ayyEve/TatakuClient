@@ -1,11 +1,10 @@
 use crate::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum GameWindowEvent {
+pub enum Window2GameEvent {
     // window events
     GotFocus,
     LostFocus,
-    Resized(Vector2),
     Minimized,
     Closed,
 

@@ -92,6 +92,8 @@ impl HitObject for TaikoSpinner {
             //TODO: draw a counter
 
         } else { // just draw the note on the playfield
+            
+            if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
             if let Some(image) = &self.spinner_image {
                 let mut i = image.clone();
                 i.pos = self.pos;

@@ -114,16 +114,12 @@ impl InputManager {
         self.double_tap_protection = protection;
     }
 
-    pub fn handle_events(&mut self, e:GameWindowEvent) {
+    pub fn handle_events(&mut self, e:Window2GameEvent) {
 
         match e {
             // window events
-            GameWindowEvent::GotFocus => self.window_change_focus = Some(true),
-            GameWindowEvent::LostFocus => self.window_change_focus = Some(false),
-            GameWindowEvent::Resized(new_size) => {
-                if new_size == Vector2::ZERO { return }
-                GlobalValueManager::update(Arc::new(WindowSize(new_size)));
-            }
+            Window2GameEvent::GotFocus => self.window_change_focus = Some(true),
+            Window2GameEvent::LostFocus => self.window_change_focus = Some(false),
 
             // GameWindowEvent::Minimized => {},
             // GameWindowEvent::Closed => {}
@@ -131,7 +127,7 @@ impl InputManager {
             // GameWindowEvent::FileDrop(_) => {},
 
             // keyboard input
-            GameWindowEvent::KeyPress(key) if !self.keys.contains(&key) => {
+            Window2GameEvent::KeyPress(key) if !self.keys.contains(&key) => {
                 
                 let mut ok_to_continue = true;
 
@@ -152,7 +148,7 @@ impl InputManager {
                     self.last_key_press.insert(key, (Instant::now(), false));
                 }
             }
-            GameWindowEvent::KeyRelease(key) => {
+            Window2GameEvent::KeyRelease(key) => {
                 let mut ok_to_continue = true;
 
                 if self.double_tap_protection.is_some() {
@@ -171,27 +167,28 @@ impl InputManager {
                     self.last_key_press.remove(&key);
                 }
             }
-            GameWindowEvent::Text(text) => {
-        // text.chars().next().unwrap().is_ascii_control()                
-        //         println!("got text {:?}", text.as_bytes());
-                self.text_cache += &text
+            Window2GameEvent::Text(text) => {
+                let mods = self.get_key_mods();
+                if !mods.alt && !mods.ctrl {
+                    self.text_cache += &text
+                }
             }
 
             // mouse input
-            GameWindowEvent::MousePress(mb) => {
+            Window2GameEvent::MousePress(mb) => {
                 self.mouse_buttons.insert(mb);
                 self.mouse_down.insert((mb, Instant::now()));
             }
-            GameWindowEvent::MouseRelease(mb) => {
+            Window2GameEvent::MouseRelease(mb) => {
                 self.mouse_buttons.remove(&mb);
                 self.mouse_up.insert((mb, Instant::now()));
             }
-            GameWindowEvent::MouseMove(mouse_pos) => {
+            Window2GameEvent::MouseMove(mouse_pos) => {
                 if mouse_pos == self.mouse_pos { return }
                 self.mouse_moved = true;
                 self.mouse_pos = mouse_pos;
             }
-            GameWindowEvent::MouseScroll(delta) => self.scroll_delta += delta,
+            Window2GameEvent::MouseScroll(delta) => self.scroll_delta += delta,
 
             _ => {}
         }
