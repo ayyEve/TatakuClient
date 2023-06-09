@@ -67,7 +67,7 @@ impl HitObject for TaikoDrumroll {
         self.current_time = beatmap_time;
     }
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.end_x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
+        if self.end_x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
 
         let color = Color::YELLOW;
         let border = Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE));
