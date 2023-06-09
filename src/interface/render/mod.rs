@@ -28,6 +28,4 @@ pub enum Shape {
     Square,
     /// Round corners, with resolution per corner.
     Round(f32, u32),
-    /// Bevel corners
-    Bevel(f32),
 }

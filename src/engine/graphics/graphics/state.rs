@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use lyon_tessellation::math::Point;
+use lyon_tessellation::{geom::{Box2D, Point}, path::builder::BorderRadii};
 use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
 
 // the sum of these two must not go past 16
@@ -904,65 +904,6 @@ impl GraphicsState {
         ]);
     }
 
-    fn reserve_rect(
-        &mut self,
-        rect: [f32; 4],
-        depth: f32,
-        color: Color,
-        transform: Matrix,
-        scissor: Scissor,
-    ) {
-        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
-        let depth = Self::map_depth(depth);
-
-        // self.reserve_quad([Vector2::ONE;4], depth, color, transform, scissor);
-
-        let tex_coords = [0.0, 0.0];
-        let tex_index = -1;
-        let color = color.into();
-
-        let [x, y, w, h] = rect;
-        let offset = reserved.idx_offset as u32;
-        let scissor_index = reserved.scissor_index;
-        reserved.copy_in(&[
-            Vertex {
-                position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
-                tex_coords,
-                tex_index,
-                color,
-                scissor_index,
-            },
-            Vertex {
-                position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
-                tex_coords,
-                tex_index,
-                color,
-                scissor_index,
-            },
-            Vertex {
-                position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
-                tex_coords,
-                tex_index,
-                color,
-                scissor_index,
-            },
-            Vertex {
-                position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
-                tex_coords,
-                tex_index,
-                color,
-                scissor_index,
-            }
-        ], &[
-            0 + offset,
-            2 + offset,
-            1 + offset,
-            1 + offset,
-            2 + offset,
-            3 + offset,
-        ]);
-    }
-
     // quad is tl,tr, bl,br
     fn reserve_quad(
         &mut self,
@@ -994,7 +935,6 @@ impl GraphicsState {
             3 + offset,
         ]);
     }
-
 
 }
 
@@ -1050,19 +990,35 @@ impl GraphicsState {
         self.reserve_quad(quad, depth, color, transform, scissor);
     }
 
-    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, color: Color, transform: Matrix, scissor: Scissor) {
+    /// rect is [x,y,w,h]
+    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor) {
+        // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
+        if rect.iter().any(|n|n.is_infinite()) { return }
+
+        let [x, y, w, h] = rect;
+        let rect = Box2D::new(Point::new(x,y), Point::new(x+w, y+h));
+
+        let mut path = lyon_tessellation::path::Path::builder();
+        match shape {
+            Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
+            Shape::Round(radius, _resolution) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive)
+        }
+        let path = path.build();
+
         if let Some(border) = border {
-            let [x, y, w, h] = rect;
-            let points = [
-                Vector2::new(x, y),
-                Vector2::new(x+w, y),
-                Vector2::new(x+w, y+h),
-                Vector2::new(x, y+h),
-            ].into_iter();
-            self.tesselate_polygon(points, depth-10.0, border.color, Some(border.radius), transform, scissor);
+            self.tessellate_path(path.clone(), depth, border.color, Some(border.radius), transform, scissor)
+
+            // let points = [
+            //     Vector2::new(x, y),
+            //     Vector2::new(x+w, y),
+            //     Vector2::new(x+w, y+h),
+            //     Vector2::new(x, y+h),
+            // ].into_iter();
+            // self.tesselate_polygon(points, depth-10.0, border.color, Some(border.radius), transform, scissor);
         }
 
-        self.reserve_rect(rect, depth, color, transform, scissor);
+        // self.reserve_rect(rect, depth, color, transform, scissor);
+        self.tessellate_path(path, depth, color, None, transform, scissor)
     }
 
     pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
@@ -1077,18 +1033,22 @@ impl GraphicsState {
 
         let mut started = false;
         for p in polygon {
+            let p = Point::new(p.x, p.y);
             if !started {
-                path.begin(Point::new(p.x, p.y));
+                path.begin(p);
                 started = true
             }
-            path.line_to(Point::new(p.x, p.y));
+            path.line_to(p);
         }
         path.end(true);
         let path = path.build();
 
-        
+        self.tessellate_path(path, depth, color, border, transform, scissor)
+    }
+
+    fn tessellate_path(&mut self, path: lyon_tessellation::path::Path, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         // Create the destination vertex and index buffers.
-        let mut buffers: lyon_tessellation::VertexBuffers<Point, u16> = lyon_tessellation::VertexBuffers::new();
+        let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
 
         {
             let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
@@ -1097,13 +1057,10 @@ impl GraphicsState {
                 // Create the tessellator.
                 let mut tessellator = lyon_tessellation::StrokeTessellator::new();
 
-                let mut options = lyon_tessellation::StrokeOptions::default();
-                options.line_width = radius;
-
                 // Compute the tessellation.
                 tessellator.tessellate_path(
                     &path,
-                    &options,
+                    &lyon_tessellation::StrokeOptions::default().with_line_width(radius * 2.0),
                     &mut vertex_builder
                 )
             } else {

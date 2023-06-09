@@ -90,7 +90,7 @@ impl TatakuRenderable for Rectangle {
             .trans(self.pos)
         ;
 
-        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.color.alpha(alpha), transform, self.scissor)
+        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.shape, self.color.alpha(alpha), transform, self.scissor)
     }
 }
 
