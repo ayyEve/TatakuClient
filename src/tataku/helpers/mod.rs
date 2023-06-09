@@ -84,6 +84,21 @@ pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f32) -> impl TatakuRender
 }
 
 
+
+#[macro_export]
+macro_rules! create_value_helper {
+    ($struct: ident, $type: ty, $helper_name: ident) => {
+        #[derive(Default)]
+        pub struct $struct(pub $type);
+        impl Deref for $struct {
+            type Target = $type;
+            fn deref(&self) -> &Self::Target { &self.0 }
+        }
+        
+        pub type $helper_name = GlobalValue<$struct>;
+    }
+}
+
 pub trait Remove<T> {
     fn remove_item(&mut self, item:T);
 }
@@ -123,14 +138,7 @@ impl<T:Copy+Default> CopyDefault<T> for Option<&T> {
     }
 }
 
-pub fn color_from_byte(r:u8, g:u8, b:u8) -> Color {
-    Color::new(
-        r as f32 / 255.0,
-        g as f32 / 255.0,
-        b as f32 / 255.0,
-        1.0
-    )
-}
+
 
 
 #[macro_export]

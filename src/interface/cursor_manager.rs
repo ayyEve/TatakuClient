@@ -444,7 +444,7 @@ impl CursorManager {
 
 
 #[derive(Copy, Clone)]
-pub enum CursorEvent {
+enum CursorEvent {
     SetLeftDown(bool, bool), 
     SetRightDown(bool, bool),
     SetPos(Vector2, bool),

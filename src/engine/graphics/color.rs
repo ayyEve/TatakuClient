@@ -79,6 +79,15 @@ impl Color {
     
     }
 
+    pub fn from_rgb_bytes(r:u8, g:u8, b:u8) -> Color {
+        Color::new(
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            1.0
+        )
+    }
+
     pub fn to_hex(self) -> String {
         let r = (self.r * 255.0) as u8;
         let g = (self.g * 255.0) as u8;

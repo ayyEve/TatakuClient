@@ -332,6 +332,7 @@ impl GameWindow {
                 on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy");
             }
             LoadImage::Font(font, font_size, on_done) => {
+                trace!("Loading font {} with size {}", font.name, font_size);
                 let font_size = FontSize::new(font_size);
                 let mut characters = font.characters.write();
 
@@ -341,7 +342,6 @@ impl GameWindow {
 
                     // bitmap is a vec of grayscale pixels
                     // we need to turn that into rgba bytes
-                    // TODO: could reduce ram usage during font rasterization if this is moved to where the tex is actually loaded
                     let mut data = Vec::with_capacity(bitmap.len() * 4);
                     bitmap.into_iter().for_each(|gray| {
                         data.push(255); // r
@@ -350,14 +350,18 @@ impl GameWindow {
                         data.push(gray); // a
                     });
                     
-                    // char_data.push((char, data, metrics))
-                    let Ok(texture) = self.graphics.load_texture_rgba(&data, metrics.width as u32, metrics.height as u32) else {panic!("eve broke fonts")};
+                    let Ok(texture) = self.graphics.load_texture_rgba(&data, metrics.width as u32, metrics.height as u32) else { panic!("eve broke fonts") };
                     
                     let char_data = CharData { texture, metrics };
                     characters.insert((font_size.u32(), char), char_data);
                 }
 
-                on_done.send(Ok(())).expect("uh oh");
+                // let the font know the size been loaded
+                font.loaded_sizes.write().insert(font_size.u32());
+                
+                if let Some(on_done) = on_done {
+                    on_done.send(Ok(())).expect("uh oh");
+                }
             }
 
             LoadImage::FreeTexture(tex) => {
@@ -468,17 +472,22 @@ impl GameWindow {
     }
 
     // this is called from functions without real access to async, so we have to be dumb here
-    pub fn load_font_data(font: Font, size:f32) -> TatakuResult<()> {
-        // info!("loading font char ('{ch}',{size})");
-        let (sender, mut receiver) = unbounded_channel();
-        send_texture_load_event(LoadImage::Font(font, size, sender));
+    pub fn load_font_data(font: Font, size:f32, wait_for_complete: bool) -> TatakuResult<()> {
+        // NOTE: this will hang the main thread if this is run there
+        if wait_for_complete {
+            let (sender, mut receiver) = unbounded_channel();
+            send_texture_load_event(LoadImage::Font(font, size, Some(sender)));
 
-        loop {
-            match receiver.try_recv() {
-                Ok(_t) => return Ok(()),
-                Err(_) => {},
+            loop {
+                match receiver.try_recv() {
+                    Ok(_t) => return Ok(()),
+                    Err(_) => {},
+                }
             }
+        } else {
+            send_texture_load_event(LoadImage::Font(font, size, None));
         }
+        Ok(())
     }
 
 
@@ -592,7 +601,7 @@ pub enum LoadImage {
     GameClose,
     Path(String, UnboundedSender<TatakuResult<TextureReference>>),
     Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
-    Font(Font, f32, UnboundedSender<TatakuResult<()>>),
+    Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),
 
     CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),

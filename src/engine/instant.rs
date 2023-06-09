@@ -2,9 +2,7 @@ use crate::prelude::*;
 
 static mut TIME:u64 = 0;
 fn get_time() -> u64 {
-    unsafe {
-        TIME
-    }
+    unsafe { TIME }
 }
 pub fn set_time(t: Duration) {
     unsafe {

@@ -1,5 +1,7 @@
-// mod osu_math;
+mod matrix;
+mod vector2;
 mod interpolation;
 
-// pub use osu_math::*;
+pub use matrix::*;
+pub use vector2::*;
 pub use interpolation::*;

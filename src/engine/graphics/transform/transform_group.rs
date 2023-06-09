@@ -239,10 +239,6 @@ impl TatakuRenderable for TransformGroup {
     fn get_depth(&self) -> f32 { self.depth }
 
     fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
-        // if let Some(d) = self.draw_state {
-        //     c.draw_state = d;
-        // }
-
         transform = transform
             // apply origin
             .trans(-self.origin)

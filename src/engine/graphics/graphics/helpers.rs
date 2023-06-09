@@ -1,10 +1,4 @@
-mod text;
-mod color;
-mod render_collection;
-
-pub use text::*;
-pub use color::*;
-pub use render_collection::*;
+use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Border {
@@ -19,7 +13,6 @@ impl Border {
         }
     }
 }
-
 
 /// The shape of the rectangle corners
 #[derive(Copy, Clone)]

@@ -5,7 +5,6 @@ use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer
 // the sum of these two must not go past 16
 const LAYER_COUNT:u32 = 2;
 const RENDER_TARGET_LAYERS:u32 = 2;
-
 pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color

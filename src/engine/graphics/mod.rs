@@ -1,13 +1,11 @@
-mod ui;
-mod skinning;
+mod color;
 mod graphics;
 mod transform;
 mod drawables;
-mod visualization;
+mod renderable_collection;
 
-pub use ui::*;
-pub use skinning::*;
+pub use color::*;
 pub use graphics::*;
 pub use transform::*;
 pub use drawables::*;
-pub use visualization::*;
+pub use renderable_collection::*;

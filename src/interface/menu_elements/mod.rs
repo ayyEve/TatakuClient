@@ -1,4 +1,3 @@
-mod graph;
 mod button;
 mod slider;
 mod section;
@@ -8,7 +7,6 @@ mod text_input;
 mod key_button;
 mod scrollable_area;
 
-pub use graph::*;
 pub use button::*;
 pub use slider::*;
 pub use section::*;

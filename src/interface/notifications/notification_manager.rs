@@ -34,7 +34,18 @@ pub struct NotificationManager {
     window_size: WindowSizeHelper,
     notification_image: Option<Image>,
 }
-impl NotificationManager { // static
+impl NotificationManager {
+    fn new() -> Self { // technically static but i dont care
+        Self {
+            processed_notifs: Vec::new(),
+            pending_notifs: Vec::new(),
+            
+            current_skin: CurrentSkinHelper::new(),
+            window_size: WindowSizeHelper::new(),
+            notification_image: None
+        }
+    }
+
     pub async fn add_notification(notif: Notification) {
         NOTIFICATION_MANAGER.write().await.pending_notifs.push(notif);
     }
@@ -56,18 +67,7 @@ impl NotificationManager { // static
             Color::RED
         ).await;
     }
-}
-impl NotificationManager { // non-static
-    fn new() -> Self { // technically static but i dont care
-        Self {
-            processed_notifs: Vec::new(),
-            pending_notifs: Vec::new(),
-            
-            current_skin: CurrentSkinHelper::new(),
-            window_size: WindowSizeHelper::new(),
-            notification_image: None
-        }
-    }
+
 
     pub async fn update(&mut self) {
         self.window_size.update();
@@ -83,10 +83,7 @@ impl NotificationManager { // non-static
             self.processed_notifs.push(new);
         }
 
-        self.processed_notifs.retain(|n| {
-            let keep = n.check_time();
-            keep
-        });
+        self.processed_notifs.retain(|n| n.check_time());
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
@@ -136,30 +133,9 @@ impl NotificationManager { // non-static
 
         false
     }
+
 }
 
-
-#[derive(Clone)]
-pub struct Notification {
-    /// text to display
-    pub text: String,
-    /// color of the bounding box
-    pub color: Color,
-    /// how long this message should last, in ms
-    pub duration: f32,
-    /// what shold happen on click?
-    pub onclick: NotificationOnClick
-}
-impl Notification {
-    pub fn new(text: String, color: Color, duration: f32, onclick: NotificationOnClick) -> Self {
-        Self {
-            text,
-            color,
-            duration,
-            onclick
-        }
-    }
-}
 
 #[derive(Clone)]
 struct ProcessedNotif {
@@ -227,17 +203,4 @@ impl ProcessedNotif {
         text.pos = pos + NOTIF_PADDING;
         list.push(text);
     }
-}
-
-
-
-#[derive(Clone)]
-#[allow(unused, dead_code)]
-pub enum NotificationOnClick {
-    None,
-    Url(String),
-    Menu(String),
-
-    File(String),
-    Folder(String),
 }

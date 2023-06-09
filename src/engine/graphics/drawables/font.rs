@@ -57,8 +57,10 @@ pub struct Font {
     pub loaded_sizes: Arc<RwLock<HashSet<u32>>>,
     // pub textures: Arc<RwLock<HashMap<f32, Arc<Texture>>>>,
     pub characters: Arc<RwLock<HashMap<(u32, char), CharData>>>,
+    
+    // if the size is loaded but the char isnt found, dont try to load the font
+    queued_for_load: Arc<RwLock<HashSet<u32>>>,
 }
-
 impl Font {
     pub fn load<P:AsRef<Path>>(path:P) -> Option<Self> {
         let data = Io::read_file(&path).ok()?;
@@ -71,39 +73,60 @@ impl Font {
             name: Arc::new(name),
             font: Arc::new(font),
             loaded_sizes: Arc::new(RwLock::new(HashSet::new())),
-            // textures:   Arc::new(RwLock::new(HashMap::new())),
             characters: Arc::new(RwLock::new(HashMap::new())),
+            queued_for_load: Default::default()
         })
     }
 
-    pub fn load_font_size(&self, font_size: f32) {
+    pub fn get_name(&self) -> String { self.name.to_string() }
+
+    pub fn load_font_size(&self, font_size: f32, wait: bool) {
         let font_size = FontSize::new(font_size);
 
+        // if this font is already loaded, exit
         if self.loaded_sizes.read().contains(&font_size.u32()) { return }
 
-        trace!("loading font {} with size {}", self.name, font_size.f32());
+        // if we're not going to wait for this to load
+        let queued = self.queued_for_load.read();
+        if wait {
+            if queued.contains(&font_size.u32()) {
+                // found a race condition
+                // trying to load a font in waiting mode while it was loaded without wait more previously.
+                // if we can wait for it to load, this function shouldnt have been called on the main thread, so we should be able to manually wait for it
+                drop(queued);
+                while !self.loaded_sizes.read().contains(&font_size.u32()) {}
+            }
+        } else {
+            if queued.contains(&font_size.u32()) {
+                // if we're already waiting to load this font, exit
+                return
+            } else {
+                trace!("Queuing font load {} with size {}", self.name, font_size.f32());
+                drop(queued);
+                self.queued_for_load.write().insert(font_size.u32());
+            }
+        }
+
         
         // send tex load request to main thread, and wait for it to complete
-        if let Err(e) = GameWindow::load_font_data(self.clone(), font_size.f32()) {
-            error!("error loading font {}", e);
+        if let Err(e) = GameWindow::load_font_data(self.clone(), font_size.f32(), wait) {
+            error!("Error loading font {}", e);
         }
     }
 
     pub fn get_char(&self, font_size: f32, c: char) -> Option<CharData> {
-        if !self.font.chars().contains_key(&c) { return None }
+        if !self.has_character(c) { return None }
         let font_size = FontSize::new(font_size);
 
         let key = (font_size.u32(), c);
-
+        
         if !self.characters.read().contains_key(&key) {
             // missing, load it
-            self.load_font_size(font_size.f32());
+            self.load_font_size(font_size.f32(), true);
         }
 
         self.characters.read().get(&key).cloned()
     }
-
-    pub fn get_name(&self) -> String { self.name.to_string() }
 
     pub fn get_character(&self, font_size: f32, ch: char) -> FontCharacter {
         if let Some(c) = self.get_char(font_size, ch) {
@@ -115,6 +138,18 @@ impl Font {
 
     pub fn has_character(&self, ch: char) -> bool {
         self.font.chars().contains_key(&ch)
+    }
+
+    pub fn has_char_loaded(&self, ch: char, size: f32) -> bool {
+        if !self.has_character(ch) { return false; }
+        
+        let font_size = FontSize::new(size);
+        let loaded = self.loaded_sizes.read().contains(&font_size.u32());
+
+        // queue loading the font
+        if !loaded { self.load_font_size(font_size.f32(), false); }
+
+        loaded
     }
 
     pub fn draw_character_image(
@@ -171,4 +206,15 @@ impl FontSize {
     pub fn f32(&self) -> f32 {
         self.0
     }
+}
+
+#[derive(Clone, Default)]
+pub struct FontCharacter {
+    pub pos: Vector2,
+    pub size: Vector2,
+    pub advance_width: f32,
+    pub advance_height: f32,
+
+    pub top: f32,
+    pub left: f32,
 }

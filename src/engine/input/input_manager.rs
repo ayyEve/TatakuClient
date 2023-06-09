@@ -46,10 +46,6 @@ pub struct InputManager {
     
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
     last_key_press: HashMap<Key, (Instant, bool)>,
-
-
-
-    pub raw_input: bool,
 }
 impl InputManager {
     pub fn new() -> InputManager {
@@ -80,8 +76,6 @@ impl InputManager {
 
             double_tap_protection: None,
             last_key_press: HashMap::new(),
-
-            raw_input: false
         }
     }
 
@@ -390,3 +384,4 @@ impl ControllerInputConfig {
         }
     }
 }
+

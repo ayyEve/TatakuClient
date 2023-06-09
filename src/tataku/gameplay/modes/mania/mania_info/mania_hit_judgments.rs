@@ -78,12 +78,12 @@ impl HitJudgments for ManiaHitJudgments {
     // stolen from quaver
     fn color(&self) -> Color {
         match self {
-            Self::Marvelous => color_from_byte(250, 254, 181),
-            Self::Perfect   => color_from_byte(245, 222, 104),
-            Self::Great     => color_from_byte(86, 253, 110),
-            Self::Good      => color_from_byte(0, 208, 254),
-            Self::Okay      => color_from_byte(190, 95, 181),
-            Self::Miss      => color_from_byte(248, 100, 93),
+            Self::Marvelous => Color::from_rgb_bytes(250, 254, 181),
+            Self::Perfect   => Color::from_rgb_bytes(245, 222, 104),
+            Self::Great     => Color::from_rgb_bytes(86, 253, 110),
+            Self::Good      => Color::from_rgb_bytes(0, 208, 254),
+            Self::Okay      => Color::from_rgb_bytes(190, 95, 181),
+            Self::Miss      => Color::from_rgb_bytes(248, 100, 93),
         }
     }
 

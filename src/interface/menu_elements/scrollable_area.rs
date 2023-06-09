@@ -1,7 +1,4 @@
 use std::any::Any;
-// use graphics::DrawState;
-// use piston::{Key, MouseButton, RenderArgs};
-// use crate::{render::*, menu::KeyModifiers};
 use crate::prelude::*;
 
 pub struct ScrollableArea {
