@@ -2,7 +2,7 @@ use guillotiere::*;
 
 pub type TextureReference = AtlasData;
 
-const PADDING: u32 = 1;
+const PADDING: u32 = 2;
 
 pub struct Atlas {
     available_width: u32,
