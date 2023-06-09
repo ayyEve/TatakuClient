@@ -128,7 +128,7 @@ impl HitCircleImageHelper {
             image.center_text(&rect);
         }
         if let Some(text) = &mut self.combo_text {
-            text.font_size = radius as f32;
+            text.set_font_size(radius);
             text.center_text(&rect)
         }
 
@@ -175,7 +175,7 @@ impl HitCircleImageHelper {
 
 
     pub fn ripple(&self, time: f32) -> TransformGroup {
-        let scale = 0.0..1.3;
+        let scale = 1.0..1.3;
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
 
         // broken
@@ -193,7 +193,7 @@ impl HitCircleImageHelper {
 
 
         // hitcircle
-        let mut circle_group = TransformGroup::new(self.pos, self.depth).alpha(1.0).border_alpha(1.0);
+        let mut circle_group: TransformGroup = TransformGroup::new(self.pos, self.depth).alpha(1.0).border_alpha(1.0);
 
         if let Some(mut i_circle) = self.circle.clone() {
             i_circle.pos = Vector2::ZERO;

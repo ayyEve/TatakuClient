@@ -70,7 +70,7 @@ impl ScrollableItem for MenuButton {
             Color::WHITE,
             parent_depth,
             Vector2::ZERO,
-            self.font_size.clone(),
+            self.font_size,
             self.text.clone(),
             self.font.clone()
         );

@@ -204,9 +204,9 @@ impl CursorManager {
                 CursorEvent::ShowSystemCursor(show) => {
                     self.show_system_cursor = show;
                     if show {
-                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::ShowCursor);
+                        GameWindow::send_event(Game2WindowEvent::ShowCursor);
                     } else {
-                        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::HideCursor);
+                        GameWindow::send_event(Game2WindowEvent::HideCursor);
                     }
                 }
             }

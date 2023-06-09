@@ -9,13 +9,12 @@ use winit::{
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
 
-pub static GAME_EVENT_SENDER: OnceCell<Sender<GameEvent>> = OnceCell::const_new();
-pub static WINDOW_EVENT_QUEUE:OnceCell<SyncSender<Game2WindowEvent>> = OnceCell::const_new();
-static mut RENDER_EVENT_RECEIVER:OnceCell<TripleBufferReceiver<TatakuRenderEvent>> = OnceCell::const_new();
+static WINDOW_EVENT_QUEUE:OnceCell<UnboundedSender<Game2WindowEvent>> = OnceCell::const_new();
 pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
-pub static TEXTURE_LOAD_QUEUE: OnceCell<UnboundedSender<LoadImage>> = OnceCell::const_new();
 
 lazy_static::lazy_static! {
+    static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
+
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
 
@@ -24,12 +23,13 @@ lazy_static::lazy_static! {
 }
 
 
-
 pub struct GameWindow {
     window: winit::window::Window,
     graphics: GraphicsState,
 
-    window_event_receiver: Receiver<Game2WindowEvent>,
+    game_event_sender: Arc<Sender<GameEvent>>,
+    window_event_receiver: UnboundedReceiver<Game2WindowEvent>,
+    render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
 
     frametime_timer: Instant,
     input_timer: Instant,
@@ -38,7 +38,6 @@ pub struct GameWindow {
     frametime_logger: FrameTimeLogger,
 
     close_pending: bool,
-    texture_load_receiver: UnboundedReceiver<LoadImage>,
 
     // helper for raw mouse input
     mouse_pos: Option<Vector2>,
@@ -50,13 +49,8 @@ impl GameWindow {
         let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
         let window: winit::window::Window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
         
-        let (texture_load_sender, texture_load_receiver) = unbounded_channel();
-        TEXTURE_LOAD_QUEUE.set(texture_load_sender).ok().expect("bad");
-        trace!("texture load queue set");
-
-
-        let [ww, wh]: [f32; 2] = window.inner_size().into();
-        let graphics = GraphicsState::new(&window, &settings, [ww as u32, wh as u32]).await;
+        // let [ww, wh]: [f32; 2] = ;
+        let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
 
         // pre-load fonts
@@ -66,7 +60,7 @@ impl GameWindow {
         debug!("done fonts");
 
         
-        let (window_event_sender, window_event_receiver) = sync_channel(10);
+        let (window_event_sender, window_event_receiver) = unbounded_channel(); //sync_channel(30);
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
         debug!("done texture load queue");
         
@@ -93,21 +87,17 @@ impl GameWindow {
             },
             Err(e) => warn!("error setting window icon: {}", e)
         }
-        
-        unsafe {
-            let _ = RENDER_EVENT_RECEIVER.set(render_event_receiver);
-            let _ = GAME_EVENT_SENDER.set(game_event_sender);
-        }
 
 
         let now = Instant::now();
         let s = Self {
             window,
             graphics,
-
-            window_event_receiver,
-            texture_load_receiver,
             settings,
+
+            game_event_sender: Arc::new(game_event_sender),
+            window_event_receiver,
+            render_event_receiver,
 
             frametime_timer: now,
             input_timer: now,
@@ -228,10 +218,9 @@ impl GameWindow {
                 }
                 _ => return
             };
-    
+            
+            let game_event_sender = self.game_event_sender.clone();
             tokio::spawn(async move {
-                let game_event_sender = GAME_EVENT_SENDER.get().unwrap();
-                // if let Err(e)
                 let _ = game_event_sender.send(GameEvent::WindowEvent(event)).await;
             });
         });
@@ -251,30 +240,18 @@ impl GameWindow {
             }
         }
 
-        self.check_texture_load_loop();
-
         if let Ok(event) = self.window_event_receiver.try_recv() {
             match event {
+                Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
                 Game2WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
                 Game2WindowEvent::HideCursor => self.window.set_cursor_visible(false),
-                Game2WindowEvent::SetRawInput(_val) => {} // self.window.set_raw_mouse_input(val),
 
                 Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
-                Game2WindowEvent::SetClipboard(text) => {
-                    use clipboard::{ClipboardProvider, ClipboardContext};
-
-                    let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
-                    match ctx {
-                        Ok(mut ctx) => if let Err(e) = ctx.set_contents(text) {
-                            error!("[Clipboard] Error: {:?}", e);
-                        }
-                        Err(e) => error!("[Clipboard] Error: {:?}", e),
-                    }
-                },
 
                 Game2WindowEvent::CloseGame => { 
                     self.close_pending = true;
-                    let _ = GAME_EVENT_SENDER.get().unwrap().try_send(GameEvent::WindowClosed);
+                    // try send because the game might already be dead at this point
+                    let _ = self.game_event_sender.try_send(GameEvent::WindowClosed);
                     self.frametime_logger.write();
                 }
 
@@ -294,8 +271,6 @@ impl GameWindow {
         self.frametime_logger.add(now.as_millis());
     }
     
-
-
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window.available_monitors().filter_map(|m|m.name()).collect();
     }
@@ -319,20 +294,22 @@ impl GameWindow {
         self.graphics.set_vsync(self.settings.vsync);
     }
 
+    pub fn set_clipboard(content: String) -> TatakuResult {
+        use clipboard::{ClipboardProvider, ClipboardContext};
+        let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+        
+        Ok(ctx
+        .map_err(|e|TatakuError::String(e.to_string()))
+        .and_then(|mut ctx|ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
+    }
 
-    fn check_texture_load_loop(&mut self) {
-        let Ok(method) = self.texture_load_receiver.try_recv() else { return };
-
-        match method {
-            LoadImage::GameClose => { return; }
-            LoadImage::Path(path, on_done) => {
-                on_done.send(self.graphics.load_texture_path(&path)).expect("poopy");
-            }
-            LoadImage::Image(data, on_done) => {
-                on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy");
-            }
+    fn run_load_image_event(&mut self, event: LoadImage) {
+        match event {
+            LoadImage::Path(path, on_done) => on_done.send(self.graphics.load_texture_path(&path)).expect("poopy"),
+            LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy"),
+            
             LoadImage::Font(font, font_size, on_done) => {
-                trace!("Loading font {} with size {}", font.name, font_size);
+                info!("Loading font {} with size {}", font.name, font_size);
                 let font_size = FontSize::new(font_size);
                 let mut characters = font.characters.write();
 
@@ -383,11 +360,8 @@ impl GameWindow {
 
 
     pub fn render(&mut self) {
-        let data = unsafe {
-            let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
-            let TatakuRenderEvent::Draw(data) = RENDER_EVENT_RECEIVER.get_mut().unwrap().read() else { return };
-            data
-        };
+        let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
+        let TatakuRenderEvent::Draw(data) = self.render_event_receiver.read() else { return };
 
         let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
@@ -395,68 +369,33 @@ impl GameWindow {
 
         let transform = Matrix::identity();
         
-        // use this for snipping
-        #[cfg(feature="snipping")] {
-            // let orig_c = graphics.draw_begin(args.viewport());
-            self.graphics.begin();
-
-            for i in data.iter() {
-                // let mut drawstate_changed = false;
-                // let mut c = orig_c;
-
-                // if let Some(ds) = i.get_draw_state() {
-                //     drawstate_changed = true;
-                //     // println!("ic: {:?}", ic);
-                //     graphics.draw_end();
-                //     graphics.draw_begin(args.viewport());
-                //     graphics.use_draw_state(&ds);
-                //     c.draw_state = ds;
-                // }
-                
-                // graphics.use_draw_state(&c.draw_state);
-                i.draw(transform, &mut self.graphics);
-
-                // if drawstate_changed {
-                //     graphics.draw_end();
-                //     graphics.draw_begin(args.viewport());
-                //     graphics.use_draw_state(&orig_c.draw_state);
-                // }
-            }
-
-            self.graphics.end();
-        }
-
-
-        #[cfg(not(feature="snipping"))] {
-            let c = graphics.draw_begin(args.viewport());
-            graphics::clear(GFX_CLEAR_COLOR.into(), graphics);
-            
-            for i in data.iter() {
-                i.draw(graphics, c);
-            }
-            
-            graphics.draw_end();
-        }
+        self.graphics.begin();
+        data.iter().for_each(|d|d.draw(transform, &mut self.graphics));
+        self.graphics.end();
 
         // apply
-        let _ = self.graphics.render_current_surface(); //.expect("couldnt draw");
+        let _ = self.graphics.render_current_surface();
     }
 
 }
 
 // static fns (mostly helpers)
 impl GameWindow {
-    pub fn refresh_monitors() {
-        let _ = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::RefreshMonitors);
+    pub fn send_event(event: Game2WindowEvent) {
+        // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
+        WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 
+    pub fn refresh_monitors() {
+        Self::send_event(Game2WindowEvent::RefreshMonitors);
+    }
     
     pub async fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<TextureReference> {
         let path = path.as_ref().to_string_lossy().to_string();
         trace!("loading tex {}", path);
 
         let (sender, mut receiver) = unbounded_channel();
-        send_texture_load_event(LoadImage::Path(path, sender));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Path(path, sender)));
 
         receiver.recv().await.unwrap()
     }
@@ -465,7 +404,7 @@ impl GameWindow {
         trace!("loading tex data");
 
         let (sender, mut receiver) = unbounded_channel();
-        send_texture_load_event(LoadImage::Image(data, sender));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Image(data, sender)));
 
         // if this unwrap fails, the receiver was dropped, meaning it was never sent, which means the thread is dead, which means give up
         receiver.recv().await.unwrap()
@@ -476,7 +415,7 @@ impl GameWindow {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
             let (sender, mut receiver) = unbounded_channel();
-            send_texture_load_event(LoadImage::Font(font, size, Some(sender)));
+            Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, Some(sender))));
 
             loop {
                 match receiver.try_recv() {
@@ -485,7 +424,7 @@ impl GameWindow {
                 }
             }
         } else {
-            send_texture_load_event(LoadImage::Font(font, size, None));
+            Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Font(font, size, None)));
         }
         Ok(())
     }
@@ -495,7 +434,7 @@ impl GameWindow {
         trace!("create render target");
 
         let (sender, mut receiver) = unbounded_channel();
-        send_texture_load_event(LoadImage::CreateRenderTarget(size, sender, Box::new(callback)));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
 
         receiver.recv().await.unwrap()
     }
@@ -515,7 +454,7 @@ impl GameWindow {
 
 
     pub fn free_texture(tex: TextureReference) {
-        send_texture_load_event(LoadImage::FreeTexture(tex));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::FreeTexture(tex)));
     }
 }
 
@@ -540,18 +479,24 @@ pub enum Game2WindowEvent {
     ShowCursor,
     HideCursor,
     RequestAttention,
-    SetRawInput(bool),
-    SetClipboard(String),
     CloseGame,
     TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
 
+    LoadImage(LoadImage),
+
     RefreshMonitors,
 }
+pub enum LoadImage {
+    Path(String, UnboundedSender<TatakuResult<TextureReference>>),
+    Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
+    Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
+    FreeTexture(TextureReference),
 
-
-lazy_static::lazy_static! {
-    static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
+    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
+    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
 }
+
+
 
 #[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum FullscreenMonitor {
@@ -583,7 +528,6 @@ impl Dropdownable for FullscreenMonitor {
 }
 
 
-
 fn to_size(s: Vector2) -> winit::dpi::Size {
     winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(s.x as f64, s.y as f64))
 }
@@ -592,27 +536,4 @@ fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
         MouseScrollDelta::LineDelta(_, y) => y,
         MouseScrollDelta::PixelDelta(p) => p.y as f32,
     }
-}
-
-
-
-
-pub enum LoadImage {
-    GameClose,
-    Path(String, UnboundedSender<TatakuResult<TextureReference>>),
-    Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
-    Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
-    FreeTexture(TextureReference),
-
-    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-}
-
-
-fn send_texture_load_event<'a>(event: LoadImage) {
-    TEXTURE_LOAD_QUEUE
-    .get()
-    .ok_or(TatakuError::String("texture load queue not set".to_owned())).unwrap()
-    .send(event)
-    .map_err(|_|TatakuError::String("couldnt send event".to_owned())).expect("Couldnt send texture load event");
 }

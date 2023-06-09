@@ -297,10 +297,7 @@ impl Game {
 
         // check window size
         let window_size_updated = self.window_size.update();
-        if window_size_updated {
-            error!("game detected window size changed");
-            self.resize_bg();
-        }
+        if window_size_updated { self.resize_bg(); }
 
         // let timer = Instant::now();
         self.update_display.increment();
@@ -399,7 +396,7 @@ impl Game {
         // screenshot
         if keys_down.contains(&Key::F12) {
             let (f, b) = Bomb::new();
-            WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::TakeScreenshot(f)).unwrap();
+            GameWindow::send_event(Game2WindowEvent::TakeScreenshot(f));
 
             tokio::spawn(async move {
                 macro_rules! check {
@@ -469,7 +466,8 @@ impl Game {
                                                 Ok(id) => {
                                                     let url = format!("{}/screenshots/{id}", settings.score_url);
                                                     // copy to clipboard
-                                                    if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::SetClipboard(url.clone())) {
+
+                                                    if let Err(e) = GameWindow::set_clipboard(url.clone()) {
                                                         println!("error copying to clipboard: {e}");
                                                         NotificationManager::add_notification(Notification::new(
                                                             format!("Screenshot uploaded {url}"), 
@@ -717,10 +715,7 @@ impl Game {
             GameState::Closing => {
                 self.settings.save().await;
                 self.current_state = GameState::Closing;
-                
-                if let Err(e) = WINDOW_EVENT_QUEUE.get().unwrap().send(Game2WindowEvent::CloseGame) {
-                    panic!("no: {}", e)
-                }
+                GameWindow::send_event(Game2WindowEvent::CloseGame);
             }
 
             _ => {

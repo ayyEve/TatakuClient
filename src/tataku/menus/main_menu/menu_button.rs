@@ -133,7 +133,7 @@ impl MainMenuButton {
         self.visible = false;
         self.last_num = num;
         self.last_count = count;
-        self.hide_time = time as f32;
+        self.hide_time = time;
 
 
         let radius = (self.window_size.y / 6.0) * VISUALIZATION_SIZE_FACTOR + X_OFFSET;
@@ -287,7 +287,6 @@ impl ScrollableItem for MainMenuButton {
                     self.shapes.push(image);
                 }
             } else {
-                let font_size = 15.0 * scale;
                 // draw box
                 let r = Rectangle::new(
                     Color::new(0.2, 0.2, 0.2, 1.0),
@@ -302,7 +301,7 @@ impl ScrollableItem for MainMenuButton {
                     Color::WHITE,
                     9.0,
                     Vector2::ZERO,
-                    font_size,
+                    15.0 * scale,
                     self.text.to_owned(),
                     get_font()
                 );
@@ -316,7 +315,7 @@ impl ScrollableItem for MainMenuButton {
         let time = self.timer.as_millis();
         self.shapes.update(time);
 
-        self.disposable_shapes.retain_mut(|i|{
+        self.disposable_shapes.retain_mut(|i| {
             i.update(time);
             i.visible()
         });
@@ -328,7 +327,6 @@ impl ScrollableItem for MainMenuButton {
             }
         }
 
-
     }
 
     fn draw(&mut self, _pos_offset:Vector2, _parent_depth:f32, list: &mut RenderableCollection) {
@@ -336,7 +334,7 @@ impl ScrollableItem for MainMenuButton {
         // self.shapes.draw(list);
         list.push(self.shapes.clone());
 
-        for i in self.disposable_shapes.iter_mut() {
+        for i in self.disposable_shapes.iter() {
             // i.draw(list);
             list.push(i.clone())
         }

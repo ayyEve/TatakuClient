@@ -99,10 +99,16 @@ async fn start_game() {
     let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
     let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
 
+    let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
+    let window_side_barrier = window_load_barrier.clone();
+
     // setup window
     main_thread.spawn_local(async move {
         info!("creating window");
         let (w, e) = GameWindow::new(render_queue_receiver, game_event_sender).await;
+
+        // let the game side know the window is good to go
+        window_side_barrier.wait().await;
         
         trace!("window running");
         GameWindow::run(w, e).await;
@@ -111,11 +117,8 @@ async fn start_game() {
 
     // start game
     let game = tokio::spawn(async move {
-        info!("starting wait loop");
-        while !TEXTURE_LOAD_QUEUE.initialized() {
-            tokio::task::yield_now().await;
-            // tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+        // wait for the window side to be ready
+        window_load_barrier.wait().await;
         trace!("window ready");
 
         // start the game
@@ -125,7 +128,8 @@ async fn start_game() {
         game.game_loop().await;
         warn!("game closed");
 
-        TEXTURE_LOAD_QUEUE.get().unwrap().send(LoadImage::GameClose).ok().unwrap();
+        // this shouldnt be necessary but its here commented out just in case
+        // GameWindow::send_event(Game2WindowEvent::CloseGame);
     });
 
 

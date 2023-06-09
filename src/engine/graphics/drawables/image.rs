@@ -98,7 +98,7 @@ impl TatakuRenderable for Image {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
+    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut GraphicsState) {
         let mut scale = self.scale;
         let mut h_flip = false;
         let mut v_flip = false;
@@ -112,7 +112,7 @@ impl TatakuRenderable for Image {
             v_flip = true;
         }
 
-        let transform = transform
+        transform = transform
             // apply origin
             .trans(-self.origin)
 

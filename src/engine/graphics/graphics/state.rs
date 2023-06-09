@@ -1021,7 +1021,7 @@ impl GraphicsState {
     /// rect is [x,y,w,h]
     pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
-        if rect.iter().any(|n|n.is_infinite()) { return }
+        if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
         let rect = Box2D::new(Point::new(x,y), Point::new(x+w, y+h));
@@ -1063,7 +1063,10 @@ impl GraphicsState {
         
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
-        for p in polygon { path.line_to(Point::new(p.x, p.y)); }
+        for p in polygon { 
+            if !p.x.is_normal() || !p.y.is_normal() { return }
+            path.line_to(Point::new(p.x, p.y)); 
+        }
         path.end(true);
         let path = path.build();
 

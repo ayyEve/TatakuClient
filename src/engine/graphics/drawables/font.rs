@@ -87,22 +87,20 @@ impl Font {
         if self.loaded_sizes.read().contains(&font_size.u32()) { return }
 
         // if we're not going to wait for this to load
-        let queued = self.queued_for_load.read();
         if wait {
-            if queued.contains(&font_size.u32()) {
+            if self.queued_for_load.read().contains(&font_size.u32()) {
                 // found a race condition
                 // trying to load a font in waiting mode while it was loaded without wait more previously.
                 // if we can wait for it to load, this function shouldnt have been called on the main thread, so we should be able to manually wait for it
-                drop(queued);
+                warn!("waiting for font {} to load with size {}", self.name, font_size.f32());
                 while !self.loaded_sizes.read().contains(&font_size.u32()) {}
             }
         } else {
-            if queued.contains(&font_size.u32()) {
+            if self.queued_for_load.read().contains(&font_size.u32()) {
                 // if we're already waiting to load this font, exit
                 return
             } else {
-                trace!("Queuing font load {} with size {}", self.name, font_size.f32());
-                drop(queued);
+                warn!("Queuing font load {} with size {}", self.name, font_size.f32());
                 self.queued_for_load.write().insert(font_size.u32());
             }
         }
@@ -141,7 +139,7 @@ impl Font {
     }
 
     pub fn has_char_loaded(&self, ch: char, size: f32) -> bool {
-        if !self.has_character(ch) { return false; }
+        if !self.has_character(ch) { return false }
         
         let font_size = FontSize::new(size);
         let loaded = self.loaded_sizes.read().contains(&font_size.u32());
@@ -157,6 +155,7 @@ impl Font {
         font_size: f32, 
         ch: char, 
         [x, y]: [&mut f32; 2], 
+        scale: Vector2,
         color: Color, 
         scissor: Scissor,
         transform: Matrix, 
@@ -164,14 +163,15 @@ impl Font {
     ) {
         let Some(character) = self.get_char(font_size, ch) else { return; };
         
-        let ch_x = *x + character.metrics.xmin as f32;
-        let ch_y = *y - (character.metrics.height as f32 + character.metrics.ymin as f32); // y = -metrics.bounds.height - metrics.bounds.ymin
+        let ch_x = *x + character.metrics.xmin as f32 * scale.x;
+        let ch_y = *y - (character.metrics.height as f32 + character.metrics.ymin as f32) * scale.y;
 
         // info!("draw char '{ch}' with data {:?} at {x},{y}", character.metrics);
+        // dont apply scale to this transform, its already been applied
         graphics.draw_tex(&character.texture, 0.0, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)), scissor);
 
-        *x += character.metrics.advance_width;
-        // *y += character.metrics.advance_height as f64;
+        *x += character.metrics.advance_width * scale.x;
+        // *y += character.metrics.advance_height as f32;
     }
 
 }
@@ -194,11 +194,14 @@ impl Into<FontCharacter> for CharData {
     }
 }
 
+
+
 /// font size helper since f32 isnt hash
 pub struct FontSize(f32, u32);
 impl FontSize {
+    const AMOUNT:f32 = 10.0; // one decimal place
     pub fn new(f:f32) -> Self {
-        Self(f, (f * 10.0) as u32)
+        Self(f, (f * Self::AMOUNT) as u32)
     }
     pub fn u32(&self) -> u32 {
         self.1
