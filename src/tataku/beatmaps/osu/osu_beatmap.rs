@@ -417,14 +417,15 @@ impl OsuBeatmap {
 }
 #[async_trait]
 impl TatakuBeatmap for OsuBeatmap {
-    fn hash(&self) -> String {self.hash.clone()}
+    fn hash(&self) -> String { self.hash.clone() }
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> { self.metadata.clone() }
+
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points
             .iter()
             .map(|t|t.clone().into())
             .collect()
     }
-    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {self.metadata.clone()}
 
     fn playmode(&self, incoming:PlayMode) -> PlayMode {
         match &*self.metadata.mode {
@@ -436,27 +437,26 @@ impl TatakuBeatmap for OsuBeatmap {
 
 
     fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
-        if self.timing_points.len() == 0 {return 0.0}
+        if self.timing_points.len() == 0 { return 0.0 }
 
-        let mut point: Option<OsuTimingPoint> = Some(self.timing_points.as_slice()[0].clone());
-        let mut inherited_point: Option<OsuTimingPoint> = None;
+        // this isnt always a control point, need to find the first non-inherited point
+        let mut point = self.timing_points.iter().find(|t|!t.is_inherited());
+        let mut inherited_point = None;
 
-        for tp in self.timing_points.as_slice() {
+        for tp in self.timing_points.iter() {
             if tp.time <= time {
                 if tp.is_inherited() {
-                    inherited_point = Some(tp.clone());
+                    inherited_point = Some(tp);
                 } else {
-                    point = Some(tp.clone());
+                    point = Some(tp);
                 }
             }
         }
 
         let mut mult = 1.0;
-        let p = point.unwrap();
+        let Some(p) = point else { return 0.0 };
 
-        if allow_multiplier && inherited_point.is_some() {
-            let ip = inherited_point.unwrap();
-
+        if let Some(ip) = inherited_point.filter(|_| allow_multiplier) {
             if p.time <= ip.time && ip.beat_length < 0.0 {
                 mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
             }

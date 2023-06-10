@@ -388,7 +388,6 @@ impl GameMode for TaikoGame {
         // // i wonder if not doing this has been causing issues
         // s.apply_mods(s.current_mods.clone()).await;
 
-
         Ok(s)
     }
 
@@ -728,7 +727,6 @@ impl GameMode for TaikoGame {
             }
         }
 
-        
         self.last_judgment = TaikoHitJudgments::Miss;
         self.counter = FullAltCounter::new();
 
@@ -750,9 +748,7 @@ impl GameMode for TaikoGame {
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
 
                 // edge case for aspire maps
-                if next_bar_time.is_nan() || next_bar_time == 0.0 {
-                    break;
-                }
+                if next_bar_time.is_nan() || next_bar_time == 0.0 { break; }
 
                 // add timing bar at current time
                 self.timing_bars.push(TimingBar::new(time, sv, self.taiko_settings.clone(), self.playfield.clone()));
@@ -765,10 +761,9 @@ impl GameMode for TaikoGame {
 
                 // why isnt this accounting for bpm changes? because the bpm change doesnt allways happen inline with the bar idiot
                 time += next_bar_time;
-                if time >= self.end_time || time.is_nan() {break}
-            }
+                if time >= self.end_time || time.is_nan() { break }
+            } 
 
-            trace!("created {} timing bars", self.timing_bars.len());
         }
         
         // reset hitcache times

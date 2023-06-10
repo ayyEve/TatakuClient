@@ -47,7 +47,6 @@ impl Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
 
-
         let mut g = Game {
             // engine
             input_manager: InputManager::new(),
@@ -334,13 +333,6 @@ impl Game {
                 break;
             }
         }
-
-        // piston-glutin hotfix, if ctrl or alt is pressed, ignore the text it generates
-        #[cfg(feature="glutin_window")]
-        if text.len() > 0 && mods.ctrl || mods.alt {
-            text = String::new();
-        }
-
 
         // prevent the list from building up and just wasting memory.
         // not nuking the code because it might be a useful stat in the future
@@ -747,7 +739,7 @@ impl Game {
                         };
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));
-                    },
+                    }
                     GameState::InMenu(_) => {
                         if let GameState::InMenu(menu) = &self.current_state {
                             if menu.get_name() == "pause" {
@@ -758,7 +750,7 @@ impl Game {
                         }
 
                         OnlineManager::set_action(SetAction::Idle, None);
-                    },
+                    }
                     GameState::Closing => {
                         // send logoff
                         OnlineManager::set_action(SetAction::Closing, None);
