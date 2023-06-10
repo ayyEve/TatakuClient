@@ -24,7 +24,10 @@ pub struct Animation {
     pub color: Color,
     pub pos: Vector2,
     pub scale: Vector2,
-    pub rotation: f32,
+    pub rotation: f32, 
+
+    // free the textures from the atlas when this is dropped?
+    pub free_on_drop: bool,
 }
 #[allow(unused)]
 impl Animation {
@@ -53,7 +56,7 @@ impl Animation {
             size: tex_size,
             depth,
             origin,
-            // draw_state: None,
+            free_on_drop: false
         }
     }
 
@@ -145,5 +148,15 @@ impl TatakuRenderable for Animation {
 
         let image = &self.frames[self.frame_index];
         g.draw_tex(image, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
+    }
+}
+
+impl Drop for Animation {
+    fn drop(&mut self) {
+        if self.free_on_drop {
+            for i in self.frames.iter() {
+                GameWindow::free_texture(*i);
+            }
+        }
     }
 }

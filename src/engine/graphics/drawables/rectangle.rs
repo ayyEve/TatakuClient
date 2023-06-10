@@ -73,21 +73,12 @@ impl TatakuRenderable for Rectangle {
         // r.shape = self.shape;
         let border = self.border.map(|mut b|{b.color.a = border_alpha; b});
         
-        let transform = transform
-            // apply origin
-            .trans(-self.origin)
-
-            // rotate to rotate
-            .rot(self.rotation)
-
-            // undo origin
-            .trans(self.origin)
-
-            // scale to size
-            .scale(self.scale)
-
-            // move to pos
-            .trans(self.pos)
+        let transform = transform * Matrix::identity()
+            .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate to rotate
+            .trans(self.origin) // undo origin
+            .scale(self.scale) // scale to size
+            .trans(self.pos) // move to pos
         ;
 
         g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.shape, self.color.alpha(alpha), transform, self.scissor)

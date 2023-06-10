@@ -90,9 +90,8 @@ impl Image {
 impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
     fn get_depth(&self) -> f32 { self.depth }
-
-    fn get_scissor(&self) -> Scissor {self.scissor}
-    fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -112,18 +111,11 @@ impl TatakuRenderable for Image {
             v_flip = true;
         }
 
-        transform = transform
-            // apply origin
-            .trans(-self.origin)
-
-            // rotate to rotate
-            .rot(self.rotation)
-
-            // scale to size
-            .scale(scale)
-
-            // move to pos
-            .trans(self.pos)
+        transform = transform * Matrix::identity()
+            .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate
+            .scale(scale) // scale
+            .trans(self.pos) // move to pos
         ;
 
         g.draw_tex(&self.tex, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);

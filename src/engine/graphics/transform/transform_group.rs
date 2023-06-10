@@ -240,17 +240,11 @@ impl TatakuRenderable for TransformGroup {
 
     fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
         transform = transform
-            // apply origin
-            .trans(-self.origin)
-
-            // rotate to rotate
-            .rot(*self.rotation)
-
-            // scale to size
-            .scale(*self.scale)
-
-            // move to pos
-            .trans(*self.pos)
+            * Matrix::identity()
+            .trans(-self.origin) // apply origin
+            .rot(*self.rotation) // rotate
+            .scale(*self.scale) // scale
+            .trans(*self.pos) // move to pos
         ;
 
         

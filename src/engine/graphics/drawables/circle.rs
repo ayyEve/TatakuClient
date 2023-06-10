@@ -47,9 +47,10 @@ impl TatakuRenderable for Circle {
     fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
         let border = self.border.map(|mut b|{ b.color.a = border_alpha; b });
 
-        let transform = transform
+        let transform = transform * Matrix::identity()
             // .scale(self)
-            .trans(self.pos);
+            .trans(self.pos)
+        ;
 
 
         g.draw_circle(self.radius, self.depth, self.color.alpha(alpha), border, self.resolution, transform, self.scissor);

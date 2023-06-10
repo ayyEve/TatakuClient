@@ -34,7 +34,7 @@ impl TatakuRenderable for Line {
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
     
-        let transform = transform.trans(self.p1);
+        let transform = transform * Matrix::identity().trans(self.p1);
 
         let d = self.p2 - self.p1;
         g.draw_line([0.0, 0.0, d.x, d.y], self.thickness, self.depth, self.color.alpha(alpha), transform, self.scissor);

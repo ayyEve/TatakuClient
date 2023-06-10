@@ -109,18 +109,11 @@ impl TatakuRenderable for Text {
         if self.fonts.len() == 0 { return error!("NO FONT FOR TEXT {}", self.text); }
         let scale = self.scale * self.text_scale;
 
-        transform = transform
-            // // apply origin
-            // .trans(-self.origin)
-
-            // rotate to rotate
-            .rot(self.rotation)
-
-            // scale to size
-            .scale(scale)
-
-            // move to pos
-            .trans(self.pos)
+        transform = transform * Matrix::identity()
+            // .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate
+            .scale(scale) // scale
+            .trans(self.pos) // move to pos
         ;
 
 

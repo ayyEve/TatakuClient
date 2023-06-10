@@ -156,6 +156,7 @@ impl Element {
 
                 let mut animation = Animation::new(Vector2::ZERO, 0.0, Vector2::ONE, frames, delays, Vector2::ONE);
                 animation.scale = Vector2::ONE;
+                animation.free_on_drop = true;
                 
                 let size = animation.size();
                 match anim.origin {
