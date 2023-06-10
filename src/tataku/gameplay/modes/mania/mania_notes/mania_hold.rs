@@ -114,6 +114,9 @@ impl HitObject for ManiaHold {
         if let Some(img) = &mut self.middle_image {
             img.pos = Vector2::new(self.pos.x, y);
             img.scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+            if img.scale.y < 0.0 {
+                img.origin.y = img.tex_size().y;
+            }
         }
 
         // update end tex
