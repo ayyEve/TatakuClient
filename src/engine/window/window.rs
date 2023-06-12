@@ -13,7 +13,7 @@ static WINDOW_EVENT_QUEUE:OnceCell<UnboundedSender<Game2WindowEvent>> = OnceCell
 pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
 
 lazy_static::lazy_static! {
-    static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
+    pub(super) static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
 
     pub static ref RENDER_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     pub static ref RENDER_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -22,6 +22,7 @@ lazy_static::lazy_static! {
     pub static ref INPUT_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
 }
 
+pub type RenderData = Vec<Arc<dyn TatakuRenderable>>;
 
 pub struct GameWindow {
     window: winit::window::Window,
@@ -29,27 +30,25 @@ pub struct GameWindow {
 
     game_event_sender: Arc<Sender<GameEvent>>,
     window_event_receiver: UnboundedReceiver<Game2WindowEvent>,
-    render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>,
+    render_event_receiver: TripleBufferReceiver<RenderData>,
 
     frametime_timer: Instant,
     input_timer: Instant,
 
     settings: SettingsHelper,
-    frametime_logger: FrameTimeLogger,
 
     close_pending: bool,
 
-    // helper for raw mouse input
+    // helpers for raw mouse input
     mouse_pos: Option<Vector2>,
+    cursor_visible: bool,
 }
 impl GameWindow {
-    pub async fn new(render_event_receiver: TripleBufferReceiver<TatakuRenderEvent>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
+    pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
         
         let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
-        let window: winit::window::Window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
-        
-        // let [ww, wh]: [f32; 2] = ;
+        let window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
 
@@ -102,15 +101,15 @@ impl GameWindow {
             frametime_timer: now,
             input_timer: now,
 
-            frametime_logger: FrameTimeLogger::new(),
             close_pending: false,
             mouse_pos: None,
+            cursor_visible: true
         };
         
         (s, event_loop)
     }
 
-    pub async fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) {
+    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) {
         // fire event so things get moved around correctly
         // what??
         let settings = get_settings!().clone();
@@ -123,6 +122,8 @@ impl GameWindow {
         self.refresh_monitors_inner();
         self.apply_fullscreen();
         self.apply_vsync();
+
+        let mut in_window = true;
 
         event_loop.run(move |event, _, control_flow| {
             self.update();
@@ -161,13 +162,19 @@ impl GameWindow {
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Released, .. }, .. } => Window2GameEvent::KeyRelease(key),
                         // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
                         // winit::event::WindowEvent::Ime(_) => todo!(),
-                        winit::event::WindowEvent::CursorMoved { position, .. } if !raw_mouse || (raw_mouse && self.mouse_pos.is_none()) => {
-                            let p = Vector2::new(position.x as f32, position.y as f32);
-                            self.mouse_pos = Some(p); 
-                            // self.window.set_cursor_position(position)
+                        winit::event::WindowEvent::CursorMoved { position, .. } => {
+                            // if we're using window coords for the mouse
+                            // or we're using raw mouse input and we dont currently have a mouse coord set
+                            // or the hardware cursor is visible
+                            if (!raw_mouse || (raw_mouse && self.mouse_pos.is_none())) || self.cursor_visible {
+                                let p = Vector2::new(position.x as f32, position.y as f32);
+                                self.mouse_pos = Some(p); 
 
-                            // if raw_mouse {error!("setting mouse pos to {p:?}")}
-                            Window2GameEvent::MouseMove(p)
+                                // if raw_mouse {error!("setting mouse pos to {p:?}")}
+                                Window2GameEvent::MouseMove(p)
+                            } else {
+                                return
+                            }
                         }
                         // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
                         winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
@@ -186,7 +193,7 @@ impl GameWindow {
                 
                 Event::DeviceEvent { device_id:_, event } => {
                     match event {
-                        DeviceEvent::MouseMotion { delta: (x, y) } if raw_mouse => {
+                        DeviceEvent::MouseMotion { delta: (x, y) } if raw_mouse && !self.cursor_visible => {
                             if let Some(mouse_pos) = self.mouse_pos.as_mut() {
                                 mouse_pos.x += x as f32;
                                 mouse_pos.y += y as f32;
@@ -243,8 +250,14 @@ impl GameWindow {
         if let Ok(event) = self.window_event_receiver.try_recv() {
             match event {
                 Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
-                Game2WindowEvent::ShowCursor => self.window.set_cursor_visible(true),
-                Game2WindowEvent::HideCursor => self.window.set_cursor_visible(false),
+                Game2WindowEvent::ShowCursor => { 
+                    self.cursor_visible = true;
+                    self.window.set_cursor_visible(true);
+                }
+                Game2WindowEvent::HideCursor => { 
+                    self.cursor_visible = false;
+                    self.window.set_cursor_visible(false);
+                }
 
                 Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
 
@@ -252,7 +265,6 @@ impl GameWindow {
                     self.close_pending = true;
                     // try send because the game might already be dead at this point
                     let _ = self.game_event_sender.try_send(GameEvent::WindowClosed);
-                    self.frametime_logger.write();
                 }
 
                 Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
@@ -265,10 +277,8 @@ impl GameWindow {
         INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
         INPUT_COUNT.fetch_add(1, SeqCst);
 
-        // actually render
-        let now = Instant::now();
+        // request a redraw. the render code is run in the event loop
         self.window.request_redraw();
-        self.frametime_logger.add(now.as_millis());
     }
     
     fn refresh_monitors_inner(&mut self) {
@@ -361,7 +371,7 @@ impl GameWindow {
 
     pub fn render(&mut self) {
         let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
-        let TatakuRenderEvent::Draw(data) = self.render_event_receiver.read() else { return };
+        let data = self.render_event_receiver.read();
 
         let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
@@ -379,7 +389,7 @@ impl GameWindow {
 
 }
 
-// static fns (mostly helpers)
+// static fns
 impl GameWindow {
     pub fn send_event(event: Game2WindowEvent) {
         // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
@@ -458,74 +468,6 @@ impl GameWindow {
     }
 }
 
-
-
-
-
-pub enum TatakuRenderEvent {
-    None,
-    Draw(Vec<Arc<dyn TatakuRenderable>>),
-}
-impl Default for TatakuRenderEvent {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-
-
-#[allow(unused)]
-pub enum Game2WindowEvent {
-    ShowCursor,
-    HideCursor,
-    RequestAttention,
-    CloseGame,
-    TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
-
-    LoadImage(LoadImage),
-
-    RefreshMonitors,
-}
-pub enum LoadImage {
-    Path(String, UnboundedSender<TatakuResult<TextureReference>>),
-    Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
-    Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
-    FreeTexture(TextureReference),
-
-    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-    // UpdateRenderTarget(RenderTarget, UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-}
-
-
-
-#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub enum FullscreenMonitor {
-    None,
-    Monitor(usize),
-}
-impl Dropdownable for FullscreenMonitor {
-    fn variants() -> Vec<Self> {
-        [Self::None].into_iter().chain((0..MONITORS.read().len()).into_iter().map(|t|Self::Monitor(t))).collect()
-    }
-
-    fn display_text(&self) -> String {
-        match self {
-            Self::None => "None".to_owned(),
-            Self::Monitor(num) => MONITORS
-                .read()
-                .get(*num)
-                .map(|s|format!("({num}). {s}"))
-                .unwrap_or_else(||"None".to_owned())
-        }
-    }
-
-    fn from_string(s:String) -> Self {
-        match s.parse::<usize>() {
-            Err(_) => Self::None,
-            Ok(num) => Self::Monitor(num)
-        }
-    }
-}
 
 
 fn to_size(s: Vector2) -> winit::dpi::Size {

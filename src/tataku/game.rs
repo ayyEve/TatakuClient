@@ -13,7 +13,7 @@ pub struct Game {
     pub current_state: GameState,
     queued_state: GameState,
     game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
-    render_queue_sender: TripleBufferSender<TatakuRenderEvent>,
+    render_queue_sender: TripleBufferSender<RenderData>,
 
     pub dialogs: Vec<Box<dyn Dialog<Self>>>,
 
@@ -43,7 +43,7 @@ pub struct Game {
     background_loader: Option<AsyncLoader<Option<Image>>>
 }
 impl Game {
-    pub async fn new(render_queue_sender: TripleBufferSender<TatakuRenderEvent>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
+    pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
 
@@ -912,7 +912,7 @@ impl Game {
         render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
         // toss the items to the window to render
-        self.render_queue_sender.write(TatakuRenderEvent::Draw(render_queue));
+        self.render_queue_sender.write(render_queue);
         NEW_RENDER_DATA_AVAILABLE.store(true, Ordering::Release);
         
         self.fps_display.increment();

@@ -11,21 +11,15 @@ build = "build/mod.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-# default = ["glfw_window"]
-# default = ["glfw_window", "winit"]
-default = ["bass_audio", "discord", "snipping"]
+default = ["bass_audio", "discord"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
 discord = ["discord-rich-presence"]
 debug_sliders = []
 debug_hitsounds = []
-snipping = []
 debug_perf_rating = []
 log_frametimes = []
 storyboards = []
-
-# glfw_window = ["pistoncore-glfw_window", "bass_audio", "discord", "snipping", "glfw"]
-# glutin_window = ["pistoncore-glutin_window", "bass_audio", "discord", "snipping", "winit"]
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }

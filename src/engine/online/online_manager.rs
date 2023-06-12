@@ -11,10 +11,10 @@ type WsWriter = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 // how many frames do we buffer before sending?
 // higher means less packet spam
 const SPECTATOR_BUFFER_FLUSH_SIZE: usize = 20;
-type ThreadSafeSelf = Arc<tokio::sync::RwLock<OnlineManager>>;
+type ThreadSafeSelf = Arc<AsyncRwLock<OnlineManager>>;
 
 lazy_static::lazy_static! {
-    pub static ref ONLINE_MANAGER:ThreadSafeSelf = Arc::new(tokio::sync::RwLock::new(OnlineManager::new()));
+    pub static ref ONLINE_MANAGER:ThreadSafeSelf = Arc::new(AsyncRwLock::new(OnlineManager::new()));
 }
 
 #[macro_export]

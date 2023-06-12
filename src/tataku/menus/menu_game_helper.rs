@@ -121,8 +121,6 @@ impl MenuGameHelper {
                         }
                         
                         manager.start().await;
-                        trace!("manager started");
-
                         self.manager = Some(manager);
                     },
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await,

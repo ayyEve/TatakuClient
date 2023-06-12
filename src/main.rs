@@ -111,7 +111,7 @@ async fn start_game() {
         window_side_barrier.wait().await;
         
         trace!("window running");
-        GameWindow::run(w, e).await;
+        GameWindow::run(w, e);
         warn!("window closed");
     });
 
