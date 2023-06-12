@@ -348,9 +348,11 @@ impl IngameManager {
 
 
         // update ui elements
-        let mut ui_elements = std::mem::take(&mut self.ui_elements);
-        ui_elements.iter_mut().for_each(|ui|ui.update(self));
-        self.ui_elements = ui_elements;
+        if !self.menu_background {
+            let mut ui_elements = std::mem::take(&mut self.ui_elements);
+            ui_elements.iter_mut().for_each(|ui|ui.update(self));
+            self.ui_elements = ui_elements;
+        }
 
         // update ui editor
         let mut ui_editor = std::mem::take(&mut self.ui_editor);
@@ -924,7 +926,7 @@ impl IngameManager {
             let id = j.as_str_internal();
             self.score.judgments.insert(id.to_owned(), 0);
         }
-
+        
     }
     pub fn fail(&mut self) {
         if self.failed || self.current_mods.has_nofail() || self.current_mods.has_autoplay() || self.menu_background { return }
