@@ -20,12 +20,11 @@ use crate::prelude::*;
 use super::prelude::*;
 
 // depths
-// const PLAYFIELD_DEPTH:f32 = 8002.0;
-// const HIT_AREA_DEPTH:f32 = 8001.0;
-// const TIMING_BAR_DEPTH:f32 = 8001.5;
-// const NOTE_DEPTH_RANGE:Range<f32> = 0.0..8000.0;
-// const HIT_INDICATOR_DEPTH: f32 = -1.0;
-const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
+const PLAYFIELD_DEPTH:f32 = 8002.0;
+const HIT_AREA_DEPTH:f32 = 8001.0;
+const TIMING_BAR_DEPTH:f32 = 8001.5;
+const NOTE_DEPTH_RANGE:Range<f32> = -100.0..100.0;
+const HIT_INDICATOR_DEPTH: f32 = -101.0;
 
 
 
@@ -170,14 +169,15 @@ impl TaikoGame {
         ))
     }
 
-    #[inline]
-    pub fn get_depth(time: f32) -> f32 {
-        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
-    }
-    #[inline]
-    pub fn get_slider_depth(_time: f32) -> f32 {
-        NOTE_DEPTH_RANGE.end
-    }
+    // #[inline]
+    // pub fn get_depth(time: f32) -> f32 {
+    //     // NOTE_DEPTH_RANGE.end - (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.start) / 
+    //     NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
+    // }
+    // #[inline]
+    // pub fn get_slider_depth(_time: f32) -> f32 {
+    //     _RANGE.end
+    // }
 
     #[inline]
     pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
@@ -253,11 +253,17 @@ impl GameMode for TaikoGame {
 
         match beatmap {
             Beatmap::Osu(beatmap) => {
+                let last_note_time = beatmap.notes.last().map(|n|n.time).unwrap_or_default();
+                let last_slider_time = beatmap.sliders.last().map(|n|n.time+10_000.0).unwrap_or_default();
+                let last_spinner_time = beatmap.spinners.last().map(|n|n.end_time).unwrap_or_default();
+                let overall_length = last_note_time.max(last_slider_time).max(last_spinner_time);
 
                 // add notes
                 for note in beatmap.notes.iter() {
                     let hit_type = if (note.hitsound & (2 | 8)) > 0 {HitType::Kat} else {HitType::Don};
                     let finisher = (note.hitsound & 4) > 0;
+
+                    let depth = f32::lerp(NOTE_DEPTH_RANGE.start, NOTE_DEPTH_RANGE.end, note.time / overall_length);
 
                     s.notes.push(Box::new(TaikoNote::new(
                         note.time,
@@ -265,12 +271,11 @@ impl GameMode for TaikoGame {
                         finisher,
                         settings.clone(),
                         playfield.clone(),
-                        diff_calc_only,
+                        depth,
                     ).await));
                 }
                 for slider in beatmap.sliders.iter() {
                     let SliderDef {time, slides, length, ..} = slider.to_owned();
-                    let time = time;
                     let finisher = (slider.hitsound & 4) > 0;
 
                     let l = (length * 1.4) * slides as f32;
@@ -306,6 +311,7 @@ impl GameMode for TaikoGame {
 
                         //TODO: could this be turned into a for i in (x..y).step(n) ?
                         loop {
+                            let depth = f32::lerp(NOTE_DEPTH_RANGE.start, NOTE_DEPTH_RANGE.end, j / overall_length);
                             let sound_type = sound_types[i];
 
                             s.notes.push(Box::new(TaikoNote::new(
@@ -314,7 +320,7 @@ impl GameMode for TaikoGame {
                                 sound_type.1,
                                 settings.clone(),
                                 playfield.clone(),
-                                diff_calc_only,
+                                depth,
                             ).await));
 
                             if !unified_sound_addition { i = (i + 1) % sound_types.len() }
@@ -323,43 +329,27 @@ impl GameMode for TaikoGame {
                             if !(j < end_time + skip_period / 8.0) { break }
                         }
                     } else {
+                        let depth = f32::lerp(NOTE_DEPTH_RANGE.start, NOTE_DEPTH_RANGE.end, time / overall_length);
                         s.other_notes.push(Box::new(TaikoDrumroll::new(
                             time, 
                             end_time, 
                             finisher, 
                             settings.clone(),
                             playfield.clone(),
-                            diff_calc_only,
+                            depth,
                         ).await));
                     }
                 }
                 for spinner in beatmap.spinners.iter() {
+                    let depth = f32::lerp(NOTE_DEPTH_RANGE.start, NOTE_DEPTH_RANGE.end, spinner.time / overall_length);
                     s.other_notes.push(Box::new(TaikoSpinner::new(
                         spinner.time,
                         spinner.end_time, 
                         0, 
                         settings.clone(),
                         playfield.clone(),
-                        diff_calc_only,
+                        depth,
                     ).await));
-                }
-            }
-            Beatmap::Adofai(beatmap) => {
-
-                // add notes
-                for note in beatmap.notes.iter() {
-                    let hit_type = HitType::Don;
-
-                    let note = Box::new(TaikoNote::new(
-                        note.time,
-                        hit_type,
-                        false,
-                        settings.clone(),
-                        playfield.clone(),
-                        diff_calc_only,
-                    ).await);
-
-                    s.notes.push(note);
                 }
             }
 
@@ -623,7 +613,6 @@ impl GameMode for TaikoGame {
         for (hit_type, hit_time) in self.hit_cache.iter() {
             if time - hit_time > lifetime_time { continue }
             let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
-            let depth = -1.0;
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
@@ -634,7 +623,7 @@ impl GameMode for TaikoGame {
                         list.push(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            depth,
+                            HIT_INDICATOR_DEPTH,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
                         ));
@@ -649,7 +638,7 @@ impl GameMode for TaikoGame {
                         list.push(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            depth,
+                            HIT_INDICATOR_DEPTH,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             true
                         ));
@@ -664,7 +653,7 @@ impl GameMode for TaikoGame {
                         list.push(HalfCircle::new(
                             self.taiko_settings.don_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            depth,
+                            HIT_INDICATOR_DEPTH,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
                         ));
@@ -679,7 +668,7 @@ impl GameMode for TaikoGame {
                         list.push(HalfCircle::new(
                             self.taiko_settings.kat_color.alpha(alpha),
                             self.taiko_settings.hit_position,
-                            depth,
+                            HIT_INDICATOR_DEPTH,
                             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
                             false
                         ));
@@ -689,13 +678,17 @@ impl GameMode for TaikoGame {
         }
 
         // draw the playfield
-        let window_size = WindowSize::get();
-        list.push(self.taiko_settings.get_playfield(window_size.x, manager.current_timing_point().kiai));
+        {
+            let window_size = WindowSize::get();
+            let mut pf = self.taiko_settings.get_playfield(window_size.x, manager.current_timing_point().kiai);
+            pf.depth = PLAYFIELD_DEPTH;
+            list.push(pf);
+        }
 
         // draw the hit area
         list.push(Circle::new(
             Color::BLACK,
-            1001.0,
+            HIT_AREA_DEPTH,
             self.taiko_settings.hit_position,
             self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult,
             None
@@ -899,28 +892,28 @@ impl GameMode for TaikoGame {
             don.depth = -1.0;
             don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.taiko_settings.hit_position;
+            don.scale = scale;
 
-            let mut ldon = don.clone();
-            ldon.scale = scale;
+            let ldon = don.clone();
             self.left_don_image = Some(ldon);
             
             let mut rdon = don.clone();
-            rdon.scale = scale * Vector2::new(-1.0, 1.0);
-            rdon.origin.x = 0.0;
+            rdon.scale *= Vector2::new(-1.0, 1.0);
+            // rdon.origin.x = 0.0;
             self.right_don_image = Some(rdon);
         }
         if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
             kat.depth = -1.0;
             kat.origin.x = 0.0;
             kat.pos = self.taiko_settings.hit_position;
+            kat.scale = scale;
             
-            let mut lkat = kat.clone();
-            lkat.scale = scale * Vector2::new(-1.0, 1.0);
-            lkat.origin.x = lkat.tex_size().x;
+            let mut lkat = kat.clone(); 
+            lkat.scale *= Vector2::new(-1.0, 1.0);
+            // lkat.origin.x = lkat.tex_size().x;
             self.left_kat_image = Some(lkat);
 
-            let mut rkat = kat.clone();
-            rkat.scale = scale;
+            let rkat = kat.clone();
             self.right_kat_image = Some(rkat);
         }
 
@@ -1239,14 +1232,14 @@ impl TimingBar {
     }
 
     fn x_at(&self, time: f32) -> f32 {
-        ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x as f32
+        ((self.time - time) / SV_OVERRIDE) * self.speed * self.playfield.size.x
     }
     fn draw(&mut self, list: &mut RenderableCollection){
-        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 10000.0 {return}
+        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 10000.0 { return }
 
         list.push(Rectangle::new(
             BAR_COLOR,
-            1001.5,
+            TIMING_BAR_DEPTH,
             self.pos,
             self.size,
             None

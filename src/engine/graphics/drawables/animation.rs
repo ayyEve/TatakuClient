@@ -123,14 +123,14 @@ impl TatakuRenderable for Animation {
         let mut h_flip = false;
         let mut v_flip = false;
 
-        if scale.x < 0.0 {
-            scale.x = scale.x.abs();
-            h_flip = true;
-        }
-        if scale.y < 0.0 {
-            scale.y = scale.y.abs();
-            v_flip = true;
-        }
+        // if scale.x < 0.0 {
+        //     scale.x = scale.x.abs();
+        //     h_flip = true;
+        // }
+        // if scale.y < 0.0 {
+        //     scale.y = scale.y.abs();
+        //     v_flip = true;
+        // }
 
         let transform = transform
             // apply origin

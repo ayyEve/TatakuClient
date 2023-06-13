@@ -48,7 +48,7 @@ impl GameWindow {
         let settings = SettingsHelper::new();
         
         let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
-        let window = WindowBuilder::new().build(&event_loop).expect("Unable to create window");
+        let window = WindowBuilder::new().with_min_inner_size(to_size(Vector2::ONE)).build(&event_loop).expect("Unable to create window");
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
 

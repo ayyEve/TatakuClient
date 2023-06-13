@@ -210,7 +210,7 @@ impl OsuSlider {
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
         // starting point
-        let mut p = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
+        let mut p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
         p.y = window_size.y - p.y;
 
         // circles with a border have extra radius because of the border (i think its 0.5x the border width)
@@ -257,6 +257,7 @@ impl OsuSlider {
             }
             
         }
+
         // TODO:render targets
         // draw it to the render texture
         if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x as u32, window_size.y as u32, |state, matrix| {
@@ -267,7 +268,7 @@ impl OsuSlider {
             // g.draw_end();
 
         }).await {
-            slider_body_render_target.image.origin = Vector2::ZERO;
+            slider_body_render_target.image.origin = Vector2::new(0.0, window_size.y);
             slider_body_render_target.image.depth = self.slider_depth;
             self.slider_body_render_target = Some(slider_body_render_target);
         } else {

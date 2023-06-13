@@ -57,6 +57,7 @@ impl GraphicsState {
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
+            // backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
         });
         
@@ -77,7 +78,7 @@ impl GraphicsState {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | wgpu::Features::BUFFER_BINDING_ARRAY | wgpu::Features::STORAGE_RESOURCE_BINDING_ARRAY,
+                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING, // | wgpu::Features::BUFFER_BINDING_ARRAY | wgpu::Features::STORAGE_RESOURCE_BINDING_ARRAY,
                 // WebGL doesn't support all of wgpu's features, so if
                 // we're building for the web we'll have to disable some.
                 limits: if cfg!(target_arch = "wasm32") {
@@ -228,7 +229,7 @@ impl GraphicsState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None, //Some(wgpu::Face::Back),
                 // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                 polygon_mode: wgpu::PolygonMode::Fill,
                 // Requires Features::DEPTH_CLIP_CONTROL
@@ -659,7 +660,7 @@ impl GraphicsState {
         self.screenshot_pending = Some(Box::new(callback));
     }
     fn check_screenshot(&mut self, surface: &wgpu::SurfaceTexture) {
-        let Some(callback) = std::mem::take(&mut self.screenshot_pending) else {return};
+        let Some(callback) = std::mem::take(&mut self.screenshot_pending) else { return };
         
         let (w, h) = (surface.texture.width(), surface.texture.height());
         let format = surface.texture.format();
@@ -1076,6 +1077,7 @@ impl GraphicsState {
     fn tessellate_path(&mut self, path: lyon_tessellation::path::Path, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         // Create the destination vertex and index buffers.
         let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
+        let depth = Self::map_depth(depth);
 
         {
             let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
@@ -1125,7 +1127,7 @@ impl GraphicsState {
     }
 
 
-    fn map_depth(d: f32) -> f32 { d }
+    fn map_depth(d: f32) -> f32 { 0.0 }
 }
 
 

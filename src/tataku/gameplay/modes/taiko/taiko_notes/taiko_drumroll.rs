@@ -27,9 +27,9 @@ pub struct TaikoDrumroll {
     end_image: Option<Image>,
 }
 impl TaikoDrumroll {
-    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
         let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
-        let depth = TaikoGame::get_slider_depth(time);
+        // let depth = TaikoGame::get_slider_depth(time);
 
         let middle_image = None;
         let end_image = None;
@@ -95,7 +95,7 @@ impl HitObject for TaikoDrumroll {
             let mut start = image.clone();
             start.pos = self.pos + Vector2::new(0.0, self.radius);
             start.scale.x *= -1.0;
-            start.origin.x = start.tex_size().x;
+            // start.origin.x = start.tex_size().x;
             list.push(start);
 
             // end

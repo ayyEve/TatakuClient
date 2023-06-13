@@ -339,7 +339,7 @@ impl GameMode for OsuGame {
                     combo_num += 1;
         
                     if let Some(note) = note {
-                        let depth = NOTE_DEPTH.start + (note.time / end_time) * NOTE_DEPTH.end;
+                        let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, note.time / end_time);
                         s.notes.push(Box::new(OsuNote::new(
                             note.clone(),
                             ar,
@@ -363,12 +363,11 @@ impl GameMode for OsuGame {
                                 color_skip: slider.color_skip,
                             };
         
-                            let depth = NOTE_DEPTH.start + (note.time / end_time) * NOTE_DEPTH.end;
+                            let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, note.time / end_time);
                             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
                             s.notes.push(Box::new(OsuNote::new(
                                 note,
                                 ar,
-
                                 Color::new(0.0, 0.0, 0.0, 1.0),
                                 combo_num as u16,
                                 scaling_helper.clone(),
@@ -377,8 +376,11 @@ impl GameMode for OsuGame {
                                 hitsounds,
                             ).await));
                         } else {
-                            let slider_depth = SLIDER_DEPTH.start + (slider.time / end_time) * SLIDER_DEPTH.end;
-                            let depth = NOTE_DEPTH.start + (slider.time / end_time) * NOTE_DEPTH.end;
+                            // let slider_depth = SLIDER_DEPTH.start + (slider.time / end_time) * SLIDER_DEPTH.end;
+                            // let depth = NOTE_DEPTH.start + (slider.time / end_time) * NOTE_DEPTH.end;
+
+                            let slider_depth = f32::lerp(SLIDER_DEPTH.start, SLIDER_DEPTH.end, slider.time / end_time);
+                            let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, slider.time / end_time);
         
                             let curve = get_curve(slider, &map);
                             s.notes.push(Box::new(OsuSlider::new(

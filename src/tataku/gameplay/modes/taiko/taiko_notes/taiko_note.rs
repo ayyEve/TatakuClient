@@ -22,15 +22,13 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
-    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
+    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
         let bounce_factor = 1.6;
-
-        let depth = TaikoGame::get_depth(time);
 
         Self {
             time, 

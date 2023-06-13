@@ -126,23 +126,19 @@ impl HitObject for ManiaHold {
         }
 
     }
+
     async fn draw(&mut self, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 
+        let note_size = self.playfield.note_size();
 
         let border = Some(Border::new(Color::BLACK, self.playfield.note_border_width));
         let color = self.color;
-        let hit_y = self.playfield.hit_y();
-        let note_size = self.playfield.note_size();
-        // let pf_height = self.playfield.window_size.y;
-
-        let pf_top = 0.0; //-pf_height;
-
 
         if self.playfield.upside_down {
             // start
-            if self.pos.y > hit_y {
+            if self.pos.y > self.playfield.hit_y() {
                 list.push(Rectangle::new(
                     color,
                     MANIA_NOTE_DEPTH,
@@ -153,7 +149,7 @@ impl HitObject for ManiaHold {
             }
 
             // end
-            if self.end_y > hit_y {
+            if self.end_y > self.playfield.hit_y() {
                 list.push(Rectangle::new(
                     color,
                     MANIA_NOTE_DEPTH,
@@ -165,8 +161,8 @@ impl HitObject for ManiaHold {
         } else {
 
             // middle
-            if self.end_y < hit_y && self.pos.y > pf_top {
-                let y = if self.holding { hit_y } else { self.pos.y } + note_size.y / 2.0;
+            if self.end_y < self.playfield.hit_y() {
+                let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
 
                 if let Some(img) = &self.middle_image {
                     list.push(img.clone());
@@ -181,9 +177,8 @@ impl HitObject for ManiaHold {
                 }
             }
 
-
             // start of hold
-            if self.pos.y < hit_y && self.pos.y > pf_top {
+            if self.pos.y < self.playfield.hit_y() {
                 if let Some(img) = &self.start_image {
                     list.push(img.clone());
                 } else {
@@ -199,7 +194,7 @@ impl HitObject for ManiaHold {
 
 
             // end
-            if self.end_y < hit_y && self.end_y > pf_top {
+            if self.end_y < self.playfield.hit_y() {
                 if let Some(img) = &self.end_image {
                     list.push(img.clone());
                 } else {
@@ -231,6 +226,8 @@ impl HitObject for ManiaHold {
         // }
 
     }
+
+
 
     async fn reset(&mut self) {
         self.pos.y = 0.0;

@@ -24,10 +24,10 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, _diff_calc_only: bool) -> Self {
+    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
         let don_color = settings.don_color;
         let kat_color = settings.kat_color;
-        let depth = TaikoGame::get_depth(time);
+        // let depth = TaikoGame::get_depth(time);
 
         Self {
             time, 
