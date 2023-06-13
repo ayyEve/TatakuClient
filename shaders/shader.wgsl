@@ -57,10 +57,10 @@ struct Scissor {
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>, 4>;
 //The sampler we're using to sample the texture
 @group(1) @binding(1) var s: sampler;
-@group(2) @binding(0) var<storage,read_write> scissors: binding_array<Scissor>;
+@group(2) @binding(0) var<storage,read_write> scissors: binding_array<Scissor, 5000>;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {

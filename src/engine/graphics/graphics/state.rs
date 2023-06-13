@@ -1127,7 +1127,7 @@ impl GraphicsState {
     }
 
 
-    fn map_depth(d: f32) -> f32 { 0.0 }
+    fn map_depth(_d: f32) -> f32 { 0.0 }
 }
 
 
