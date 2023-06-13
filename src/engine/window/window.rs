@@ -3,8 +3,7 @@ use image::RgbaImage;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoopBuilder, EventLoop},
-    window::WindowBuilder,
-    platform::windows::EventLoopBuilderExtWindows
+    window::WindowBuilder
 };
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
@@ -47,7 +46,7 @@ impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
         
-        let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
+        let event_loop = EventLoopBuilder::new().build();
         let window = WindowBuilder::new().with_min_inner_size(to_size(Vector2::ONE)).build(&event_loop).expect("Unable to create window");
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
