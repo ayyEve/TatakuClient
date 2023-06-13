@@ -162,7 +162,7 @@ impl CursorManager {
     }
 
 
-    pub async fn update(&mut self, time: f32) {
+    pub async fn update(&mut self, time: f32, cursor_pos: Vector2) {
 
         // check settings update 
         if self.settings.update() {
@@ -171,6 +171,9 @@ impl CursorManager {
             self.ripple_color = Color::from_hex(&self.settings.cursor_ripple_color);
         }
 
+        if !self.show_system_cursor {
+            self.pos = cursor_pos;
+        }
 
         // work through the event queue
         while let Ok(event) = self.event_receiver.try_recv() {
@@ -195,10 +198,8 @@ impl CursorManager {
                     }
                 }
 
-                CursorEvent::SetPos(pos, is_gamemode) => {
-                    if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
-                        self.pos = pos
-                    }
+                CursorEvent::SetPos(pos) => {
+                    self.pos = pos
                 }
 
                 CursorEvent::ShowSystemCursor(show) => {
@@ -420,8 +421,8 @@ impl CursorManager {
         }
     }
 
-    pub fn set_pos(pos: Vector2, is_gamemode: bool) {
-        Self::add_event(CursorEvent::SetPos(pos, is_gamemode));
+    pub fn set_pos(pos: Vector2) {
+        Self::add_event(CursorEvent::SetPos(pos));
     }
 
     pub fn left_pressed(pressed: bool, is_gamemode: bool) {
@@ -447,7 +448,7 @@ impl CursorManager {
 enum CursorEvent {
     SetLeftDown(bool, bool), 
     SetRightDown(bool, bool),
-    SetPos(Vector2, bool),
+    SetPos(Vector2),
     ShowSystemCursor(bool),
     SetVisible(bool),
     OverrideRippleRadius(Option<f32>),

@@ -735,7 +735,7 @@ impl GameMode for OsuGame {
 
         // if this is a replay, we need to draw the replay curser
         if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
-            CursorManager::set_pos(self.mouse_pos, true)
+            CursorManager::set_pos(self.mouse_pos)
         }
 
         // draw notes
