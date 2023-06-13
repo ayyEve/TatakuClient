@@ -219,7 +219,7 @@ impl CursorManager {
         }
 
         if self.current_skin.cursor_rotate {
-            self.cursor_rotation -= 0.0003 * (time - self.time.as_millis())
+            self.cursor_rotation = (time / 2000.0) % (PI * 2.0);
         }
 
         // trail stuff

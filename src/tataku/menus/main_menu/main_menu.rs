@@ -20,7 +20,7 @@ pub struct MainMenu {
     // index 3
     pub exit_button: MainMenuButton,
 
-    visualization: MenuVisualizationNew,
+    visualization: MenuVisualization,
     menu_game: MenuGameHelper,
     music_box: MusicBox,
 
@@ -53,7 +53,7 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
-        let visualization = MenuVisualizationNew::new().await;
+        let visualization = MenuVisualization::new().await;
 
         MainMenu {
             play_button,
