@@ -180,7 +180,8 @@ impl GameWindow {
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Window2GameEvent::MouseRelease(button),
                         // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!(),
                         // winit::event::WindowEvent::AxisMotion { device_id, axis, value } => todo!(),
-                        winit::event::WindowEvent::Touch(t) => Window2GameEvent::MouseMove(Vector2::new(t.location.x as f32, t.location.y as f32)),
+                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, .. }) => Window2GameEvent::MousePress(MouseButton::Left),
+                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
                         // winit::event::WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => todo!(),
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
                     
