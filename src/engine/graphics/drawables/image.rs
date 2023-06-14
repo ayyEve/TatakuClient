@@ -98,9 +98,9 @@ impl TatakuRenderable for Image {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut GraphicsState) {
-        let mut scale = self.scale * self.base_scale;
-        let mut h_flip = false;
-        let mut v_flip = false;
+        let scale = self.scale * self.base_scale;
+        let h_flip = false;
+        let v_flip = false;
 
         // if scale.x < 0.0 {
         //     scale.x = scale.x.abs();

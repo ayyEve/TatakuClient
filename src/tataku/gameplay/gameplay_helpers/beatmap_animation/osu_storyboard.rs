@@ -193,7 +193,7 @@ impl Element {
         Ok(s)
     }
 
-    fn apply_commands(&mut self, scale: &ScalingHelper) {
+    fn apply_commands(&mut self, _scale: &ScalingHelper) {
         self.group.transforms.clear();
 
         let pos = match &self.def {
@@ -202,6 +202,7 @@ impl Element {
         };
         self.group.pos.current = pos;
 
+        // TODO: 
         // if these are wrong, they will be updated next frame anyways
         // self.group.pos.current = scale.scale_coords(pos);
         // self.group.scale.both(Vector2::ONE * scale.scale);

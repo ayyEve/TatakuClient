@@ -209,9 +209,9 @@ impl HitObject for UTypingNote {
 
 // utyping hitobject stuff
 impl UTypingNote {
-    pub fn x_at(&self, time:f32) -> f32 {
-        (self.time() - time) * self.speed
-    }
+    // pub fn x_at(&self, time:f32) -> f32 {
+    //     (self.time() - time) * self.speed
+    // }
     pub fn time_at(&self, x: f32) -> f32 {
         -(x / self.speed) + self.time()
     }

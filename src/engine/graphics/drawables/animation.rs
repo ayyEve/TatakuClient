@@ -119,9 +119,9 @@ impl TatakuRenderable for Animation {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-        let mut scale = self.scale;
-        let mut h_flip = false;
-        let mut v_flip = false;
+        let scale = self.scale;
+        let h_flip = false;
+        let v_flip = false;
 
         // if scale.x < 0.0 {
         //     scale.x = scale.x.abs();
@@ -133,17 +133,10 @@ impl TatakuRenderable for Animation {
         // }
 
         let transform = transform
-            // apply origin
-            .trans(-self.origin)
-
-            // rotate to rotate
-            .rot(self.rotation)
-
-            // scale to size
-            .scale(scale * self.base_scale)
-
-            // move to pos
-            .trans(self.pos)
+            .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate
+            .scale(scale * self.base_scale) // scale
+            .trans(self.pos) // move to pos
         ;
 
         let image = &self.frames[self.frame_index];

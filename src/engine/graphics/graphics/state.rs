@@ -56,7 +56,7 @@ impl GraphicsState {
 
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
+            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL,
             // backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
         });
@@ -405,8 +405,7 @@ impl GraphicsState {
         }
 
         // submit will accept anything that implements IntoIter
-        self.queue.submit(std::iter::once(encoder.finish()));
-        // output.present();
+        self.queue.submit([encoder.finish()]);
 
         Ok(())
     }
@@ -430,7 +429,7 @@ impl GraphicsState {
     }
 
 
-    pub fn create_render_target(&mut self, w:u32, h: u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
+    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
         // find space in the render target atlas
         let mut atlased = self.render_target_atlas.try_insert(w, h)?;
 
@@ -470,19 +469,11 @@ impl GraphicsState {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                // Most images are stored using sRGB so we need to reflect that here.
                 format: self.config.format,
                 // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
                 // COPY_DST means that we want to copy data to this texture
                 usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
-                // This is the same as with the SurfaceConfig. It
-                // specifies what texture formats can be used to
-                // create TextureViews for this texture. The base
-                // texture format (Rgba8UnormSrgb in this case) is
-                // always supported. Note that using a different
-                // texture format is not supported on the WebGL2
-                // backend.
                 view_formats: &[],
             }
         );
@@ -523,10 +514,10 @@ impl GraphicsState {
         dest.origin.y = target.texture.y;
         
         encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
-        self.queue.submit(Some(encoder.finish()));
+        self.queue.submit([encoder.finish()]);
 
         // remove temp texture
-        texture.destroy();
+        self.queue.on_submitted_work_done(move || texture.destroy());
 
         // reapply the window projection matrix
         self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));

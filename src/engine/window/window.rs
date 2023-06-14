@@ -122,8 +122,6 @@ impl GameWindow {
         self.apply_fullscreen();
         self.apply_vsync();
 
-        let mut in_window = true;
-
         event_loop.run(move |event, _, control_flow| {
             self.update();
             if self.close_pending { *control_flow = ControlFlow::Exit; }

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[allow(unused)]
 #[derive(Clone, PartialEq, Debug)]
 pub enum Window2GameEvent {
     // window events
