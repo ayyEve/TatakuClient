@@ -180,7 +180,10 @@ impl GameWindow {
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Window2GameEvent::MouseRelease(button),
                         // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!(),
                         // winit::event::WindowEvent::AxisMotion { device_id, axis, value } => todo!(),
-                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, .. }) => Window2GameEvent::MousePress(MouseButton::Left),
+                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, location, .. }) => {
+                            self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
+                            Window2GameEvent::MousePress(MouseButton::Left)
+                        }
                         winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
                         // winit::event::WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => todo!(),
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
@@ -223,13 +226,17 @@ impl GameWindow {
                 }
                 _ => return
             };
-            
-            let game_event_sender = self.game_event_sender.clone();
-            tokio::spawn(async move {
-                let _ = game_event_sender.send(GameEvent::WindowEvent(event)).await;
-            });
+
+            self.send_game_event(event);
         });
     }
+    fn send_game_event(&self, event: Window2GameEvent) {
+        let game_event_sender = self.game_event_sender.clone();
+        tokio::spawn(async move {
+            let _ = game_event_sender.send(GameEvent::WindowEvent(event)).await;
+        });
+    }
+
 
     fn update(&mut self) {
         let old_fullscreen = self.settings.fullscreen_monitor;

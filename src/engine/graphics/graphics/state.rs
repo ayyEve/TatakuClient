@@ -640,13 +640,36 @@ impl GraphicsState {
 
     pub fn load_texture_rgba(&mut self, data: &Vec<u8>, width: u32, height: u32) -> TatakuResult<TextureReference> {
         let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+        if info.is_empty() { return Ok(info) }
+
+        let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
+
+        let data = data
+        // cast to bgra
+        .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
+        // add padding bytes to both left and right side
+        .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
+        // collect into Vec<u8>
+        .flatten()
+        .map(|b|*b)
+        .collect::<Vec<_>>();
+    
+    
+        let width = width + ATLAS_PADDING * 2;
+        let height = height + ATLAS_PADDING * 2;
+
         let texture_size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
 
-        let data = data.chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>();
+
+        let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
+        let mut data2 = vertical_padding.clone();
+        data2.extend(data.into_iter());
+        data2.extend(vertical_padding.into_iter());
+        
 
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
@@ -654,14 +677,14 @@ impl GraphicsState {
                 texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
-                    x: info.x,
-                    y: info.y,
+                    x: info.x - ATLAS_PADDING,
+                    y: info.y - ATLAS_PADDING,
                     z: 0
                 },
                 aspect: wgpu::TextureAspect::All,
             },
             // The actual pixel data
-            &data,
+            &data2,
             // The layout of the texture
             wgpu::ImageDataLayout {
                 offset: 0,

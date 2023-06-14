@@ -2,7 +2,7 @@ use guillotiere::*;
 
 pub type TextureReference = AtlasData;
 
-const PADDING: u32 = 2;
+pub const ATLAS_PADDING:u32 = 2;
 
 pub struct Atlas {
     available_width: u32,
@@ -39,7 +39,7 @@ impl Atlas {
         self.allocators
             .iter_mut()
             .enumerate()
-            .find_map(|(n, alloc)| alloc.allocate(size2((width + PADDING * 2) as i32, (height + PADDING * 2) as i32)).map(|a|(n as u32, a)))
+            .find_map(|(n, alloc)| alloc.allocate(size2((width + ATLAS_PADDING * 2) as i32, (height + ATLAS_PADDING * 2) as i32)).map(|a|(n as u32, a)))
             .map(|(layer, i)| AtlasData::new(i, layer, self.available_width, self.available_height))
     }
     
@@ -65,7 +65,7 @@ impl AtlasData {
     fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height:u32) -> Self {
         let [x, y] = alloc_info.rectangle.min.to_array();
         let [x2, y2] = alloc_info.rectangle.max.to_array();
-        let [x, y, x2, y2] = [x as u32 + PADDING, y as u32 + PADDING, x2 as u32 - PADDING, y2 as u32 - PADDING];
+        let [x, y, x2, y2] = [x as u32 + ATLAS_PADDING, y as u32 + ATLAS_PADDING, x2 as u32 - ATLAS_PADDING, y2 as u32 - ATLAS_PADDING];
 
         let w = x2 - x;
         let h = y2 - y;
@@ -83,7 +83,7 @@ impl AtlasData {
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.width == 0 || self.height == 0
     }
 }
