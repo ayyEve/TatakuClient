@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use lyon_tessellation::{geom::{Box2D, Point}, path::builder::BorderRadii};
-use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d};
+use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d, TextureViewDescriptor};
 
 // the sum of these two must not go past 16
 const LAYER_COUNT:u32 = 2;
@@ -329,9 +329,45 @@ impl GraphicsState {
         };
 
         self.render(&renderable)?;
-        self.check_screenshot(&output);
+        // self.check_screenshot(&output);
+
+        let width = output.texture.width();
+        let height = output.texture.height();
 
         output.present();
+
+        if let Some(screenshot) = std::mem::take(&mut self.screenshot_pending) {
+            let texture = self.device.create_texture(&wgpu::TextureDescriptor { 
+                label: Some("Screenshot Texture"), 
+                size: Extent3d { 
+                    width, 
+                    height, 
+                    depth_or_array_layers: 1
+                }, 
+                mip_level_count: 1, 
+                sample_count: 1, 
+                dimension: wgpu::TextureDimension::D2, 
+                format: wgpu::TextureFormat::Bgra8UnormSrgb, 
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC, 
+                view_formats: &[]
+            });
+            let view = texture.create_view(&TextureViewDescriptor {
+                label: Some("Screenshot Texture View"),
+                dimension: Some(TextureViewDimension::D2),
+                base_array_layer: 0,
+
+                ..Default::default()
+            });
+
+            let renderable = RenderableSurface {
+                texture: &view,
+                clear_color: GFX_CLEAR_COLOR,
+            };
+            self.render(&renderable)?;
+
+            self.finish_screenshot(texture, screenshot);
+        }
+
 
         Ok(())
     }
@@ -659,11 +695,9 @@ impl GraphicsState {
     pub fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
         self.screenshot_pending = Some(Box::new(callback));
     }
-    fn check_screenshot(&mut self, surface: &wgpu::SurfaceTexture) {
-        let Some(callback) = std::mem::take(&mut self.screenshot_pending) else { return };
-        
-        let (w, h) = (surface.texture.width(), surface.texture.height());
-        let format = surface.texture.format();
+    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, u32, u32)) + Send + Sync>) {
+        let (w, h) = (texture.width(), texture.height());
+        let format = texture.format();
 
         let size = (w * h * 4) as u64;
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -684,7 +718,7 @@ impl GraphicsState {
         };
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
-        encoder.copy_texture_to_buffer(surface.texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
+        encoder.copy_texture_to_buffer(texture.as_image_copy(), tex_buffer, Extent3d { width: w, height: h, depth_or_array_layers: 1 });
         self.queue.submit(Some(encoder.finish()));
         let queue = self.queue.clone();
 
