@@ -6,10 +6,11 @@ pub struct MouseInputHelper {
     window_focused: bool,
     raw_input: bool,
     system_cursor: bool,
-    
 
-    // // used for out of bounds checks
-    // keep_in_bounds: bool,
+    in_bounds: bool,
+    
+    // used for out of bounds checks
+    keep_in_bounds: bool,
 }
 
 impl MouseInputHelper {
@@ -45,14 +46,36 @@ impl MouseInputHelper {
         self.window_focused = has_focus;
     }
 
-    // pub fn check_bounds(&self, window: &winit::window::Window) -> Option<Vector2> {
-    //     if self.keep_in_bounds { return None }
+    // /// returns whether we should reset the mouse cursor
+    // pub fn check_bounds(&mut self, window: &winit::window::Window) -> bool {
+    //     // never touch the mouse pos if we arent doing raw input
+    //     if !self.raw_input { return false }
 
-    //     let pos = window.outer_position().ok()?;
+    //     // if we always want the cursor to be within the window
+    //     if self.keep_in_bounds { return true }
+
+    //     let Ok(pos) = window.outer_position() else { return false };
     //     let size = window.outer_size();
         
-    //     let bounds = 
+    //     let bounds = Rectangle::bounds_only(
+    //         Vector2::new(pos.x as f32, pos.y as f32),
+    //         Vector2::new(size.width as f32, size.height as f32)
+    //     );
 
+    //     let contains = bounds.contains(self.mouse_pos);
+
+    //     if contains && !self.in_bounds {
+    //         println!("cursor back in bounds");
+    //         self.in_bounds = true;
+    //     }
+
+    //     if !contains && self.in_bounds {
+    //         println!("cursor left bounds");
+    //         self.in_bounds = false;
+    //         let _ = window.set_cursor_position(winit::dpi::LogicalPosition::new(self.mouse_pos.x as f64, self.mouse_pos.y as f64));
+    //     }
+
+    //     self.in_bounds
     // }
 
 }

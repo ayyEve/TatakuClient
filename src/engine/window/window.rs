@@ -165,6 +165,7 @@ impl GameWindow {
                         // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
                         // winit::event::WindowEvent::Ime(_) => todo!(),
                         winit::event::WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
+                            self.post_cursor_move();
                             Window2GameEvent::MouseMove(new_pos)
                         } else {
                             return
@@ -189,6 +190,7 @@ impl GameWindow {
                 Event::DeviceEvent { device_id:_, event } => {
                     match event {
                         DeviceEvent::MouseMotion { delta: (x, y) } => if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32)) {
+                            self.post_cursor_move();
                             Window2GameEvent::MouseMove(new_pos)
                         } else {
                             return
@@ -380,6 +382,17 @@ impl GameWindow {
         let _ = self.graphics.render_current_surface();
     }
 
+
+    fn post_cursor_move(&mut self) {
+        // if self.mouse_helper.check_bounds(&self.window) {
+        //     let Ok(pos) = self.window.inner_position() else { return };
+        //     let size = self.window.inner_size();
+        //     let x = pos.x as f64 + size.width as f64 / 2.0;
+        //     let y = pos.y as f64 + size.height as f64 / 2.0;
+
+        //     let _ = self.window.set_cursor_position(winit::dpi::LogicalPosition::new(x, y));
+        // }
+    }
 }
 
 // static fns
