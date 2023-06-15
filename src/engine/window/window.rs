@@ -39,8 +39,9 @@ pub struct GameWindow {
     close_pending: bool,
 
     // helpers for raw mouse input
-    mouse_pos: Option<Vector2>,
-    cursor_visible: bool,
+    mouse_helper: MouseInputHelper,
+    // mouse_pos: Option<Vector2>,
+    // cursor_visible: bool,
 }
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
@@ -101,8 +102,7 @@ impl GameWindow {
             input_timer: now,
 
             close_pending: false,
-            mouse_pos: None,
-            cursor_visible: true
+            mouse_helper: MouseInputHelper::default(),
         };
         
         (s, event_loop)
@@ -126,7 +126,6 @@ impl GameWindow {
             self.update();
             if self.close_pending { *control_flow = ControlFlow::Exit; }
 
-            let raw_mouse = self.settings.raw_mouse_input;
             let event = match event {
                 Event::WindowEvent { window_id:_, event } => {
                     match event {
@@ -153,39 +152,34 @@ impl GameWindow {
                         winit::event::WindowEvent::HoveredFile(d) => Window2GameEvent::FileHover(d),
                         // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
                         winit::event::WindowEvent::ReceivedCharacter(c) if !c.is_control() => Window2GameEvent::Text(c.to_string()),
-                        winit::event::WindowEvent::Focused(true) => Window2GameEvent::GotFocus,
-                        winit::event::WindowEvent::Focused(false) => Window2GameEvent::LostFocus,
+                        winit::event::WindowEvent::Focused(has_focus) => {
+                            self.mouse_helper.set_focus(has_focus);
+                            if has_focus {
+                                Window2GameEvent::GotFocus
+                            } else {
+                                Window2GameEvent::LostFocus
+                            }
+                        }
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Pressed, .. }, .. } => Window2GameEvent::KeyPress(key),
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Released, .. }, .. } => Window2GameEvent::KeyRelease(key),
                         // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
                         // winit::event::WindowEvent::Ime(_) => todo!(),
-                        winit::event::WindowEvent::CursorMoved { position, .. } => {
-                            // if we're using window coords for the mouse
-                            // or we're using raw mouse input and we dont currently have a mouse coord set
-                            // or the hardware cursor is visible
-                            if (!raw_mouse || (raw_mouse && self.mouse_pos.is_none())) || self.cursor_visible {
-                                let p = Vector2::new(position.x as f32, position.y as f32);
-                                self.mouse_pos = Some(p); 
-
-                                // if raw_mouse {error!("setting mouse pos to {p:?}")}
-                                Window2GameEvent::MouseMove(p)
-                            } else {
-                                return
-                            }
+                        winit::event::WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
+                            Window2GameEvent::MouseMove(new_pos)
+                        } else {
+                            return
                         }
                         // winit::event::WindowEvent::CursorEntered { device_id:_ } => todo!(),
-                        winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
+                        // winit::event::WindowEvent::CursorLeft { device_id:_ } => { self.mouse_pos = None; return },
                         winit::event::WindowEvent::MouseWheel { delta, .. } => Window2GameEvent::MouseScroll(delta2f32(delta)),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => Window2GameEvent::MousePress(button),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Window2GameEvent::MouseRelease(button),
                         // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!(),
-                        // winit::event::WindowEvent::AxisMotion { device_id, axis, value } => todo!(),
                         winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, location, .. }) => {
                             self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
                             Window2GameEvent::MousePress(MouseButton::Left)
                         }
                         winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
-                        // winit::event::WindowEvent::ScaleFactorChanged { scale_factor, new_inner_size } => todo!(),
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
                     
                         _ => return
@@ -194,30 +188,19 @@ impl GameWindow {
                 
                 Event::DeviceEvent { device_id:_, event } => {
                     match event {
-                        DeviceEvent::MouseMotion { delta: (x, y) } if raw_mouse && !self.cursor_visible => {
-                            if let Some(mouse_pos) = self.mouse_pos.as_mut() {
-                                mouse_pos.x += x as f32;
-                                mouse_pos.y += y as f32;
-                                Window2GameEvent::MouseMove(*mouse_pos)
-                            } else {
-                                return
-                            }
+                        DeviceEvent::MouseMotion { delta: (x, y) } => if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32)) {
+                            Window2GameEvent::MouseMove(new_pos)
+                        } else {
+                            return
                         }
-                        // DeviceEvent::Added => todo!(),
-                        // DeviceEvent::Removed => todo!(),
+                        
                         // DeviceEvent::MouseWheel { delta } => todo!(),
-                        // DeviceEvent::Motion { axis, value } => todo!(),
                         // DeviceEvent::Button { button, state } => todo!(),
                         // DeviceEvent::Key(_) => todo!(),
                         // DeviceEvent::Text { codepoint } => todo!(),
 
                         _ => return 
                     }
-                }
-                
-                Event::UserEvent(_) => {
-                    *control_flow = ControlFlow::Exit;
-                    Window2GameEvent::Closed
                 }
                 
                 Event::RedrawRequested(_) => {
@@ -231,10 +214,14 @@ impl GameWindow {
         });
     }
     fn send_game_event(&self, event: Window2GameEvent) {
-        let game_event_sender = self.game_event_sender.clone();
-        tokio::spawn(async move {
-            let _ = game_event_sender.send(GameEvent::WindowEvent(event)).await;
-        });
+        // try to send without spawning a task.
+        if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(GameEvent::WindowEvent(event)) {
+            warn!("Game event queue full, event is getting queued");
+
+            // if the receiver is full, we spawn the sender off and wait for it to be sent
+            let game_event_sender = self.game_event_sender.clone();
+            tokio::spawn(async move { let _ = game_event_sender.send(event).await; });
+        }
     }
 
 
@@ -250,17 +237,19 @@ impl GameWindow {
             if self.settings.vsync != old_vsync {
                 self.apply_vsync();
             }
+
+            self.mouse_helper.set_raw_input(self.settings.raw_mouse_input);
         }
 
         if let Ok(event) = self.window_event_receiver.try_recv() {
             match event {
                 Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
                 Game2WindowEvent::ShowCursor => { 
-                    self.cursor_visible = true;
+                    self.mouse_helper.set_system_cursor(true);
                     self.window.set_cursor_visible(true);
                 }
                 Game2WindowEvent::HideCursor => { 
-                    self.cursor_visible = false;
+                    self.mouse_helper.set_system_cursor(false);
                     self.window.set_cursor_visible(false);
                 }
 

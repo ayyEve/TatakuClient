@@ -43,14 +43,15 @@ image = "*"
 fontdue = "0.7"
 lyon_tessellation = "*"
 guillotiere = "*"
-# rectangle-pack = "0.4"
 
-
+# windowing
 wgpu = "*"
 raw-window-handle = "0.5"
 bytemuck = { version = "1.12", features = [ "derive" ] }
 cgmath = "*"
 winit = {version = "0.27", features = ["serde"]}
+# gamepad input
+gilrs = "0.10"
 
 # bass audio
 bass-rs = { version="0.2", optional = true }

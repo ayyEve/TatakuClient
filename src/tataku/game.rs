@@ -8,8 +8,6 @@ pub struct Game {
     // engine things
     input_manager: InputManager,
     volume_controller: VolumeControl,
-    
-    // pub menus: HashMap<&'static str, Arc<Mutex<dyn ControllerInputMenu<Game>>>>,
     pub current_state: GameState,
     queued_state: GameState,
     game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
