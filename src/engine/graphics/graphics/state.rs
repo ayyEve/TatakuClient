@@ -38,9 +38,6 @@ pub struct GraphicsState {
 
     scissor_buffer_layout: wgpu::BindGroupLayout,
 
-    #[allow(unused)]
-    sampler: wgpu::Sampler,
-
     atlas: Atlas,
     render_target_atlas: Atlas,
 
@@ -268,7 +265,6 @@ impl GraphicsState {
             queue: Arc::new(queue),
             config,
             render_pipeline,
-            sampler,
             atlas,
             render_target_atlas,
             atlas_texture,
@@ -620,12 +616,6 @@ impl GraphicsState {
             textures: Arc::new(textures),
             bind_group
         }
-    }
-
-
-    pub fn load_texture_path(&mut self, file_path: impl AsRef<Path>) -> TatakuResult<TextureReference> {
-        let bytes = std::fs::read(file_path.as_ref())?;
-        self.load_texture_bytes(bytes)
     }
 
     pub fn load_texture_bytes(&mut self, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
@@ -1262,7 +1252,8 @@ async fn test() {
 
     let mut state = GraphicsState::new(&window, &settings, size).await;
 
-    let tex = state.load_texture_path("C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").expect("failed to load tex");
+    let tex_bytes = std::fs::read("C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").unwrap();
+    let tex = state.load_texture_bytes(tex_bytes).expect("failed to load tex");
     println!("got tex data {tex:?}");
 
 

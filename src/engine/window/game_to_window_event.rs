@@ -2,7 +2,6 @@ use image::RgbaImage;
 use crate::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
 
-#[allow(unused)]
 pub enum Game2WindowEvent {
     ShowCursor,
     HideCursor,
@@ -14,8 +13,8 @@ pub enum Game2WindowEvent {
 
     RefreshMonitors,
 }
+
 pub enum LoadImage {
-    Path(String, UnboundedSender<TatakuResult<TextureReference>>),
     Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
     Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),

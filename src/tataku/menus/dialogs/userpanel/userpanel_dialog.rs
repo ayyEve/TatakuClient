@@ -70,7 +70,7 @@ impl Dialog<Game> for UserPanel {
                 let username = i.user.username.clone();
 
                 // user menu dialog
-                let mut user_menu_dialog = NormalDialog::new("User Options");
+                let mut user_menu_dialog = GenericDialog::new("User Options");
 
                 // spectate
                 if i.user.game.starts_with("Tataku") {

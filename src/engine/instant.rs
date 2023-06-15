@@ -30,10 +30,6 @@ impl Instant {
         self.elapsed().as_secs_f32() * 1000.0
     }
 
-    pub fn as_millis64(&self) -> f64 {
-        self.elapsed().as_secs_f64() * 1000.0
-    }
-
     pub fn duration_and_reset(&mut self) -> f32 {
         let now = Instant::now();
         let dur = now.duration_since(*self).as_secs_f32() * 1000.0;

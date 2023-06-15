@@ -1,14 +1,4 @@
-#![allow(unused)]
-// use graphics::Viewport;
-
 use crate::prelude::*;
-
-// yoinked form https://github.com/Furball-Engine/Furball.Vixie/blob/master/Furball.Vixie/Graphics/TextureRenderTarget.cs
-use std::sync::atomic::{AtomicU32, Ordering};
-
-lazy_static::lazy_static! {
-    static ref CURRENT_BOUND:AtomicU32 = AtomicU32::new(0);
-}
 
 #[derive(Clone)]
 pub struct RenderTarget {
@@ -20,7 +10,7 @@ pub struct RenderTarget {
     pub height: u32,
     pub image: Image,
 
-    _drop_check: Arc<()>
+    drop_check: Arc<()>
 }
 impl RenderTarget {
     pub async fn new(width: u32, height: u32, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<Self> {
@@ -43,20 +33,19 @@ impl RenderTarget {
             clear_color,
             image,
 
-            _drop_check: Arc::new(()),
+            drop_check: Arc::new(()),
             // image: Image::new()
         }
     }
 
 
-    pub async fn update(&self, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
-        
-    }
+    // pub async fn update(&self, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
+    // }
 
 }
 impl Drop for RenderTarget {
     fn drop(&mut self) {
-        if Arc::strong_count(&self._drop_check) == 1 {
+        if Arc::strong_count(&self.drop_check) == 1 {
             // info!("render target dropped");
             GameWindow::free_texture(self.texture);
         }

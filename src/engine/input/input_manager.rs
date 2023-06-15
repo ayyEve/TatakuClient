@@ -1,14 +1,5 @@
-// use piston::Event;
-// use piston::TextEvent;
-// use piston::FocusEvent;
-// use piston::ButtonEvent;
-// use piston::ResizeEvent;
-// use piston::input::Button;
-// use piston::MouseScrollEvent;
-// use piston::MouseCursorEvent;
-// use piston::input::ButtonState;
-
 use crate::prelude::*;
+
 pub struct InputManager {
     pub mouse_pos: Vector2,
     pub scroll_delta: f32,

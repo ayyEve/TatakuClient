@@ -1,20 +1,19 @@
 #![allow(unused, dead_code)]
-//TODO: name this better
 
 use crate::prelude::*;
 const Y_PADDING:f32 = 5.0;
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
-pub type ClickFn = Box<dyn Fn(&mut NormalDialog, &mut Game) + Send + Sync>;
+pub type ClickFn = Box<dyn Fn(&mut GenericDialog, &mut Game) + Send + Sync>;
 
-pub struct NormalDialog {
+pub struct GenericDialog {
     bounds: Rectangle,
     buttons: Vec<MenuButton>,
     actions: HashMap<String, ClickFn>,
     pub should_close: bool,
     window_size: Arc<WindowSize>
 }
-impl NormalDialog {
+impl GenericDialog {
     pub fn new(_title: impl AsRef<str>) -> Self {
         let window_size = WindowSize::get();
 
@@ -57,10 +56,9 @@ impl NormalDialog {
 }
 
 #[async_trait]
-impl Dialog<Game> for NormalDialog {
+impl Dialog<Game> for GenericDialog {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
-        
     }
 
     fn get_bounds(&self) -> Rectangle {

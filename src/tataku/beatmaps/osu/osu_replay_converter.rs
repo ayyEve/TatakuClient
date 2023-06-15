@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::prelude::*;
 use std::convert::TryInto;
 
@@ -114,7 +113,7 @@ fn read_osu_replay(file: impl AsRef<Path>) -> TatakuResult<OsuReplay> {
 fn parse_lzma_stream(lzma: &mut impl std::io::BufRead) -> TatakuResult<Vec<OsuReplayFrame>>{
     let mut replay_data_decompressed = Vec::new();
     if let Err(e) = lzma_rs::lzma_decompress(lzma, &mut replay_data_decompressed) {
-        return Err(TatakuError::String(format!("Error decompressing replay data")))
+        return Err(TatakuError::String(format!("Error decompressing replay data: {e}")))
     }
     let replay_str = String::from_utf8_lossy(&replay_data_decompressed);
 
@@ -223,6 +222,7 @@ fn read_uleb128(bytes: &[u8], offset:&mut usize) -> u128 {
 
 
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct OsuReplay {
     game_mode: String,
@@ -385,6 +385,7 @@ pub struct OsuReplayFrame {
     keys: Vec<OsuKeys>
 }
 
+#[allow(unused)]
 #[derive(Copy, Clone, Debug)]
 pub struct OsuHealth {
     time: u32,

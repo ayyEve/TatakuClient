@@ -29,7 +29,6 @@ pub struct Animation {
     // free the textures from the atlas when this is dropped?
     pub free_on_drop: bool,
 }
-#[allow(unused)]
 impl Animation {
     pub fn new(pos:Vector2, depth:f32, size:Vector2, frames: Vec<TextureReference>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
@@ -88,25 +87,7 @@ impl Animation {
     pub fn size(&self) -> Vector2 {
         self.size * self.scale
     }
-    pub fn set_size(&mut self, size: Vector2) {
-        let tex_size = self.tex_size();
-        let scale = size / tex_size;
-        self.scale = scale;
-    }
 
-    pub fn tex_size(&self) -> Vector2 {
-        Vector2::new(self.frames[0].width as f32, self.frames[0].height as f32) * self.base_scale
-    }
-
-
-    pub async fn from_paths<P: AsRef<Path>>(paths: Vec<P>, delays: Vec<f32>, pos:Vector2, depth:f32, size: Vector2) -> TatakuResult<Self> {
-        let mut frames = Vec::new();
-        for p in paths {
-            frames.push(GameWindow::load_texture(p).await?);
-        }
-
-        Ok(Self::new(pos, depth, size, frames, delays, Vector2::ONE))
-    }
 }
 impl TatakuRenderable for Animation {
     fn get_depth(&self) -> f32 {self.depth}

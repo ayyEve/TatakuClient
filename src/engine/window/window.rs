@@ -269,7 +269,7 @@ impl GameWindow {
                 Game2WindowEvent::CloseGame => { 
                     self.close_pending = true;
                     // try send because the game might already be dead at this point
-                    let _ = self.game_event_sender.try_send(GameEvent::WindowClosed);
+                    let _ = self.game_event_sender.try_send(GameEvent::WindowEvent(Window2GameEvent::Closed));
                 }
 
                 Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
@@ -320,7 +320,6 @@ impl GameWindow {
 
     fn run_load_image_event(&mut self, event: LoadImage) {
         match event {
-            LoadImage::Path(path, on_done) => on_done.send(self.graphics.load_texture_path(&path)).expect("poopy"),
             LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy"),
             
             LoadImage::Font(font, font_size, on_done) => {
@@ -405,16 +404,6 @@ impl GameWindow {
         Self::send_event(Game2WindowEvent::RefreshMonitors);
     }
     
-    pub async fn load_texture<P: AsRef<Path>>(path: P) -> TatakuResult<TextureReference> {
-        let path = path.as_ref().to_string_lossy().to_string();
-        trace!("loading tex {}", path);
-
-        let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::Path(path, sender)));
-
-        receiver.recv().await.unwrap()
-    }
-
     pub async fn load_texture_data(data: RgbaImage) -> TatakuResult<TextureReference> {
         trace!("loading tex data");
 

@@ -172,13 +172,9 @@ impl Game {
             while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
                     GameEvent::WindowEvent(Window2GameEvent::FileDrop(path)) => self.handle_file_drop(path).await,
+                    GameEvent::WindowEvent(Window2GameEvent::Closed) => { return self.close_game(); }
                     GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
                     // GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
-                    
-                    GameEvent::WindowClosed => { 
-                        self.close_game(); 
-                        return
-                    }
                     _ => {}
                 }
             }
@@ -1095,7 +1091,6 @@ impl Default for GameState {
 
 #[derive(Clone, Debug)]
 pub enum GameEvent {
-    WindowClosed,
     WindowEvent(Window2GameEvent),
     /// controller event, controller name
     #[allow(unused)]

@@ -1,4 +1,3 @@
-#[allow(unused, dead_code)]
 use crate::prelude::*;
 
 const DEFAULT_SKIN:&str = "default";
