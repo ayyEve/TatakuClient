@@ -435,49 +435,7 @@ impl Game {
 
                         // if shift is pressed, upload to server, and get link
                         if mods.shift {
-                            NotificationManager::add_text_notification("uploading screenshot", 5000.0, Color::YELLOW).await;
-
-                            let settings = SettingsHelper::new();
-                            let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
-
-                            let mut err:Option<(&str, TatakuError)> = None;
-                            match Io::read_file(full_path) {
-                                Err(e) => err = Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
-                                Ok(data) => match reqwest::Client::new().post(url).body(data).send().await {
-                                    Err(e) => err = Some(("Error sending screenshot request", TatakuError::String(e.to_string()))),
-                                    Ok(r) => match r.bytes().await {
-                                        Err(e) => err = Some(("Error reading screenshot response", TatakuError::String(e.to_string()))),
-                                        Ok(b) => match String::from_utf8(b.to_vec()) {
-                                            Err(e) => err = Some(("Error parsing screenshot response", TatakuError::String(e.to_string()))),
-                                            Ok(s) => match s.parse::<i64>() {
-                                                Err(e) => err = Some(("Error parsing screenshot id", TatakuError::String(e.to_string()))),
-                                                Ok(id) => {
-                                                    let url = format!("{}/screenshots/{id}", settings.score_url);
-                                                    // copy to clipboard
-
-                                                    if let Err(e) = GameWindow::set_clipboard(url.clone()) {
-                                                        println!("error copying to clipboard: {e}");
-                                                        NotificationManager::add_notification(Notification::new(
-                                                            format!("Screenshot uploaded {url}"), 
-                                                            Color::BLUE, 
-                                                            5000.0, 
-                                                            NotificationOnClick::Url(url)
-                                                        )).await;
-                                                    } else {
-                                                        NotificationManager::add_notification(Notification::new(
-                                                            format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
-                                                            Color::BLUE, 
-                                                            5000.0, 
-                                                            NotificationOnClick::Url(url)
-                                                        )).await;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if let Some((s, err)) = err {
+                            if let Some((s, err)) = Self::upload_screenshot(full_path).await {
                                 NotificationManager::add_error_notification(s, err).await
                             }
                         }
@@ -1070,6 +1028,57 @@ impl Game {
         };
 
         GlobalValueManager::update(Arc::new(CurrentTheme(theme)));
+    }
+
+
+    async fn upload_screenshot(full_path: String) -> Option<(&'static str, TatakuError)> {
+        NotificationManager::add_text_notification("Uploading screenshot...", 5000.0, Color::YELLOW).await;
+
+        let settings = SettingsHelper::new();
+        let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
+
+        let data = match Io::read_file(full_path) {
+            Err(e) => return Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
+            Ok(data) => data,
+        };
+
+        let r = match reqwest::Client::new().post(url).body(data).send().await {
+            Err(e) => return Some(("Error sending screenshot request", TatakuError::String(e.to_string()))),
+            Ok(r) => r,
+        };
+        let b = match r.bytes().await {
+            Err(e) => return Some(("Error reading screenshot response", TatakuError::String(e.to_string()))),
+            Ok(b) => b, 
+        };
+        let s = match String::from_utf8(b.to_vec()) {
+            Err(e) => return Some(("Error parsing screenshot response", TatakuError::String(e.to_string()))),
+            Ok(s) => s,
+        };
+        let id = match s.parse::<i64>() {
+            Err(e) => return Some(("Error parsing screenshot id", TatakuError::String(e.to_string()))),
+            Ok(id) => id,
+        };
+
+        // copy to clipboard
+        let url = format!("{}/screenshots/{id}", settings.score_url);
+        if let Err(e) = GameWindow::set_clipboard(url.clone()) {
+            warn!("Error copying to clipboard: {e}");
+            NotificationManager::add_notification(Notification::new(
+                format!("Screenshot uploaded {url}"), 
+                Color::BLUE, 
+                5000.0, 
+                NotificationOnClick::Url(url)
+            )).await;
+        } else {
+            NotificationManager::add_notification(Notification::new(
+                format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
+                Color::BLUE, 
+                5000.0, 
+                NotificationOnClick::Url(url)
+            )).await;
+        }
+
+        None
     }
 }
 
