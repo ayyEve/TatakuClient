@@ -341,7 +341,7 @@ impl ScrollableItem for BeatmapsetItem {
                     list.push(Rectangle::new(
                         Color::new(0.2, 0.2, 0.2, 1.0),
                         parent_depth + 5.0,
-                        pos,
+                        btn_pos,
                         BEATMAP_ITEM_SIZE * btn_scale,
                         Some(Border::new(color, radius))
                     ).shape(Shape::Round(5.0, 10)));
