@@ -26,6 +26,7 @@ pub type RenderData = Vec<Arc<dyn TatakuRenderable>>;
 pub struct GameWindow {
     window: winit::window::Window,
     graphics: GraphicsState,
+    settings: SettingsHelper,
 
     game_event_sender: Arc<Sender<GameEvent>>,
     window_event_receiver: UnboundedReceiver<Game2WindowEvent>,
@@ -34,14 +35,14 @@ pub struct GameWindow {
     frametime_timer: Instant,
     input_timer: Instant,
 
-    settings: SettingsHelper,
-
     close_pending: bool,
 
-    // helpers for raw mouse input
+    controller_input: gilrs::Gilrs,
+
+    // input
     mouse_helper: MouseInputHelper,
-    // mouse_pos: Option<Vector2>,
-    // cursor_visible: bool,
+
+    queued_events: Vec<GameEvent>
 }
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
@@ -101,8 +102,11 @@ impl GameWindow {
             frametime_timer: now,
             input_timer: now,
 
+
             close_pending: false,
             mouse_helper: MouseInputHelper::default(),
+            controller_input: gilrs::Gilrs::new().unwrap(),
+            queued_events: Vec::new(),
         };
         
         (s, event_loop)
@@ -153,13 +157,19 @@ impl GameWindow {
                         // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
                         winit::event::WindowEvent::ReceivedCharacter(c) if !c.is_control() => Window2GameEvent::Text(c.to_string()),
                         winit::event::WindowEvent::Focused(has_focus) => {
-                            self.mouse_helper.set_focus(has_focus);
+                            self.mouse_helper.set_focus(has_focus, &self.window);
                             if has_focus {
                                 Window2GameEvent::GotFocus
                             } else {
                                 Window2GameEvent::LostFocus
                             }
                         }
+
+                        winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Home), state: ElementState::Pressed, .. }, .. } => {
+                            self.mouse_helper.reset_cursor_pos(&mut self.window);
+                            Window2GameEvent::MouseMove(Vector2::ZERO)
+                        }
+
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Pressed, .. }, .. } => Window2GameEvent::KeyPress(key),
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(key), state: ElementState::Released, .. }, .. } => Window2GameEvent::KeyRelease(key),
                         // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
@@ -189,7 +199,7 @@ impl GameWindow {
                 
                 Event::DeviceEvent { device_id:_, event } => {
                     match event {
-                        DeviceEvent::MouseMotion { delta: (x, y) } => if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32)) {
+                        DeviceEvent::MouseMotion { delta: (x, y) } => if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), &self.window) {
                             self.post_cursor_move();
                             Window2GameEvent::MouseMove(new_pos)
                         } else {
@@ -215,14 +225,20 @@ impl GameWindow {
             self.send_game_event(event);
         });
     }
-    fn send_game_event(&self, event: Window2GameEvent) {
+    fn send_game_event(&mut self, event: Window2GameEvent) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(GameEvent::WindowEvent(event)) {
-            warn!("Game event queue full, event is getting queued");
 
-            // if the receiver is full, we spawn the sender off and wait for it to be sent
-            let game_event_sender = self.game_event_sender.clone();
-            tokio::spawn(async move { let _ = game_event_sender.send(event).await; });
+            // // if this is a mouse pos event, clear all previous mouse pos events since we only care about the final mouse position
+            // if let GameEvent::WindowEvent(Window2GameEvent::MouseMove(_)) = &event {
+            //     self.queued_events.retain(|e|e)
+            // }
+
+            warn!("Game event queue full, event is getting queued: {event:?}");
+            self.queued_events.push(event);
+            // // if the receiver is full, we spawn the sender off and wait for it to be sent
+            // let game_event_sender = self.game_event_sender.clone();
+            // tokio::spawn(async move { let _ = game_event_sender.send(event).await; });
         }
     }
 
@@ -275,6 +291,16 @@ impl GameWindow {
 
         // request a redraw. the render code is run in the event loop
         self.window.request_redraw();
+        
+        // send as many queued requests as we can
+        loop {
+            let Some(event) = self.queued_events.pop() else { break };
+            if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
+                // queue is full again (or still full). re-insert this event back at the top of the queue
+                self.queued_events.insert(0, event);
+                break;
+            }
+        }
     }
     
     fn refresh_monitors_inner(&mut self) {
