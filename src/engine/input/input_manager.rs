@@ -158,10 +158,10 @@ impl InputManager {
                     self.last_key_press.remove(&key);
                 }
             }
-            Window2GameEvent::Text(text) => {
+            Window2GameEvent::Char(char) => {
                 let mods = self.get_key_mods();
                 if !mods.alt && !mods.ctrl {
-                    self.text_cache += &text
+                    self.text_cache.push(char)
                 }
             }
 

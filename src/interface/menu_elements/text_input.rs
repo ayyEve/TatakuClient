@@ -1,5 +1,5 @@
-use std::{error::Error, time::Instant};
 use crate::prelude::*;
+use std::error::Error;
 use clipboard::{ClipboardProvider, ClipboardContext};
 
 const KEY_REPEAT_DELAY:f32 = 500.0;

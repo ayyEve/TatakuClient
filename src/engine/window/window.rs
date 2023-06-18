@@ -160,7 +160,7 @@ impl GameWindow {
                         winit::event::WindowEvent::DroppedFile(d) => Window2GameEvent::FileDrop(d),
                         winit::event::WindowEvent::HoveredFile(d) => Window2GameEvent::FileHover(d),
                         // winit::event::WindowEvent::HoveredFileCancelled => todo!(),
-                        winit::event::WindowEvent::ReceivedCharacter(c) if !c.is_control() => Window2GameEvent::Text(c.to_string()),
+                        winit::event::WindowEvent::ReceivedCharacter(c) if !c.is_control() => Window2GameEvent::Char(c),
                         winit::event::WindowEvent::Focused(has_focus) => {
                             self.mouse_helper.set_focus(has_focus, &self.window);
                             if has_focus {
@@ -190,15 +190,7 @@ impl GameWindow {
                         winit::event::WindowEvent::MouseWheel { delta, .. } => Window2GameEvent::MouseScroll(delta2f32(delta)),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => Window2GameEvent::MousePress(button),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Window2GameEvent::MouseRelease(button),
-                        // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!(),
-
-
-                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, location, .. }) => {
-                        //     self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
-                        //     Window2GameEvent::MousePress(MouseButton::Left)
-                        // }
-                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Ended, .. }) => Window2GameEvent::MouseRelease(MouseButton::Left),
-                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
+                        // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!();
 
                         winit::event::WindowEvent::Touch(touch) => if let Some(event) = self.handle_touch_event(touch) {event} else {return},
 
