@@ -190,6 +190,7 @@ impl GameWindow {
                             self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
                             Window2GameEvent::MousePress(MouseButton::Left)
                         }
+                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Ended, .. }) => Window2GameEvent::MouseRelease(MouseButton::Left),
                         winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
                     
