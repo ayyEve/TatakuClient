@@ -49,10 +49,15 @@ const FIRST_MAPS: &[u32] = &[
 #[tokio::main]
 async fn main() {
     // enter game dir
-    if Io::exists("./game") {
-        if let Err(e) = std::env::set_current_dir("./game") {
-            println!("error changing current dir: {}", e);
+    const GAME_DIR:&str = "./game";
+
+    if !Io::exists(GAME_DIR) {
+        if let Err(e) = std::fs::create_dir_all(GAME_DIR) {
+            println!("Error creating game dir: {e}");
         }
+    }
+    if let Err(e) = std::env::set_current_dir(GAME_DIR) {
+        println!("Error changing current dir: {e}");
     }
 
     // setup logging
