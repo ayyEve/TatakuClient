@@ -447,10 +447,11 @@ impl AsyncMenu<Game> for MainMenu {
 }
 #[async_trait]
 impl ControllerInputMenu<Game> for MainMenu {
-    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         self.reset_timer();
+
         if !self.menu_visible {
-            if let Some(ControllerButton::A) = controller.map_button(button) {
+            if button == ControllerButton::South {
                 self.show_menu();
                 return true;
             }
@@ -458,25 +459,39 @@ impl ControllerInputMenu<Game> for MainMenu {
         }
 
         let mut changed = false;
-        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
-            self.selected_index += 1;
-            if self.selected_index >= 4 {
-                self.selected_index = 0;
+
+        match button {
+            ControllerButton::DPadDown => {
+                self.selected_index += 1;
+                if self.selected_index >= 4 {
+                    self.selected_index = 0;
+                }
+
+                changed = true;
             }
 
-            changed = true;
-        }
-
-        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
-            if self.selected_index == 0 {
-                self.selected_index = 3;
-            } else if self.selected_index >= 4 { // original value is 99
-                self.selected_index = 0;
-            } else {
-                self.selected_index -= 1;
+            ControllerButton::DPadUp => {
+                if self.selected_index == 0 {
+                    self.selected_index = 3;
+                } else if self.selected_index >= 4 { // original value is 99
+                    self.selected_index = 0;
+                } else {
+                    self.selected_index -= 1;
+                }
+                changed = true;
             }
 
-            changed = true;
+            ControllerButton::South => {
+                match self.selected_index {
+                    0 => game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
+                    1 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
+                    2 => game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
+                    3 => game.queue_state_change(GameState::Closing),
+                    _ => {}
+                }
+            }
+
+            _ => {}
         }
 
         if changed {
@@ -484,26 +499,6 @@ impl ControllerInputMenu<Game> for MainMenu {
             // self.direct_button.set_selected(self.selected_index == 1);
             self.settings_button.set_selected(self.selected_index == 2);
             self.exit_button.set_selected(self.selected_index == 3);
-        }
-
-        if let Some(ControllerButton::A) = controller.map_button(button) {
-            match self.selected_index {
-                0 => {
-                    // let menu = game.menus.get("beatmap").unwrap().clone();
-                    game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
-                },
-                1 => {
-                    let mode = self.settings.background_game_settings.mode.clone();
-                    // let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(tokio::sync::Mutex::new());
-                    game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(mode).await)));
-                },
-                2 => {
-                    // let menu = Arc::new(tokio::sync::Mutex::new());
-                    game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
-                },
-                3 => game.queue_state_change(GameState::Closing),
-                _ => {}
-            }
         }
 
         true

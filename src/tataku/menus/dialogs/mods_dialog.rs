@@ -137,21 +137,18 @@ impl Dialog<Game> for ModDialog {
 
 
     
-    async fn on_controller_press(&mut self, controller: &Box<dyn Controller>, button: u8) -> bool {
-        let Some(button) = controller.map_button(button) else { return false };
-        
+    async fn on_controller_press(&mut self, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         match button {
-            ControllerButton::A => self.toggle_current(),
-            ControllerButton::DPad_Up => self.deincrement_index(),
-            ControllerButton::DPad_Down => self.increment_index(),
-            
-            ControllerButton::B | ControllerButton::Start => self.should_close = true,
+            ControllerButton::South => self.toggle_current(),
+            ControllerButton::DPadUp => self.deincrement_index(),
+            ControllerButton::DPadDown => self.increment_index(),
+            ControllerButton::East | ControllerButton::Start => self.should_close = true,
 
             _ => {}
         }
         true
     }
-    async fn on_controller_release(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {
+    async fn on_controller_release(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {
         true
     }
 }

@@ -1,3 +1,5 @@
+use gilrs::PowerInfo;
+
 use crate::prelude::*;
 
 pub struct InputManager {
@@ -10,16 +12,17 @@ pub struct InputManager {
     pub mouse_up: HashSet<(MouseButton, Instant)>,
 
     /// controller names
-    pub controller_names: HashMap<u32, Arc<String>>,
+    pub controller_info: HashMap<GamepadId, GamepadInfo>,
+
     /// index is controller id
-    pub controller_buttons: HashMap<u32, HashSet<u8>>,
+    pub controller_buttons: HashMap<GamepadId, HashSet<ControllerButton>>,
     /// index is controller id
-    pub controller_down: HashMap<u32, HashSet<u8>>,
+    pub controller_down: HashMap<GamepadId, HashSet<ControllerButton>>,
     /// index is controller id
-    pub controller_up: HashMap<u32, HashSet<u8>>,
+    pub controller_up: HashMap<GamepadId, HashSet<ControllerButton>>,
     /// index is controller id
     /// value index is axis id, value value is (changed, value)
-    pub controller_axis: HashMap<u32, HashMap<u8, (bool, f32)>>,
+    pub controller_axis: HashMap<GamepadId, HashMap<Axis, (bool, f32)>>,
 
     /// currently pressed keys
     keys: HashSet<Key>,
@@ -55,7 +58,7 @@ impl InputManager {
             keys_up:  HashSet::new(),
 
             
-            controller_names: HashMap::new(),
+            controller_info: HashMap::new(),
             controller_buttons: HashMap::new(),
             controller_down: HashMap::new(),
             controller_up: HashMap::new(),
@@ -71,28 +74,32 @@ impl InputManager {
     }
 
     
-    fn verify_controller_index_exists(&mut self, id: u32, name:String) {
-        if !self.controller_names.contains_key(&id) {
+    fn verify_controller_index_exists(&mut self, id: GamepadId, name: Arc<String>, power_info: PowerInfo) {
+        if !self.controller_info.contains_key(&id) {
             // window.joystick_deadzone = 0.01;
             debug!("New controller: {}", name);
-            self.controller_names.insert(id, Arc::new(name));
+            self.controller_info.insert(id, GamepadInfo {
+                id,
+                name,
+                power_info,
+                connected: true,
+            });
+        } else {
+            return;
         }
 
-        if !self.controller_buttons.contains_key(&id) {
-            self.controller_buttons.insert(id, HashSet::new());
-        }
+        self.controller_buttons.insert(id, HashSet::new());
+        self.controller_down.insert(id, HashSet::new());
 
-        if !self.controller_down.contains_key(&id) {
-            self.controller_down.insert(id, HashSet::new());
-        }
+        self.controller_up.insert(id, HashSet::new());
 
-        if !self.controller_up.contains_key(&id) {
-            self.controller_up.insert(id, HashSet::new());
-        }
-    
-        if !self.controller_axis.contains_key(&id) {
-            self.controller_axis.insert(id, HashMap::new());
-        }
+        let data = [
+            Axis::LeftStickX, Axis::LeftStickY, Axis::LeftZ,
+            Axis::RightStickX, Axis::RightStickY, Axis::RightZ,
+            Axis::DPadX, Axis::DPadY
+        ].into_iter().map(|a|(a, (false, 0.0))).collect();
+
+        self.controller_axis.insert(id, data);
     }
 
     pub fn set_double_tap_protection(&mut self, protection: Option<f32>) {
@@ -113,7 +120,6 @@ impl InputManager {
 
             // keyboard input
             Window2GameEvent::KeyPress(key) if !self.keys.contains(&key) => {
-                
                 let mut ok_to_continue = true;
 
                 if let Some(check) = self.double_tap_protection {
@@ -175,43 +181,44 @@ impl InputManager {
             }
             Window2GameEvent::MouseScroll(delta) => self.scroll_delta += delta,
 
+            Window2GameEvent::ControllerEvent(e, name, power_info) => {
+                let id = e.id;
+
+                match e.event {
+                    gilrs::EventType::Connected => self.verify_controller_index_exists(id, name, power_info),
+                    // gilrs::EventType::Disconnected => todo!(),
+
+                    gilrs::EventType::ButtonPressed(b, _) => {
+                        self.controller_down.get_mut(&id).unwrap().insert(b);
+                        self.controller_buttons.get_mut(&id).unwrap().insert(b);
+                    }
+                    gilrs::EventType::ButtonReleased(b, _) => {
+                        self.controller_up.get_mut(&id).unwrap().insert(b);
+                        self.controller_buttons.get_mut(&id).unwrap().remove(&b);
+                    }
+                    gilrs::EventType::AxisChanged(a, val, _) => {
+                        *self.controller_axis.get_mut(&id).unwrap().get_mut(&a).unwrap() = (true, val);
+                    }
+
+
+                    // is this like, for ps2 analog buttons?
+                    // gilrs::EventType::ButtonChanged(_, _, _) => todo!(),
+
+                    // ignore because it should be ignored
+                    // gilrs::EventType::Dropped => todo!(),
+
+                    // cheating (?)
+                    // gilrs::EventType::ButtonRepeated(_, _) => todo!(),
+
+                    _ => {}
+                }
+            }
+
+
             _ => {}
         }
 
     }
-
-    // pub fn handle_controller_events(&mut self, e:Event, controller_name: String) {
-    //     use input::ControllerAxisEvent;
-
-    //     if let Some(axis) = e.controller_axis_args() {
-    //         // debug!("got controller axis: {:?}", axis);
-    //         let id = axis.axis;
-    //         let value = axis.position;
-    //         let controller_id = axis.id;
-    //         self.verify_controller_index_exists(controller_id, controller_name);
-
-    //         let map = self.controller_axis.get_mut(&controller_id).unwrap();
-    //         if ![Some(&(true, value)), Some(&(false, value))].contains(&map.get(&id)) {
-    //             map.insert(id, (true, value));
-    //         }
-    //     } else if let Some(button) = e.button_args() {
-    //         match (button.button, button.state) {
-    //             (Button::Controller(cb), ButtonState::Press) => {
-    //                 // debug!("press: c: {}, b: {}", cb.id, cb.button);
-    //                 self.verify_controller_index_exists(cb.id, controller_name);
-    //                 self.controller_buttons.get_mut(&cb.id).unwrap().insert(cb.button);
-    //                 self.controller_down.get_mut(&cb.id).unwrap().insert(cb.button);
-    //             }
-    //             (Button::Controller(cb), ButtonState::Release) => {
-    //                 // debug!("release: c: {}, b: {}", cb.id, cb.button);
-    //                 self.controller_buttons.get_mut(&cb.id).unwrap().remove(&cb.button);
-    //                 self.controller_up.get_mut(&cb.id).unwrap().insert(cb.button);
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-
-    // }
 
     /// is the key currently down (not up)
     pub fn key_down(&self, k:Key) -> bool {self.keys.contains(&k)}
@@ -264,48 +271,60 @@ impl InputManager {
         std::mem::take(&mut self.scroll_delta)
     }
 
+    pub fn get_controller_info(&self, id: GamepadId) -> Option<GamepadInfo> {
+        self.controller_info.get(&id).cloned()
+    }
+
 
     /// get all pressed controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_down(&mut self) -> Vec<(Box<dyn Controller>, u8)> {
-        let mut down = Vec::new();
-        for (c, buttons) in self.controller_down.iter_mut() {
-            let name = self.controller_names.get(c).unwrap();
+    pub fn get_controller_down(&mut self) -> Vec<(GamepadInfo, HashSet<ControllerButton>)> {
+        // let mut down = Vec::new();
+        // for (c, buttons) in self.controller_down.iter_mut() {
+        //     let name = self.controller_names.get(c).unwrap();
            
-            for b in buttons.iter() {
-                let controller = make_controller(*c, name.clone());
-                down.push((controller, *b));
-            }
-            buttons.clear()
-        }
+        //     for b in buttons.iter() {
+        //         let controller = make_controller(*c, name.clone());
+        //         down.push((controller, *b));
+        //     }
+        //     buttons.clear()
+        // }
+        // down
+
+        let down = self.controller_down.iter().map(|(g, i)|(self.get_controller_info(*g).unwrap(), i.clone())).collect();
+        self.controller_down.iter_mut().for_each(|(_, i)|i.clear());
         down
     }
 
     /// get all released controller buttons, and reset the pressed array
     /// (controller_id, button_id)
-    pub fn get_controller_up(&mut self) -> Vec<(Box<dyn Controller>, u8)> {
-        let mut up = Vec::new();
-        for (c, buttons) in self.controller_up.iter_mut() {
-            let name = self.controller_names.get(c).unwrap();
+    pub fn get_controller_up(&mut self) -> Vec<(GamepadInfo, HashSet<ControllerButton>)> {
+        // let mut up = Vec::new();
+        // for (c, buttons) in self.controller_up.iter_mut() {
+        //     let name = self.controller_names.get(c).unwrap();
             
-            for b in buttons.iter() {
-                let controller = make_controller(*c, name.clone());
-                up.push((controller, *b));
-            }
-            buttons.clear()
-        }
+        //     for b in buttons.iter() {
+        //         // let controller = make_controller(*c, name.clone());
+        //         up.push((*c, *b));
+        //     }
+        //     buttons.clear()
+        // }
+        // up
+        let up = self.controller_up.iter().map(|(g, i)|(self.get_controller_info(*g).unwrap(), i.clone())).collect();
+        self.controller_up.iter_mut().for_each(|(_, i)|i.clear());
         up
     }
 
     /// get all controller axes
     /// (controller, [axis_id, (changed, value)])
-    pub fn get_controller_axis(&mut self) -> Vec<(Box<dyn Controller>, HashMap<u8, (bool, f32)>)> {
+    pub fn get_controller_axis(&mut self) -> Vec<(GamepadInfo, HashMap<Axis, (bool, f32)>)> {
         let mut axis = Vec::new();
 
         for (c, axis_data) in self.controller_axis.iter_mut() {
-            let name = self.controller_names.get(c).unwrap();
-            let controller = make_controller(*c, name.clone());
-            axis.push((controller, axis_data.clone()));
+            // let name = self.controller_names.get(c).unwrap();
+            // let controller = make_controller(*c, name.clone());
+            // axis.push((controller, axis_data.clone()));
+            axis.push((self.controller_info.get(c).cloned().unwrap(), axis_data.clone()));
 
             // update all the changed to false, since we've now checked them
             for (_, (changed, _)) in axis_data.iter_mut() {
@@ -329,7 +348,7 @@ impl InputManager {
     /// get the input register delay average 
     /// (min,max,avg)
     #[allow(unused)]
-    pub fn get_register_delay(&mut self) -> (f32,f32,f32) {
+    pub fn get_register_delay(&mut self) -> (f32, f32, f32) {
         let mut sum = 0.0;
         let mut min = f32::MAX;
         let mut max = f32::MIN;
@@ -346,28 +365,37 @@ impl InputManager {
 }
 
 
+#[derive(Clone)]
+pub struct GamepadInfo {
+    pub id: GamepadId,
+    pub name: Arc<String>,
+    pub power_info: gilrs::PowerInfo,
+    pub connected: bool,
+}
 
-#[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct AxisConfig {
-    pub axis_id: u8,
+    pub axis_id: Axis,
     pub threshhold: f64
 }
 
 
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ControllerInputConfig {
-    pub button: Option<u8>,
+    pub button: Option<ControllerButton>,
     pub axis: Option<AxisConfig>
 }
 impl ControllerInputConfig {
-    pub fn new(button: Option<u8>, axis: Option<AxisConfig>) -> Self {
+    pub fn new(button: Option<ControllerButton>, axis: Option<AxisConfig>) -> Self {
         Self {
             button, 
             axis
         }
     }
 
-    pub fn check_button(&self, button: u8) -> bool {
+    pub fn check_button(&self, button: ControllerButton) -> bool {
         if let Some(b) = self.button {
             b == button
         } else {
@@ -376,3 +404,19 @@ impl ControllerInputConfig {
     }
 }
 
+impl From<Axis> for ControllerInputConfig {
+    fn from(value: Axis) -> Self {
+        Self {
+            button: None,
+            axis: Some(AxisConfig {axis_id: value, threshhold: 0.0})
+        }
+    }
+}
+impl From<ControllerButton> for ControllerInputConfig {
+    fn from(value: ControllerButton) -> Self {
+        Self {
+            button: Some(value),
+            axis: None,
+        }
+    }
+}

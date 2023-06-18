@@ -49,9 +49,9 @@ wgpu = "*"
 raw-window-handle = "0.5"
 bytemuck = { version = "1.12", features = [ "derive" ] }
 cgmath = "*"
-winit = {version = "0.27", features = ["serde"]}
+winit = { version = "0.27", features = ["serde"] }
 # gamepad input
-gilrs = "0.10"
+gilrs = { version = "0.10", features = ["serde-serialize"] }
 
 # bass audio
 bass-rs = { version="0.2", optional = true }

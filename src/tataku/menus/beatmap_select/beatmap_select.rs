@@ -912,35 +912,23 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 }
 #[async_trait]
 impl ControllerInputMenu<Game> for BeatmapSelectMenu {
-    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
-        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
-            self.on_key_press(Key::Up, game, KeyModifiers::default()).await
-        }
-        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
-            self.on_key_press(Key::Down, game, KeyModifiers::default()).await
-        }
-        if let Some(ControllerButton::DPad_Left) = controller.map_button(button) {
-            self.on_key_press(Key::Left, game, KeyModifiers::default()).await
-        }
-        if let Some(ControllerButton::DPad_Right) = controller.map_button(button) {
-            self.on_key_press(Key::Right, game, KeyModifiers::default()).await
+    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
+        match button {
+            ControllerButton::DPadUp => self.on_key_press(Key::Up, game, KeyModifiers::default()).await,
+            ControllerButton::DPadDown => self.on_key_press(Key::Down, game, KeyModifiers::default()).await,
+            ControllerButton::DPadLeft|ControllerButton::LeftTrigger => self.on_key_press(Key::Left, game, KeyModifiers::default()).await,
+            ControllerButton::DPadRight|ControllerButton::RightTrigger => self.on_key_press(Key::Right, game, KeyModifiers::default()).await,
+            ControllerButton::South => self.on_key_press(Key::Return, game, KeyModifiers::default()).await,
+            ControllerButton::East => game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await))),
+            _ => {}
         }
 
-        if let Some(ControllerButton::A) = controller.map_button(button) {
-            self.on_key_press(Key::Return, game, KeyModifiers::default()).await
-        }
-
-        if let Some(ControllerButton::B) = controller.map_button(button) {
-            // let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
-        }
-        
         false
     }
 
-    async fn controller_axis(&mut self, _game:&mut Game, controller: &Box<dyn Controller>, axis_data: HashMap<u8, (bool, f32)>) -> bool {
+    async fn controller_axis(&mut self, _game:&mut Game, _controller: &GamepadInfo, axis_data: HashMap<Axis, (bool, f32)>) -> bool {
         for (axis, (_, val)) in axis_data {
-            if Some(ControllerAxis::Right_Y) == controller.map_axis(axis) && val.abs() > 0.1 {
+            if axis == Axis::RightStickY && val.abs() > 0.1 {
                 self.beatmap_scroll.set_hover(true);
                 self.beatmap_scroll.on_scroll(-val / 16.0);
             }

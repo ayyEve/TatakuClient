@@ -1061,12 +1061,12 @@ impl GameModeInput for TaikoGame {
     }
 
 
-    async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) -> Option<ReplayFrame> {
+    async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayFrame> {
 
-        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.get_name()) {
+        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
 
             // skip
-            if Some(ControllerButton::Y) == c.map_button(btn) {
+            if ControllerButton::North == btn {
                 Some(ReplayFrame::Press(KeyPress::SkipIntro))
             } else if c_config.left_kat.check_button(btn) {
                 Some(ReplayFrame::Press(KeyPress::LeftKat))
@@ -1088,7 +1088,7 @@ impl GameModeInput for TaikoGame {
             // and if there is lag, the user is likely to retry the man anyways
             trace!("Setting up new controller");
             let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
+            new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
 
             // update the global settings
             {
@@ -1103,8 +1103,8 @@ impl GameModeInput for TaikoGame {
         }
     }
 
-    async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) -> Option<ReplayFrame> {
-        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.get_name()) {
+    async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayFrame> {
+        if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
             if c_config.left_kat.check_button(btn) {
                 Some(ReplayFrame::Release(KeyPress::LeftKat))
             } else if c_config.left_don.check_button(btn) {
@@ -1125,7 +1125,7 @@ impl GameModeInput for TaikoGame {
             // and if there is lag, the user is likely to retry the man anyways
             trace!("Setting up new controller");
             let mut new_settings = self.taiko_settings.as_ref().clone();
-            new_settings.controller_config.insert((*c.get_name()).clone(), TaikoControllerConfig::defaults(c.get_name()));
+            new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
 
             // update the global settings
             {

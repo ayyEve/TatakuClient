@@ -25,17 +25,5 @@ pub enum Window2GameEvent {
     MouseScroll(f32),
 
     // controller input
-    ControllerAxis {
-        controller_id: u32,
-        axis: u8,
-        value: f32,
-    },
-    ControllerPress {
-        controller_id: u32,
-        button: u8,
-    },
-    ControllerRelease {
-        controller_id: u32,
-        button: u8,
-    },
+    ControllerEvent(gilrs::Event, Arc<String>, gilrs::PowerInfo)
 }

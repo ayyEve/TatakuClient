@@ -37,6 +37,8 @@ pub use parking_lot::{ Mutex, RwLock };
 // serde imports
 pub use serde::{ Serialize, Deserialize };
 
+pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
+
 // tataku-common imports
 pub use tataku_common::types::*;
 

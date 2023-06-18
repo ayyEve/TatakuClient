@@ -1028,33 +1028,29 @@ impl GameModeInput for OsuGame {
     }
 
 
-    async fn controller_press(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
-        
-        if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
-            Some(ReplayFrame::Press(KeyPress::Left))
-        } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
-            Some(ReplayFrame::Press(KeyPress::Right))
-        } else {
-            None
-        }
-    }
-    
-    async fn controller_release(&mut self, c:&Box<dyn Controller>, btn:u8) -> Option<ReplayFrame> {
+    async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayFrame> {
         // if relax is enabled, and the user doesn't want manual input, return
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
-        if Some(ControllerButton::Left_Bumper) == c.map_button(btn) {
-            Some(ReplayFrame::Release(KeyPress::Left))
-        } else if Some(ControllerButton::Right_Bumper) == c.map_button(btn) {
-            Some(ReplayFrame::Release(KeyPress::Right))
-        } else {
-            None
+        match btn {
+            ControllerButton::LeftTrigger => Some(ReplayFrame::Press(KeyPress::Left)),
+            ControllerButton::RightTrigger => Some(ReplayFrame::Press(KeyPress::Right)),
+            _ => None
         }
     }
     
-    async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f32)>) -> Option<ReplayFrame> {
+    async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayFrame> {
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+
+        match btn {
+            ControllerButton::LeftTrigger => Some(ReplayFrame::Release(KeyPress::Left)),
+            ControllerButton::RightTrigger => Some(ReplayFrame::Release(KeyPress::Right)),
+            _ => None
+        }
+    }
+    
+    async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayFrame> {
         self.use_controller_cursor = true;
 
         let mut new_pos = self.mouse_pos;
@@ -1062,17 +1058,17 @@ impl GameModeInput for OsuGame {
         let playfield = scaling_helper.playfield_scaled_with_cs_border;
 
         for (axis, &(_new, value)) in axis_data.iter() {
-            match c.map_axis(*axis) {
-                Some(ControllerAxis::Left_X) => {
+            match *axis {
+                Axis::LeftStickX => {
                     // -1.0 to 1.0
                     // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
                     let normalized = (value + 1.0) / 2.0;
                     new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
-                },
-                Some(ControllerAxis::Left_Y) => {
+                }
+                Axis::LeftStickY => {
                     let normalized = (value + 1.0) / 2.0;
                     new_pos.y = playfield.pos.y + f32::lerp(0.0, playfield.size.y, normalized);
-                },
+                }
                 _ => {},
             }
         }

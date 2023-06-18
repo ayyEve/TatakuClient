@@ -398,53 +398,56 @@ impl AsyncMenu<Game> for ScoreMenu {
 
 #[async_trait]
 impl ControllerInputMenu<Game> for ScoreMenu {
-    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
 
         let mut changed = false;
-        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
-            self.selected_index += 1;
-            if self.selected_index >= MENU_ITEM_COUNT {
-                self.selected_index = 0;
+
+        match button {
+            ControllerButton::DPadDown => {
+                self.selected_index += 1;
+                if self.selected_index >= MENU_ITEM_COUNT {
+                    self.selected_index = 0;
+                }
+
+                changed = true;
             }
 
-            changed = true;
-        }
+            ControllerButton::DPadUp => {
+                if self.selected_index == 0 {
+                    self.selected_index = 3;
+                } else if self.selected_index >= MENU_ITEM_COUNT { // original value is 99
+                    self.selected_index = 0;
+                } else {
+                    self.selected_index -= 1;
+                }
 
-        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
-            if self.selected_index == 0 {
-                self.selected_index = 3;
-            } else if self.selected_index >= MENU_ITEM_COUNT { // original value is 99
-                self.selected_index = 0;
-            } else {
-                self.selected_index -= 1;
+                changed = true;
             }
 
-            changed = true;
-        }
+            ControllerButton::South => {
+                match self.selected_index {
+                    // replay
+                    0 => self.replay(game).await,
 
+                    // back
+                    1 => self.close(game).await,
+                    
+                    // retry
+                    2 => self.retry(game).await,
+                    
+                    _ => {}
+                }
+            }
+
+            _ => {}
+        }
+    
         if changed {
             for (n, button) in self.buttons.iter_mut().enumerate() {
                 button.set_selected(self.selected_index == n);
             }
         }
 
-        if let Some(ControllerButton::A) = controller.map_button(button) {
-            match self.selected_index {
-                0 => {
-                    // replay
-                    self.replay(game).await;
-                },
-                1 => {
-                    // back
-                    self.close(game).await;
-                },
-                2 => {
-                    // retry
-                    self.retry(game).await;
-                },
-                _ => {}
-            }
-        }
 
         true
     }

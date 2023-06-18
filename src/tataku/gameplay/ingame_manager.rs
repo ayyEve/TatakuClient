@@ -1164,17 +1164,17 @@ impl IngameManager {
     }
 
 
-    pub async fn controller_press(&mut self, c: &Box<dyn Controller>, btn: u8) {
+    pub async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) {
         if self.failed { return }
         let frame = self.gamemode.controller_press(c, btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn controller_release(&mut self, c: &Box<dyn Controller>, btn: u8) {
+    pub async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) {
         if self.failed { return }
         let frame = self.gamemode.controller_release(c, btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn controller_axis(&mut self, c: &Box<dyn Controller>, axis_data:HashMap<u8, (bool, f32)>) {
+    pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) {
         if self.failed { return }
         let frame = self.gamemode.controller_axis(c, axis_data).await;
         self.handle_input(frame).await;

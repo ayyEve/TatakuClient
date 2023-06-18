@@ -133,30 +133,46 @@ impl AsyncMenu<Game> for PauseMenu {
 }
 #[async_trait]
 impl ControllerInputMenu<Game> for PauseMenu {
-    async fn controller_down(&mut self, game:&mut Game, controller: &Box<dyn Controller>, button: u8) -> bool {
+    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         let max = if self.is_fail_menu {2} else {3};
 
         let mut changed = false;
-        if let Some(ControllerButton::DPad_Down) = controller.map_button(button) {
-            self.selected_index += 1;
-            if self.selected_index >= max {
-                self.selected_index = 0;
+
+        match button {
+            ControllerButton::DPadDown => {
+                self.selected_index += 1;
+                if self.selected_index >= max {
+                    self.selected_index = 0;
+                }
+
+                changed = true;
             }
 
-            changed = true;
-        }
+            ControllerButton::DPadUp => {
+                if self.selected_index == 0 {
+                    self.selected_index = max;
+                } else if self.selected_index >= max { // original value is 99
+                    self.selected_index = 0;
+                } else {
+                    self.selected_index -= 1;
+                }
 
-
-        if let Some(ControllerButton::DPad_Up) = controller.map_button(button) {
-            if self.selected_index == 0 {
-                self.selected_index = max;
-            } else if self.selected_index >= max { // original value is 99
-                self.selected_index = 0;
-            } else {
-                self.selected_index -= 1;
+                changed = true;
             }
 
-            changed = true;
+            ControllerButton::South => {
+                match (self.selected_index, self.is_fail_menu) {
+                    // continue
+                    (0, false) => self.unpause(game),
+                    // retry
+                    (1, false) | (0, true) => self.retry(game).await,
+                    // close
+                    (2, false) | (1, true) => self.exit(game).await,
+                    _ => {}
+                }
+            }
+
+            _ => {}
         }
 
         trace!("changed:{}, index: {}", changed, self.selected_index);
@@ -167,21 +183,6 @@ impl ControllerInputMenu<Game> for PauseMenu {
             self.continue_button.set_selected(self.selected_index == continue_index);
             self.retry_button.set_selected(self.selected_index == continue_index + 1);
             self.exit_button.set_selected(self.selected_index == continue_index + 2);
-        }
-
-        if let Some(ControllerButton::A) = controller.map_button(button) {
-            match (self.selected_index, self.is_fail_menu) {
-                (0, false) => { // continue
-                    self.unpause(game)
-                },
-                (1, false) | (0, true) => { // retry
-                    self.retry(game).await;
-                },
-                (2, false) | (1, true) => { // close
-                    self.exit(game).await;
-                },
-                _ => {}
-            }
         }
 
         true

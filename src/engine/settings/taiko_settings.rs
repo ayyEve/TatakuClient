@@ -140,26 +140,27 @@ pub struct TaikoControllerConfig {
     pub right_kat: ControllerInputConfig,
 }
 impl TaikoControllerConfig {
-    fn new_default(left_kat:u8, left_don:u8, right_don: u8, right_kat: u8) -> Self {
+    fn new_default<I:Into<ControllerInputConfig>>(left_kat: I, left_don: I, right_don: I, right_kat: I) -> Self {
         Self {
-            left_kat: ControllerInputConfig::new(Some(left_kat), None),
-            left_don: ControllerInputConfig::new(Some(left_don), None),
-            right_don: ControllerInputConfig::new(Some(right_don), None),
-            right_kat: ControllerInputConfig::new(Some(right_kat), None)
+            left_kat: left_kat.into(),
+            left_don:  left_don.into(),
+            right_don: right_don.into(),
+            right_kat: right_kat.into()
         }
     }
     pub fn defaults(controller_name: Arc<String>) -> Self {
         match &**controller_name {
-            "Taiko Controller"|"HORI CO.,LTD. Taiko Controller" => Self::new_default(6, 10, 11, 7),
-            "Xbox Controller"|"Microsoft X-Box One S pad"|"Microsoft X-Box One pad"|"Microsoft XBox One X pad" => Self::new_default(13, 12, 0, 1),
-            "Wireless Controller"|"Sony Interactive Entertainment Wireless Controller" => Self::new_default(17, 15, 0, 2),
+            "Taiko Controller"|"HORI CO.,LTD. Taiko Controller"|"HID-compliant game controller" => Self::new_default(ControllerButton::LeftTrigger2, ControllerButton::LeftThumb, ControllerButton::RightThumb, ControllerButton::RightTrigger2),
+            "Xbox Controller"|"Xbox One Game Controller" => Self::new_default(ControllerButton::DPadLeft, ControllerButton::DPadDown, ControllerButton::South, ControllerButton::East),
+            // "Wireless Controller"|"Sony Interactive Entertainment Wireless Controller" => Self::new_default(17, 15, 0, 2),
 
-            _ => Self {
-                left_kat: ControllerInputConfig::new(None, None),
-                left_don: ControllerInputConfig::new(None, None),
-                right_don:ControllerInputConfig::new(None, None),
-                right_kat:ControllerInputConfig::new(None, None),
-            }
+            _ => Self::new_default(ControllerButton::LeftTrigger2, ControllerButton::LeftThumb, ControllerButton::RightThumb, ControllerButton::RightTrigger2)
+            // _ => Self {
+            //     left_kat: ControllerInputConfig::new(None, None),
+            //     left_don: ControllerInputConfig::new(None, None),
+            //     right_don:ControllerInputConfig::new(None, None),
+            //     right_kat:ControllerInputConfig::new(None, None),
+            // }
         }
     }
 }

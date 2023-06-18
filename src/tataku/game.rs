@@ -322,7 +322,7 @@ impl Game {
 
         let mut controller_pause = false;
         for (c, b) in controller_down.iter() {
-            if Some(crate::prelude::ControllerButton::Start) == c.map_button(*b) {
+            if b.contains(&ControllerButton::Start) {
                 controller_pause = true;
                 break;
             }
@@ -473,10 +473,11 @@ impl Game {
             // kb events
 
             async_retain!(keys_down, k, !d.on_key_press(*k, &mods, self).await);
-            async_retain!(keys_up, k, !d.on_key_release(*k,  &mods, self).await);
+            async_retain!(keys_up, k, !d.on_key_release(*k, &mods, self).await);
 
-            async_retain!(controller_down, k, !d.on_controller_press(&k.0, k.1).await);
-            async_retain!(controller_up, k, !d.on_controller_release(&k.0, k.1).await);
+            // TODO: this
+            // async_retain!(controller_down, k, !d.on_controller_press(&k.0, &k.1).await);
+            // async_retain!(controller_up, k, !d.on_controller_release(&k.0, &k.1).await);
 
             for (c, b) in controller_axis.iter() {
                 d.on_controller_axis(c, b).await;
@@ -553,11 +554,15 @@ impl Game {
                     }
 
                     // controller
-                    for (c, b) in controller_down {
-                        manager.controller_press(&c, b).await;
+                    for (c, buttons) in controller_down {
+                        for b in buttons {
+                            manager.controller_press(&c, b).await;
+                        }
                     }
-                    for (c, b) in controller_up {
-                        manager.controller_release(&c, b).await;
+                    for (c, buttons) in controller_up {
+                        for b in buttons {
+                            manager.controller_release(&c, b).await;
+                        }
                     }
                     for (c, b) in controller_axis {
                         manager.controller_axis(&c, b).await;
@@ -605,11 +610,15 @@ impl Game {
 
 
                 // controller
-                for (c, b) in controller_down {
-                    menu.controller_down(self, &c, b).await;
+                for (c, buttons) in controller_down {
+                    for b in buttons {
+                        menu.controller_down(self, &c, b).await;
+                    }
                 }
-                for (c, b) in controller_up {
-                    menu.controller_up(self, &c, b).await;
+                for (c, buttons) in controller_up {
+                    for b in buttons {
+                        menu.controller_up(self, &c, b).await;
+                    }
                 }
                 for (c, ad) in controller_axis {
                     menu.controller_axis(self, &c, ad).await;
@@ -1099,7 +1108,4 @@ impl Default for GameState {
 #[derive(Clone, Debug)]
 pub enum GameEvent {
     WindowEvent(Window2GameEvent),
-    /// controller event, controller name
-    #[allow(unused)]
-    ControllerEvent(Window2GameEvent, String)
 }

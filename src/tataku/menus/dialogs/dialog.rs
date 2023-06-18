@@ -23,9 +23,9 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn on_key_release(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 
-    async fn on_controller_press(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
-    async fn on_controller_release(&mut self, _controller: &Box<dyn Controller>, _button: u8) -> bool {false}
-    async fn on_controller_axis(&mut self, _controller: &Box<dyn Controller>, _axis_data: &HashMap<u8, (bool, f32)>) {}
+    async fn on_controller_press(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
+    async fn on_controller_release(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
+    async fn on_controller_axis(&mut self, _controller: &GamepadInfo, _axis_data: &HashMap<Axis, (bool, f32)>) {}
 
     fn string_function1(&mut self, _val: String) {}
     // fn string_function2(&mut self, _val: String) {}

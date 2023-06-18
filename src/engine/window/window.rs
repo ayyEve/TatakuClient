@@ -205,11 +205,6 @@ impl GameWindow {
                         } else {
                             return
                         }
-                        
-                        // DeviceEvent::MouseWheel { delta } => todo!(),
-                        // DeviceEvent::Button { button, state } => todo!(),
-                        // DeviceEvent::Key(_) => todo!(),
-                        // DeviceEvent::Text { codepoint } => todo!(),
 
                         _ => return 
                     }
@@ -291,6 +286,17 @@ impl GameWindow {
 
         // request a redraw. the render code is run in the event loop
         self.window.request_redraw();
+
+        // check gamepad events
+        while let Some(event) = self.controller_input.next_event() {
+            let info = self.controller_input.gamepad(event.id);
+            match event.event {
+                gilrs::EventType::Connected => info!("new controller: {}", info.name()),
+                _ => {}
+            }
+            
+            self.send_game_event(Window2GameEvent::ControllerEvent(event, Arc::new(info.name().to_owned()), info.power_info()));
+        }
         
         // send as many queued requests as we can
         loop {
