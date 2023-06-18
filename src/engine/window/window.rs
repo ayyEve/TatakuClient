@@ -36,13 +36,16 @@ pub struct GameWindow {
     input_timer: Instant,
 
     close_pending: bool,
+    queued_events: Vec<GameEvent>,
 
-    controller_input: gilrs::Gilrs,
 
     // input
     mouse_helper: MouseInputHelper,
-
-    queued_events: Vec<GameEvent>
+    controller_input: gilrs::Gilrs,
+    /// what finger ids are currently active
+    finger_touches: HashSet<u64>,
+    // what finger id started the touch, and where is the floating touch location
+    touch_pos: Option<(u64, Vector2)>,
 }
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
@@ -89,7 +92,6 @@ impl GameWindow {
         }
 
 
-        let now = Instant::now();
         let s = Self {
             window,
             graphics,
@@ -99,14 +101,17 @@ impl GameWindow {
             window_event_receiver,
             render_event_receiver,
 
-            frametime_timer: now,
-            input_timer: now,
-
-
+            frametime_timer: Instant::now(),
+            input_timer: Instant::now(),
+            
             close_pending: false,
+            queued_events: Vec::new(),
+            
+            // input
             mouse_helper: MouseInputHelper::default(),
             controller_input: gilrs::Gilrs::new().unwrap(),
-            queued_events: Vec::new(),
+            finger_touches: HashSet::new(),
+            touch_pos: None,
         };
         
         (s, event_loop)
@@ -186,12 +191,18 @@ impl GameWindow {
                         winit::event::WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => Window2GameEvent::MousePress(button),
                         winit::event::WindowEvent::MouseInput { state: ElementState::Released, button, .. } => Window2GameEvent::MouseRelease(button),
                         // winit::event::WindowEvent::TouchpadPressure { device_id, pressure, stage } => todo!(),
-                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, location, .. }) => {
-                            self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
-                            Window2GameEvent::MousePress(MouseButton::Left)
-                        }
-                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Ended, .. }) => Window2GameEvent::MouseRelease(MouseButton::Left),
-                        winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
+
+
+                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Started, location, .. }) => {
+                        //     self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
+                        //     Window2GameEvent::MousePress(MouseButton::Left)
+                        // }
+                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Ended, .. }) => Window2GameEvent::MouseRelease(MouseButton::Left),
+                        // winit::event::WindowEvent::Touch(Touch { phase:TouchPhase::Moved, location, .. }) => Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)),
+
+                        winit::event::WindowEvent::Touch(touch) => if let Some(event) = self.handle_touch_event(touch) {event} else {return},
+
+
                         // winit::event::WindowEvent::Occluded(_) => todo!(),
                     
                         _ => return
@@ -237,7 +248,6 @@ impl GameWindow {
             // tokio::spawn(async move { let _ = game_event_sender.send(event).await; });
         }
     }
-
 
     fn update(&mut self) {
         let old_fullscreen = self.settings.fullscreen_monitor;
@@ -310,38 +320,6 @@ impl GameWindow {
         }
     }
     
-    fn refresh_monitors_inner(&mut self) {
-        *MONITORS.write() = self.window.available_monitors().filter_map(|m|m.name()).collect();
-    }
-
-    fn apply_fullscreen(&mut self) {
-        if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
-            if let Some((_, monitor)) = self.window.available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
-                self.window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(monitor))));
-                return
-            }
-        }
-
-        // either its not fullscreen, or the monitor wasnt found, so default to windowed
-        // self.window.apply_windowed();
-        let [x,y] = self.settings.window_pos;
-        self.window.set_fullscreen(None);
-        self.window.set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
-    }
-
-    fn apply_vsync(&mut self) {
-        self.graphics.set_vsync(self.settings.vsync);
-    }
-
-    pub fn set_clipboard(content: String) -> TatakuResult {
-        use clipboard::{ClipboardProvider, ClipboardContext};
-        let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
-        
-        Ok(ctx
-        .map_err(|e|TatakuError::String(e.to_string()))
-        .and_then(|mut ctx|ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
-    }
-
     fn run_load_image_event(&mut self, event: LoadImage) {
         match event {
             LoadImage::Image(data, on_done) => on_done.send(self.graphics.load_texture_rgba(&data.to_vec(), data.width(), data.height())).expect("poopy"),
@@ -396,7 +374,6 @@ impl GameWindow {
         trace!("Done loading tex")
     }
 
-
     pub fn render(&mut self) {
         let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
         let data = self.render_event_receiver.read();
@@ -415,6 +392,106 @@ impl GameWindow {
         let _ = self.graphics.render_current_surface();
     }
 
+}
+
+// input and state stuff
+impl GameWindow {
+
+    fn refresh_monitors_inner(&mut self) {
+        *MONITORS.write() = self.window.available_monitors().filter_map(|m|m.name()).collect();
+    }
+
+    fn apply_fullscreen(&mut self) {
+        if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
+            if let Some((_, monitor)) = self.window.available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
+                self.window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(monitor))));
+                return
+            }
+        }
+
+        // either its not fullscreen, or the monitor wasnt found, so default to windowed
+        // self.window.apply_windowed();
+        let [x,y] = self.settings.window_pos;
+        self.window.set_fullscreen(None);
+        self.window.set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
+    }
+
+    fn apply_vsync(&mut self) {
+        self.graphics.set_vsync(self.settings.vsync);
+    }
+
+    pub fn set_clipboard(content: String) -> TatakuResult {
+        use clipboard::{ClipboardProvider, ClipboardContext};
+        let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
+        
+        Ok(ctx
+        .map_err(|e|TatakuError::String(e.to_string()))
+        .and_then(|mut ctx|ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
+    }
+
+
+    fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
+        
+        match touch {
+            Touch { phase:TouchPhase::Started, location, id, .. } => {
+                // info!("+ touch id: {id}");
+
+                let touch_pos = Vector2::new(location.x as f32, location.y as f32);
+
+                self.finger_touches.insert(id);
+
+                // if this is the first touch, set touch pos and send events
+                // otherwise, dont send events, 
+                if self.finger_touches.len() == 1 {
+                    self.touch_pos = Some((id, touch_pos));
+                    self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
+                    Some(Window2GameEvent::MousePress(MouseButton::Left))
+                } else {
+                    None
+                }
+            }
+
+            Touch { phase:TouchPhase::Ended, id, .. } => {
+                // info!("- touch id: {id}");
+
+                // remove this id from touches
+                self.finger_touches.remove(&id);
+
+                // check for release of first touch. 
+                // if this was the first touch, set the touch pos to none, and send a click release event
+                if let Some((start_id, _)) = self.touch_pos {
+                    if id == start_id {
+                        self.touch_pos = None;
+
+                        return Some(Window2GameEvent::MouseRelease(MouseButton::Left))
+                    }
+                }
+
+                None
+            }
+
+
+            Touch { phase:TouchPhase::Moved, location, id, .. } => {
+                let touch_pos = Vector2::new(location.x as f32, location.y as f32);
+
+                if self.finger_touches.len() > 1 {
+                    if let Some((start_id, pos)) = &mut self.touch_pos {
+                        if id != *start_id { return None }
+
+                        let delta = touch_pos - *pos;
+                        let y_scroll = delta.y / 10.0;
+                        *pos = touch_pos;
+                        
+                        return Some(Window2GameEvent::MouseScroll(y_scroll))
+                    }
+                }
+
+                Some(Window2GameEvent::MouseMove(touch_pos))
+            }
+
+            _ => None,
+        }
+    }
 
     fn post_cursor_move(&mut self) {
         // if self.mouse_helper.check_bounds(&self.window) {
@@ -426,6 +503,7 @@ impl GameWindow {
         //     let _ = self.window.set_cursor_position(winit::dpi::LogicalPosition::new(x, y));
         // }
     }
+
 }
 
 // static fns
