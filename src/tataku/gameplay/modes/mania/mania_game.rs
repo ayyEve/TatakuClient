@@ -880,7 +880,6 @@ impl GameMode for ManiaGame {
 
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
-        let x = self.playfield.col_pos(0);
         if self.timing_bars.len() == 0 {
             let tps = beatmap.get_timing_points();
             // load timing bars
@@ -903,7 +902,7 @@ impl GameMode for ManiaGame {
                 }
 
                 // add timing bar at current time
-                let mut bar = TimingBar::new(time, bar_width, x, self.playfield.clone());
+                let mut bar = TimingBar::new(time, bar_width, self.playfield.clone());
                 bar.set_position_function(self.position_function.clone());
                 bar.set_sv(self.sv_mult);
                 self.timing_bars.push(bar);

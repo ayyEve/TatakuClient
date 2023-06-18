@@ -23,12 +23,12 @@ pub struct TimingBar {
     position_function_index: usize,
 }
 impl TimingBar {
-    pub fn new(time:f32, width:f32, x:f32, playfield: Arc<ManiaPlayfield>) -> TimingBar {
+    pub fn new(time:f32, width:f32, playfield: Arc<ManiaPlayfield>) -> TimingBar {
         TimingBar {
             time, 
             size: Vector2::new(width, BAR_HEIGHT),
             speed: 1.0,
-            pos: Vector2::with_x(x),
+            pos: Vector2::with_x(playfield.col_pos(0)),
             relative_y: 0.0,
 
             position_function: Arc::new(Vec::new()),
@@ -80,6 +80,7 @@ impl TimingBar {
     }
     
     pub fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
+        self.pos.x = playfield.col_pos(0);
         self.playfield = playfield;
     }
 }
