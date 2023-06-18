@@ -431,7 +431,6 @@ impl GameWindow {
 
 
     fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
-        
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
                 // info!("+ touch id: {id}");

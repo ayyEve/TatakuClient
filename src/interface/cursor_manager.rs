@@ -53,6 +53,8 @@ pub struct CursorManager {
     /// should the cursor be visible?
     visible: bool,
     show_system_cursor: bool,
+    /// is the game mode overriding the cursor pos?
+    gamemode_override: bool,
 
     left_pressed: bool,
     right_pressed: bool,
@@ -125,6 +127,7 @@ impl CursorManager {
             visible: true,
             show_system_cursor: false,
             ripple_radius_override: None,
+            gamemode_override: false,
             settings,
 
             ripples: Vec::new(),
@@ -171,7 +174,7 @@ impl CursorManager {
             self.ripple_color = Color::from_hex(&self.settings.cursor_ripple_color);
         }
 
-        if !self.show_system_cursor {
+        if !self.show_system_cursor && !self.gamemode_override {
             self.pos = cursor_pos;
         }
 
@@ -198,9 +201,8 @@ impl CursorManager {
                     }
                 }
 
-                CursorEvent::SetPos(pos) => {
-                    self.pos = pos
-                }
+                CursorEvent::SetPos(pos) => self.pos = pos,
+                CursorEvent::GameModeOverride(enabled) => self.gamemode_override = enabled,
 
                 CursorEvent::ShowSystemCursor(show) => {
                     self.show_system_cursor = show;
@@ -441,6 +443,9 @@ impl CursorManager {
     pub fn set_ripple_override(radius: Option<f32>) {
         Self::add_event(CursorEvent::OverrideRippleRadius(radius));
     }
+    pub fn set_gamemode_override(enabled: bool) {
+        Self::add_event(CursorEvent::GameModeOverride(enabled));
+    }
 }
 
 
@@ -452,5 +457,7 @@ enum CursorEvent {
     ShowSystemCursor(bool),
     SetVisible(bool),
     OverrideRippleRadius(Option<f32>),
+
+    GameModeOverride(bool),
 }
 

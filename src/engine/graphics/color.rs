@@ -714,7 +714,7 @@ impl Into<[f32;4]> for Color {
     }
 }
 
-// math ahead!!!!
+// bad math ahead!!!!
 
 // negative (invert color?)
 impl Neg for Color {

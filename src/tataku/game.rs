@@ -320,7 +320,7 @@ impl Game {
         let controller_axis = self.input_manager.get_controller_axis();
 
         let mut controller_pause = false;
-        for (c, b) in controller_down.iter() {
+        for (_c, b) in controller_down.iter() {
             if b.contains(&ControllerButton::Start) {
                 controller_pause = true;
                 break;

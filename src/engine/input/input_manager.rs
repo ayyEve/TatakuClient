@@ -197,6 +197,7 @@ impl InputManager {
                         self.controller_buttons.get_mut(&id).unwrap().remove(&b);
                     }
                     gilrs::EventType::AxisChanged(a, val, _) => {
+                        // info!("controller axis: {a:?} = {val}");
                         *self.controller_axis.get_mut(&id).unwrap().get_mut(&a).unwrap() = (true, val);
                     }
 

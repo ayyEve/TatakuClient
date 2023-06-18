@@ -1,4 +1,3 @@
-
 #[derive(Copy, Clone, Default, Debug)]
 pub struct KeyModifiers {
     pub ctrl: bool,

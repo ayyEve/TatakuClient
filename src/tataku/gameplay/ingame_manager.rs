@@ -843,13 +843,20 @@ impl IngameManager {
             self.outgoing_spectator_frame((time, frame));
             self.song.play(false);
 
+            let mut gamemode = std::mem::take(&mut self.gamemode);
+            gamemode.unpause(self);
+            self.gamemode = gamemode;
         }
     }
     pub fn pause(&mut self) {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
+        // make sure the system cursor is not visible
         CursorManager::show_system_cursor(false);
+        // undo any cursor override
         CursorManager::set_ripple_override(None);
+        // undo any cursor position override
+        CursorManager::set_gamemode_override(false);
 
         self.song.pause();
         self.pause_start = Some(chrono::Utc::now().timestamp());
@@ -860,6 +867,10 @@ impl IngameManager {
 
         let time = self.time();
         self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
+
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        gamemode.pause(self);
+        self.gamemode = gamemode;
     }
     pub async fn reset(&mut self) {
         self.gamemode.reset(&self.beatmap).await;
@@ -960,8 +971,12 @@ impl IngameManager {
     pub fn on_complete(&mut self) {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
+        // make sure the system cursor is not visible
         CursorManager::show_system_cursor(false);
+        // undo any cursor override
         CursorManager::set_ripple_override(None);
+        // undo any cursor position override
+        CursorManager::set_gamemode_override(false);
 
         // let info = get_gamemode_info(&self.score.playmode).unwrap();
         // let groups = self.score.stats.into_groups(&info.get_stat_groups());

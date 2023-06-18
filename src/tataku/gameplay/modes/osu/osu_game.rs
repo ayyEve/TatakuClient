@@ -900,11 +900,22 @@ impl GameMode for OsuGame {
             }
         }
     }
+
+    
+    fn unpause(&mut self, _manager:&mut IngameManager) {
+        // info!("unpause");
+        if self.use_controller_cursor {
+            // info!("using to controller input");
+            CursorManager::set_gamemode_override(true);
+        } 
+        // else {
+        //     info!("using mouse input");
+        // }
+    }
 }
 
 #[async_trait]
 impl GameModeInput for OsuGame {
-
     async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
         // playfield adjustment
         if key == Key::LControl {
@@ -946,6 +957,11 @@ impl GameModeInput for OsuGame {
     
 
     async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayFrame> {
+        if self.use_controller_cursor {
+            // info!("switched to mouse");
+            CursorManager::set_gamemode_override(false);
+            self.use_controller_cursor = false;
+        }
         self.window_mouse_pos = pos;
         
         if let Some((original, mouse_start)) = self.move_playfield {
@@ -1051,25 +1067,32 @@ impl GameModeInput for OsuGame {
     }
     
     async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayFrame> {
-        self.use_controller_cursor = true;
+        if !self.use_controller_cursor {
+            // info!("switched to controller input");
+            CursorManager::set_gamemode_override(true);
+            self.use_controller_cursor = true;
+        }
 
         let mut new_pos = self.mouse_pos;
         let scaling_helper = self.scaling_helper.clone();
         let playfield = scaling_helper.playfield_scaled_with_cs_border;
 
-        for (axis, &(_new, value)) in axis_data.iter() {
-            match *axis {
-                Axis::LeftStickX => {
-                    // -1.0 to 1.0
-                    // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
-                    let normalized = (value + 1.0) / 2.0;
-                    new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
+        for (axis, &(new, value)) in axis_data.iter() {
+            if new {
+                match *axis {
+                    Axis::LeftStickX => {
+                        // -1.0 to 1.0
+                        // where -1 is 0, and 1 is scaling_helper.playfield_scaled_with_cs_border.whatever
+                        let normalized = (value + 1.0) / 2.0;
+                        new_pos.x = playfield.pos.x + f32::lerp(0.0, playfield.size.x, normalized);
+                    }
+                    Axis::LeftStickY => {
+                        // y is upside down in gilrs i guess?
+                        let normalized = (value + 1.0) / 2.0;
+                        new_pos.y = playfield.pos.y + f32::lerp(playfield.size.y, 0.0, normalized);
+                    }
+                    _ => {},
                 }
-                Axis::LeftStickY => {
-                    let normalized = (value + 1.0) / 2.0;
-                    new_pos.y = playfield.pos.y + f32::lerp(0.0, playfield.size.y, normalized);
-                }
-                _ => {},
             }
         }
 
@@ -1100,9 +1123,7 @@ impl GameModeProperties for OsuGame {
     fn timing_bar_things(&self) -> Vec<(f32, Color)> {
         self.hit_windows
             .iter()
-            .map(|(j, w) | 
-                (w.end, j.color())
-            )
+            .map(|(j, w)| (w.end, j.color()))
             .collect()
     }
 
