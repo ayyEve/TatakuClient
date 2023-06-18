@@ -10,7 +10,7 @@ pub struct Game {
     volume_controller: VolumeControl,
     pub current_state: GameState,
     queued_state: GameState,
-    game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>,
+    game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
     render_queue_sender: TripleBufferSender<RenderData>,
 
     pub dialogs: Vec<Box<dyn Dialog<Self>>>,
@@ -41,7 +41,7 @@ pub struct Game {
     background_loader: Option<AsyncLoader<Option<Image>>>
 }
 impl Game {
-    pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<GameEvent>) -> Game {
+    pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
 
@@ -169,10 +169,9 @@ impl Game {
         loop {
             while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
-                    GameEvent::WindowEvent(Window2GameEvent::FileDrop(path)) => self.handle_file_drop(path).await,
-                    GameEvent::WindowEvent(Window2GameEvent::Closed) => { return self.close_game(); }
-                    GameEvent::WindowEvent(e) => self.input_manager.handle_events(e),
-                    // GameEvent::ControllerEvent(e, name) => self.input_manager.handle_controller_events(e, name),
+                    Window2GameEvent::FileDrop(path) => self.handle_file_drop(path).await,
+                    Window2GameEvent::Closed => { return self.close_game(); }
+                    e => self.input_manager.handle_events(e),
                     _ => {}
                 }
             }
@@ -1090,7 +1089,9 @@ impl Game {
 }
 
 
+#[derive(Default)]
 pub enum GameState {
+    #[default]
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(IngameManager),
@@ -1098,14 +1099,4 @@ pub enum GameState {
 
     Spectating(SpectatorManager), // frames awaiting replay, state, beatmap
     // Multiplaying(MultiplayerState), // wink wink nudge nudge (dont hold your breath)
-}
-impl Default for GameState {
-    fn default() -> Self {
-        GameState::None
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum GameEvent {
-    WindowEvent(Window2GameEvent),
 }

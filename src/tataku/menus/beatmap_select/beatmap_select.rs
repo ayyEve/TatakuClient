@@ -5,7 +5,6 @@ const INFO_BAR_HEIGHT:f32 = 60.0;
 const DRAG_THRESHOLD:f32 = 50.0;
 const DRAG_FACTOR:f32 = 10.0;
 
-
 const DEFAULT_HEIGHT: f32 = 768.0;
 
 

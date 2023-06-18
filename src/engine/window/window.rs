@@ -28,7 +28,7 @@ pub struct GameWindow {
     graphics: GraphicsState,
     settings: SettingsHelper,
 
-    game_event_sender: Arc<Sender<GameEvent>>,
+    game_event_sender: Arc<Sender<Window2GameEvent>>,
     window_event_receiver: UnboundedReceiver<Game2WindowEvent>,
     render_event_receiver: TripleBufferReceiver<RenderData>,
 
@@ -36,7 +36,7 @@ pub struct GameWindow {
     input_timer: Instant,
 
     close_pending: bool,
-    queued_events: Vec<GameEvent>,
+    queued_events: Vec<Window2GameEvent>,
 
 
     // input
@@ -48,7 +48,7 @@ pub struct GameWindow {
     touch_pos: Option<(u64, Vector2)>,
 }
 impl GameWindow {
-    pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<GameEvent>) -> (Self, EventLoop<()>) {
+    pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<Window2GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
         
         let event_loop = EventLoopBuilder::new().build();
@@ -234,7 +234,7 @@ impl GameWindow {
     }
     fn send_game_event(&mut self, event: Window2GameEvent) {
         // try to send without spawning a task.
-        if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(GameEvent::WindowEvent(event)) {
+        if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
 
             // // if this is a mouse pos event, clear all previous mouse pos events since we only care about the final mouse position
             // if let GameEvent::WindowEvent(Window2GameEvent::MouseMove(_)) = &event {
@@ -282,7 +282,7 @@ impl GameWindow {
                 Game2WindowEvent::CloseGame => { 
                     self.close_pending = true;
                     // try send because the game might already be dead at this point
-                    let _ = self.game_event_sender.try_send(GameEvent::WindowEvent(Window2GameEvent::Closed));
+                    let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
                 }
 
                 Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
@@ -469,7 +469,6 @@ impl GameWindow {
 
                 None
             }
-
 
             Touch { phase:TouchPhase::Moved, location, id, .. } => {
                 let touch_pos = Vector2::new(location.x as f32, location.y as f32);
