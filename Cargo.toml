@@ -18,13 +18,11 @@ discord = ["discord-rich-presence"]
 debug_sliders = []
 debug_hitsounds = []
 debug_perf_rating = []
-log_frametimes = []
 storyboards = []
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
 tataku-client-proc-macros = { path = "./proc_macros" }
-# tataku-common = { path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-common" }
 
 # framework stuff
 lazy_static = "1.4"
@@ -38,25 +36,28 @@ triple_buffer = "6.0"
 crossbeam = "*"
 global_value_manager = "*"
 
-
+# image stuff
+png = "*"
 image = "*"
 fontdue = "0.7"
-lyon_tessellation = "*"
+
+# math stuff
+cgmath = "*"
 guillotiere = "*"
+lyon_tessellation = "*"
 
 # windowing
 wgpu = "*"
-raw-window-handle = "0.5"
 bytemuck = { version = "1.12", features = [ "derive" ] }
-cgmath = "*"
 winit = { version = "0.27", features = ["serde"] }
+clipboard = "0.5"
 # gamepad input
 gilrs = { version = "0.10", features = ["serde-serialize"] }
 
 # bass audio
 bass-rs = { version="0.2", optional = true }
 
-# other audio audio
+# other audio
 # kira = "0.7"
 # rustfft = { version = "6.0", optional = true }
 # uuid = { version = "0.8", features = ["v4"], optional = true }
@@ -72,19 +73,17 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
 
-# helpers
+# decoding/encoding/zip stuff
 zip = "0.5"
 md5 = "0.7.0"
-rand = "0.8.4"
-encoding_rs = "0.8"
-chrono = "0.4"
 lzma-rs = "0.2"
-png = "*"
 base64 = "*"
+encoding_rs = "0.8"
+
+# other stuff
+rand = "0.8.4"
+chrono = "0.4"
 fs_extra = "1.2.0"
-deepsize = { version = "*"}
-radix_fmt = "1"
-clipboard = "0.5"
 
 
 # logging
@@ -100,12 +99,3 @@ serde = { version="1.0", features=["derive"] }
 serde_json = "1.0"
 
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
-# tataku-common = { path = "C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-common" }
-
-
-[package.metadata.x]
-run = "cargo run --release"
-run-neb = "cargo run --release --no-default-features --features neb_audio --features discord"
-
-check = "cargo check --release"
-check-neb = "cargo check --release --no-default-features --features neb_audio --features discord"

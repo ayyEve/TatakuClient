@@ -140,7 +140,6 @@ fn save_all_diffs() -> TatakuResult<()> {
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-#[derive(deepsize::DeepSizeOf)]
 pub struct DifficultyEntry {
     pub map_hash: u128,
     pub mods: u128, // ModManager

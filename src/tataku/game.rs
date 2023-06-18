@@ -445,18 +445,6 @@ impl Game {
 
         }
 
-
-        if keys_down.contains(&Key::F8) {
-            tokio::spawn(async {
-                use deepsize::DeepSizeOf;
-
-                let size = BEATMAP_DIFFICULTIES.iter().fold(0, |s, (m, i)| s + i.read().unwrap().deep_size_of() + m.deep_size_of());
-                let len = BEATMAP_DIFFICULTIES.iter().fold(0, |s, (_, i)| s + i.read().unwrap().len());
-
-                info!("diffs are using ~{}bytes ({} entries)", format_number(size), format_number(len))
-            });
-        }
-
         // if keys_down.contains(&Key::D1) && mods.ctrl {
         //     GlobalValueManager::update(Arc::new(CurrentTheme(tataku_theme())))
         // }

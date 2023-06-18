@@ -5,7 +5,6 @@ pub type ModManagerHelper = GlobalValue<ModManager>;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
-#[derive(deepsize::DeepSizeOf)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
     pub speed: u16,
