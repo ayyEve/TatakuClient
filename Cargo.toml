@@ -19,6 +19,7 @@ debug_sliders = []
 debug_hitsounds = []
 debug_perf_rating = []
 storyboards = []
+texture_arrays = []
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }

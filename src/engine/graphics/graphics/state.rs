@@ -108,9 +108,11 @@ impl GraphicsState {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader.wgsl").into()),
+            #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader_with_tex_array.wgsl").into()),
+            #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader.wgsl").into()),
         });
         
+        #[cfg(feature="texture_arrays")]
         let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
             entries: &[
@@ -123,13 +125,65 @@ impl GraphicsState {
                         multisampled: false,
                     },
                     // count: None,
-                    // count: std::num::NonZeroU32::new(layers),
                     count: std::num::NonZeroU32::new(LAYER_COUNT + RENDER_TARGET_LAYERS),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        #[cfg(not(feature="texture_arrays"))]
+        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("atlas group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
                     count: None,
                 },
             ],
@@ -244,9 +298,9 @@ impl GraphicsState {
         });
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToBorder,
-            address_mode_v: wgpu::AddressMode::ClampToBorder,
-            address_mode_w: wgpu::AddressMode::ClampToBorder,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
@@ -596,7 +650,10 @@ impl GraphicsState {
         // }))
         .collect::<Vec<_>>();
 
+
+        #[cfg(feature="texture_arrays")]
         let view_list = textures.iter().map(|a|&a.1).collect::<Vec<_>>();
+        #[cfg(feature="texture_arrays")]
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("texture array bind group"),
             layout: &layout,
@@ -612,6 +669,33 @@ impl GraphicsState {
             ],
         });
 
+        #[cfg(not(feature="texture_arrays"))]
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("texture array bind group"),
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&textures[0].1),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&textures[1].1),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&textures[2].1),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&textures[3].1),
+                },
+            ],
+        });
         WgpuTexture {
             textures: Arc::new(textures),
             bind_group

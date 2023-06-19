@@ -44,7 +44,6 @@ fn vs_main(input: VertexInputs) -> VertexOutputs {
     output.vertex_col = input.vertex_col;
     output.scissor_index = input.scissor_index;
 
-
     return output;
 }
 
@@ -58,32 +57,18 @@ struct Scissor {
 
 //TODO: keep an eye on the spec, once we are able to support texture and sampler arrays, PLEASE USE THEM
 //The texture we're sampling
-@group(1) @binding(0) var s: sampler;
-@group(1) @binding(1) var texture1: texture_2d<f32>;
-@group(1) @binding(2) var texture2: texture_2d<f32>;
-@group(1) @binding(3) var texture3: texture_2d<f32>;
-@group(1) @binding(4) var texture4: texture_2d<f32>;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>, 4>;
 //The sampler we're using to sample the texture
+@group(1) @binding(1) var s: sampler;
 @group(2) @binding(0) var<storage,read_write> scissors: binding_array<Scissor, 5000>;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     var i = input.tex_index;
     if (i == -1) { i = 0; }
+    
+    var ts = textureSample(textures[i], s, input.tex_coord);
 
-    let ts1 = textureSample(texture1, s, input.tex_coord);
-    let ts2 = textureSample(texture2, s, input.tex_coord);
-    let ts3 = textureSample(texture3, s, input.tex_coord);
-    let ts4 = textureSample(texture4, s, input.tex_coord);
-    var ts = ts1;
-
-    switch input.tex_index {
-        case 1: { ts = ts2; }
-        case 2: { ts = ts3; }
-        case 3: { ts = ts4; }
-        default: { ts = ts1; }
-    }
- 
     if (input.scissor_index > 0u) {
         let scissor = scissors[input.scissor_index - 1u];
         if (input.position.x < scissor.x1 
