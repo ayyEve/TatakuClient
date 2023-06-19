@@ -35,6 +35,9 @@ pub struct UTypingGame {
     // auto_helper: UTypingAutoHelper,
 
     game_settings: Arc<TaikoSettings>,
+
+
+    autoplay_queue: Option<(Vec<char>, f32, f32)>
 }
 impl UTypingGame {
     #[inline]
@@ -63,6 +66,7 @@ impl GameMode for UTypingGame {
 
             // auto_helper: UTypingAutoHelper::new(),
             game_settings: settings.clone(),
+            autoplay_queue: None
         };
 
         match beatmap {
@@ -166,12 +170,32 @@ impl GameMode for UTypingGame {
 
         // do autoplay things
         if manager.current_mods.has_autoplay() {
+            let mut next_note_time = self.notes.next_note().map(|n|n.time()).unwrap_or(0.0);
 
-            if let Some(current_note) = self.notes.current_note() {
-                if current_note.time() <= time {
-                    for c in current_note.get_chars() {
-                        autoplay_list.push(ReplayFrame::MousePos(c as u8 as f32, 0.0))
+
+            if let Some((queue, delay, last_hit)) = &mut self.autoplay_queue {
+                if time - *last_hit > *delay {
+                    *last_hit = time;
+
+                    let char = queue.remove(0);
+                    autoplay_list.push(ReplayFrame::MousePos(char as u8 as f32, 0.0));
+                }
+
+                if queue.len() == 0 {
+                    self.autoplay_queue = None;
+                }
+            } else {
+                if let Some(current_note) = self.notes.current_note() {
+                    if current_note.time() <= time {
+                        let chars = current_note.get_chars();
+                        let len = (chars.len() * 2 + 1) as f32;
+
+                        if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
+                        let delay = (next_note_time - current_note.time()) / len;
+
+                        self.autoplay_queue = Some((chars, delay, time - delay));
                     }
+
                 }
             }
             // let mut pending_frames = Vec::new();

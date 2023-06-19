@@ -148,7 +148,8 @@ impl HitObject for UTypingNote {
         rect.size.y = 32.0;
 
         // add romaji variants
-        rect.pos.y = self.pos.y + size.y;
+        let height = self.settings.note_radius * self.settings.big_note_multiplier * 2.0 + self.settings.playfield_height_padding;
+        rect.pos.y = self.pos.y + height / 2.0;
 
         let prefix = self.branches.current_text();
         let complete_color = Color::RED;
