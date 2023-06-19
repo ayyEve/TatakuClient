@@ -367,6 +367,11 @@ impl GameWindow {
     }
 
     pub fn render(&mut self) {
+        let inner_size = self.window.inner_size();
+        if inner_size.width == 0 || inner_size.height == 0 {
+            return
+        }
+
         let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
         let data = self.render_event_receiver.read();
 
