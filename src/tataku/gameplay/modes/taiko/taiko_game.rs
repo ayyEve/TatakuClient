@@ -20,9 +20,9 @@ use crate::prelude::*;
 use super::prelude::*;
 
 // depths
-const PLAYFIELD_DEPTH:f32 = 8002.0;
-const HIT_AREA_DEPTH:f32 = 8001.0;
-const TIMING_BAR_DEPTH:f32 = 8001.5;
+const PLAYFIELD_DEPTH:f32 = 1002.0;
+const HIT_AREA_DEPTH:f32 = 1001.0;
+const TIMING_BAR_DEPTH:f32 = 1001.5;
 const NOTE_DEPTH_RANGE:Range<f32> = -100.0..100.0;
 const HIT_INDICATOR_DEPTH: f32 = -101.0;
 
