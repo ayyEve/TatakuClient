@@ -462,17 +462,18 @@ impl GameMode for OsuGame {
                 if check_notes.len() == 0 { return } // no notes to check
                 check_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
                 
+                for note in check_notes {
+                    let note_time = note.time();
 
-                let note = &mut check_notes[0];
-                let note_time = note.time();
+                    // spinners are a special case. hit windows don't affect them, or else you can miss for no reason lol
+                    // if note.note_type() == NoteType::Spinner {
+                    //     return;
+                    // }
 
-                // spinners are a special case. hit windows don't affect them, or else you can miss for no reason lol
-                // if note.note_type() == NoteType::Spinner {
-                //     return;
-                // }
+                    // check distance
+                    if !note.check_distance(self.mouse_pos) { continue; }
 
-                // check distance
-                if note.check_distance(self.mouse_pos) {
+                    // get the judgment
                     if let Some(judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
                         note.set_judgment(judge);
 
@@ -493,8 +494,9 @@ impl GameMode for OsuGame {
                             let hitsound = note.get_hitsound();
                             manager.play_note_sound(&hitsound).await;
                         }
-
                     }
+
+                    break;
                 }
             }
             // dont continue if no keys were being held (happens when leaving a menu)
