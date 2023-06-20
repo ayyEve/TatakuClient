@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use souvlaki::{ MediaControlEvent, MediaControls, MediaMetadata, SeekDirection, MediaPlayback, MediaPosition };
+use souvlaki::{ MediaControlEvent, MediaMetadata, SeekDirection, MediaPlayback, MediaPosition };
 
 /// how long to wait between events of the same type before handling the next in ms (should help with windows event spam)
 const MINIMUM_WAIT_BETWEEN_EVENTS:f32 = 100.0;
@@ -93,11 +93,17 @@ impl MediaControlHelper {
     }
 }
 
-// impl Drop for MediaControlHelper {
-//     fn drop(&mut self) {
-//         let _ = self.controls.lock().detach();
-//     }
-// }
+impl Drop for MediaControlHelper {
+    fn drop(&mut self) {
+        let controls = GameWindow::get_media_controls();
+        let mut lock = controls.lock();
+        let _ = lock.set_metadata(MediaMetadata::default());
+        let _ = lock.set_playback(MediaPlayback::Stopped);
+        // for some reason on windows if you detach here, it causes issues when you re-attach. i have no idea why
+        #[cfg(not(target_os="windows"))] 
+        let _ = lock.detach();
+    }
+}
 
 // helper for converting media control events
 impl From<MediaControlEvent> for MediaControlHelperEvent {
