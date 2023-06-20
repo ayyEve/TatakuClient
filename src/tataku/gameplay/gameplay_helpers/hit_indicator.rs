@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-const POINTS_DRAW_FADE_DURATION:f32 = 60.0;
+// const POINTS_DRAW_FADE_DURATION:f32 = 200.0;
 
 pub trait JudgementIndicator: Send + Sync{
     fn should_keep(&self, map_time: f32) -> bool;
@@ -47,7 +47,8 @@ impl JudgementIndicator for BasicJudgementIndicator {
     }
 
     fn draw(&mut self, map_time: f32, list: &mut RenderableCollection) {
-        let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - POINTS_DRAW_FADE_DURATION))) / POINTS_DRAW_FADE_DURATION).clamp(0.0, 1.0);
+        let fade_duration = self.draw_duration / 2.0;
+        let alpha = (1.0 - (map_time - (self.time + (self.draw_duration - fade_duration))) / fade_duration).clamp(0.0, 1.0);
         
         if let Some(img) = &self.image {
             let mut img = img.clone();
