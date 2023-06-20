@@ -140,13 +140,10 @@ impl AsyncFpsDisplay {
             self.pos = self.window_size.0 - Vector2::new(SIZE.x, SIZE.y * (self.pos_count+1) as f32)
         }
         
-        let now = Instant::now();
-        let fps_elapsed = now.duration_since(self.timer).as_secs_f32() * 1000.0;
-
-        
+        let fps_elapsed = self.timer.as_millis();
         if fps_elapsed >= 100.0 {
             // reset timer
-            self.timer = now;
+            self.timer = Instant::now();
 
             // update frametime and last updates/s
             self.frametime_last_draw = self.frametime_last.swap(0, SeqCst) as f32 / 100.0; // restore 2 decimal places

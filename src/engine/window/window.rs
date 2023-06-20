@@ -160,8 +160,11 @@ impl GameWindow {
         self.apply_vsync();
 
         event_loop.run(move |event, _, control_flow| {
+            control_flow.set_wait_timeout(Duration::from_nanos(5));
             self.update();
             if self.close_pending { *control_flow = ControlFlow::Exit; }
+
+            // control_flow.set_wait_until(instant)
 
             let event = match event {
                 Event::WindowEvent { window_id:_, event } => {
