@@ -637,6 +637,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         if let Some(song) = AudioManager::get_song().await {
             // set any time mods
             song.set_rate(self.mods.get_speed());
+
+            // ensure song is playing
+            song.play(false);
         }
 
         // load maps

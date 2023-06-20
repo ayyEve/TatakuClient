@@ -55,7 +55,7 @@ clipboard = "0.5"
 # gamepad input
 gilrs = { version = "0.10", features = ["serde-serialize"] }
 # media controls
-souvlaki = { version = "0.6", git = "https://github.com/ayyEve/souvlaki.git" }
+souvlaki = { version = "0.6", features = ["use_zbus"], git = "https://github.com/ayyEve/souvlaki.git" }
 raw-window-handle = "*"
 
 # bass audio

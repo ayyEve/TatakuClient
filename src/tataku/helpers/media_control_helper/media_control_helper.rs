@@ -53,7 +53,7 @@ impl MediaControlHelper {
         };
 
         // only update once every Xms
-        if last_state == current_state && current_elapsed - last_elapsed < 100.0 { return }
+        if last_state == current_state && current_elapsed - last_elapsed < 1000.0 { return }
         self.last_state = song_state;
 
         // update the playback state
@@ -70,7 +70,7 @@ impl MediaControlHelper {
         let mut img_url = String::new();
         let mut info = if let Some(map) = map {
             img_url = "file://".to_owned() + Path::new(&map.image_filename).canonicalize().map(|p|p.to_string_lossy().to_string()).unwrap_or_default().trim_start_matches("\\\\?\\");
-            info!("Using media url: {img_url}");
+            // info!("Using media url: {img_url}");
             MediaMetadata {
                 title: Some(&map.title),
                 artist: Some(&map.artist),
@@ -100,8 +100,8 @@ impl Drop for MediaControlHelper {
         let _ = lock.set_metadata(MediaMetadata::default());
         let _ = lock.set_playback(MediaPlayback::Stopped);
         // for some reason on windows if you detach here, it causes issues when you re-attach. i have no idea why
-        #[cfg(not(target_os="windows"))] 
-        let _ = lock.detach();
+        // #[cfg(not(target_os="windows"))] 
+        // let _ = lock.detach();
     }
 }
 
