@@ -382,10 +382,6 @@ impl AsyncMenu<Game> for MainMenu {
         if mods.ctrl && key == Key::N {
             NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
         }
-        
-        if key == Key::O && mods.ctrl {
-            game.add_dialog(Box::new(SettingsMenu::new().await), false);
-        }
 
         let mut needs_manager_setup = false;
         // if mods.ctrl && key == Key::Up {

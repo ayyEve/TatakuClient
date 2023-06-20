@@ -172,7 +172,6 @@ impl Game {
                     Window2GameEvent::FileDrop(path) => self.handle_file_drop(path).await,
                     Window2GameEvent::Closed => { return self.close_game(); }
                     e => self.input_manager.handle_events(e),
-                    _ => {}
                 }
             }
 
@@ -205,7 +204,8 @@ impl Game {
                     update_target = 1.0 / last_update_target;
                 }
 
-                if self.settings.current_skin != self.last_skin {
+                let skin_changed = self.settings.current_skin != self.last_skin;
+                if skin_changed {
                     SkinManager::change_skin(self.settings.current_skin.clone()).await;
                     self.last_skin = self.settings.current_skin.clone();
                 }
@@ -220,6 +220,20 @@ impl Game {
 
                 // update doubletap protection
                 self.input_manager.set_double_tap_protection(self.settings.enable_double_tap_protection.then(|| self.settings.double_tap_protection_duration));
+
+                // update game mode with new information
+                match &mut self.current_state {
+                    GameState::Ingame(igm) => {
+                        if skin_changed { igm.reload_skin().await; }
+                        igm.force_update_settings().await;
+                    }
+                    GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager { 
+                        if skin_changed { igm.reload_skin().await; }
+                        igm.force_update_settings().await;
+                    },
+                    _ => {}
+                }
+
             }
 
 
@@ -465,6 +479,10 @@ impl Game {
         //     GlobalValueManager::update(Arc::new(CurrentTheme(osu_theme())))
         // }
 
+        if keys_down.contains(&Key::O) && mods.ctrl {
+            self.add_dialog(Box::new(SettingsMenu::new().await), false);
+        }
+
         // update any dialogs
         use crate::async_retain;
 
@@ -502,6 +520,7 @@ impl Game {
         // add any new dialogs to the end of the list
         dialog_list.extend(std::mem::take(&mut self.dialogs));
         self.dialogs = dialog_list;
+
 
 
         // run update on current state

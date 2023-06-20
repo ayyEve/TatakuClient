@@ -862,6 +862,8 @@ impl GameMode for OsuGame {
         let settings = settings.standard_settings.clone();
         let settings = Arc::new(settings);
 
+        if self.game_settings == settings { return }
+
         self.game_settings = settings.clone();
         for n in self.notes.iter_mut() {
             n.set_settings(settings.clone());

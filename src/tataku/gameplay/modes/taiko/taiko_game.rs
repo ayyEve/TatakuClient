@@ -820,13 +820,15 @@ impl GameMode for TaikoGame {
 
 
     async fn force_update_settings(&mut self, settings: &Settings) {
+        let mut settings = settings.taiko_settings.clone();
+        settings.init_settings().await;
+
+        if &settings == &*self.taiko_settings { return }
+        let settings = Arc::new(settings);
+
         let old_sv_mult = self.taiko_settings.sv_multiplier;
         let sv_static = self.current_mods.has_mod(NoSV.name());
-        
-        let mut settings = settings.taiko_settings.clone();
-        // calculate the hit area
-        settings.init_settings().await;
-        let settings = Arc::new(settings);
+
         self.taiko_settings = settings.clone();
 
 
