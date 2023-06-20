@@ -5,11 +5,14 @@ use winit::{
     event_loop::{ControlFlow, EventLoopBuilder, EventLoop},
     window::WindowBuilder
 };
+use souvlaki::{ MediaControls, PlatformConfig };
 use std::sync::atomic::Ordering::{ Acquire, Relaxed };
 use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
 
 static WINDOW_EVENT_QUEUE:OnceCell<UnboundedSender<Game2WindowEvent>> = OnceCell::const_new();
 pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
+static MEDIA_CONTROLS:OnceCell<Arc<Mutex<MediaControls>>> = OnceCell::const_new();
+
 
 lazy_static::lazy_static! {
     pub(super) static ref MONITORS: Arc<RwLock<Vec<String>>> = Default::default();
@@ -91,6 +94,31 @@ impl GameWindow {
             Err(e) => warn!("error setting window icon: {}", e)
         }
 
+        // create media controls 
+        {
+            #[cfg(not(target_os = "windows"))]
+            let hwnd = None;
+
+            #[cfg(target_os = "windows")]
+            let hwnd = {
+                use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+
+                let handle = match window.raw_window_handle() {
+                    RawWindowHandle::Win32(h) => h,
+                    _ => unreachable!(),
+                };
+                Some(handle.hwnd)
+            };
+
+            let config = PlatformConfig {
+                dbus_name: "tataku.player",
+                display_name: "Tataku!",
+                hwnd,
+            };
+            
+            let controls = MediaControls::new(config).unwrap();
+            let _ = MEDIA_CONTROLS.set(Arc::new(Mutex::new(controls)));
+        }
 
         let s = Self {
             window,
@@ -171,6 +199,21 @@ impl GameWindow {
                         }
 
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Home), state: ElementState::Pressed, .. }, .. } => {
+
+                            {
+                                let controls = Self::get_media_controls();
+                                let mut lock = controls.lock();
+                                lock.set_playback(souvlaki::MediaPlayback::Playing { progress: None }).unwrap();
+                                
+                                lock.set_metadata(souvlaki::MediaMetadata {
+                                    title: Some("test123"),
+                                    artist: Some("test123"),
+                                    album: None,
+                                    cover_url: Some("file://C:\\Users\\Eve\\Desktop\\vtuber\\Beta.png"),
+                                    duration: Some(Duration::from_millis(50_000))
+                                }).unwrap();
+                            }
+
                             self.mouse_helper.reset_cursor_pos(&mut self.window);
                             Window2GameEvent::MouseMove(Vector2::ZERO)
                         }
@@ -310,6 +353,7 @@ impl GameWindow {
                 break;
             }
         }
+
     }
     
     fn run_load_image_event(&mut self, event: LoadImage) {
@@ -393,6 +437,9 @@ impl GameWindow {
 
 // input and state stuff
 impl GameWindow {
+    pub fn get_media_controls() -> Arc<Mutex<MediaControls>> {
+        MEDIA_CONTROLS.get().cloned().unwrap()
+    }
 
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window.available_monitors().filter_map(|m|m.name()).collect();

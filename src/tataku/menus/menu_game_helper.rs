@@ -134,7 +134,7 @@ impl MenuGameHelper {
         
         match AudioManager::get_song().await {
             Some(song) => {
-                if !song.is_playing() {
+                if !song.is_playing() && !song.is_paused() {
                     // restart the song at the preview point
                     if let Some(map) = &self.current_beatmap.clone().0 {
                         let _ = song.set_position(map.audio_preview);

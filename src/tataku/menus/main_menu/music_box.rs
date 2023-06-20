@@ -42,11 +42,10 @@ pub struct MusicBox {
     texts: Vec<Text>,
     actions: Vec<FontAwesome>,
 
-    next_pending: AtomicBool,
-    prev_pending: AtomicBool,
+    event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,
 }
 impl MusicBox {
-    pub async fn new() -> Self {
+    pub async fn new(event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,) -> Self {
         // this is a big mess
         let window_size = WindowSize::get();
         let mut size = Vector2::ZERO;
@@ -103,27 +102,7 @@ impl MusicBox {
             song_time: 0.0, 
             song_duration: 0.0, 
 
-            next_pending: AtomicBool::new(false), 
-            prev_pending: AtomicBool::new(false), 
-        }
-    }
-    pub fn get_next_pending(&self) -> bool {
-        let val = &self.next_pending;
-
-        if val.load(SeqCst) {
-            val.store(false, SeqCst);
-            true
-        } else {
-            false
-        }
-    }
-    pub fn get_prev_pending(&self) -> bool {
-        let val = &self.prev_pending;
-        if val.load(SeqCst) {
-            val.store(false, SeqCst);
-            true
-        } else {
-            false
+            event_sender,
         }
     }
 
@@ -134,47 +113,23 @@ impl MusicBox {
         self.song_duration = time;
     }
 
-    fn pause_or_resume() {
-        tokio::spawn(async {
-            if let Some(s) = AudioManager::get_song().await {
-                if s.is_stopped() { 
-                    s.play(true); 
-                } else if s.is_playing() {
-                    s.pause()
-                } else if s.is_paused() {
-                    s.play(false);
-                }
-            }
-        });
+    fn pause_or_resume(&self) {
+        let _ = self.event_sender.send(MediaControlHelperEvent::Toggle);
     }
-    fn stop() {
-        tokio::spawn(async {
-            if let Some(s) = AudioManager::get_song().await {
-                s.stop();
-            }
-        });
+    fn stop(&self) {
+        let _ = self.event_sender.send(MediaControlHelperEvent::Stop);
     }
-    fn skip_ahead() {
-        tokio::spawn(async {
-            if let Some(s) = AudioManager::get_song().await {
-                let current_pos = s.get_position();
-                s.set_position(current_pos + SKIP_AMOUNT);
-            }
-        });
+    fn skip_ahead(&self) {
+        let _ = self.event_sender.send(MediaControlHelperEvent::SeekForwardBy(SKIP_AMOUNT));
     }
-    fn skip_behind() {
-        tokio::spawn(async {
-            if let Some(s) = AudioManager::get_song().await {
-                let current_pos = s.get_position();
-                s.set_position((current_pos - SKIP_AMOUNT).max(0.0));
-            }
-        });
+    fn skip_behind(&self) {
+        let _ = self.event_sender.send(MediaControlHelperEvent::SeekBackwardBy(SKIP_AMOUNT));
     }
     fn next(&self) {
-        self.next_pending.store(true, SeqCst);
+        let _ = self.event_sender.send(MediaControlHelperEvent::Next);
     }
     fn previous(&self) {
-        self.prev_pending.store(true, SeqCst);
+        let _ = self.event_sender.send(MediaControlHelperEvent::Previous);
     }
 }
 impl ScrollableItem for MusicBox {
@@ -196,15 +151,15 @@ impl ScrollableItem for MusicBox {
             if rect.contains(pos) {
                 match self.actions.get(i) {
                     Some(&FontAwesome::Play)
-                    | Some(&FontAwesome::Circle_Play) => Self::pause_or_resume(),
+                    | Some(&FontAwesome::Circle_Play) => self.pause_or_resume(),
                     
                     Some(&FontAwesome::Stop)
-                    | Some(&FontAwesome::Circle_Stop) => Self::stop(),
+                    | Some(&FontAwesome::Circle_Stop) => self.stop(),
 
                     Some(&FontAwesome::Backward) => self.previous(),
                     Some(&FontAwesome::Forward) => self.next(),
-                    Some(&FontAwesome::Backward_Step) => Self::skip_behind(),
-                    Some(&FontAwesome::Forward_Step) =>  Self::skip_ahead(),
+                    Some(&FontAwesome::Backward_Step) => self.skip_behind(),
+                    Some(&FontAwesome::Forward_Step) =>  self.skip_ahead(),
 
                     _ => warn!("unknown action"),
                 }

@@ -3,10 +3,12 @@ use crate::prelude::*;
 mod crypto;
 mod score_helper;
 mod score_submit_helper;
+mod media_control_helper;
 
 pub use crypto::*;
 pub use score_helper::*;
 pub use score_submit_helper::*;
+pub use media_control_helper::*;
 
 
 

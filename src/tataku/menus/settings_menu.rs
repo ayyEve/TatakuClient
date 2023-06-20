@@ -118,29 +118,6 @@ impl Dialog<Game> for SettingsMenu {
         // self.menu_game.fit_to_area(pos, size).await;
     }
     
-    // async fn on_change(&mut self, into:bool) {
-    //     if into {
-    //         get_settings_mut!().skip_autosaveing = true;
-
-    //         // update our window size
-    //         self.window_size_changed(WindowSize::get()).await;
-
-    //         // play song if it exists
-    //         if let Some(song) = AudioManager::get_song().await {
-    //             // reset any time mods
-
-    //             song.set_rate(1.0);
-    //             // // play
-    //             // song.play(true);
-    //         }
-
-    //         self.menu_game.setup().await;
-    //     } else {
-    //         debug!("leaving settings menu");
-    //     }
-    // }
-
-    
     async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
         self.scroll_area.draw(Vector2::ZERO, depth, list);
 
@@ -176,9 +153,6 @@ impl Dialog<Game> for SettingsMenu {
 
         if key == Key::Escape {
             self.finalize().await;
-            // let menu = game.menus.get("main").unwrap().clone();
-            // game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
-            // return true;
         }
 
         true
@@ -193,26 +167,6 @@ impl Dialog<Game> for SettingsMenu {
         if let Ok(Ok(_)) = self.change_receiver.try_lock().map(|e|e.try_recv()) {
             self.update_settings().await;
         }
-
-        // self.menu_game.update().await;
-        
-        
-        // let mut song_done = false;
-        // match AudioManager::get_song().await {
-        //     Some(song) => {
-        //         if !song.is_playing() && !song.is_paused() {
-        //             song_done = true;
-        //         }
-        //     }
-        //     _ => song_done = true,
-        // }
-
-        // if song_done {
-        //     trace!("song done");
-        //     BEATMAP_MANAGER.write().await.next_beatmap(game).await;
-        //     // self.menu_game.setup().await;
-        // }
-
 
         self.scroll_area.update()
     }

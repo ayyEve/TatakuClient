@@ -31,6 +31,8 @@ pub use winit::event::VirtualKeyCode as Key;
 
 // tokio imports
 pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };
+pub use tokio::sync::mpsc::{UnboundedSender as AsyncUnboundedSender, UnboundedReceiver as AsyncUnboundedReceiver, unbounded_channel as async_unbounded_channel};
+pub use tokio::sync::mpsc::{Sender as AsyncSender, Receiver as AsyncReceiver, channel as async_channel};
 
 pub use parking_lot::{ Mutex, RwLock };
 

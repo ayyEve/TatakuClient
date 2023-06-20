@@ -22,7 +22,6 @@ pub struct MainMenu {
 
     visualization: MenuVisualization,
     menu_game: MenuGameHelper,
-    music_box: MusicBox,
 
     selected_index: usize,
     menu_visible: bool,
@@ -33,6 +32,11 @@ pub struct MainMenu {
     song_display: CurrentSongDisplay,
     new_map_helper: LatestBeatmapHelper,
     current_skin: CurrentSkinHelper,
+
+    music_box: MusicBox,
+    media_controls: MediaControlHelper,
+    event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,
+    event_receiver: AsyncUnboundedReceiver<MediaControlHelperEvent>,
 }
 impl MainMenu {
     pub async fn new() -> MainMenu {
@@ -53,7 +57,7 @@ impl MainMenu {
         settings_button.visible = false;
         exit_button.visible = false;
 
-        let visualization = MenuVisualization::new().await;
+        let (event_sender, event_receiver) = async_unbounded_channel();
 
         MainMenu {
             play_button,
@@ -61,18 +65,23 @@ impl MainMenu {
             settings_button,
             exit_button,
 
-            visualization,
+            visualization: MenuVisualization::new().await,
             menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
             menu_visible: false,
-            music_box: MusicBox::new().await,
+            music_box: MusicBox::new(event_sender.clone()).await,
+            media_controls: MediaControlHelper::new(event_sender.clone()),
+
+            event_sender, 
+            event_receiver,
+
 
             settings: SettingsHelper::new(),
             window_size,
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
             new_map_helper: LatestBeatmapHelper::new(),
-            current_skin: CurrentSkinHelper::new()
+            current_skin: CurrentSkinHelper::new(),
         }
     }
 
@@ -81,7 +90,11 @@ impl MainMenu {
         self.settings.update();
 
         if let Some(song) = AudioManager::get_song().await {
-            self.music_box.update_song_duration(song.get_duration());
+            let duration = song.get_duration();
+            self.music_box.update_song_duration(duration);
+
+            let map = &CurrentBeatmapHelper::new().0;
+            self.media_controls.update_info(map, duration);
         }
 
         let settings = self.settings.background_game_settings.clone();
@@ -174,7 +187,7 @@ impl MainMenu {
     }
     async fn previous(&mut self, game: &mut Game) -> bool {
         let mut manager = BEATMAP_MANAGER.write().await;
-
+        
         if manager.previous_beatmap(game).await {
             Self::update_online();
             true
@@ -248,9 +261,51 @@ impl AsyncMenu<Game> for MainMenu {
             i.update()
         }
 
+
         match AudioManager::get_song().await {
             Some(song) => {
-                self.music_box.update_song_time(song.get_position());
+                let elapsed = song.get_position();
+                let state = if song.is_stopped() {
+                    MediaPlaybackState::Stopped
+                } else if song.is_paused() {
+                    MediaPlaybackState::Paused(elapsed)
+                } else if song.is_playing() {
+                    MediaPlaybackState::Playing(elapsed)
+                } else {
+                    //  ??
+                    unreachable!()
+                };
+
+                self.music_box.update_song_time(elapsed);
+                self.media_controls.update(state).await;
+
+                if let Ok(event) = self.event_receiver.try_recv() {
+                    match event {
+                        MediaControlHelperEvent::Play => song.play(false),
+                        MediaControlHelperEvent::Pause => song.pause(),
+                        MediaControlHelperEvent::Stop => song.stop(),
+                        MediaControlHelperEvent::Toggle => {
+                            if song.is_stopped() { 
+                                song.play(true); 
+                            } else if song.is_playing() {
+                                song.pause()
+                            } else if song.is_paused() {
+                                song.play(false);
+                            }
+                        }
+                        MediaControlHelperEvent::Next     => { let _ = self.next(g).await; }
+                        MediaControlHelperEvent::Previous => { let _ = self.previous(g).await; }
+                        MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
+                        MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
+                        MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
+                        MediaControlHelperEvent::SeekBackwardBy(amt) => song.set_position(elapsed - amt),
+                        MediaControlHelperEvent::SetPosition(pos) => song.set_position(pos),
+                        // MediaControlHelperEvent::OpenUri(_) => todo!(),
+                        // MediaControlHelperEvent::Raise => todo!(),
+                        // MediaControlHelperEvent::Quit => todo!(),
+                        _ => {}
+                    }
+                }
 
                 if !song.is_playing() && !song.is_paused() {
                     song_done = true;
@@ -271,6 +326,7 @@ impl AsyncMenu<Game> for MainMenu {
             }
         }
 
+        
         if self.new_map_helper.update() {
             BEATMAP_MANAGER.write().await.set_current_beatmap(g, &self.new_map_helper.0, false).await;
             self.setup_manager("update new map").await;
@@ -286,7 +342,6 @@ impl AsyncMenu<Game> for MainMenu {
                 self.hide_menu();
             }
         }
-
 
     }
 
@@ -359,14 +414,14 @@ impl AsyncMenu<Game> for MainMenu {
             }
         }
 
-        if self.music_box.get_next_pending() {
-            self.next(game).await;
-            self.setup_manager("on_click next_pending").await
-        }
-        if self.music_box.get_prev_pending() {
-            self.previous(game).await;
-            self.setup_manager("on_click prev_pending").await
-        }
+        // if self.music_box.get_next_pending() {
+        //     self.next(game).await;
+        //     self.setup_manager("on_click next_pending").await
+        // }
+        // if self.music_box.get_prev_pending() {
+        //     self.previous(game).await;
+        //     self.setup_manager("on_click prev_pending").await
+        // }
 
     }
 
@@ -441,7 +496,7 @@ impl AsyncMenu<Game> for MainMenu {
         self.exit_button.window_size_changed(&window_size);
 
         self.window_size = window_size.clone();
-        self.music_box = MusicBox::new().await;
+        self.music_box = MusicBox::new(self.event_sender.clone()).await;
 
         self.menu_game.window_size_changed(window_size).await;
     }

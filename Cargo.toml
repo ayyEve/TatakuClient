@@ -54,6 +54,9 @@ winit = { version = "0.27", features = ["serde"] }
 clipboard = "0.5"
 # gamepad input
 gilrs = { version = "0.10", features = ["serde-serialize"] }
+# media controls
+souvlaki = { version = "0.6", git = "https://github.com/ayyEve/souvlaki.git" }
+raw-window-handle = "*"
 
 # bass audio
 bass-rs = { version="0.2", optional = true }
