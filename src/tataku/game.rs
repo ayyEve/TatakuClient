@@ -318,6 +318,19 @@ impl Game {
         let mut controller_down = self.input_manager.get_controller_down();
         let mut controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
+        
+        
+        // update cursor
+        if mouse_down.contains(&MouseButton::Left) {
+            CursorManager::left_pressed(true, false)
+        } else if mouse_up.contains(&MouseButton::Left) {
+            CursorManager::left_pressed(false, false)
+        }
+        if mouse_down.contains(&MouseButton::Right) {
+            CursorManager::right_pressed(true, false)
+        } else if mouse_up.contains(&MouseButton::Right) {
+            CursorManager::right_pressed(false, false)
+        }
 
         let mut controller_pause = false;
         for (_c, b) in controller_down.iter() {
@@ -367,7 +380,7 @@ impl Game {
                     self.dialogs.retain(|d|d.name() != "Chat");
                 }
                 
-                self.add_dialog(Box::new(UserPanel::new()));
+                self.add_dialog(Box::new(UserPanel::new()), false);
             } else {
                 self.dialogs.retain(|d|d.name() != "UserPanel");
             }
@@ -490,20 +503,6 @@ impl Game {
         dialog_list.extend(std::mem::take(&mut self.dialogs));
         self.dialogs = dialog_list;
 
-        
-        // update cursor
-        // if mouse_moved {CursorManager::set_pos(mouse_pos, false)}
-        if mouse_down.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(true, false)
-        } else if mouse_up.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(false, false)
-        }
-        if mouse_down.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(true, false)
-        } else if mouse_up.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(false, false)
-        }
-
 
         // run update on current state
         match &mut current_state {
@@ -586,9 +585,9 @@ impl Game {
 
 
                 // TODO: this is temp
-                if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await)) }
+                if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
                 // TODO: this too
-                if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await)) }
+                if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
 
                 // check keys down
                 for key in keys_down {menu.on_key_press(key, self, mods).await}
@@ -893,7 +892,13 @@ impl Game {
         }
     }
 
-    pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>) {
+    pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>, allow_duplicates: bool) {
+        if !allow_duplicates {
+            // check if said dialog already exists, if so, dont add it
+            let name = dialog.name();
+            if let Some(_) = self.dialogs.iter().find(|n|n.name() == name) { return }
+        }
+
         self.dialogs.push(dialog)
     }
 

@@ -425,7 +425,7 @@ impl BeatmapSelectMenu {
             if button == MouseButton::Right {
                 // clicked hash is the target
                 let dialog = BeatmapDialog::new(clicked_hash.clone());
-                game.add_dialog(Box::new(dialog));
+                game.add_dialog(Box::new(dialog), false);
                 info!("right click")
             }
 
@@ -746,6 +746,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         use Key::*;
 
+        if key == Key::O && mods.ctrl {
+            game.add_dialog(Box::new(SettingsMenu::new().await), false);
+        }
+
         if key == Key::M && mods.ctrl { 
             let mut found = false;
             for d in game.dialogs.iter_mut() {
@@ -769,7 +773,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                     groups = info.get_mods();
                 }
 
-                game.add_dialog(Box::new(ModDialog::new(groups).await)) 
+                game.add_dialog(Box::new(ModDialog::new(groups).await), false) 
             }
         }
 

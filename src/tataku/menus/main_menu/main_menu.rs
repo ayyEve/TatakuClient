@@ -341,7 +341,8 @@ impl AsyncMenu<Game> for MainMenu {
         // open settings menu
         if self.settings_button.on_click(pos, button, mods) {
             // let menu = Arc::new(Mutex::new());
-            game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
+            game.add_dialog(Box::new(SettingsMenu::new().await), false);
+            // game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
             return;
         }
 
@@ -380,6 +381,10 @@ impl AsyncMenu<Game> for MainMenu {
         self.reset_timer();
         if mods.ctrl && key == Key::N {
             NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
+        }
+        
+        if key == Key::O && mods.ctrl {
+            game.add_dialog(Box::new(SettingsMenu::new().await), false);
         }
 
         let mut needs_manager_setup = false;
@@ -485,7 +490,7 @@ impl ControllerInputMenu<Game> for MainMenu {
                 match self.selected_index {
                     0 => game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
                     1 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
-                    2 => game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
+                    2 => game.add_dialog(Box::new(SettingsMenu::new().await), false), //game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
                     3 => game.queue_state_change(GameState::Closing),
                     _ => {}
                 }

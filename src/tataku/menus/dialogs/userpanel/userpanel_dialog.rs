@@ -99,7 +99,7 @@ impl Dialog<Game> for UserPanel {
                     dialog.should_close = true;
                 }));
 
-                game.add_dialog(Box::new(user_menu_dialog));
+                game.add_dialog(Box::new(user_menu_dialog), false);
             }
         }
         true

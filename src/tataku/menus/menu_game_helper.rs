@@ -86,7 +86,11 @@ impl MenuGameHelper {
     }
 
     pub async fn update(&mut self) {
-        self.settings.update();
+        if self.settings.update() {
+            if let Some(manager) = &mut self.manager {
+                manager.force_update_settings().await;
+            }
+        }
 
         if self.current_mods.update() {
             if let Some(manager) = &mut self.manager {
@@ -178,12 +182,6 @@ impl MenuGameHelper {
             manager.gamemode.fit_to_area(pos, size).await
         }
     } 
-
-    pub async fn force_update_settings(&mut self) {
-        if let Some(manager) = &mut self.manager {
-            manager.force_update_settings().await;
-        }
-    }
 }
 
 impl Drop for MenuGameHelper {
