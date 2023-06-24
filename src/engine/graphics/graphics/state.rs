@@ -54,7 +54,6 @@ impl GraphicsState {
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL,
-            // backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
         });
         
@@ -64,25 +63,20 @@ impl GraphicsState {
         // State owns the window so this should be safe.
         let surface = unsafe { instance.create_surface(window).unwrap() };
 
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            },
-        ).await.unwrap();
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        }).await.unwrap();
 
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::ADDRESS_MODE_CLAMP_TO_BORDER | wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING, // | wgpu::Features::BUFFER_BINDING_ARRAY | wgpu::Features::STORAGE_RESOURCE_BINDING_ARRAY,
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
-                limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
-                },
+                #[cfg(feature="texture_arrays")] 
+                features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                #[cfg(not(feature="texture_arrays"))] 
+                features: wgpu::Features::default(),
+                limits: wgpu::Limits::default(),
                 label: None,
             },
             None,
@@ -238,7 +232,7 @@ impl GraphicsState {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer { 
-                        ty: wgpu::BufferBindingType::Storage { read_only: false }, 
+                        ty: wgpu::BufferBindingType::Uniform, 
                         has_dynamic_offset: false, 
                         min_binding_size: std::num::NonZeroU64::new(Self::QUAD_PER_BUF * std::mem::size_of::<[f32; 4]>() as u64)
                     },
@@ -828,14 +822,14 @@ impl GraphicsState {
 
 // render code
 impl GraphicsState {
-    const QUAD_PER_BUF:u64 = 5000;
+    const QUAD_PER_BUF:u64 = 3000;
     const VTX_PER_BUF:u64 = Self::QUAD_PER_BUF * 4;
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
     fn create_render_buffer(&mut self) {
         let scissor_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Scissor Buffer"),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             size: Self::QUAD_PER_BUF * std::mem::size_of::<[f32; 4]>() as u64,
             mapped_at_creation: false,
         });

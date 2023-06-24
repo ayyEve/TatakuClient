@@ -1,9 +1,9 @@
 struct VertexInputs {
     @location(0) pos: vec3<f32>,
     @location(1) tex_coord: vec2<f32>,
-    @location(2) tex_index: i32,
+    @location(2) @interpolate(flat) tex_index: i32,
     @location(3) vertex_col: vec4<f32>,
-    @location(4) scissor_index: u32,
+    @location(4) @interpolate(flat) scissor_index: u32,
 }
 
 struct VertexOutputs {
@@ -12,11 +12,11 @@ struct VertexOutputs {
     //The texture cooridnate of the vertex
     @location(0) tex_coord: vec2<f32>,
     // The index of the texture
-    @location(1) tex_index: i32,
+    @location(1) @interpolate(flat) tex_index: i32,
     //The color of the vertex
     @location(2) vertex_col: vec4<f32>,
     // index of scissor
-    @location(3) scissor_index: u32,
+    @location(3) @interpolate(flat) scissor_index: u32,
 }
 
 struct FragmentInputs {
@@ -60,7 +60,7 @@ struct Scissor {
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>, 4>;
 //The sampler we're using to sample the texture
 @group(1) @binding(1) var s: sampler;
-@group(2) @binding(0) var<storage,read_write> scissors: binding_array<Scissor, 5000>;
+@group(2) @binding(0) var<uniform> scissors: array<Scissor, 3000>;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
