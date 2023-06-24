@@ -277,8 +277,10 @@ impl AsyncMenu<Game> for MainMenu {
                 };
 
                 self.music_box.update_song_time(elapsed);
+                self.music_box.update_song_paused(song.is_paused());
                 self.media_controls.update(state).await;
 
+                let mut needs_manager_setup = false;
                 if let Ok(event) = self.event_receiver.try_recv() {
                     match event {
                         MediaControlHelperEvent::Play => song.play(false),
@@ -293,8 +295,8 @@ impl AsyncMenu<Game> for MainMenu {
                                 song.play(false);
                             }
                         }
-                        MediaControlHelperEvent::Next     => { let _ = self.next(g).await; }
-                        MediaControlHelperEvent::Previous => { let _ = self.previous(g).await; }
+                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next(g).await,
+                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous(g).await,
                         MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
                         MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
                         MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
@@ -304,6 +306,11 @@ impl AsyncMenu<Game> for MainMenu {
                         // MediaControlHelperEvent::Raise => todo!(),
                         // MediaControlHelperEvent::Quit => todo!(),
                         _ => {}
+                    }
+                    
+                    if needs_manager_setup {
+                        self.setup_manager("media event").await;
+                        return;
                     }
                 }
 

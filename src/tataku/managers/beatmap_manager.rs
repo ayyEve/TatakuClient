@@ -309,8 +309,6 @@ impl BeatmapManager {
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
 
-                // self.log_played();
-
                 true
             }
 
@@ -340,9 +338,7 @@ impl BeatmapManager {
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap
-                self.play_index -= 2; 
-                
-                // self.log_played();
+                self.play_index -= 2;
 
                 true
             }

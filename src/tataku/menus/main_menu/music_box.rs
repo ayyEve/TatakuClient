@@ -5,11 +5,12 @@ const CONTROL_BUTTONS: &[Option<FontAwesome>] = &[
     Some(FontAwesome::Backward),
     Some(FontAwesome::Backward_Step),
     None,
-    Some(FontAwesome::Play), // Some(FontAwesome::Pause), //  detect for this
+    Some(FontAwesome::Pause), // Some(FontAwesome::Pause), //  detect for this
     None,
     Some(FontAwesome::Forward_Step),
     Some(FontAwesome::Forward),
 ];
+const PLAY_INDEX:usize = 2;
 
 const MUSIC_BOX_PADDING:Vector2 = Vector2::new(5.0, 5.0);
 const CONTROL_BUTTON_SIZE:u32 = 30;
@@ -38,6 +39,7 @@ pub struct MusicBox {
 
     song_time: f32,
     song_duration: f32,
+    song_paused: bool,
 
     texts: Vec<Text>,
     actions: Vec<FontAwesome>,
@@ -56,6 +58,7 @@ impl MusicBox {
         let mut actions = Vec::new();
         let mut btn_pos = pos + Vector2::with_x(CONTROL_BUTTON_PADDING.x); // add initial left-side pad
         let font_awesome = get_font_awesome();
+
         for button in CONTROL_BUTTONS {
             if let Some(c) = button {
                 actions.push(*c);
@@ -65,12 +68,13 @@ impl MusicBox {
                     0.0,
                     btn_pos + MUSIC_BOX_PADDING,
                     CONTROL_BUTTON_SIZE as f32,
-                    format!("{}", c.get_char()),
+                    c.get_char().to_string(),
                     font_awesome.clone()
                 );
 
                 let t_size = text.measure_text();
                 btn_pos.x += t_size.x + CONTROL_BUTTON_PADDING.x * 2.0 + CONTROL_BUTTON_X_MARGIN;
+
                 size.y = size.y.max(t_size.y);
                 texts.push(text);
             } else {
@@ -101,6 +105,7 @@ impl MusicBox {
 
             song_time: 0.0, 
             song_duration: 0.0, 
+            song_paused: false,
 
             event_sender,
         }
@@ -111,6 +116,9 @@ impl MusicBox {
     }
     pub fn update_song_duration(&mut self, time: f32) {
         self.song_duration = time;
+    }
+    pub fn update_song_paused(&mut self, paused: bool) {
+        self.song_paused = paused;
     }
 
     fn pause_or_resume(&self) {
@@ -151,7 +159,9 @@ impl ScrollableItem for MusicBox {
             if rect.contains(pos) {
                 match self.actions.get(i) {
                     Some(&FontAwesome::Play)
-                    | Some(&FontAwesome::Circle_Play) => self.pause_or_resume(),
+                    | Some(&FontAwesome::Pause)
+                    | Some(&FontAwesome::Circle_Play)
+                    | Some(&FontAwesome::Circle_Pause) => self.pause_or_resume(),
                     
                     Some(&FontAwesome::Stop)
                     | Some(&FontAwesome::Circle_Stop) => self.stop(),
@@ -186,12 +196,16 @@ impl ScrollableItem for MusicBox {
     fn update(&mut self) {}
 
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
-        // let draw_pos = self.pos + pos_offset;
 
         // draw buttons
-        for mut text in self.texts.clone() {
+        for (i, mut text) in self.texts.clone().into_iter().enumerate() {
             text.depth = parent_depth;
             text.pos += pos_offset;
+
+            // if this is the play button, and the song is paused, use the play character
+            if i == PLAY_INDEX && self.song_paused {
+                text.text = FontAwesome::Play.get_char().to_string();
+            }
             
             let t_size = text.measure_text();
             

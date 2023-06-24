@@ -57,7 +57,7 @@ impl NotificationManager {
     }
     pub async fn add_error_notification<E: Into<TatakuError>>(msg: impl std::fmt::Display, error:E) {
         let error:TatakuError = error.into();
-        let text = format!("{msg}:\n{error}");
+        let text = format!("{msg}: {error}");
         error!("{text}");
         
         Self::add_text_notification(
