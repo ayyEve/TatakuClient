@@ -84,6 +84,24 @@ impl Database {
             error!("error inserting metadata: {}", e);
         }
     }
+
+
+    pub async fn insert_beatmaps(maps: Vec<Arc<BeatmapMeta>>) {
+        let max_inserts_per_statement = 1_000;
+        let maps_iter = maps.chunks(max_inserts_per_statement);
+
+        for map_group in maps_iter {
+            let statement = get_beatmap_insert();
+            let map_strs = map_group.into_iter().map(insert_beatmap_values).collect::<Vec<String>>().join(",\n");
+            let query = statement + &map_strs;
+
+            let db = Self::get().await;
+            let res = db.prepare(&query).expect(&query).execute([]);
+            if let Err(e) = res {
+                error!("error inserting metadatas: {}", e);
+            }
+        }
+    }
 }
 
 fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
@@ -110,4 +128,66 @@ fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
         bpm_min: r.get("bpm_min").unwrap_or(0.0),
         bpm_max: r.get("bpm_max").unwrap_or(0.0),
     })
+}
+
+
+fn get_beatmap_insert() -> String {
+    "INSERT INTO beatmaps (
+        beatmap_path, beatmap_hash, beatmap_type,
+
+        playmode, 
+        artist, artist_unicode,
+        title, title_unicode,
+        creator, version,
+
+        audio_filename, image_filename,
+        audio_preview, duration,
+        
+        hp, od, cs, ar,
+        
+        bpm_min, bpm_max
+    ) VALUES ".to_owned()
+}
+fn insert_beatmap_values(map: impl AsRef<BeatmapMeta>) -> String {
+    let map = map.as_ref();
+    
+    let mut bpm_min = map.bpm_min;
+    let mut bpm_max = map.bpm_max;
+    if !bpm_min.is_normal() {
+        bpm_min = 0.0;
+    }
+    if !bpm_max.is_normal() {
+        bpm_max = 99999999.0;
+    }
+    let beatmap_type:u8 = map.beatmap_type.into();
+
+    format!("(
+        \"{}\", \"{}\", {},
+
+        \"{}\",
+        \"{}\", \"{}\",
+        \"{}\", \"{}\",
+        \"{}\", \"{}\",
+
+        \"{}\", \"{}\",
+        {}, {},
+
+        {}, {}, {}, {},
+
+        {}, {}
+    )",
+        map.file_path, map.beatmap_hash, beatmap_type,
+
+        map.mode,
+        map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),
+        map.title.replace("\"", "\"\""), map.title_unicode.replace("\"", "\"\""),
+        map.creator.replace("\"", "\"\""), map.version.replace("\"", "\"\""),
+        
+        map.audio_filename, map.image_filename,
+        map.audio_preview, map.duration,
+
+        map.hp, map.od, map.cs, map.ar,
+
+        bpm_min, bpm_max
+    )
 }

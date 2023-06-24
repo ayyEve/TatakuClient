@@ -57,7 +57,7 @@ impl LoadingMenu {
     }
 
     async fn load_beatmaps(status: Arc<AsyncMutex<LoadingStatus>>) {
-        trace!("loading audio");
+        trace!("loading beatmaps");
         status.lock().await.stage = LoadingStage::Beatmaps;
         // set the count and reset the counter
         status.lock().await.loading_count = 0;
@@ -93,7 +93,6 @@ impl LoadingMenu {
         }
         
         // look through the songs folder to make sure everything is already added
-
         if existing_len == 0 {
             // get existing dirs
             let mut existing_paths = HashSet::new();
@@ -119,7 +118,7 @@ impl LoadingMenu {
             
             // this should probably be delegated to the background
             for f in folders.iter() {
-                manager.check_folder(f).await;
+                manager.check_folder(f, true).await;
                 status.lock().await.loading_done += 1;
             }
 

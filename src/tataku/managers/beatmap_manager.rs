@@ -79,7 +79,7 @@ impl BeatmapManager {
             //         folders.push(f.to_str().unwrap().to_owned());
             //     });
 
-            for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f).await }
+            for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f, true).await; }
         }
 
     }
@@ -100,16 +100,27 @@ impl BeatmapManager {
 
         Database::clear_all_maps().await;
 
+        let mut new_beatmaps = Vec::new();
+
+        info!("Reading maps");
         let folders = Self::folders_to_check().await;
         for f in folders {
-            self.check_folder(f).await
+            if let Some(maps) = self.check_folder(f, false).await {
+                new_beatmaps.extend(maps);
+            }
+        }
+
+        if !new_beatmaps.is_empty() {
+            info!("Inserting maps into database");
+            Database::insert_beatmaps(new_beatmaps).await;
         }
     }
 
-    pub async fn check_folder(&mut self, dir: impl AsRef<Path>) {
+    /// if this doesnt handle the database entries, returns a list of new beatmaps that should be added to the database
+    pub async fn check_folder(&mut self, dir: impl AsRef<Path>, handle_database: bool) -> Option<Vec<Arc<BeatmapMeta>>> {
         let dir = dir.as_ref();
 
-        if !dir.is_dir() { return }
+        if !dir.is_dir() { return None }
         let dir_files = read_dir(dir).unwrap();
 
         // ignore existing paths
@@ -122,6 +133,8 @@ impl BeatmapManager {
         for i in self.ignore_beatmaps.iter() {
             ignore_paths.insert(i.clone());
         }
+
+        let mut maps_to_add_to_database = Vec::new();
 
         for file in dir_files.filter_map(|s|s.ok()) {
             let file = file.path();
@@ -143,7 +156,7 @@ impl BeatmapManager {
                 match Io::get_file_hash(file) {
                     Ok(hash) => if self.beatmaps_by_hash.contains_key(&hash) { continue },
                     Err(e) => {
-                        error!("error getting hash for file {}: {}", file, e);
+                        error!("error getting hash for file {file}: {e}");
                         continue;
                     }
                 }
@@ -152,17 +165,26 @@ impl BeatmapManager {
                     Ok(maps) => {
                         for map in maps {
                             self.add_beatmap(&map);
-
+                            
                             // if it got here, it shouldnt be in the database
                             // so we should add it
-                            Database::insert_beatmap(&map).await;
+                            maps_to_add_to_database.push(map);
                         }
                     }
                     Err(e) => {
-                        error!("error loading beatmap '{}': {}", file, e);
+                        error!("error loading beatmap '{file}': {e}");
                     }
                 }
             }
+        }
+
+        if handle_database {
+            if !maps_to_add_to_database.is_empty() {
+                Database::insert_beatmaps(maps_to_add_to_database).await;
+            }
+            None
+        } else {
+            Some(maps_to_add_to_database)
         }
     }
 

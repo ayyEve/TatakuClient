@@ -25,7 +25,6 @@ lazy_static::lazy_static! {
 }
 
 
-
 pub struct NotificationManager {
     processed_notifs: Vec<ProcessedNotif>,
     pending_notifs: Vec<Notification>,
