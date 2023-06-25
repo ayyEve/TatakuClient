@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const BOTTOM_PAD:f32 = 5.0;
+const UNDERLINE_PAD:f32 = 10.0;
 
 /// basically a spacer with some text
 #[derive(ScrollableGettersSetters)]
@@ -29,11 +31,13 @@ impl ScrollableItem for MenuSection {
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {false} //{self.hover}
 
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
+        let base_pos = self.pos + Vector2::with_y(self.size.y - (self.font_size + UNDERLINE_PAD + BOTTOM_PAD));
+
         // text
         let t = Text::new(
             Color::BLACK,
             parent_depth,
-            self.pos + pos_offset,
+            base_pos + pos_offset,
             self.font_size,
             self.text.clone(),
             self.font.clone()
@@ -43,7 +47,7 @@ impl ScrollableItem for MenuSection {
         let r = Rectangle::new(
             Color::BLACK,
             parent_depth,
-            self.pos + pos_offset + Vector2::new(0.0, self.font_size + 10.0),
+            base_pos + pos_offset + Vector2::with_y(self.font_size + UNDERLINE_PAD),
             Vector2::new(self.size().x, 4.0),
             None
         );
