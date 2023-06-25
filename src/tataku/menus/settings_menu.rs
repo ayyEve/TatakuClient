@@ -138,13 +138,15 @@ impl Dialog<Game> for SettingsMenu {
     }
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _game:&mut Game) -> bool {
-        if self.scroll_area.get_selected_index().is_none() { return false }
-
-        self.scroll_area.on_key_press(key, *mods);
-
+        // if esc is pressed, override whether we're selected or not
         if key == Key::Escape {
             self.finalize().await;
+            return true;
         }
+
+        if self.scroll_area.get_selected_index().is_none() { return false }
+        
+        self.scroll_area.on_key_press(key, *mods);
 
         true
     }
