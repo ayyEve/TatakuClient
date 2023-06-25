@@ -51,6 +51,16 @@ pub struct StandardSettings {
 
     #[Setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
+
+
+    /// min is 0.00001 because @ 0.0 it shows the shoddy slider rendering (try it and see!)
+    #[Setting(text="Slider Body Alpha", min=0.00001, max=1.0)]
+    pub slider_body_alpha: f32,
+    #[Setting(text="Slider Border Alpha", min=0.0, max=1.0)]
+    pub slider_border_alpha: f32,
+
+    #[Setting(text="Playfield Alpha", min=0.0, max=1.0)]
+    pub playfield_alpha: f32,
 }
 impl StandardSettings {
     pub fn get_playfield(&self) -> (f32, Vector2) {
@@ -90,7 +100,10 @@ impl Default for StandardSettings {
             approach_combo_color: true,
 
             use_beatmap_combo_colors: true,
-            use_skin_judgments: true
+            use_skin_judgments: true,
+            slider_body_alpha: 0.8,
+            slider_border_alpha: 1.0,
+            playfield_alpha: 0.5
         }
     }
 }

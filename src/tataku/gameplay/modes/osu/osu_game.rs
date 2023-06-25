@@ -687,7 +687,9 @@ impl GameMode for OsuGame {
 
         // draw the playfield
         if !manager.menu_background {
+            let alpha = self.game_settings.playfield_alpha;
             let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
+            playfield.color.a = alpha;
 
             if self.move_playfield.is_some() {
                 let line_size = self.game_settings.playfield_movelines_thickness;
@@ -731,7 +733,7 @@ impl GameMode for OsuGame {
             }
 
             if manager.current_timing_point().kiai {
-                playfield.border = Some(Border::new(Color::YELLOW, 2.0));
+                playfield.border = Some(Border::new(Color::YELLOW.alpha(alpha), 2.0));
             }
             list.push(playfield);
         }
@@ -868,7 +870,7 @@ impl GameMode for OsuGame {
 
         self.game_settings = settings.clone();
         for n in self.notes.iter_mut() {
-            n.set_settings(settings.clone());
+            n.set_settings(settings.clone()).await;
         }
     }
 

@@ -13,8 +13,8 @@ pub struct RenderTarget {
     drop_check: Arc<()>
 }
 impl RenderTarget {
-    pub async fn new(width: u32, height: u32, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<Self> {
-        GameWindow::create_render_target((width, height), callback).await
+    pub async fn new(width: u32, height: u32, pipeline: RenderPipeline, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<Self> {
+        GameWindow::create_render_target((width, height), pipeline, callback).await
     }
 
     pub fn new_main_thread(width: u32, height: u32, tex: TextureReference, projection: Matrix, clear_color: Color) -> Self {

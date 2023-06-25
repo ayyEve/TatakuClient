@@ -243,7 +243,7 @@ impl OsuHitObject for OsuNote {
         self.pos
     }
 
-    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, settings: Arc<StandardSettings>) {
         self.standard_settings = settings;
     }
 

@@ -366,9 +366,13 @@ impl GameWindow {
                 self.graphics.free_tex(tex);
             }
 
-            LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
-                let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, callback);
+            LoadImage::CreateRenderTarget((w, h), on_done, pipeline, callback) => {
+                let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, pipeline, callback);
                 on_done.send(rt.ok_or(TatakuError::String("failed".to_owned()))).ok().expect("uh oh");
+            }
+            LoadImage::UpdateRenderTarget(target, on_done, pipeline, callback) => {
+                self.graphics.update_render_target(target, pipeline, callback);
+                on_done.send(()).ok().expect("uh oh");
             }
 
             // LoadImage::UpdateRenderTarget(target, on_done, callback) => {
@@ -583,27 +587,24 @@ impl GameWindow {
     }
 
 
-    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+    pub async fn create_render_target(size: (u32, u32), pipeline: RenderPipeline, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
         trace!("create render target");
 
         let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, pipeline, Box::new(callback))));
 
         receiver.recv().await.unwrap()
     }
 
-    // pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
-    //     trace!("update render target");
+    #[allow(unused)]
+    pub async fn update_render_target(rt:RenderTarget, pipeline: RenderPipeline, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
+        trace!("update render target");
 
-    //     let (sender, mut receiver) = unbounded_channel();
-    //     get_texture_load_queue()?.send(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))).ok().expect("no?");
+        let (sender, mut receiver) = unbounded_channel();
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, pipeline, Box::new(callback))));
 
-    //     if let Some(t) = receiver.recv().await {
-    //         t
-    //     } else {
-    //         Err(TatakuError::String("idk".to_owned()))
-    //     }
-    // }
+        receiver.recv().await;
+    }
 
 
     pub fn free_texture(tex: TextureReference) {

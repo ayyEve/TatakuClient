@@ -333,7 +333,7 @@ impl OsuHitObject for OsuSpinner {
     fn hit(&mut self, _time: f32) {}
     fn check_distance(&self, _:Vector2) -> bool { true }
 
-    fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
         // self.standard_settings = settings;
     }
 

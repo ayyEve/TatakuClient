@@ -18,7 +18,8 @@ pub struct GraphicsState {
     queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
     
-    render_pipeline: wgpu::RenderPipeline,
+    blending_pipeline: wgpu::RenderPipeline,
+    no_blending_pipeline: wgpu::RenderPipeline,
     
     recorded_buffers: Vec<RenderBuffer>,
     queued_buffers: Vec<RenderBuffer>,
@@ -291,6 +292,46 @@ impl GraphicsState {
             multiview: None,
         });
 
+        let slider_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Slider Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[
+                    Vertex::desc(),
+                ],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None, //Some(wgpu::Face::Back),
+                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false, 
+            },
+            multiview: None,
+        });
+
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -312,7 +353,8 @@ impl GraphicsState {
             device,
             queue: Arc::new(queue),
             config,
-            render_pipeline,
+            blending_pipeline: render_pipeline,
+            no_blending_pipeline: slider_pipeline,
             atlas,
             render_target_atlas,
             atlas_texture,
@@ -370,6 +412,7 @@ impl GraphicsState {
         let renderable = RenderableSurface {
             texture: &view,
             clear_color: GFX_CLEAR_COLOR,
+            pipeline: RenderPipeline::AlphaBlending
         };
 
         self.render(&renderable)?;
@@ -406,6 +449,7 @@ impl GraphicsState {
             let renderable = RenderableSurface {
                 texture: &view,
                 clear_color: GFX_CLEAR_COLOR,
+                pipeline: RenderPipeline::AlphaBlending,
             };
             self.render(&renderable)?;
 
@@ -433,7 +477,10 @@ impl GraphicsState {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline); 
+            match renderable.pipeline {
+                RenderPipeline::AlphaBlending => render_pass.set_pipeline(&self.blending_pipeline),
+                RenderPipeline::AlphaOverwrite => render_pass.set_pipeline(&self.no_blending_pipeline),
+            }
             render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
             render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
 
@@ -473,7 +520,7 @@ impl GraphicsState {
     }
 
 
-    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
+    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, pipeline: RenderPipeline, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
         // find space in the render target atlas
         let mut atlased = self.render_target_atlas.try_insert(w, h)?;
 
@@ -485,12 +532,12 @@ impl GraphicsState {
         let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
 
         // queue rendering the data to it
-        self.update_render_target(target.clone(), do_render);
+        self.update_render_target(target.clone(), pipeline, do_render);
 
         // return the new render target
         Some(target)
     }
-    pub fn update_render_target(&mut self, target: RenderTarget, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
+    pub fn update_render_target(&mut self, target: RenderTarget, pipeline: RenderPipeline, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
         let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
@@ -534,6 +581,7 @@ impl GraphicsState {
         let renderable = RenderableSurface {
             texture: &view,
             clear_color: target.clear_color,
+            pipeline,
         };
 
         // clear buffers
@@ -1259,6 +1307,7 @@ pub struct WgpuTexture {
 pub struct RenderableSurface<'a> {
     texture: &'a wgpu::TextureView,
     clear_color: Color,
+    pipeline: RenderPipeline
 }
 impl<'a> RenderableSurface<'a> {
     fn get_clear_color(&self) -> wgpu::Color {
@@ -1269,6 +1318,11 @@ impl<'a> RenderableSurface<'a> {
             a: self.clear_color.a as f64 
         }
     }
+}
+
+pub enum RenderPipeline {
+    AlphaBlending,
+    AlphaOverwrite
 }
 
 

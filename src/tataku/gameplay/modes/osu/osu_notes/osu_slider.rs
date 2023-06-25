@@ -197,7 +197,7 @@ impl OsuSlider {
         
         // info!("{:?}", skin.slider_track_override);
         // let color = skin.slider_track_override.filter(|c|c != &Color::BLACK).unwrap_or_else(|| {
-            let mut color = self.color;
+            let mut color = self.color.alpha(self.standard_settings.slider_body_alpha);
             const DARKER:f32 = 2.0/3.0;
             color.r *= DARKER;
             color.g *= DARKER;
@@ -206,7 +206,7 @@ impl OsuSlider {
         // });
 
 
-        let border_color = BORDER_COLOR; //skin.slider_border.unwrap_or(BORDER_COLOR);
+        let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
         // starting point
@@ -255,25 +255,22 @@ impl OsuSlider {
                     None
                 )));
             }
-            
         }
 
-        // TODO:render targets
-        // draw it to the render texture
-        if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x as u32, window_size.y as u32, |state, matrix| {
-            // use graphics::Graphics;
-            // let c = g.draw_begin(rt.viewport());
-            // g.clear_color(Color::TRANSPARENT_WHITE.into());
-            for i in list { i.draw(matrix, state); }
-            // g.draw_end();
-
-        }).await {
-            slider_body_render_target.image.origin = Vector2::new(0.0, window_size.y);
-            slider_body_render_target.image.depth = self.slider_depth;
-            self.slider_body_render_target = Some(slider_body_render_target);
+        if let Some(target) = self.slider_body_render_target.clone() {
+            GameWindow::update_render_target(target, RenderPipeline::AlphaOverwrite, |state, matrix| for i in list { i.draw(matrix, state); }).await;
         } else {
-            self.slider_body_render_target_failed = Some(self.map_time);
+            // draw it to the render texture
+            if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x as u32, window_size.y as u32, RenderPipeline::AlphaOverwrite, |state, matrix| for i in list { i.draw(matrix, state); }).await {
+                slider_body_render_target.image.origin = Vector2::new(0.0, window_size.y);
+                slider_body_render_target.image.depth = self.slider_depth;
+                self.slider_body_render_target = Some(slider_body_render_target);
+            } else {
+                warn!("failed to slider");
+                self.slider_body_render_target_failed = Some(self.map_time);
+            }
         }
+
     }
 
     async fn make_dots(&mut self) {
@@ -848,8 +845,15 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+        let old_body_alpha = self.standard_settings.slider_body_alpha;
+        let old_border_alpha = self.standard_settings.slider_border_alpha;
+        //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
         self.standard_settings = settings;
+
+        if self.slider_body_render_target.is_some() && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
+            self.make_body().await;
+        }
     }
 
 
