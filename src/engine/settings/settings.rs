@@ -145,8 +145,8 @@ pub struct Settings {
 
 
     // integrations
-    #[Setting(text="Last.fm Integration", category="Integration")]
-    pub lastfm_enabled: bool,
+    #[Subsetting(category="Integrations")]
+    pub integrations: IntegrationSettings,
 
 
     // other misc
@@ -269,7 +269,7 @@ impl Default for Settings {
             double_tap_protection_duration: 80.0,
             
             // integrations
-            lastfm_enabled: false,
+            integrations: Default::default(),
 
             // other
             last_git_hash: String::new(),

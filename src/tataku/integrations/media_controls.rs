@@ -7,32 +7,46 @@ const MINIMUM_WAIT_BETWEEN_EVENTS:f32 = 100.0;
 /// helper for interfacing with the os media controls
 pub struct MediaControlHelper {
     event_receiver: AsyncUnboundedReceiver<MediaControlEvent>,
+    internal_event_sender: AsyncUnboundedSender<MediaControlEvent>,
 
     // when it was received, the event, was it handled upstream?
     last_event: LastEventHelper,
-
     event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,
-
     last_state: MediaPlaybackState,
+
+    current_metadata: MediaControlMetadata,
+    controls_enabled: bool,
 }
 
 impl MediaControlHelper {
     pub fn new(event_sender: AsyncUnboundedSender<MediaControlHelperEvent>) -> Self {
         let (sender, receiver) = async_unbounded_channel();
-        
-        let controls = GameWindow::get_media_controls();
-        let _ = controls.lock().attach(move |event|{let _ = sender.send(event);});
+        let controls_enabled = get_settings!().integrations.media_controls;
+        if controls_enabled {
+            Self::bind(sender.clone());
+        }
 
         Self {
             event_receiver: receiver,
+            internal_event_sender: sender,
             event_sender,
+            controls_enabled,
+            current_metadata: MediaControlMetadata::default(),
 
             last_event: LastEventHelper::default(),
             last_state: MediaPlaybackState::Stopped
         }
     }
 
-    pub async fn update(&mut self, song_state: MediaPlaybackState) {
+    pub async fn update(&mut self, song_state: MediaPlaybackState, enabled: bool) {
+        if enabled != self.controls_enabled {
+            self.controls_enabled = enabled;
+            if enabled {
+                Self::bind(self.internal_event_sender.clone());
+                Self::set_metadata(&self.current_metadata);
+            }
+        }
+
         // update events 
         if let Ok(event) = self.event_receiver.try_recv() {
             if event != self.last_event.event || self.last_event.time.as_millis() >= MINIMUM_WAIT_BETWEEN_EVENTS {
@@ -57,55 +71,104 @@ impl MediaControlHelper {
         self.last_state = song_state;
 
         // update the playback state
+        Self::set_playback(song_state.into());
+    }
+
+    pub fn update_info(&mut self, map: &Option<Arc<BeatmapMeta>>, duration: f32) {
+        self.current_metadata = map.as_ref().map(|map| MediaControlMetadata {
+            title: Some(map.title.clone()),
+            artist: Some(map.artist.clone()),
+            cover_url: Some("file://".to_owned() + Path::new(&map.image_filename).canonicalize().map(|p|p.to_string_lossy().to_string()).unwrap_or_default().trim_start_matches("\\\\?\\")),
+            duration: Some(duration),
+        }).unwrap_or_default();
+        
+        Self::set_metadata(&self.current_metadata);
+    }
+
+    fn bind(sender: AsyncUnboundedSender<MediaControlEvent>) {
+        if !get_settings!().integrations.media_controls { return }
+        let controls = GameWindow::get_media_controls();
+        let _ = controls.lock().attach(move |event|{let _ = sender.send(event);});
+    }
+    pub fn set_metadata(meta: &MediaControlMetadata) {
+        if !get_settings!().integrations.media_controls { return }
+
+        fn s(a: &Option<String>) -> Option<&str> {
+            a.as_ref().map(|x| &**x)
+        }
+
+        let info = MediaMetadata {
+            title: s(&meta.title),
+            artist: s(&meta.artist),
+            album: None,
+            cover_url: s(&meta.cover_url),
+            duration: meta.duration.map(|d|Duration::from_millis(d as u64))
+        };
+
+        // duration: Some(Duration::from_millis(duration as u64))
+        if let Err(e) = GameWindow::get_media_controls().lock().set_metadata(info) {
+            warn!("Error setting metadata: {e:?}");
+        }
+    }
+    pub fn set_playback(state: MediaPlayback) {
+        if !get_settings!().integrations.media_controls { return }
+
         tokio::task::spawn_blocking(move || {
-            let controls = GameWindow::get_media_controls();
-            let mut lock = controls.lock();
-            if let Err(e) = lock.set_playback(song_state.into()) {
+            if let Err(e) = GameWindow::get_media_controls().lock().set_playback(state) {
                 warn!("Error setting playback state: {e:?}");
             }
         });
-    }
-
-    pub fn update_info(&self, map: &Option<Arc<BeatmapMeta>>, duration: f32) {
-        let mut img_url = String::new();
-        let mut info = if let Some(map) = map {
-            img_url = "file://".to_owned() + Path::new(&map.image_filename).canonicalize().map(|p|p.to_string_lossy().to_string()).unwrap_or_default().trim_start_matches("\\\\?\\");
-            // info!("Using media url: {img_url}");
-            MediaMetadata {
-                title: Some(&map.title),
-                artist: Some(&map.artist),
-                album: None,
-                cover_url: None,
-                duration: Some(Duration::from_millis(duration as u64))
-            }
-        } else {
-            MediaMetadata::default()
-        };
-        if !img_url.is_empty() {
-            info.cover_url = Some(&img_url);
-        }
-        
-        let controls = GameWindow::get_media_controls();
-        let mut lock = controls.lock();
-        if let Err(e) = lock.set_metadata(info) {
-            warn!("Error setting metadata: {e:?}");
-        }
     }
 }
 
 impl Drop for MediaControlHelper {
     fn drop(&mut self) {
-        let controls = GameWindow::get_media_controls();
-        let mut lock = controls.lock();
-        let _ = lock.set_metadata(MediaMetadata::default());
-        let _ = lock.set_playback(MediaPlayback::Stopped);
-        // for some reason on windows if you detach here, it causes issues when you re-attach. i have no idea why
-        // #[cfg(not(target_os="windows"))] 
-        // let _ = lock.detach();
+        Self::set_metadata(&Default::default());
+        Self::set_playback(MediaPlayback::Stopped);
     }
 }
 
-// helper for converting media control events
+struct LastEventHelper {
+    time: Instant,
+    event: MediaControlEvent,
+}
+impl LastEventHelper {
+    fn new(event: MediaControlEvent) -> Self {
+        Self {
+            time: Instant::now(),
+            event,
+        }
+    }
+}
+impl Default for LastEventHelper {
+    fn default() -> Self {
+        Self {
+            time: Instant::now(),
+            event: MediaControlEvent::Pause,
+        }
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub enum MediaControlHelperEvent {
+    Play,
+    Pause,
+    Stop,
+    Toggle,
+
+    Next,
+    Previous,
+
+    SeekForward,
+    SeekBackward,
+    SeekForwardBy(f32),
+    SeekBackwardBy(f32),
+    SetPosition(f32),
+    OpenUri(String),
+    Raise,
+    Quit,
+}
 impl From<MediaControlEvent> for MediaControlHelperEvent {
     fn from(value: MediaControlEvent) -> Self {
         match value {
@@ -127,6 +190,13 @@ impl From<MediaControlEvent> for MediaControlHelperEvent {
     }
 }
 
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum MediaPlaybackState {
+    Playing(f32),
+    Paused(f32),
+    Stopped,
+}
 impl Into<MediaPlayback> for MediaPlaybackState {
     fn into(self) -> MediaPlayback {
         match self {
@@ -138,23 +208,10 @@ impl Into<MediaPlayback> for MediaPlaybackState {
 }
 
 
-struct LastEventHelper {
-    time: Instant,
-    event: MediaControlEvent,
-}
-impl LastEventHelper {
-    fn new(event: MediaControlEvent) -> Self {
-        Self {
-            time: Instant::now(),
-            event,
-        }
-    }
-}
-impl Default for LastEventHelper {
-    fn default() -> Self {
-        Self {
-            time: Instant::now(),
-            event: MediaControlEvent::Pause,
-        }
-    }
+#[derive(Clone, Debug, Default)]
+pub struct MediaControlMetadata {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub cover_url: Option<String>,
+    pub duration: Option<f32>,
 }

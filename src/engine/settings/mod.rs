@@ -6,6 +6,7 @@ mod mania_settings;
 mod settings_helpers;
 mod logging_settings;
 mod standard_settings;
+mod integration_settings;
 mod common_gameplay_settings;
 mod background_game_settings;
 
@@ -17,6 +18,6 @@ pub use mania_settings::*;
 pub use settings_helpers::*;
 pub use logging_settings::*;
 pub use standard_settings::*;
+pub use integration_settings::*;
 pub use common_gameplay_settings::*;
 pub use background_game_settings::*;
-

@@ -114,8 +114,11 @@ impl Game {
         BeatmapManager::download_check_loop();
 
         // init integrations
-        if settings.lastfm_enabled {
+        if settings.integrations.lastfm {
             LastFmIntegration::check().await;
+        }
+        if settings.integrations.discord {
+            OnlineManager::init_discord().await;
         }
         
         // == menu setup ==
@@ -182,6 +185,7 @@ impl Game {
             let last_effect_vol = self.settings.effect_vol;
             let last_theme = self.settings.theme.clone();
             let last_server_url = self.settings.server_url.clone();
+            let last_discord_enabled = self.settings.integrations.discord;
             
             if self.settings.update() {
                 let audio_changed = 
@@ -218,6 +222,14 @@ impl Game {
                     OnlineManager::restart();
                 }
 
+                // update discord
+                match (last_discord_enabled, self.settings.integrations.discord) {
+                    (true, false) => ONLINE_MANAGER.write().await.discord = None,
+                    (false, true) => OnlineManager::init_discord().await,
+                    _ => {}
+                }
+
+
                 // update doubletap protection
                 self.input_manager.set_double_tap_protection(self.settings.enable_double_tap_protection.then(|| self.settings.double_tap_protection_duration));
 
@@ -233,7 +245,6 @@ impl Game {
                     },
                     _ => {}
                 }
-
             }
 
 

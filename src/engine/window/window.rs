@@ -94,41 +94,15 @@ impl GameWindow {
             Err(e) => warn!("error setting window icon: {}", e)
         }
 
-        // create media controls 
-        {
-            #[cfg(not(target_os = "windows"))]
-            let hwnd = None;
-
-            #[cfg(target_os = "windows")]
-            let hwnd = {
-                use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-
-                let handle = match window.raw_window_handle() {
-                    RawWindowHandle::Win32(h) => h,
-                    _ => unreachable!(),
-                };
-                Some(handle.hwnd)
-            };
-
-            let config = PlatformConfig {
-                dbus_name: "tataku.player",
-                display_name: "Tataku!",
-                hwnd,
-            };
-            
-            let controls = MediaControls::new(config).unwrap();
-            let _ = MEDIA_CONTROLS.set(Arc::new(Mutex::new(controls)));
-        }
-
         let s = Self {
             window,
             graphics,
             settings,
-
+            
             game_event_sender: Arc::new(game_event_sender),
             window_event_receiver,
             render_event_receiver,
-
+            
             frametime_timer: Instant::now(),
             input_timer: Instant::now(),
             
@@ -141,7 +115,6 @@ impl GameWindow {
             finger_touches: HashSet::new(),
             touch_pos: None,
         };
-        
         (s, event_loop)
     }
 
@@ -151,6 +124,7 @@ impl GameWindow {
         let settings = get_settings!().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
+        self.init_media_controls();
         self.settings.update();
 
         self.window.set_inner_size(to_size(self.settings.window_size.into()));
@@ -202,21 +176,6 @@ impl GameWindow {
                         }
 
                         winit::event::WindowEvent::KeyboardInput { input:KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Home), state: ElementState::Pressed, .. }, .. } => {
-
-                            {
-                                let controls = Self::get_media_controls();
-                                let mut lock = controls.lock();
-                                lock.set_playback(souvlaki::MediaPlayback::Playing { progress: None }).unwrap();
-                                
-                                lock.set_metadata(souvlaki::MediaMetadata {
-                                    title: Some("test123"),
-                                    artist: Some("test123"),
-                                    album: None,
-                                    cover_url: Some("file://C:\\Users\\Eve\\Desktop\\vtuber\\Beta.png"),
-                                    duration: Some(Duration::from_millis(50_000))
-                                }).unwrap();
-                            }
-
                             self.mouse_helper.reset_cursor_pos(&mut self.window);
                             Window2GameEvent::MouseMove(Vector2::ZERO)
                         }
@@ -290,6 +249,7 @@ impl GameWindow {
     fn update(&mut self) {
         let old_fullscreen = self.settings.fullscreen_monitor;
         let old_vsync = self.settings.vsync;
+        let old_media_integration = self.settings.integrations.media_controls;
 
         if self.settings.update() {
             if self.settings.fullscreen_monitor != old_fullscreen {
@@ -301,6 +261,12 @@ impl GameWindow {
             }
 
             self.mouse_helper.set_raw_input(self.settings.raw_mouse_input);
+
+            if old_media_integration != self.settings.integrations.media_controls && !self.settings.integrations.media_controls {
+                MediaControlHelper::set_metadata(&Default::default());
+                MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
+                let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
+            }
         }
 
         if let Ok(event) = self.window_event_receiver.try_recv() {
@@ -436,6 +402,31 @@ impl GameWindow {
         let _ = self.graphics.render_current_surface();
     }
 
+
+    fn init_media_controls(&self) {
+        info!("init media controls");
+        #[cfg(not(target_os = "windows"))]
+        let hwnd = None;
+
+        #[cfg(target_os = "windows")]
+        let hwnd = {
+            use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+            let handle = match self.window.raw_window_handle() {
+                RawWindowHandle::Win32(h) => h,
+                _ => unreachable!(),
+            };
+            Some(handle.hwnd)
+        };
+
+        let config = PlatformConfig {
+            dbus_name: "tataku.player",
+            display_name: "Tataku!",
+            hwnd,
+        };
+        
+        let controls = MediaControls::new(config).unwrap();
+        let _ = MEDIA_CONTROLS.set(Arc::new(Mutex::new(controls)));
+    }
 }
 
 // input and state stuff

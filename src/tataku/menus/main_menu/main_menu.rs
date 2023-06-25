@@ -278,7 +278,7 @@ impl AsyncMenu<Game> for MainMenu {
 
                 self.music_box.update_song_time(elapsed);
                 self.music_box.update_song_paused(song.is_paused());
-                self.media_controls.update(state).await;
+                self.media_controls.update(state, self.settings.integrations.media_controls).await;
 
                 let mut needs_manager_setup = false;
                 if let Ok(event) = self.event_receiver.try_recv() {

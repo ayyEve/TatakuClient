@@ -91,14 +91,11 @@ impl OnlineManager {
             "this is a test message".to_owned()
         )]);
 
-        let discord = Discord::new();
-        if let Err(e) = &discord { error!("{e}") }
-
         OnlineManager {
             user_id: 0,
             users: HashMap::new(),
             friends: HashSet::new(),
-            discord: discord.ok(),
+            discord: None,
             // chat: Chat::new(),
             writer: None,
             connected: false,
@@ -110,6 +107,13 @@ impl OnlineManager {
             spectate_info_pending: Vec::new(),
             chat_messages: messages,
             spectate_pending: 0,
+        }
+    }
+
+    pub async fn init_discord() {
+        match Discord::new() {
+            Ok(discord) => ONLINE_MANAGER.write().await.discord = Some(discord),
+            Err(e) => error!("discord error: {e}"),
         }
     }
 
@@ -476,7 +480,7 @@ impl OnlineManager {
                 discord.change_status(&action_info, incoming_mode).await;
             }
 
-            if get_settings!().lastfm_enabled {
+            if get_settings!().integrations.lastfm {
                 match &action_info {
                     SetAction::Listening { artist, title, .. } 
                     | SetAction::Playing { artist, title, .. } 

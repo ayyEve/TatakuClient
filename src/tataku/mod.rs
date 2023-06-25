@@ -5,6 +5,7 @@ mod helpers;
 mod managers;
 mod gameplay;
 mod databases;
+mod integrations;
 pub mod beatmaps;
 
 pub use cli::*;
@@ -15,3 +16,4 @@ pub use managers::*;
 pub use gameplay::*;
 pub use beatmaps::*;
 pub use databases::*;
+pub use integrations::*;

@@ -4,7 +4,7 @@ use crate::prelude::*;
 const APP_ID:&'static str = "857981337423577109";
 
 pub struct Discord {
-    client: Arc<AsyncMutex<DiscordIpcClient>>,
+    client: Arc<Mutex<DiscordIpcClient>>,
     last_status: Arc<AsyncMutex<(String, String)>>
 }
 
@@ -33,7 +33,7 @@ impl Discord {
 
         trace!("Done");
         Ok(Self {
-            client: Arc::new(AsyncMutex::new(client)),
+            client: Arc::new(Mutex::new(client)),
             last_status: Arc::new(AsyncMutex::new((String::new(), String::new())))
         })
     }
@@ -44,13 +44,9 @@ impl Discord {
         let mut timestamps = None;
 
         match &action_info {
-            SetAction::Idle => {
-                state = format!("Idle");
-            }
-            SetAction::Closing => {
-                state = format!("Closing");
-            }
-
+            SetAction::Idle => state = format!("Idle"),
+            SetAction::Closing => state = format!("Closing"),
+            
             SetAction::Listening { artist, title, elapsed, duration } => {
                 let now = chrono::Utc::now().timestamp();
                 let start = now - (elapsed / 1000.0) as i64;
@@ -104,7 +100,7 @@ impl Discord {
         // activity = activity.buttons(vec![Button::new("User Profile", "https://google.ca")]);
 
         
-        let mut client = self.client.lock().await;
+        let mut client = self.client.lock();
         if let Err(e) = client.set_activity(activity) {
             warn!("Error updating discord presence: {e}")
         }
@@ -114,6 +110,6 @@ impl Discord {
 
 impl Drop for Discord {
     fn drop(&mut self) {
-        ("Discord Dropping!!!!!!!!!");
+        let _ = self.client.lock().close();
     }
 }
