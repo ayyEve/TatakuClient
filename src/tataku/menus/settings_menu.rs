@@ -10,9 +10,8 @@ pub struct SettingsMenu {
     old_settings: Settings,
 
     window_size: Arc<WindowSize>,
-
     change_receiver: AsyncMutex<Receiver<()>>,
-    // menu_game: MenuGameHelper,
+    mouse_pos: Vector2,
 
     should_close: bool,
 }
@@ -53,38 +52,26 @@ impl SettingsMenu {
             window_size,
             change_receiver: AsyncMutex::new(change_receiver),
             should_close: false,
-            // menu_game: MenuGameHelper::new(true, false, Box::new(|s|s.background_game_settings.settings_menu_enabled))
+            mouse_pos: Vector2::ZERO,
         }
     }
 
     pub async fn update_settings(&mut self) {
-        // write settings to settings
         let mut settings = get_settings_mut!();
         settings.from_menu(&self.scroll_area);
-
         settings.check_hashes();
-        // drop to make sure changes propogate correctly
-        drop(settings);
-
-        // self.menu_game.force_update_settings().await;
     }
     pub async fn revert(&mut self) { 
-        {
-            let mut s = get_settings_mut!();
-            *s = self.old_settings.clone();
-            s.skip_autosaveing = false;
-        }
-        
-        // let menu = game.menus.get("main").unwrap().clone();
-        // game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+        let mut s = get_settings_mut!();
+        *s = self.old_settings.clone();
+        s.skip_autosaveing = false;
+
         self.should_close = true;
     }
     pub async fn finalize(&mut self) {
         self.update_settings().await;
         get_settings_mut!().skip_autosaveing = false;
 
-        // let menu = game.menus.get("main").unwrap().clone();
-        // game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
         self.should_close = true;
     }
 
@@ -94,44 +81,44 @@ impl SettingsMenu {
 impl Dialog<Game> for SettingsMenu {
     fn name(&self) -> &'static str { "settings_menu" }
     fn should_close(&self) -> bool { self.should_close }
+    async fn force_close(&mut self) {
+        self.finalize().await;
+    }
 
     fn get_bounds(&self) -> Rectangle {
         Rectangle::bounds_only(
-            Vector2::ZERO,
-            Vector2::ONE * 5000.0
+            Vector2::new(10.0, SCROLLABLE_YOFFSET), 
+            Vector2::new(WIDTH + SECTION_XOFFSET * 2.0, self.window_size.y - SCROLLABLE_YOFFSET*2.0)
         )
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.scroll_area.set_size(Vector2::new(window_size.x - 20.0, window_size.y - SCROLLABLE_YOFFSET*2.0));
         self.window_size = window_size.clone();
-        // self.menu_game.window_size_changed(window_size).await;
-
-
-        // let pos = Vector2::new(WIDTH, 0.0);
-        // let window_size = self.window_size.0;
-        // let size = Vector2::new(
-        //     window_size.x - WIDTH,
-        //     window_size.y
-        // );
-
-        // self.menu_game.fit_to_area(pos, size).await;
     }
     
+    async fn update(&mut self, _game: &mut Game) {
+        if let Ok(Ok(_)) = self.change_receiver.try_lock().map(|e|e.try_recv()) {
+            self.update_settings().await;
+        }
+
+        self.scroll_area.update()
+    }
     async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
         self.scroll_area.draw(Vector2::ZERO, depth, list);
 
         // background
+        let bounds = self.get_bounds();
         list.push(visibility_bg(
-            Vector2::new(10.0, SCROLLABLE_YOFFSET), 
-            Vector2::new(WIDTH + SECTION_XOFFSET * 2.0, self.window_size.y - SCROLLABLE_YOFFSET*2.0),
+            bounds.pos, 
+            bounds.size,
             depth + 10.0
         ));
-        
-        // self.menu_game.draw(list).await;
     }
 
     async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {
+        if !self.get_bounds().contains(pos) { return false }
+
         if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, *mods) {
             match tag.as_str() {
                 "done" => self.finalize().await,
@@ -144,11 +131,15 @@ impl Dialog<Game> for SettingsMenu {
     }
 
     async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        if !self.get_bounds().contains(pos) { return false }
+
         self.scroll_area.on_click_release(pos, button);
         true
     }
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _game:&mut Game) -> bool {
+        if self.scroll_area.get_selected_index().is_none() { return false }
+
         self.scroll_area.on_key_press(key, *mods);
 
         if key == Key::Escape {
@@ -159,25 +150,24 @@ impl Dialog<Game> for SettingsMenu {
     }
 
     async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _game:&mut Game) -> bool {
+        if self.scroll_area.get_selected_index().is_none() { return false }
+
         self.scroll_area.on_key_release(key);
         true
     }
 
-    async fn update(&mut self, _game: &mut Game) {
-        if let Ok(Ok(_)) = self.change_receiver.try_lock().map(|e|e.try_recv()) {
-            self.update_settings().await;
-        }
-
-        self.scroll_area.update()
-    }
     async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+        self.mouse_pos = pos;
         self.scroll_area.on_mouse_move(pos);
     }
     async fn on_mouse_scroll(&mut self, delta:f32, _game:&mut Game) -> bool {
+        if !self.get_bounds().contains(self.mouse_pos) { return false }
         self.scroll_area.on_scroll(delta);
         true
     }
     async fn on_text(&mut self, text:&String) -> bool {
+        if self.scroll_area.get_selected_index().is_none() { return false }
+
         self.scroll_area.on_text(text.clone()); 
         true
     }

@@ -9,6 +9,9 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     fn should_close(&self) -> bool;
     fn name(&self) -> &'static str {""}
 
+    /// dialog is being forcefully closed
+    async fn force_close(&mut self) {}
+
     async fn update(&mut self, _g:&mut G) {}
     async fn draw(&mut self, depth: f32, list: &mut RenderableCollection);
 

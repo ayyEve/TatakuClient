@@ -314,7 +314,13 @@ impl Game {
 
         // check window size
         let window_size_updated = self.window_size.update();
-        if window_size_updated { self.resize_bg(); }
+        if window_size_updated { 
+            self.resize_bg(); 
+            let window_size = WindowSize::get();
+            for i in self.dialogs.iter_mut() {
+                i.window_size_changed(window_size.clone()).await;
+            }
+        }
 
         // let timer = Instant::now();
         self.update_display.increment();
@@ -688,6 +694,12 @@ impl Game {
             }
 
             _ => {
+                // force close all dialogs
+                for i in self.dialogs.iter_mut() {
+                    i.force_close().await;
+                }
+                self.dialogs.clear();
+
                 // if the old state is a menu, tell it we're changing
                 if let GameState::InMenu(menu) = &mut current_state {
                     menu.on_change(false).await
