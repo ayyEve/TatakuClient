@@ -9,6 +9,7 @@ pub struct Checkbox {
     hover: bool,
     selected: bool,
     tag: String,
+    keywords: Vec<String>,
 
     pub text: String,
     pub checked: bool,
@@ -23,6 +24,7 @@ impl Checkbox {
             pos, 
             size, 
             text: text.to_owned(),
+            keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
             hover: false,
             selected: false,
@@ -38,6 +40,8 @@ impl Checkbox {
 
 impl ScrollableItem for Checkbox {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.checked)}
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
+
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
         // draw bounding box
         list.push(Rectangle::new(

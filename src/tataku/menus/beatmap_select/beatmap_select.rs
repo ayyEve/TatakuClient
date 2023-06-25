@@ -455,6 +455,7 @@ impl BeatmapSelectMenu {
         }
     }
 }
+
 #[async_trait]
 impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
@@ -912,6 +913,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         self.apply_filter().await;
     }
 }
+
 #[async_trait]
 impl ControllerInputMenu<Game> for BeatmapSelectMenu {
     async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {

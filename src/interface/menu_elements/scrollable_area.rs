@@ -1,8 +1,10 @@
-use std::any::Any;
 use crate::prelude::*;
 
 pub struct ScrollableArea {
     pub items: Vec<Box<dyn ScrollableItem>>,
+
+    /// key is index of the original array
+    filtered_out_items: HashMap<usize, Box<dyn ScrollableItem>>,
 
     /// layout helper
     original_positions: Vec<Vector2>,
@@ -49,6 +51,7 @@ impl ScrollableArea {
         ScrollableArea {
             items: Vec::new(),
             original_positions: Vec::new(),
+            filtered_out_items: HashMap::new(), 
 
             scroll_pos: 0.0,
             list_mode,
@@ -127,12 +130,16 @@ impl ScrollableArea {
 
     /// scroll to the first selected object, or to the top if no object is selected
     pub fn scroll_to_selection(&mut self) {
-        let mut y = 0.0;
-        for i in self.items.iter() {
-            if i.get_selected() {break}
-            y = i.get_pos().y - self.item_margin * self.ui_scale.y * 2.0;
+        if self.get_selected_index().is_none() {
+            self.scroll_pos = 0.0;
+        } else {
+            let mut y = 0.0;
+            for i in self.items.iter() {
+                if i.get_selected() { break }
+                y = i.get_pos().y - self.item_margin * self.ui_scale.y * 2.0;
+            }
+            self.scroll_pos = -y;
         }
-        self.scroll_pos = -y;
     }
 
 
@@ -267,6 +274,42 @@ impl ScrollableArea {
         clicked_item
     }
 
+
+    pub fn apply_filter(&mut self, query: &Vec<String>, do_refresh: bool) {
+        // rebuild list
+        self.rejoin_items();
+        if query.is_empty() { 
+            if do_refresh {
+                self.refresh_layout();
+                self.scroll_to_selection();
+            }
+            return; 
+        }
+
+        for (i, item) in std::mem::take(&mut self.items).into_iter().enumerate() {
+            if item.check_filter(query, QueryType::Any) {
+                self.items.push(item);
+            } else {
+                self.filtered_out_items.insert(i, item);
+            }
+        }
+
+        if do_refresh {
+            self.refresh_layout();
+            self.scroll_to_selection();
+        }
+    }
+
+    /// rejoins filtered items
+    pub fn rejoin_items(&mut self) {
+        let mut items: Vec<(usize, Box<dyn ScrollableItem>)> = std::mem::take(&mut self.filtered_out_items).into_iter().collect();
+        items.sort_by(|(a,_),(b,_)|a.cmp(b));
+
+        for (key, item) in items {
+            self.items.insert(key, item);
+        }
+    }
+    
 }
 
 impl ScrollableItemGettersSetters for ScrollableArea {
@@ -574,85 +617,6 @@ impl ScrollableItem for ScrollableArea {
 }
 
 
-pub trait ScrollableItem: ScrollableItemGettersSetters {
-    fn window_size_changed(&mut self, _new_window_size: Vector2) {}
-    fn ui_scale_changed(&mut self, _scale: Vector2) {}
-
-    /// fallback for when the item is not in a ScrollableArea
-    fn check_hover(&mut self, p:Vector2) {
-        let pos = self.get_pos();
-        let size = self.size();
-        self.set_hover(p.x > pos.x && p.x < pos.x + size.x && p.y > pos.y && p.y < pos.y + size.y)
-    }
-
-    /// returns none if not hovered or selected
-    fn get_border_none(&self, border_radius: f32) -> Option<Border> {
-        if self.get_hover() {
-            Some(Border::new(Color::RED, border_radius))
-        } else if self.get_selected() {
-            Some(Border::new(Color::BLUE, border_radius))
-        } else {
-            None
-        }
-    }
-    /// returns black border if not hovered or selected
-    fn get_border_black(&self, border_radius: f32) -> Option<Border> {
-        Some(self.get_border_none(border_radius).unwrap_or(Border::new(Color::BLACK, border_radius)))
-    }
-
-    fn update(&mut self) {}
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection);
-
-    // input handlers
-
-    /// when the mouse is clicked, returns the tag of the item clicked (or child of the item clicked)
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers) -> bool { self.on_click_tagged(pos, button, mods).is_some() }
-    /// returns the tag of the clicked item
-    fn on_click_tagged(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> Option<String> { if self.get_hover() {Some(self.get_tag())} else {None} }
-
-    /// when the mouse click is released
-    fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton) {}
-
-    /// when the mouse is moved
-    fn on_mouse_move(&mut self, p:Vector2) {self.check_hover(p)}
-
-    /// when text is input
-    fn on_text(&mut self, _text:String) {}
-
-    /// when a key is pressed
-    fn on_key_press(&mut self, _key:Key, _mods:KeyModifiers) -> bool {false}
-    
-    /// when a key is released TODO!
-    fn on_key_release(&mut self, _key:Key) {}
-
-    // when the mouse is scrolled
-    fn on_scroll(&mut self, _delta:f32) -> bool {false}
-
-    /// get the inner value
-    fn get_value(&self) -> Box<dyn Any> {Box::new(0)}
-}
-
-/// helper trait for auto code generation
-pub trait ScrollableItemGettersSetters: Send + Sync {
-
-    fn size(&self) -> Vector2;
-    /// this is a convenience function, it should never be called by this ui code
-    fn set_size(&mut self, _new_size: Vector2) {}
-    
-    fn get_tag(&self) -> String {String::new()}
-    fn set_tag(&mut self, _tag:&str) {}
-
-    fn get_pos(&self) -> Vector2 {Vector2::ZERO}
-    fn set_pos(&mut self, _pos:Vector2) {}
-
-    fn get_selected(&self) -> bool {false}
-    fn set_selected(&mut self, _selected:bool) {}
-    fn get_selectable(&self) -> bool {true}
-    fn get_multi_selectable(&self) -> bool {false}
-
-    fn get_hover(&self) -> bool {false}
-    fn set_hover(&mut self, _hover:bool) {}
-}
 
 pub enum DraggerSide {
     None,

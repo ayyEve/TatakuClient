@@ -19,6 +19,7 @@ pub struct TextInput {
     placeholder: String,
     text: String,
     cursor_index: usize,
+    keywords: Vec<String>,
 
     pub is_password: bool,
     pub show_password_on_hover: bool,
@@ -37,11 +38,12 @@ pub struct TextInput {
     
     pub on_change: Arc<dyn Fn(&mut Self, String) + Send + Sync>,
 }
-impl TextInput {
+impl TextInput { 
     pub fn new(pos:Vector2, size: Vector2, placeholder:&str, value:&str, font:Font) -> Self {
         Self {
             pos, 
             size, 
+            keywords: placeholder.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
             placeholder: placeholder.to_owned(),
 
             hover: false,
@@ -55,11 +57,10 @@ impl TextInput {
             show_password: false,
 
             font,
-            font_size: 32.0,
+            font_size: size.y * 0.8,
             selection_end: 0,
             key_hold: None,
             hold_pos: None,
-
             
             on_change: Arc::new(|_,_|{}),
         }
@@ -137,11 +138,10 @@ impl ScrollableItemGettersSetters for TextInput {
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 }
 impl ScrollableItem for TextInput {
-    fn get_value(&self) -> Box<dyn std::any::Any> {
-        Box::new(self.text.clone())
-    }
+    fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.text.clone()) }
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
+    fn draw(&mut self, mut pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
         list.push(Rectangle::new(
             Color::WHITE,
             parent_depth + 1.0,
@@ -150,12 +150,14 @@ impl ScrollableItem for TextInput {
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
         ));
 
-        let text;
-        if self.is_password && !self.show_password {
-            text = "*".repeat(self.text.len());
+        // offset text pos to be y centered
+        pos_offset.y += (self.size.y-self.size.y) / 2.0;
+
+        let text = if self.is_password && !self.show_password {
+            "*".repeat(self.text.len())
         } else {
-            text = self.text.clone();
-        }
+            self.text.clone()
+        };
 
         if text.len() > 0 {
             list.push(Text::new(
@@ -192,7 +194,7 @@ impl ScrollableItem for TextInput {
                 Color::RED,
                 parent_depth,
                 self.pos + pos_offset + Vector2::new(width, 0.0),
-                Vector2::new(0.7, self.size.y), 
+                Vector2::new(0.7, self.font_size), 
                 Some(Border::new(Color::RED, 1.2))
             ));
         }

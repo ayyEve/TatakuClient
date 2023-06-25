@@ -15,6 +15,7 @@ pub struct Slider {
 
     mouse_down: bool, // store the mouse state
     text: String,
+    keywords: Vec<String>,
 
     pub value: f64,
     pub range: Range<f64>,
@@ -35,6 +36,7 @@ impl Slider {
             hover: false,
             selected: false,
             tag: String::new(),
+            keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
             text: text.to_owned(),
             value,
@@ -102,6 +104,9 @@ impl Slider {
 
 impl ScrollableItem for Slider {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.value)}
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
+
+
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
         
         // draw bounding box
@@ -191,7 +196,6 @@ impl ScrollableItem for Slider {
     }
 
     //TODO: on key press (left/right)
-
     fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton) {
         self.mouse_down = false;
     }

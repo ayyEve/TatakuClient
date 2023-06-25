@@ -9,14 +9,13 @@ pub struct MenuButton {
     hover: bool,
     selected: bool,
     tag: String,
-
-    // context: Option<Context>,
+    keywords: Vec<String>,
 
     pub text: String,
     pub font: Font,
     pub font_size: f32,
 
-    pub on_click:Arc<dyn Fn(&mut Self) + 'static + Send + Sync>,
+    pub on_click:Arc<dyn Fn(&mut Self) + 'static + Send + Sync>, 
 }
 impl MenuButton {
     pub fn new(pos: Vector2, size: Vector2, text:&str, font:Font) -> Self {
@@ -24,6 +23,7 @@ impl MenuButton {
             pos, 
             size, 
             text: text.to_owned(),
+            keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
             hover: false,
             selected: false,
@@ -43,6 +43,8 @@ impl MenuButton {
 
 
 impl ScrollableItem for MenuButton {
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
+
     fn on_click_tagged(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> Option<String> {
         self.check_hover(pos);
 

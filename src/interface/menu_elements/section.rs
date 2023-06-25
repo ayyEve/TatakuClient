@@ -11,9 +11,9 @@ pub struct MenuSection {
     pub text: String,
     pub font: Font,
     pub font_size: f32,
-
-    // hover: bool
+    keywords: Vec<String>,
 }
+
 impl MenuSection {
     pub fn new(pos:Vector2, height:f32, text:&str, font:Font) -> Self {
         Self {
@@ -22,12 +22,13 @@ impl MenuSection {
             text: text.to_owned(),
             font,
             font_size: 32.0,
-            // hover: false,
+            keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
         }
     }
 }
 
 impl ScrollableItem for MenuSection {
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {false} //{self.hover}
 
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {

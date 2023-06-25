@@ -16,6 +16,7 @@ pub struct Dropdown<E:Dropdownable> {
     hover: bool,
     selected: bool,
     tag: String,
+    keywords: Vec<String>,
 
     text: String,
     pub value: Option<E>,
@@ -43,6 +44,7 @@ impl<E:Dropdownable> Dropdown<E> {
             hover: false,
             selected: false,
             tag: String::new(),
+            keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
             text,
             value,
@@ -61,6 +63,7 @@ impl<E:Dropdownable> Dropdown<E> {
         }
     }
 }
+
 impl<E:Dropdownable> ScrollableItemGettersSetters for Dropdown<E> {
     fn size(&self) -> Vector2 {
         if self.expanded {
@@ -78,12 +81,12 @@ impl<E:Dropdownable> ScrollableItemGettersSetters for Dropdown<E> {
     fn get_selected(&self) -> bool {self.selected}
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 }
+
 impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
     fn window_size_changed(&mut self, _new_window_size: Vector2) {}
 
-    fn get_value(&self) -> Box<dyn std::any::Any> {
-        Box::new(self.value.clone())
-    }
+    fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.value.clone()) }
+    fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 
     fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton) {}
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
@@ -215,7 +218,6 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
 
 
 
-
 mod test {
     use crate::prelude::*;
 
@@ -235,4 +237,3 @@ mod test {
         }
     }
 }
-
