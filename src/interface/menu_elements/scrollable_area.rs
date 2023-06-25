@@ -154,7 +154,7 @@ impl ScrollableArea {
     
     /// returns the tag of the newly selected item
     pub fn set_selected_by_index(&mut self, index:usize) -> Option<String> {
-        if index > self.items.len() {return None}
+        if index > self.items.len() { return None }
 
         // select item and deselect everything else
         for (n, i) in self.items.iter_mut().enumerate() {
@@ -164,12 +164,8 @@ impl ScrollableArea {
         // refresh the layout
         self.refresh_layout();
 
-        // return tag, and click item if desired
-        if let Some(i) = self.items.get_mut(index) {
-            Some(i.get_tag().clone())
-        } else {
-            None
-        }
+        // return tag
+        self.items.get_mut(index).map(|i|i.get_tag())
     }
 
     /// select the next selectable item
@@ -510,24 +506,18 @@ impl ScrollableItem for ScrollableArea {
             self.size.x, self.size.y
         ]);
 
-        // let mut clipping_list = RenderableCollection::new();
         list.do_before_add = Some(Box::new(move|i|i.set_scissor(scissor)));
         for item in self.items.iter_mut() {
             // check if item will even be drawn
             let size = item.size();
             let pos = item.get_pos();
             // ignore x for now, just assume its in drawing range
-            if (pos.y + size.y) + offset.y < self.pos.y || pos.y + offset.y > self.pos.y + self.size.y {continue}
+            if (pos.y + size.y) + offset.y < self.pos.y || pos.y + offset.y > self.pos.y + self.size.y { continue }
 
             // should be good, draw it
             item.draw(offset, parent_depth, list);
         }
         list.do_before_add = None;
-
-        // for i in clipping_list.iter_mut() {
-        //     i.set_context(Some(clipping_context.clone()))
-        // }
-        // list.extend(clipping_list);
 
         // // helpful for debugging positions
         // if self.hover {

@@ -111,7 +111,14 @@ impl InputManager {
         match e {
             // window events
             Window2GameEvent::GotFocus => self.window_change_focus = Some(true),
-            Window2GameEvent::LostFocus => self.window_change_focus = Some(false),
+            Window2GameEvent::LostFocus => {
+                self.window_change_focus = Some(false);
+
+                // forcefully release all keys. horrible workaround but its good enough
+                for key in std::mem::take(&mut self.keys) {
+                    self.keys_up.insert((key, Instant::now()));
+                }
+            }
 
             // GameWindowEvent::Minimized => {},
             // GameWindowEvent::Closed => {}

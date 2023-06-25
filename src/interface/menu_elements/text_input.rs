@@ -31,7 +31,7 @@ pub struct TextInput {
     selection_end: usize,
 
     /// key being held, when it started being held, when the last repeat was performed
-    key_hold: Option<(Key, Instant, f32)>,
+    key_hold: Option<(Key, KeyModifiers, Instant, f32)>,
 
     hold_pos: Option<Vector2>,
     
@@ -142,14 +142,13 @@ impl ScrollableItem for TextInput {
     }
 
     fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
-        let border = Rectangle::new(
+        list.push(Rectangle::new(
             Color::WHITE,
             parent_depth + 1.0,
             self.pos + pos_offset,
             self.size, 
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
-        );
-        list.push(border);
+        ));
 
         let text;
         if self.is_password && !self.show_password {
@@ -159,25 +158,23 @@ impl ScrollableItem for TextInput {
         }
 
         if text.len() > 0 {
-            let text = Text::new(
+            list.push(Text::new(
                 Color::BLACK,
                 parent_depth + 1.0,
                 self.pos + pos_offset,
                 self.font_size,
                 text.clone(),
                 self.font.clone()
-            );
-            list.push(text);
+            ));
         } else {
-            let text = Text::new(
+            list.push(Text::new(
                 Color::new(0.2,0.2,0.2,1.0),
                 parent_depth + 1.0,
                 self.pos + pos_offset,
                 self.font_size,
                 self.placeholder.clone(),
                 self.font.clone()
-            );
-            list.push(text);
+            ));
         }
 
         let width = Text::new(
@@ -185,24 +182,24 @@ impl ScrollableItem for TextInput {
             parent_depth,
             self.pos + pos_offset,
             self.font_size,
-            self.text.split_at(self.cursor_index).0.to_owned(),
+            text.split_at(self.cursor_index).0.to_owned(),
             self.font.clone()
         ).measure_text().x;
 
+        // cursor if no text is selected
         if self.selected && self.selection_end == 0 {
-            let cursor = Rectangle::new(
+            list.push(Rectangle::new(
                 Color::RED,
                 parent_depth,
                 self.pos + pos_offset + Vector2::new(width, 0.0),
                 Vector2::new(0.7, self.size.y), 
                 Some(Border::new(Color::RED, 1.2))
-            );
-            list.push(cursor);
+            ));
         }
 
+        // draw rectangle around selected items
         if self.selection_end > self.cursor_index {
-            // draw rectangle around selected items
-            let (start, draw_this) = self.text.split_at(self.cursor_index);
+            let (start, draw_this) = text.split_at(self.cursor_index);
             let (draw_this, _end) = draw_this.split_at(self.selection_end - self.cursor_index);
             
             let start_offset = Text::new(
@@ -291,19 +288,19 @@ impl ScrollableItem for TextInput {
 
     fn on_key_press(&mut self, key:Key, mods:KeyModifiers) -> bool {
         self.show_password = false;
-        if !self.selected {return false}
+        if !self.selected { return false }
 
         if mods.alt {
             self.show_password = true;
             return true;
         }
 
-        if let Some((k, _,_)) = &self.key_hold {
+        if let Some((k, _,_,_)) = &self.key_hold {
             if k != &key {
-                self.key_hold = Some((key, Instant::now(), 0.0));
+                self.key_hold = Some((key, mods, Instant::now(), 0.0));
             }
         } else {
-            self.key_hold = Some((key, Instant::now(), 0.0));
+            self.key_hold = Some((key, mods, Instant::now(), 0.0));
         }
 
         // reset selection if its not a selection modifier
@@ -315,27 +312,22 @@ impl ScrollableItem for TextInput {
         match key {
             Key::Left if mods.shift => {
                 if self.selection_end > self.cursor_index {
-                    // println!("1");
                     self.selection_end -= 1
                 } 
                 // else if self.cursor_index > 0 {
-                //     println!("2");
                 //     // selection will be were cursor index was, and cursor index will reduce (selection expands to the left)
                 //     if self.selection_end == 0 {
-                //         println!("3");
                 //         self.selection_end = self.cursor_index;
                 //     }
                 //     self.cursor_index -= 1;
                 // }
-            },
+            }
             Key::Right if mods.shift => {
                 if self.selection_end < self.cursor_index {self.selection_end = self.cursor_index}
                 if self.selection_end < self.text.len() {self.selection_end += 1}
-            },
+            }
 
-            Key::Left if self.cursor_index > 0 => {
-                self.cursor_index -= 1;
-            },
+            Key::Left if self.cursor_index > 0 => self.cursor_index -= 1,
             Key::Right if self.cursor_index < self.text.len() => self.cursor_index += 1,
             
             Key::Back if self.cursor_index > 0 => {
@@ -362,7 +354,7 @@ impl ScrollableItem for TextInput {
                 (self.on_change.clone())(self, self.text.clone());
             }
             
-            Key::V => if mods.ctrl {
+            Key::V if mods.ctrl => {
                 let ctx:Result<ClipboardContext, Box<dyn Error>> = ClipboardProvider::new();
                 match ctx {
                     Ok(mut ctx) => 
@@ -373,6 +365,11 @@ impl ScrollableItem for TextInput {
                     Err(e) => println!("[Clipboard] Error: {:?}", e),
                 }
             }
+            
+            Key::A if mods.ctrl => {
+                self.cursor_index = 0;
+                self.selection_end = self.text.len();
+            }
             _ => {}
         }
 
@@ -381,20 +378,20 @@ impl ScrollableItem for TextInput {
     fn update(&mut self) {
         let mut should_repeat = None;
 
-        if let Some((key, since_start, last_time)) = &mut self.key_hold {
+        if let Some((key, mods, since_start, last_time)) = &mut self.key_hold {
             let elapsed = since_start.elapsed().as_secs_f32() * 1000.0;
 
             if elapsed >= KEY_REPEAT_DELAY {
                 if elapsed - *last_time >= KEY_REPEAT_INTERVAL {
                     // perform a repeat
-                    should_repeat = Some(*key);
+                    should_repeat = Some((*key, *mods));
                     *last_time = elapsed;
                 }
             }
         }
 
-        if let Some(k) = should_repeat {
-            self.on_key_press(k, KeyModifiers::default());
+        if let Some((k, mods)) = should_repeat {
+            self.on_key_press(k, mods);
         }
     }
     
