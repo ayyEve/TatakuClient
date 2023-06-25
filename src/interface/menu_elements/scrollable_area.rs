@@ -505,17 +505,13 @@ impl ScrollableItem for ScrollableArea {
 
         // setup a clipping context. 
         // this ensures items arent being drawn outside the bounds of the scrollable
-        
-        // let mut clipping_context = DrawState::default();
-        // clipping_context.scissor = Some([
-        //     self.pos.x as u32,
-        //     self.pos.y as u32,
-        //     self.size.x as u32,
-        //     self.size.y as u32
-        // ]);
+        let scissor = Some([
+            self.pos.x, self.pos.y,
+            self.size.x, self.size.y
+        ]);
 
         // let mut clipping_list = RenderableCollection::new();
-        // list.do_before_add = Some(Box::new(move|i|i.set_draw_state(Some(clipping_context))));
+        list.do_before_add = Some(Box::new(move|i|i.set_scissor(scissor)));
         for item in self.items.iter_mut() {
             // check if item will even be drawn
             let size = item.size();
