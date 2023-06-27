@@ -88,7 +88,12 @@ impl Animation {
         self.size * self.scale
     }
 
+    pub fn set_start_time(&mut self, time: f32) {
+        self.frame_start_time = time;
+    }
+
 }
+
 impl TatakuRenderable for Animation {
     fn get_depth(&self) -> f32 {self.depth}
 
@@ -100,19 +105,8 @@ impl TatakuRenderable for Animation {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
+
         let scale = self.scale;
-        let h_flip = false;
-        let v_flip = false;
-
-        // if scale.x < 0.0 {
-        //     scale.x = scale.x.abs();
-        //     h_flip = true;
-        // }
-        // if scale.y < 0.0 {
-        //     scale.y = scale.y.abs();
-        //     v_flip = true;
-        // }
-
         let transform = transform
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
@@ -121,7 +115,7 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
+        g.draw_tex(image, self.depth, self.color.alpha(alpha), false, false, transform, self.scissor);
     }
 }
 

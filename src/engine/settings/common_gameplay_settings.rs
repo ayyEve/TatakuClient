@@ -49,8 +49,11 @@ pub struct CommonGameplaySettings {
 
     // hit indicators
     /// how long should a hit indicator be drawn for?
-    #[Setting(text="Hit Indicator Draw Time", min=100, max=500)]
+    #[Setting(text="Hit Indicator Draw Time", min=100, max=1000)]
     pub hit_indicator_draw_duration: f32,
+    /// how long should a hit indicator be drawn for?
+    #[Setting(text="Use Draw Time for Animations")]
+    pub use_indicator_draw_duration_for_animations: bool,
 }
 impl CommonGameplaySettings {
     /// init colors etc
@@ -96,7 +99,8 @@ impl Default for CommonGameplaySettings {
             healthbar_border_color: Color::WHITE,
 
             // hit indicators
-            hit_indicator_draw_duration: 300.0,
+            hit_indicator_draw_duration: 500.0,
+            use_indicator_draw_duration_for_animations: false,
         }
     }
 }

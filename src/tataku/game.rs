@@ -96,7 +96,6 @@ impl Game {
 
         // make sure we have a value in the mod manager global store
         GlobalValueManager::update(Arc::new(ModManager::new()));
-        GlobalValueManager::update(Arc::new(CurrentSkin(Default::default())));
         GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
 
         Self::load_theme(&self.settings.theme);
@@ -346,8 +345,8 @@ impl Game {
         let mut text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
-        let mut controller_down = self.input_manager.get_controller_down();
-        let mut controller_up = self.input_manager.get_controller_up();
+        let controller_down = self.input_manager.get_controller_down();
+        let controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
         
         

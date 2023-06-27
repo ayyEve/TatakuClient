@@ -692,7 +692,8 @@ impl IngameManager {
 
 
     pub fn add_judgement_indicator<HI:JudgementIndicator+'static>(&mut self, mut indicator: HI) {
-        indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration);
+        indicator.set_start_time(self.time());
+        indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration, &self.settings);
         self.judgement_indicators.push(Box::new(indicator))
     }
 

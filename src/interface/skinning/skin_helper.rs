@@ -32,11 +32,23 @@ pub struct SkinManager {
 
 // static
 impl SkinManager {
+    pub fn new() -> Self {
+        let settings = get_settings!();
+        
+        let current_skin = settings.current_skin.clone();
+        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
+        GlobalValueManager::update(Arc::new(CurrentSkin(current_skin_config.clone())));
+        
+        Self {
+            last_skin: current_skin,
+            current_skin_config,
+            texture_cache: HashMap::new(),
+            settings: SettingsHelper::new(), 
+        }
+    }
 
     pub async fn init() {
-        let mut s = SKIN_MANAGER.write().await;
-        s.settings = SettingsHelper::new();
-        s.last_skin = s.settings.current_skin.clone();
+        let s = SKIN_MANAGER.write().await;
         GlobalValueManager::update(Arc::new(CurrentSkin(s.current_skin_config.clone())));
     }
 
@@ -90,19 +102,6 @@ impl SkinManager {
 
 // instance
 impl SkinManager {
-    pub fn new() -> Self {
-        let settings = GlobalValueManager::get::<Settings>().unwrap();
-        
-        let current_skin = settings.current_skin.clone();
-        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
-        
-        Self {
-            last_skin: String::new(),
-            current_skin_config,
-            texture_cache: HashMap::new(),
-            settings: SettingsHelper::new(), 
-        }
-    }
 
     // async fn load_texture<N: AsRef<str> + Send + Sync>(&mut self, name:N, allow_default:bool) -> Option<Image> {
     //     // trace!("thread: {:?}", std::thread::current().id());

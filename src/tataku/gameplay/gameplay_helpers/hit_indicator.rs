@@ -4,7 +4,8 @@ use crate::prelude::*;
 
 pub trait JudgementIndicator: Send + Sync{
     fn should_keep(&self, map_time: f32) -> bool;
-    fn set_draw_duration(&mut self, duration: f32);
+    fn set_start_time(&mut self, time: f32);
+    fn set_draw_duration(&mut self, duration: f32, settings: &Settings);
     fn draw(&mut self, map_time: f32, list: &mut RenderableCollection);
 }
 
@@ -17,14 +18,14 @@ pub struct BasicJudgementIndicator {
     pub radius: f32,
     pub color: Color,
 
-    pub image: Option<Image>,
+    pub image: Option<Animation>,
 
     draw_duration: f32
 }
 impl BasicJudgementIndicator {
     /// pos, depth, radius and color are only if image is none.
     /// if image is some, it assumes the values (pos, depth, size, etc) are already set
-    pub fn new(pos: Vector2, time: f32, depth: f32, radius: f32, color: Color, image: Option<Image>) -> Self {
+    pub fn new(pos: Vector2, time: f32, depth: f32, radius: f32, color: Color, image: Option<Animation>) -> Self {
         Self {
             pos,
             time,
@@ -38,8 +39,25 @@ impl BasicJudgementIndicator {
 }
 
 impl JudgementIndicator for BasicJudgementIndicator {
-    fn set_draw_duration(&mut self, duration: f32) {
-        self.draw_duration = duration
+    fn set_start_time(&mut self, time: f32) {
+        if let Some(anim) = &mut self.image {
+            anim.set_start_time(time);
+        }
+    }
+    fn set_draw_duration(&mut self, mut duration: f32, settings: &Settings) {
+
+        if let Some(anim) = &mut self.image {
+            let count = anim.frames.len();
+            
+            if (count > 1 && settings.common_game_settings.use_indicator_draw_duration_for_animations) || count == 1 {
+                let frametime = duration / count as f32;
+                anim.frame_delays = vec![frametime; count];
+            } else {
+                duration = anim.frame_delays.first().cloned().unwrap_or_default() * count as f32
+            }
+        }
+
+        self.draw_duration = duration;
     }
 
     fn should_keep(&self, map_time: f32) -> bool {
@@ -52,7 +70,10 @@ impl JudgementIndicator for BasicJudgementIndicator {
         
         if let Some(img) = &self.image {
             let mut img = img.clone();
-            img.color.a = alpha;
+            img.update(map_time);
+            if img.frames.len() == 1 {
+                img.color.a = alpha;
+            }
             list.push(img);
         } else {
             list.push(Circle::new(

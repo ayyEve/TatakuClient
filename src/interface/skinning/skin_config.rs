@@ -14,6 +14,7 @@ pub struct SkinSettings {
     pub cursor_trail_rotate: bool,
 
     pub sliderball_frames: u8,
+    pub animation_framerate: u8,
     pub hit_circle_overlay_above_number: bool,
     /// ??
     pub slider_style: u8, 
@@ -58,7 +59,6 @@ impl SkinSettings {
 
         // return defaults if skin does not exist
         if !Io::exists(&path) {
-            trace!("skin.ini missing, using defaults");
             return Ok(s)
         }
 
@@ -72,7 +72,7 @@ impl SkinSettings {
             // split out comments, and trim wacky chars
             let line = line.split("//").next().unwrap().trim();
             // ignore empty lines (and comment-only lines)
-            if line.len() == 0 {continue}
+            if line.len() == 0 { continue }
             
             // check for section change
             if line.starts_with("[") {
@@ -109,6 +109,7 @@ impl SkinSettings {
                         "cursorrxpand" => s.cursor_expand = vbool(),
                         "cursorcentre" => s.cursor_center = vbool(),
                         "sliderballframes" => s.sliderball_frames = val.parse().unwrap_or(60),
+                        "animationframerate" => s.animation_framerate = val.parse().unwrap_or(12),
                         "hitcircleoverlayabovenumer" | "hitcircleoverlayabovenumber" => s.hit_circle_overlay_above_number = vbool(),
                         "sliderstyle" => s.slider_style = val.parse().unwrap_or_default(),
                         "allowsliderballTtint" => s.allow_sliderball_tint = vbool(),
@@ -116,7 +117,7 @@ impl SkinSettings {
                         _ => {}
                     }
                     
-                },
+                }
                 SkinSection::Colors => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
@@ -133,7 +134,7 @@ impl SkinSettings {
                         
                         _ => {}
                     }
-                },
+                }
                 SkinSection::Fonts => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
@@ -149,7 +150,7 @@ impl SkinSettings {
                         
                         _ => {}
                     }
-                },
+                }
                 SkinSection::Mania => {
                     let mut split = line.split(":");
                     let key = split.next().unwrap().trim();
@@ -195,7 +196,7 @@ impl SkinSettings {
                         }
                     }
 
-                },
+                }
             }
         }
         
@@ -214,6 +215,7 @@ impl Default for SkinSettings {
             cursor_expand: true,
             cursor_center: true,
             cursor_trail_rotate: false,
+            animation_framerate: 12,
             
             sliderball_frames: 10,
             hit_circle_overlay_above_number: false,
