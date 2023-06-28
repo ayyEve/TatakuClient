@@ -204,9 +204,13 @@ impl OsuSlider {
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
         // starting point
-        let mut p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
-        p.y = window_size.y - p.y;
+        let p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
+        // p.y = window_size.y - p.y;
 
+        let mut min_pos = window_size;
+        let mut max_pos = Vector2::ZERO;
+
+        let radius_with_border = self.radius - border_radius * 0.5;
         // circles with a border have extra radius because of the border (i think its 0.5x the border width)
 
         // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
@@ -223,11 +227,22 @@ impl OsuSlider {
 
             // add all lines
             for line in self.curve.curve_lines.iter() {
-                let mut p1 = self.scaling_helper.scale_coords(line.p1);
-                let mut p2 = self.scaling_helper.scale_coords(line.p2);
+                let p1 = self.scaling_helper.scale_coords(line.p1);
+                let p2 = self.scaling_helper.scale_coords(line.p2);
+                
+                if p1.x - radius_with_border < min_pos.x { min_pos.x = p1.x - radius_with_border; }
+                if p1.y - radius_with_border < min_pos.y { min_pos.y = p1.y - radius_with_border; }
+                if p2.x - radius_with_border < min_pos.x { min_pos.x = p2.x - radius_with_border; }
+                if p2.y - radius_with_border < min_pos.y { min_pos.y = p2.y - radius_with_border; }
 
-                p1.y = window_size.y - p1.y;
-                p2.y = window_size.y - p2.y;
+                if p1.x + radius_with_border > max_pos.x { max_pos.x = p1.x + radius_with_border; }
+                if p1.y + radius_with_border > max_pos.y { max_pos.y = p1.y + radius_with_border; }
+                if p2.x + radius_with_border > max_pos.x { max_pos.x = p2.x + radius_with_border; }
+                if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
+
+
+                // p1.y = window_size.y - p1.y;
+                // p2.y = window_size.y - p2.y;
 
                 // add a line to connect the points
                 list.push(Box::new(Line::new(
@@ -248,12 +263,23 @@ impl OsuSlider {
             }
         }
 
+        // draw it to the render texture
         if let Some(target) = self.slider_body_render_target.clone() {
-            GameWindow::update_render_target(target, RenderPipeline::AlphaOverwrite, |state, matrix| for i in list { i.draw(matrix, state); }).await;
+            GameWindow::update_render_target(target, RenderPipeline::AlphaOverwrite, move |state, matrix| {
+                let m = matrix.trans(-min_pos);
+                for i in list { i.draw(m, state); }
+            }).await;
         } else {
-            // draw it to the render texture
-            if let Ok(mut slider_body_render_target) = RenderTarget::new(window_size.x as u32, window_size.y as u32, RenderPipeline::AlphaOverwrite, |state, matrix| for i in list { i.draw(matrix, state); }).await {
-                slider_body_render_target.image.origin = Vector2::new(0.0, window_size.y);
+            let size = max_pos - min_pos;
+
+            let rt = RenderTarget::new(size.x as u32, size.y as u32, RenderPipeline::AlphaOverwrite, move |state, matrix| {
+                let m = matrix.trans(-min_pos);
+                for i in list { i.draw(m, state); } 
+            }).await;
+
+            if let Ok(mut slider_body_render_target) = rt {
+                slider_body_render_target.image.pos = min_pos; 
+                slider_body_render_target.image.origin = Vector2::ZERO;
                 self.slider_body_render_target = Some(slider_body_render_target);
             } else {
                 warn!("failed to slider");
@@ -458,7 +484,6 @@ impl HitObject for OsuSlider {
         if let Some(rt) = &self.slider_body_render_target {
             let mut b = rt.image.clone();
             b.color.a = alpha;
-            b.scale.y *= -1.0;
             list.push(b);
         }
 
