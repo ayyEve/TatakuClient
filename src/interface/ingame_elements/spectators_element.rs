@@ -39,23 +39,18 @@ impl InnerUIElement for SpectatorsElement {
 
         // draw spectators
         if self.spectator_cache.len() > 0 {
-            const DEPTH:f32 = -1000.0;
-
-
             list.push(visibility_bg(
                 pos_offset,
                 Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f32) * scale,
-                DEPTH
             ));
             let font = get_font();
             for (i, (_, username)) in self.spectator_cache.iter().enumerate() {
                 // draw username
                 list.push(Text::new(
-                    Color::WHITE, 
-                    DEPTH - 0.001, 
                     pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32) * scale,
                     30.0 * scale.y,
                     username.clone(),
+                    Color::WHITE, 
                     font.clone()
                 ))
             }

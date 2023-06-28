@@ -26,9 +26,7 @@ pub struct ManiaNote {
 impl ManiaNote {
     pub async fn new(
         time:f32, column:u8, color: Color, x:f32, 
-        
         sv_mult: f32,
-
         playfield: Arc<ManiaPlayfield>, mania_skin_settings: Option<Arc<ManiaSkinSettings>>,
 
         hitsounds: Vec<Hitsound>,
@@ -84,10 +82,9 @@ impl HitObject for ManiaNote {
             list.push(img);
         } else {
             list.push(Rectangle::new(
-                self.color,
-                MANIA_NOTE_DEPTH,
                 self.pos,
                 self.playfield.note_size(),
+                self.color,
                 Some(Border::new(Color::BLACK, self.playfield.note_border_width))
             ));
         }
@@ -111,7 +108,6 @@ impl HitObject for ManiaNote {
                     let mut img = img.clone();
                     img.color = self.color;
                     img.origin = Vector2::ZERO;
-                    img.depth = MANIA_NOTE_DEPTH;
                     note_image = Some(img);
                 }
             }

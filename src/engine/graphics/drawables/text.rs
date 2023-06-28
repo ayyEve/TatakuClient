@@ -12,7 +12,6 @@ pub struct Text {
 
     text_scale: f32,
 
-    pub depth: f32,
     font_size: f32,
     pub text: String,
     pub text_colors: Vec<Color>,
@@ -21,7 +20,7 @@ pub struct Text {
     scissor: Scissor,
 }
 impl Text {
-    pub fn new(color:Color, depth:f32, pos: Vector2, font_size: f32, text: String, font: Font) -> Text {
+    pub fn new(pos: Vector2, font_size: f32, text: String, color:Color, font: Font) -> Text {
         let fonts = vec![font, get_fallback_font()];
 
         // let text_size = Self::measure_text_internal(&fonts, font_size, &text, Vector2::ONE, 2.0);
@@ -38,7 +37,6 @@ impl Text {
             text_scale,
 
             // origin,
-            depth,
             font_size: base_size,
             text,
             fonts,
@@ -97,7 +95,6 @@ impl Text {
 }
 impl TatakuRenderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size) }
-    fn get_depth(&self) -> f32 { self.depth }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
  

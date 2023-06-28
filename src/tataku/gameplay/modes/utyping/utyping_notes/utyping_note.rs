@@ -11,7 +11,6 @@ const GRAVITY_SCALING:f32 = 400.0;
 pub struct UTypingNote {
     pos: Vector2,
     time: f32, // ms
-    depth: f32,
     hit_time: f32,
     // cutoff_time: f32,
 
@@ -50,11 +49,8 @@ impl UTypingNote {
         // let mut romaji = String::new(); 
         // entry.iter().for_each(|c|romaji += &format!(" {c}"));
 
-        let depth = UTypingGame::get_depth(time);
-
         Self {
             time, 
-            depth,
             text, 
             // romaji,
             branches,
@@ -67,7 +63,7 @@ impl UTypingNote {
             missed: false,
 
             pos: Vector2::ZERO,
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings, depth).await},
+            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings).await},
             settings,
             bounce_factor,
             judgment: None
@@ -124,10 +120,9 @@ impl HitObject for UTypingNote {
             image.draw(list);
         } else {
             list.push(Circle::new(
-                Color::TRANSPARENT_WHITE,
-                self.depth,
                 self.pos,
                 self.settings.note_radius,
+                Color::TRANSPARENT_WHITE,
                 Some(Border::new(Color::RED, NOTE_BORDER_SIZE))
             ));
         }
@@ -135,12 +130,11 @@ impl HitObject for UTypingNote {
 
         // draw text to hit
         let mut t = Text::new(
-            Color::BLACK,
-            self.depth,
             self.pos,
             32.0,
             // self.romaji.clone(), //
             self.text.clone(),
+            Color::BLACK,
             get_fallback_font()
         );
         let mut rect = Rectangle::bounds_only(self.pos - size / 2.0, size);
@@ -167,11 +161,10 @@ impl HitObject for UTypingNote {
             
             // draw text to hit
             let mut t = Text::new(
-                Color::BLACK,
-                self.depth,
                 self.pos,
                 32.0,
                 i.clone(),
+                Color::BLACK,
                 get_fallback_font()
             );
 
@@ -183,11 +176,10 @@ impl HitObject for UTypingNote {
         if over_max {
             // draw text to hit
             let mut t = Text::new(
-                Color::BLACK,
-                self.depth,
                 self.pos,
                 32.0,
                 "...".to_owned(),
+                Color::BLACK,
                 get_fallback_font()
             );
             t.center_text(&rect);
@@ -252,7 +244,7 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    async fn new(_settings: &Arc<TaikoSettings>, depth: f32) -> Option<Self> {
+    async fn new(_settings: &Arc<TaikoSettings>) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
@@ -261,7 +253,6 @@ impl HitCircleImageHelper {
         if let Some(circle) = &mut circle {
             let scale = Vector2::ONE * scale;
 
-            circle.depth = depth;
             circle.pos = Vector2::ZERO;
             circle.scale = scale;
             // circle.color = color;
@@ -271,7 +262,6 @@ impl HitCircleImageHelper {
         if let Some(overlay) = &mut overlay {
             let scale = Vector2::ONE * scale;
 
-            overlay.depth = depth - 0.0000001;
             overlay.pos = Vector2::ZERO;
             overlay.scale = scale;
             // overlay.color = color;

@@ -141,12 +141,11 @@ impl ScrollableItem for TextInput {
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.text.clone()) }
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 
-    fn draw(&mut self, mut pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
+    fn draw(&mut self, mut pos_offset:Vector2, list:&mut RenderableCollection) {
         list.push(Rectangle::new(
-            Color::WHITE,
-            parent_depth + 1.0,
             self.pos + pos_offset,
             self.size, 
+            Color::WHITE,
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
         ));
 
@@ -161,40 +160,36 @@ impl ScrollableItem for TextInput {
 
         if text.len() > 0 {
             list.push(Text::new(
-                Color::BLACK,
-                parent_depth + 1.0,
                 self.pos + pos_offset,
                 self.font_size,
                 text.clone(),
+                Color::BLACK,
                 self.font.clone()
             ));
         } else {
             list.push(Text::new(
-                Color::new(0.2,0.2,0.2,1.0),
-                parent_depth + 1.0,
                 self.pos + pos_offset,
                 self.font_size,
                 self.placeholder.clone(),
+                Color::new(0.2,0.2,0.2,1.0),
                 self.font.clone()
             ));
         }
 
         let width = Text::new(
-            Color::BLACK,
-            parent_depth,
             self.pos + pos_offset,
             self.font_size,
             text.split_at(self.cursor_index).0.to_owned(),
+            Color::BLACK,
             self.font.clone()
         ).measure_text().x;
 
         // cursor if no text is selected
         if self.selected && self.selection_end == 0 {
             list.push(Rectangle::new(
-                Color::RED,
-                parent_depth,
                 self.pos + pos_offset + Vector2::new(width, 0.0),
                 Vector2::new(0.7, self.font_size), 
+                Color::RED,
                 Some(Border::new(Color::RED, 1.2))
             ));
         }
@@ -205,29 +200,26 @@ impl ScrollableItem for TextInput {
             let (draw_this, _end) = draw_this.split_at(self.selection_end - self.cursor_index);
             
             let start_offset = Text::new(
-                Color::BLACK,
-                parent_depth,
                 self.pos,
                 self.font_size,
                 start.to_owned(),
+                Color::BLACK,
                 self.font.clone()
             ).measure_text().x;
 
             let width = Text::new(
-                Color::BLACK,
-                parent_depth,
                 self.pos,
                 self.font_size,
                 draw_this.to_owned(),
+                Color::BLACK,
                 self.font.clone()
             ).measure_text().x;
 
 
             list.push(Rectangle::new(
-                SELECTION_COLOR.alpha(SELECTION_COLOR_ALPHA), 
-                parent_depth + 1.0,  // above bg but below text and cursor
                 self.pos + pos_offset + Vector2::with_x(start_offset), 
                 Vector2::new(width, self.size.y), 
+                SELECTION_COLOR.alpha(SELECTION_COLOR_ALPHA), 
                 Some(Border::new(SELECTION_COLOR, 1.0))
             ))
         }

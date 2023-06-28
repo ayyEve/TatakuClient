@@ -200,13 +200,12 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn draw(&mut self, depth:f32, list: &mut RenderableCollection) {
-        self.sidebar.draw(Vector2::ZERO, depth-9999999999999999999999.0, list);
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.sidebar.draw(Vector2::ZERO, list);
         list.push(Rectangle::new(
-            Color::BLACK.alpha(0.8),
-            -9999999999999999999999.0,
             self.sidebar.get_pos(),
             self.sidebar.size(),
+            Color::BLACK.alpha(0.8),
             None
         ));
 
@@ -215,7 +214,6 @@ impl Dialog<()> for GameUIEditorDialog {
 
             let mut bounds = i.get_bounds();
             if (!self.sidebar.get_hover() && bounds.contains(self.mouse_pos)) || Some(i.element_name.clone()) == self.highlight_name {
-                bounds.depth = -999999999999999999999.0;
                 bounds.color = Color::PINK.alpha(0.7);
                 list.push(bounds);
             }
@@ -223,7 +221,6 @@ impl Dialog<()> for GameUIEditorDialog {
 
         if let Some((i, _, _)) = self.mouse_down {
             let mut bounds = self.elements[i].get_bounds();
-            bounds.depth = -999999999999999999999.0;
             bounds.color = Color::RED;
             list.push(bounds);
         }
@@ -283,8 +280,14 @@ impl UISideBarElement {
     }
 }
 impl ScrollableItem for UISideBarElement {
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
-        let text = Text::new(Color::WHITE, parent_depth, self.pos + pos_offset, TEXT_SIZE, self.display_name.clone(), get_font());
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
+        let text = Text::new(
+            self.pos + pos_offset, 
+            TEXT_SIZE, 
+            self.display_name.clone(),
+            Color::WHITE, 
+            get_font()
+        );
         
         let color = if self.hover {Color::BLUE} else {Color::RED};
         let mut r = Rectangle::bounds_only(self.pos + pos_offset, text.measure_text());

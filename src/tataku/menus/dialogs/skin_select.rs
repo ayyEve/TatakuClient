@@ -44,9 +44,9 @@ impl Dialog<Game> for SkinSelect {
         Rectangle::bounds_only(Vector2::ZERO, WindowSize::get().0)
     }
     
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
-        self.draw_background(depth, Color::WHITE, list);
-        self.dropdown.draw(Vector2::ZERO, depth, list)
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.draw_background(Color::WHITE, list);
+        self.dropdown.draw(Vector2::ZERO, list)
     }
 
     async fn update(&mut self, _g:&mut Game) {

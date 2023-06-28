@@ -70,10 +70,9 @@ impl ScalingHelper {
         let circle_size = Vector2::ONE * circle_size * scaled_cs;
 
         let playfield_scaled_with_cs_border = Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 0.5),
-            MAX_DEPTH-4.0,
             scaled_pos_offset - circle_size,
             playfield_size * scale + circle_size * 2.0,
+            Color::new(0.2, 0.2, 0.2, 0.5),
             None
         );
 

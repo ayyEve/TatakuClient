@@ -8,7 +8,6 @@ pub struct SkinnedNumber {
     pub scale: Vector2,
 
     pub origin: Vector2,
-    pub depth: f32,
     pub spacing_override: Option<f32>,
 
     number_textures: Vec<Image>,
@@ -23,7 +22,7 @@ pub struct SkinnedNumber {
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
-    pub async fn new<TN: AsRef<str>>(color:Color, depth:f32, pos: Vector2, number: f64, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
+    pub async fn new<TN: AsRef<str>>(pos: Vector2, number: f64, color:Color, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
         let rotation = 0.0;
         let scale = Vector2::ONE;
 
@@ -67,7 +66,6 @@ impl SkinnedNumber {
             rotation,
 
             origin,
-            depth,
             number,
 
             cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
@@ -156,7 +154,6 @@ impl SkinnedNumber {
 
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
     // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
     // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
 

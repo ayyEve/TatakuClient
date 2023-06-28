@@ -75,14 +75,14 @@ impl Dialog<Game> for GameImportDialog {
         Rectangle::bounds_only(self.pos, BASE_SIZE)
     }
     
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let pos = self.pos;
 
-        self.draw_background(depth + 10.0, Color::WHITE, list);
+        self.draw_background(Color::WHITE, list);
 
-        self.input_scrollable.draw(pos, depth, list);
-        self.add_button.draw(pos, depth, list);
-        self.confirm_button.draw(pos, depth, list);
+        self.input_scrollable.draw(pos, list);
+        self.add_button.draw(pos, list);
+        self.confirm_button.draw(pos, list);
     }
 
     async fn update(&mut self, _g:&mut Game) {

@@ -79,22 +79,15 @@ impl FpsDisplay {
         self.frametime_timer = Instant::now();
     }
     pub fn draw(&self, list:&mut RenderableCollection) {
-        let font = get_font();
+        list.push(visibility_bg(self.pos, SIZE));
 
-        // if let Some(i) = self.number_image.clone() {
-
-        // } else {
-            list.push(Text::new(
-                Color::BLACK,
-                -MAX_DEPTH, // should be on top of everything
-                self.pos + TEXT_PADDING,
-                12.0,
-                format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
-                font.clone()
-            ));
-        // }
-
-        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) + 10.0));
+        list.push(Text::new(
+            self.pos + TEXT_PADDING,
+            12.0,
+            format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
+            Color::BLACK,
+            get_font()
+        ));
     }
 }
 
@@ -152,17 +145,15 @@ impl AsyncFpsDisplay {
     }
 
     pub fn draw(&self, list:&mut RenderableCollection) {
-        let font = get_font();
+        list.push(visibility_bg(self.pos, SIZE));
 
         list.push(Text::new(
-            Color::BLACK,
-            -MAX_DEPTH, // should be on top of everything
             self.pos + TEXT_PADDING,
             12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
-            font.clone()
+            Color::BLACK,
+            get_font()
         ));
 
-        list.push(visibility_bg(self.pos, SIZE, (-MAX_DEPTH) + 10.0));
     }
 }

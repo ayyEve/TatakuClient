@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 pub trait TatakuRenderable: Sync + Send {
-    fn get_depth(&self) -> f32;
     fn get_name(&self) -> String { "Unnamed".to_owned() }
     
     fn get_scissor(&self) -> Scissor { None }

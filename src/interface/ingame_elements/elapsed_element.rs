@@ -57,11 +57,10 @@ impl InnerUIElement for ElapsedElement {
         let secs = secs as i16 % 60;
 
         let mut text = Text::new(
-            Color::WHITE,
-            0.0,
             Vector2::ZERO,
             30.0 * scale.x,
             format!("{mins:02}:{secs:02}"),
+            Color::WHITE,
             get_font()
         );
         text.center_text(&bounds);

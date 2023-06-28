@@ -8,7 +8,7 @@ pub struct ComboElement {
 impl ComboElement {
     pub async fn new(combo_bounds: Rectangle) -> Self {
         Self {
-            combo_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "combo", Some('x'), 0).await.ok(),
+            combo_image: SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0).await.ok(),
             combo_bounds,
             combo: 0,
         }
@@ -40,11 +40,10 @@ impl InnerUIElement for ComboElement {
             list.push(combo);
         } else {
             let mut combo_text = Text::new(
-                Color::WHITE,
-                0.0,
                 Vector2::ZERO,
                 30.0 * scale.x,
                 crate::format_number(self.combo),
+                Color::WHITE,
                 get_font()
             );
             combo_text.center_text(&combo_bounds);

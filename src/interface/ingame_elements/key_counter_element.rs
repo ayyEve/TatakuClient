@@ -18,16 +18,12 @@ impl KeyCounterElement {
         //     // image.current_pos = pos - Vector2::new(image.size().x, 0.0);
         //     image.depth = -100.0;
         // }
-        let mut button_image= SkinManager::get_texture("inputoverlay-key", true).await;
-        if let Some(image) = &mut button_image {
-            image.depth = -100.1;
-        }
 
         Self {
             counter: KeyCounter::default(),
             
             // background_image,
-            button_image,
+            button_image: SkinManager::get_texture("inputoverlay-key", true).await,
         }
     }
 }
@@ -90,25 +86,23 @@ impl InnerUIElement for KeyCounterElement {
 
                 // draw bg box
                 list.push(Rectangle::new(
+                    pos,
+                    BOX_SIZE * scale,
                     if info.held {
                         Color::new(0.8, 0.0, 0.8, 0.8)
                     } else {
                         Color::new(0.0, 0.0, 0.0, 0.8)
                     },
-                    -100.0,
-                    pos,
-                    BOX_SIZE * scale,
                     Some(Border::new(Color::BLACK, 2.0))
                 ));
             }
 
             // draw key
             let mut text = Text::new(
-                Color::WHITE,
-                -100.1,
                 pos,
                 20.0 * scale.x,
                 if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
+                Color::WHITE,
                 font.clone()
             );
             

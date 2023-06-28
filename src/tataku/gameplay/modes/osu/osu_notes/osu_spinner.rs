@@ -184,10 +184,9 @@ impl HitObject for OsuSpinner {
         } else {
             if !(self.spinner_approach.is_some() || self.spinner_circle.is_some()) {
                 list.push(Circle::new(
-                    Color::YELLOW,
-                    -10.0,
                     self.pos,
                     SPINNER_RADIUS,
+                    Color::YELLOW,
                     border.clone()
                 ));
             }
@@ -200,10 +199,9 @@ impl HitObject for OsuSpinner {
             list.push(i)
         } else {
             list.push(Circle::new(
-                Color::WHITE,
-                -11.0,
                 self.pos,
                 SPINNER_RADIUS * (self.rotations_completed as f32 / self.rotations_required as f32).min(1.0),
+                Color::WHITE,
                 border.clone()
             ));
         }
@@ -220,7 +218,6 @@ impl HitObject for OsuSpinner {
                 self.pos,
                 p2,
                 5.0,
-                -20.0,
                 Color::GREEN
             ));
         }
@@ -228,11 +225,10 @@ impl HitObject for OsuSpinner {
         // draw a counter
         let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
         let mut txt = Text::new(
-            Color::BLACK,
-            -999.9,
             Vector2::ZERO,
             30.0,
             format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
+            Color::BLACK,
             get_font()
         );
         txt.center_text(&Rectangle::bounds_only(

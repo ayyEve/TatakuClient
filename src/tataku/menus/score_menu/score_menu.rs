@@ -184,17 +184,19 @@ impl AsyncMenu<Game> for ScoreMenu {
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
         let font = get_font();
-
-        let depth = 0.0;
         
+        // draw background so score info is readable
+        list.push(visibility_bg(
+            Vector2::ONE * 5.0, 
+            Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0)
+        ));
         
         // draw beatmap title string
         list.push(Text::new(
-            Color::BLACK,
-            depth + 1.0,
             Vector2::new(10.0, TITLE_STRING_Y),
             TITLE_STRING_FONT_SIZE,
             format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed),
+            Color::BLACK,
             font.clone()
         ));
 
@@ -203,22 +205,21 @@ impl AsyncMenu<Game> for ScoreMenu {
 
         // draw score info
         list.push(Text::new(
-            Color::BLACK,
-            depth + 1.0,
             current_pos,
             30.0,
             format!("Score: {}", format_number(self.score.score.score)),
+            Color::BLACK,
             font.clone()
         ));
         current_pos += size;
 
+        // draw hit counts
         for (str, count, color) in self.hit_counts.iter() {
             list.push(Text::new(
-                *color,
-                depth + 1.0,
                 current_pos,
                 30.0,
                 format!("{str}: {}", format_number(*count)),
+                *color,
                 font.clone()
             ));
             current_pos += size;
@@ -238,11 +239,10 @@ impl AsyncMenu<Game> for ScoreMenu {
             if !str.is_empty() {
                 if !str.contains("NaN") {
                     list.push(Text::new(
-                        Color::BLACK,
-                        depth + 1.0,
                         current_pos,
                         30.0,
                         str,
+                        Color::BLACK,
                         font.clone()
                     ));
                 }
@@ -259,11 +259,10 @@ impl AsyncMenu<Game> for ScoreMenu {
             match sub {
                 SubmitResponse::NotSubmitted(_, str) => {
                     list.push(Text::new(
-                        Color::BLACK,
-                        depth + 1.0,
                         current_pos,
                         30.0,
                         format!("Score not submitted: {str}"),
+                        Color::BLACK,
                         font.clone()
                     ));
                 }
@@ -274,11 +273,10 @@ impl AsyncMenu<Game> for ScoreMenu {
                         format!("Performance: {}pr", format_float(performance_rating, 2)),
                     ] {
                         list.push(Text::new(
-                            Color::BLACK,
-                            depth + 1.0,
                             current_pos,
                             30.0,
                             str,
+                            Color::BLACK,
                             font.clone()
                         ));
                         current_pos += size;
@@ -290,28 +288,17 @@ impl AsyncMenu<Game> for ScoreMenu {
 
         // draw buttons
         for b in self.buttons.iter_mut() {
-            b.draw(Vector2::ZERO, depth, list)
+            b.draw(Vector2::ZERO, list)
         }
 
-
-        // // graph
-        // self.graph.draw(Vector2::ZERO, depth, &mut list);
-        
-        // draw background so score info is readable
-        list.push(visibility_bg(
-            Vector2::ONE * 5.0, 
-            Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0),
-            depth + 10.0
-        ));
-
-
+        // draw stats graphs
         if let Some(stat) = self.stats.get(self.selected_stat) {
             const PAD:f32 = 20.0;
             let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
             let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
 
             let bounds = Rectangle::bounds_only(pos, size);
-            stat.draw(&bounds, depth, list)
+            stat.draw(&bounds, list)
         }
     }
 

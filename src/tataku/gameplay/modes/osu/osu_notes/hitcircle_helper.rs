@@ -15,7 +15,6 @@ pub struct HitCircleImageHelper {
 
     pub scaling_helper: Arc<ScalingHelper>,
     alpha: f32,
-    depth: f32,
     color: Color,
     
     /// combo num text cache
@@ -25,7 +24,7 @@ pub struct HitCircleImageHelper {
     skin_settings: Arc<SkinSettings>,
 }
 impl HitCircleImageHelper {
-    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, depth: f32, color: Color, combo_num: u16) -> Self {
+    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, color: Color, combo_num: u16) -> Self {
         let skin_settings = SkinManager::current_skin_config().await;
         
         let mut s = Self {
@@ -42,7 +41,6 @@ impl HitCircleImageHelper {
 
             alpha: 0.0,
             color,
-            depth
         };
         s.reload_skin().await;
         s
@@ -54,7 +52,6 @@ impl HitCircleImageHelper {
 
         self.circle = SkinManager::get_texture("hitcircle", true).await;
         if let Some(circle) = &mut self.circle {
-            circle.depth = self.depth;
             circle.pos = self.pos;
             circle.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
             circle.color = self.color;
@@ -62,7 +59,6 @@ impl HitCircleImageHelper {
         
         self.overlay = SkinManager::get_texture("hitcircleoverlay", true).await;
         if let Some(overlay) = &mut self.overlay {
-            overlay.depth = self.depth - 0.0000001;
             overlay.pos = self.pos;
             overlay.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
@@ -70,10 +66,9 @@ impl HitCircleImageHelper {
         let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
 
         self.combo_image = SkinnedNumber::new(
-            Color::WHITE, 
-            self.depth - 0.0000001, 
             self.pos, 
             self.combo_num as f64,
+            Color::WHITE, 
             &self.skin_settings.hitcircle_prefix,
             None,
             0
@@ -88,11 +83,10 @@ impl HitCircleImageHelper {
 
         } else {
             let mut text = Text::new(
-                Color::BLACK,
-                self.depth - 0.0000001,
                 self.pos,
                 radius,
                 self.combo_num.to_string(),
+                Color::BLACK,
                 get_font()
             );
             text.center_text(&rect);
@@ -146,10 +140,9 @@ impl HitCircleImageHelper {
         } else {
             let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
             list.push(Circle::new(
-                self.color.alpha(self.alpha),
-                self.depth,
                 self.pos,
                 radius,
+                self.color.alpha(self.alpha),
                 Some(Border::new(
                     Color::BLACK.alpha(self.alpha),
                     self.scaling_helper.border_scaled
@@ -193,7 +186,7 @@ impl HitCircleImageHelper {
 
 
         // hitcircle
-        let mut circle_group: TransformGroup = TransformGroup::new(self.pos, self.depth).alpha(1.0).border_alpha(1.0);
+        let mut circle_group: TransformGroup = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
 
         if let Some(mut i_circle) = self.circle.clone() {
             i_circle.pos = Vector2::ZERO;
@@ -207,10 +200,9 @@ impl HitCircleImageHelper {
         
         if circle_group.items.len() == 0 {
             circle_group.push(Circle::new(
-                self.color,
-                self.depth,
                 Vector2::ZERO,
                 radius,
+                self.color,
                 Some(Border::new(
                     Color::BLACK,
                     self.scaling_helper.border_scaled

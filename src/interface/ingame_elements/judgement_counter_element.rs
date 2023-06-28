@@ -9,15 +9,9 @@ pub struct JudgementCounterElement {
 }
 impl JudgementCounterElement {
     pub async fn new() -> Self {
-
-        let mut button_image= SkinManager::get_texture("inputoverlay-key", true).await;
-        if let Some(image) = &mut button_image {
-            image.depth = -100.1;
-        }
-
         Self {
             hit_counts: Vec::new(),
-            button_image,
+            button_image: SkinManager::get_texture("inputoverlay-key", true).await,
             colors: HashMap::new()
         }
     }
@@ -78,21 +72,19 @@ impl InnerUIElement for JudgementCounterElement {
 
                 // draw bg box
                 list.push(Rectangle::new(
-                    *self.colors.get(txt).unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
-                    -100.0,
                     pos,
                     BOX_SIZE * scale,
+                    *self.colors.get(txt).unwrap_or(&Color::new(0.0, 0.0, 0.0, 0.8)), // TODO: get a proper color
                     Some(Border::new(Color::BLACK, 2.0))
                 ));
             }
 
             // draw text/count
             let mut text = Text::new(
-                Color::WHITE,
-                -100.1,
                 pos,
                 20.0 * scale.y,
                 if count == &0 {txt.clone()} else {format!("{}", count)},
+                Color::WHITE,
                 font.clone()
             );
             let text_size = text.measure_text();

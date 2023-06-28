@@ -25,11 +25,11 @@ impl MenuStatsInfo {
         }
     }
 
-    pub fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
+    pub fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
         let font = get_font();
 
         // display name should be at the top with some margin above and below
-        let display_text = Text::new(Color::BLACK, depth, bounds.pos, 30.0, self.display_name.clone(), font.clone());
+        let display_text = Text::new(bounds.pos, 30.0, self.display_name.clone(), Color::BLACK, font.clone());
         // display_text.center_text(bounds);
         // display_text.current_pos.y = 0.0;
         list.push(display_text);
@@ -39,7 +39,7 @@ impl MenuStatsInfo {
         for i in self.data.iter() {
             if i.show_in_list {
                 let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
-                list.push(Text::new(i.color, depth, current_pos, 20.0, text, font.clone()));
+                list.push(Text::new(current_pos, 20.0, text, i.color, font.clone()));
             }
             current_pos += Vector2::with_y(20.0 + 5.0);
         }
@@ -53,7 +53,7 @@ impl MenuStatsInfo {
 
         let y = bounds.pos.y + bounds.size.y - size.y;
 
-        self.graph.draw(&Rectangle::bounds_only(Vector2::new(current_pos.x, y), size), depth, list);
+        self.graph.draw(&Rectangle::bounds_only(Vector2::new(current_pos.x, y), size), list);
     }
 }
 

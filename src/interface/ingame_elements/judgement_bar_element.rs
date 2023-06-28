@@ -74,10 +74,9 @@ impl InnerUIElement for JudgementBarElement {
             let width = (window / self.miss_window) * timing_bar_size.x;
             
             list.push(Rectangle::new(
-                *color,
-                17.0,
                 pos_offset + Vector2::new(-width/2.0, HIT_TIMING_BAR_POS.y),
                 Vector2::new(width, timing_bar_size.y),
+                *color,
                 None // for now
             ));
         }
@@ -97,10 +96,9 @@ impl InnerUIElement for JudgementBarElement {
             } else { 1.0 };
 
             list.push(Rectangle::new(
-                HIT_TIMING_BAR_COLOR.alpha(alpha),
-                10.0,
                 pos_offset + Vector2::new(pos, HIT_TIMING_BAR_POS.y),
                 Vector2::new(2.0, timing_bar_size.y),
+                HIT_TIMING_BAR_COLOR.alpha(alpha),
                 None // for now
             ));
         }

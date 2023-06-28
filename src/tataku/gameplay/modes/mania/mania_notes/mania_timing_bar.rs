@@ -4,7 +4,6 @@ use super::super::prelude::*;
 // timing bar consts
 pub const BAR_COLOR:Color = Color::new(0.0, 0.0, 0.0, 1.0); // timing bar color
 const BAR_HEIGHT:f32 = 4.0; // how tall is a timing bar
-const BAR_DEPTH:f32 = -90.0;
 
 
 // timing bar struct
@@ -66,10 +65,9 @@ impl TimingBar {
         if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return }
 
         list.push(Rectangle::new(
-            BAR_COLOR,
-            BAR_DEPTH,
             self.pos + Vector2::with_y(self.playfield.note_size().y),
             self.size,
+            BAR_COLOR,
             None
         ));
 

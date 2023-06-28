@@ -567,19 +567,17 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     }
 
     async fn draw(&mut self, items: &mut RenderableCollection) {
-        // let mut counter: usize = 0;
-        let depth = 5.0;
-        // let font = get_font();
-
         // draw a bar on the top for the info
         let bar_rect = Rectangle::new(
-            Color::WHITE,
-            depth - 1.0,
             Vector2::ZERO,
             Vector2::new(self.window_size.x, INFO_BAR_HEIGHT),
+            Color::WHITE,
             Some(Border::new(Color::BLACK, 1.2))
         );
         items.push(bar_rect);
+
+        // draw bg game
+        self.menu_game.draw(items).await;
 
         // // draw selected map info
         // if let Some(meta) = &mut BEATMAP_MANAGER.write().current_beatmap {
@@ -605,22 +603,19 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // }
 
         // beatmap scroll
-        self.beatmap_scroll.draw(Vector2::ZERO, 0.0, items);
+        self.beatmap_scroll.draw(Vector2::ZERO, items);
 
         // leaderboard scroll
-        self.leaderboard_scroll.draw(Vector2::ZERO, 0.0, items);
+        self.leaderboard_scroll.draw(Vector2::ZERO, items);
 
         // back button
-        self.back_button.draw(Vector2::ZERO, 0.0, items);
+        self.back_button.draw(Vector2::ZERO, items);
 
         // everything else
         for i in self.interactables() {
-            i.draw(Vector2::ZERO, 0.0, items);
+            i.draw(Vector2::ZERO, items);
         }
 
-
-        // draw bg game
-        self.menu_game.draw(items).await;
     }
 
     async fn on_change(&mut self, into:bool) {

@@ -55,7 +55,6 @@ impl InnerUIElement for HealthBarElement {
             // add bg
             if let Some(mut bg) = self.healthbar_bg_image.clone() {
                 bg.pos = pos_offset;
-                bg.depth = 1.0;
                 bg.set_size(bg_size);
                 list.push(bg);
             }
@@ -74,7 +73,6 @@ impl InnerUIElement for HealthBarElement {
                 bg_size.x * percent, 
                 bg_size.y
             ]));
-            fill.depth = 1.0;
             fill.pos = pos_offset;
             fill.set_size(bg_size);
             // fill.set_draw_state(Some(snip));
@@ -86,19 +84,17 @@ impl InnerUIElement for HealthBarElement {
 
             // bg
             list.push(Rectangle::new(
-                self.common_game_settings.healthbar_bg_color,
-                1.0,
                 pos_offset,
                 bg_size,
+                self.common_game_settings.healthbar_bg_color,
                 Some(Border::new(self.common_game_settings.healthbar_border_color, 1.8))
             ));
 
             // fill
             list.push(Rectangle::new(
-                self.common_game_settings.healthbar_colors[index],
-                2.0,
                 pos_offset,
                 Vector2::new((self.window_size.x / 2.0) * percent, DURATION_HEIGHT) * scale,
+                self.common_game_settings.healthbar_colors[index],
                 None
             ));
         }

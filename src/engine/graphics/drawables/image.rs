@@ -3,12 +3,11 @@ use crate::prelude::*;
 #[derive(Clone)]
 pub struct Image {
     // pub size: Vector2,
-    pub depth: f32,
     pub tex: TextureReference,
     /// underlying scale of this image, mainly used for 2x res sprites
     pub base_scale: Vector2,
 
-    // origin of rotation in px, relative to image position
+    /// origin of rotation in px, relative to image position
     pub origin: Vector2,
 
     scissor: Scissor,
@@ -19,7 +18,7 @@ pub struct Image {
     pub rotation: f32,
 }
 impl Image {
-    pub fn new(pos:Vector2, depth:f32, tex:TextureReference, base_scale: Vector2) -> Image {
+    pub fn new(pos:Vector2, tex:TextureReference, base_scale: Vector2) -> Image {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.width as f32, tex.height as f32);
 
@@ -35,7 +34,6 @@ impl Image {
             color,
 
             // size: tex_size,
-            depth,
             origin,
             tex,
             scissor: None,
@@ -89,7 +87,6 @@ impl Image {
 
 impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
-    fn get_depth(&self) -> f32 { self.depth }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
 
@@ -118,6 +115,6 @@ impl TatakuRenderable for Image {
             .trans(self.pos) // move to pos
         ;
 
-        g.draw_tex(&self.tex, self.depth, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
+        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
     }
 }

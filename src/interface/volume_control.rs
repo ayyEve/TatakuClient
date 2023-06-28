@@ -67,10 +67,9 @@ impl VolumeControl {
 
             const BOX_SIZE:Vector2 = Vector2::new(300.0, 100.0);
             let b = Rectangle::new(
-                Color::WHITE,
-                -7.0,
                 window_size - BOX_SIZE,
                 BOX_SIZE,
+                Color::WHITE,
                 Some(Border::new(Color::BLACK, 1.2))
             );
 
@@ -81,81 +80,72 @@ impl VolumeControl {
             // == master bar ==
             // text
             let mut master_text = Text::new(
-                Color::BLACK,
-                -9.0,
                 window_size - Vector2::new(300.0, 90.0),
                 20.0,
                 "Master:".to_owned(),
+                Color::BLACK,
                 font.clone(),
             );
             // border
             let master_border = Rectangle::new(
-                Color::TRANSPARENT_WHITE,
-                -9.0,
                 window_size - Vector2::new(border_size.x + border_padding, 90.0),
                 border_size,
+                Color::TRANSPARENT_WHITE,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill
             let master_fill = Rectangle::new(
-                Color::BLUE,
-                -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 90.0),
                 Vector2::new(border_size.x * self.settings.master_vol, border_size.y),
+                Color::BLUE,
                 None
             );
 
             // == effects bar ==
             // text
             let mut effect_text = Text::new(
-                Color::BLACK,
-                -9.0,
                 window_size - Vector2::new(300.0, 60.0),
                 20.0,
                 "Effects:".to_owned(),
+                Color::BLACK,
                 font.clone()
             );
             // border
             let effect_border = Rectangle::new(
-                Color::TRANSPARENT_WHITE,
-                -9.0,
                 window_size - Vector2::new(border_size.x + border_padding, 60.0),
                 border_size,
+                Color::TRANSPARENT_WHITE,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill
             let effect_fill = Rectangle::new(
-                Color::BLUE,
-                -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 60.0),
                 Vector2::new(border_size.x * self.settings.effect_vol, border_size.y),
+                Color::BLUE,
                 None
             );
 
             // == music bar ==
             // text
             let mut music_text = Text::new(
-                Color::BLACK,
-                -9.0,
                 window_size - Vector2::new(300.0, 30.0),
                 20.0,
                 "Music:".to_owned(),
+                Color::BLACK,
                 font.clone()
             );
             // border
             let music_border = Rectangle::new(
-                Color::TRANSPARENT_WHITE,
-                -9.0,
                 window_size - Vector2::new(border_size.x + border_padding, 30.0),
                 border_size,
+                Color::TRANSPARENT_WHITE,
                 Some(Border::new(Color::RED, 1.0))
             );
             // fill
             let music_fill = Rectangle::new(
-                Color::BLUE,
-                -8.0,
                 window_size - Vector2::new(border_size.x + border_padding, 30.0),
                 Vector2::new(border_size.x * self.settings.music_vol, border_size.y),
+                Color::BLUE,
                 None
             );
             

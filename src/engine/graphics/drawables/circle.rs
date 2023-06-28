@@ -2,8 +2,6 @@ use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Circle {
-    pub depth: f32,
-
     // current
     pub color: Color,
     pub pos: Vector2,
@@ -15,11 +13,9 @@ pub struct Circle {
     pub resolution: u32,
 }
 impl Circle {
-    pub fn new(color:Color, depth:f32, pos:Vector2, radius:f32, border: Option<Border>) -> Circle {
+    pub fn new(pos:Vector2, radius:f32, color:Color, border: Option<Border>) -> Circle {
 
         Circle {
-            depth,
-
             color,
             pos,
             radius,
@@ -34,7 +30,6 @@ impl Circle {
 
 impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
 
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
@@ -53,7 +48,7 @@ impl TatakuRenderable for Circle {
         ;
 
 
-        g.draw_circle(self.radius, self.depth, self.color.alpha(alpha), border, self.resolution, transform, self.scissor);
+        g.draw_circle(self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.scissor);
 
         // graphics::ellipse::Ellipse {
         //     color: self.color.alpha(alpha).into(),

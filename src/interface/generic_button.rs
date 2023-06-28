@@ -52,7 +52,7 @@ impl GenericButtonImage {
         ));
     }
 
-    pub fn draw(&self, depth: f32, pos_offset: Vector2, list: &mut RenderableCollection) {
+    pub fn draw(&self, pos_offset: Vector2, list: &mut RenderableCollection) {
         let current_pos = self.pos + pos_offset;
 
         for mut i in [
@@ -61,7 +61,6 @@ impl GenericButtonImage {
             self.right_image.clone(),
         ] {
             i.pos += current_pos;
-            i.depth = depth;
             i.color = self.color;
             list.push(i)
         }

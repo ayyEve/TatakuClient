@@ -66,7 +66,7 @@ impl ScrollableItem for LeaderboardItem {
         self.theme.update();
     }
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         const PADDING:Vector2 = Vector2::new(5.0, 5.0);
 
         let now = chrono::Utc::now().timestamp() as u64;
@@ -101,17 +101,15 @@ impl ScrollableItem for LeaderboardItem {
             img.pos = self.pos;
             img.origin = Vector2::ZERO;
             img.color = color;
-            img.depth = parent_depth + 5.0;
             img.set_size(LEADERBOARD_ITEM_SIZE * self.ui_scale);
 
             list.push(img)
         } else {
             // bounding rect
             list.push(Rectangle::new(
-                Color::new(0.2, 0.2, 0.2, 1.0),
-                parent_depth + 5.0,
                 self.pos + pos_offset,
                 LEADERBOARD_ITEM_SIZE * self.ui_scale,
+                Color::new(0.2, 0.2, 0.2, 1.0),
                 Some(Border::new(color, 1.5 * self.ui_scale.y))
             ).shape(Shape::Round(5.0, 10)));
         }
@@ -119,21 +117,19 @@ impl ScrollableItem for LeaderboardItem {
 
         // score text
         list.push(Text::new(
-            text_color,
-            parent_depth + 4.0,
             self.pos + pos_offset + PADDING * self.ui_scale,
             15.0 * self.ui_scale.y,
             format!("{}: {}", self.score.username, crate::format_number(self.score.score.score)),
+            text_color,
             self.font.clone()
         ));
 
         // combo text
         list.push(Text::new(
-            text_color,
-            parent_depth + 4.0,
             self.pos + pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * self.ui_scale,
             12.0 * self.ui_scale.y,
             format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods),
+            text_color,
             self.font.clone()
         ));
     }

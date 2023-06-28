@@ -13,7 +13,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn force_close(&mut self) {}
 
     async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection);
+    async fn draw(&mut self, list: &mut RenderableCollection);
 
     // input handlers
     async fn on_mouse_move(&mut self, _pos:Vector2, _g:&mut G) {}
@@ -33,13 +33,12 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     fn string_function1(&mut self, _val: String) {}
     // fn string_function2(&mut self, _val: String) {}
 
-    fn draw_background(&mut self, depth: f32, color:Color, list: &mut RenderableCollection) {
+    fn draw_background(&mut self, color:Color, list: &mut RenderableCollection) {
         let bounds = self.get_bounds();
         list.push(Rectangle::new(
-            color.alpha(0.8),
-            depth, 
             bounds.pos,
             bounds.size,
+            color.alpha(0.8),
             Some(Border::new(color, 2.0))
         ))
     }

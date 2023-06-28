@@ -11,7 +11,7 @@ pub struct ScoreElement {
 impl ScoreElement {
     pub async fn new() -> Self {
         let number:u32 = 1_000_000_000;
-        let mut score_image = SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "score", None, 0).await.ok();
+        let mut score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0).await.ok();
 
         // get the bounds
         // TODO: make it not rely on this shit
@@ -20,11 +20,10 @@ impl ScoreElement {
             im.measure_text()
         } else {
             Text::new(
-                Color::BLACK,
-                0.0,
                 Vector2::ZERO,
                 30.0,
                 crate::format_number(number),
+                Color::BLACK,
                 get_font()
             ).measure_text()
         };
@@ -71,11 +70,10 @@ impl InnerUIElement for ScoreElement {
             
             // score bg
             let mut text = Text::new(
-                if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
-                0.0,
                 pos_offset - self.bounds_size.x_portion(),
                 30.0 * scale.y,
                 crate::format_number(self.score),
+                if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 get_font()
             );
             // space needed to align this to the right
@@ -87,8 +85,7 @@ impl InnerUIElement for ScoreElement {
             if !WHITE_TEXT {
                 list.push(visibility_bg(
                     text.pos - PADDING,
-                    text_size + PADDING * 2.0,
-                    1.0
+                    text_size + PADDING * 2.0
                 ));
             }
             

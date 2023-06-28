@@ -1,8 +1,6 @@
 use crate::prelude::*;
 use super::super::prelude::*;
 
-const MANIA_SLIDER_DEPTH:f32 = 100.1;
-
 pub struct ManiaHold {
     pos: Vector2,
     time: f32, // ms
@@ -137,10 +135,9 @@ impl HitObject for ManiaHold {
             // start
             if self.pos.y > self.playfield.hit_y() {
                 list.push(Rectangle::new(
-                    color,
-                    MANIA_NOTE_DEPTH,
                     self.pos,
                     self.playfield.note_size(),
+                    color,
                     border.clone()
                 ));
             }
@@ -148,10 +145,9 @@ impl HitObject for ManiaHold {
             // end
             if self.end_y > self.playfield.hit_y() {
                 list.push(Rectangle::new(
-                    color,
-                    MANIA_NOTE_DEPTH,
                     Vector2::new(self.pos.x, self.end_y),
                     self.playfield.note_size(),
+                    color,
                     border.clone()
                 ));
             }
@@ -165,10 +161,9 @@ impl HitObject for ManiaHold {
                     list.push(img.clone());
                 } else {
                     list.push(Rectangle::new(
-                        color,
-                        MANIA_SLIDER_DEPTH,
                         Vector2::new(self.pos.x, y),
                         Vector2::new(self.playfield.column_width, self.end_y - y),
+                        color,
                         border.clone()
                     ));
                 }
@@ -180,10 +175,9 @@ impl HitObject for ManiaHold {
                     list.push(img.clone());
                 } else {
                     list.push(Rectangle::new(
-                        color,
-                        MANIA_NOTE_DEPTH,
                         self.pos,
                         self.playfield.note_size(),
+                        color,
                         border.clone()
                     ));
                 }
@@ -196,10 +190,9 @@ impl HitObject for ManiaHold {
                     list.push(img.clone());
                 } else {
                     list.push(Rectangle::new(
-                        color,
-                        MANIA_NOTE_DEPTH,
                         Vector2::new(self.pos.x, self.end_y + note_size.y),
                         self.playfield.note_size(),
+                        color,
                         border.clone()
                     ));
                 }
@@ -244,7 +237,6 @@ impl HitObject for ManiaHold {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.color = self.color;
                     img.origin = Vector2::ZERO;
-                    img.depth = MANIA_NOTE_DEPTH;
 
                     start_image = Some(img);
                 }
@@ -259,7 +251,6 @@ impl HitObject for ManiaHold {
                 if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
                     img.origin = Vector2::ZERO;
                     img.color = Color::WHITE;
-                    img.depth = MANIA_NOTE_DEPTH;
 
                     middle_image = Some(img);
                 }
@@ -275,7 +266,6 @@ impl HitObject for ManiaHold {
                     img.origin = Vector2::ZERO;
                     img.color = Color::WHITE;
                     img.scale.y *= -1.0;
-                    img.depth = MANIA_NOTE_DEPTH;
                     end_image = Some(img)
                 }
             }

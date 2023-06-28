@@ -39,11 +39,10 @@ impl CenteredTextHelper {
         
         if self.changed_time > 0.0 && time - self.changed_time < self.draw_time {
             let mut offset_text = Text::new(
-                Color::BLACK,
-                self.depth,
-                Vector2::ZERO, // centered anyways
+                Vector2::ZERO, // centered later
                 32.0,
                 self.text.clone(),
+                Color::BLACK,
                 self.font.clone()
             );
             
@@ -55,7 +54,7 @@ impl CenteredTextHelper {
             );
             offset_text.center_text(&rect);
             // add
-            list.push(visibility_bg(rect.pos, rect.size, self.depth + 10.0));
+            list.push(visibility_bg(rect.pos, rect.size));
             list.push(offset_text);
         }
     }

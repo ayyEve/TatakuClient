@@ -7,16 +7,14 @@ pub struct Line {
     p2: Vector2,
     thickness: f32,
 
-    depth: f32,
     scissor: Scissor,
 }
 impl Line {
-    pub fn new(p1:Vector2, p2:Vector2, thickness:f32, depth: f32, color:Color) -> Self {
+    pub fn new(p1:Vector2, p2:Vector2, thickness:f32, color:Color) -> Self {
         Self {
             p1,
             p2,
             thickness,
-            depth,
             color,
             scissor: None
         }
@@ -24,7 +22,6 @@ impl Line {
 }
 impl TatakuRenderable for Line {
     fn get_name(&self) -> String { "Line".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
@@ -33,11 +30,10 @@ impl TatakuRenderable for Line {
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-    
         let transform = transform * Matrix::identity().trans(self.p1);
 
         let d = self.p2 - self.p1;
-        g.draw_line([0.0, 0.0, d.x, d.y], self.thickness, self.depth, self.color.alpha(alpha), transform, self.scissor);
+        g.draw_line([0.0, 0.0, d.x, d.y], self.thickness, self.color.alpha(alpha), transform, self.scissor);
 
         // graphics::Line::new(
         //     self.color.alpha(alpha).into(), 

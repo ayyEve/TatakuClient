@@ -3,7 +3,6 @@ use crate::prelude::*;
 #[derive(Clone)]
 pub struct Animation {
     pub size: Vector2,
-    pub depth: f32,
     pub origin: Vector2,
     pub base_scale: Vector2,
 
@@ -30,7 +29,7 @@ pub struct Animation {
     pub free_on_drop: bool,
 }
 impl Animation {
-    pub fn new(pos:Vector2, depth:f32, size:Vector2, frames: Vec<TextureReference>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
+    pub fn new(pos:Vector2, size:Vector2, frames: Vec<TextureReference>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
         let scale = size / tex_size;
@@ -53,7 +52,6 @@ impl Animation {
             frame_start_time: 0.0,
 
             size: tex_size,
-            depth,
             origin,
             free_on_drop: false
         }
@@ -95,8 +93,6 @@ impl Animation {
 }
 
 impl TatakuRenderable for Animation {
-    fn get_depth(&self) -> f32 {self.depth}
-
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
@@ -115,7 +111,7 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.depth, self.color.alpha(alpha), false, false, transform, self.scissor);
+        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.scissor);
     }
 }
 

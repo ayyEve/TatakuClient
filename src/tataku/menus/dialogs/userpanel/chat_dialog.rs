@@ -319,22 +319,20 @@ impl Dialog<Game> for Chat {
         self.input.set_selected(true);
     }
 
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         let window_size = self.window_size.0;
 
         // draw backgrounds
         list.push(Rectangle::new(
-            Color::WHITE.alpha(0.85),
-            depth + 0.005,
             self.channel_scroll.get_pos(),
             self.channel_scroll.size(),
+            Color::WHITE.alpha(0.85),
             Some(Border::new(Color::BLACK, 2.0))
         ));
         list.push(Rectangle::new(
-            Color::WHITE.alpha(0.85),
-            depth + 0.005,
             self.message_scroll.get_pos(),
             self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
+            Color::WHITE.alpha(0.85),
             Some(Border::new(Color::BLACK, 2.0))
         ));
 
@@ -344,7 +342,6 @@ impl Dialog<Game> for Chat {
                 Vector2::new(self.channel_list_width, window_size.y),
                 Vector2::new(self.channel_list_width, window_size.y - self.chat_height),
                 2.0,
-                depth - 0.8,
                 Color::RED
             ))
         }
@@ -354,14 +351,13 @@ impl Dialog<Game> for Chat {
                 Vector2::new(0.0, window_size.y - self.chat_height),
                 Vector2::new(window_size.x, window_size.y - self.chat_height),
                 2.0,
-                depth - 0.8,
                 Color::RED
             ))
         }
 
-        self.channel_scroll.draw(Vector2::ZERO, depth, list);
-        self.message_scroll.draw(Vector2::ZERO, depth, list);
-        self.input.draw(Vector2::ZERO, depth - 10.0, list);
+        self.channel_scroll.draw(Vector2::ZERO, list);
+        self.message_scroll.draw(Vector2::ZERO, list);
+        self.input.draw(Vector2::ZERO, list);
     }
 }
 
@@ -462,14 +458,13 @@ impl ChannelScroll {
     }
 }
 impl ScrollableItem for ChannelScroll {
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
 
         let text = Text::new(
-            if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
-            parent_depth,
             self.pos + pos_offset,
             self.font_size,
             self.channel.get_name(),
+            if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK},
             self.font.clone()
         );
         list.push(text);
@@ -501,13 +496,12 @@ impl MessageScroll {
     }
 }
 impl ScrollableItem for MessageScroll {
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let text = Text::new(
-            Color::BLACK,
-            parent_depth,
             self.pos + pos_offset,
             self.font_size,
             self.message.get_formatted_text(),
+            Color::BLACK,
             self.font.clone()
         );
         list.push(text);

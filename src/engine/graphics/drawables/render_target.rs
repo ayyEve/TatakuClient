@@ -20,7 +20,6 @@ impl RenderTarget {
     pub fn new_main_thread(width: u32, height: u32, tex: TextureReference, projection: Matrix, clear_color: Color) -> Self {
         let image = Image::new(
             Vector2::ZERO,
-            0.0, 
             tex,
             Vector2::ONE
         );

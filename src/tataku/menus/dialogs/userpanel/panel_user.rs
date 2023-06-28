@@ -40,27 +40,25 @@ impl Default for PanelUser {
 }
 
 impl ScrollableItem for PanelUser {
-    fn draw(&mut self, pos:Vector2, depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
         let font = get_font();
         let pos = self.pos + pos;
 
         // bounding box
         let c = Color::new(0.5, 0.5, 0.5, 0.75);
         list.push(Rectangle::new(
-            c,
-            depth,
             pos,
             USER_ITEM_SIZE,
+            c,
             Some(Border::new(if self.hover {Color::RED} else {Color::new(0.75, 0.75, 0.75, 0.75)}, 2.0))
         ));
 
         // username
         list.push(Text::new(
-            Color::WHITE,
-            depth - 1.0,
             pos + USERNAME_OFFSET,
             20.0,
             self.user.username.clone(),
+            Color::WHITE,
             font.clone()
         ));
 
@@ -70,11 +68,10 @@ impl ScrollableItem for PanelUser {
         }
         if let Some(action_text) = &self.user.action_text {
             list.push(Text::new(
-                Color::BLACK,
-                depth - 1.0,
                 pos + USERNAME_OFFSET + Vector2::new(0.0, 20.0),
                 20.0,
                 action_text.clone(),
+                Color::BLACK,
                 font.clone()
             ));
         }

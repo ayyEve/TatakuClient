@@ -30,7 +30,7 @@ pub struct MainMenuButton {
 impl MainMenuButton {
     pub async fn new(_pos: Vector2, mut size: Vector2, text:&str, tex_name: &str) -> MainMenuButton {
         let pos = Vector2::ZERO;
-        let shapes = TransformGroup::new(pos, 10.0).alpha(1.0).border_alpha(0.0);
+        let shapes = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
         let window_size = WindowSize::get().0;
 
         let mut image = SkinManager::get_texture(tex_name, true).await;
@@ -289,20 +289,18 @@ impl ScrollableItem for MainMenuButton {
             } else {
                 // draw box
                 let r = Rectangle::new(
-                    Color::new(0.2, 0.2, 0.2, 1.0),
-                    10.0,
                     self.pos,
                     self.size * scale,
+                    Color::new(0.2, 0.2, 0.2, 1.0),
                     Some(Border::new(Color::RED.alpha(0.0), 1.0))
                 ).shape(Shape::Round(5.0, 10));
                 
                 // draw text
                 let mut txt = Text::new(
-                    Color::WHITE,
-                    9.0,
                     Vector2::ZERO,
                     15.0 * scale,
                     self.text.to_owned(),
+                    Color::WHITE,
                     get_font()
                 );
                 txt.center_text(&r);
@@ -329,7 +327,7 @@ impl ScrollableItem for MainMenuButton {
 
     }
 
-    fn draw(&mut self, _pos_offset:Vector2, _parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, _pos_offset:Vector2, list: &mut RenderableCollection) {
         if !self.visible { return }
         // self.shapes.draw(list);
         list.push(self.shapes.clone());

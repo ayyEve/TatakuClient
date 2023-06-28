@@ -43,16 +43,15 @@ impl BarGraph {
 }
 
 impl StatsGraph for BarGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
 
         // background
         list.push(Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 0.7),
-            depth,
             pos,
             size,
+            Color::new(0.2, 0.2, 0.2, 0.7),
             Some(Border::new(Color::RED, 1.5))
         ));
 
@@ -74,7 +73,6 @@ impl StatsGraph for BarGraph {
                         pos + Vector2::with_y(v),
                         pos + size.x_portion() + Vector2::with_y(v),
                         2.0,
-                        depth,
                         i.color,
                     ))
                 }
@@ -90,7 +88,6 @@ impl StatsGraph for BarGraph {
                             pos + Vector2::new(x_step * (n-1) as f32, prev_y),
                             pos + Vector2::new(x_step * n as f32, new_y),
                             2.0,
-                            depth + 1.0,
                             i.color
                         ));
 

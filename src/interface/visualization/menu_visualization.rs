@@ -83,17 +83,16 @@ impl MenuVisualization {
     }
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.window_size.0 / 2.0, 50.0).alpha(1.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.window_size.0 / 2.0).alpha(1.0).border_alpha(1.0);
         let duration = 1000.0;
         let time = self.other_timer.as_millis();
 
         // info!("adding ripple {time}");
 
         group.push(Circle::new(
-            Color::WHITE.alpha(0.5),
-            0.0,
             Vector2::ZERO,
             self.current_inner_radius,
+            Color::WHITE.alpha(0.5),
             Some(Border::new(Color::WHITE, 2.0))
         ));
         group.ripple(0.0, duration, time, 2.0, true, Some(0.5));
@@ -179,6 +178,14 @@ impl MenuVisualization {
         }
         self.cookie.set_size(Vector2::ONE * self.initial_inner_radius);
     }
+
+    pub fn draw_cookie(&self, pos: Vector2, list: &mut RenderableCollection) {
+        let mut cookie = self.cookie.clone();
+        cookie.pos = pos;
+        cookie.rotation = self.rotation * 2.0;
+        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
+        list.push(cookie);
+    }
 }
 
 #[async_trait]
@@ -187,56 +194,28 @@ impl Visualization for MenuVisualization {
     fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
     fn timer(&mut self) -> &mut Instant { &mut self.timer }
 
-    async fn draw(&mut self, pos:Vector2, depth:f32, list: &mut RenderableCollection) {
+    async fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
+        // draw ripples
+        for ripple in self.ripples.iter() {
+            list.push(ripple.clone());
+        }
+
         let since_last = self.timer.elapsed().as_secs_f32(); // not ms
         self.update_data().await;
+        if self.data.len() < 3 { return }
+    
 
         let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
         let max = self.initial_inner_radius * VISUALIZATION_SIZE_FACTOR;
-
-        if self.data.len() < 3 { return }
-
-        
         let val = self.data[self.index].amplitude() as f32 / 500.0;
         self.current_inner_radius = f32::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;
         self.rotation += rotation_increment * since_last;
 
-        self.cookie.depth = depth - 1.0;
-        self.cookie.pos = pos;
-        self.cookie.rotation = self.rotation * 2.0;
-        self.cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
-        list.push(self.cookie.clone());
-
-        // draw ripples
-        for ripple in self.ripples.iter() {
-            list.push(ripple.clone());
-            // ripple.draw(list)
-        }
-
-        // let mut mirror = self.data.clone();
-        // mirror.reverse();
-        // self.data.extend(mirror);
-        // let mut graph = ayyeve_piston_ui::menu::menu_elements::Graph::new(
-        //     Vector2::new(0.0, _args.window_size[1] - 500.0), 
-        //     Vector2::new(500.0, 500.0),
-        //     self.data.iter().map(|a|a.1).collect(),
-        //     0.0, 20.0
-        // );
-        // list.extend(ayyeve_piston_ui::menu::menu_elements::ScrollableItem::draw(&mut graph, _args, Vector2::new(0.0, 0.0), depth));
-        // list.push(Box::new(Rectangle::new(
-        //     Color::WHITE,
-        //     depth + 10.0,
-        //     Vector2::new(0.0, _args.window_size[1] - 500.0), 
-        //     Vector2::new(500.0, 500.0),
-        //     None
-        // )));
-
-
+        // bars
         let a = (2.0 * PI) / self.data.len() as f32;
         let n = (2.0 * PI * self.current_inner_radius) / self.data.len() as f32 / 2.0;
-
         const BAR_MULT:f32 = 1.5;
 
         for i in 1..self.data.len() {
@@ -264,11 +243,11 @@ impl Visualization for MenuVisualization {
                 p1,
                 p2,
                 n,
-                depth + 10.0,
                 // COLORS[i % COLORS.len()]
                 if i == self.index { Color::RED } else { *BAR_COLOR }
             ));
         }
+   
     }
 
     fn reset(&mut self) {

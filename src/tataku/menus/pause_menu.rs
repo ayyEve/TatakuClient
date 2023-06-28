@@ -84,7 +84,6 @@ impl AsyncMenu<Game> for PauseMenu {
     
     async fn draw(&mut self, list: &mut RenderableCollection) {
         let pos_offset = Vector2::ZERO;
-        let depth = 0.0;
 
         if let Some(bg) = self.bg.clone() {
             list.push(bg)
@@ -92,10 +91,10 @@ impl AsyncMenu<Game> for PauseMenu {
 
         // draw buttons
         if !self.is_fail_menu {
-            self.continue_button.draw(pos_offset, depth, list);
+            self.continue_button.draw(pos_offset, list);
         }
-        self.retry_button.draw(pos_offset, depth, list);
-        self.exit_button.draw(pos_offset, depth, list);
+        self.retry_button.draw(pos_offset, list);
+        self.exit_button.draw(pos_offset, list);
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {

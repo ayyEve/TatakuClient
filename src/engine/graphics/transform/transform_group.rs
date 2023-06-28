@@ -9,7 +9,6 @@ pub struct TransformGroup {
     pub alpha: InitialCurrent<f32>,
     pub border_alpha: InitialCurrent<f32>,
 
-    pub depth: f32,
     pub origin: Vector2,
 
     pub items: Vec<Arc<dyn TatakuRenderable>>,
@@ -21,14 +20,11 @@ pub struct TransformGroup {
     pub image_flip_vertical: bool,
 }
 impl TransformGroup {
-    pub fn new(pos: Vector2, depth: f32) -> Self {
+    pub fn new(pos: Vector2) -> Self {
         Self {
             items: Vec::new(),
             transforms: Vec::new(),
             origin: Vector2::ZERO,
-
-            depth, 
-            // draw_state: None,
 
             pos: InitialCurrent::new(pos),
             scale: InitialCurrent::new(Vector2::ONE),
@@ -236,8 +232,6 @@ impl TransformGroup {
 
 
 impl TatakuRenderable for TransformGroup {
-    fn get_depth(&self) -> f32 { self.depth }
-
     fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
         transform = transform
             * Matrix::identity()

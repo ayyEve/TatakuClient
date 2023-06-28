@@ -18,10 +18,9 @@ impl GenericDialog {
         let window_size = WindowSize::get();
 
         let bounds = Rectangle::new(
-            Color::BLACK.alpha(0.7),
-            0.0,
             Vector2::ZERO,
             window_size.0,
+            Color::BLACK.alpha(0.7),
             Some(Border::new(
                 Color::BLACK, 
                 1.5
@@ -101,17 +100,13 @@ impl Dialog<Game> for GenericDialog {
         true
     }
 
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // background and border
-        let mut bg_rect = self.bounds.clone();
-        bg_rect.depth = depth;
+        list.push(self.bounds.clone());
 
         // draw buttons
-        let depth = depth - 0.0001;
         for button in self.buttons.iter_mut() {
-            button.draw(Vector2::ZERO, depth, list);
+            button.draw(Vector2::ZERO, list);
         }
-
-        list.push(bg_rect);
     }
 }

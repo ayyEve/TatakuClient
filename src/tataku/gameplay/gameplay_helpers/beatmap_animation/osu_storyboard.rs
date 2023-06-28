@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
 const GAME_SIZE: Vector2 = Vector2::new(640.0, 480.0);
-const DEPTH: Range<f32> = 5000.0..6000.0;
 
 pub struct OsuStoryboard {
     scaling_helper: Arc<ScalingHelper>,
@@ -24,10 +23,7 @@ impl OsuStoryboard {
         }
         elements.sort_by(Element::sort);
 
-        let len = elements.len() as f32;
-        for (n, i) in elements.iter_mut().enumerate() {
-            let d = f32::lerp(DEPTH.start, DEPTH.end, (n as f32) / len);
-            i.group.depth = d;
+        for i in elements.iter_mut() {
             i.window_size_changed(&scaling_helper);
         }
 
@@ -94,7 +90,7 @@ impl Element {
     async fn new(def: StoryboardEntryDef, parent_dir: &String, image_cache: &mut HashMap<String, Image>, scale: &ScalingHelper) -> TatakuResult<Self> {
         let layer;
 
-        let mut group = TransformGroup::new(Vector2::ZERO, 0.0).border_alpha(0.0).alpha(0.0);
+        let mut group = TransformGroup::new(Vector2::ZERO).border_alpha(0.0).alpha(0.0);
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
                 let filepath = format!("{parent_dir}/{}", sprite.filepath);
@@ -154,7 +150,7 @@ impl Element {
 
                 let delays = vec![anim.frame_delay; frames.len()];
 
-                let mut animation = Animation::new(Vector2::ZERO, 0.0, Vector2::ONE, frames, delays, Vector2::ONE);
+                let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
                 animation.scale = Vector2::ONE;
                 animation.free_on_drop = true;
                 

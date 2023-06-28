@@ -188,8 +188,8 @@ impl AsyncMenu<Game> for DirectMenu {
     }
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.scroll_area.draw(Vector2::ZERO, 0.0, list);
-        self.search_bar.draw(Vector2::ZERO, -90.0, list);
+        self.scroll_area.draw(Vector2::ZERO, list);
+        self.search_bar.draw(Vector2::ZERO, list);
 
         // draw download items
         if self.downloading.len() > 0 {
@@ -198,10 +198,9 @@ impl AsyncMenu<Game> for DirectMenu {
 
             // side bar background and border if hover
             list.push(Rectangle::new(
-                Color::WHITE,
-                3.0,
                 Vector2::new(x, DOWNLOAD_ITEM_YOFFSET),
                 Vector2::new(DOWNLOAD_ITEM_SIZE.x, self.window_size.y - DOWNLOAD_ITEM_YOFFSET * 2.0),
+                Color::WHITE,
                 Some(Border::new(Color::BLACK, 1.8))
             ));
             
@@ -213,19 +212,17 @@ impl AsyncMenu<Game> for DirectMenu {
                 let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
                 // bounding box
                 list.push(Rectangle::new(
-                    Color::WHITE,
-                    2.0,
                     pos,
                     DOWNLOAD_ITEM_SIZE,
+                    Color::WHITE,
                     Some(Border::new(Color::BLUE, 1.5))
                 ));
                 // map text
                 list.push(Text::new(
-                    Color::BLACK,
-                    1.0,
                     pos + Vector2::new(0.0, 15.0),
-                    15.0,
+                    15.0, 
                     format!("{} (Downloading)", i.title()),
+                    Color::BLACK,
                     font.clone()
                 ));
 
@@ -237,19 +234,17 @@ impl AsyncMenu<Game> for DirectMenu {
                 let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
                 // bounding box
                 list.push(Rectangle::new(
-                    Color::WHITE,
-                    2.0,
                     pos,
                     DOWNLOAD_ITEM_SIZE,
+                    Color::WHITE,
                     Some(Border::new(Color::BLACK, 1.5))
                 ));
                 // map text
                 list.push(Text::new(
-                    Color::BLACK,
-                    1.0,
                     pos + Vector2::new(0.0, 15.0),
                     15.0,
                     format!("{} (Waiting...)", i.title()),
+                    Color::BLACK,
                     font.clone()
                 ));
 

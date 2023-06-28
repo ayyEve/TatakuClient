@@ -141,25 +141,23 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
 
     fn update(&mut self) {}
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let pos = self.pos + pos_offset + Vector2::with_y(Y_PADDING);
 
         // draw bounding box
         list.push(Rectangle::new(
-            self.bg_color,
-            parent_depth + 0.00001,
             pos - Vector2::with_y(Y_PADDING),
             self.size,
+            self.bg_color,
             self.get_border_black(1.0)
         ));
 
         // draw item text
         let item_text = Text::new(
-            self.text_color,
-            parent_depth - 10.0,
             pos,
             self.font_size,
             self.text.to_owned(),
+            self.text_color,
             self.font.clone(),
         );
         let offset = Vector2::with_x(item_text.measure_text().x);
@@ -175,11 +173,10 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
             .and_then(|e|Some(e.display_text()))
             .unwrap_or("--Select--".to_owned());
         list.push(Text::new(
-            self.text_color,
-            parent_depth - 1.0,
             pos + item_offset,
             self.font_size,
             selected_text,
+            self.text_color,
             self.font.clone(),
         ));
 
@@ -192,10 +189,9 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
 
                 // draw border 
                 list.push(Rectangle::new(
-                    self.bg_color,
-                    parent_depth,
                     pos + item_offset + y_size * index as f32 - Vector2::with_y(ITEM_Y_PADDING),
                     item_size,
+                    self.bg_color,
                     Some(Border::new(
                         if index-1 == self.hover_index {Color::BLUE} else {Color::BLACK}, 
                         1.0
@@ -204,11 +200,10 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
                 
                 // draw text
                 list.push(Text::new(
-                    self.text_color,
-                    parent_depth,
                     pos + item_offset + y_size * index as f32 - Vector2::with_y(ITEM_Y_PADDING),
                     self.font_size,
                     text,
+                    self.text_color,
                     self.font.clone(),
                 ));
             }

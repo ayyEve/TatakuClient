@@ -71,14 +71,11 @@ pub fn format_float<T:Display>(num:T, precis: usize) -> String {
 
 
 
-pub fn visibility_bg(pos:Vector2, size:Vector2, depth: f32) -> impl TatakuRenderable {
-    let mut color = Color::WHITE;
-    color.a = 0.6;
+pub fn visibility_bg(pos:Vector2, size:Vector2) -> impl TatakuRenderable {
     Rectangle::new(
-        color,
-        depth,
         pos,
         size,
+        Color::WHITE.alpha(0.6),
         None
     )
 }

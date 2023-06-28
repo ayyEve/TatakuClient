@@ -31,30 +31,25 @@ impl ScrollableItem for MenuSection {
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {false} //{self.hover}
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
         let base_pos = self.pos + Vector2::with_y(self.size.y - (self.font_size + UNDERLINE_PAD + BOTTOM_PAD));
 
         // text
-        let t = Text::new(
-            Color::BLACK,
-            parent_depth,
+        list.push(Text::new(
             base_pos + pos_offset,
             self.font_size,
             self.text.clone(),
+            Color::BLACK,
             self.font.clone()
-        );
+        ));
 
         // underline
-        let r = Rectangle::new(
-            Color::BLACK,
-            parent_depth,
+        list.push(Rectangle::new(
             base_pos + pos_offset + Vector2::with_y(self.font_size + UNDERLINE_PAD),
             Vector2::new(self.size().x, 4.0),
+            Color::BLACK,
             None
-        );
-
-        list.push(t);
-        list.push(r);
+        ));
     }
 
 }

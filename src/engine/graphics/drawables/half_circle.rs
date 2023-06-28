@@ -4,18 +4,16 @@ use crate::prelude::*;
 pub struct HalfCircle {
     pub color: Color,
     pub pos: Vector2,
-    pub depth: f32,
     pub radius: f32,
     pub left_side: bool,
     pub scissor: Scissor
     // draw_state: Option<DrawState>,
 }
 impl HalfCircle {
-    pub fn new(color: Color, pos: Vector2, depth: f32, radius: f32, left_side: bool) -> HalfCircle {
+    pub fn new(pos: Vector2, radius: f32, color: Color, left_side: bool) -> HalfCircle {
         HalfCircle {
             color,
             pos,
-            depth,
             radius,
             left_side,
             scissor: None
@@ -26,7 +24,6 @@ impl HalfCircle {
 
 impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor (&mut self, s:Scissor) {self.scissor = s}
 
@@ -41,7 +38,6 @@ impl TatakuRenderable for HalfCircle {
             start_angle, 
             start_angle+PI, 
             self.radius, 
-            self.depth, 
             self.color.alpha(alpha), 
             20, 
             transform.trans(self.pos), 

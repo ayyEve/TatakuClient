@@ -44,16 +44,15 @@ impl ScatterGraph {
 
 
 impl StatsGraph for ScatterGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
 
         // background
         list.push(Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 0.7),
-            depth,
             pos,
             size,
+            Color::new(0.2, 0.2, 0.2, 0.7),
             Some(Border::new(Color::RED, 1.5))
         ));
         
@@ -63,7 +62,6 @@ impl StatsGraph for ScatterGraph {
             pos + zero_pos,
             pos + size.x_portion() + zero_pos,
             1.5,
-            depth,
             Color::WHITE,
         ));
 
@@ -76,7 +74,6 @@ impl StatsGraph for ScatterGraph {
                         pos + Vector2::with_y(v),
                         pos + size.x_portion() + Vector2::with_y(v),
                         1.5,
-                        depth,
                         i.color,
                     ))
                 }
@@ -86,10 +83,9 @@ impl StatsGraph for ScatterGraph {
 
                     for (n, &y) in mapped_points.iter().enumerate() {
                         let mut c = Circle::new(
-                            i.color,
-                            depth,
                             pos + Vector2::new(x_step * n as f32, y),
                             2.0,
+                            i.color,
                             None
                         );
                         c.resolution = 32;

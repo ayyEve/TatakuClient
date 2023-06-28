@@ -11,6 +11,7 @@ pub trait MatrixHelpers {
     fn from_orient(pos: Vector2) -> Self where Self: Sized;
 
     fn mul_v3(&self, v: Vector3) -> Vector3;
+    fn mul_v2(&self, v: Vector2) -> Vector2;
 
     // trans!!!!
     fn trans(self, p: Vector2) -> Self;
@@ -45,6 +46,11 @@ impl MatrixHelpers for Matrix {
         let v = cgmath::Vector4::new(v.x, v.y, v.z, 1.0);
         let v = self * v;
         Vector3::new(v.x, v.y, v.z)
+    }
+    fn mul_v2(&self, v: Vector2) -> Vector2 {
+        let v = cgmath::Vector4::new(v.x, v.y, 0.0, 1.0);
+        let v = self * v;
+        Vector2::new(v.x, v.y)
     }
 
 

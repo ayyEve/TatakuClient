@@ -188,59 +188,52 @@ impl AsyncMenu<Game> for LoadingMenu {
         match &state.error {
             Some(error) => {
                 text = Text::new(
-                    text_color,
-                    -100.0,
                     Vector2::ZERO,
                     32.0,
                     error.clone(),
+                    text_color,
                     font
                 )
             }
             None => match state.stage {
                 LoadingStage::None => {
                     text = Text::new(
-                        text_color,
-                        -100.0,
                         Vector2::ZERO,
                         32.0,
                         format!(""),
+                        text_color,
                         font
                     )
                 },
                 LoadingStage::Done => {
                     text = Text::new(
-                        text_color,
-                        -100.0,
                         Vector2::ZERO,
                         32.0,
                         format!("Done"),
+                        text_color,
                         font
                     )
                 }
                 LoadingStage::Difficulties => {
                     text = Text::new(
-                        text_color,
-                        -100.0,
                         Vector2::ZERO,
                         32.0,
                         format!("Loading Difficulties"),
+                        text_color,
                         font
                     )
                 }
                 LoadingStage::Audio => {
                     text = Text::new(
-                        text_color,
-                        -100.0,
                         Vector2::ZERO,
                         32.0,
                         format!("Loading Audio"),
+                        text_color,
                         font
                     )
                 }
                 LoadingStage::Beatmaps => {
                     text = Text::new(
-                        text_color,
-                        -100.0,
                         Vector2::ZERO,
                         32.0,
                         format!("{} ({}/{})", 
@@ -248,6 +241,7 @@ impl AsyncMenu<Game> for LoadingMenu {
                             state.loading_done, 
                             state.loading_count
                         ),
+                        text_color,
                         font
                     )
                 }

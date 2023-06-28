@@ -353,30 +353,23 @@ impl AsyncMenu<Game> for MainMenu {
     }
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        let pos_offset = Vector2::ZERO;
-        let depth = 0.0;
+        // background game
+        self.menu_game.draw(list).await;
+
+        // draw visualization
+        let mid = self.window_size.0 / 2.0;
+        self.visualization.draw(mid, list).await;
 
         // draw interactables
         for i in self.interactables(true) {
-            i.draw(pos_offset, depth, list)
+            i.draw(Vector2::ZERO, list)
         }
-
-        // visualization
-        let mid = self.window_size.0 / 2.0;
-        self.visualization.draw(mid, depth + 10.0, list).await;
-
-        self.menu_game.draw(list).await;
-
-        self.song_display.draw(list);
         
-        // draw dim
-        list.push(Rectangle::new(
-            Color::BLACK.alpha(0.5),
-            depth + 11.0,
-            Vector2::ZERO,
-            self.window_size.0,
-            None
-        ));
+        // visualization cookie
+        self.visualization.draw_cookie(mid, list);
+
+        // song info
+        self.song_display.draw(list);
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {

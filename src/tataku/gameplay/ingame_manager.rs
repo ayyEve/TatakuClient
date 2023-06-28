@@ -505,41 +505,40 @@ impl IngameManager {
     pub async fn draw(&mut self, list: &mut RenderableCollection) {
         let time = self.time();
 
+        // draw animation
+        self.animation.draw(list).await;
+
+
         // draw gamemode
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.draw(self, list).await;
         self.gamemode = gamemode;
 
-        
-        if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.draw(0.0, list).await;
-        } 
-
-
-        // draw center text
-        self.center_text_helper.draw(time, list);
 
 
         // dont draw score, combo, etc if this is a menu bg
         if self.menu_background { return }
 
 
-        // gamemode things
-
-        // draw ui elements
-        for i in self.ui_elements.iter_mut() {
-            i.draw(list)
-        }
-
-        
-        // draw judgement indicators
+        // judgement indicators
         for indicator in self.judgement_indicators.iter_mut() {
             indicator.draw(time, list);
         }
 
-        // draw animation
-        self.animation.draw(list).await;
 
+        // ui element editor
+        if let Some(ui_editor) = &mut self.ui_editor {
+            ui_editor.draw(list).await;
+        } 
+
+
+        // ui elements
+        for i in self.ui_elements.iter_mut() {
+            i.draw(list)
+        }
+
+        // draw center text
+        self.center_text_helper.draw(time, list);
     }
 }
 
@@ -918,7 +917,6 @@ impl IngameManager {
                 }
             });
         }
-
 
 
         self.replay_frame = 0;

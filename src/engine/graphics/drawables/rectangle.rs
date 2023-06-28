@@ -10,15 +10,12 @@ pub struct Rectangle {
     pub origin: Vector2,
     scissor: Scissor,
 
-    pub shape: Shape,
-
-
-    pub depth: f32,
     pub size: Vector2,
+    pub shape: Shape,
     pub border: Option<Border>,
 }
 impl Rectangle {
-    pub fn new(color: Color, depth: f32, pos: Vector2, size: Vector2, border: Option<Border>) -> Rectangle {
+    pub fn new(pos: Vector2, size: Vector2, color: Color, border: Option<Border>) -> Rectangle {
         let rotation = 0.0;
         let scale = Vector2::ONE;
         
@@ -30,7 +27,6 @@ impl Rectangle {
             shape: Shape::Square,
             scissor: None,
 
-            depth,
             size,
             border,
             origin: size / 2.0,
@@ -40,7 +36,7 @@ impl Rectangle {
     
     /// helpful shortcut when you only want to measure text
     pub fn bounds_only(pos: Vector2, size: Vector2) -> Rectangle {
-        Rectangle::new(Color::BLACK, 0.0, pos, size, None)
+        Rectangle::new( pos, size, Color::BLACK, None)
     }
 
     /// check if this rectangle contains a point
@@ -59,7 +55,6 @@ impl Rectangle {
 
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
-    fn get_depth(&self) -> f32 {self.depth}
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
 
@@ -81,7 +76,7 @@ impl TatakuRenderable for Rectangle {
             .trans(self.pos) // move to pos
         ;
 
-        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], self.depth, border, self.shape, self.color.alpha(alpha), transform, self.scissor)
+        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor)
     }
 }
 

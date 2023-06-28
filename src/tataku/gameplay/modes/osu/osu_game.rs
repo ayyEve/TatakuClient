@@ -3,9 +3,6 @@ use std::ops::Range;
 use crate::prelude::*;
 use super::prelude::*;
 
-const NOTE_DEPTH:Range<f32> = 100.0..200.0;
-const SLIDER_DEPTH:Range<f32> = 200.0..300.0;
-
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
 
@@ -160,8 +157,6 @@ impl OsuGame {
         let mut image = if settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
-            image.depth = -2.0;
-
             let scale = Vector2::ONE * scaling_helper.scaled_cs;
             image.scale = scale;
         }
@@ -169,7 +164,6 @@ impl OsuGame {
         manager.add_judgement_indicator(BasicJudgementIndicator::new(
             pos, 
             time,
-            -99999.99, // TODO: do this properly
             CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
             color,
             image
@@ -317,9 +311,6 @@ impl GameMode for OsuGame {
                 let mut combo_num = 0;
                 let mut combo_change = 0;
         
-                // used for the end time
-                let end_time = s.end_time;
-        
                 let mut counter = 0;
         
                 for (note, slider, spinner) in all_items {
@@ -339,14 +330,12 @@ impl GameMode for OsuGame {
                     combo_num += 1;
         
                     if let Some(note) = note {
-                        let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, note.time / end_time);
                         s.notes.push(Box::new(OsuNote::new(
                             note.clone(),
                             ar,
                             color,
                             combo_num as u16,
                             scaling_helper.clone(),
-                            depth,
                             std_settings.clone(),
                             get_hitsounds(note.time, note.hitsound, note.hitsamples.clone())
                         ).await));
@@ -363,7 +352,6 @@ impl GameMode for OsuGame {
                                 color_skip: slider.color_skip,
                             };
         
-                            let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, note.time / end_time);
                             let hitsounds = get_hitsounds(note.time, note.hitsound, note.hitsamples.clone());
                             s.notes.push(Box::new(OsuNote::new(
                                 note,
@@ -371,17 +359,11 @@ impl GameMode for OsuGame {
                                 Color::new(0.0, 0.0, 0.0, 1.0),
                                 combo_num as u16,
                                 scaling_helper.clone(),
-                                depth,
                                 std_settings.clone(),
                                 hitsounds,
                             ).await));
                         } else {
-                            // let slider_depth = SLIDER_DEPTH.start + (slider.time / end_time) * SLIDER_DEPTH.end;
-                            // let depth = NOTE_DEPTH.start + (slider.time / end_time) * NOTE_DEPTH.end;
 
-                            let slider_depth = f32::lerp(SLIDER_DEPTH.start, SLIDER_DEPTH.end, slider.time / end_time);
-                            let depth = f32::lerp(NOTE_DEPTH.start, NOTE_DEPTH.end, slider.time / end_time);
-        
                             let curve = get_curve(slider, &map);
                             s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
@@ -390,8 +372,6 @@ impl GameMode for OsuGame {
                                 color,
                                 combo_num as u16,
                                 scaling_helper.clone(),
-                                slider_depth,
-                                depth,
                                 std_settings.clone(),
                                 get_hitsounds,
                                 beatmap.slider_velocity_at(slider.time)
@@ -698,14 +678,12 @@ impl GameMode for OsuGame {
                     playfield.pos + Vector2::new(0.0, playfield.size.y/2.0),
                     playfield.pos + Vector2::new(playfield.size.x, playfield.size.y/2.0),
                     line_size,
-                    -100.0,
                     Color::WHITE
                 );
                 let py_line = Line::new(
                     playfield.pos + Vector2::new(playfield.size.x/2.0, 0.0),
                     playfield.pos + Vector2::new(playfield.size.x/2.0, playfield.size.y),
                     line_size, 
-                    -100.0,
                     Color::WHITE
                 );
 
@@ -713,14 +691,12 @@ impl GameMode for OsuGame {
                     Vector2::new(0.0, self.window_size.y/2.0),
                     Vector2::new(self.window_size.x, self.window_size.y/2.0),
                     line_size,
-                    -100.0,
                     Color::WHITE
                 );
                 let wy_line = Line::new(
                     Vector2::new(self.window_size.x/2.0, 0.0),
                     Vector2::new(self.window_size.x/2.0, self.window_size.y),
                     line_size, 
-                    -100.0,
                     Color::WHITE
                 );
 
@@ -738,16 +714,6 @@ impl GameMode for OsuGame {
             list.push(playfield);
         }
 
-
-        // if this is a replay, we need to draw the replay curser
-        if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
-            CursorManager::set_pos(self.mouse_pos)
-        }
-
-        // draw notes
-        for note in self.notes.iter_mut() {
-            note.draw(list).await;
-        }
 
         // draw follow points
         let time = manager.time();
@@ -806,10 +772,9 @@ impl GameMode for OsuGame {
                             list.push(i);
                         } else {
                             list.push(Circle::new(
-                                Color::WHITE.alpha(alpha),
-                                100_000.0,
                                 point,
                                 follow_dot_size,
+                                Color::WHITE.alpha(alpha),
                                 None
                             ));
                         }
@@ -818,6 +783,28 @@ impl GameMode for OsuGame {
                 }
             }
         }
+
+        // if this is a replay, we need to draw the replay curser
+        if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
+            CursorManager::set_pos(self.mouse_pos)
+        }
+
+        // draw notes
+
+        let mut spinners = Vec::new();
+        for note in self.notes.iter_mut().rev() {
+            match note.note_type() {
+                NoteType::Spinner => spinners.push(note),
+                _ => note.draw(list).await,
+            }
+        }
+
+        // spinners should be drawn last since they should be on top of everything
+        // (we dont want notes or sliders drawn on top of the spinners)
+        for i in spinners {
+            i.draw(list).await
+        }
+
     }
 
     

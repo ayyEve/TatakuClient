@@ -63,7 +63,7 @@ pub struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    pub async fn new(settings: &Arc<TaikoSettings>, depth: f32, hit_type: HitType, finisher: bool) -> Option<Self> {
+    pub async fn new(settings: &Arc<TaikoSettings>, hit_type: HitType, finisher: bool) -> Option<Self> {
         let color = match hit_type {
             HitType::Don => settings.don_color,
             HitType::Kat => settings.kat_color,
@@ -79,7 +79,6 @@ impl HitCircleImageHelper {
         if let Some(circle) = &mut circle {
             let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
-            circle.depth = depth;
             circle.pos = Vector2::ZERO;
             circle.scale = scale;
             circle.color = color;
@@ -89,7 +88,6 @@ impl HitCircleImageHelper {
         if let Some(overlay) = &mut overlay {
             let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
-            overlay.depth = depth - 0.0000001;
             overlay.pos = Vector2::ZERO;
             overlay.scale = scale;
             overlay.color = color;

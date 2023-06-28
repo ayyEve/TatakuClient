@@ -60,7 +60,7 @@ impl InnerUIElement for LeaderboardElement {
             }
 
             l.set_pos(base_pos);
-            l.draw(Vector2::ZERO, 0.0, list);
+            l.draw(Vector2::ZERO, list);
             base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 

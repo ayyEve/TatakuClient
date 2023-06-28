@@ -28,7 +28,7 @@ pub trait ScrollableItem: ScrollableItemGettersSetters {
     }
 
     fn update(&mut self) {}
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection);
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection);
 
     /// check this object against the query to see if it should be included (true) or filtered (false)
     fn check_filter(&self, query: &Vec<String>, query_type: QueryType) -> bool { 

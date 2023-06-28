@@ -84,9 +84,9 @@ impl Dialog<Game> for ModDialog {
         self.scroll.update();
     }
     
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
-        self.draw_background(depth + 1.00000001, Color::BLACK, list);
-        self.scroll.draw(Vector2::ZERO, depth, list);
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.draw_background(Color::BLACK, list);
+        self.scroll.draw(Vector2::ZERO, list);
     }
 
     async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
@@ -202,7 +202,7 @@ impl ScrollableItem for ModButton {
         }
     }
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let pos_offset = self.pos + pos_offset;
         
         let font = get_font();
@@ -214,9 +214,15 @@ impl ScrollableItem for ModButton {
 
         let font_size = 30.0;
         let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
-        let desc_text = Text::new(Color::WHITE, parent_depth, desc_pos, font_size, self.gameplay_mod.description().to_owned(), font);
+        let desc_text = Text::new(
+            desc_pos, 
+            font_size, 
+            self.gameplay_mod.description().to_owned(), 
+            Color::WHITE, 
+            font
+        );
 
-        checkbox.draw(pos_offset, parent_depth, list);
+        checkbox.draw(pos_offset, list);
         list.push(desc_text);
     }
 

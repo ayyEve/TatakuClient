@@ -42,41 +42,37 @@ impl ScrollableItem for Checkbox {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.checked)}
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         // draw bounding box
         list.push(Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 1.0),
-            parent_depth,
             self.pos + pos_offset,
             self.size,
+            Color::new(0.2, 0.2, 0.2, 1.0),
             if self.hover {Some(Border::new(Color::RED, 1.0))} else if self.selected {Some(Border::new(Color::BLUE, 1.0))} else {None}
         ));
 
         // draw checkbox bounding box
         list.push(Rectangle::new(
-            Color::TRANSPARENT_BLACK,
-            parent_depth + 1.0,
             self.pos + pos_offset,
             Vector2::new(self.size.y, self.size.y),
+            Color::TRANSPARENT_BLACK,
             if self.hover {Some(Border::new(Color::BLACK, 1.0))} else {None}
         ));
         if self.checked {
             list.push(Rectangle::new(
-                Color::YELLOW,
-                parent_depth,
                 self.pos + pos_offset + Vector2::new(INNER_BOX_PADDING, INNER_BOX_PADDING),
                 Vector2::new(self.size.y-INNER_BOX_PADDING*2.0, self.size.y-INNER_BOX_PADDING * 2.0),
+                Color::YELLOW,
                 None
             ));
         }
         
         // draw text
         let mut txt = Text::new(
-            Color::WHITE,
-            parent_depth - 1.0,
             self.pos + pos_offset,
             self.font_size,
             self.text.clone(),
+            Color::WHITE,
             self.font.clone(),
         );
         txt.center_text(&Rectangle::bounds_only(self.pos + pos_offset + Vector2::new(self.size.y, 0.0), Vector2::new(self.size.x - self.size.y, self.size.y)));

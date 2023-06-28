@@ -213,7 +213,6 @@ async fn load_anim(name: &str) -> Option<Animation> {
         let delays = vec![50.0; frames.len()];
         let mut anim = Animation::new(
             Vector2::ZERO,
-            -1000.0,
             DEFAULT_DONCHAN_SIZE / 2.0,
             frames,
             delays,

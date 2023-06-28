@@ -4,7 +4,6 @@ use crate::prelude::*;
 // const NOTIF_WIDTH:f64 = 300.0; // TODO: have this as the max width instead
 const NOTIF_Y_OFFSET:f32 = 100.0; // window_size().y - this
 const NOTIF_TEXT_SIZE:f32 = 15.0;
-const NOTIF_DEPTH:f32 = -800_000_000.0;
 // const NOTIF_TEXT_HEIGHT:f64 = 20.0;
 
 /// how many pixels of space should there be between notifications?
@@ -149,11 +148,10 @@ impl ProcessedNotif {
         let font = get_font();
 
         let text = Text::new(
-            Color::WHITE,
-            NOTIF_DEPTH - 0.1,
             Vector2::ZERO,
             NOTIF_TEXT_SIZE,
             notification.text.clone(),
+            Color::WHITE,
             font.clone()
         );
 
@@ -187,10 +185,9 @@ impl ProcessedNotif {
             list.push(image);
         } else {
             list.push(Rectangle::new(
-                NOTIF_BG_COLOR,
-                NOTIF_DEPTH + 0.1,
                 pos,
                 self.size,
+                NOTIF_BG_COLOR,
                 Some(Border::new(
                     self.notification.color,
                     1.2

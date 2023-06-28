@@ -807,44 +807,41 @@ impl Game {
 
         let mut render_queue = RenderableCollection::new();
 
-        self.cursor_manager.draw(&mut render_queue).await;
-
-        // draw background image here
+        // draw background image
         if let Some(img) = &self.background_image {
             render_queue.push(img.clone());
         }
 
-        // should we draw the background dim?
-        // if not, the other thing will handle it
-        let mut draw_bg_dim = true;
+        // draw dim
+        render_queue.push(Rectangle::new(
+            Vector2::ZERO,
+            self.window_size.0,
+            Color::BLACK.alpha(self.settings.background_dim),
+            None
+        ));
+
+        // draw cursor ripples
+        self.cursor_manager.draw_ripples(&mut render_queue);
+        
 
         // mode
         match &mut self.current_state {
             GameState::Ingame(manager) => manager.draw(&mut render_queue).await,
-            GameState::InMenu(menu) => {
-                menu.draw(&mut render_queue).await;
-                if menu.get_name() == "main_menu" {
-                    draw_bg_dim = false;
-                }
-            },
+            GameState::InMenu(menu) => menu.draw(&mut render_queue).await,
             GameState::Spectating(manager) => manager.draw(&mut render_queue).await,
             _ => {}
-        }
-
-        if draw_bg_dim {
-            render_queue.push(Rectangle::new(
-                Color::BLACK.alpha(self.settings.background_dim),
-                MAX_DEPTH - 1.0,
-                Vector2::ZERO,
-                self.window_size.0,
-                None
-            ));
         }
 
         // transition
         if self.transition_timer > 0.0 && elapsed - self.transition_timer < TRANSITION_TIME {
             // probably transitioning
 
+            // draw old mode
+            match (&self.current_state, &mut self.transition_last) {
+                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
+                _ => {}
+            }
+            
             // draw fade in rect
             let diff = elapsed - self.transition_timer;
 
@@ -852,52 +849,39 @@ impl Game {
             if self.transition.is_none() {alpha = 1.0 - diff / TRANSITION_TIME}
 
             render_queue.push(Rectangle::new(
-                Color::new(0.0, 0.0, 0.0, alpha),
-                -MAX_DEPTH,
                 Vector2::ZERO,
                 self.window_size.0,
+                Color::new(0.0, 0.0, 0.0, alpha),
                 None
             ));
 
-            // draw old mode
-            match (&self.current_state, &mut self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
-                _ => {}
-            }
         }
 
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
-        let mut current_depth = -MAX_DEPTH / 2.0;
-        const DIALOG_DEPTH_DIFF:f32 = 50.0;
         for d in dialog_list.iter_mut() { //.rev() {
-            d.draw(current_depth, &mut render_queue).await;
-            current_depth += DIALOG_DEPTH_DIFF;
+            d.draw(&mut render_queue).await;
         }
         self.dialogs = dialog_list;
-
-        // volume control
-        self.volume_controller.draw(&mut render_queue).await;
 
         // draw fps's
         self.fps_display.draw(&mut render_queue);
         self.update_display.draw(&mut render_queue);
         self.render_display.draw(&mut render_queue);
         self.input_display.draw(&mut render_queue);
-        // self.input_update_display.draw(&mut self.render_queue);
+
+        // volume control
+        self.volume_controller.draw(&mut render_queue).await;
 
         // draw the notification manager
         NOTIFICATION_MANAGER.read().await.draw(&mut render_queue);
 
         // draw cursor
-        // let mouse_pressed = self.input_manager.mouse_buttons.len() > 0 
-        //     || self.input_manager.key_down(settings.standard_settings.left_key)
-        //     || self.input_manager.key_down(settings.standard_settings.right_key);
-        // self.cursor_manager.draw(&mut self.render_queue);
+        self.cursor_manager.draw(&mut render_queue);
 
         // sort the queue here (so it only needs to be sorted once per frame, instead of every time a shape is added)
-        let mut render_queue = render_queue.take();
-        render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
+        let render_queue = render_queue.take();
+        // render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
 
         // toss the items to the window to render
         self.render_queue_sender.write(render_queue);

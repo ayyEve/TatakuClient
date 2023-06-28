@@ -153,8 +153,8 @@ impl Dialog<Game> for UserPanel {
         }
     }
 
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
-        self.chat.draw(depth, list).await;
+    async fn draw(&mut self, list: &mut RenderableCollection) {
+        self.chat.draw(list).await;
         //TODO: move the set_pos code to update or smth
         let mut counter = 0;
         
@@ -165,7 +165,7 @@ impl Dialog<Game> for UserPanel {
             u.set_pos(Vector2::new(x, y));
 
             counter += 1;
-            u.draw(Vector2::ZERO, depth, list);
+            u.draw(Vector2::ZERO, list);
         }
         
     }

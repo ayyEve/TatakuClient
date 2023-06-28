@@ -11,12 +11,6 @@
 use crate::prelude::*;
 use super::prelude::*;
 
-const FIELD_DEPTH:f32 = 110.0;
-const HIT_AREA_DEPTH: f32 = 99.9;
-
-pub const MANIA_NOTE_DEPTH: f32 = 100.0;
-
-
 pub struct ManiaGame {
     map_meta: Arc<BeatmapMeta>,
     // lists
@@ -233,7 +227,6 @@ impl ManiaGame {
         manager.add_judgement_indicator(BasicJudgementIndicator::new(
             pos, 
             time,
-            -2.0,
             playfield.column_width / 2.0 * (2.0 / 3.0),
             color,
             image
@@ -790,10 +783,9 @@ impl GameMode for ManiaGame {
 
         // playfield
         list.push(Rectangle::new(
-            Color::new(0.0, 0.0, 0.0, 0.8),
-            FIELD_DEPTH + 1.0,
             Vector2::new(self.playfield.col_pos(0), 0.0),
             Vector2::new(self.playfield.col_pos(self.column_count) - self.playfield.col_pos(0), window_size.y),
+            Color::new(0.0, 0.0, 0.0, 0.8),
             Some(Border::new(if manager.current_timing_point().kiai { Color::YELLOW } else { Color::BLACK }, 1.2))
         ));
 
@@ -804,10 +796,9 @@ impl GameMode for ManiaGame {
 
             // column background
             list.push(Rectangle::new(
-                Color::new(0.1, 0.1, 0.1, 0.8),
-                FIELD_DEPTH,
                 Vector2::new(x, 0.0),
                 Vector2::new(self.playfield.column_width, window_size.y),
+                Color::new(0.1, 0.1, 0.1, 0.8),
                 Some(Border::new(Color::GREEN, 1.2))
             ));
 
@@ -822,10 +813,9 @@ impl GameMode for ManiaGame {
                 list.push(img);
             } else {
                 list.push(Rectangle::new(
-                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
-                    HIT_AREA_DEPTH,
                     Vector2::new(x, self.playfield.hit_y()),
                     self.playfield.note_size(),
+                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
                     Some(Border::new(Color::RED, self.playfield.note_border_width))
                 ));
             }

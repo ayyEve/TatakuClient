@@ -64,11 +64,10 @@ impl MusicBox {
                 actions.push(*c);
 
                 let text = Text::new(
-                    PRIMARY_COLOR,
-                    0.0,
                     btn_pos + MUSIC_BOX_PADDING,
                     CONTROL_BUTTON_SIZE as f32,
                     c.get_char().to_string(),
+                    PRIMARY_COLOR,
                     font_awesome.clone()
                 );
 
@@ -195,11 +194,10 @@ impl ScrollableItem for MusicBox {
 
     fn update(&mut self) {}
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
 
         // draw buttons
         for (i, mut text) in self.texts.clone().into_iter().enumerate() {
-            text.depth = parent_depth;
             text.pos += pos_offset;
 
             // if this is the play button, and the song is paused, use the play character
@@ -211,10 +209,9 @@ impl ScrollableItem for MusicBox {
             
             // make bounding box
             let mut rect = Rectangle::new(
-                SECONDARY_COLOR.alpha(0.1),
-                parent_depth,
                 text.pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
+                SECONDARY_COLOR.alpha(0.1),
                 None, //Some(Border::new(Color::BLACK, 1.2))
             ).shape(Shape::Round(5.0, 10));
 
@@ -233,18 +230,17 @@ impl ScrollableItem for MusicBox {
 
         // draw progress bar
         list.push(Rectangle::new(
-            PRIMARY_COLOR,
-            parent_depth,
             self.pos + pos_offset + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD),
             Vector2::new(self.size.x * (self.song_time / self.song_duration), PROGRESSBAR_HEIGHT),
+            PRIMARY_COLOR,
             None
         ).shape(Shape::Round(2.0, 5)));
+        
         // draw border after
         list.push(Rectangle::new(
-            Color::TRANSPARENT_WHITE,
-            parent_depth,
             self.pos + pos_offset + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD),
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT),
+            Color::TRANSPARENT_WHITE,
             Some(Border::new(SECONDARY_COLOR, 1.2))
         ).shape(Shape::Round(2.0, 5)));
 

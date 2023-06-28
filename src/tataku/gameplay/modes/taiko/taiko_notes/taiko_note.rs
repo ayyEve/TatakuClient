@@ -5,7 +5,6 @@ use super::super::prelude::*;
 pub struct TaikoNote {
     pos: Vector2,
     time: f32, // ms
-    depth: f32,
     hit_time: f32,
     hit_type: HitType,
     base_finisher: bool,
@@ -22,7 +21,7 @@ pub struct TaikoNote {
     image: Option<HitCircleImageHelper>,
 }
 impl TaikoNote {
-    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
+    pub async fn new(time:f32, hit_type:HitType, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
 
         // let big_note_radius = settings.note_radius * settings.big_note_multiplier;
         // let y = settings.hit_position.y + big_note_radius * 2.0;
@@ -33,7 +32,6 @@ impl TaikoNote {
         Self {
             time, 
             hit_time: 0.0,
-            depth,
             hit_type, 
             base_finisher: finisher,
             finisher,
@@ -84,10 +82,9 @@ impl HitObject for TaikoNote {
             image.draw(list);
         } else {
             list.push(Circle::new(
-                self.get_color(),
-                self.depth,
                 self.pos,
                 if self.finisher {self.settings.note_radius * self.settings.big_note_multiplier} else {self.settings.note_radius},
+                self.get_color(),
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             ));
         }
@@ -101,7 +98,7 @@ impl HitObject for TaikoNote {
     }
 
     async fn reload_skin(&mut self) {
-        self.image = HitCircleImageHelper::new(&self.settings, self.depth, self.hit_type, self.finisher).await;
+        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher).await;
     }
 }
 impl TaikoHitObject for TaikoNote {

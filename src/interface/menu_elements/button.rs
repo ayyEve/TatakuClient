@@ -56,24 +56,22 @@ impl ScrollableItem for MenuButton {
         }
     }
 
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
 
         // draw box
         let r = Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 1.0),
-            parent_depth + 1.0,
             self.pos + pos_offset,
             self.size,
+            Color::new(0.2, 0.2, 0.2, 1.0),
             if self.hover {Some(Border::new(Color::RED, 1.0))} else if self.selected {Some(Border::new(Color::BLUE, 1.0))} else {None}
         );
         
         // draw text
         let mut txt = Text::new(
-            Color::WHITE,
-            parent_depth,
             Vector2::ZERO,
             self.font_size,
             self.text.clone(),
+            Color::WHITE,
             self.font.clone()
         );
         txt.center_text(&r);

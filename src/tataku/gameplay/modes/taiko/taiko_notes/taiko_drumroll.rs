@@ -19,7 +19,6 @@ pub struct TaikoDrumroll {
     // TODO: figure out how to pre-calc this
     end_x: f32,
 
-    depth: f32,
     settings: Arc<TaikoSettings>,
     playfield: Arc<TaikoPlayfield>,
 
@@ -27,9 +26,8 @@ pub struct TaikoDrumroll {
     end_image: Option<Image>,
 }
 impl TaikoDrumroll {
-    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
+    pub async fn new(time:f32, end_time:f32, finisher:bool, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
         let radius = if finisher { settings.note_radius * settings.big_note_multiplier } else { settings.note_radius };
-        // let depth = TaikoGame::get_slider_depth(time);
 
         let middle_image = None;
         let end_image = None;
@@ -42,7 +40,6 @@ impl TaikoDrumroll {
             finisher,
             radius,
             speed: 0.0,
-            depth,
 
             pos: Vector2::new(0.0,settings.hit_position.y - radius),
             end_x: 0.0,
@@ -81,10 +78,9 @@ impl HitObject for TaikoDrumroll {
         } else {
             // middle
             list.push(Rectangle::new(
-                color,
-                self.depth,
                 self.pos,
                 Vector2::new(self.end_x - self.pos.x, self.radius * 2.0),
+                color,
                 border.clone()
             ));
         }
@@ -106,19 +102,17 @@ impl HitObject for TaikoDrumroll {
         } else {
             // start circle
             list.push(Circle::new(
-                color,
-                self.depth,
                 self.pos + Vector2::new(0.0, self.radius),
                 self.radius,
+                color,
                 border.clone()
             ));
             
             // end circle
             list.push(Circle::new(
-                color,
-                self.depth,
                 Vector2::new(self.end_x, self.pos.y + self.radius),
                 self.radius,
+                color,
                 border.clone()
             ));
         }
@@ -134,19 +128,17 @@ impl HitObject for TaikoDrumroll {
 
             // flying dot
             list.push(Circle::new(
-                Color::YELLOW,
-                -1.0,
                 Vector2::new(x, y),
                 SLIDER_DOT_RADIUS,
+                Color::YELLOW,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE/2.0))
             ));
 
             // "hole"
             list.push(Circle::new(
-                BAR_COLOR,
-                -1.0,
                 Vector2::new(x, self.pos.y + self.radius),
                 SLIDER_DOT_RADIUS,
+                BAR_COLOR,
                 None
             ))
         }
@@ -161,7 +153,6 @@ impl HitObject for TaikoDrumroll {
     async fn reload_skin(&mut self) {
         let mut middle_image = SkinManager::get_texture("taiko-roll-middle", true).await;
         if let Some(image) = &mut middle_image {
-            image.depth = self.depth;
             image.origin.x = 0.0;
             image.color = Color::YELLOW;
 
@@ -172,7 +163,6 @@ impl HitObject for TaikoDrumroll {
 
         let mut end_image = SkinManager::get_texture("taiko-roll-end", true).await;
         if let Some(image) = &mut end_image {
-            image.depth = self.depth;
             image.origin.x = 0.0;
             image.color = Color::YELLOW;
 

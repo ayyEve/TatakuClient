@@ -14,7 +14,6 @@ pub struct TaikoSpinner {
     end_time: f32, // ms
     speed: f32,
 
-    depth: f32,
     settings: Arc<TaikoSettings>,
     playfield: Arc<TaikoPlayfield>,
 
@@ -24,17 +23,15 @@ pub struct TaikoSpinner {
     kat_color: Color,
 }
 impl TaikoSpinner {
-    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>, depth: f32) -> Self {
+    pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
         let don_color = settings.don_color;
         let kat_color = settings.kat_color;
-        // let depth = TaikoGame::get_depth(time);
 
         Self {
             time, 
             end_time,
             speed: 0.0,
             hits_required,
-            depth,
 
             hit_count: 0,
             complete: false,
@@ -73,19 +70,17 @@ impl HitObject for TaikoSpinner {
         if self.pos.x <= self.settings.hit_position.x {
             // bg circle
             list.push(Circle::new(
-                Color::YELLOW,
-                -5.0,
                 spinner_position,
                 SPINNER_RADIUS,
+                Color::YELLOW,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             ));
 
             // draw another circle on top which increases in radius as the counter gets closer to the reqired
             list.push(Circle::new(
-                Color::WHITE,
-                -5.0,
                 spinner_position,
                 SPINNER_RADIUS * (self.hit_count as f32 / self.hits_required as f32),
+                Color::WHITE,
                 Some(Border::new(Color::BLACK, NOTE_BORDER_SIZE))
             ));
             
@@ -100,18 +95,16 @@ impl HitObject for TaikoSpinner {
                 list.push(i);
             } else {
                 list.push(HalfCircle::new(
-                    self.don_color,
                     self.pos,
-                    self.depth,
                     self.settings.note_radius,
+                    self.don_color,
                     true
                 ));
 
                 list.push(HalfCircle::new(
-                    self.kat_color,
                     self.pos,
-                    self.depth,
                     self.settings.note_radius,
+                    self.kat_color,
                     false
                 ));
             }
@@ -125,13 +118,7 @@ impl HitObject for TaikoSpinner {
     }
     
     async fn reload_skin(&mut self) {
-        let mut spinner_image = SkinManager::get_texture("spinner-warning", true).await;
-        
-        if let Some(image) = &mut spinner_image {
-            image.depth = self.depth;
-        }
-
-        self.spinner_image = spinner_image;
+        self.spinner_image = SkinManager::get_texture("spinner-warning", true).await;
     }
 }
 impl TaikoHitObject for TaikoSpinner {

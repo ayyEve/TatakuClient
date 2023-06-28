@@ -36,13 +36,10 @@ impl TimingBar {
     pub fn draw(&mut self, list: &mut RenderableCollection){
         if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 1000000.0 {return}
 
-        const DEPTH:f32 = 1001.5;
-
         list.push(Rectangle::new(
-            BAR_COLOR,
-            DEPTH,
             self.pos,
             self.size,
+            BAR_COLOR,
             None
         ));
     }

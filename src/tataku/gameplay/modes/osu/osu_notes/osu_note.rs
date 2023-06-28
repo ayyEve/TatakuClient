@@ -21,8 +21,6 @@ pub struct OsuNote {
     /// combo number
     combo_num: u16,
 
-    /// note depth
-    base_depth: f32,
     /// note radius (scaled by cs and size)
     radius: f32,
     /// when the hitcircle should start being drawn
@@ -47,20 +45,19 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, base_depth:f32, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
         
-        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, base_depth, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
+        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
 
         Self {
             def,
             pos,
             time, 
-            base_depth,
             color,
             combo_num,
             
@@ -119,38 +116,39 @@ impl HitObject for OsuNote {
     }
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        // draw shapes
-        for shape in self.shapes.iter_mut() {
-            // shape.draw(list)
-            list.push(shape.clone())
-        }
 
         // if its not time to draw anything else, leave
-        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { return }
+        if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { 
+            // draw shapes
+            for shape in self.shapes.iter() {
+                list.push(shape.clone())
+            }
+            
+            return 
+        }
 
         let alpha = self.get_alpha();
 
+        // note
         if let Some(image) = &mut self.circle_image {
             image.set_alpha(alpha);
+            image.draw(list);
+        } else {
+            list.push(Circle::new(
+                self.pos,
+                self.radius,
+                self.color.alpha(alpha),
+                Some(Border::new(Color::WHITE.alpha(alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scale))
+            ));
         }
 
         // timing circle
         self.approach_circle.draw(list);
 
-
-        // note
-        if let Some(image) = &mut self.circle_image {
-            image.draw(list);
-        } else {
-            list.push(Circle::new(
-                self.color.alpha(alpha),
-                self.base_depth,
-                self.pos,
-                self.radius,
-                Some(Border::new(Color::WHITE.alpha(alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scale))
-            ));
+        // draw shapes
+        for shape in self.shapes.iter() {
+            list.push(shape.clone())
         }
-
     }
 
     async fn reset(&mut self) {
@@ -179,7 +177,6 @@ impl HitObject for OsuNote {
             self.circle_image = Some(HitCircleImageHelper::new(
                 self.def.pos,
                 self.scaling_helper.clone(),
-                self.base_depth,
                 self.color,
                 self.combo_num
             ).await);
@@ -208,13 +205,12 @@ impl OsuHitObject for OsuNote {
         self.hit = true;
 
         if self.standard_settings.hit_ripples {
-            let mut group = TransformGroup::new(self.pos, self.base_depth).alpha(0.0).border_alpha(1.0);
+            let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
 
             group.push(Circle::new(
-                Color::TRANSPARENT_WHITE,
-                0.0,
                 Vector2::ZERO,
                 self.radius,
+                Color::TRANSPARENT_WHITE,
                 Some(Border::new(self.color, 2.0))
             ));
 

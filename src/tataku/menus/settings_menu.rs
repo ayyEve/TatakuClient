@@ -136,17 +136,16 @@ impl Dialog<Game> for SettingsMenu {
             self.apply_filter(true);
         }
     }
-    async fn draw(&mut self, depth: f32, list: &mut RenderableCollection) {
-        self.search_text.draw(Vector2::ZERO, depth, list);
-        self.scroll_area.draw(Vector2::ZERO, depth, list);
-
+    async fn draw(&mut self, list: &mut RenderableCollection) {
         // background
         let bounds = self.get_bounds();
         list.push(visibility_bg(
             bounds.pos, 
             bounds.size,
-            depth + 10.0
         ));
+
+        self.search_text.draw(Vector2::ZERO, list);
+        self.scroll_area.draw(Vector2::ZERO, list);
     }
 
     async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {

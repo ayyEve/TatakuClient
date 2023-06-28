@@ -539,7 +539,7 @@ impl ScrollableItem for ScrollableArea {
             item.update();
         }
     }
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list: &mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let offset = pos_offset + Vector2::new(0.0, self.scroll_pos);
 
         // setup a clipping context. 
@@ -558,7 +558,7 @@ impl ScrollableItem for ScrollableArea {
             if (pos.y + size.y) + offset.y < self.pos.y || pos.y + offset.y > self.pos.y + self.size.y { continue }
 
             // should be good, draw it
-            item.draw(offset, parent_depth, list);
+            item.draw(offset, list);
         }
         list.do_before_add = None;
 
@@ -576,10 +576,9 @@ impl ScrollableItem for ScrollableArea {
             ($x:expr, $height:expr) => {
                 // trackbar
                 list.push(Rectangle::new(
-                    Color::TRANSPARENT_WHITE,
-                    parent_depth,
                     Vector2::new($x, self.pos.y),
                     Vector2::new(self.dragger_width, self.size.y),
+                    Color::TRANSPARENT_WHITE,
                     Some(Border::new(
                         Color::BLACK,
                         1.0
@@ -588,10 +587,9 @@ impl ScrollableItem for ScrollableArea {
 
                 // dragger
                 list.push(Rectangle::new(
-                    Color::BLACK,
-                    parent_depth - 0.1,
                     Vector2::new($x, self.pos.y -(self.scroll_pos / self.elements_height) * self.size.y - $height/2.0),
                     Vector2::new(self.dragger_width, $height),
+                    Color::BLACK,
                     Some(Border::new(
                         Color::BLUE,
                         1.0

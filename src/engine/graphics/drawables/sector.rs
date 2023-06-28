@@ -3,25 +3,23 @@ use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Sector {
-    pub depth: f32,
-    pub radius: f32,
-    pub start: f32,
-    pub end: f32,
-
     pub pos: Vector2,
     pub scale: Vector2,
     pub color: Color,
+
+    pub radius: f32,
+    pub start: f32,
+    pub end: f32,
 
     scissor: Scissor,
 
     pub border: Option<Border>
 }
 impl Sector {
-    pub fn new(pos:Vector2, radius: f32, start:f32, end:f32, color:Color, depth:f32, border: Option<Border>) -> Self {
+    pub fn new(pos:Vector2, radius: f32, start:f32, end:f32, color:Color, border: Option<Border>) -> Self {
         let scale = Vector2::ONE;
 
         Self {
-            depth,
             radius,
             start,
             end,
@@ -38,7 +36,6 @@ impl Sector {
 
 impl TatakuRenderable for Sector {
     fn get_name(&self) -> String { "Sector".to_owned() }
-    fn get_depth(&self) -> f32 { self.depth }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
 
@@ -51,7 +48,6 @@ impl TatakuRenderable for Sector {
             self.start,
             self.end,
             self.radius,
-            self.depth,
             self.color.alpha(alpha),
             20,
             transform * Matrix::identity().scale(self.scale).trans(self.pos),

@@ -55,7 +55,7 @@ impl JudgmentImageHelper {
                 let frametime = 1000.0 / skin.animation_framerate as f32;
                 let (frames, delays) = textures.into_iter().map(|t|(t.tex, frametime)).unzip();
 
-                let animation = Animation::new(Vector2::ZERO, 0.0, size, frames, delays, base_scale);
+                let animation = Animation::new(Vector2::ZERO, size, frames, delays, base_scale);
                 self.images.insert(k, Some(animation));
             }
 

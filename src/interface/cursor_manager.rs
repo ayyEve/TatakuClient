@@ -68,21 +68,9 @@ pub struct CursorManager {
 
 impl CursorManager {
     pub async fn new() -> Self {
-        let mut cursor_image = SkinManager::get_texture("cursor", true).await;
-        if let Some(cursor) = &mut cursor_image {
-            cursor.depth = -MAX_DEPTH;
-        }
-
-        let mut cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
-        if let Some(trail) = &mut cursor_trail_image {
-            trail.depth = (-MAX_DEPTH) + 50.0;
-        }
-
-
-        let mut cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
-        if let Some(cursor) = &mut cursor_middle_image {
-            cursor.depth = -MAX_DEPTH;
-        }
+        let cursor_image = SkinManager::get_texture("cursor", true).await;
+        let cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
+        let cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
@@ -90,10 +78,7 @@ impl CursorManager {
             (TRAIL_CREATE_TIMER, TRAIL_FADEOUT_TIMER_START, TRAIL_FADEOUT_TIMER_DURATION)
         };
 
-        // let mut ripple_image = SkinManager::get_texture("cursor-ripple", true).await;
-        // if let Some(r) = &mut ripple_image {
-        //     r.depth = 1_000.0;
-        // }
+        // let ripple_image = SkinManager::get_texture("cursor-ripple", true).await;
 
         let (sender, event_receiver) = channel(1000);
         CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
@@ -152,16 +137,6 @@ impl CursorManager {
         self.trail_fadeout_timer_duration = trail_fadeout_timer_duration;
 
         self.cursor_rotation = 0.0;
-        if let Some(trail) = &mut self.cursor_trail_image {
-            trail.depth = (-MAX_DEPTH) + 50.0;
-        }
-        if let Some(cursor) = &mut self.cursor_image {
-            cursor.depth = -MAX_DEPTH;
-        }
-        
-        if let Some(cursor) = &mut self.cursor_middle_image {
-            cursor.depth = -MAX_DEPTH;
-        }
     }
 
 
@@ -285,8 +260,17 @@ impl CursorManager {
 
     }
 
+    pub fn draw_ripples(&self, list: &mut RenderableCollection) {
+        if !self.visible { return }
+        
+        // draw ripples
+        for ripple in self.ripples.iter() {
+            list.push(ripple.clone())
+            // ripple.draw(list)
+        }
+    }
 
-    pub async fn draw(&mut self, list: &mut RenderableCollection) {
+    pub fn draw(&mut self, list: &mut RenderableCollection) {
         if !self.visible { return }
 
         let mut radius = DEFAULT_CURSOR_SIZE;
@@ -302,11 +286,6 @@ impl CursorManager {
             }
         }
         
-        // draw ripples
-        for ripple in self.ripples.iter() {
-            list.push(ripple.clone())
-            // ripple.draw(list)
-        }
 
         // draw cursor itself
         if let Some(cursor) = &self.cursor_image {
@@ -324,10 +303,9 @@ impl CursorManager {
             list.push(cursor.clone());
         } else {
             list.push(Circle::new(
-                self.color,
-                -MAX_DEPTH,
                 self.pos,
                 radius * self.settings.cursor_scale,
+                self.color,
                 if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
                         self.border_color,
@@ -350,7 +328,7 @@ impl CursorManager {
 
 
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.pos, 1000.0).alpha(0.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
         let duration = 500.0;
         let time = self.time.as_millis();
 
@@ -383,10 +361,9 @@ impl CursorManager {
             // let end_scale = self.settings.cursor_ripple_final_scale * self.ripple_radius_override.map(|r| DEFAULT_CURSOR_SIZE / r).unwrap_or(1.0);
 
             group.push(Circle::new(
-                Color::WHITE.alpha(0.5),
-                0.0,
                 Vector2::ZERO,
                 radius,
+                Color::WHITE.alpha(0.5),
                 Some(Border::new(Color::WHITE, 2.0 / end_scale))
             ));
             group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
@@ -399,7 +376,7 @@ impl CursorManager {
 
     fn make_trail_group(pos: Vector2, mut trail: Image, start: f32, duration: f32, scale:Vector2, time: f32) -> TransformGroup {
         trail.scale = scale;
-        let mut g = TransformGroup::new(pos, trail.depth).alpha(1.0).border_alpha(0.0);
+        let mut g = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
         g.transforms.push(Transformation::new(
             start, 
             duration, 

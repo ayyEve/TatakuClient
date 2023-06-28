@@ -837,14 +837,14 @@ impl GraphicsState {
             mapped_at_creation: false,
         });
 
-        let bpr = w*4;
+
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
             layout: wgpu::ImageDataLayout { 
                 offset: 0, 
-                bytes_per_row: Some(bpr + bpr % 256), 
+                bytes_per_row: Some(align(w*4)), 
                 rows_per_image: Some(h)
-            },
+            }
         };
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("screenshot encoder") });
@@ -997,7 +997,6 @@ impl GraphicsState {
         &mut self,
         tex: &TextureReference,
         rect: [f32; 4],
-        depth: f32,
         color: Color,
         h_flip: bool,
         v_flip: bool,
@@ -1005,7 +1004,6 @@ impl GraphicsState {
         scissor: Scissor,
     ) {
         let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
-        let depth = Self::map_depth(depth);
         
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -1029,7 +1027,7 @@ impl GraphicsState {
         let scissor_index = reserved.scissor_index;
         reserved.copy_in(&[
             Vertex {
-                position: transform.mul_v3(Vector3::new(x, y, depth)).into(),
+                position: transform.mul_v2(Vector2::new(x, y)).into(),
                 tex_coords: tl,
                 tex_index,
                 color,
@@ -1037,7 +1035,7 @@ impl GraphicsState {
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ size[0], 0 } * scale),
-                position: transform.mul_v3(Vector3::new(x+w, y, depth)).into(),
+                position: transform.mul_v2(Vector2::new(x+w, y)).into(),
                 tex_coords: tr,
                 tex_index,
                 color,
@@ -1045,7 +1043,7 @@ impl GraphicsState {
             },
             Vertex {
                 // .position = position + (Gfx.Vector2{ 0, size[1] } * scale),
-                position: transform.mul_v3(Vector3::new(x, y+h, depth)).into(),
+                position: transform.mul_v2(Vector2::new(x, y+h)).into(),
                 tex_coords: bl,
                 tex_index,
                 color,
@@ -1053,7 +1051,7 @@ impl GraphicsState {
             },
             Vertex {
                 //     .position = position + (size * scale),
-                position: transform.mul_v3(Vector3::new(x+w, y+h, depth)).into(),
+                position: transform.mul_v2(Vector2::new(x+w, y+h)).into(),
                 tex_coords: br,
                 tex_index,
                 color,
@@ -1073,17 +1071,15 @@ impl GraphicsState {
     fn reserve_quad(
         &mut self,
         quad: [Vector2; 4],
-        depth: f32,
         color: Color,
         transform: Matrix,
         scissor: Scissor,
     ) {
         let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
-        let depth = Self::map_depth(depth);
         let color = color.into();
 
-        let vertices = quad.into_iter().map(|p|Vertex {
-            position: transform.mul_v3(Vector3::new(p.x, p.y, depth)).into(),
+        let vertices = quad.into_iter().map(|p: Vector2|Vertex {
+            position: transform.mul_v2(p).into(),
             color,
             scissor_index: reserved.scissor_index,
             ..Default::default()
@@ -1108,7 +1104,7 @@ impl GraphicsState {
 impl GraphicsState {
 
     /// draw an arc with the center at 0,0
-    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, depth: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor) {
+    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor) {
         let n = resolution;
         
         // minor optimization
@@ -1131,10 +1127,10 @@ impl GraphicsState {
         path.end(false);
         let path = path.build();
 
-        self.tessellate_path(path, depth, color, None, transform, scissor);
+        self.tessellate_path(path, color, None, transform, scissor);
     }
 
-    pub fn draw_circle(&mut self, radius: f32, depth: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
+    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
         let n = resolution;
 
         // border 
@@ -1148,7 +1144,7 @@ impl GraphicsState {
                 Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             });
 
-            self.tessellate_polygon(points, depth - 1.0, border.color, Some(border.radius), transform, scissor);
+            self.tessellate_polygon(points, border.color, Some(border.radius), transform, scissor);
         }
 
         // minor optimization
@@ -1163,11 +1159,10 @@ impl GraphicsState {
             Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
         });
 
-        self.tessellate_polygon(points, depth, color, None, transform, scissor);
-        
+        self.tessellate_polygon(points, color, None, transform, scissor);
     }
 
-    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, depth: f32, color: Color, transform: Matrix, scissor: Scissor) {
+    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, scissor: Scissor) {
         let p1 = Vector2::new(line[0], line[1]);
         let p2 = Vector2::new(line[2], line[3]);
 
@@ -1180,11 +1175,11 @@ impl GraphicsState {
         let n3 = p2 - n;
 
         let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, depth, color, transform, scissor);
+        self.reserve_quad(quad, color, transform, scissor);
     }
 
     /// rect is [x,y,w,h]
-    pub fn draw_rect(&mut self, rect: [f32; 4], depth: f32, border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor) {
+    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
         if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
 
@@ -1199,33 +1194,22 @@ impl GraphicsState {
         let path = path.build();
 
         if let Some(border) = border {
-            self.tessellate_path(path.clone(), depth, border.color, Some(border.radius), transform, scissor)
-
-            // let points = [
-            //     Vector2::new(x, y),
-            //     Vector2::new(x+w, y),
-            //     Vector2::new(x+w, y+h),
-            //     Vector2::new(x, y+h),
-            // ].into_iter();
-            // self.tesselate_polygon(points, depth-10.0, border.color, Some(border.radius), transform, scissor);
+            self.tessellate_path(path.clone(), border.color, Some(border.radius), transform, scissor)
         }
 
         // minor optimization
         if color.a <= 0.0 { return }
 
-        // self.reserve_rect(rect, depth, color, transform, scissor);
-        self.tessellate_path(path, depth, color, None, transform, scissor)
+        self.tessellate_path(path, color, None, transform, scissor)
     }
 
-    pub fn draw_tex(&mut self, tex: &TextureReference, depth: f32, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
+    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, depth, color, h_flip, v_flip, transform, scissor);
+        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, scissor);
     }
 
 
-    fn tessellate_polygon(&mut self, mut polygon: impl Iterator<Item=Vector2>, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
-        let depth = Self::map_depth(depth);
-        
+    fn tessellate_polygon(&mut self, mut polygon: impl Iterator<Item=Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
         for p in polygon { 
@@ -1235,13 +1219,12 @@ impl GraphicsState {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(path, depth, color, border, transform, scissor)
+        self.tessellate_path(path, color, border, transform, scissor)
     }
 
-    fn tessellate_path(&mut self, path: lyon_tessellation::path::Path, depth: f32, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+    fn tessellate_path(&mut self, path: lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         // Create the destination vertex and index buffers.
         let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
-        let depth = Self::map_depth(depth);
 
         {
             let mut vertex_builder = lyon_tessellation::geometry_builder::simple_builder(&mut buffers);
@@ -1278,7 +1261,7 @@ impl GraphicsState {
 
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
-                position: [n.x, n.y, depth],
+                position: [n.x, n.y],
                 color: [color.r, color.g, color.b, color.a],
                 scissor_index: reserved.scissor_index,
                 ..Default::default()
@@ -1289,9 +1272,6 @@ impl GraphicsState {
         let mut indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
         reserved.copy_in(&mut vertices, &mut indices);
     }
-
-
-    fn map_depth(_d: f32) -> f32 { 0.0 }
 }
 
 
@@ -1410,10 +1390,10 @@ async fn test() {
             let angle = PI as f32 / 3.0;
             let p2 = Vector2::from_angle(angle) * 100.0;
             let line = [0.0, 0.0, p2.x, p2.y];
-            state.draw_line(line, 5.0, depth, Color::RED, m, None);
+            state.draw_line(line, 5.0, Color::RED, m, None);
 
 
-            state.draw_tex(&self.tex, depth, Color::WHITE, false, false, m, None);
+            state.draw_tex(&self.tex, Color::WHITE, false, false, m, None);
         }
     }
 
@@ -1494,4 +1474,16 @@ async fn test() {
         _ => {}
     });
 
+}
+
+
+/// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
+fn align(num: u32) -> u32 {
+    let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+
+    if m == 0 {
+        num
+    } else {
+        num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
+    }
 }

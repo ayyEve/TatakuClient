@@ -1,14 +1,6 @@
 /**
  * UTyping game mode
  * Author: ayyEve
- * 
- * depths:
- *  notes: 0..1000
- *  hit area: 1001
- *  timing bars: 1001.5
- *  playfield: 1002
- *  hit indicators: -1
- *  judgement indicators: -2
 */
 
 use crate::prelude::*;
@@ -19,7 +11,6 @@ const BAR_SPACING:f32 = 4.0;
 
 /// bc sv is bonked, divide it by this amount
 const SV_FACTOR:f32 = 700.0;
-const NOTE_DEPTH_RANGE:Range<f32> = 0.0..1000.0;
 
 pub struct UTypingGame {
     // lists
@@ -38,13 +29,6 @@ pub struct UTypingGame {
 
 
     autoplay_queue: Option<(Vec<char>, f32, f32)>
-}
-impl UTypingGame {
-    #[inline]
-    pub fn get_depth(time: f32) ->f32 {
-        NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
-    }
-    // pub fn next_note(&mut self) {self.note_index += 1}
 }
 
 #[async_trait]
@@ -257,18 +241,18 @@ impl GameMode for UTypingGame {
 
         // draw the hit area
         list.push(Circle::new(
-            Color::BLACK,
-            1001.0,
             self.game_settings.hit_position,
             self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
+            Color::BLACK,
             None
         ));
 
+        // draw timing lines
+        for tb in self.timing_bars.iter_mut() { tb.draw(list); }
+        
         // draw notes
         for note in self.notes.iter_mut() { note.draw(list).await; }
 
-        // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(list); }
     }
 
 

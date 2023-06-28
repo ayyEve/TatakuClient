@@ -1,8 +1,5 @@
 use crate::prelude::*;
-
-const BANNER_DEPTH: f32 = -99000.0;
 const BANNER_WPADDING:f32 = 5.0;
-
 
 /// how long of a buffer should we have? (ms)
 const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
@@ -416,11 +413,10 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
     let font = get_font();
 
     let mut offset_text = Text::new(
-        Color::BLACK,
-        BANNER_DEPTH,
         Vector2::ZERO, // centered anyways
         32.0,
         text.to_owned(),
+        Color::BLACK,
         font.clone()
     );
     
@@ -432,7 +428,7 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
     );
     offset_text.center_text(&rect);
     // add
-    list.push(visibility_bg(rect.pos, rect.size, BANNER_DEPTH + 10.0));
+    list.push(visibility_bg(rect.pos, rect.size));
     list.push(offset_text);
 }
 

@@ -13,7 +13,6 @@ pub trait JudgementIndicator: Send + Sync{
 pub struct BasicJudgementIndicator {
     pub pos: Vector2,
     pub time: f32,
-    pub depth: f32,
 
     pub radius: f32,
     pub color: Color,
@@ -25,11 +24,10 @@ pub struct BasicJudgementIndicator {
 impl BasicJudgementIndicator {
     /// pos, depth, radius and color are only if image is none.
     /// if image is some, it assumes the values (pos, depth, size, etc) are already set
-    pub fn new(pos: Vector2, time: f32, depth: f32, radius: f32, color: Color, image: Option<Animation>) -> Self {
+    pub fn new(pos: Vector2, time: f32, radius: f32, color: Color, image: Option<Animation>) -> Self {
         Self {
             pos,
             time,
-            depth,
             radius,
             color,
             image,
@@ -77,10 +75,9 @@ impl JudgementIndicator for BasicJudgementIndicator {
             list.push(img);
         } else {
             list.push(Circle::new(
-                self.color.alpha(alpha),
-                self.depth,
                 self.pos,
                 self.radius,
+                self.color.alpha(alpha),
                 None
             ))
         }

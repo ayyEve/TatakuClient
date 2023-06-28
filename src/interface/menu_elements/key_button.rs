@@ -45,22 +45,20 @@ impl KeyButton {
 }
 impl ScrollableItem for KeyButton {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.key.clone())}
-    fn draw(&mut self, pos_offset:Vector2, parent_depth:f32, list:&mut RenderableCollection) {
+    fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
         let border = Rectangle::new(
-            Color::WHITE,
-            parent_depth + 1.0,
             self.pos + pos_offset,
             self.size, 
+            Color::WHITE,
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
         );
         list.push(border);
 
         let text = Text::new(
-            Color::BLACK,
-            parent_depth + 1.0,
             self.pos + pos_offset,
             self.font_size,
             format!("{}: {}", self.prefix, self.text()),
+            Color::BLACK,
             self.font.clone()
         );
         list.push(text);

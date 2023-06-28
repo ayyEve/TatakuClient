@@ -23,17 +23,16 @@ impl PieGraph {
 }
 
 impl StatsGraph for PieGraph {
-    fn draw(&self, bounds: &Rectangle, depth: f32, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
         let radius = size.x / 2.0;
 
         // background
         list.push(Rectangle::new(
-            Color::new(0.2, 0.2, 0.2, 0.7),
-            depth,
             pos,
             size,
+            Color::new(0.2, 0.2, 0.2, 0.7),
             Some(Border::new(Color::RED, 1.5))
         ));
 
@@ -59,7 +58,6 @@ impl StatsGraph for PieGraph {
                 last_theta,
                 last_theta + theta,
                 i.color,
-                depth,
                 None
             ));
 
