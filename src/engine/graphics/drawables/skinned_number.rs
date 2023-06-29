@@ -13,28 +13,24 @@ pub struct SkinnedNumber {
     number_textures: Vec<Image>,
     symbol_textures: HashMap<char, Image>,
 
-    pub symbol: Option<char>,
-
     pub number: f64,
+    pub symbol: Option<char>,
     pub floating_precision: usize,
-    // draw_state: Option<DrawState>,
-
+    
+    scissor: Scissor,
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(pos: Vector2, number: f64, color:Color, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
         let rotation = 0.0;
         let scale = Vector2::ONE;
-
-        let origin = Vector2::ZERO;
-
         let tn = texture_name.as_ref();
 
         let mut textures =  Vec::new();
         for i in 0..10 {
             let tex = format!("{tn}-{i}");
             let mut tex2 = SkinManager::get_texture(&tex, true).await.ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
-            tex2.origin = origin;
+            tex2.origin = Vector2::ZERO;
             // tex2.size = tex2.tex_size();
             textures.push(tex2)
         }
@@ -53,7 +49,7 @@ impl SkinnedNumber {
         for (c, name) in chars {
             let name = format!("{}-{}", tn, name);
             if let Some(mut tex) = SkinManager::get_texture(name, true).await {
-                tex.origin = origin;
+                tex.origin = Vector2::ZERO;
                 symbol_textures.insert(c, tex);
             }
         }
@@ -63,9 +59,9 @@ impl SkinnedNumber {
             color,
             pos,
             scale,
+            origin: Vector2::ZERO,
             rotation,
 
-            origin,
             number,
 
             cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
@@ -74,8 +70,7 @@ impl SkinnedNumber {
             symbol,
             floating_precision,
             spacing_override: None,
-
-            // draw_state: None,
+            scissor: None,
         })
     }
 
@@ -154,66 +149,37 @@ impl SkinnedNumber {
 
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
-    // fn get_draw_state(&self) -> Option<DrawState> {self.draw_state}
-    // fn set_draw_state(&mut self, c:Option<DrawState>) {self.draw_state = c}
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-
+    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut GraphicsState) {
         let color = self.color.alpha(alpha);
-        // context.draw_state = self.draw_state.unwrap_or(context.draw_state);
         let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
+
+
+        transform = transform * Matrix::identity()
+            .trans(-self.origin) // apply origin
+            .rot(self.rotation) // rotate
+            .scale(self.scale) // scale
+            .trans(self.pos) // move to pos
+        ;
+
 
         //TODO: cache `s`
         let s = self.number_as_text();
-        let mut current_pos = self.pos;
+        let mut current_pos = Vector2::ZERO;
         for c in s.chars() {
-            if let Some(t) = self.get_char_tex(c) {
-                let mut t = t.clone();
-                t.pos = current_pos;
-                t.scale = self.scale;
+            if let Some(mut t) = self.get_char_tex(c).cloned() {
                 t.color = color;
+                t.set_scissor(self.scissor);
+                t.draw(transform.trans(current_pos), g);
                 current_pos.x += t.size().x + x_spacing;
-
-                t.draw(transform, g);
             }
         }
-
-        // let transform = c
-        //     .transform
-        //     // scale to size
-        //     // .scale(self.current_scale.x, self.current_scale.y)
-
-        //     // move to pos
-        //     .trans(pre_rotation.x, pre_rotation.y)
-
-        //     // rotate to rotate
-        //     .rot_rad(self.current_rotation)
-            
-        //     // apply origin
-        //     .trans(-self.origin.x, -self.origin.y + self.measure_text().y)
-        // ;
         
-        // ayyeve_piston_ui::render::draw_text(
-        //     &(&self.text, self.color), 
-        //     (self.font_size as f64 * self.current_scale.y) as u32, 
-        //     false, 
-        //     &self.fonts, 
-        //     &c.draw_state, 
-        //     transform, 
-        //     g
-        // ).unwrap();
-
-        // graphics::text(
-        //     self.color.into(),
-        //     self.font_size * self.current_scale.y as u32,
-        //     self.text.as_str(),
-        //     &mut *self.font.lock(),
-        //     transform,
-        //     g
-        // ).unwrap();
     }
 }
