@@ -725,6 +725,8 @@ impl HitObject for OsuSlider {
             animation.scale = Vector2::ONE;
 
             self.sliderball_image = Some(animation);
+        } else {
+            self.sliderball_image = None;
         }
 
     }

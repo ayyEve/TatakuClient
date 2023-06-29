@@ -153,12 +153,11 @@ impl HitCircleImageHelper {
         if let Some(mut overlay) = self.overlay.clone() {
             overlay.color.a = self.alpha;
             list.push(overlay);
-        } else {}
+        }
 
         if let Some(mut image) = self.combo_image.clone() {
             image.color.a = self.alpha;
             list.push(image);
-
         } else if let Some(mut text) = self.combo_text.clone() {
             text.color.a = self.alpha;
             list.push(text);
@@ -170,36 +169,33 @@ impl HitCircleImageHelper {
     pub fn ripple(&self, time: f32) -> TransformGroup {
         let scale = 1.0..1.3;
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
+        let mut group: TransformGroup = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
 
-        // broken
-        // // combo text
-        // let mut combo_group = TransformGroup::new();
-        // if let Some(mut c) = self.combo_image.clone() {
-        //     c.origin = c.measure_text() / 2.0;
-        //     c.current_pos -= c.origin;
-        //     combo_group.items.push(DrawItem::SkinnedNumber(c));
-        // } else {
-        //     combo_group.items.push(DrawItem::Text(*self.combo_text.as_ref().unwrap().clone()));
+        // combo text
+        if let Some(mut c) = self.combo_image.clone() {
+            c.pos = Vector2::ZERO;
+            c.origin = c.measure_text() / 2.0;
+            group.push(c)
+        } 
+        // else if let Some(mut text) = self.combo_text.clone() {
+        //     text.pos = -text.measure_text() / 2.0;
+        //     group.push(text);
         // }
-        // combo_group.ripple_scale_range(0.0, 500.0, self.map_time as f64, scale.clone(), None, Some(0.8));
-        // self.shapes.push(combo_group);
 
 
         // hitcircle
-        let mut circle_group: TransformGroup = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
-
         if let Some(mut i_circle) = self.circle.clone() {
             i_circle.pos = Vector2::ZERO;
-            circle_group.push(i_circle);
+            group.push(i_circle);
         }
 
         if let Some(mut i_overlay) = self.overlay.clone() {
             i_overlay.pos = Vector2::ZERO;
-            circle_group.push(i_overlay);
+            group.push(i_overlay);
         }
         
-        if circle_group.items.len() == 0 {
-            circle_group.push(Circle::new(
+        if group.items.len() == 0 {
+            group.push(Circle::new(
                 Vector2::ZERO,
                 radius,
                 self.color,
@@ -213,7 +209,7 @@ impl HitCircleImageHelper {
         
 
         // make it ripple and add it to the list
-        circle_group.ripple_scale_range(0.0, 500.0, time, scale, None, Some(0.5));
-        circle_group
+        group.ripple_scale_range(0.0, 500.0, time, scale, None, Some(0.5));
+        group
     }
 }
