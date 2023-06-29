@@ -175,7 +175,7 @@ impl HitObject for OsuSpinner {
         if let Some(mut i) = self.spinner_background.clone() {
             i.scale = scale;
             list.push(i)
-        } else {}
+        }
 
         // bottom circle
         if let Some(mut i) = self.spinner_bottom.clone() {

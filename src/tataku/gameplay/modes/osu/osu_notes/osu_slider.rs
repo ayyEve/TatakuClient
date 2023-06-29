@@ -38,8 +38,6 @@ pub struct OsuSlider {
 
     /// combo color
     color: Color,
-    /// combo number
-    combo_num: u16,
     /// note size
     radius: f32,
     
@@ -83,7 +81,7 @@ pub struct OsuSlider {
     shapes: Vec<TransformGroup>,
 
 
-    start_circle_image: Option<HitCircleImageHelper>,
+    start_circle_image: HitCircleImageHelper,
     end_circle_image: Option<Image>,
     slider_reverse_image: Option<Image>,
     sliderball_image: Option<Animation>,
@@ -122,12 +120,17 @@ impl OsuSlider {
         }).collect();
 
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
+        let start_circle_image = HitCircleImageHelper::new(
+            def.pos,
+            scaling_helper.clone(),
+            color,
+            combo_num
+        ).await;
 
         Self {
             def,
             curve,
             color,
-            combo_num,
             time_preempt,
             radius,
 
@@ -163,7 +166,7 @@ impl OsuSlider {
             shapes: Vec::new(),
             hitwindow_miss: 0.0,
 
-            start_circle_image: None,
+            start_circle_image,
             end_circle_image: None,
             slider_reverse_image: None,
             slider_body_render_target: None,
@@ -354,10 +357,7 @@ impl OsuSlider {
 
     fn ripple_start(&mut self) {
         if !self.standard_settings.ripple_hitcircles { return }
-
-        if let Some(circle) = &self.start_circle_image {
-            self.shapes.push(circle.ripple(self.map_time));
-        }
+        self.shapes.push(self.start_circle_image.ripple(self.map_time));
     }
 
     fn add_end_ripple(&mut self, time: f32) {
@@ -503,21 +503,8 @@ impl HitObject for OsuSlider {
         // start pos
         if self.map_time < self.time {
             // draw the starting circle as a hitcircle
-            if let Some(start_circle) = &mut self.start_circle_image {
-                start_circle.set_alpha(alpha);
-                start_circle.draw(list);
-            } else {
-                list.push(Circle::new(
-                    self.pos,
-                    self.radius,
-                    self.color.alpha(alpha),
-                    Some(Border::new(
-                        Color::BLACK.alpha(alpha),
-                        self.scaling_helper.border_scaled
-                    ))
-                ));
-            }
-
+            self.start_circle_image.set_alpha(alpha);
+            self.start_circle_image.draw(list);
         } else {
             // draw it as a slider end
             if let Some(end_circle) = &self.end_circle_image {
@@ -526,7 +513,7 @@ impl HitObject for OsuSlider {
                 end_circle.pos = self.pos;
                 list.push(end_circle);
                 
-            } else if self.start_circle_image.is_none() {
+            } else if self.start_circle_image.circle.is_none() {
                 list.push(Circle::new(
                     self.pos,
                     self.radius,
@@ -559,7 +546,7 @@ impl HitObject for OsuSlider {
             let mut im = end_circle.clone();
             im.color.a = alpha;
             list.push(im);
-        } else if self.start_circle_image.is_none() {
+        } else if self.start_circle_image.circle.is_none() {
             list.push(Circle::new(
                 self.visual_end_pos,
                 self.radius,
@@ -678,16 +665,7 @@ impl HitObject for OsuSlider {
     }
 
     async fn reload_skin(&mut self) {
-        if let Some(circle) = &mut self.start_circle_image {
-            circle.reload_skin().await;
-        } else {
-            self.start_circle_image = Some(HitCircleImageHelper::new(
-                self.def.pos,
-                self.scaling_helper.clone(),
-                self.color,
-                self.combo_num
-            ).await);
-        }
+        self.start_circle_image.reload_skin().await;
         self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
         self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
         self.follow_circle_image = SkinManager::get_texture("sliderfollowcircle", true).await;
@@ -825,16 +803,16 @@ impl OsuHitObject for OsuSlider {
         self.time_end_pos = if self.def.slides % 2 == 1 {self.visual_end_pos} else {self.pos};
 
         self.approach_circle.scale_changed(new_scale, self.radius);
+        self.start_circle_image.playfield_changed(&self.scaling_helper);
 
-        if let Some(image) = &mut self.start_circle_image {
-            image.playfield_changed(&self.scaling_helper)
-        }
         if let Some(image) = &mut self.end_circle_image {
            image.pos = self.scaling_helper.scale_coords(self.visual_end_pos);
            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
 
         if self.slider_body_render_target.is_some() {
+            // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
+            self.slider_body_render_target = None;
             self.make_body().await;
         }
         self.make_dots().await;

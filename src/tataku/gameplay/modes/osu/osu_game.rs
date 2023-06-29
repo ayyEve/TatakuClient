@@ -404,12 +404,6 @@ impl GameMode for OsuGame {
 
         s.setup_hitwindows();
 
-        if !diff_calc_only {
-            for n in s.notes.iter_mut() {
-                n.reload_skin().await;
-            }
-        }
-
         Ok(s)
     }
 

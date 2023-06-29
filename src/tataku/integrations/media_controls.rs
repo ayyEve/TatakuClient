@@ -92,23 +92,26 @@ impl MediaControlHelper {
     }
     pub fn set_metadata(meta: &MediaControlMetadata) {
         if !get_settings!().integrations.media_controls { return }
+        let meta = meta.clone();
 
         fn s(a: &Option<String>) -> Option<&str> {
             a.as_ref().map(|x| &**x)
         }
 
-        let info = MediaMetadata {
-            title: s(&meta.title),
-            artist: s(&meta.artist),
-            album: None,
-            cover_url: s(&meta.cover_url),
-            duration: meta.duration.map(|d|Duration::from_millis(d as u64))
-        };
-
         // duration: Some(Duration::from_millis(duration as u64))
-        if let Err(e) = GameWindow::get_media_controls().lock().set_metadata(info) {
-            warn!("Error setting metadata: {e:?}");
-        }
+        tokio::task::spawn_blocking(move || {
+            let info = MediaMetadata {
+                title: s(&meta.title),
+                artist: s(&meta.artist),
+                album: None,
+                cover_url: s(&meta.cover_url),
+                duration: meta.duration.map(|d|Duration::from_millis(d as u64))
+            };
+
+            if let Err(e) = GameWindow::get_media_controls().lock().set_metadata(info) {
+                warn!("Error setting metadata: {e:?}");
+            }
+        });
     }
     pub fn set_playback(state: MediaPlayback) {
         if !get_settings!().integrations.media_controls { return }

@@ -12,8 +12,20 @@ impl Io {
         let f = std::fs::read(&path);
 
         let duration = time.as_millis();
-        if duration > 1000.0 { warn!("took {duration:.2}ms to load file {}", path.as_ref().display()); }
+        if duration > 1000.0 { warn!("took {duration:.2}ms to load file bytes {}", path.as_ref().display()); } 
+        // else { info!("took {duration:.2}ms to load file {}", path.as_ref().display()); }
+        
+        f
+    }
+    /// read a file into bytes
+    pub async fn read_file_async(path: impl AsRef<Path>) -> io::Result<Vec<u8>> {
+        let time = Instant::now();
+        let f = tokio::fs::read(&path).await;
 
+        let duration = time.as_millis();
+        if duration > 1000.0 { warn!("took {duration:.2}ms to load file bytes {}", path.as_ref().display()); } 
+        // else { info!("took {duration:.2}ms to load file bytes {}", path.as_ref().display()); }
+        
         f
     }
 
@@ -33,6 +45,12 @@ impl Io {
     pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> std::io::Result<String> {
         Ok(md5(Self::read_file(file_path)?))
     }
+
+    // pub fn get_file_with_hash(path: impl AsRef<Path>) -> TatakuResult<(String, Vec<u8>)> {
+    //     let bytes = Self::read_file(path)?;
+    //     let hash = md5(&bytes);
+    //     Ok((hash, bytes))
+    // }
 
     // check if file or folder exists
     pub fn exists<P: AsRef<Path>>(path: P) -> bool {
@@ -93,7 +111,6 @@ impl Io {
         Ok(lines)
     }
 
-        
 }
 
 
@@ -104,11 +121,10 @@ impl Io {
 
 /// load an image file to an image struct
 /// non-main thread safe
-pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
-    let buf: Vec<u8> = match Io::read_file(path.as_ref()) {
-        Ok(buf) => buf,
-        Err(_) => return None,
-    };
+pub async fn load_image(path: impl AsRef<str> + Send + Sync, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
+    let path2 = path.as_ref().to_owned();
+
+    let Ok(buf) = Io::read_file_async(&path2).await else { return None };
 
     match image::load_from_memory(&buf) {
         Ok(img) => {
@@ -131,12 +147,10 @@ pub async fn load_image<T:AsRef<str>>(path: T, use_grayscale: bool, base_scale: 
             }
 
             let tex = GameWindow::load_texture_data(img).await.expect("no atlas");
-            let img = Some(Image::new(Vector2::ZERO, tex, base_scale));
-            img
+            Some(Image::new(Vector2::ZERO, tex, base_scale))
         }
         Err(e) => {
             NotificationManager::add_error_notification(format!("Error loading image: {}", path.as_ref()), e).await;
-            // error!("Error loading image {}: {}", path.as_ref(), e);
             None
         }
     }

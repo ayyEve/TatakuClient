@@ -5,7 +5,6 @@ const TEXT_HPADDING:f32 = 5.0;
 pub struct CenteredTextHelper {
     text: String,
 
-    pub depth: f32,
     changed_time: f32,
     draw_time: f32,
     font: Font,
@@ -13,15 +12,14 @@ pub struct CenteredTextHelper {
     window_size: WindowSizeHelper,
 }
 impl CenteredTextHelper {
-    pub async fn new(draw_time: f32, depth: f32, font: Font) -> Self {
+    pub async fn new(draw_time: f32) -> Self {
         Self {
             text: String::new(),
 
-            depth,
             draw_time,
             changed_time: 0.0,
 
-            font,
+            font: get_font(),
             window_size: WindowSizeHelper::new(),
         }
     }
@@ -65,7 +63,6 @@ impl Default for CenteredTextHelper {
         Self {
             font: get_font(),
             text: Default::default(),
-            depth: Default::default(),
             changed_time: Default::default(),
             draw_time: Default::default(),
             window_size: WindowSizeHelper::new(),

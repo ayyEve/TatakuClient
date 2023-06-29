@@ -115,7 +115,7 @@ pub struct IngameManager {
 }
 
 impl IngameManager {
-    pub async fn new(beatmap: Beatmap, gamemode: Box<dyn GameMode>) -> Self {
+    pub async fn new(beatmap: Beatmap, mut gamemode: Box<dyn GameMode>) -> Self {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
@@ -141,8 +141,7 @@ impl IngameManager {
 
         let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
 
-        let font = get_font();
-        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME, -20.0, font.clone()).await;
+        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await;
 
         // hardcode for now
         let audio_playmode_prefix = match &*playmode {
@@ -165,6 +164,8 @@ impl IngameManager {
         #[cfg(not(feature="storyboards"))]
         let animation = Box::new(EmptyAnimation);
 
+        // make sure the game has loaded its skin stuff
+        gamemode.reload_skin().await;
 
         Self {
             metadata,

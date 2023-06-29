@@ -18,8 +18,6 @@ pub struct OsuNote {
 
     /// combo color
     color: Color, 
-    /// combo number
-    combo_num: u16,
 
     /// note radius (scaled by cs and size)
     radius: f32,
@@ -39,7 +37,7 @@ pub struct OsuNote {
     /// list of shapes to be drawn
     shapes: Vec<TransformGroup>,
 
-    circle_image: Option<HitCircleImageHelper>,
+    circle_image: HitCircleImageHelper,
     approach_circle: ApproachCircle,
 
     hitsounds: Vec<Hitsound>,
@@ -53,20 +51,25 @@ impl OsuNote {
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
         
         let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
+        let circle_image = HitCircleImageHelper::new(
+            def.pos,
+            scaling_helper.clone(),
+            color,
+            combo_num
+        ).await;
 
         Self {
             def,
             pos,
             time, 
             color,
-            combo_num,
             
             hit: false,
             missed: false,
 
             map_time: 0.0,
             mouse_pos: Vector2::ZERO,
-            circle_image: None,
+            circle_image,
             time_preempt,
             hitwindow_miss: 0.0,
             radius,
@@ -95,9 +98,7 @@ impl OsuNote {
     fn ripple_start(&mut self) {
         if !self.standard_settings.ripple_hitcircles { return }
         
-        if let Some(circle) = &self.circle_image {
-            self.shapes.push(circle.ripple(self.map_time));
-        }
+        self.shapes.push(self.circle_image.ripple(self.map_time));
     }
 }
 #[async_trait]
@@ -130,17 +131,8 @@ impl HitObject for OsuNote {
         let alpha = self.get_alpha();
 
         // note
-        if let Some(image) = &mut self.circle_image {
-            image.set_alpha(alpha);
-            image.draw(list);
-        } else {
-            list.push(Circle::new(
-                self.pos,
-                self.radius,
-                self.color.alpha(alpha),
-                Some(Border::new(Color::WHITE.alpha(alpha), OSU_NOTE_BORDER_SIZE * self.scaling_helper.scale))
-            ));
-        }
+        self.circle_image.set_alpha(alpha);
+        self.circle_image.draw(list);
 
         // timing circle
         self.approach_circle.draw(list);
@@ -171,16 +163,7 @@ impl HitObject for OsuNote {
 
     
     async fn reload_skin(&mut self) {
-        if let Some(circle) = &mut self.circle_image {
-            circle.reload_skin().await;
-        } else {
-            self.circle_image = Some(HitCircleImageHelper::new(
-                self.def.pos,
-                self.scaling_helper.clone(),
-                self.color,
-                self.combo_num
-            ).await);
-        }
+        self.circle_image.reload_skin().await;
         self.approach_circle.reload_texture().await;
     }
 }
@@ -228,10 +211,7 @@ impl OsuHitObject for OsuNote {
         self.radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
         self.scaling_helper = new_scale.clone();
         self.approach_circle.scale_changed(new_scale, self.radius);
-
-        if let Some(image) = &mut self.circle_image {
-            image.playfield_changed(&self.scaling_helper)
-        }
+        self.circle_image.playfield_changed(&self.scaling_helper);
     }
 
     

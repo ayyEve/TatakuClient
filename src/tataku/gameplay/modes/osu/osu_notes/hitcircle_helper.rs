@@ -26,8 +26,7 @@ pub struct HitCircleImageHelper {
 impl HitCircleImageHelper {
     pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, color: Color, combo_num: u16) -> Self {
         let skin_settings = SkinManager::current_skin_config().await;
-        
-        let mut s = Self {
+        Self {
             circle: None,
             overlay: None,
             base_pos,
@@ -41,9 +40,7 @@ impl HitCircleImageHelper {
 
             alpha: 0.0,
             color,
-        };
-        s.reload_skin().await;
-        s
+        }
     }
 
     pub async fn reload_skin(&mut self) {
@@ -62,9 +59,6 @@ impl HitCircleImageHelper {
             overlay.pos = self.pos;
             overlay.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
-
-        let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
-
         self.combo_image = SkinnedNumber::new(
             self.pos, 
             self.combo_num as f64,
@@ -74,6 +68,7 @@ impl HitCircleImageHelper {
             0
         ).await.ok();
 
+        let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         if let Some(combo) = &mut self.combo_image {
             combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             combo.scale = Vector2::ONE * self.scaling_helper.scaled_cs * TEXT_SCALE;
@@ -93,7 +88,6 @@ impl HitCircleImageHelper {
 
             self.combo_text = Some(text);
         }
-
 
     }
     
@@ -184,14 +178,14 @@ impl HitCircleImageHelper {
 
 
         // hitcircle
-        if let Some(mut i_circle) = self.circle.clone() {
-            i_circle.pos = Vector2::ZERO;
-            group.push(i_circle);
+        if let Some(mut circle) = self.circle.clone() {
+            circle.pos = Vector2::ZERO;
+            group.push(circle);
         }
 
-        if let Some(mut i_overlay) = self.overlay.clone() {
-            i_overlay.pos = Vector2::ZERO;
-            group.push(i_overlay);
+        if let Some(mut overlay) = self.overlay.clone() {
+            overlay.pos = Vector2::ZERO;
+            group.push(overlay);
         }
         
         if group.items.len() == 0 {

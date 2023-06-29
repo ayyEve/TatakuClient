@@ -14,7 +14,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
 
     if let Some(replay_path) = args.replay_file {
         // load the replay file
-        let bytes = Io::read_file(&replay_path).expect("error reading replay file provided");
+        let bytes = Io::read_file_async(&replay_path).await.expect("error reading replay file provided");
         let mut reader = SerializationReader::new(bytes);
         let replay:Replay = reader.read().expect("error parsing replay file provided");
         let score = replay.score_data.expect("This replay has no score data");

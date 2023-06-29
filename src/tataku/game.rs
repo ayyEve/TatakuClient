@@ -268,13 +268,6 @@ impl Game {
             if elapsed + last_draw_offset >= render_rate {
                 draw_timer = now;
                 last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * DRAW_DAMPENING_FACTOR;
-
-                // let window_size:[f64;2] = self.window_size.0.into();
-                // let args = RenderArgs {
-                //     ext_dt: 0.0,
-                //     window_size,
-                //     draw_size: [window_size[0] as u32, window_size[1] as u32],
-                // };
                 self.draw().await;
             }
 
@@ -897,18 +890,9 @@ impl Game {
 
     /// shortcut for setting the game's background texture to a beatmap's image
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
-        // let mut helper = BenchmarkHelper::new("loaad image");
         let filename = beatmap.image_filename.clone();
         let f = load_image(filename, false, Vector2::ONE);
         self.background_loader = Some(AsyncLoader::new(f));
-
-        // self.background_image = load_image(&beatmap.image_filename, false).await;
-
-        // if self.background_image.is_none() && self.wallpapers.len() > 0 {
-        //     self.background_image = Some(self.wallpapers[0].clone());
-        // }
-
-        // self.resize_bg();
     }
 
     fn resize_bg(&mut self) {
@@ -1061,7 +1045,7 @@ impl Game {
         let settings = SettingsHelper::new();
         let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
 
-        let data = match Io::read_file(full_path) {
+        let data = match Io::read_file_async(full_path).await {
             Err(e) => return Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
             Ok(data) => data,
         };

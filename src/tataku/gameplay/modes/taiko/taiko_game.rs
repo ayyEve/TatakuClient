@@ -179,7 +179,7 @@ impl TaikoGame {
 
 #[async_trait]
 impl GameMode for TaikoGame {
-    async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> TatakuResult<Self> {
+    async fn new(beatmap:&Beatmap, _diff_calc_only:bool) -> TatakuResult<Self> {
         let mut settings = get_settings!().taiko_settings.clone();
         let metadata = beatmap.get_beatmap_meta();
         // calculate the hit area
@@ -333,10 +333,6 @@ impl GameMode for TaikoGame {
             s.end_time = s.end_time.max(last.end_time(0.0));
         }
         s.end_time += 1000.0;
-
-        if !diff_calc_only {
-            s.reload_skin().await;
-        }
 
         s.setup_hitwindows().await;
 

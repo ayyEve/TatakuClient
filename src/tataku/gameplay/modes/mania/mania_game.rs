@@ -253,7 +253,7 @@ impl ManiaGame {
 
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
+    async fn new(beatmap:&Beatmap, _: bool) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
         let game_settings = get_settings!().mania_settings.clone();
@@ -629,9 +629,6 @@ impl GameMode for ManiaGame {
             }
         }
         s.end_time += 1000.0;
-        if !diff_calc_only {
-            s.reload_skin().await;
-        }
 
         Ok(s)
     }
