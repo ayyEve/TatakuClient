@@ -8,6 +8,7 @@ pub struct BeatmapDialog {
     bounds: Rectangle,
     target_map: String,
     delete_map: MenuButton,
+    copy_hash: MenuButton,
     should_close: bool,
 }
 impl BeatmapDialog {
@@ -15,12 +16,20 @@ impl BeatmapDialog {
         let window = WindowSize::get();
 
         let offset = 100.0;
-        let count = 0;
+        let mut count = 0;
 
         let delete_map = MenuButton::new(
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
             BUTTON_SIZE,
             "Delete Map",
+            get_font(),
+        );
+        count += 1;
+
+        let copy_hash = MenuButton::new(
+            Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
+            BUTTON_SIZE,
+            "Copy Hash",
             get_font(),
         );
 
@@ -38,6 +47,8 @@ impl BeatmapDialog {
         Self {
             bounds,
             delete_map,
+            copy_hash,
+
             target_map: map_hash,
 
             should_close: false
@@ -78,6 +89,16 @@ impl Dialog<Game> for BeatmapDialog {
             BEATMAP_MANAGER.write().await.delete_beatmap(self.target_map.clone(), game).await;
             self.should_close = true;
         }
+
+        if self.copy_hash.on_click(pos, button, *mods) {
+            trace!("copy hash map {}", self.target_map);
+            match GameWindow::set_clipboard(self.target_map.clone()) {
+                Ok(_) => NotificationManager::add_text_notification("Hash copied to clipboard!", 3000.0, Color::LIGHT_BLUE).await,
+                Err(e) => NotificationManager::add_error_notification("Failed to copy hash to clipboard", e).await,
+            }
+            self.should_close = true;
+        }
+
         true
     }
 
@@ -87,6 +108,7 @@ impl Dialog<Game> for BeatmapDialog {
 
         // draw buttons
         self.delete_map.draw(Vector2::ZERO, list);
+        self.copy_hash.draw(Vector2::ZERO, list);
     }
 
 }

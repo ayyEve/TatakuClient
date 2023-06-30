@@ -426,7 +426,6 @@ impl BeatmapSelectMenu {
                 // clicked hash is the target
                 let dialog = BeatmapDialog::new(clicked_hash.clone());
                 game.add_dialog(Box::new(dialog), false);
-                info!("right click")
             }
 
             self.select_map(game, clicked_hash, button == MouseButton::Left).await;
@@ -684,7 +683,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         // perform actual on_click
         // this is here because on_click is now only used for dragging
-        let (mods, button) = mods.unwrap_or((KeyModifiers::default(), MouseButton::Left));
+        let (mods, button) = mods.unwrap_or((KeyModifiers::default(), button));
         if !was_hold {
             self.actual_on_click(pos, button, mods, game).await;
         }
