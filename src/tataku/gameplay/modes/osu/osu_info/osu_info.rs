@@ -20,12 +20,41 @@ impl GameModeInfo for OsuGameInfo {
     }
 
     fn get_mods(&self) -> Vec<GameplayModGroup> { 
+        // let mut easing_type_group = GameplayModGroup::new("Easing Types");
+        // for (name, short_name, display_name, desc, removes) in [
+        //     ("in", "IET", "In Easing", "Use in easing method", &["out", "inout", "on_the_beat"] ),
+        //     ("out", "OET", "Out Easing", "Use out easing method", &["in", "inout", "on_the_beat"] ),
+        //     ("inout", "IOET", "InOut Easing", "Use in-out easing method", &["in", "out", "on_the_beat"] ),
+        // ] {
+        //     easing_type_group = easing_type_group.with_mod(EasingMod { name, short_name, display_name, desc, removes })
+        // }
+
+        let mut easing_group = GameplayModGroup::new("Easing");
+        for (name, short_name, display_name, desc, removes) in [
+            // ("sine", "SE", "Sine Easing", "Approach circles have sine wave easing",         &[        "quad", "cube", "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
+            // ("quad", "2E", "Quadratic Easing", "Approach circles have quadratic easing",    &["sine",         "cube", "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
+            // ("cube", "3E", "Cubic Easing", "Approach circles have cubic easing",            &["sine", "quad",         "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
+            // ("quart", "4E", "Quartic Easing", "Approach circles have quartic easing",       &["sine", "quad", "cube",          "quint", "exp", "circ", "back", "on_the_beat"] ),
+            // ("quint", "5E", "Quintic Easing", "Approach circles have quintic easing",       &["sine", "quad", "cube", "quart",          "exp", "circ", "back", "on_the_beat"] ),
+            ("exp", "XE", "Exponential Easing", "Approach circles have exponential easing", &["sine", "quad", "cube", "quart", "quint",        "circ", "back", "on_the_beat"] ),
+            // ("circ", "CE", "Circular Easing", "Approach circles have circular easing",      &["sine", "quad", "cube", "quart", "quint", "exp",         "back", "on_the_beat"] ),
+            // ("back", "BE", "Back Easing", "Approach circles have back easing",              &["sine", "quad", "cube", "quart", "quint", "exp", "circ"        , "on_the_beat"] ),
+        ] {
+            easing_group = easing_group.with_mod(EasingMod { name, short_name, display_name, desc, removes })
+        }
+
+
         vec![
             GameplayModGroup::new("Difficulty")
                 .with_mod(HardRock)
                 .with_mod(Easy)
                 .with_mod(Relax)
             ,
+            GameplayModGroup::new("Fun")
+                .with_mod(OnTheBeat)
+            ,
+            // easing_type_group,
+            easing_group,
         ]
     }
 

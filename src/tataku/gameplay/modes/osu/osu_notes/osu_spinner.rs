@@ -290,10 +290,16 @@ impl OsuHitObject for OsuSpinner {
     fn get_preempt(&self) -> f32 { 0.0 }
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, _window: f32) {}
+    fn set_ar(&mut self, _ar: f32) {}
+    fn set_approach_easing(&mut self, _easing: Easing) {}
 
     fn press(&mut self, _time:f32) { self.holding = true; }
     fn release(&mut self, _time:f32) { self.holding = false; }
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos; }
+    fn check_distance(&self, _:Vector2) -> bool { true }
+    fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
+    fn hit(&mut self, _time: f32) {}
+
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         let scale = Vector2::ONE * new_scale.scale;
@@ -325,20 +331,8 @@ impl OsuHitObject for OsuSpinner {
         ) * self.scaling_helper.scale * 20.0
     }
 
-
-    fn hit(&mut self, _time: f32) {}
-    fn check_distance(&self, _:Vector2) -> bool { true }
-
     async fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
         // self.standard_settings = settings;
-    }
-
-    fn set_ar(&mut self, _ar: f32) {
-        // self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
-    }
-
-    fn get_hitsound(&self) -> Vec<Hitsound> {
-        vec![]
     }
 
     fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {

@@ -47,13 +47,8 @@ pub struct TaikoSettings {
     pub playfield_height_padding: f32,
 
     #[Setting(text="Don Color")]
-    pub don_color_hex: String,
-    #[Setting(text="Kat Color")]
-    pub kat_color_hex: String,
-
-    #[serde(skip)]
     pub don_color: Color,
-    #[serde(skip)]
+    #[Setting(text="Kat Color")]
     pub kat_color: Color,
 
     #[Setting(text="Use Skin Judgments")]
@@ -74,9 +69,9 @@ impl TaikoSettings {
         };
         self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1]);
 
-        // load colors
-        self.don_color = Color::from_hex(&self.don_color_hex);
-        self.kat_color = Color::from_hex(&self.kat_color_hex);
+        // // load colors
+        // self.don_color = Color::from_hex(&self.don_color_hex);
+        // self.kat_color = Color::from_hex(&self.kat_color_hex);
     }
 
     pub fn get_playfield(&self, width: f32, kiai: bool) -> Rectangle {
@@ -118,11 +113,9 @@ impl Default for TaikoSettings {
                 200.0,
                 0.0
             ],
-            don_color_hex: "#E74721".to_owned(),
-            kat_color_hex: "#3797CA".to_owned(),
         
-            don_color: Color::new(1.0, 0.0, 0.0, 1.0),
-            kat_color: Color::new(0.0, 0.0, 1.0, 1.0),
+            don_color: Color::from_hex("#E74721"),
+            kat_color: Color::from_hex("#3797CA"),
             
             judgement_indicator_offset: 0.0,
             use_skin_judgments: true

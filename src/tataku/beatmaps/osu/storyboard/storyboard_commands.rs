@@ -116,33 +116,33 @@ impl StoryboardEasing {
     }
 }
 
-impl Into<TransformEasing> for StoryboardEasing {
-    fn into(self) -> TransformEasing {
+impl Into<Easing> for StoryboardEasing {
+    fn into(self) -> Easing {
         match self {
-            StoryboardEasing::Linear => TransformEasing::Linear,
-            StoryboardEasing::EaseOut => TransformEasing::EaseOutCubic,
-            StoryboardEasing::EaseIn => TransformEasing::EaseInCubic,
-            StoryboardEasing::QuadIn => TransformEasing::EaseInQuadratic,
-            StoryboardEasing::QuadOut => TransformEasing::EaseOutQuadratic,
-            StoryboardEasing::QuadInOut => TransformEasing::EaseInOutQuadratic,
-            StoryboardEasing::CubicIn => TransformEasing::EaseInCubic,
-            StoryboardEasing::CubicOut => TransformEasing::EaseOutCubic,
-            StoryboardEasing::CubicInOut => TransformEasing::EaseInOutCubic,
-            StoryboardEasing::QuarticIn => TransformEasing::EaseInQuartic,
-            StoryboardEasing::QuarticOut => TransformEasing::EaseOutQuartic,
-            StoryboardEasing::QuarticInOut => TransformEasing::EaseInOutQuartic,
-            StoryboardEasing::QuinticIn => TransformEasing::EaseInQuintic,
-            StoryboardEasing::QuinticOut => TransformEasing::EaseOutQuintic,
-            StoryboardEasing::QuinticInOut => TransformEasing::EaseInOutQuintic,
-            StoryboardEasing::SineIn => TransformEasing::EaseInSine,
-            StoryboardEasing::SineOut => TransformEasing::EaseOutSine,
-            StoryboardEasing::SineInOut => TransformEasing::EaseInOutSine,
-            StoryboardEasing::ExponentialIn => TransformEasing::EaseInExponential,
-            StoryboardEasing::ExponentialOut => TransformEasing::EaseOutExponential,
-            StoryboardEasing::ExponentialInOut => TransformEasing::EaseInOutExponential,
-            StoryboardEasing::CircularIn => TransformEasing::EaseInCircular,
-            StoryboardEasing::CircularOut => TransformEasing::EaseOutCircular,
-            StoryboardEasing::CircularInOut => TransformEasing::EaseInOutCircular,
+            StoryboardEasing::Linear => Easing::Linear,
+            StoryboardEasing::EaseOut => Easing::EaseOutCubic,
+            StoryboardEasing::EaseIn => Easing::EaseInCubic,
+            StoryboardEasing::QuadIn => Easing::EaseInQuadratic,
+            StoryboardEasing::QuadOut => Easing::EaseOutQuadratic,
+            StoryboardEasing::QuadInOut => Easing::EaseInOutQuadratic,
+            StoryboardEasing::CubicIn => Easing::EaseInCubic,
+            StoryboardEasing::CubicOut => Easing::EaseOutCubic,
+            StoryboardEasing::CubicInOut => Easing::EaseInOutCubic,
+            StoryboardEasing::QuarticIn => Easing::EaseInQuartic,
+            StoryboardEasing::QuarticOut => Easing::EaseOutQuartic,
+            StoryboardEasing::QuarticInOut => Easing::EaseInOutQuartic,
+            StoryboardEasing::QuinticIn => Easing::EaseInQuintic,
+            StoryboardEasing::QuinticOut => Easing::EaseOutQuintic,
+            StoryboardEasing::QuinticInOut => Easing::EaseInOutQuintic,
+            StoryboardEasing::SineIn => Easing::EaseInSine,
+            StoryboardEasing::SineOut => Easing::EaseOutSine,
+            StoryboardEasing::SineInOut => Easing::EaseInOutSine,
+            StoryboardEasing::ExponentialIn => Easing::EaseInExponential,
+            StoryboardEasing::ExponentialOut => Easing::EaseOutExponential,
+            StoryboardEasing::ExponentialInOut => Easing::EaseInOutExponential,
+            StoryboardEasing::CircularIn => Easing::EaseInCircular,
+            StoryboardEasing::CircularOut => Easing::EaseOutCircular,
+            StoryboardEasing::CircularInOut => Easing::EaseInOutCircular,
             // StoryboardEasing::ElasticIn => todo!(),
             // StoryboardEasing::ElasticOut => todo!(),
             // StoryboardEasing::ElasticHalfOut => todo!(),
@@ -155,7 +155,7 @@ impl Into<TransformEasing> for StoryboardEasing {
             // StoryboardEasing::BounceOut => todo!(),
             // StoryboardEasing::BounceInOut => todo!(),
 
-            _ => TransformEasing::Linear,
+            _ => Easing::Linear,
         }
     }
 }

@@ -842,6 +842,10 @@ impl OsuHitObject for OsuSlider {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
     }
 
+    fn set_approach_easing(&mut self, easing: Easing) {
+        self.approach_circle.easing_type = easing;
+    }
+    
     fn get_hitsound(&self) -> Vec<Hitsound> {
         // println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);

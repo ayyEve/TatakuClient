@@ -166,6 +166,8 @@ impl IngameManager {
 
         // make sure the game has loaded its skin stuff
         gamemode.reload_skin().await;
+        // make sure the gamemode has the correct mods applied
+        gamemode.apply_mods(current_mods.clone()).await;
 
         Self {
             metadata,

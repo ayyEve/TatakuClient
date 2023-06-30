@@ -36,3 +36,32 @@ impl GameplayMod for Relax {
     fn score_multiplier(&self) -> f32 { 0.0 }
     fn removes(&self) -> &'static [&'static str] { &["autoplay"] }
 }
+
+/// helper for easing mods
+pub struct EasingMod {
+    pub(super) name: &'static str,
+    pub(super) short_name: &'static str,
+    pub(super) display_name: &'static str,
+    pub(super) desc: &'static str,
+    pub(super) removes: &'static [&'static str],
+}
+impl GameplayMod for EasingMod {
+    fn name(&self) -> &'static str { self.name }
+    fn short_name(&self) -> &'static str { self.short_name }
+    fn display_name(&self) -> &'static str { self.display_name }
+    fn description(&self) -> &'static str { self.desc }
+
+    fn score_multiplier(&self) -> f32 { 1.0 }
+    fn removes(&self) -> &'static [&'static str] { self.removes }
+}
+
+pub struct OnTheBeat;
+impl GameplayMod for OnTheBeat {
+    fn name(&self) -> &'static str { "on_the_beat" }
+    fn short_name(&self) -> &'static str { "OB" }
+    fn display_name(&self) -> &'static str { "On the Beat" }
+    fn description(&self) -> &'static str { "Notes on beats have something off about them" }
+
+    fn score_multiplier(&self) -> f32 { 1.0 }
+    fn removes(&self) -> &'static [&'static str] { &["sine", "quad", "cube", "quart", "quint", "exp", "circ", "back", "in", "out", "inout"] }
+}

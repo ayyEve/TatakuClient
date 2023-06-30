@@ -17,6 +17,8 @@ pub struct ApproachCircle {
     preempt: f32,
     time: f32,
     time_diff: f32,
+
+    pub easing_type: Easing
 }
 impl ApproachCircle {
     pub fn new(base_pos:Vector2, time: f32, radius:f32, preempt:f32, color: Color, scaling_helper: Arc<ScalingHelper>) -> Self {
@@ -31,7 +33,8 @@ impl ApproachCircle {
 
             alpha: 0.0,
             image: None,
-            time_diff: time
+            time_diff: time,
+            easing_type: Easing::Linear
         }
     }
     pub fn scale_changed(&mut self, new_scale: Arc<ScalingHelper>, new_radius: f32) {
@@ -55,7 +58,7 @@ impl ApproachCircle {
 
     pub fn draw(&self, list: &mut RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
-        let scale = f32::lerp(1.0, APPROACH_CIRCLE_MULT, lerp_amount); // TODO: allow other lerps?
+        let scale = self.easing_type.run_easing(1.0, APPROACH_CIRCLE_MULT, lerp_amount);
 
         if let Some(mut tex) = self.image.clone() {
             tex.pos = self.pos;

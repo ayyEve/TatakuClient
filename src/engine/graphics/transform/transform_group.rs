@@ -150,7 +150,7 @@ impl TransformGroup {
                 offset,
                 duration,
                 TransformType::Transparency {start: start_a, end: 0.0},
-                TransformEasing::EaseOutSine,
+                Easing::EaseOutSine,
                 time
             ));
         }
@@ -160,7 +160,7 @@ impl TransformGroup {
             offset,
             duration,
             TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-            TransformEasing::EaseOutSine,
+            Easing::EaseOutSine,
             time
         ));
 
@@ -169,7 +169,7 @@ impl TransformGroup {
             offset,
             duration * 1.1,
             TransformType::Scale {start: 1.0, end: end_scale},
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         ));
 
@@ -179,7 +179,7 @@ impl TransformGroup {
                 offset,
                 duration * 1.1,
                 TransformType::BorderSize {start: 2.0, end: 0.0},
-                TransformEasing::EaseInSine,
+                Easing::EaseInSine,
                 time
             ));
         }
@@ -194,7 +194,7 @@ impl TransformGroup {
                 offset,
                 duration,
                 TransformType::Transparency { start: start_a, end: 0.0 },
-                TransformEasing::EaseOutSine,
+                Easing::EaseOutSine,
                 time
             ));
         }
@@ -204,7 +204,7 @@ impl TransformGroup {
             offset,
             duration,
             TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-            TransformEasing::EaseOutSine,
+            Easing::EaseOutSine,
             time
         ));
 
@@ -213,7 +213,7 @@ impl TransformGroup {
             offset,
             duration * 1.1,
             TransformType::Scale { start: scale.start, end: scale.end },
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         ));
 
@@ -223,7 +223,7 @@ impl TransformGroup {
                 offset,
                 duration * 1.1,
                 TransformType::BorderSize { start: b.start, end: b.end },
-                TransformEasing::EaseInSine,
+                Easing::EaseInSine,
                 time
             ));
         }

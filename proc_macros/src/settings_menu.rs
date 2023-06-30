@@ -141,6 +141,19 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     lines2.push("pub fn from_menu(&mut self, list: &ScrollableArea) {".to_owned());
 
     macro_rules! thingy {
+        ($val2:expr, $setting:expr, Color) => {
+            lines2.push(format!("
+            // {}
+            {{
+                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
+                let val = val.first().expect(\"error getting tagged\"); // unwrap
+                let val = val.get_value(); // get the value from the item
+                let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for Color (String)\"));
+                
+                self.{} = val.clone().into(); 
+            }}", $val2, $val2, $setting))
+        };
+
         ($val2:expr, $setting:expr, $type:ident) => {
             lines2.push(format!("
             // {}
@@ -205,7 +218,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         let mut add = true;
 
         if let Some(category) = setting.category {
-            lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", font.clone())));"));
+            lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", Color::BLACK, font.clone())));"));
         }
 
         // comment what this item is
@@ -261,6 +274,15 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 thingy!(val2, val, String);
             }
 
+            // color input
+            SettingsType::Color => {
+                let w = float(setting.width.unwrap_or(WIDTH));
+                let size = format!("Vector2::new({w}, 50.0)");
+                
+                lines.push(format!("let s:String = self.{val}.into(); let mut i = TextInput::new(p, {size}, \"{text}\", &s, font.clone());"));
+
+                thingy!(val2, val, Color);
+            }
             // 
             SettingsType::Key => {
                 let w = float(setting.width.unwrap_or(WIDTH));
@@ -394,10 +416,11 @@ enum SettingsType {
     Usize,
     String,
     // Vec(Box<SettingsType>),
-
+    
     Key,
     Dropdown(String),
     SubSetting,
+    Color,
 
     Button,
 
@@ -415,7 +438,8 @@ impl SettingsType {
             "f64"  => Self::F64,
             "usize" => Self::Usize,
             "String" => Self::String,
-            "Key" | "piston::input::Key" => Self::Key,
+            "Color" => Self::Color,
+            "Key" => Self::Key,
             _ => Self::Unknown
         }
     }

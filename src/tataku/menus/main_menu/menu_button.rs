@@ -103,14 +103,14 @@ impl MainMenuButton {
             0.0,
             duration,
             TransformType::Position {start, end},
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         );
         let t2 = Transformation::new(
             0.0,
             duration,
             TransformType::Transparency { start: 0.0, end: 1.0 },
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         );
 
@@ -159,7 +159,7 @@ impl MainMenuButton {
             0.0,
             duration,
             TransformType::Position {start, end},
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         );
         
@@ -168,7 +168,7 @@ impl MainMenuButton {
             0.0,
             duration,
             TransformType::Transparency { start: 1.0, end: 0.0 },
-            TransformEasing::Linear,
+            Easing::Linear,
             time
         );
 
@@ -234,7 +234,7 @@ impl ScrollableItemGettersSetters for MainMenuButton {
                     0.0,
                     1.0, 
                     TransformType::BorderTransparency { start: 0.0, end: 1.0 },
-                    TransformEasing::Linear,
+                    Easing::Linear,
                     0.0,
                 ))
             }
@@ -248,7 +248,7 @@ impl ScrollableItemGettersSetters for MainMenuButton {
                     0.0,
                     1.0, 
                     TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-                    TransformEasing::Linear,
+                    Easing::Linear,
                     0.0,
                 ))
             }

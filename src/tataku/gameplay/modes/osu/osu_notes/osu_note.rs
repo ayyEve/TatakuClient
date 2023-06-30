@@ -175,6 +175,7 @@ impl OsuHitObject for OsuNote {
     fn point_draw_pos(&self, _: f32) -> Vector2 { self.pos }
     fn mouse_move(&mut self, pos:Vector2) { self.mouse_pos = pos }
     fn get_preempt(&self) -> f32 { self.time_preempt }
+    fn pos_at(&self, _time: f32) -> Vector2 { self.pos }
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
@@ -215,9 +216,6 @@ impl OsuHitObject for OsuNote {
     }
 
     
-    fn pos_at(&self, _time: f32) -> Vector2 {
-        self.pos
-    }
 
     async fn set_settings(&mut self, settings: Arc<StandardSettings>) {
         self.standard_settings = settings;
@@ -225,6 +223,9 @@ impl OsuHitObject for OsuNote {
 
     fn set_ar(&mut self, ar: f32) {
         self.time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
+    }
+    fn set_approach_easing(&mut self, easing: Easing) {
+        self.approach_circle.easing_type = easing;
     }
 
     fn get_hitsound(&self) -> Vec<Hitsound> {

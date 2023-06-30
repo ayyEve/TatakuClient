@@ -12,14 +12,16 @@ pub struct MenuSection {
     pub font: Font,
     pub font_size: f32,
     keywords: Vec<String>,
+    color: Color
 }
 
 impl MenuSection {
-    pub fn new(pos:Vector2, height:f32, text:&str, font:Font) -> Self {
+    pub fn new(pos:Vector2, height:f32, text:&str, color: Color, font:Font) -> Self {
         Self {
             pos, 
             size: Vector2::new(300.0, height),
             text: text.to_owned(),
+            color,
             font,
             font_size: 32.0,
             keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
@@ -39,7 +41,7 @@ impl ScrollableItem for MenuSection {
             base_pos + pos_offset,
             self.font_size,
             self.text.clone(),
-            Color::BLACK,
+            self.color,
             self.font.clone()
         ));
 
@@ -47,7 +49,7 @@ impl ScrollableItem for MenuSection {
         list.push(Rectangle::new(
             base_pos + pos_offset + Vector2::with_y(self.font_size + UNDERLINE_PAD),
             Vector2::new(self.size().x, 4.0),
-            Color::BLACK,
+            self.color,
             None
         ));
     }

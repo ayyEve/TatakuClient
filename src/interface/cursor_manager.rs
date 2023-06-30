@@ -381,7 +381,7 @@ impl CursorManager {
             start, 
             duration, 
             TransformType::Transparency { start: 1.0, end: 0.0 }, 
-            TransformEasing::EaseOutSine, 
+            Easing::EaseOutSine, 
             time
         ));
         g.push(trail);

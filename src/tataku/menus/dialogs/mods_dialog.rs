@@ -26,13 +26,13 @@ impl ModDialog {
 
         // create the scrollable and add the mod buttons to it
         let window_size = WindowSize::get();
-        let mut scroll = ScrollableArea::new(Vector2::ZERO, window_size.0, true);
+        let mut scroll = ScrollableArea::new(Vector2::with_y(20.0), window_size.0, true);
         let pos = Vector2::new(50.0, 0.0);
 
         let font = get_font();
         let manager = ModManager::get();
         for group in new_groups {
-            scroll.add_item(Box::new(MenuSection::new(pos, 30.0, &group.name, font.clone())));
+            scroll.add_item(Box::new(MenuSection::new(pos, 50.0, &group.name, Color::WHITE, font.clone())));
             
             for m in group.mods {
                 scroll.add_item(Box::new(ModButton::new(pos, m, &manager)));

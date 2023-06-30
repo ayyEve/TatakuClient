@@ -49,7 +49,9 @@ pub struct OsuGame {
     judgment_helper: JudgmentImageHelper,
 
     metadata: Arc<BeatmapMeta>,
-    mods: Arc<ModManager>
+    mods: Arc<ModManager>,
+
+    timing_points: Vec<TimingPoint>
 }
 impl OsuGame {
     async fn playfield_changed(&mut self) {
@@ -202,7 +204,7 @@ impl OsuGame {
 impl GameMode for OsuGame {
     async fn new(map:&Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
-        let mods = ModManager::get();
+        let mods = Arc::new(Default::default());
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
@@ -263,7 +265,8 @@ impl GameMode for OsuGame {
                     follow_point_image,
                     judgment_helper,
                     metadata,
-                    mods
+                    mods,
+                    timing_points: map.get_timing_points(),
                 };
                 
                 // join notes and sliders into a single array
@@ -868,7 +871,32 @@ impl GameMode for OsuGame {
 
         let has_hr = mods.has_mod(HardRock.name());
         let has_easy_or_hr = mods.has_mod(Easy.name()) || has_hr;
+
+        let had_fa = self.mods.has_mod(OnTheBeat.name());
+        let has_fa = mods.has_mod(OnTheBeat.name());
+
+        // check easing type
+        let easing_type_names = ["in", "out", "inout"];
+        let mut last_easing_type = "";
+        let mut new_easing_type = "";
+        for i in easing_type_names {
+            if self.mods.has_mod(i) { last_easing_type = i }
+            if mods.has_mod(i) { new_easing_type = i }
+        }
+
+        // check easing
+        let easing_names = ["sine", "quad", "cube", "quart", "quint", "exp", "circ", "back"];
+        let mut last_easing = "";
+        let mut new_easing = "";
+        for i in easing_names {
+            if self.mods.has_mod(i) { last_easing = i }
+            if mods.has_mod(i) { new_easing = i }
+        }
+
         self.mods = mods;
+
+        let mut set_ar = None;
+        let mut set_easing = None;
 
         if has_easy_or_hr || had_easy_or_hr != has_easy_or_hr {
             let cs = Self::get_cs(&self.metadata, &self.mods);
@@ -881,11 +909,105 @@ impl GameMode for OsuGame {
 
             self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(cs, size, pos, scale, has_hr))).await;
             self.setup_hitwindows();
-            
+
+            set_ar = Some(ar);
+        }
+    
+        if last_easing != new_easing || last_easing_type != new_easing_type {
+            // use out as default easing type
+            if new_easing_type.is_empty() && !new_easing.is_empty() {
+                new_easing_type = "out"
+            }
+
+            let easing = match (new_easing_type, new_easing) {
+                // sine
+                ("in", "sine") => Easing::EaseInSine,
+                ("out", "sine") => Easing::EaseOutSine,
+                ("inout", "sine") => Easing::EaseInOutSine,
+                // quadratic
+                ("in", "quad") => Easing::EaseInQuadratic,
+                ("out", "quad") => Easing::EaseOutQuadratic,
+                ("inout", "quad") => Easing::EaseInOutQuadratic,
+                // cubic
+                ("in", "cube") => Easing::EaseInCubic,
+                ("out", "cube") => Easing::EaseOutCubic,
+                ("inout", "cube") => Easing::EaseInOutCubic,
+                // quartic
+                ("in", "quart") => Easing::EaseInQuartic,
+                ("out", "quart") => Easing::EaseOutQuartic,
+                ("inout", "quart") => Easing::EaseInOutQuartic,
+                // quintic
+                ("in", "quint") => Easing::EaseInQuintic,
+                ("out", "quint") => Easing::EaseOutQuintic,
+                ("inout", "quint") => Easing::EaseInOutQuintic,
+                // exponential
+                ("in", "exp") => Easing::EaseInExponential,
+                ("out", "exp") => Easing::EaseOutExponential,
+                ("inout", "exp") => Easing::EaseInOutExponential,
+                // // circular
+                // ("in", "circ") => Easing::EaseInCircular,
+                // ("out", "circ") => Easing::EaseOutCircular,
+                // // back
+                // ("in", "back") => Easing::EaseInBack      (1.7, 1.7 * 1.525),
+                // ("out", "back") => Easing::EaseOutBack    (1.7, 1.7 * 1.525),
+                // ("inout", "back") => Easing::EaseInOutBack(1.7, 1.7 * 1.525),
+                _ => Easing::Linear
+            };
+
+            set_easing = Some(easing);
+        }
+        
+        if has_fa != had_fa {
+            if has_fa {
+                let timing_points = self.timing_points.iter().filter(|t|!t.is_inherited()).map(|t|t.clone()).collect::<Vec<_>>();
+                let mut index = 0;
+                info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                
+                for note in self.notes.iter_mut() {
+                    // check next timing point
+                    if let Some(next) = timing_points.get(index + 1) {
+                        if next.time <= note.time() { 
+                            index += 1; 
+                            info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                        }
+                    }
+
+                    // get the beat length of the current timing point
+                    let beat_length = timing_points[index].beat_length;
+
+                    // normalize the note time to "align" with the control point time offset
+                    let normalized_time = note.time() - timing_points[index].time; // beat lengths with decimal points
+                    let m = beat_length - (normalized_time % beat_length); // beat lengths without a decimal point
+                    let m2 = normalized_time % beat_length;
+                    // info!("{normalized_time}, {m}, {m2}");
+
+                    // if this note lands on a beat, or within 10ms of a beat, make it ~funky~
+                    if m < 10.0 || m2 < 10.0 {
+                        note.set_approach_easing(Easing::EaseOutExponential)
+                    } else {
+                        note.set_approach_easing(Easing::Linear)
+                    }
+                    
+                }
+
+                set_easing = None;
+            } else {
+                set_easing = Some(Easing::Linear);
+            }
+
+        }
+
+        if set_ar.is_some() || set_easing.is_some() {
             for note in self.notes.iter_mut() {
-                note.set_ar(ar);
+                if let Some(easing) = set_easing {
+                    note.set_approach_easing(easing)
+                }
+                if let Some(ar) = set_ar {
+                    note.set_ar(ar);
+                }
             }
         }
+
     }
 
     

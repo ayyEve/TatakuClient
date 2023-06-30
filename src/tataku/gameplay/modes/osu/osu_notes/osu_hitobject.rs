@@ -24,6 +24,7 @@ pub trait OsuHitObject: HitObject {
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> { vec![] }
 
     fn set_hitwindow_miss(&mut self, window: f32);
+    fn set_approach_easing(&mut self, easing: Easing);
 
 
     fn miss(&mut self);

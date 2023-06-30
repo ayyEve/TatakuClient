@@ -9,13 +9,13 @@ pub struct Transformation {
     /// how long the tranform lasts
     pub duration: f32,
     pub trans_type: TransformType,
-    pub easing_type: TransformEasing,
+    pub easing_type: Easing,
     
     /// when was this transform crated? (ms)
     pub create_time: f32,
 }
 impl Transformation {
-    pub fn new(offset: f32, duration: f32, trans_type: TransformType, easing_type: TransformEasing, create_time: f32) -> Self {
+    pub fn new(offset: f32, duration: f32, trans_type: TransformType, easing_type: Easing, create_time: f32) -> Self {
         Self {
             offset,
             duration,
@@ -40,7 +40,7 @@ impl Transformation {
         match self.trans_type {
             TransformType::Position { start, end }
             | TransformType::VectorScale { start, end } => 
-                TransformValueResult::Vector2(self.run_easing_fn(start, end, factor)),
+                TransformValueResult::Vector2(self.easing_type.run_easing(start, end, factor)),
 
             TransformType::Scale { start, end }
             | TransformType::BorderSize { start, end } 
@@ -49,52 +49,12 @@ impl Transformation {
             | TransformType::BorderTransparency { start, end }
             | TransformType::PositionX { start, end }
             | TransformType::PositionY { start, end }
-            => TransformValueResult::F64(self.run_easing_fn(start, end, factor) as f64),
+            => TransformValueResult::F64(self.easing_type.run_easing(start, end, factor) as f64),
 
             TransformType::Color { start, end } 
-            => TransformValueResult::Color(self.run_easing_fn( start, end, factor)),
+            => TransformValueResult::Color(self.easing_type.run_easing( start, end, factor)),
 
             TransformType::None => TransformValueResult::None,
-        }
-    }
-
-
-    // thank god i got this working lmao
-    pub fn run_easing_fn<I:Interpolation>(&self, current:I, target:I, factor: f32) -> I {
-        match self.easing_type {
-            TransformEasing::Linear => Interpolation::lerp(current, target, factor),
-
-            TransformEasing::EaseInSine => Interpolation::easein_sine(current, target, factor),
-            TransformEasing::EaseOutSine => Interpolation::easeout_sine(current, target, factor),
-            TransformEasing::EaseInOutSine => Interpolation::easeinout_sine(current, target, factor),
-
-            TransformEasing::EaseInQuadratic => Interpolation::easein_quadratic(current, target, factor),
-            TransformEasing::EaseOutQuadratic => Interpolation::easeout_quadratic(current, target, factor),
-            TransformEasing::EaseInOutQuadratic => Interpolation::easeinout_quadratic(current, target, factor),
-
-            TransformEasing::EaseInCubic => Interpolation::easein_cubic(current, target, factor),
-            TransformEasing::EaseOutCubic => Interpolation::easeout_cubic(current, target, factor),
-            TransformEasing::EaseInOutCubic => Interpolation::easeinout_cubic(current, target, factor),
-
-            TransformEasing::EaseInQuartic => Interpolation::easein_quartic(current, target, factor),
-            TransformEasing::EaseOutQuartic => Interpolation::easeout_quartic(current, target, factor),
-            TransformEasing::EaseInOutQuartic => Interpolation::easeinout_quartic(current, target, factor),
-
-            TransformEasing::EaseInQuintic => Interpolation::easein_quintic(current, target, factor),
-            TransformEasing::EaseOutQuintic => Interpolation::easeout_quintic(current, target, factor),
-            TransformEasing::EaseInOutQuintic => Interpolation::easeinout_quintic(current, target, factor),
-
-            TransformEasing::EaseInExponential => Interpolation::easein_exponential(current, target, factor),
-            TransformEasing::EaseOutExponential => Interpolation::easeout_exponential(current, target, factor),
-            TransformEasing::EaseInOutExponential => Interpolation::easeinout_exponential(current, target, factor),
-
-            TransformEasing::EaseInCircular => Interpolation::easein_circular(current, target, factor),
-            TransformEasing::EaseOutCircular => Interpolation::easeout_circular(current, target, factor),
-            TransformEasing::EaseInOutCircular => Interpolation::easeinout_circular(current, target, factor),
-
-            TransformEasing::EaseInBack(c1, c2) => Interpolation::easein_back(current, target, factor, c1, c2),
-            TransformEasing::EaseOutBack(c1, c2) => Interpolation::easeout_back(current, target, factor, c1, c2),
-            TransformEasing::EaseInOutBack(c1, c2) => Interpolation::easeinout_back(current, target, factor, c1, c2),
         }
     }
 }
@@ -161,50 +121,6 @@ impl Default for TransformType {
     }
 }
 
-
-/// values and equations taken from https://easings.net/
-#[derive(Copy, Clone)]
-
-pub enum TransformEasing {
-    Linear,
-    // sine
-    EaseInSine,
-    EaseOutSine,
-    EaseInOutSine,
-    // quadratic
-    EaseInQuadratic,
-    EaseOutQuadratic,
-    EaseInOutQuadratic,
-    // cubic
-    EaseInCubic,
-    EaseOutCubic,
-    EaseInOutCubic,
-    // quartic
-    EaseInQuartic,
-    EaseOutQuartic,
-    EaseInOutQuartic,
-    // quintic
-    EaseInQuintic,
-    EaseOutQuintic,
-    EaseInOutQuintic,
-    // exponential
-    EaseInExponential,
-    EaseOutExponential,
-    EaseInOutExponential,
-    // circular
-    EaseInCircular,
-    EaseOutCircular,
-    EaseInOutCircular,
-    // back
-    EaseInBack(f32, f32),
-    EaseOutBack(f32, f32),
-    EaseInOutBack(f32, f32),
-}
-impl Default for TransformEasing {
-    fn default() -> Self {
-        TransformEasing::Linear
-    }
-}
 
 pub trait Transformable: TatakuRenderable {
     fn apply_transform(&mut self, transform: &Transformation, value: TransformValueResult);
