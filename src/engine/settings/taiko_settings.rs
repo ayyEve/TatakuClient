@@ -37,7 +37,10 @@ pub struct TaikoSettings {
     pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
     pub hit_position_relative_height_div: f32,
-    pub hit_position_offset: [f32; 2],
+    #[Setting(text="Playfield Horizontal Offset", min=0, max=500)]
+    pub playfield_x_offset: f32,
+    #[Setting(text="Playfield Vertical Offset", min=0, max=200)]
+    pub playfield_y_offset: f32,
 
     /// hit area raidus multiplier, 1.0 = note radius
     #[Setting(text="Hit Area Radius Scale", min=1, max=5)]
@@ -45,6 +48,7 @@ pub struct TaikoSettings {
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
     #[Setting(text="Playfield Vertical Padding", min=0, max=20)]
     pub playfield_height_padding: f32,
+    /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
 
     #[Setting(text="Don Color")]
     pub don_color: Color,
@@ -67,7 +71,7 @@ impl TaikoSettings {
         } else {
             Vector2::ZERO
         };
-        self.hit_position = base + Vector2::new(self.hit_position_offset[0], self.hit_position_offset[1]);
+        self.hit_position = base + Vector2::new(self.playfield_x_offset, self.playfield_y_offset);
 
         // // load colors
         // self.don_color = Color::from_hex(&self.don_color_hex);
@@ -109,10 +113,8 @@ impl Default for TaikoSettings {
             hit_position: Vector2::ZERO,
             hit_position_relative_to_window_size: true,
             hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
-            hit_position_offset: [
-                200.0,
-                0.0
-            ],
+            playfield_x_offset: 200.0,
+            playfield_y_offset: 0.0,
         
             don_color: Color::from_hex("#E74721"),
             kat_color: Color::from_hex("#3797CA"),
