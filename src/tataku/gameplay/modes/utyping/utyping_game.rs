@@ -34,7 +34,7 @@ pub struct UTypingGame {
 #[async_trait]
 impl GameMode for UTypingGame {
     async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> TatakuResult<Self> {
-        let mut settings = get_settings!().taiko_settings.clone();
+        let mut settings = Settings::get().taiko_settings.clone();
         // calculate the hit area
         settings.init_settings().await;
         let settings = Arc::new(settings);
@@ -116,7 +116,7 @@ impl GameMode for UTypingGame {
         }
 
 
-        // let mut hit_volume = get_settings!().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
+        // let mut hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
         // if manager.menu_background {
         //     hit_volume *= manager.background_game_settings.hitsound_volume;
         // }

@@ -21,7 +21,7 @@ impl DirectApi for OsuDirect {
 
     async fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");
-        let settings = get_settings!();
+        let settings = Settings::get();
 
 
         // TODO: do a proper sort (and convert from generic sort to osu sort number)
@@ -122,7 +122,7 @@ impl DirectDownloadable for OsuDirectDownloadable {
         self.downloading.store(true, SeqCst);
 
         let download_dir = format!("downloads/{}", self.filename);
-        let settings = get_settings!();
+        let settings = Settings::get();
         
         let username = &settings.osu_username;
         let password = &settings.osu_password;

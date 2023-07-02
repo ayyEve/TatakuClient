@@ -21,7 +21,7 @@ pub struct MediaControlHelper {
 impl MediaControlHelper {
     pub fn new(event_sender: AsyncUnboundedSender<MediaControlHelperEvent>) -> Self {
         let (sender, receiver) = async_unbounded_channel();
-        let controls_enabled = get_settings!().integrations.media_controls;
+        let controls_enabled = Settings::get().integrations.media_controls;
         if controls_enabled {
             Self::bind(sender.clone());
         }
@@ -86,12 +86,12 @@ impl MediaControlHelper {
     }
 
     fn bind(sender: AsyncUnboundedSender<MediaControlEvent>) {
-        if !get_settings!().integrations.media_controls { return }
+        if !Settings::get().integrations.media_controls { return }
         let controls = GameWindow::get_media_controls();
         let _ = controls.lock().attach(move |event|{let _ = sender.send(event);});
     }
     pub fn set_metadata(meta: &MediaControlMetadata) {
-        if !get_settings!().integrations.media_controls { return }
+        if !Settings::get().integrations.media_controls { return }
         let meta = meta.clone();
 
         fn s(a: &Option<String>) -> Option<&str> {
@@ -114,7 +114,7 @@ impl MediaControlHelper {
         });
     }
     pub fn set_playback(state: MediaPlayback) {
-        if !get_settings!().integrations.media_controls { return }
+        if !Settings::get().integrations.media_controls { return }
 
         tokio::task::spawn_blocking(move || {
             if let Err(e) = GameWindow::get_media_controls().lock().set_playback(state) {

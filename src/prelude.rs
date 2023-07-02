@@ -51,9 +51,7 @@ pub use crate::DOWNLOADS_DIR;
 
 // macro imports
 pub use crate::send_packet;
-pub use crate::get_settings;
 pub use crate::create_packet;
-pub use crate::get_settings_mut;
 
 // general game imports
 pub use crate::engine::*;

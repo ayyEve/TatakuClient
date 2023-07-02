@@ -32,7 +32,7 @@ impl VolumeControl {
     }
     async fn change(&mut self, delta:f32) {
         let elapsed = self.elapsed();
-        let mut settings = get_settings_mut!();
+        let mut settings = Settings::get_mut();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
         if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 {self.vol_selected_index = 0}

@@ -97,7 +97,7 @@ impl SpectatorManager {
                                 match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
                                     Ok(Some(map_info)) => {
                                         // we have a thing! lets download it
-                                        let settings = get_settings!();
+                                        let settings = Settings::get();
                                         let username = &settings.osu_username;
                                         let password = &settings.osu_password;
 

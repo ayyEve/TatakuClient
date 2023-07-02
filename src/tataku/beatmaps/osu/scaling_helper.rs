@@ -40,7 +40,7 @@ pub struct ScalingHelper {
 }
 impl ScalingHelper {
     pub async fn new(cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
-        let settings = get_settings!().standard_settings.clone();
+        let settings = Settings::get().standard_settings.clone();
         Self::new_with_settings(&settings, cs, window_size, flip_vertical)
     }
     pub fn new_with_settings(settings: &StandardSettings, cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {

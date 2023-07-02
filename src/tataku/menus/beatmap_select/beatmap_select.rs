@@ -143,7 +143,7 @@ impl BeatmapSelectMenu {
         GlobalValueManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
 
         self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
-        get_settings_mut!().last_played_mode = new_mode.clone();
+        Settings::get_mut().last_played_mode = new_mode.clone();
 
         // // recalc diffs
         // self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
@@ -368,7 +368,7 @@ impl BeatmapSelectMenu {
             if sort_by != self.sort_method {
                 self.sort_method = sort_by;
                 map_refresh = true;
-                get_settings_mut!().last_sort_by = sort_by;
+                Settings::get_mut().last_sort_by = sort_by;
             }
         }
         if map_refresh {
@@ -381,7 +381,7 @@ impl BeatmapSelectMenu {
             if SCORE_HELPER.read().await.current_method != leaderboard_method {
                 SCORE_HELPER.write().await.current_method = leaderboard_method;
                 score_method_changed = true;
-                get_settings_mut!().last_score_retreival_method = leaderboard_method;
+                Settings::get_mut().last_score_retreival_method = leaderboard_method;
             }
 
         }

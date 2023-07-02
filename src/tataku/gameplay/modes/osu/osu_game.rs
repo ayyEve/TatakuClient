@@ -208,7 +208,7 @@ impl GameMode for OsuGame {
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let settings = get_settings!().standard_settings.clone();
+        let settings = Settings::get().standard_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
@@ -1075,7 +1075,7 @@ impl GameModeInput for OsuGame {
         
         if let Some((original, mouse_start)) = self.move_playfield {
             {
-                let settings = &mut get_settings_mut!().standard_settings;
+                let settings = &mut Settings::get_mut().standard_settings;
                 let mut change = original + (pos - mouse_start);
 
                 // check playfield snapping
@@ -1142,7 +1142,7 @@ impl GameModeInput for OsuGame {
     async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayFrame> {
         if self.move_playfield.is_some() {
             {
-                let settings = &mut get_settings_mut!().standard_settings;
+                let settings = &mut Settings::get_mut().standard_settings;
                 settings.playfield_scale += delta / 40.0;
             }
 

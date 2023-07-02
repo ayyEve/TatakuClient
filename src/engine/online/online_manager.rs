@@ -288,7 +288,7 @@ impl OnlineManager {
 
                     // if this is us, make sure we have the correct username text
                     if s.user_id == user_id {
-                        let mut settings = get_settings_mut!();
+                        let mut settings = Settings::get_mut();
                         if settings.username != username {
                             settings.username = username.clone()
                         }
@@ -480,7 +480,7 @@ impl OnlineManager {
                 discord.change_status(&action_info, incoming_mode).await;
             }
 
-            if get_settings!().integrations.lastfm {
+            if Settings::get().integrations.lastfm {
                 match &action_info {
                     SetAction::Listening { artist, title, .. } 
                     | SetAction::Playing { artist, title, .. } 

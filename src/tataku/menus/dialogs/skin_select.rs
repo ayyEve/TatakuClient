@@ -8,7 +8,7 @@ pub struct SkinSelect {
 }
 impl SkinSelect {
     pub async fn new() -> Self {
-        let current_skin = get_settings!().current_skin.clone();
+        let current_skin = Settings::get().current_skin.clone();
         Self {
             dropdown: Dropdown::new(
                 Vector2::new(300.0, 200.0),
@@ -31,7 +31,7 @@ impl SkinSelect {
 
                 trace!("skin changing to {}", s);
                 self.current_skin = s.clone();
-                get_settings_mut!().current_skin = s;
+                Settings::get_mut().current_skin = s;
             }
         }
     }

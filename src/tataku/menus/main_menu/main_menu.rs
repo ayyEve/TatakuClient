@@ -473,7 +473,7 @@ impl AsyncMenu<Game> for MainMenu {
             };
 
             if let Some(new_mode) = new_mode {
-                let mut settings = get_settings_mut!();
+                let mut settings = Settings::get_mut();
                 if settings.background_game_settings.mode != new_mode {
                     NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE).await;
                     needs_manager_setup = true;

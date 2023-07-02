@@ -121,7 +121,7 @@ impl GameWindow {
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) {
         // fire event so things get moved around correctly
         // what??
-        let settings = get_settings!().clone();
+        let settings = Settings::get().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
         self.init_media_controls();

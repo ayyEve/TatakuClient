@@ -49,7 +49,7 @@ impl BeatmapManager {
 
     pub async fn folders_to_check() -> Vec<std::path::PathBuf> {
         let mut folders = Vec::new();
-        let mut dirs_to_check = get_settings!().external_games_folders.clone();
+        let mut dirs_to_check = Settings::get().external_games_folders.clone();
         dirs_to_check.push(SONGS_DIR.to_owned());
 
         dirs_to_check.iter()

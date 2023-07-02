@@ -38,7 +38,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
         .collect::<HashMap<String, String>>();
 
 
-    let mut settings = get_settings_mut!();
+    let mut settings = Settings::get_mut();
 
     // read bool from map
     macro_rules! bool {

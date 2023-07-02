@@ -242,7 +242,7 @@ mod osu {
             _ => panic!("osu how?")
         };
 
-        let key = get_settings!().osu_api_key.clone();
+        let key = Settings::get().osu_api_key.clone();
         if key.is_empty() {
             NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
             Err(TatakuError::String("no api key".to_owned()))
@@ -471,7 +471,7 @@ mod tataku {
     }
 
     async fn get_scores_internal(map_hash: &String, playmode: &String) -> TatakuResult<Vec<IngameScore>> {
-        let base = get_settings!().score_url.clone();
+        let base = Settings::get().score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
         let bytes = reqwest::get(url).await?.bytes().await?.to_vec();

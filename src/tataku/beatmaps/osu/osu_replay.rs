@@ -13,7 +13,7 @@ impl OsuReplayDownloader {
 #[async_trait]
 impl ReplayDownloader for OsuReplayDownloader {
     async fn get_replay(&self) -> TatakuResult<Replay> {
-        let key = get_settings!().osu_api_key.clone();
+        let key = Settings::get().osu_api_key.clone();
 
         let url = format!("https://osu.ppy.sh//api/get_replay?k={key}&s={}", self.1);
 

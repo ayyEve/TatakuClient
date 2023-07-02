@@ -3,21 +3,6 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-#[macro_export]
-macro_rules! get_settings {
-    () => {{
-        GlobalValueManager::get::<Settings>().unwrap()
-    }}
-}
-
-#[macro_export]
-macro_rules! get_settings_mut {
-    () => {{
-        GlobalValueManager::get_mut::<Settings>().unwrap()
-        // MutSettingsHelper::new(Settings::get_mut().await)
-    }}
-}
-
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[derive(Settings)]
 #[serde(default)]
@@ -160,7 +145,15 @@ pub struct Settings {
     pub skip_autosaveing: bool,
 }
 impl Settings {
-    pub async fn load() -> Settings {
+    pub fn get() -> Arc<Self> {
+        GlobalValueManager::get::<Settings>().unwrap()
+    }
+    pub fn get_mut() -> GlobalValueMut<Self> {
+        GlobalValueManager::get_mut::<Settings>().unwrap()
+    }
+
+
+    pub async fn load() -> Self {
         let mut s = match std::fs::read_to_string(SETTINGS_FILE).map(|s| serde_json::from_str(&s).map_err(|e|e.to_string())).map_err(|e|e.to_string()) {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
@@ -168,7 +161,7 @@ impl Settings {
                 // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
                 warn!("Error reading settings.json\nLoading defaults, {e}");
                 backup_settings().await;
-                Settings::default()
+                Self::default()
             }
         };
 

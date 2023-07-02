@@ -4,7 +4,7 @@ pub struct LastFmIntegration;
 
 impl LastFmIntegration {
     pub async fn check() {
-        let settings = get_settings!();
+        let settings = Settings::get();
         let username = settings.username.clone();
         let password = settings.password.clone();
         let url = settings.score_url.clone();
@@ -24,7 +24,7 @@ impl LastFmIntegration {
     }
 
     pub async fn update(track:String, artist: String) {
-        let settings = get_settings!();
+        let settings = Settings::get();
         let username = settings.username.clone();
         let password = settings.password.clone();
         let url = settings.score_url.clone();

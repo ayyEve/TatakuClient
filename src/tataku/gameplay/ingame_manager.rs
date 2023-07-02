@@ -1255,7 +1255,7 @@ impl IngameManager {
     
     pub async fn increment_global_offset(&mut self, delta:f32) {
         let time = self.time();
-        let mut settings = get_settings_mut!();
+        let mut settings = Settings::get_mut();
         settings.global_offset += delta;
 
         self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", settings.global_offset), time);

@@ -180,7 +180,7 @@ impl TaikoGame {
 #[async_trait]
 impl GameMode for TaikoGame {
     async fn new(beatmap:&Beatmap, _diff_calc_only:bool) -> TatakuResult<Self> {
-        let mut settings = get_settings!().taiko_settings.clone();
+        let mut settings = Settings::get().taiko_settings.clone();
         let metadata = beatmap.get_beatmap_meta();
         // calculate the hit area
         settings.init_settings().await;
@@ -1059,7 +1059,7 @@ impl GameModeInput for TaikoGame {
 
             // update the global settings
             {
-                let mut settings = get_settings_mut!();
+                let mut settings = Settings::get_mut();
                 settings.taiko_settings = new_settings.clone();
                 settings.save().await;
             }
@@ -1096,7 +1096,7 @@ impl GameModeInput for TaikoGame {
 
             // update the global settings
             {
-                let mut settings = get_settings_mut!();
+                let mut settings = Settings::get_mut();
                 settings.taiko_settings = new_settings.clone();
                 settings.save().await;
             }

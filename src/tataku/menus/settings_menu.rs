@@ -21,7 +21,7 @@ pub struct SettingsMenu {
 }
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
-        let settings = get_settings!().clone();
+        let settings = Settings::get().clone();
         let p = Vector2::with_x(SECTION_XOFFSET); // scroll area edits the y
         let window_size = WindowSize::get();
         let font = get_font();
@@ -64,7 +64,7 @@ impl SettingsMenu {
     }
 
     pub async fn update_settings(&mut self) {
-        let mut settings = get_settings_mut!();
+        let mut settings = Settings::get_mut();
 
         // need to re-add all items  before we run the from_menu fn
         self.scroll_area.rejoin_items();
@@ -78,7 +78,7 @@ impl SettingsMenu {
         settings.check_hashes();
     }
     pub async fn revert(&mut self) { 
-        let mut s = get_settings_mut!();
+        let mut s = Settings::get_mut();
         *s = self.old_settings.clone();
         s.skip_autosaveing = false;
 
@@ -86,7 +86,7 @@ impl SettingsMenu {
     }
     pub async fn finalize(&mut self) {
         self.update_settings().await;
-        get_settings_mut!().skip_autosaveing = false;
+        Settings::get_mut().skip_autosaveing = false;
 
         self.should_close = true;
     }

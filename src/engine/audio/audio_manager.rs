@@ -108,7 +108,7 @@ impl AudioManager {
 
         sound.play(true);
         sound.set_position(position);
-        sound.set_volume(get_settings!().get_music_vol());
+        sound.set_volume(Settings::get().get_music_vol());
 
         *CURRENT_SONG.lock().await = Some((string_path, sound.clone()));
         Ok(sound)
@@ -120,7 +120,7 @@ impl AudioManager {
 
         let sound = AudioManager::load_song_raw(bytes)?;
         sound.play(true);
-        sound.set_volume(get_settings!().get_music_vol());
+        sound.set_volume(Settings::get().get_music_vol());
         
         *CURRENT_SONG.lock().await = Some((key.as_ref().to_owned(), sound.clone()));
         Ok(sound)

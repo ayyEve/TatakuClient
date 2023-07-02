@@ -7,7 +7,7 @@ impl OsuApi {
         let hash = hash.as_ref();
         
         // need to query the osu api to get the set id for this hashmap
-        let key = get_settings!().osu_api_key.clone();
+        let key = Settings::get().osu_api_key.clone();
 
         // if no key, return error
         if key.is_empty() { return TatakuResult::Err(TatakuError::String("no osu api key".to_owned())) }

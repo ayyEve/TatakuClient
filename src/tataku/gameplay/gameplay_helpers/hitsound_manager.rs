@@ -41,7 +41,7 @@ impl HitsoundManager {
     pub async fn init(&mut self, beatmap: &Arc<BeatmapMeta>) {
         let map_folder = Path::new(&*beatmap.file_path).parent().unwrap();
         let map_files = map_folder.read_dir().unwrap();
-        let settings = get_settings!();
+        let settings = Settings::get();
 
         // load beatmap sounds first (if enabled)
         let mut beatmap_sounds = HashMap::new();

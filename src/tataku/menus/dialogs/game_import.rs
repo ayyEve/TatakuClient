@@ -121,7 +121,7 @@ impl Dialog<Game> for GameImportDialog {
         }
 
         if self.confirm_button.on_click(pos, button, *mods) {
-            let mut settings = get_settings_mut!();
+            let mut settings = Settings::get_mut();
             settings.external_games_folders.clear();
 
             for i in self.input_scrollable.items.iter() {

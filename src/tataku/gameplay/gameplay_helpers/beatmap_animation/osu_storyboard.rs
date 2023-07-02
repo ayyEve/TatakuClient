@@ -12,7 +12,7 @@ pub struct OsuStoryboard {
 
 impl OsuStoryboard {
     pub async fn new(def: StoryboardDef, dir: String) -> TatakuResult<Self> {
-        let settings = get_settings!().standard_settings.clone();
+        let settings = Settings::get().standard_settings.clone();
         let window_size = WindowSize::get();
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
 

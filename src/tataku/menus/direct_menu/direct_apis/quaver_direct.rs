@@ -90,7 +90,7 @@ impl DirectDownloadable for QuaverDirectDownloadable {
         self.downloading.store(true, SeqCst);
 
         let download_dir = format!("downloads/{}", self.filename);
-        let settings = get_settings!();
+        let settings = Settings::get();
         
         let username = &settings.osu_username;
         let password = &settings.osu_password;

@@ -19,7 +19,7 @@ impl TatakuReplayDownloader {
 #[async_trait]
 impl ReplayDownloader for TatakuReplayDownloader {
     async fn get_replay(&self) -> TatakuResult<Replay> {
-        let base = get_settings!().score_url.clone();
+        let base = Settings::get().score_url.clone();
 
         let url = if let Some(hash) = &self.1 {
             format!("{base}/replay_file?hash={hash}")

@@ -256,7 +256,7 @@ impl GameMode for ManiaGame {
     async fn new(beatmap:&Beatmap, _: bool) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let game_settings = get_settings!().mania_settings.clone();
+        let game_settings = Settings::get().mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
         let window_size = WindowSize::get();
@@ -637,7 +637,7 @@ impl GameMode for ManiaGame {
         match frame {
             ReplayFrame::Press(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
-                // let hit_volume = get_settings!().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
+                // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
                 // if theres no more notes to hit, return after playing the sound
                 if self.column_indices[col] >= self.columns[col].len() {
