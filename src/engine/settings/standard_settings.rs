@@ -4,7 +4,6 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="standard_settings")]
 pub struct StandardSettings {
     // input
     #[Setting(text="Osu Key 1")]

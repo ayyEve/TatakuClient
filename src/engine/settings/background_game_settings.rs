@@ -4,7 +4,6 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="background_game_settings")]
 pub struct BackgroundGameSettings {
     /// whether to have gameplay in the main menu bg or not
     #[serde(alias="enabled")]

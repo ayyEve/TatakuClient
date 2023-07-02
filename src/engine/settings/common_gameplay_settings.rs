@@ -4,7 +4,6 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="common_game_settings")]
 pub struct CommonGameplaySettings {
     #[Setting(text="Increase Offset")]
     pub key_offset_up: Key,

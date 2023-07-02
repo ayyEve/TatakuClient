@@ -3,7 +3,6 @@ use crate::prelude::*;
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="integrations")]
 pub struct IntegrationSettings {
     #[Setting(text="Discord Integration")]
     pub discord: bool,

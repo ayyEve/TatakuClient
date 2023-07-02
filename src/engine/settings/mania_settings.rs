@@ -5,7 +5,6 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="mania_settings")]
 pub struct ManiaSettings {
     // sv
     pub static_sv: bool,

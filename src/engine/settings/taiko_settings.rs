@@ -7,7 +7,6 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-#[Setting(prefix="taiko_settings")]
 pub struct TaikoSettings {
     // input
     #[Setting(text="Left Kat")]

@@ -7,26 +7,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     let mut settings:Vec<SettingsItem> = Vec::new();
     // let mut categories = HashMap::new();
 
-    let mut prefix = None;
-
     if let Data::Struct(data) = &ast.data {
-
-        // look for prefix
-        for a in ast.attrs.iter() {
-            if a.path.is_ident("Setting") { 
-                if let Ok(Meta::List(list)) = a.parse_meta() {
-                    for name_value in recurse_meta(list) {
-                        match name_value.lit {
-                            Lit::Str(s) if name_value.path.is_ident("settings_prefix") || name_value.path.is_ident("prefix") => prefix = Some(s.value()),
-                            
-                            _ => panic!("nope"),
-                        }
-                    }
-                }
-                break;
-            }
-        }
-
         // go through settings
         for f in data.fields.iter() {
             let mut setting = SettingsItem::default();
@@ -130,108 +111,42 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
     // TODO: !!!!! categories !!!!!
     let struct_name = ast.ident.to_string();
-    let mut lines = Vec::new();
-    lines.push(format!("impl {struct_name} {{"));
-    lines.push("pub fn get_menu_items(&self, p: Vector2, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
-    lines.push("let mut list:Vec<Box<dyn ScrollableItem>> = Vec::new();".to_owned());
-    lines.push("let font = get_font();".to_owned());
+    let mut get_menu_items_lines = Vec::new();
+    get_menu_items_lines.push(format!("impl {struct_name} {{"));
+    get_menu_items_lines.push("pub fn get_menu_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
+    get_menu_items_lines.push("let mut list:Vec<Box<dyn ScrollableItem>> = Vec::new();".to_owned());
+    get_menu_items_lines.push("let font = get_font();".to_owned());
     
     // pulling vals back from the menu
-    let mut lines2 = Vec::new();
-    lines2.push("pub fn from_menu(&mut self, list: &ScrollableArea) {".to_owned());
-
-    macro_rules! thingy {
-        ($val2:expr, $setting:expr, Color) => {
-            lines2.push(format!("
-            // {}
-            {{
-                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
-                let val = val.first().expect(\"error getting tagged\"); // unwrap
-                let val = val.get_value(); // get the value from the item
-                let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for Color (String)\"));
-                
-                self.{} = val.clone().into(); 
-            }}", $val2, $val2, $setting))
-        };
-
-        ($val2:expr, $setting:expr, $type:ident) => {
-            lines2.push(format!("
-            // {}
-            {{
-                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
-                let val = val.first().expect(\"error getting tagged\"); // unwrap
-                let val = val.get_value(); // get the value from the item
-                let val = val.downcast_ref::<{}>().expect(&format!(\"error downcasting for {}\"));
-                
-                self.{} = val.clone(); 
-            }}", $val2, $val2, stringify!($type), $val2, $setting))
-        };
-
-        ($val2:expr, $setting:expr, $type:ident, Slider) => {
-            lines2.push(format!("
-            // {}
-            {{
-                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
-                let val = val.first().expect(\"error getting tagged\"); // unwrap
-                let val = val.get_value(); // get the value from the item
-                let val = val.downcast_ref::<f64>().expect(&format!(\"error downcasting for {}\"));
-                
-                self.{} = (*val) as {}; 
-            }}", $val2, $val2, $val2, $setting, $type))
-        };
-
-        ($val2:expr, $setting:expr, $type:ident, Dropdown) => {
-            lines2.push(format!("
-            // {}
-            {{
-                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
-                let val = val.first().expect(\"error getting tagged\"); // unwrap
-                let val = val.get_value(); // get the value from the item
-                let val = val.downcast_ref::<Option<{}>>().expect(&format!(\"error downcasting for {}\"));
-                
-                if let Some(val) = val {{
-                    self.{} = val.to_owned(); 
-                }}
-            }}", $val2, $val2, $type, $val2, $setting))
-        };
-
-        ($val2:expr, $setting:expr, $type:ident, $override:ident, Dropdown) => {
-            lines2.push(format!("
-            // {}
-            {{
-                let val = list.get_tagged(\"{}\".to_owned()); // get item from list
-                let val = val.first().expect(\"error getting tagged\"); // unwrap
-                let val = val.get_value(); // get the value from the item
-                let val = val.downcast_ref::<Option<{}>>().expect(&format!(\"error downcasting for {}\"));
-                
-                if let Some({}::{}(val)) = val {{
-                    self.{} = val.to_owned(); 
-                }}
-            }}", $val2, $val2, $type, $val2, $type, $override, $setting))
-        };
-    }
+    let mut from_menu_lines = Vec::new();
+    from_menu_lines.push("pub fn from_menu(&mut self, prefix: String, list: &ScrollableArea) {".to_owned());
 
     for setting in settings {
         let text = setting.setting_text.unwrap_or_default();
-        let val = setting.setting_name.clone();
-        let val2 = prefix.clone().map(|s|s+".").unwrap_or_default() + &setting.setting_name;
+        let property = setting.setting_name.clone();
         let mut add = true;
 
         if let Some(category) = setting.category {
-            lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", Color::BLACK, font.clone())));"));
+            get_menu_items_lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", Color::BLACK, font.clone())));"));
         }
 
         // comment what this item is
-        lines.push(format!("\n// {val}"));
+        get_menu_items_lines.push(format!("\n// {property}"));
+        from_menu_lines.push(format!("\n// {property}"));
 
         match setting.setting_type {
             // checkbox
             SettingsType::Bool => {
                 let w = float(setting.width.unwrap_or(600.0));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = Checkbox::new(p, {size}, \"{text}\", self.{val}, font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = Checkbox::new(p, {size}, \"{text}\", self.{property}, font.clone());"));
 
-                thingy!(val2, val, bool);
+                from_menu_lines.push(format!("
+                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                    let val = val.downcast_ref::<bool>().expect(&format!(\"error downcasting for {property}\"));
+                    
+                    self.{property} = val.clone(); 
+                }}"))
             }
 
             // slider
@@ -255,9 +170,14 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 };
 
                 // TODO: snapping?
-                lines.push(format!("let mut i = Slider::new(p, {size}, \"{text}\", self.{val} as f64, {range}, None, font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = Slider::new(p, {size}, \"{text}\", self.{property} as f64, {range}, None, font.clone());"));
 
-                thingy!(val2, val, t, Slider);
+                from_menu_lines.push(format!("
+                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                    let val = val.downcast_ref::<f64>().expect(&format!(\"error downcasting for {property}\"));
+                    
+                    self.{property} = (*val) as {t}; 
+                }}"))
             }
 
             // text input
@@ -265,31 +185,46 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
                 
-                lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{val}, font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{property}, font.clone());"));
                     
                 if setting.password_input == Some(true) {
-                    lines.push("i.is_password = true;".to_owned());
+                    get_menu_items_lines.push("i.is_password = true;".to_owned());
                 }
 
-                thingy!(val2, val, String);
+                from_menu_lines.push(format!("
+                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                    let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for {property}\"));
+                    self.{property} = val.clone(); 
+                }}"))
             }
 
             // color input
             SettingsType::Color => {
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
-                
-                lines.push(format!("let s:String = self.{val}.into(); let mut i = TextInput::new(p, {size}, \"{text}\", &s, font.clone());"));
+                get_menu_items_lines.push(format!("let s:String = self.{property}.into(); let mut i = TextInput::new(p, {size}, \"{text}\", &s, font.clone());"));
 
-                thingy!(val2, val, Color);
+                from_menu_lines.push(format!("
+                {{
+                    let val = list.get_tagged(prefix.clone() + \"{property}\"); // get item from list
+                    let val = val.first().expect(\"error getting tagged\"); // unwrap
+                    let val = val.get_value(); // get the value from the item
+                    let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for Color (String)\"));
+                    
+                    self.{property} = val.clone().into(); 
+                }}"));
             }
             // 
             SettingsType::Key => {
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{val}, \"{text}\", font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{property}, \"{text}\", font.clone());"));
 
-                thingy!(val2, val, Key);
+                from_menu_lines.push(format!("
+                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                    let val = val.downcast_ref::<Key>().expect(&format!(\"error downcasting for {property}\"));
+                    self.{property} = val.clone(); 
+                }}"))
             }
 
             // dropdown menu (obviously)
@@ -298,38 +233,51 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 let font_size = "20.0";
             
                 let e = if let Some(s) = setting.dropdown_value.clone() {
-                    format!("{enum_name}::{s}(self.{val}.clone())")
+                    format!("{enum_name}::{s}(self.{property}.clone())")
                 } else {
-                    format!("self.{val}.clone()")
+                    format!("self.{property}.clone()")
                 };
 
-                lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(p, {width}, {font_size}, \"{text}\", Some({e}), font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(p, {width}, {font_size}, \"{text}\", Some({e}), font.clone());"));
 
                 if let Some(override_) = setting.dropdown_value {
-                    thingy!(val2, val, enum_name, override_, Dropdown);
+                    from_menu_lines.push(format!("
+                    if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                        let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
+                        
+                        if let Some({enum_name}::{override_}(val)) = val {{
+                            self.{property} = val.to_owned(); 
+                        }}
+                    }}"))
                 } else {
-                    thingy!(val2, val, enum_name, Dropdown);
+                    from_menu_lines.push(format!("
+                    if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                        let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
+                        
+                        if let Some(val) = val {{
+                            self.{property} = val.to_owned(); 
+                        }}
+                    }}"))
                 }
             }
 
             // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
-                lines.push(format!("list.extend(self.{val}.get_menu_items(p, sender.clone()));"));
+                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(p, prefix.clone(), sender.clone()));"));
                 add = false;
 
-                lines2.push(format!("\n// {val2}"));
-                lines2.push(format!("self.{val}.from_menu(list);"));
+                from_menu_lines.push(format!("self.{property}.from_menu(prefix.clone(), list);"));
             }
 
             // button that performs an action
             SettingsType::Button => {
                 let w = float(setting.width.unwrap_or(600.0));
                 let size = format!("Vector2::new({w}, 50.0)");
-                lines.push(format!("let mut i = MenuButton::new(p, {size}, \"{text}\", font.clone());"));
+                get_menu_items_lines.push(format!("let mut i = MenuButton::new(p, {size}, \"{text}\", font.clone());"));
                 if let Some(action) = setting.action {
-                    lines.push(format!("i.on_click = Arc::new({action});"));
+                    get_menu_items_lines.push(format!("i.on_click = Arc::new({action});"));
                 }
-                lines.push(format!("list.push(Box::new(i));"));
+                get_menu_items_lines.push(format!("list.push(Box::new(i));"));
 
                 add = false;
             }
@@ -340,27 +288,27 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         }
 
         if add {
-            lines.push(format!("i.set_tag(\"{val2}\");"));
+            get_menu_items_lines.push(format!("i.set_tag(&(prefix.clone() + \"{property}\"));"));
 
-            lines.push(format!("let c = sender.clone();"));
-            lines.push(format!("i.on_change = Arc::new(move|_,_|{{c.send(()).unwrap()}});"));
+            get_menu_items_lines.push(format!("let c = sender.clone();"));
+            get_menu_items_lines.push(format!("i.on_change = Arc::new(move|_,_|{{c.send(()).unwrap()}});"));
 
-            lines.push(format!("list.push(Box::new(i));"));
+            get_menu_items_lines.push(format!("list.push(Box::new(i));"));
         }
     }
 
-    lines.push("list".to_owned());
-    lines.push("}".to_owned());
+    get_menu_items_lines.push("list".to_owned());
+    get_menu_items_lines.push("}".to_owned());
 
-    lines2.push("}".to_owned());
-    lines.extend(lines2);
+    from_menu_lines.push("}".to_owned());
+    get_menu_items_lines.extend(from_menu_lines);
 
-    lines.push("}".to_owned());
+    get_menu_items_lines.push("}".to_owned());
 
-    let all_lines = lines.join("\n");
+    let all_lines = get_menu_items_lines.join("\n");
 
     #[cfg(feature="extra_debugging")] {
-        std::fs::create_dir_all("./debug");
+        std::fs::create_dir_all("./debug").unwrap();
         std::fs::write(format!("./debug/{struct_name}.rs", ), &all_lines).unwrap();
     }
 

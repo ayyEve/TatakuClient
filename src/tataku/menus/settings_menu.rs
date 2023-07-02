@@ -32,7 +32,7 @@ impl SettingsMenu {
         let search_text = TextInput::new(p + Vector2::with_y(SCROLLABLE_YOFFSET + 5.0), Vector2::new(WIDTH - SECTION_XOFFSET, SEARCH_HEIGHT), "Search", "", font.clone());
         let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET + SEARCH_HEIGHT + 10.0), Vector2::new(WIDTH + SECTION_XOFFSET+1.0, window_size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)), true);
         
-        let items = settings.get_menu_items(p, Arc::new(sender));
+        let items = settings.get_menu_items(p, String::new(), Arc::new(sender));
         for i in items {
             scroll_area.add_item(i);
         }
@@ -70,7 +70,7 @@ impl SettingsMenu {
         self.scroll_area.rejoin_items();
 
         // update settings
-        settings.from_menu(&self.scroll_area);
+        settings.from_menu(String::new(), &self.scroll_area);
 
         // reapply filter
         self.apply_filter(false);
