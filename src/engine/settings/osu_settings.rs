@@ -4,7 +4,7 @@ use tataku_client_proc_macros::Settings;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[derive(Settings)]
-pub struct StandardSettings {
+pub struct OsuSettings {
     // input
     #[Setting(text="Osu Key 1")]
     pub left_key: Key,
@@ -61,12 +61,12 @@ pub struct StandardSettings {
     #[Setting(text="Playfield Alpha", min=0.0, max=1.0)]
     pub playfield_alpha: f32,
 }
-impl StandardSettings {
+impl OsuSettings {
     pub fn get_playfield(&self) -> (f32, Vector2) {
         (self.playfield_scale, Vector2::new(self.playfield_x_offset, self.playfield_y_offset))
     }
 }
-impl Default for StandardSettings {
+impl Default for OsuSettings {
     fn default() -> Self {
         Self {
             // keys

@@ -36,8 +36,9 @@ pub struct Settings {
     pub osu_api_key: String,
     
     // game settings
+    #[serde(alias="standard_settings")]
     #[Subsetting(category="Osu Settings")]
-    pub standard_settings: StandardSettings,
+    pub osu_settings: OsuSettings,
     #[Subsetting(category="Taiko Settings")]
     pub taiko_settings: TaikoSettings,
     // #[Subsetting(category="Catch Settings")]
@@ -215,7 +216,7 @@ impl Default for Settings {
 
             // game settings
             logging_settings: LoggingSettings::new(),
-            standard_settings: StandardSettings::default(),
+            osu_settings: OsuSettings::default(),
             taiko_settings: TaikoSettings::default(),
             catch_settings: CatchSettings::default(),
             mania_settings: ManiaSettings::default(),
@@ -298,4 +299,3 @@ async fn backup_settings() {
         // }
     }
 }
-

@@ -125,7 +125,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
     bool_rev!("IgnoreBeatmapSamples", beatmap_hitsounds);
     // bool_rev!("IgnoreBeatmapSkins", beatmap_skins);
     string_lower!("LastPlayMode", last_played_mode);
-    bool!("MouseDisableButtons", standard_settings, ignore_mouse_buttons);
+    bool!("MouseDisableButtons", osu_settings, ignore_mouse_buttons);
     num!("Offset", global_offset, f32);
     if let Some((width, height)) = num!("Width", f32).zip(num!("Height", f32)) {
         settings.window_size = [width, height] 
@@ -156,8 +156,8 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
         }
     }
     
-    key!("keyOsuLeft", standard_settings, left_key);
-    key!("keyOsuRight", standard_settings, right_key);
+    key!("keyOsuLeft", osu_settings, left_key);
+    key!("keyOsuRight", osu_settings, right_key);
     // key!("keyOsuSmoke", standard_settings, smoke_key);
 
     key!("keyTaikoOuterLeft", taiko_settings, left_kat);

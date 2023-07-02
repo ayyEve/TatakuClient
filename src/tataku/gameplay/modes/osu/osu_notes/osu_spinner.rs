@@ -331,7 +331,7 @@ impl OsuHitObject for OsuSpinner {
         ) * self.scaling_helper.scale * 20.0
     }
 
-    async fn set_settings(&mut self, _settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, _settings: Arc<OsuSettings>) {
         // self.standard_settings = settings;
     }
 

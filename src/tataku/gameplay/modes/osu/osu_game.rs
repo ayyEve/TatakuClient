@@ -32,7 +32,7 @@ pub struct OsuGame {
     stack_leniency: f32,
 
     /// cached settings, saves on locking
-    game_settings: Arc<StandardSettings>,
+    game_settings: Arc<OsuSettings>,
 
     /// autoplay helper
     auto_helper: StandardAutoHelper,
@@ -152,7 +152,7 @@ impl OsuGame {
     }
 
     
-    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &StandardSettings, manager: &mut IngameManager) {
+    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut IngameManager) {
         if !hit_value.should_draw() { return }
 
         let color = hit_value.color();
@@ -208,7 +208,7 @@ impl GameMode for OsuGame {
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let settings = Settings::get().standard_settings.clone();
+        let settings = Settings::get().osu_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
@@ -847,7 +847,7 @@ impl GameMode for OsuGame {
     }
     
     async fn force_update_settings(&mut self, settings: &Settings) {
-        let settings = settings.standard_settings.clone();
+        let settings = settings.osu_settings.clone();
         let settings = Arc::new(settings);
 
         if self.game_settings == settings { return }
@@ -1075,7 +1075,7 @@ impl GameModeInput for OsuGame {
         
         if let Some((original, mouse_start)) = self.move_playfield {
             {
-                let settings = &mut Settings::get_mut().standard_settings;
+                let settings = &mut Settings::get_mut().osu_settings;
                 let mut change = original + (pos - mouse_start);
 
                 // check playfield snapping
@@ -1142,7 +1142,7 @@ impl GameModeInput for OsuGame {
     async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayFrame> {
         if self.move_playfield.is_some() {
             {
-                let settings = &mut Settings::get_mut().standard_settings;
+                let settings = &mut Settings::get_mut().osu_settings;
                 settings.playfield_scale += delta / 40.0;
             }
 

@@ -33,7 +33,7 @@ pub struct OsuNote {
     mouse_pos: Vector2,
 
     /// cached settings for this game
-    standard_settings: Arc<StandardSettings>,
+    standard_settings: Arc<OsuSettings>,
     /// list of shapes to be drawn
     shapes: Vec<TransformGroup>,
 
@@ -43,7 +43,7 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<StandardSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -217,7 +217,7 @@ impl OsuHitObject for OsuNote {
 
     
 
-    async fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         self.standard_settings = settings;
     }
 

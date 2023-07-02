@@ -39,14 +39,14 @@ pub struct ScalingHelper {
 }
 impl ScalingHelper {
     pub async fn new(cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
-        let settings = Settings::get().standard_settings.clone();
+        let settings = Settings::get().osu_settings.clone();
         Self::new_with_settings(&settings, cs, window_size, flip_vertical)
     }
-    pub fn new_with_settings(settings: &StandardSettings, cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
+    pub fn new_with_settings(settings: &OsuSettings, cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
         let (scale, offset) = settings.get_playfield();
         Self::new_offset_scale(cs, window_size, offset, scale, flip_vertical)
     }
-    pub fn new_with_settings_custom_size(settings: &StandardSettings, cs:f32, window_size: Vector2, flip_vertical: bool, size: Vector2) -> Self {
+    pub fn new_with_settings_custom_size(settings: &OsuSettings, cs:f32, window_size: Vector2, flip_vertical: bool, size: Vector2) -> Self {
         let (scale, offset) = settings.get_playfield();
         Self::new_offset_scale_custom_size(cs, window_size, offset, scale, flip_vertical, size)
     }

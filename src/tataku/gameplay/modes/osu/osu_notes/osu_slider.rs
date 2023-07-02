@@ -76,7 +76,7 @@ pub struct OsuSlider {
     slider_ball_pos: Vector2,
 
     /// cached settings for this game
-    standard_settings: Arc<StandardSettings>,
+    standard_settings: Arc<OsuSettings>,
     /// list of shapes to be drawn
     shapes: Vec<TransformGroup>,
 
@@ -96,7 +96,7 @@ pub struct OsuSlider {
     sliderdot_hitsound: Hitsound
 }
 impl OsuSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<StandardSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
         
@@ -826,7 +826,7 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    async fn set_settings(&mut self, settings: Arc<StandardSettings>) {
+    async fn set_settings(&mut self, settings: Arc<OsuSettings>) {
         let old_body_alpha = self.standard_settings.slider_body_alpha;
         let old_border_alpha = self.standard_settings.slider_border_alpha;
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
