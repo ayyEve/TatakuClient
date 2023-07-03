@@ -23,6 +23,7 @@ pub struct DiffCalcSummary {
     pub strains: HashMap<String, Vec<f32>>
 }
 impl DiffCalcSummary {
+    #[allow(unused)]
     pub fn save(&self, path: impl AsRef<Path>) -> TatakuResult {
         std::fs::write(path, serde_json::to_string_pretty(self)?)?;
         Ok(())
