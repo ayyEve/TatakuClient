@@ -18,7 +18,7 @@ impl AudioApi for BassAudio {
     }
 
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
-        let channel = SampleChannel::load_from_memory(data, 0i32, 32)?;
+        let channel = SampleChannel::load_from_memory(data, 0i32, 64)?;
         Ok(Arc::new(SampleChannelInstance(channel)))
     }
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
