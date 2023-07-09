@@ -263,10 +263,10 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
-                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(p, prefix.clone(), sender.clone()));"));
+                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(p, \"{property}\".to_owned() + &prefix, sender.clone()));"));
                 add = false;
 
-                from_menu_lines.push(format!("self.{property}.from_menu(prefix.clone(), list);"));
+                from_menu_lines.push(format!("self.{property}.from_menu(\"{property}\".to_owned() + &prefix, list);"));
             }
 
             // button that performs an action
