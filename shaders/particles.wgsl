@@ -18,7 +18,7 @@ struct ParticleData {
     particle_index: u32,
 }
 
-struct EmittorInfo {
+struct EmitterInfo {
     scale_start: f32,
     scale_end: f32,
 
@@ -36,7 +36,7 @@ struct RunInfo {
     dt: f32,
 }
 
-@group(0) @binding(0) var<uniform> emittor_info: array<EmittorInfo, 300>;
+@group(0) @binding(0) var<uniform> emitter_info: array<EmitterInfo, 300>;
 @group(0) @binding(1) var<storage, read_write> particles: array<ParticleData, 300>;
 @group(0) @binding(2) var<uniform> run_info: RunInfo;
 
@@ -56,7 +56,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let amount = 1.0 - (particles[i].lifetime / particles[i].life_max);
 
     // get info
-    var info = emittor_info[particles[i].info_index];
+    var info = emitter_info[particles[i].info_index];
 
     if info.scale_start != 0.0 || info.scale_end != 0.0 {
         particles[i].scale = lerp(info.scale_start, info.scale_end, amount);
