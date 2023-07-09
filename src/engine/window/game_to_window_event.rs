@@ -13,6 +13,8 @@ pub enum Game2WindowEvent {
     LoadImage(LoadImage),
 
     RefreshMonitors,
+
+    AddEmitter(EmitterRef)
 }
 
 pub enum LoadImage {

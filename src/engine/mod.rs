@@ -1,4 +1,5 @@
 mod io;
+mod data;
 mod math;
 mod audio;
 mod input;
@@ -10,6 +11,7 @@ mod graphics;
 mod settings;
 
 pub use io::*;
+pub use data::*;
 pub use math::*;
 pub use audio::*;
 pub use input::*;

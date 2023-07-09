@@ -64,6 +64,9 @@ pub struct CursorManager {
 
     ripples: Vec<TransformGroup>,
     time: Instant,
+
+    left_emitter: Emitter,
+    right_emitter: Emitter,
 }
 
 impl CursorManager {
@@ -82,6 +85,23 @@ impl CursorManager {
 
         let (sender, event_receiver) = channel(1000);
         CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
+
+        let a = PI / 4.0;
+        let tex = SkinManager::get_texture("star", true).await.map(|t|t.tex).unwrap_or_default();
+        let builder = EmitterBuilder::new()
+            .spawn_delay(20.0)
+            .angle(EmitterVal::init_only(-a..a))
+            .speed(EmitterVal::init_only(0.1..0.5))
+            .scale(EmitterVal::init_only(0.3..0.6))
+            .life(100.0..300.0)
+            .opacity(EmitterVal::new(1.0..1.0, 1.0..0.0))
+            .rotation(EmitterVal::new(0.0..0.0, 0.0001..0.0002))
+            .should_emit(false)
+            .color(Color::WHITE)
+            .image(tex);
+
+        let right_emitter = builder.clone().build(0.0);
+        let left_emitter = builder.angle(EmitterVal::init_only(-a-PI..a-PI)).build(0.0);
 
         let settings = SettingsHelper::new();
         Self {
@@ -116,7 +136,10 @@ impl CursorManager {
             settings,
 
             ripples: Vec::new(),
-            time: Instant::now()
+            time: Instant::now(),
+
+            left_emitter,
+            right_emitter,
         }
     }
 
@@ -137,6 +160,11 @@ impl CursorManager {
         self.trail_fadeout_timer_duration = trail_fadeout_timer_duration;
 
         self.cursor_rotation = 0.0;
+
+        
+        let star = SkinManager::get_texture("star", true).await.expect("no star image");
+        self.left_emitter.image = star.tex;
+        self.right_emitter.image = star.tex;
     }
 
 
@@ -153,6 +181,11 @@ impl CursorManager {
             self.pos = cursor_pos;
         }
 
+        self.left_emitter.position = self.pos;
+        self.right_emitter.position = self.pos;
+        self.left_emitter.update(time);
+        self.right_emitter.update(time);
+
         // work through the event queue
         while let Ok(event) = self.event_receiver.try_recv() {
             match event {
@@ -162,6 +195,7 @@ impl CursorManager {
                 CursorEvent::SetLeftDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.left_pressed = down;
+                        self.left_emitter.should_emit = down;
                         if down && self.settings.cursor_ripples {
                             self.add_ripple()
                         }
@@ -170,6 +204,7 @@ impl CursorManager {
                 CursorEvent::SetRightDown(down, is_gamemode) => {
                     if is_gamemode || (!is_gamemode && !self.show_system_cursor) {
                         self.right_pressed = down;
+                        self.right_emitter.should_emit = down;
                         if down && self.settings.cursor_ripples {
                             self.add_ripple()
                         }
@@ -285,6 +320,9 @@ impl CursorManager {
                 list.push(i.clone())
             }
         }
+
+        self.left_emitter.draw(list);
+        self.right_emitter.draw(list);
         
 
         // draw cursor itself

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use lyon_tessellation::{geom::{Box2D, Point}, path::builder::BorderRadii};
-use wgpu::{BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d, TextureViewDescriptor};
+use wgpu::{ BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d, TextureViewDescriptor };
 
 // the sum of these two must not go past 16
 const LAYER_COUNT:u32 = 2;
@@ -25,10 +25,10 @@ pub struct GraphicsState {
     queued_buffers: Vec<RenderBuffer>,
     recording_buffer: Option<RenderBuffer>,
     
-    //The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
+    // The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
     cpu_vtx: Vec<Vertex>,
     cpu_idx: Vec<u32>,
-    cpu_scissor: Vec<[f32;4]>,
+    cpu_scissor: Vec<[f32; 4]>,
 
 
     // texture_bind_group: wgpu::BindGroup,
@@ -41,10 +41,11 @@ pub struct GraphicsState {
 
     atlas: Atlas,
     render_target_atlas: Atlas,
-
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static>>
+    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static>>,
+
+    particle_system: ParticleSystem,
 }
 impl GraphicsState {
     // Creating some of the wgpu types requires async code
@@ -106,6 +107,7 @@ impl GraphicsState {
             #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader_with_tex_array.wgsl").into()),
             #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader.wgsl").into()),
         });
+        
         
         #[cfg(feature="texture_arrays")]
         let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -252,6 +254,7 @@ impl GraphicsState {
             push_constant_ranges: &[],
         });
 
+
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
@@ -348,6 +351,8 @@ impl GraphicsState {
         let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
         let render_target_atlas = Atlas::new(atlas_size, atlas_size, RENDER_TARGET_LAYERS);
 
+        let particle_system = ParticleSystem::new(&device);
+
         let mut s = Self {
             surface,
             device,
@@ -373,7 +378,8 @@ impl GraphicsState {
             projection_matrix_bind_group,
             scissor_buffer_layout,
             // texture_bind_group_layout
-            screenshot_pending: None
+            screenshot_pending: None,
+            particle_system,
         };
         s.create_render_buffer();
         s
@@ -1273,13 +1279,20 @@ impl GraphicsState {
         reserved.copy_in(&mut vertices, &mut indices);
     }
 }
+// particle stuff 
+impl GraphicsState {
+    pub fn add_emitter(&mut self, emitter: EmitterRef) {
+        self.particle_system.add(emitter);
+    }
 
+    pub fn update_emitters(&mut self) {
+        self.particle_system.update(&self.device, &self.queue);
+    }
+}
 
 
 pub struct WgpuTexture {
     pub textures: Arc<Vec<(wgpu::Texture, wgpu::TextureView)>>,
-    // texture: wgpu::Texture,
-    // pub texture_view: wgpu::TextureView,
     pub bind_group: wgpu::BindGroup,
 }
 
@@ -1345,6 +1358,16 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
 
 }
 
+/// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
+fn align(num: u32) -> u32 {
+    let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+
+    if m == 0 {
+        num
+    } else {
+        num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
+    }
+}
 
 #[allow(unused)]
 #[tokio::test]
@@ -1474,16 +1497,4 @@ async fn test() {
         _ => {}
     });
 
-}
-
-
-/// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
-fn align(num: u32) -> u32 {
-    let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-
-    if m == 0 {
-        num
-    } else {
-        num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
-    }
 }

@@ -221,8 +221,13 @@ impl GameWindow {
                 
                 Event::RedrawRequested(_) => {
                     self.render();
+
+                    // we want this to run after the game has been rendered so it doesnt interfere with the render latency
+                    self.graphics.update_emitters();
+
                     return;
                 }
+
                 _ => return
             };
 
@@ -291,11 +296,13 @@ impl GameWindow {
 
                 Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
                 Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
+
+                Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
             }
         }
 
         // increment input frametime stuff
-        let frametime = (self.input_timer.duration_and_reset() * 100.0).floor() as u32;
+        let frametime = (self.input_timer.elapsed_and_reset() * 100.0).floor() as u32;
         INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
         INPUT_COUNT.fetch_add(1, SeqCst);
 
@@ -385,14 +392,12 @@ impl GameWindow {
 
     pub fn render(&mut self) {
         let inner_size = self.window.inner_size();
-        if inner_size.width == 0 || inner_size.height == 0 {
-            return
-        }
+        if inner_size.width == 0 || inner_size.height == 0 { return }
 
         let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
         let data = self.render_event_receiver.read();
 
-        let frametime = (self.frametime_timer.duration_and_reset() * 100.0).floor() as u32;
+        let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
         RENDER_COUNT.fetch_add(1, SeqCst);
 

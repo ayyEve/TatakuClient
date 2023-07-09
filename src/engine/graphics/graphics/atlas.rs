@@ -15,22 +15,12 @@ pub struct Atlas {
 impl Atlas {
     pub fn new(width: u32, height: u32, layers: u32) -> Self {
         let allocators =  (0..layers).map(|_|AtlasAllocator::new(size2(width as i32, height as i32))).collect();
-
-        let empty_tex = TextureReference {
-            id: AllocId::deserialize(0),
-            x: 0,
-            y: 0,
-            layer: 0,
-            width: 0,
-            height: 0,
-            uvs: Uvs::new(0,0,0,0,1,1),
-        };
         
         Self {
             available_width: width,
             available_height: height,
             allocators,
-            empty_tex
+            empty_tex: TextureReference::empty(),
         }
     }
 
@@ -85,6 +75,24 @@ impl AtlasData {
 
     pub fn is_empty(&self) -> bool {
         self.width == 0 || self.height == 0
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            id: AllocId::deserialize(0),
+            x: 0,
+            y: 0,
+            layer: 0,
+            width: 0,
+            height: 0,
+            uvs: Uvs::new(0,0,0,0,1,1),
+        }
+    }
+
+}
+impl Default for AtlasData {
+    fn default() -> Self {
+        Self::empty()
     }
 }
 
