@@ -31,7 +31,7 @@ pub struct OsuGame {
     cs: f32,
     stack_leniency: f32,
 
-    /// cached settings, saves on locking
+    /// cached settings
     game_settings: Arc<OsuSettings>,
 
     /// autoplay helper
@@ -45,13 +45,13 @@ pub struct OsuGame {
     end_time: f32,
 
     follow_point_image: Option<Image>,
-    
     judgment_helper: JudgmentImageHelper,
 
     metadata: Arc<BeatmapMeta>,
     mods: Arc<ModManager>,
+    timing_points: Vec<TimingPoint>,
 
-    timing_points: Vec<TimingPoint>
+    smoke_emitter: Option<Emitter>
 }
 impl OsuGame {
     async fn playfield_changed(&mut self) {
@@ -267,6 +267,7 @@ impl GameMode for OsuGame {
                     metadata,
                     mods,
                     timing_points: map.get_timing_points(),
+                    smoke_emitter: None
                 };
                 
                 // join notes and sliders into a single array
@@ -414,6 +415,7 @@ impl GameMode for OsuGame {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
             KeyPress::Right,
+            KeyPress::Dash,
             KeyPress::LeftMouse,
             KeyPress::RightMouse,
         ];
@@ -425,6 +427,10 @@ impl GameMode for OsuGame {
                 match key {
                     KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(true, true),
                     KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(true, true),
+                    KeyPress::Dash => {
+                        self.smoke_emitter.iter_mut().for_each(|i|i.should_emit = true);
+                        return;
+                    }
                     _ => {}
                 }
 
@@ -483,6 +489,10 @@ impl GameMode for OsuGame {
                 match key {
                     KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(false, true),
                     KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(false, true),
+                    KeyPress::Dash => {
+                        self.smoke_emitter.ok_do_mut(|i|i.should_emit = false);
+                        return;
+                    }
                     _ => {}
                 }
 
@@ -503,6 +513,7 @@ impl GameMode for OsuGame {
                 // scale the coords from playfield to window
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
+                self.smoke_emitter.ok_do_mut(|i|i.position = pos);
 
                 for note in self.notes.iter_mut() {
                     note.mouse_move(pos);
@@ -521,7 +532,6 @@ impl GameMode for OsuGame {
 
         // do autoplay things
         if has_autoplay {
-
             self.auto_helper.update(time, &self.notes, &self.scaling_helper, &mut pending_frames);
 
             // // handle presses and mouse movements now, and releases later
@@ -529,6 +539,9 @@ impl GameMode for OsuGame {
             //     self.handle_replay_frame(*frame, time, manager).await;
             // }
         }
+
+        // update emitter
+        self.smoke_emitter.ok_do_mut(|e|e.update(time));
 
 
 
@@ -781,13 +794,12 @@ impl GameMode for OsuGame {
             }
         }
 
-        // if this is a replay, we need to draw the replay curser
+        // if this is a replay, we need to move the replay curser
         if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
             CursorManager::set_pos(self.mouse_pos)
         }
 
         // draw notes
-
         let mut spinners = Vec::new();
         for note in self.notes.iter_mut().rev() {
             match note.note_type() {
@@ -802,6 +814,8 @@ impl GameMode for OsuGame {
             i.draw(list).await
         }
 
+        // need to draw the smoke particles on top of everything
+        self.smoke_emitter.ok_do(|e|e.draw(list));
     }
 
     
@@ -815,6 +829,9 @@ impl GameMode for OsuGame {
             note.set_hitwindow_miss(hwm);
             // note.set_ar(ar)
         }
+
+        // reset the smoke particles
+        self.smoke_emitter.ok_do_mut(|e|e.reset(0.0));
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
@@ -863,6 +880,26 @@ impl GameMode for OsuGame {
 
         for n in self.notes.iter_mut() {
             n.reload_skin().await;
+        }
+
+        let smoke = SkinManager::get_texture("cursor-smoke", true).await.map(|i|i.tex).unwrap_or_default();
+        if let Some(emitter) = &mut self.smoke_emitter {
+            emitter.image = smoke;
+        } else {
+            // create the emitter
+            let emitter = EmitterBuilder::new()
+                .should_emit(false)
+                .spawn_delay(10.0)
+                .life(500.0..2000.0)
+                .image(smoke)
+                .scale(EmitterVal::init_only(0.8..1.5))
+                .opacity(EmitterVal::new(1.0..1.0, 1.0..0.0))
+                .rotation(EmitterVal::init_only(0.0..PI*2.0))
+                .color(Color::WHITE)
+
+                .build(0.0);
+
+            self.smoke_emitter = Some(emitter);
         }
     }
 
@@ -1040,6 +1077,8 @@ impl GameModeInput for OsuGame {
             Some(ReplayFrame::Press(KeyPress::Left))
         } else if key == self.game_settings.right_key {
             Some(ReplayFrame::Press(KeyPress::Right))
+        } else if key == self.game_settings.smoke_key {
+            Some(ReplayFrame::Press(KeyPress::Dash))
         } else {
             None
         }
@@ -1059,6 +1098,8 @@ impl GameModeInput for OsuGame {
             Some(ReplayFrame::Release(KeyPress::Left))
         } else if key == self.game_settings.right_key {
             Some(ReplayFrame::Release(KeyPress::Right))
+        } else if key == self.game_settings.smoke_key {
+            Some(ReplayFrame::Release(KeyPress::Dash))
         } else {
             None
         }

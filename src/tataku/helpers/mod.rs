@@ -135,7 +135,19 @@ impl<T:Copy+Default> CopyDefault<T> for Option<&T> {
     }
 }
 
-
+/// helper trait so i dont need to if let Some(v) = v {v.thing()}
+pub trait OkDo<T> {
+    fn ok_do(&self, f: impl FnOnce(&T));
+    fn ok_do_mut(&mut self, f: impl FnOnce(&mut T));
+}
+impl<T> OkDo<T> for Option<T> {
+    fn ok_do(&self, f: impl FnOnce(&T)) {
+        if let Some(s) = self { f(s) }
+    }
+    fn ok_do_mut(&mut self, f: impl FnOnce(&mut T)) {
+        if let Some(s) = self { f(s) }
+    }
+}
 
 
 #[macro_export]

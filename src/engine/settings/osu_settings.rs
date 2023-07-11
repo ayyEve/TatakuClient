@@ -10,6 +10,9 @@ pub struct OsuSettings {
     pub left_key: Key,
     #[Setting(text="Osu Key 2")]
     pub right_key: Key,
+    #[Setting(text="Osu Smoke Key")]
+    pub smoke_key: Key,
+
     #[Setting(text="Ignore Mouse Buttons")]
     pub ignore_mouse_buttons: bool,
 
@@ -72,6 +75,7 @@ impl Default for OsuSettings {
             // keys
             left_key: Key::S,
             right_key: Key::D,
+            smoke_key: Key::A,
             ignore_mouse_buttons: false,
             manual_input_with_relax: false,
 

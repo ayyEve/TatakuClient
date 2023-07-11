@@ -118,6 +118,12 @@ impl Emitter {
             list.push(image);
         }
     }
+
+    /// sets all used particles to unused
+    pub fn reset(&mut self, time: f32) {
+        self.pool.write().clear();
+        self.last_time = time;
+    }
 }
 
 #[derive(Clone, Debug, Default)]
