@@ -129,7 +129,7 @@ impl IngameManager {
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
-        let common_game_settings = Arc::new(settings.common_game_settings.clone().init());
+        let common_game_settings = Arc::new(settings.common_game_settings.clone());
 
         let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.get_speed();

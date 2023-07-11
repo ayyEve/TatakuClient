@@ -835,12 +835,11 @@ impl GameMode for OsuGame {
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
-        if self.notes.len() == 0 {return}
+        if self.notes.len() == 0 { return }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
-        if time < manager.time() {return}
-
-        if time < 0.0 { return }
+        if time < manager.time() || time < 0.0 { return }
+        
         manager.song.set_position(time);
     }
 

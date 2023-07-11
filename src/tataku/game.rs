@@ -489,7 +489,13 @@ impl Game {
         // }
 
         if keys_down.contains(&Key::O) && mods.ctrl {
-            self.add_dialog(Box::new(SettingsMenu::new().await), false);
+            let allow_ingame = self.settings.common_game_settings.allow_ingame_settings;
+            let is_ingame = self.current_state.is_ingame(false, true);
+
+            // im sure theres a way to do this in one statement (without the ||) but i'm tired so too bad
+            if !is_ingame || (is_ingame && allow_ingame) {
+                self.add_dialog(Box::new(SettingsMenu::new().await), false);
+            }
         }
 
         // update any dialogs
@@ -1101,4 +1107,15 @@ pub enum GameState {
 
     Spectating(SpectatorManager), // frames awaiting replay, state, beatmap
     // Multiplaying(MultiplayerState), // wink wink nudge nudge (dont hold your breath)
+}
+impl GameState {
+    /// spec_check means if we're spectator, check the inner game
+    fn is_ingame(&self, spec_check: bool, _multi_check: bool) -> bool {
+        match self {
+            Self::Ingame(_) => true,
+            Self::Spectating(s) if spec_check => s.game_manager.is_some(),
+            
+            _ => false
+        }
+    }
 }
