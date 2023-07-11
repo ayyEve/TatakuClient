@@ -1,32 +1,98 @@
 use crate::prelude::*;
-use tataku_client_proc_macros::Settings;
+const WIDTH:f32 = 600.0;
+const WIDTH2:f32 = 550.0;
+const OFFSET:f32 = 25.0;
+const OFFSET2:f32 = 5.0;
 
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Settings)]
 #[serde(default)]
-#[derive(Settings)]
+#[Setting(get_items="get_key_items", from_menu="keys_from_menu")]
 pub struct ManiaSettings {
     // sv
+    #[Setting(text="Static SV")]
     pub static_sv: bool,
+    #[Setting(text="SV Multiplier", min=0.1, max=10.0)]
     pub sv_multiplier: f32,
 
-    // playfield settings
-    pub playfield_settings: Vec<ManiaPlayfieldSettings>,
-
-    /// col_count [col_num, 0 based]
-    /// ie for 4k, key 2: mania_keys\[3]\[1]
-    pub keys: Vec<Vec<Key>>,
-
     /// how much to change the sv by when a sv change key is pressed
+    #[Setting(text="SV Change Amount", min=0.1, max=10.0)]
     pub sv_change_delta: f32,
 
+    #[Setting(text="Per-Column Judjments")]
     pub judgements_per_column: bool,
     
     /// how far from the hit position should hit indicators be?
+    #[Setting(text="Judgment Offset", min=-200.0, max=200.0)]
     pub judgement_indicator_offset: f32,
     
+    #[Setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
+
+    // playfield settings
+    pub playfield_settings: Vec<ManiaPlayfieldSettings>,
+    
+    /// col_count [col_num, 0 based]
+    /// ie for 4k, key 2: mania_keys\[3]\[1]
+    pub keys: Vec<Vec<Key>>,
 }
+impl ManiaSettings {
+    pub fn get_key_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
+
+        let info = CollapsibleInfo { 
+            header_text: "Key Config".to_string(), 
+            header_text_color: Color::WHITE, 
+            header_text_align: HorizontalAlign::Center, 
+            header_height: 50.0,
+            header_color: Color::GRAY, 
+            header_color_hover: Color::GRAY, 
+            header_border: Some(Border::new(Color::BLACK, 2.0)), 
+            header_border_hover: Some(Border::new(Color::RED, 2.0)), 
+            header_shape: Shape::Round(10.0, 0), 
+            auto_height: true, 
+            first_item_margin: Some(10.0),
+            initially_expanded: false
+        };
+        let mut list = ScrollableArea::new(p, Vector2::new(WIDTH, 0.0), ListMode::Collapsible(info.clone()));
+
+        let size = Vector2::new(WIDTH2 - OFFSET2*2.0, 50.0);
+
+        // add per-key configs
+        for i in 0..self.playfield_settings.len() {
+            let mut info = info.clone();
+            info.header_text = (i+1).to_string() + "K";
+            info.initially_expanded = false;
+            let mut list2 = ScrollableArea::new(Vector2::with_x(OFFSET), Vector2::with_x(WIDTH2), ListMode::Collapsible(info));
+
+            // "<prefix>|<playfield_setting_index>key<key_index>"
+            for (n, key) in self.keys[i].iter().enumerate() {
+                let mut kb = KeyButton::new(Vector2::with_x(OFFSET2), size, *key, "Key ".to_owned() + &(n+1).to_string(), get_font()).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
+                let s = sender.clone();
+                kb.on_change = Arc::new(move |_,_|{let _ = s.send(());});
+                list2.add_item(Box::new(kb));
+            }
+
+            list.add_item(Box::new(list2));
+        }
+
+        vec![Box::new(list)]
+    }
+
+    pub fn keys_from_menu(&mut self, prefix: String, list: &ScrollableArea) {
+        // load per-key configs
+        for i in 0..self.playfield_settings.len() {
+            // "<prefix>|<playfield_setting_index>key<key_index>"
+
+            for (n, key) in self.keys[i].iter_mut().enumerate() {
+                let tag = prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string();
+                if let Some(val) = list.get_tagged(tag).first().map(|i|i.get_value()) {
+                    *key = *val.downcast_ref::<Key>().expect("couldnt downcast key");
+                }
+            }
+        }
+    }
+    
+}
+
 impl Default for ManiaSettings {
     fn default() -> Self {
         Self {

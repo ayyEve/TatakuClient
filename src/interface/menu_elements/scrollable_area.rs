@@ -11,8 +11,13 @@ pub struct ScrollableArea {
 
     pub scroll_pos: f32,
     elements_height: f32,
+
     /// if list mode, item positions will be modified based on how many items there are (ie, a list)
-    list_mode: bool,
+    list_mode: ListMode,
+    /// when in collapsible mode, is the item list visible?
+    expanded: bool,
+    /// indicates if the header is hovererd when in collapsible mode
+    header_hover: bool,
 
     /// how many pixels should be between items when in list mode?
     item_margin: f32,
@@ -39,7 +44,7 @@ pub struct ScrollableArea {
     pub allow_drag_scrolling: bool,
     pub drag_threshold: f32,
 
-    // meh things
+    // scrollable item properties
     pos: Vector2,
     size: Vector2,
     hover: bool,
@@ -47,15 +52,32 @@ pub struct ScrollableArea {
     ui_scale: Vector2,
 }
 impl ScrollableArea {
-    pub fn new(pos: Vector2, size: Vector2, list_mode: bool) -> ScrollableArea {
+    pub fn new(pos: Vector2, mut size: Vector2, list_mode: ListMode) -> ScrollableArea {
+        let mut expanded = false; 
+        let mut elements_height = 0.0;
+        let item_margin = 5.0;
+
+        if let ListMode::Collapsible(info) = &list_mode {
+            expanded = info.initially_expanded;
+            elements_height = info.header_height + info.first_item_margin.unwrap_or(item_margin);
+
+            if info.auto_height {
+                size.y = elements_height;
+            }
+        };
+
+
         ScrollableArea {
             items: Vec::new(),
             original_positions: Vec::new(),
             filtered_out_items: HashMap::new(), 
 
-            scroll_pos: 0.0,
             list_mode,
-            elements_height: 0.0,
+            expanded,
+            header_hover: false,
+
+            scroll_pos: 0.0,
+            elements_height,
 
             dragger: DraggerSide::None,
             dragger_dragging: false,
@@ -64,7 +86,7 @@ impl ScrollableArea {
             size,
             hover: false,
             mouse_pos: Vector2::ONE * -100.0, // just in case lol
-            item_margin: 5.0,
+            item_margin,
             scroll_factor: 16.0,
             dragger_width: 10.0,
 
@@ -85,12 +107,23 @@ impl ScrollableArea {
     pub fn add_item(&mut self, mut item:Box<dyn ScrollableItem>) {
         // immediately update the ui scale for every item being added
         item.ui_scale_changed(self.ui_scale);
+        let margin = match (&self.list_mode, self.items.is_empty()) {
+            (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
+            _ => self.item_margin
+        };
+        
 
-        if self.list_mode {
+        if self.list_mode.is_list() {
             let ipos = item.get_pos();
             self.original_positions.push(ipos);
             item.set_pos(self.pos + Vector2::new(ipos.x, self.elements_height));
-            self.elements_height += item.size().y + self.item_margin * self.ui_scale.y;
+            self.elements_height += item.size().y + margin * self.ui_scale.y;
+        }
+
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            if info.auto_height {
+                self.size.y = self.elements_height;
+            }
         }
 
         self.items.push(item);
@@ -100,26 +133,40 @@ impl ScrollableArea {
         self.elements_height = 0.0;
         self.scroll_pos = 0.0;
     }
-    pub fn get_tagged(&self, tag:String) -> Vec<&Box<dyn ScrollableItem>> {
+    pub fn get_tagged(&self, tag: String) -> Vec<&Box<dyn ScrollableItem>> {
         let mut list = Vec::new();
-        for i in self.items.as_slice() {
-            if i.get_tag() == tag {
-                list.push(i.to_owned());
+        for i in self.items.iter() {
+            if let Some(inner_list) = i.get_inner_tagged(&tag) {
+                list.extend(inner_list.into_iter())
+            } else {
+                if i.get_tag() == tag {
+                    list.push(i);
+                }
             }
         }
 
         list
     }
 
-    /// completely refresh the positions for all items in the list (only effective when in list mode)
+    /// completely refresh the positions for all items in the list (only effective when using a list mode other than None)
     pub fn refresh_layout(&mut self) {
-        if !self.list_mode { return }
+        if !self.list_mode.is_list() { return }
         self.elements_height = 0.0;
+
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            self.elements_height += info.header_height + info.first_item_margin.unwrap_or(self.item_margin);
+        }
 
         for (i, item) in self.items.iter_mut().enumerate() {
             let ipos = self.original_positions[i];
             item.set_pos(self.pos + Vector2::new(ipos.x, self.elements_height));
             self.elements_height += item.size().y + self.item_margin * self.ui_scale.y;
+        }
+
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            if info.auto_height {
+                self.size.y = self.elements_height;
+            }
         }
     }
 
@@ -134,9 +181,14 @@ impl ScrollableArea {
             self.scroll_pos = 0.0;
         } else {
             let mut y = 0.0;
-            for i in self.items.iter() {
+            for (n, i) in self.items.iter().enumerate() {
                 if i.get_selected() { break }
-                y = i.get_pos().y - self.item_margin * self.ui_scale.y * 2.0;
+                let margin = match (&self.list_mode, n==0) {
+                    (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
+                    _ => self.item_margin
+                };
+
+                y = i.get_pos().y - margin * self.ui_scale.y * 2.0;
             }
             self.scroll_pos = -y;
         }
@@ -219,7 +271,19 @@ impl ScrollableArea {
     }
 
     fn on_click_real(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers) -> Option<String> {
-        if !self.hover { return None }
+        if !(self.hover || self.header_hover) { return None }
+
+        if self.list_mode.is_collapsible() {
+            // check that the header was clicked, if it was, toggle expansion
+            if self.header_hover {
+                self.expanded = !self.expanded;
+                return None;
+            }
+
+            // if the header wasnt clicked, and we arent expanded, return false since we werent clicked
+            if !self.expanded { return None; }
+        }
+
 
         // modify pos here
         let pos = pos - Vector2::new(0.0, self.scroll_pos);
@@ -249,7 +313,7 @@ impl ScrollableArea {
             let clicked = item.on_click(pos, button, mods);
             if clicked { clicked_item = Some(item.get_tag()) }
 
-            if !item.get_selectable() {continue}
+            if !item.get_selectable() { continue }
             if clicked {
                 item.set_selected(true);
             } else {
@@ -313,17 +377,31 @@ impl ScrollableArea {
 }
 
 impl ScrollableItemGettersSetters for ScrollableArea {
-    fn size(&self) -> Vector2 {self.size}
+    fn size(&self) -> Vector2 {
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            if !self.expanded {
+                return Vector2::new(self.size.x, info.header_height);
+            }
+        }
+
+        self.size
+    }
     fn set_size(&mut self, new_size: Vector2) {
         self.size = new_size;
         self.refresh_layout();
     }
 
-    fn get_tag(&self) -> String {self.tag.clone()}
-    fn set_tag(&mut self, tag:&str) {self.tag = tag.to_owned()}
+    fn get_tag(&self) -> String { self.tag.clone() }
+    fn set_tag(&mut self, tag:&str) { self.tag = tag.to_owned() }
 
-    fn get_pos(&self) -> Vector2 {self.pos}
-    fn set_pos(&mut self, pos:Vector2) {self.pos = pos}
+    fn get_pos(&self) -> Vector2 { self.pos }
+    fn set_pos(&mut self, pos:Vector2) {
+        self.pos = pos;
+
+        if self.list_mode.is_list() {
+            self.refresh_layout()
+        }
+    }
 
     fn get_selected(&self) -> bool {self.hover}
     fn set_selected(&mut self, selected:bool) {self.hover = selected}
@@ -351,9 +429,8 @@ impl ScrollableItem for ScrollableArea {
     }
 
     // input handlers
-
     fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers) -> bool {
-        if !self.hover { return false }
+        if !(self.hover || self.header_hover) { return false }
 
         let mut was_dragger = false;
 
@@ -448,6 +525,7 @@ impl ScrollableItem for ScrollableArea {
     }
     
     fn on_mouse_move(&mut self, pos:Vector2) {
+        self.hover = pos.x > self.pos.x && pos.x < self.pos.x + self.size.x && pos.y > self.pos.y && pos.y < self.pos.y + self.size.y;
         self.mouse_pos = pos;
 
         if self.dragger_dragging {
@@ -481,7 +559,14 @@ impl ScrollableItem for ScrollableArea {
             }
         }
 
-        self.hover = pos.x > self.pos.x && pos.x < self.pos.x + self.size.x && pos.y > self.pos.y && pos.y < self.pos.y + self.size.y;
+
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            self.header_hover = Rectangle::bounds_only(self.pos, Vector2::new(self.size.x, info.header_height)).contains(pos);
+            self.hover |= self.header_hover;
+
+            if !self.expanded { return }
+        }
+
         if !self.hover { return }
 
         // if !self.hover {return}
@@ -500,35 +585,47 @@ impl ScrollableItem for ScrollableArea {
     }
 
     fn on_scroll(&mut self, delta:f32) -> bool {
+        if self.list_mode.is_collapsible() && !self.expanded { return false; }
+
         if self.hover {
             for item in self.items.iter_mut() {
-                if item.on_scroll(delta) {return true};
+                if item.on_scroll(delta) { return true; }
             }
 
             self.scroll_pos += delta * self.scroll_factor;
 
             let min = -self.elements_height + self.size.y;
             let max = 0.0;
-            self.scroll_pos = if min<=max {self.scroll_pos.clamp(min, max)} else {0.0};
+            self.scroll_pos = if min<=max { self.scroll_pos.clamp(min, max) } else {0.0};
 
             self.on_mouse_move(self.mouse_pos);
+        }
+
+        if let ListMode::Collapsible(info) = &self.list_mode { 
+            return !info.auto_height; 
         }
 
         self.hover
     }
     fn on_key_press(&mut self, key:Key, mods:KeyModifiers) -> bool {
+        if self.list_mode.is_collapsible() && !self.expanded { return false; }
+        
         for item in self.items.iter_mut() {
-            if item.on_key_press(key, mods) {return true};
+            if item.on_key_press(key, mods) { return true; }
         }
         false
     }
     fn on_key_release(&mut self, key:Key) {
+        if self.list_mode.is_collapsible() && !self.expanded { return; }
+        
         for item in self.items.iter_mut() {
             item.on_key_release(key);
         }
     }
     
     fn on_text(&mut self, text:String) {
+        if self.list_mode.is_collapsible() && !self.expanded { return; }
+        
         for item in self.items.iter_mut() {
             item.on_text(text.clone());
         }
@@ -540,77 +637,81 @@ impl ScrollableItem for ScrollableArea {
         }
     }
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
-        let offset = pos_offset + Vector2::new(0.0, self.scroll_pos);
+        // // helpful for debugging positions
+        // if self.hover {
+        //     list.push(Rectangle::new(self.pos, self.size, Color::TRANSPARENT_WHITE,  Some(Border::new(if self.hover{Color::RED} else {Color::BLACK}, 2.0))));
+        //     // mouse
+        //     list.push(Circle::new(self.mouse_pos, 5.0, Color::RED));
+        //     // mouse relative to scroll pos
+        //     list.push(Circle::new(self.mouse_pos + offset, 5.0, Color::BLUE));
+        // }
+        let offset = pos_offset + Vector2::with_y(self.scroll_pos);
+
+        // if this is a collapsible menu, draw the header
+        if let ListMode::Collapsible(info) = &self.list_mode {
+            let mut rect = Rectangle::new(self.pos + offset, Vector2::new(self.size.x, info.header_height), info.header_color, info.header_border);
+            rect.shape = info.header_shape;
+            if self.header_hover {
+                rect.color = info.header_color_hover;
+                rect.border = info.header_border_hover;
+            }
+
+            let mut txt = Text::new(offset, rect.size.y * 0.8, info.header_text.clone(), info.header_text_color, get_font());
+            
+            match info.header_text_align {
+                HorizontalAlign::Center => txt.center_text(&rect),
+                HorizontalAlign::Right => txt.pos.x = rect.pos.x + (rect.size.x - txt.measure_text().x),
+                _ => {}
+            }
+
+            list.push(rect);
+            list.push(txt);
+
+
+            // dont draw any more items if the list isnt expanded
+            if !self.expanded { return }
+        }
+
 
         // setup a clipping context. 
         // this ensures items arent being drawn outside the bounds of the scrollable
-        let scissor = Some([
-            self.pos.x, self.pos.y,
-            self.size.x, self.size.y
-        ]);
-
-        list.do_before_add = Some(Box::new(move|i|i.set_scissor(scissor)));
+        let pos = self.pos + pos_offset;
+        list.push_scissor([ pos.x, pos.y, self.size.x, self.size.y ]);
         for item in self.items.iter_mut() {
             // check if item will even be drawn
             let size = item.size();
-            let pos = item.get_pos();
-            // ignore x for now, just assume its in drawing range
-            if (pos.y + size.y) + offset.y < self.pos.y || pos.y + offset.y > self.pos.y + self.size.y { continue }
+            let item_pos = item.get_pos();
+            if (item_pos.y + size.y) + offset.y < pos.y || item_pos.y + offset.y > pos.y + self.size.y { continue }
 
             // should be good, draw it
             item.draw(offset, list);
         }
-        list.do_before_add = None;
+        list.pop_scissor();
 
-        // // helpful for debugging positions
-        // if self.hover {
-        //     items.push(Box::new(Rectangle::new(Color::TRANSPARENT_WHITE, -10.0, self.pos, self.size, Some(Border::new(if self.hover{Color::RED} else {Color::BLACK}, 2.0)))));
-        //     // mouse
-        //     items.push(Box::new(Circle::new(Color::RED, -10.0, self.mouse_pos, 5.0)));
-        //     // mouse relative to scroll pos
-        //     items.push(Box::new(Circle::new(Color::BLUE, -10.0, self.mouse_pos + offset, 5.0)));
-        // }
 
+        // draw dragger
+        let (x, height) = match self.dragger {
+            DraggerSide::Left(height, _) => (self.pos.x - self.dragger_width, height),
+            DraggerSide::Right(height, _) => (self.pos.x + self.size.x - self.dragger_width, height),
+            _ => return
+        };
+
+        // trackbar
+        list.push(Rectangle::new(
+            Vector2::new(x, self.pos.y),
+            Vector2::new(self.dragger_width, self.size.y),
+            Color::TRANSPARENT_WHITE,
+            Some(Border::new(Color::BLACK, 1.0))
+        ));
+
+        // dragger
+        list.push(Rectangle::new(
+            Vector2::new(x, self.pos.y -(self.scroll_pos / self.elements_height) * self.size.y - height/2.0),
+            Vector2::new(self.dragger_width, height),
+            Color::BLACK,
+            Some(Border::new(Color::BLUE, 1.0))
+        ));
         
-        macro_rules! draw_slider {
-            ($x:expr, $height:expr) => {
-                // trackbar
-                list.push(Rectangle::new(
-                    Vector2::new($x, self.pos.y),
-                    Vector2::new(self.dragger_width, self.size.y),
-                    Color::TRANSPARENT_WHITE,
-                    Some(Border::new(
-                        Color::BLACK,
-                        1.0
-                    ))
-                ));
-
-                // dragger
-                list.push(Rectangle::new(
-                    Vector2::new($x, self.pos.y -(self.scroll_pos / self.elements_height) * self.size.y - $height/2.0),
-                    Vector2::new(self.dragger_width, $height),
-                    Color::BLACK,
-                    Some(Border::new(
-                        Color::BLUE,
-                        1.0
-                    ))
-                ));
-            }
-        }
-
-        match self.dragger {
-            DraggerSide::Left(height, _) => {
-                let x = self.pos.x - self.dragger_width;
-                draw_slider!(x, height);
-            }
-            DraggerSide::Right(height, _) => {
-                let x = self.pos.x + self.size.x - self.dragger_width;
-                draw_slider!(x, height);
-            }
-
-            _ => {}
-        }
-
     }
 }
 
@@ -624,3 +725,86 @@ pub enum DraggerSide {
     Right(f32, bool)
 }
 
+
+
+#[derive(Clone, Default, Debug)]
+pub enum ListMode {
+    #[default]
+    None,
+    /// order elements in a vertical list
+    VerticalList,
+
+    /// items in this list can be hidden or shown by clicking the header
+    /// forces a vertical layout
+    Collapsible(CollapsibleInfo),
+}
+impl ListMode {
+    fn is_list(&self) -> bool {
+        match self {
+            Self::None => false,
+            _ => true,
+        }
+    }
+    fn is_collapsible(&self) -> bool {
+        match self {
+            Self::Collapsible(_) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CollapsibleInfo {
+    /// text for the header
+    pub header_text: String,
+    /// color for header text
+    pub header_text_color: Color,
+    /// should we align the text to the center
+    pub header_text_align: HorizontalAlign,
+    
+    /// header height
+    pub header_height: f32,
+    /// color for header background
+    pub header_color: Color,
+    /// color for header background when hovered
+    pub header_color_hover: Color,
+
+    /// border for header
+    pub header_border: Option<Border>,
+    /// border for header when hovered
+    pub header_border_hover: Option<Border>,
+    /// header shape
+    pub header_shape: Shape,
+
+    /// automatically expand the height to fit all objects in the list
+    /// 
+    /// you'll want this to be false unless this is a sub-element within another list
+    pub auto_height: bool,
+    /// margin between the header and the first element in the list
+    /// if none, uses the list's item margin
+    pub first_item_margin: Option<f32>,
+
+
+    /// should the list be expanded upon creation? (default false)
+    pub initially_expanded: bool,
+}
+impl Default for CollapsibleInfo {
+    fn default() -> Self {
+        Self {
+            header_text: String::new(),
+            header_text_color: Color::BLACK,
+            header_text_align: HorizontalAlign::Left,
+            header_height: 20.0,
+            header_color: Color::GRAY,
+            header_color_hover: Color::GRAY,
+
+            header_border: None,
+            header_border_hover: None,
+            header_shape: Shape::Square,
+
+            auto_height: false,
+            first_item_margin: None,
+            initially_expanded: true,
+        }
+    }
+}

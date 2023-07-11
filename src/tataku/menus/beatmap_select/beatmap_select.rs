@@ -94,7 +94,7 @@ impl BeatmapSelectMenu {
         let mut beatmap_scroll = ScrollableArea::new(
             Vector2::new(window_size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT), 
             Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), 
-            true
+            ListMode::VerticalList
         );
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
         beatmap_scroll.set_item_margin(7.0);
@@ -107,7 +107,7 @@ impl BeatmapSelectMenu {
             back_button: MenuButton::back_button(window_size.0, font.clone()),
 
             beatmap_scroll,
-            leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), true),
+            leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), ListMode::VerticalList),
             search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
 
             mode,

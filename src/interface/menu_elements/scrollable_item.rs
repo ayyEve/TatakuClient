@@ -69,6 +69,8 @@ pub trait ScrollableItem: ScrollableItemGettersSetters {
 
     /// get a list of keywords for this object, primarily used for filtering
     fn get_keywords(&self) -> Vec<String> { Vec::new() }
+
+    fn get_inner_tagged(&self, _tag: &String) -> Option<Vec<&Box<dyn ScrollableItem>>> { None }
 }
 
 /// helper trait for auto code generation
@@ -78,6 +80,10 @@ pub trait ScrollableItemGettersSetters: Send + Sync {
 
     fn get_tag(&self) -> String { String::new() }
     fn set_tag(&mut self, _tag:&str) {}
+    fn with_tag(mut self, tag:impl AsRef<str>) -> Self where Self:Sized {
+        self.set_tag(tag.as_ref());
+        self
+    }
 
     fn get_pos(&self) -> Vector2 { Vector2::ZERO }
     fn set_pos(&mut self, _pos:Vector2) {}

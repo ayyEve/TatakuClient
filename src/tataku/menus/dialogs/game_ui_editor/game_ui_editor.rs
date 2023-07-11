@@ -28,7 +28,7 @@ impl GameUIEditorDialog {
 
         let window_size = WindowSize::get();
 
-        let mut sidebar = ScrollableArea::new(Vector2::ZERO, Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), true);
+        let mut sidebar = ScrollableArea::new(Vector2::ZERO, Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), ListMode::VerticalList);
 
         for i in elements.iter() {
             sidebar.add_item(Box::new(UISideBarElement::new(i.element_name.clone(), i.inner.display_name(), event_sender.clone())));

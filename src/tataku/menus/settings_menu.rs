@@ -22,7 +22,7 @@ pub struct SettingsMenu {
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
         let settings = Settings::get().clone();
-        let p = Vector2::with_x(SECTION_XOFFSET); // scroll area edits the y
+        let p = Vector2::with_x(SECTION_XOFFSET - 10.0); // scroll area edits the y
         let window_size = WindowSize::get();
         let font = get_font();
 
@@ -30,7 +30,7 @@ impl SettingsMenu {
 
         // setup items
         let search_text = TextInput::new(p + Vector2::with_y(SCROLLABLE_YOFFSET + 5.0), Vector2::new(WIDTH - SECTION_XOFFSET, SEARCH_HEIGHT), "Search", "", font.clone());
-        let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET + SEARCH_HEIGHT + 10.0), Vector2::new(WIDTH + SECTION_XOFFSET+1.0, window_size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)), true);
+        let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET + SEARCH_HEIGHT + 10.0), Vector2::new(WIDTH + SECTION_XOFFSET+1.0, window_size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)), ListMode::VerticalList);
         
         let items = settings.get_menu_items(p, String::new(), Arc::new(sender));
         for i in items {
@@ -41,15 +41,10 @@ impl SettingsMenu {
         //TODO: make these not part of the scrollable?!?!
 
         // revert button
-        let mut revert_button = MenuButton::new(p, BUTTON_SIZE, "Revert", font.clone());
-        revert_button.set_tag("revert");
+        scroll_area.add_item(Box::new(MenuButton::new(p, BUTTON_SIZE, "Revert", font.clone()).with_tag("revert")));
 
         // done button
-        let mut done_button = MenuButton::new(p, BUTTON_SIZE, "Done", font.clone());
-        done_button.set_tag("done");
-
-        scroll_area.add_item(Box::new(revert_button));
-        scroll_area.add_item(Box::new(done_button));
+        scroll_area.add_item(Box::new(MenuButton::new(p, BUTTON_SIZE, "Done", font.clone()).with_tag("done")));
 
         SettingsMenu {
             scroll_area,

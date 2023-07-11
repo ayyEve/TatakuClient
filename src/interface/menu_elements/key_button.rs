@@ -17,12 +17,12 @@ pub struct KeyButton {
     pub on_change: Arc<dyn Fn(&mut Self, Key) + Send + Sync>,
 }
 impl KeyButton {
-    pub fn new(pos: Vector2, size: Vector2, key:Key, prefix: &str, font:Font) -> Self {
+    pub fn new(pos: Vector2, size: Vector2, key:Key, prefix: impl ToString, font:Font) -> Self {
         Self {
             key,
             pos, 
             size, 
-            prefix: prefix.to_owned(),
+            prefix: prefix.to_string(),
 
             hover: false,
             selected: false,

@@ -26,7 +26,7 @@ impl ModDialog {
 
         // create the scrollable and add the mod buttons to it
         let window_size = WindowSize::get();
-        let mut scroll = ScrollableArea::new(Vector2::with_y(20.0), window_size.0, true);
+        let mut scroll = ScrollableArea::new(Vector2::with_y(20.0), window_size.0, ListMode::VerticalList);
         let pos = Vector2::new(50.0, 0.0);
 
         let font = get_font();

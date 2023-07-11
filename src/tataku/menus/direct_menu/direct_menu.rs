@@ -55,7 +55,7 @@ impl DirectMenu {
             scroll_area: ScrollableArea::new(
                 Vector2::new(0.0, SEARCH_BAR_HEIGHT+5.0), 
                 Vector2::new(DIRECT_ITEM_SIZE.x, window_size.y - SEARCH_BAR_HEIGHT+5.0), 
-                true,
+                ListMode::VerticalList,
             ),
             downloading: Vec::new(),
             queue: Vec::new(),

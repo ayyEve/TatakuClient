@@ -63,8 +63,8 @@ impl Chat {
             selected_channel: None,
             should_close: false,
 
-            channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, true),
-            message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), true),
+            channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
+            message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),
             input,
 
             // positions/sizes

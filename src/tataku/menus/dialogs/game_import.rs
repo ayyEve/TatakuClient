@@ -23,7 +23,7 @@ impl GameImportDialog {
         let mut scrollable = ScrollableArea::new(
             Vector2::new(10.0, 30.0),
             BASE_SIZE - (item_size + Vector2::with_y(button_height)),
-            true
+            ListMode::VerticalList
         );
 
         
