@@ -499,7 +499,7 @@ impl Game {
         }
 
         if keys_down.contains(&Key::PageDown) && mods.ctrl {
-            self.add_dialog(Box::new(TestDialog::new()), false);
+            self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(TestDialog::new()))), false);
         }
 
         // update any dialogs
@@ -863,7 +863,7 @@ impl Game {
         // draw any dialogs
         let mut dialog_list = std::mem::take(&mut self.dialogs);
         for d in dialog_list.iter_mut() { //.rev() {
-            d.draw(&mut render_queue).await;
+            d.draw(Vector2::ZERO, &mut render_queue).await;
         }
         self.dialogs = dialog_list;
 

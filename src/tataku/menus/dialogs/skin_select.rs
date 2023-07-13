@@ -42,9 +42,9 @@ impl Dialog<Game> for SkinSelect {
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, WindowSize::get().0) }
     
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.draw_background(Color::WHITE, list);
-        self.dropdown.draw(Vector2::ZERO, list)
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        self.draw_background(Color::WHITE, offset, list);
+        self.dropdown.draw(offset, list)
     }
 
     async fn update(&mut self, _g:&mut Game) {

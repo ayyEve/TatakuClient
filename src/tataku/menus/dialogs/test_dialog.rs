@@ -10,7 +10,9 @@ pub struct TestDialog {
 
     receiver: Receiver<()>,
 
-    last_text: String
+    last_text: String,
+
+    should_close: bool
 }
 impl TestDialog {
     pub fn new() -> Self {
@@ -32,6 +34,8 @@ impl TestDialog {
             add_button,
             receiver,
             last_text: String::new(),
+
+            should_close: false,
         }
     }
 }
@@ -39,9 +43,13 @@ impl TestDialog {
 #[async_trait]
 impl Dialog<Game> for TestDialog {
     fn name(&self) -> &'static str { "test weee" }
-    fn should_close(&self) -> bool { false }
-    fn get_bounds(&self) -> Bounds {Bounds::new(Vector2::ZERO, self.list.size() + Vector2::new(0.0, 50.0 + 60.0))}
+    fn title(&self) -> &'static str { "Test Dialog" }
+    fn should_close(&self) -> bool { self.should_close }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.list.size() + Vector2::new(0.0, 50.0 + 60.0)) }
     async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {}
+
+    
+    async fn force_close(&mut self) { self.should_close = true; }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
         self.list.on_mouse_move(pos);
@@ -102,12 +110,12 @@ impl Dialog<Game> for TestDialog {
         }
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        list.push(visibility_bg(Vector2::ZERO, self.get_bounds().size));
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        list.push(visibility_bg(offset, self.get_bounds().size));
 
-        self.list.draw(Vector2::ZERO, list);
-        self.add_button.draw(Vector2::ZERO, list);
-        self.search_text.draw(Vector2::ZERO, list);
+        self.list.draw(offset, list);
+        self.add_button.draw(offset, list);
+        self.search_text.draw(offset, list);
     }
 
 }

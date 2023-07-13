@@ -99,13 +99,15 @@ impl Dialog<Game> for BeatmapDialog {
         true
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         // background and border
-        list.push(self.bounds.clone());
+        let mut bounds = self.bounds;
+        bounds.pos += offset;
+        list.push(bounds);
 
         // draw buttons
-        self.delete_map.draw(Vector2::ZERO, list);
-        self.copy_hash.draw(Vector2::ZERO, list);
+        self.delete_map.draw(offset, list);
+        self.copy_hash.draw(offset, list);
     }
 
 }

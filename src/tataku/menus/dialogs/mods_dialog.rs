@@ -82,9 +82,9 @@ impl Dialog<Game> for ModDialog {
         self.scroll.update();
     }
     
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.draw_background(Color::BLACK, list);
-        self.scroll.draw(Vector2::ZERO, list);
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        self.draw_background(Color::BLACK, offset, list);
+        self.scroll.draw(offset, list);
     }
 
     async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {

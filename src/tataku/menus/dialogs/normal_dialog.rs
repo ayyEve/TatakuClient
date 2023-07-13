@@ -97,13 +97,15 @@ impl Dialog<Game> for GenericDialog {
         true
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         // background and border
-        list.push(self.bounds.clone());
+        let mut bounds = self.bounds;
+        bounds.pos += offset;
+        list.push(bounds);
 
         // draw buttons
         for button in self.buttons.iter_mut() {
-            button.draw(Vector2::ZERO, list);
+            button.draw(offset, list);
         }
     }
 }

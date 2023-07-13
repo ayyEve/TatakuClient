@@ -7,6 +7,7 @@ mod game_import;
 mod normal_dialog;
 mod beatmap_dialog;
 mod game_ui_editor;
+mod draggable_dialog;
 // mod changelog_dialog;
 
 pub use dialog::*;
@@ -18,4 +19,5 @@ pub use game_import::*;
 pub use normal_dialog::*;
 pub use beatmap_dialog::*;
 pub use game_ui_editor::*;
+pub use draggable_dialog::*;
 // pub use changelog_dialog::*;

@@ -5,15 +5,18 @@ use crate::prelude::*;
 /// and should be drawn overtop every other menu
 #[async_trait]
 pub trait Dialog<G:Send+Sync>:Send+Sync {
-    fn get_bounds(&self) -> Bounds;
-    fn should_close(&self) -> bool;
     fn name(&self) -> &'static str {""}
+    fn title(&self) -> &'static str {""}
+    fn should_close(&self) -> bool;
+    fn get_bounds(&self) -> Bounds;
 
     /// dialog is being forcefully closed
     async fn force_close(&mut self) {}
+    /// if in a draggable dialog, and it was resized
+    async fn resized(&mut self, _new_size: Vector2) {}
 
     async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, list: &mut RenderableCollection);
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection);
 
     // input handlers
     async fn on_mouse_move(&mut self, _pos:Vector2, _g:&mut G) {}
@@ -30,32 +33,13 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn on_controller_release(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
     async fn on_controller_axis(&mut self, _controller: &GamepadInfo, _axis_data: &HashMap<Axis, (bool, f32)>) {}
 
-    fn string_function1(&mut self, _val: String) {}
-    // fn string_function2(&mut self, _val: String) {}
-
-    fn draw_background(&mut self, color:Color, list: &mut RenderableCollection) {
+    fn draw_background(&mut self, color:Color, offset: Vector2, list: &mut RenderableCollection) {
         let bounds = self.get_bounds();
         list.push(Rectangle::new(
-            bounds.pos,
+            bounds.pos+offset,
             bounds.size,
             color.alpha(0.8),
             Some(Border::new(color, 2.0))
         ))
     }
-
-
-    
 }
-
-// // toolbar options
-// const TOOLBAR_HEIGHT:f64 = 20.0;
-
-// /// top bar helper, close, move, etc
-// pub struct DialogBar {
-//     pub move_start: Option<Vector2>
-// }
-// impl DialogBar {
-//     fn update<G, D:Dialog<G>>(&self, dialog: D) {
-
-//     }
-// }

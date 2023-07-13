@@ -321,18 +321,18 @@ impl Dialog<Game> for Chat {
         self.input.set_selected(true);
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         let window_size = self.window_size.0;
 
         // draw backgrounds
         list.push(Rectangle::new(
-            self.channel_scroll.get_pos(),
+            self.channel_scroll.get_pos() + offset,
             self.channel_scroll.size(),
             Color::WHITE.alpha(0.85),
             Some(Border::new(Color::BLACK, 2.0))
         ));
         list.push(Rectangle::new(
-            self.message_scroll.get_pos(),
+            self.message_scroll.get_pos() + offset,
             self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
             Color::WHITE.alpha(0.85),
             Some(Border::new(Color::BLACK, 2.0))
@@ -341,8 +341,8 @@ impl Dialog<Game> for Chat {
         if self.width_resize_hover {
             // red line at width
             list.push(Line::new(
-                Vector2::new(self.channel_list_width, window_size.y),
-                Vector2::new(self.channel_list_width, window_size.y - self.chat_height),
+                Vector2::new(self.channel_list_width, window_size.y) + offset,
+                Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
                 2.0,
                 Color::RED
             ))
@@ -350,16 +350,16 @@ impl Dialog<Game> for Chat {
         if self.height_resize_hover {
             // red line at height
             list.push(Line::new(
-                Vector2::new(0.0, window_size.y - self.chat_height),
-                Vector2::new(window_size.x, window_size.y - self.chat_height),
+                Vector2::new(0.0, window_size.y - self.chat_height) + offset,
+                Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
                 2.0,
                 Color::RED
             ))
         }
 
-        self.channel_scroll.draw(Vector2::ZERO, list);
-        self.message_scroll.draw(Vector2::ZERO, list);
-        self.input.draw(Vector2::ZERO, list);
+        self.channel_scroll.draw(offset, list);
+        self.message_scroll.draw(offset, list);
+        self.input.draw(offset, list);
     }
 }
 

@@ -192,10 +192,10 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.sidebar.draw(Vector2::ZERO, list);
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        self.sidebar.draw(offset, list);
         list.push(Rectangle::new(
-            self.sidebar.get_pos(),
+            self.sidebar.get_pos() + offset,
             self.sidebar.size(),
             Color::BLACK.alpha(0.8),
             None
@@ -204,7 +204,9 @@ impl Dialog<()> for GameUIEditorDialog {
         for i in self.elements.iter_mut() {
             i.draw(list);
 
-            let bounds = i.get_bounds();
+            let mut bounds = i.get_bounds();
+            bounds.pos += offset;
+
             if (!self.sidebar.get_hover() && bounds.contains(self.mouse_pos)) || Some(i.element_name.clone()) == self.highlight_name {
                 let mut bounds:Rectangle = bounds.into();
                 bounds.color = Color::PINK.alpha(0.7);
@@ -214,6 +216,7 @@ impl Dialog<()> for GameUIEditorDialog {
 
         if let Some((i, _, _)) = self.mouse_down {
             let mut bounds: Rectangle = self.elements[i].get_bounds().into();
+            bounds.pos += offset;
             bounds.color = Color::RED;
             list.push(bounds);
         }

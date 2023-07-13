@@ -73,11 +73,10 @@ impl Dialog<Game> for GameImportDialog {
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, BASE_SIZE) }
     
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        let pos = self.pos;
-
-        self.draw_background(Color::WHITE, list);
-
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        self.draw_background(Color::WHITE, offset, list);
+        
+        let pos = self.pos + offset;
         self.input_scrollable.draw(pos, list);
         self.add_button.draw(pos, list);
         self.confirm_button.draw(pos, list);

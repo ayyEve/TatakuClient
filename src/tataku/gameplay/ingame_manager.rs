@@ -531,7 +531,7 @@ impl IngameManager {
 
         // ui element editor
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.draw(list).await;
+            ui_editor.draw(Vector2::ZERO, list).await;
         } 
 
 
