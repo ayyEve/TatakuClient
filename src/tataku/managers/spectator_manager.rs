@@ -422,9 +422,9 @@ fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection)
     
     let text_width = offset_text.measure_text().x + BANNER_WPADDING;
     // center
-    let rect = Rectangle::bounds_only(
+    let rect = Bounds::new(
         Vector2::new((window_size.x - text_width) / 2.0, window_size.y * 1.0/3.0), 
-        Vector2::new( text_width + BANNER_WPADDING, 64.0)
+        Vector2::new(text_width + BANNER_WPADDING, 64.0)
     );
     offset_text.center_text(&rect);
     // add

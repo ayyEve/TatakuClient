@@ -5,7 +5,7 @@ use crate::prelude::*;
 /// and should be drawn overtop every other menu
 #[async_trait]
 pub trait Dialog<G:Send+Sync>:Send+Sync {
-    fn get_bounds(&self) -> Rectangle;
+    fn get_bounds(&self) -> Bounds;
     fn should_close(&self) -> bool;
     fn name(&self) -> &'static str {""}
 

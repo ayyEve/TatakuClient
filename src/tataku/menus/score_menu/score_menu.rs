@@ -297,7 +297,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
             let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
 
-            let bounds = Rectangle::bounds_only(pos, size);
+            let bounds = Bounds::new(pos, size);
             stat.draw(&bounds, list)
         }
     }

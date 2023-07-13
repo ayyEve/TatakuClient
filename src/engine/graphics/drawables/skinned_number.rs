@@ -125,7 +125,7 @@ impl SkinnedNumber {
         Vector2::new(width - x_spacing, max_height)
     }
 
-    pub fn center_text(&mut self, rect:&Rectangle) {
+    pub fn center_text(&mut self, rect:&Bounds) {
         let text_size = self.measure_text();
         self.pos = rect.pos + (rect.size - text_size) / 2.0;
     }

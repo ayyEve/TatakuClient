@@ -19,9 +19,9 @@ impl JudgementCounterElement {
 impl InnerUIElement for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
-    fn get_bounds(&self) -> Rectangle {
+    fn get_bounds(&self) -> Bounds {
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE);
-        Rectangle::bounds_only(
+        Bounds::new(
             -box_size,
             Vector2::new(box_size.x, box_size.y * self.hit_counts.len() as f32)
         )
@@ -92,7 +92,7 @@ impl InnerUIElement for JudgementCounterElement {
             if text_size.x >= max_width {
                 text.set_font_size(20.0 * scale.x * max_width / text_size.x)
             }
-            text.center_text(&Rectangle::bounds_only(pos, box_size));
+            text.center_text(&Bounds::new(pos, box_size));
 
             list.push(text);
         }

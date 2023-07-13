@@ -17,8 +17,8 @@ impl DurationBarElement {
 impl InnerUIElement for DurationBarElement {
     fn display_name(&self) -> &'static str { "Duration Bar" }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
             Vector2::new(self.window_size.x, DURATION_HEIGHT)
         )

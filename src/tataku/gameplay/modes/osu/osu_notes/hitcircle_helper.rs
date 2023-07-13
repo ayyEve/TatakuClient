@@ -68,7 +68,7 @@ impl HitCircleImageHelper {
             0
         ).await.ok();
 
-        let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
+        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         if let Some(combo) = &mut self.combo_image {
             combo.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));
             combo.scale = Vector2::ONE * self.scaling_helper.scaled_cs * TEXT_SCALE;
@@ -108,7 +108,7 @@ impl HitCircleImageHelper {
 
         // update combo text position
         let radius = CIRCLE_RADIUS_BASE * new_scale.scaled_cs;
-        let rect = Rectangle::bounds_only(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
+        let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
         
         if let Some(image) = &mut self.combo_image {
             image.spacing_override = Some(-(self.skin_settings.hitcircle_overlap as f32));

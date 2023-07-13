@@ -36,10 +36,10 @@ impl JudgementBarElement {
 impl InnerUIElement for JudgementBarElement {
     fn display_name(&self) -> &'static str { "Judgement Bar" }
 
-    fn get_bounds(&self) -> Rectangle {
+    fn get_bounds(&self) -> Bounds {
         let items_width = HIT_TIMING_BAR_SIZE.x; // * (self.timing_bar_things.0.len() + 1) as f64;
 
-        Rectangle::bounds_only(
+        Bounds::new(
             Vector2::new(-items_width/2.0, HIT_TIMING_BAR_POS.y),
             Vector2::new(items_width, HIT_TIMING_BAR_SIZE.y)
         )

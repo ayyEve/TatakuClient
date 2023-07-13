@@ -58,17 +58,14 @@ impl BeatmapDialog {
 
 #[async_trait]
 impl Dialog<Game> for BeatmapDialog {
+    fn should_close(&self) -> bool { self.should_close }
+    fn get_bounds(&self) -> Bounds { *self.bounds }
+
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         // self.window_size = window_size;
         self.bounds.size = window_size.0;
     }
 
-    fn get_bounds(&self) -> Rectangle {
-        self.bounds
-    }
-    fn should_close(&self) -> bool {
-        self.should_close
-    }
 
     async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == Key::Escape {

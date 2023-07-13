@@ -1283,7 +1283,7 @@ impl GameModeProperties for OsuGame {
         };
 
         let size = Vector2::new(100.0, 30.0);
-        let combo_bounds = Rectangle::bounds_only(
+        let combo_bounds = Bounds::new(
             Vector2::ZERO,
             size
         );

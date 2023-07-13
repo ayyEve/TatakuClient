@@ -231,7 +231,7 @@ impl HitObject for OsuSpinner {
             Color::BLACK,
             get_font()
         );
-        txt.center_text(&Rectangle::bounds_only(
+        txt.center_text(&Bounds::new(
             Vector2::new(0.0, self.pos.y + 50.0),
             Vector2::new(self.pos.x * 2.0, 50.0)
         ));

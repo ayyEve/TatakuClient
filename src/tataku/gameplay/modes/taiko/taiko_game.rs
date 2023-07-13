@@ -1138,7 +1138,7 @@ impl GameModeProperties for TaikoGame {
             format!("{playmode}_{name}")
         };
 
-        let combo_bounds = Rectangle::bounds_only(
+        let combo_bounds = Bounds::new(
             Vector2::ZERO,
             Vector2::new(self.taiko_settings.hit_position.x - self.taiko_settings.note_radius, self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult)
         );

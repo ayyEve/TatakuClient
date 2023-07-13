@@ -46,9 +46,9 @@ impl CenteredTextHelper {
             
             let text_width = offset_text.measure_text().x + TEXT_HPADDING;
             // center
-            let rect = Rectangle::bounds_only(
+            let rect = Bounds::new(
                 Vector2::new((self.window_size.x - text_width) / 2.0, self.window_size.y * 1.0/3.0), 
-                Vector2::new( text_width + TEXT_HPADDING, 64.0)
+                Vector2::new(text_width + TEXT_HPADDING, 64.0)
             );
             offset_text.center_text(&rect);
             // add

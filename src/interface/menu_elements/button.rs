@@ -74,7 +74,7 @@ impl ScrollableItem for MenuButton {
             Color::WHITE,
             self.font.clone()
         );
-        txt.center_text(&r);
+        txt.center_text(&*r);
 
         list.push(r);
         list.push(txt);

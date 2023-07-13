@@ -52,7 +52,7 @@ impl UIElement {
         self.inner.draw(self.pos_offset, self.scale, list);
     }
 
-    pub fn get_bounds(&self) -> Rectangle {
+    pub fn get_bounds(&self) -> Bounds {
         let mut base = self.inner.get_bounds();
         base.pos += self.pos_offset;
         base.size *= self.scale;
@@ -75,7 +75,7 @@ impl UIElement {
 pub trait InnerUIElement: Send + Sync {
     fn update(&mut self, manager: &mut IngameManager);
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection);
-    fn get_bounds(&self) -> Rectangle;
+    fn get_bounds(&self) -> Bounds;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;
 }

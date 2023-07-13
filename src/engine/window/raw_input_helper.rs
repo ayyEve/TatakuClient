@@ -76,7 +76,7 @@ impl MouseInputHelper {
     //     let Ok(pos) = window.outer_position() else { return false };
     //     let size = window.outer_size();
         
-    //     let bounds = Rectangle::bounds_only(
+    //     let bounds = SimpleRectangle::new(
     //         Vector2::new(pos.x as f32, pos.y as f32),
     //         Vector2::new(size.width as f32, size.height as f32)
     //     );

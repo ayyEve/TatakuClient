@@ -72,8 +72,8 @@ impl DonChan {
 impl InnerUIElement for DonChan {
     fn display_name(&self) -> &'static str { "DonChan" }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             -Vector2::with_y(DEFAULT_DONCHAN_SIZE.y / 2.0), 
             DEFAULT_DONCHAN_SIZE / 2.0
         )

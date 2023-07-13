@@ -448,7 +448,7 @@ impl GameMode for CatchGame {
     }
     fn combo_bounds(&self) -> Rectangle {
         let window_size = Settings::window_size();
-        Rectangle::bounds_only(
+        SimpleRectangle::new(
             Vector2::new(0.0, window_size.y * (1.0/3.0)),
             Vector2::new(window_size.x, 30.0)
         )

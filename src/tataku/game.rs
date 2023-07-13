@@ -498,6 +498,10 @@ impl Game {
             }
         }
 
+        if keys_down.contains(&Key::PageDown) && mods.ctrl {
+            self.add_dialog(Box::new(TestDialog::new()), false);
+        }
+
         // update any dialogs
         use crate::async_retain;
 

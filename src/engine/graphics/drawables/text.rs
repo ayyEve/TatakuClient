@@ -53,7 +53,7 @@ impl Text {
     pub fn measure_text(&self) -> Vector2 {
         Self::measure_text_internal(&self.fonts, self.font_size, &self.text, self.scale * self.text_scale, 2.0) 
     }
-    pub fn center_text(&mut self, rect:&Rectangle) {
+    pub fn center_text(&mut self, rect:&Bounds) {
         let text_size = self.measure_text();
         self.pos = rect.pos + (rect.size * rect.scale - text_size) / 2.0;
     }

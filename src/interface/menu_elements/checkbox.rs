@@ -75,7 +75,7 @@ impl ScrollableItem for Checkbox {
             Color::WHITE,
             self.font.clone(),
         );
-        txt.center_text(&Rectangle::bounds_only(self.pos + pos_offset + Vector2::new(self.size.y, 0.0), Vector2::new(self.size.x - self.size.y, self.size.y)));
+        txt.center_text(&Bounds::new(self.pos + pos_offset + Vector2::new(self.size.y, 0.0), Vector2::new(self.size.x - self.size.y, self.size.y)));
 
         list.push(txt);
     }

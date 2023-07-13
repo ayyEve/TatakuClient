@@ -25,7 +25,7 @@ impl MenuStatsInfo {
         }
     }
 
-    pub fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
+    pub fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
         let font = get_font();
 
         // display name should be at the top with some margin above and below
@@ -53,7 +53,7 @@ impl MenuStatsInfo {
 
         let y = bounds.pos.y + bounds.size.y - size.y;
 
-        self.graph.draw(&Rectangle::bounds_only(Vector2::new(current_pos.x, y), size), list);
+        self.graph.draw(&Bounds::new(Vector2::new(current_pos.x, y), size), list);
     }
 }
 

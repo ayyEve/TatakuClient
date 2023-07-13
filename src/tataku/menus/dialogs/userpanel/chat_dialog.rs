@@ -90,13 +90,11 @@ impl Chat {
 
 #[async_trait]
 impl Dialog<Game> for Chat {
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
-
-    fn get_bounds(&self) -> Rectangle {
+    fn should_close(&self) -> bool { self.should_close }
+    
+    fn get_bounds(&self) -> Bounds {
         let window_size = &self.window_size;
-        Rectangle::bounds_only(
+        Bounds::new(
             Vector2::new(0.0, window_size.y - (self.chat_height + RESIZE_LENIENCE)), 
             Vector2::new(
                 window_size.x,
@@ -104,7 +102,11 @@ impl Dialog<Game> for Chat {
             )
         )
     }
-    fn should_close(&self) -> bool {self.should_close}
+    
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.window_size = window_size;
+    }
+
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
         if key == Key::Escape {

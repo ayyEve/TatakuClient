@@ -34,8 +34,8 @@ impl HealthBarElement {
 impl InnerUIElement for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             Vector2::ZERO,
             Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT)
         )

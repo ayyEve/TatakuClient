@@ -100,7 +100,7 @@ impl NotificationManager {
         for n in self.processed_notifs.iter_mut() {
             let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
             
-            if Rectangle::bounds_only(pos, n.size).contains(mouse_pos) {
+            if Bounds::new(pos, n.size).contains(mouse_pos) {
                 match &n.notification.onclick {
                     NotificationOnClick::None => {}
                     NotificationOnClick::Url(url) => {

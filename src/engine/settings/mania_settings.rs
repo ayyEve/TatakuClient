@@ -38,7 +38,7 @@ pub struct ManiaSettings {
 impl ManiaSettings {
     pub fn get_key_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
 
-        let info = CollapsibleInfo { 
+        let info = CollapsibleSettings { 
             header_text: "Key Config".to_string(), 
             header_text_color: Color::WHITE, 
             header_text_align: HorizontalAlign::Center, 

@@ -150,7 +150,7 @@ impl ScrollableItem for MusicBox {
             let t_size = text.measure_text();
             
             // make bounding box
-            let rect = Rectangle::bounds_only(
+            let rect = Bounds::new(
                 text.pos - CONTROL_BUTTON_PADDING, 
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
             );
@@ -175,7 +175,7 @@ impl ScrollableItem for MusicBox {
             }
         }
         
-        if Rectangle::bounds_only(
+        if Bounds::new(
             self.pos + Vector2::with_y(self.size.y + PROGRESSBAR_YPAD), 
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT)
         ).contains(pos) {

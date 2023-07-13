@@ -40,16 +40,17 @@ impl Default for PanelUser {
 }
 
 impl ScrollableItem for PanelUser {
+    fn get_keywords(&self) -> Vec<String> { self.user.username.split(" ").map(|a|a.to_lowercase().to_owned()).collect() }
+
     fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
         let font = get_font();
         let pos = self.pos + pos;
 
         // bounding box
-        let c = Color::new(0.5, 0.5, 0.5, 0.75);
         list.push(Rectangle::new(
             pos,
             USER_ITEM_SIZE,
-            c,
+            Color::new(0.5, 0.5, 0.5, 0.75),
             Some(Border::new(if self.hover {Color::RED} else {Color::new(0.75, 0.75, 0.75, 0.75)}, 2.0))
         ));
 
@@ -76,5 +77,4 @@ impl ScrollableItem for PanelUser {
             ));
         }
     }
-
 }

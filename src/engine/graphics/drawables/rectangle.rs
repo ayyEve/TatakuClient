@@ -2,46 +2,33 @@ use crate::prelude::*;
 
 #[derive(Clone, Copy)]
 pub struct Rectangle {
+    inner: Bounds,
+    // pub pos: Vector2,
+    // pub size: Vector2,
+    // pub scale: Vector2,
+    
     pub color: Color,
-    pub pos: Vector2,
     pub rotation: f32,
-    pub scale: Vector2,
 
     pub origin: Vector2,
     scissor: Scissor,
 
-    pub size: Vector2,
     pub shape: Shape,
     pub border: Option<Border>,
 }
 impl Rectangle {
     pub fn new(pos: Vector2, size: Vector2, color: Color, border: Option<Border>) -> Rectangle {
-        let rotation = 0.0;
-        let scale = Vector2::ONE;
-        
         Rectangle {
+            inner: Bounds {pos, size, scale: Vector2::ONE},
+
             color,
-            pos,
-            scale,
-            rotation,
+            rotation: 0.0,
             shape: Shape::Square,
             scissor: None,
 
-            size,
             border,
             origin: size / 2.0,
-            // draw_state: None,
         }
-    }
-    
-    /// helpful shortcut when you only want to measure text
-    pub fn bounds_only(pos: Vector2, size: Vector2) -> Rectangle {
-        Rectangle::new( pos, size, Color::BLACK, None)
-    }
-
-    /// check if this rectangle contains a point
-    pub fn contains(&self, p:Vector2) -> bool {
-        p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
     }
 }
 
@@ -72,11 +59,45 @@ impl TatakuRenderable for Rectangle {
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate to rotate
             .trans(self.origin) // undo origin
-            .scale(self.scale) // scale to size
-            .trans(self.pos) // move to pos
+            .scale(self.inner.scale) // scale to size
+            .trans(self.inner.pos) // move to pos
         ;
 
-        g.draw_rect([0.0, 0.0, self.size.x, self.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor)
+        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor)
     }
 }
 
+impl Deref for Rectangle {
+    type Target = Bounds;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl DerefMut for Rectangle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Bounds {
+    pub pos: Vector2,
+    pub size: Vector2,
+    pub scale: Vector2,
+}
+impl Bounds {
+    pub fn new(pos: Vector2, size: Vector2) -> Self {
+        Self { pos, size, scale: Vector2::ONE }
+    }
+    /// check if this rectangle contains a point
+    pub fn contains(&self, p:Vector2) -> bool {
+        p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
+    }
+}
+impl Into<Rectangle> for Bounds {
+    fn into(self) -> Rectangle {
+        let mut r = Rectangle::new(self.pos, self.size, Color::BLACK, None);
+        r.inner.scale = self.scale;
+        r
+    }
+}

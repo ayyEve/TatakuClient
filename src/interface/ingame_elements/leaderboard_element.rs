@@ -16,8 +16,8 @@ impl LeaderboardElement {
 impl InnerUIElement for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             Vector2::ZERO,
             Vector2::new(
                 LEADERBOARD_ITEM_SIZE.x,

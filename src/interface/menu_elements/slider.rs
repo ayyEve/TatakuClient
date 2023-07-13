@@ -83,7 +83,7 @@ impl Slider {
     }
 
     fn text_val(&self) -> String {format!("{}: {:.2}", self.text, self.value)}
-    pub fn get_slider_bounds(&self) -> Rectangle {
+    pub fn get_slider_bounds(&self) -> Bounds {
         // draw text
         let txt = Text::new(
             Vector2::ZERO,
@@ -94,7 +94,7 @@ impl Slider {
         );
         let text_size = txt.measure_text() + Vector2::new(10.0, 0.0);
 
-        Rectangle::bounds_only(
+        Bounds::new(
             Vector2::new(text_size.x, 0.0),
             Vector2::new(self.size.x - text_size.x, self.size.y)
         )
@@ -126,7 +126,7 @@ impl ScrollableItem for Slider {
             Color::WHITE,
             self.font.clone()
         );
-        txt.center_text(&Rectangle::bounds_only(self.pos+pos_offset, Vector2::new(self.size.x - slider_bounds.size.x, self.size.y)));
+        txt.center_text(&Bounds::new(self.pos+pos_offset, Vector2::new(self.size.x - slider_bounds.size.x, self.size.y)));
         // TODO: center text to area that slider_bounds isnt ([text][slider_bounds])
         // let text_size = txt.measure_text();
         list.push(txt);

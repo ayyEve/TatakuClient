@@ -6,7 +6,7 @@ const SIZE:Vector2 = Vector2::new(FONT_SIZE * MAX_CHARS as f32, FONT_SIZE);
 
 pub struct RemainingElement {
     // elapsed_image: Option<SkinnedNumber>,
-    elapsed_bounds: Rectangle,
+    elapsed_bounds: Bounds,
 
     speed: f32,
     start_time: f32,
@@ -18,7 +18,7 @@ impl RemainingElement {
     pub async fn new() -> Self {
         Self {
             // elapsed_image: SkinnedNumber::new(Color::WHITE, -5000.0, Vector2::ZERO, 0.0, "normal", None, 0).await.ok(),
-            elapsed_bounds: Rectangle::bounds_only(Vector2::ZERO, SIZE),
+            elapsed_bounds: Bounds::new(Vector2::ZERO, SIZE),
             
             speed: 1.0,
             start_time: -1.0,
@@ -30,10 +30,7 @@ impl RemainingElement {
 
 impl InnerUIElement for RemainingElement {
     fn display_name(&self) -> &'static str { "Time Remaining" }
-
-    fn get_bounds(&self) -> Rectangle {
-        self.elapsed_bounds.clone()
-    }
+    fn get_bounds(&self) -> Bounds { self.elapsed_bounds }
 
     fn update(&mut self, manager: &mut IngameManager) {
         // if the values arent set yet, set them
@@ -47,7 +44,7 @@ impl InnerUIElement for RemainingElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let mut bounds = self.elapsed_bounds.clone();
+        let mut bounds = self.elapsed_bounds;
         bounds.pos = pos_offset;
         bounds.size *= scale;
 

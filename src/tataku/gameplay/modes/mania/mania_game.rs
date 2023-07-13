@@ -1065,7 +1065,7 @@ impl GameModeProperties for ManiaGame {
         let start_x = self.playfield.col_pos(0);
         let width = self.playfield.col_pos(self.column_count) - start_x;
 
-        let combo_bounds = Rectangle::bounds_only(
+        let combo_bounds = Bounds::new(
             Vector2::ZERO,
             Vector2::new(width, 30.0)
         );

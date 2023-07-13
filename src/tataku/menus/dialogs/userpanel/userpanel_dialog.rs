@@ -32,17 +32,12 @@ impl UserPanel {
 
 #[async_trait]
 impl Dialog<Game> for UserPanel {
+    fn name(&self) -> &'static str { "UserPanel" }
+    fn should_close(&self) -> bool { self.should_close }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
-    }
-
-    fn name(&self) -> &'static str {"UserPanel"}
-    fn should_close(&self) -> bool {self.should_close}
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
-            Vector2::ZERO, 
-            self.window_size.0
-        )
     }
     
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
@@ -169,7 +164,7 @@ impl Dialog<Game> for UserPanel {
         }
         
     }
-
+    
 }
 
 #[derive(Clone)]

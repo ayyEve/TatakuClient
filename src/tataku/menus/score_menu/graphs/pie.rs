@@ -23,7 +23,7 @@ impl PieGraph {
 }
 
 impl StatsGraph for PieGraph {
-    fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
         let radius = size.x / 2.0;

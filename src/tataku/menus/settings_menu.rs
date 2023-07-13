@@ -105,8 +105,8 @@ impl Dialog<Game> for SettingsMenu {
         self.finalize().await;
     }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             Vector2::ZERO, 
             Vector2::new(WIDTH + SECTION_XOFFSET * 2.0, self.window_size.y)
         )

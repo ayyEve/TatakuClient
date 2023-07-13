@@ -1,5 +1,6 @@
 mod dialog;
 mod userpanel;
+mod test_dialog;
 mod mods_dialog;
 mod skin_select;
 mod game_import;
@@ -10,6 +11,7 @@ mod game_ui_editor;
 
 pub use dialog::*;
 pub use userpanel::*;
+pub use test_dialog::*;
 pub use mods_dialog::*;
 pub use skin_select::*;
 pub use game_import::*;

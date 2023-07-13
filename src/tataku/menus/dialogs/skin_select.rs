@@ -38,11 +38,9 @@ impl SkinSelect {
 }
 #[async_trait]
 impl Dialog<Game> for SkinSelect {
-    fn name(&self) -> &'static str {"skin_select"}
-    fn should_close(&self) -> bool {self.should_close}
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(Vector2::ZERO, WindowSize::get().0)
-    }
+    fn name(&self) -> &'static str { "skin_select" }
+    fn should_close(&self) -> bool { self.should_close }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, WindowSize::get().0) }
     
     async fn draw(&mut self, list: &mut RenderableCollection) {
         self.draw_background(Color::WHITE, list);

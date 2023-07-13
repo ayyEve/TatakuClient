@@ -76,9 +76,7 @@ impl ModDialog {
 impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str { "mod_menu" }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Rectangle { 
-        Rectangle::bounds_only(Vector2::ZERO, self.window_size.0) 
-    }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
 
     async fn update(&mut self, _g: &mut Game) {
         self.scroll.update();

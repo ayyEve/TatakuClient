@@ -40,8 +40,8 @@ impl PerformanceElement {
 impl InnerUIElement for PerformanceElement {
     fn display_name(&self) -> &'static str { "Performance" }
 
-    fn get_bounds(&self) -> Rectangle {
-        Rectangle::bounds_only(
+    fn get_bounds(&self) -> Bounds {
+        Bounds::new(
             -self.bounds_size.x_portion() - PADDING,
             self.bounds_size + PADDING * 2.0
         )

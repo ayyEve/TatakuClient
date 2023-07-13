@@ -248,7 +248,7 @@ impl AsyncMenu<Game> for LoadingMenu {
             },
         }
 
-        text.center_text(&Rectangle::bounds_only(Vector2::ZERO, self.window_size.0));
+        text.center_text(&Bounds::new(Vector2::ZERO, self.window_size.0));
         list.push(text);
     }
 }

@@ -2,11 +2,11 @@ use crate::prelude::*;
 
 pub struct ComboElement {
     combo_image: Option<SkinnedNumber>,
-    combo_bounds: Rectangle,
+    combo_bounds: Bounds,
     combo: u16,
 }
 impl ComboElement {
-    pub async fn new(combo_bounds: Rectangle) -> Self {
+    pub async fn new(combo_bounds: Bounds) -> Self {
         Self {
             combo_image: SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0).await.ok(),
             combo_bounds,
@@ -18,16 +18,14 @@ impl ComboElement {
 impl InnerUIElement for ComboElement {
     fn display_name(&self) -> &'static str { "Combo" }
 
-    fn get_bounds(&self) -> Rectangle {
-        self.combo_bounds.clone()
-    }
+    fn get_bounds(&self) -> Bounds { self.combo_bounds }
 
     fn update(&mut self, manager: &mut IngameManager) {
         self.combo = manager.score.score.combo;
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let mut combo_bounds = self.combo_bounds.clone();
+        let mut combo_bounds = self.combo_bounds;
         combo_bounds.pos = pos_offset;
         combo_bounds.size *= scale;
         

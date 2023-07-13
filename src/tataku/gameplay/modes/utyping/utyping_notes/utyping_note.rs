@@ -137,7 +137,7 @@ impl HitObject for UTypingNote {
             Color::BLACK,
             get_fallback_font()
         );
-        let mut rect = Rectangle::bounds_only(self.pos - size / 2.0, size);
+        let mut rect = Bounds::new(self.pos - size / 2.0, size);
         t.center_text(&rect);
         rect.size.y = 32.0;
 
@@ -185,7 +185,6 @@ impl HitObject for UTypingNote {
             t.center_text(&rect);
             list.push(t);
         }
-
 
         list.push(t);
     }

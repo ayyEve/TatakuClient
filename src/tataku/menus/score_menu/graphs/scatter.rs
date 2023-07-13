@@ -44,7 +44,7 @@ impl ScatterGraph {
 
 
 impl StatsGraph for ScatterGraph {
-    fn draw(&self, bounds: &Rectangle, list: &mut RenderableCollection) {
+    fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
         let pos = bounds.pos;
         let size = bounds.size;
 
