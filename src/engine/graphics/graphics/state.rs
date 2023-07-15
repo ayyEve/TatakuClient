@@ -59,14 +59,15 @@ impl GraphicsState {
             dx12_shader_compiler: Default::default(),
         });
         
-        // # Safety
-        //
-        // The surface needs to live as long as the window that created it.
-        // State owns the window so this should be safe.
+        // create the serface
         let surface = unsafe { instance.create_surface(window).unwrap() };
 
+        // create the adapter
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
+            power_preference: match settings.performance_mode {
+                PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
+                PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+            },
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
         }).await.unwrap();
@@ -84,6 +85,7 @@ impl GraphicsState {
             None,
         ).await.unwrap();
         
+        // no more comments good luck!
 
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps.formats.iter()
@@ -1316,6 +1318,12 @@ impl<'a> RenderableSurface<'a> {
 pub enum RenderPipeline {
     AlphaBlending,
     AlphaOverwrite
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, Dropdown, Eq, PartialEq)]
+pub enum PerformanceMode {
+    PowerSaver,
+    HighPerformance,
 }
 
 

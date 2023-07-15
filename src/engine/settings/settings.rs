@@ -85,6 +85,10 @@ pub struct Settings {
     pub fullscreen_monitor: FullscreenMonitor,
     pub fullscreen_windowed: bool, // render at window_size?
     pub fullscreen_center: bool, // when rendering at window_size, center?
+
+    
+    #[Setting(text="Performance Mode (requires restart)", dropdown="PerformanceMode")]
+    pub performance_mode: PerformanceMode,
     
     #[serde(skip)]
     #[Setting(text="Refresh Monitors", action="|_|GameWindow::refresh_monitors()")]
@@ -158,10 +162,11 @@ impl Settings {
         let mut s = match std::fs::read_to_string(SETTINGS_FILE).map(|s| serde_json::from_str(&s).map_err(|e|e.to_string())).map_err(|e|e.to_string()) {
             Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
-                // warn!("error reading settings.json, loading defaults");
                 // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
                 warn!("Error reading settings.json\nLoading defaults, {e}");
-                backup_settings().await;
+                if let Some(saved_as) = Self::backup_settings().await {
+                    info!("Old settings saved t {saved_as}");
+                }
                 Self::default()
             }
         };
@@ -193,6 +198,33 @@ impl Settings {
         if self.osu_password.len() > 0 {self.osu_password = check_md5(self.osu_password.clone())}
         if self.password.len() > 0 {self.password = check_sha512(self.password.clone())}
     }
+
+    // make a backup of the setting before they're overwritten (when the file fails to load)
+    async fn backup_settings() -> Option<String> {
+        if Io::exists(SETTINGS_FILE) {
+            let mut counter = 0;
+            let mut file = format!("{SETTINGS_FILE}.bak_{counter}");
+            while Io::exists(&file) {
+                counter += 1;
+                file = format!("{SETTINGS_FILE}.bak_{counter}")
+            }
+            std::fs::copy(SETTINGS_FILE, &file).expect("An error occurred while backing up the old settings.json");
+            // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
+            //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
+            // } else {
+            //     NotificationManager::add_text_notification(
+            //         &format!("Backup saved as {file}"),
+            //         5000.0,
+            //         Color::YELLOW
+            //     ).await;
+            // }
+
+            Some(file)
+        } else {
+            None
+        }
+    }
+
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -235,6 +267,7 @@ impl Default for Settings {
             vsync: false,
             window_pos: [0, 0],
             window_size: [1280.0, 720.0],
+            performance_mode: PerformanceMode::HighPerformance,
             
             ui_scale: 1.0,
             background_dim: 0.8,
@@ -279,23 +312,3 @@ impl Default for Settings {
     }
 }
 
-// make a backup of the setting before they're overwritten (when the file fails to load)
-async fn backup_settings() {
-    if Io::exists(SETTINGS_FILE) {
-        let mut counter = 0;
-        while Io::exists(format!("{SETTINGS_FILE}.bak_{counter}")) {
-            counter += 1;
-        }
-        let file = format!("{SETTINGS_FILE}.bak_{counter}");
-        std::fs::copy(SETTINGS_FILE, &file).expect("you're bad");
-        // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
-        //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
-        // } else {
-        //     NotificationManager::add_text_notification(
-        //         &format!("Backup saved as {file}"),
-        //         5000.0,
-        //         Color::YELLOW
-        //     ).await;
-        // }
-    }
-}
