@@ -1141,31 +1141,31 @@ impl GraphicsState {
     pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
         let n = resolution;
 
-        // border 
-        if let Some(border) = border.filter(|b|b.color.a >= 0.0) {
-            let radius = radius + border.radius;
-            let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-            let (cw, ch) = (0.5 * w, 0.5 * h);
-            let (cx, cy) = (x + cw, y + ch);
-            let points = (0..n).map(|i| {
-                let angle = i as f32 / n as f32 * (PI * 2.0);
-                Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-            });
-
-            self.tessellate_polygon(points, border.color, Some(border.radius), transform, scissor);
-        }
+        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+        let (cw, ch) = (0.5 * w, 0.5 * h);
+        let (cx, cy) = (x + cw, y + ch);
+        let points = (0..n).map(|i| {
+            let angle = i as f32 / n as f32 * (PI * 2.0);
+            Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+        }).collect::<Vec<_>>();
 
         // fill
         if color.a > 0.0 { 
-            let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-            let (cw, ch) = (0.5 * w, 0.5 * h);
-            let (cx, cy) = (x + cw, y + ch);
-            let points = (0..n).map(|i| {
-                let angle = i as f32 / n as f32 * (PI * 2.0);
-                Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-            });
+            self.tessellate_polygon(&points, color, None, transform, scissor);
+        }
+        
+        // border 
+        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
+            // let radius = radius + border.radius;
+            // let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+            // let (cw, ch) = (0.5 * w, 0.5 * h);
+            // let (cx, cy) = (x + cw, y + ch);
+            // let points = (0..n).map(|i| {
+            //     let angle = i as f32 / n as f32 * (PI * 2.0);
+            //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+            // });
 
-            self.tessellate_polygon(points, color, None, transform, scissor);
+            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, scissor);
         }
 
     }
@@ -1218,7 +1218,8 @@ impl GraphicsState {
     }
 
 
-    fn tessellate_polygon(&mut self, mut polygon: impl Iterator<Item=Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+        let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
         for p in polygon { 
