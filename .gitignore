@@ -8,6 +8,7 @@ cargo.lock
 .vscode
 # logs
 /logs
+/debug
 
 # old tataku resource files, before /game was used
 /downloads
