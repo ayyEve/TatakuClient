@@ -282,7 +282,7 @@ impl ScrollableItem for UISideBarElement {
             TEXT_SIZE, 
             self.display_name.clone(),
             Color::WHITE, 
-            get_font()
+            Font::Main
         );
         
         let color = if self.hover {Color::BLUE} else {Color::RED};

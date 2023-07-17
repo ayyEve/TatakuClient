@@ -24,7 +24,7 @@ impl AccuracyElement {
                 30.0,
                 "100.00%".to_owned(),
                 Color::BLACK,
-                get_font()
+                Font::Main
             ).measure_text()
         };
 
@@ -68,7 +68,7 @@ impl InnerUIElement for AccuracyElement {
                 30.0 * scale.y,
                 format!("{:.2}%", self.acc),
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
-                get_font()
+                Font::Main
             );
             
             // space needed to align this to the right

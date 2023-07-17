@@ -19,7 +19,7 @@ pub enum Game2WindowEvent {
 
 pub enum LoadImage {
     Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),
-    Font(Font, f32, Option<UnboundedSender<TatakuResult<()>>>),
+    Font(ActualFont, f32, Option<UnboundedSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),
 
     CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, RenderPipeline, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),

@@ -22,7 +22,7 @@ impl BeatmapDialog {
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
             BUTTON_SIZE,
             "Delete Map",
-            get_font(),
+            Font::Main,
         );
         count += 1;
 
@@ -30,7 +30,7 @@ impl BeatmapDialog {
             Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
             BUTTON_SIZE,
             "Copy Hash",
-            get_font(),
+            Font::Main,
         );
 
 

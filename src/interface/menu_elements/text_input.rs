@@ -114,13 +114,13 @@ impl TextInput {
 
         for (counter, char) in text.chars().enumerate() {
             // get the font character
-            let c = self.font.get_character(self.font_size.clone(), char);
+            let Some(c) = self.font.get_character(self.font_size, char) else { continue };
             
-            width += c.advance_width / 2.0;
+            width += c.advance_width() / 2.0;
             
             if rel_x < width { return counter; }
 
-            width += c.advance_width / 2.0;
+            width += c.advance_width() / 2.0;
         }
 
         self.text.len()

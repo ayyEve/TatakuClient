@@ -32,7 +32,7 @@ impl LeaderboardItem {
         let size = LEADERBOARD_ITEM_SIZE;
 
         let tag = score.hash(); //username.clone();
-        let font = get_font();
+        let font = Font::Main;
         let score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
 
         LeaderboardItem {

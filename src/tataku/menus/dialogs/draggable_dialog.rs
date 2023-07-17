@@ -85,7 +85,7 @@ impl<G:Send+Sync> Dialog<G> for DraggableDialog<G> {
         if !title.is_empty() {
             let font_size = TOOLBAR_HEIGHT * 0.8;
             let pad = (TOOLBAR_HEIGHT-font_size) / 2.0;
-            let title = Text::new(pos + Vector2::new(pad, pad), font_size, title.to_owned(), Color::BLACK, get_font());
+            let title = Text::new(pos + Vector2::new(pad, pad), font_size, title.to_owned(), Color::BLACK, Font::Main);
             list.push(title);
         }
 
@@ -96,7 +96,7 @@ impl<G:Send+Sync> Dialog<G> for DraggableDialog<G> {
         list.push(close_rect);
 
         // FontAwesome::WindowClose
-        let mut x = Text::new(Vector2::ZERO, self.close_button_bounds.size.y * 0.8, "X".to_owned(), Color::BLACK, get_font());
+        let mut x = Text::new(Vector2::ZERO, self.close_button_bounds.size.y * 0.8, "X".to_owned(), Color::BLACK, Font::Main);
         x.center_text(&*close_rect);
         list.push(x);
     }

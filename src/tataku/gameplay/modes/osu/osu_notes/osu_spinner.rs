@@ -229,7 +229,7 @@ impl HitObject for OsuSpinner {
             30.0,
             format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
             Color::BLACK,
-            get_font()
+            Font::Main
         );
         txt.center_text(&Bounds::new(
             Vector2::new(0.0, self.pos.y + 50.0),

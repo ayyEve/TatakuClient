@@ -226,7 +226,6 @@ impl ScrollableItem for BeatmapsetItem {
     }
 
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
-        let font = get_font();
         let color = Color::new(0.2, 0.2, 0.2, 1.0);
         let text_color = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectText).unwrap_or_else(||Color::WHITE));
 
@@ -274,7 +273,7 @@ impl ScrollableItem for BeatmapsetItem {
             15.0 * scale.y,
             self.display_text.clone(),
             if self.selected { selected_text_color } else if self.hover {hovered_text_color} else { text_color },
-            font.clone()
+            Font::Main
         ));
 
 
@@ -348,7 +347,7 @@ impl ScrollableItem for BeatmapsetItem {
                     12.0 * btn_scale.y,
                     format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
                     if selected { selected_text_color } else { text_color },
-                    font.clone()
+                    Font::Main
                 ));
 
 
@@ -360,7 +359,7 @@ impl ScrollableItem for BeatmapsetItem {
                         12.0 * btn_scale.y,
                         info.get_diff_string(meta, &self.mods),
                         if selected { selected_text_color } else { text_color },
-                        font.clone()
+                        Font::Main
                     ));
                 };
 

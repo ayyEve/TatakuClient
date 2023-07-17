@@ -22,14 +22,13 @@ impl PauseMenu {
     pub async fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
         let window_size = WindowSize::get();
         let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
-        let font = get_font();
 
         let mut n = 0.0;
-        let continue_button = MenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Continue", font.clone());
+        let continue_button = MenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Continue", Font::Main);
         if !is_fail_menu {n += 1.0}
-        let retry_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Retry", font.clone());
+        let retry_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Retry", Font::Main);
         n += 1.0;
-        let exit_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Exit", font.clone());
+        let exit_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Exit", Font::Main);
 
         let mut bg = if is_fail_menu {
             SkinManager::get_texture("fail-background", true).await

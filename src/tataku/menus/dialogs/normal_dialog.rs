@@ -46,7 +46,7 @@ impl GenericDialog {
             Vector2::new((self.window_size.x - BUTTON_SIZE.x) / 2.0, y_pos),
             BUTTON_SIZE,
             &text,
-            get_font(),
+            Font::Main,
         );
         button.set_tag(&text);
         self.buttons.push(button);

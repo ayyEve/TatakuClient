@@ -24,7 +24,7 @@ impl ScoreElement {
                 30.0,
                 crate::format_number(number),
                 Color::BLACK,
-                get_font()
+                Font::Main
             ).measure_text()
         };
 
@@ -74,7 +74,7 @@ impl InnerUIElement for ScoreElement {
                 30.0 * scale.y,
                 crate::format_number(self.score),
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
-                get_font()
+                Font::Main
             );
             // space needed to align this to the right
             let text_size = text.measure_text();

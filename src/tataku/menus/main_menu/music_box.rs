@@ -57,7 +57,6 @@ impl MusicBox {
         let mut texts = Vec::new();
         let mut actions = Vec::new();
         let mut btn_pos = pos + Vector2::with_x(CONTROL_BUTTON_PADDING.x); // add initial left-side pad
-        let font_awesome = get_font_awesome();
 
         for button in CONTROL_BUTTONS {
             if let Some(c) = button {
@@ -68,7 +67,7 @@ impl MusicBox {
                     CONTROL_BUTTON_SIZE as f32,
                     c.get_char().to_string(),
                     PRIMARY_COLOR,
-                    font_awesome.clone()
+                    Font::FontAwesome
                 );
 
                 let t_size = text.measure_text();

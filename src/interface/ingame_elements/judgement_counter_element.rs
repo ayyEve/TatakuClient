@@ -48,7 +48,6 @@ impl InnerUIElement for JudgementCounterElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let font = get_font();
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE) * scale;
         
         let base_pos = pos_offset - BOX_SIZE;
@@ -85,7 +84,7 @@ impl InnerUIElement for JudgementCounterElement {
                 20.0 * scale.y,
                 if count == &0 {txt.clone()} else {format!("{}", count)},
                 Color::WHITE,
-                font.clone()
+                Font::Main
             );
             let text_size = text.measure_text();
             let max_width = box_width - 10.0; // padding of 10

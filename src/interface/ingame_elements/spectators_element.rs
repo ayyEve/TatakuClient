@@ -43,7 +43,6 @@ impl InnerUIElement for SpectatorsElement {
                 pos_offset,
                 Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f32) * scale,
             ));
-            let font = get_font();
             for (i, (_, username)) in self.spectator_cache.iter().enumerate() {
                 // draw username
                 list.push(Text::new(
@@ -51,7 +50,7 @@ impl InnerUIElement for SpectatorsElement {
                     30.0 * scale.y,
                     username.clone(),
                     Color::WHITE, 
-                    font.clone()
+                    Font::Main
                 ))
             }
         }

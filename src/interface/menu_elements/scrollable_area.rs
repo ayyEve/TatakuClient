@@ -830,7 +830,7 @@ impl ScrollableItem for ScrollableArea {
                 rect.border = info.header_border_hover;
             }
 
-            let mut txt = Text::new(offset, rect.size.y * 0.8, info.header_text.clone(), info.header_text_color, get_font());
+            let mut txt = Text::new(offset, rect.size.y * 0.8, info.header_text.clone(), info.header_text_color, Font::Main);
             
             match info.header_text_align {
                 HorizontalAlign::Center => txt.center_text(&*rect),

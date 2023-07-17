@@ -177,7 +177,7 @@ impl AsyncMenu<Game> for LoadingMenu {
     }
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        let font = get_font();
+        let font = Font::Main;
 
         // since this is just loading, we dont care about performance here
         let state = self.status.lock().await;

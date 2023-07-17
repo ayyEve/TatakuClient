@@ -43,8 +43,6 @@ impl InnerUIElement for KeyCounterElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-        let font = get_font();
-
         // let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {
         //     let btn_size = btn.size();
         //     let btn_count = self.key_order.len() as f64;
@@ -103,7 +101,7 @@ impl InnerUIElement for KeyCounterElement {
                 20.0 * scale.x,
                 if info.count == 0 {info.label.clone()} else {format!("{}", info.count)},
                 Color::WHITE,
-                font.clone()
+                Font::Main
             );
             
             let text_size = text.measure_text();

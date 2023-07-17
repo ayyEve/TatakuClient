@@ -28,13 +28,13 @@ impl CurrentSongDisplay {
         if self.current_song.update() {
             self.song_text = self.current_song.0.as_ref().map(|s|format!("{} - {}", s.artist, s.title)).unwrap_or_default();
             
-            let text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, get_font());
+            let text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
             self.text_size = text.measure_text();
         }
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
-        let mut text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, get_font());
+        let mut text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
 
         // (window width - text width) - 2 padding, with y padding
         let pos = self.window_size.x_portion() - self.text_size.x_portion() - Vector2::with_x(OUTER_PADDING * 2.0) + Vector2::with_y(OUTER_PADDING);

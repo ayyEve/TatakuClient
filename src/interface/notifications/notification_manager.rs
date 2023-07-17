@@ -145,14 +145,12 @@ struct ProcessedNotif {
 }
 impl ProcessedNotif {
     fn new(notification: Notification) -> Self {
-        let font = get_font();
-
         let text = Text::new(
             Vector2::ZERO,
             NOTIF_TEXT_SIZE,
             notification.text.clone(),
             Color::WHITE,
-            font.clone()
+            Font::Main
         );
 
         let size = text.measure_text() + NOTIF_PADDING * 2.0;

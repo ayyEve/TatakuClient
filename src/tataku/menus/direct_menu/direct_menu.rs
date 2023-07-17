@@ -63,7 +63,7 @@ impl DirectMenu {
             selected: None,
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "", get_font()),
+            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "", Font::Main),
             current_api: Box::new(OsuDirect::new()),
 
             mode,
@@ -205,7 +205,6 @@ impl AsyncMenu<Game> for DirectMenu {
             ));
             
             let mut counter = 0.0;
-            let font = get_font();
 
             // downloading
             for i in self.downloading.iter() {
@@ -223,7 +222,7 @@ impl AsyncMenu<Game> for DirectMenu {
                     15.0, 
                     format!("{} (Downloading)", i.title()),
                     Color::BLACK,
-                    font.clone()
+                    Font::Main
                 ));
 
                 counter += 1.0;
@@ -245,7 +244,7 @@ impl AsyncMenu<Game> for DirectMenu {
                     15.0,
                     format!("{} (Waiting...)", i.title()),
                     Color::BLACK,
-                    font.clone()
+                    Font::Main
                 ));
 
                 counter += 1.0;

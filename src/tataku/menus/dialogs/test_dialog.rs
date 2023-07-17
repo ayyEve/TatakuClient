@@ -18,8 +18,8 @@ pub struct TestDialog {
 }
 impl TestDialog {
     pub fn new() -> Self {
-        let mut add_button = MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Add", get_font());
-        let search_text = TextInput::new(Vector2::with_x(110.0), Vector2::new(200.0, 50.0), "Search", "", get_font());
+        let mut add_button = MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Add", Font::Main);
+        let search_text = TextInput::new(Vector2::with_x(110.0), Vector2::new(200.0, 50.0), "Search", "", Font::Main);
 
         let (sender, receiver) = channel(10);
         add_button.on_click = Arc::new(move |_|sender.try_send(()).unwrap());

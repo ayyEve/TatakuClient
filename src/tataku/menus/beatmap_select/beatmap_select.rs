@@ -52,7 +52,6 @@ pub struct BeatmapSelectMenu {
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
-        let font = get_font();
         let window_size = WindowSize::get();
         let settings = SettingsHelper::new();
         let scale = window_size.y / DEFAULT_HEIGHT;
@@ -64,7 +63,7 @@ impl BeatmapSelectMenu {
             15.0,
             "Sort",
             Some(sort_by),
-            font.clone()
+            Font::Main
         );
 
         let mode = settings.last_played_mode.clone();
@@ -76,7 +75,7 @@ impl BeatmapSelectMenu {
             15.0,
             "Mode",
             Some(PlayModeDropdown::Mode(mode.clone())),
-            font.clone()
+            Font::Main
         );
         
         
@@ -87,7 +86,7 @@ impl BeatmapSelectMenu {
             15.0,
             "Leaderboard",
             Some(leaderboard_method),
-            font.clone()
+            Font::Main
         );
 
 
@@ -104,11 +103,11 @@ impl BeatmapSelectMenu {
             // pending_refresh: false,
             map_changing: (false, false, 0),
             current_scores: HashMap::new(),
-            back_button: MenuButton::back_button(window_size.0, font.clone()),
+            back_button: MenuButton::back_button(window_size.0, Font::Main),
 
             beatmap_scroll,
             leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), ListMode::VerticalList),
-            search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", font.clone()),
+            search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", Font::Main),
 
             mode,
             mods: ModManagerHelper::new(),
@@ -587,7 +586,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         //         Vector2::new(0.0, 5.0),
         //         25,
         //         meta.version_string(),
-        //         font.clone()
+        //         Font::Main
         //     )));
 
         //     // diff string, under map string
@@ -597,7 +596,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         //         Vector2::new(0.0, 35.0),
         //         15,
         //         meta.diff_string(self.mode.clone(), &ModManager::get()),
-        //         font.clone()
+        //         Font::Main
         //     )));
         // }
 

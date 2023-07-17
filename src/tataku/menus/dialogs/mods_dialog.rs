@@ -29,10 +29,9 @@ impl ModDialog {
         let mut scroll = ScrollableArea::new(Vector2::with_y(20.0), window_size.0, ListMode::VerticalList);
         let pos = Vector2::new(50.0, 0.0);
 
-        let font = get_font();
         let manager = ModManager::get();
         for group in new_groups {
-            scroll.add_item(Box::new(MenuSection::new(pos, 50.0, &group.name, Color::WHITE, font.clone())));
+            scroll.add_item(Box::new(MenuSection::new(pos, 50.0, &group.name, Color::WHITE, Font::Main)));
             
             for m in group.mods {
                 scroll.add_item(Box::new(ModButton::new(pos, m, &manager)));
@@ -202,11 +201,9 @@ impl ScrollableItem for ModButton {
 
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let pos_offset = self.pos + pos_offset;
-        
-        let font = get_font();
         let cb_size = Vector2::new(200.0, 50.0);
 
-        let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, font.clone());
+        let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, Font::Main);
         checkbox.set_hover(self.hover);
         checkbox.set_selected(self.selected);
 
@@ -217,7 +214,7 @@ impl ScrollableItem for ModButton {
             font_size, 
             self.gameplay_mod.description().to_owned(), 
             Color::WHITE, 
-            font
+            Font::Main
         );
 
         checkbox.draw(pos_offset, list);

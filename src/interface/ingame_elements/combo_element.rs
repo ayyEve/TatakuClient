@@ -42,7 +42,7 @@ impl InnerUIElement for ComboElement {
                 30.0 * scale.x,
                 crate::format_number(self.combo),
                 Color::WHITE,
-                get_font()
+                Font::Main
             );
             combo_text.center_text(&combo_bounds);
             list.push(combo_text);

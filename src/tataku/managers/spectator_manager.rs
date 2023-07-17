@@ -410,14 +410,12 @@ impl Drop for SpectatorManager {
 
 
 fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection) {
-    let font = get_font();
-
     let mut offset_text = Text::new(
         Vector2::ZERO, // centered anyways
         32.0,
         text.to_owned(),
         Color::BLACK,
-        font.clone()
+        Font::Main
     );
     
     let text_width = offset_text.measure_text().x + BANNER_WPADDING;

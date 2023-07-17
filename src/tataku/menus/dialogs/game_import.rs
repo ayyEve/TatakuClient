@@ -16,7 +16,6 @@ pub struct GameImportDialog {
 }
 impl GameImportDialog {
     pub async fn new() -> Self {
-        let font = get_font();
         let item_size = Vector2::new(20.0, 50.0);
         let button_height = 50.0; // AKA bottom margin
 
@@ -36,7 +35,7 @@ impl GameImportDialog {
                     INPUT_SIZE,
                     "Game Path",
                     f,
-                    font.clone()
+                    Font::Main
                 )))
             });
 
@@ -45,14 +44,14 @@ impl GameImportDialog {
             Vector2::new(0.0, BASE_SIZE.y - button_height),
             Vector2::new(100.0, button_height),
             "Add",
-            font.clone()
+            Font::Main
         );
 
         let confirm_button = MenuButton::new(
             Vector2::new(120.0, BASE_SIZE.y - button_height),
             Vector2::new(100.0, button_height),
             "Done",
-            font.clone()
+            Font::Main
         );
 
         Self {
@@ -113,7 +112,7 @@ impl Dialog<Game> for GameImportDialog {
                 INPUT_SIZE,
                 "Game Path",
                 "",
-                get_font()
+                Font::Main
             )))
         }
 

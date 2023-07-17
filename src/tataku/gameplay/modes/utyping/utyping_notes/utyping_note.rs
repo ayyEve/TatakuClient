@@ -135,7 +135,7 @@ impl HitObject for UTypingNote {
             // self.romaji.clone(), //
             self.text.clone(),
             Color::BLACK,
-            get_fallback_font()
+            Font::Fallback
         );
         let mut rect = Bounds::new(self.pos - size / 2.0, size);
         t.center_text(&rect);
@@ -165,7 +165,7 @@ impl HitObject for UTypingNote {
                 32.0,
                 i.clone(),
                 Color::BLACK,
-                get_fallback_font()
+                Font::Fallback
             );
 
             t.text_colors = (0..completed_len).map(|_|complete_color).chain((0..(len - completed_len)).map(|_|incomplete_color)).collect();
@@ -180,7 +180,7 @@ impl HitObject for UTypingNote {
                 32.0,
                 "...".to_owned(),
                 Color::BLACK,
-                get_fallback_font()
+                Font::Fallback
             );
             t.center_text(&rect);
             list.push(t);

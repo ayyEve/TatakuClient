@@ -301,7 +301,7 @@ impl ScrollableItem for MainMenuButton {
                     15.0 * scale,
                     self.text.to_owned(),
                     Color::WHITE,
-                    get_font()
+                    Font::Main
                 );
                 txt.center_text(&r);
 

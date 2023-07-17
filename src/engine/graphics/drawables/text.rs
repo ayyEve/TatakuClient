@@ -21,7 +21,7 @@ pub struct Text {
 }
 impl Text {
     pub fn new(pos: Vector2, font_size: f32, text: String, color:Color, font: Font) -> Text {
-        let fonts = vec![font, get_fallback_font()];
+        let fonts = vec![font, Font::Fallback];
 
         // let text_size = Self::measure_text_internal(&fonts, font_size, &text, Vector2::ONE, 2.0);
         // let origin = text_size / 2.0;
@@ -79,8 +79,8 @@ impl Text {
             }
 
             for i in fonts {
-                if i.has_character(ch) {
-                    current_width += i.get_character(font_size, ch).advance_width;
+                if let Some(data) = i.get_character(font_size, ch) {
+                    current_width += data.advance_width();
                     break;
                 }
             };

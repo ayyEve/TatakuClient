@@ -38,8 +38,6 @@ impl ScrollableItem for DirectItem {
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.item.clone())}
 
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
-        let font = get_font();
-
         list.push(Rectangle::new(
             self.pos + pos_offset,
             self.size(),
@@ -52,7 +50,7 @@ impl ScrollableItem for DirectItem {
             20.0,
             format!("{} - {}", self.item.artist(), self.item.title()),
             Color::BLACK,
-            font.clone()
+            Font::Main
         ));
 
         list.push(Text::new(
@@ -60,7 +58,7 @@ impl ScrollableItem for DirectItem {
             20.0,
             format!("Mapped by {}", self.item.creator()),
             Color::BLACK,
-            font.clone()
+            Font::Main
         ));
     }
 

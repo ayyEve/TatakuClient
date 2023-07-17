@@ -65,7 +65,7 @@ impl ManiaSettings {
 
             // "<prefix>|<playfield_setting_index>key<key_index>"
             for (n, key) in self.keys[i].iter().enumerate() {
-                let mut kb = KeyButton::new(Vector2::with_x(OFFSET2), size, *key, "Key ".to_owned() + &(n+1).to_string(), get_font()).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
+                let mut kb = KeyButton::new(Vector2::with_x(OFFSET2), size, *key, "Key ".to_owned() + &(n+1).to_string(), Font::Main).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
                 let s = sender.clone();
                 kb.on_change = Arc::new(move |_,_|{let _ = s.send(());});
                 list2.add_item(Box::new(kb));

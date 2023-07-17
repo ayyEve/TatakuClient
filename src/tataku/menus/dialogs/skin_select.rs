@@ -16,7 +16,7 @@ impl SkinSelect {
                 20.0,
                 "Skin",
                 Some(SkinDropdownable::Skin(current_skin.clone())),
-                get_font()
+                Font::Main
             ),
             current_skin,
             should_close: false,

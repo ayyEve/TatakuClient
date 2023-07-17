@@ -82,7 +82,7 @@ impl HitCircleImageHelper {
                 radius,
                 self.combo_num.to_string(),
                 Color::BLACK,
-                get_font()
+                Font::Main
             );
             text.center_text(&rect);
 

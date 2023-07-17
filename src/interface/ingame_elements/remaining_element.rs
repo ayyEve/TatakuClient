@@ -59,7 +59,7 @@ impl InnerUIElement for RemainingElement {
             30.0 * scale.x,
             format!("{sign}{mins:02}:{secs:02}"),
             Color::WHITE,
-            get_font()
+            Font::Main
         );
         text.center_text(&bounds);
         list.push(text);

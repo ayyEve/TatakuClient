@@ -43,7 +43,6 @@ impl ScrollableItem for PanelUser {
     fn get_keywords(&self) -> Vec<String> { self.user.username.split(" ").map(|a|a.to_lowercase().to_owned()).collect() }
 
     fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
-        let font = get_font();
         let pos = self.pos + pos;
 
         // bounding box
@@ -60,7 +59,7 @@ impl ScrollableItem for PanelUser {
             20.0,
             self.user.username.clone(),
             Color::WHITE,
-            font.clone()
+            Font::Main
         ));
 
         // status
@@ -73,7 +72,7 @@ impl ScrollableItem for PanelUser {
                 20.0,
                 action_text.clone(),
                 Color::BLACK,
-                font.clone()
+                Font::Main
             ));
         }
     }

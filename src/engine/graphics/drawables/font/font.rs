@@ -1,61 +1,19 @@
 use crate::prelude::*;
 
 lazy_static::lazy_static! {
-    static ref MAIN_FONT:Font = load_font("main.ttf");
-    static ref FALLBACK_FONT:Font = load_font("main_fallback.ttf");
-    static ref FONT_AWESOME:Font = load_font("font_awesome_6_regular.otf");
+    static ref MAIN_FONT:ActualFont = ActualFont::load("resources/fonts/main.ttf").expect("Error loading main font");
+    static ref FALLBACK_FONT:ActualFont = ActualFont::load("resources/fonts/main_fallback.ttf").expect("Error loading fallback font");
+    static ref FONT_AWESOME:ActualFont = ActualFont::load("resources/fonts/font_awesome_6_regular.otf").expect("Error loading font awesome");
 }
 
-pub fn get_font() -> Font {
-    MAIN_FONT.clone()
-}
-
-pub fn get_font_awesome() -> Font {
-    FONT_AWESOME.clone()
-}
-
-pub fn get_fallback_font() -> Font {
-    FALLBACK_FONT.clone()
-}
-
-fn load_font(name: &str) -> Font {
-    Font::load(format!("resources/fonts/{}", name)).expect(&format!("error loading font {name}"))
-}
-
-/// list of points for font awesome font
-#[repr(u32)]
-#[allow(non_camel_case_types, dead_code)]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum FontAwesome {
-    Backward = 0xf04a,
-    Play = 0xf04b,
-    Pause = 0xf04c,
-    Stop = 0xf04d,
-    Forward = 0xf04e,
-
-    Backward_Step = 0xf048,
-    Forward_Step = 0xf051,
-
-    Circle_Pause = 0xf28b,
-    Circle_Play = 0xf144,
-    Circle_Stop = 0xf28d,
-
-    WindowMaximize = 0xf2d0,
-    WindowMinimize = 0xf2d1,
-    WindowRestore = 0xf2d2,
-    WindowClose = 0xf2d3,
-    WindowCloseOutline = 0xf2d4,
-}
-impl FontAwesome {
-    pub fn get_char(&self) -> char {
-        let c = *self as u32;
-        char::from_u32(c).expect(&format!("invalid char id? {}", c))
+pub fn preload_fonts() {
+    for i in [&*MAIN_FONT, &*FALLBACK_FONT, &*FONT_AWESOME] {
+        i.load_font_size(30.0, false);
     }
 }
 
-
 #[derive(Clone)]
-pub struct Font {
+pub struct ActualFont {
     pub name: Arc<String>,
     pub font: Arc<fontdue::Font>,
     // if the size is loaded but the char isnt found, dont try to load the font
@@ -66,13 +24,11 @@ pub struct Font {
     // if the size is loaded but the char isnt found, dont try to load the font
     queued_for_load: Arc<RwLock<HashSet<u32>>>,
 }
-impl Font {
-    pub fn load<P:AsRef<Path>>(path:P) -> Option<Self> {
+impl ActualFont {
+    pub fn load(path: impl AsRef<Path>) -> Option<Self> {
         let data = Io::read_file(&path).ok()?;
         let name = path.as_ref().file_name().unwrap().to_string_lossy().to_string();
-
-        let font_settings = fontdue::FontSettings::default();
-        let font = fontdue::Font::from_bytes(data, font_settings).ok()?;
+        let font = fontdue::Font::from_bytes(data, Default::default()).ok()?;
 
         Some(Self {
             name: Arc::new(name),
@@ -117,7 +73,7 @@ impl Font {
         }
     }
 
-    pub fn get_char(&self, font_size: f32, c: char) -> Option<CharData> {
+    pub fn get_character(&self, font_size: f32, c: char) -> Option<CharData> {
         if !self.has_character(c) { return None }
         let font_size = FontSize::new(font_size);
 
@@ -129,14 +85,6 @@ impl Font {
         }
 
         self.characters.read().get(&key).cloned()
-    }
-
-    pub fn get_character(&self, font_size: f32, ch: char) -> FontCharacter {
-        if let Some(c) = self.get_char(font_size, ch) {
-            c.into()
-        } else {
-            Default::default()
-        }
     }
 
     pub fn has_character(&self, ch: char) -> bool {
@@ -166,7 +114,7 @@ impl Font {
         transform: Matrix, 
         graphics: &mut GraphicsState
     ) {
-        let Some(character) = self.get_char(font_size, ch) else { return; };
+        let Some(character) = self.get_character(font_size, ch) else { return; };
         
         let ch_x = *x + character.metrics.xmin as f32 * scale.x;
         let ch_y = *y - (character.metrics.height as f32 + character.metrics.ymin as f32) * scale.y;
@@ -181,48 +129,25 @@ impl Font {
 
 }
 
-#[derive(Clone)]
-pub struct CharData {
-    pub texture: TextureReference,
-    pub metrics: fontdue::Metrics
-}
-impl Into<FontCharacter> for CharData {
-    fn into(self) -> FontCharacter {
-        FontCharacter {
-            pos: self.texture.uvs.tl.into(),
-            size: Vector2::new(self.texture.width as f32, self.texture.height as f32),
-            advance_width: self.metrics.advance_width,
-            advance_height: self.metrics.advance_height,
-            top: 0.0,
-            left: 0.0,
-        }
-    }
-}
-
-
-
-/// font size helper since f32 isnt hash
-pub struct FontSize(f32, u32);
-impl FontSize {
-    const AMOUNT:f32 = 10.0; // one decimal place
-    pub fn new(f:f32) -> Self {
-        Self(f, (f * Self::AMOUNT) as u32)
-    }
-    pub fn u32(&self) -> u32 {
-        self.1
-    }
-    pub fn f32(&self) -> f32 {
-        self.0
-    }
-}
 
 #[derive(Clone, Default)]
-pub struct FontCharacter {
-    pub pos: Vector2,
-    pub size: Vector2,
-    pub advance_width: f32,
-    pub advance_height: f32,
-
-    pub top: f32,
-    pub left: f32,
+pub enum Font {
+    #[default]
+    Main,
+    Fallback,
+    FontAwesome,
+    // boxed to keep the Font type small (16 vs 48)
+    #[allow(unused)]
+    Custom(Box<ActualFont>)
+}
+impl Deref for Font {
+    type Target = ActualFont;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Main => &MAIN_FONT,
+            Self::Fallback => &FALLBACK_FONT,
+            Self::FontAwesome => &FONT_AWESOME,
+            Self::Custom(font) => font
+        }
+    }
 }

@@ -19,7 +19,7 @@ impl CenteredTextHelper {
             draw_time,
             changed_time: 0.0,
 
-            font: get_font(),
+            font: Font::Main,
             window_size: WindowSizeHelper::new(),
         }
     }
@@ -61,7 +61,7 @@ impl CenteredTextHelper {
 impl Default for CenteredTextHelper {
     fn default() -> Self {
         Self {
-            font: get_font(),
+            font: Font::Main,
             text: Default::default(),
             changed_time: Default::default(),
             draw_time: Default::default(),

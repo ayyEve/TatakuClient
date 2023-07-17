@@ -26,10 +26,8 @@ impl MenuStatsInfo {
     }
 
     pub fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
-        let font = get_font();
-
         // display name should be at the top with some margin above and below
-        let display_text = Text::new(bounds.pos, 30.0, self.display_name.clone(), Color::BLACK, font.clone());
+        let display_text = Text::new(bounds.pos, 30.0, self.display_name.clone(), Color::BLACK, Font::Main);
         // display_text.center_text(bounds);
         // display_text.current_pos.y = 0.0;
         list.push(display_text);
@@ -39,7 +37,7 @@ impl MenuStatsInfo {
         for i in self.data.iter() {
             if i.show_in_list {
                 let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
-                list.push(Text::new(current_pos, 20.0, text, i.color, font.clone()));
+                list.push(Text::new(current_pos, 20.0, text, i.color, Font::Main));
             }
             current_pos += Vector2::with_y(20.0 + 5.0);
         }

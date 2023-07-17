@@ -58,13 +58,6 @@ impl GameWindow {
         let window = WindowBuilder::new().with_min_inner_size(to_size(Vector2::ONE)).build(&event_loop).expect("Unable to create window");
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
-
-        // pre-load fonts
-        get_font();
-        get_fallback_font();
-        get_font_awesome();
-        debug!("done fonts");
-
         
         let (window_event_sender, window_event_receiver) = unbounded_channel(); //sync_channel(30);
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
@@ -123,6 +116,9 @@ impl GameWindow {
         // what??
         let settings = Settings::get().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
+
+        // pre-load fonts
+        preload_fonts();
 
         self.init_media_controls();
         self.settings.update();
@@ -573,7 +569,7 @@ impl GameWindow {
     }
 
     // this is called from functions without real access to async, so we have to be dumb here
-    pub fn load_font_data(font: Font, size:f32, wait_for_complete: bool) -> TatakuResult<()> {
+    pub fn load_font_data(font: ActualFont, size:f32, wait_for_complete: bool) -> TatakuResult<()> {
         // NOTE: this will hang the main thread if this is run there
         if wait_for_complete {
             let (sender, mut receiver) = unbounded_channel();

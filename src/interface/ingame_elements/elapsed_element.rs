@@ -58,7 +58,7 @@ impl InnerUIElement for ElapsedElement {
             30.0 * scale.x,
             format!("{mins:02}:{secs:02}"),
             Color::WHITE,
-            get_font()
+            Font::Main
         );
         text.center_text(&bounds);
         list.push(text);

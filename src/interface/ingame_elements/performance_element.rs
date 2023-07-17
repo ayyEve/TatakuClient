@@ -25,7 +25,7 @@ impl PerformanceElement {
                 30.0,
                 crate::format_float(number, 2),
                 Color::BLACK,
-                get_font()
+                Font::Main
             ).measure_text()
         };
 
@@ -76,7 +76,7 @@ impl InnerUIElement for PerformanceElement {
                 30.0 * scale.y,
                 format!("{:.2}", self.perf),
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
-                get_font()
+                Font::Main
             );
             
             // space needed to align this to the right

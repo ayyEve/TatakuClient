@@ -86,7 +86,7 @@ impl FpsDisplay {
             12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             Color::BLACK,
-            get_font()
+            Font::Main
         ));
     }
 }
@@ -152,7 +152,7 @@ impl AsyncFpsDisplay {
             12.0,
             format!("{:.2}{} ({:.2}ms)", self.last, self.name, self.frametime_last_draw),
             Color::BLACK,
-            get_font()
+            Font::Main
         ));
 
     }

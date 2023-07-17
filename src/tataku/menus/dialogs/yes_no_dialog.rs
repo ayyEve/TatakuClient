@@ -28,9 +28,9 @@ impl YesNoDialog {
         let zero = Vector2::ZERO;
 
         // create buttons
-        let mut yes_button = MenuButton::new(zero, BUTTON_SIZE, "Yes", get_font());
-        let mut no_button = MenuButton::new(zero, BUTTON_SIZE, "No", get_font());
-        let mut cancel_button = if show_cancel { Some(MenuButton::new(zero, BUTTON_SIZE, "Cancel", get_font())) } else { None };
+        let mut yes_button = MenuButton::new(zero, BUTTON_SIZE, "Yes", Font::Main);
+        let mut no_button = MenuButton::new(zero, BUTTON_SIZE, "No", Font::Main);
+        let mut cancel_button = if show_cancel { Some(MenuButton::new(zero, BUTTON_SIZE, "Cancel", Font::Main)) } else { None };
         
         // how many buttons do we have (since it can be 2 or 3 depending if the cancel button is included or not)
         let button_count =  if cancel_button.is_some() { 3 } else { 2 };
@@ -38,7 +38,7 @@ impl YesNoDialog {
         let button_widths = BUTTON_MARGIN.x + (BUTTON_SIZE.x + BUTTON_MARGIN.x) * button_count as f32;
 
         // create prompt text and measure it
-        let prompt_size = Text::new(zero, FONT_SIZE, prompt.clone(), Color::BLACK, get_font()).measure_text();
+        let prompt_size = Text::new(zero, FONT_SIZE, prompt.clone(), Color::BLACK, Font::Main).measure_text();
 
         // get the total width of the dialog
         // it must be at least the width of all the buttons, but at most MAX_WIDTH
@@ -116,7 +116,7 @@ impl Dialog<Game> for YesNoDialog {
         self.draw_background(Color::GRAY, offset, list);
 
         // prompt text
-        let mut text = Text::new(offset, FONT_SIZE, self.prompt.clone(), Color::BLACK, get_font());
+        let mut text = Text::new(offset, FONT_SIZE, self.prompt.clone(), Color::BLACK, Font::Main);
         text.center_text(&Bounds::new(offset, self.prompt_size));
         list.push(text);
 

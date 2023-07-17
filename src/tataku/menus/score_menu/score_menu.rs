@@ -46,7 +46,6 @@ impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
         let window_size = WindowSize::get();
         let hit_error = score.hit_error();
-        let font = get_font();
 
         // let graph = Graph::new(
         //     Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
@@ -54,7 +53,7 @@ impl ScoreMenu {
         //     score.hit_timings.iter().map(|e|*e as f32).collect(),
         //     -50.0,
         //     50.0,
-        //     font.clone()
+        //     Font::Main
         // );
 
         let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
@@ -79,14 +78,14 @@ impl ScoreMenu {
 
         let mut buttons = Vec::new();
 
-        let mut back_button = MenuButton::back_button(window_size.0, font.clone());
+        let mut back_button = MenuButton::back_button(window_size.0, Font::Main);
         back_button.set_tag("back");
 
-        let mut replay_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", font.clone());
+        let mut replay_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", Font::Main);
         replay_button.set_tag("replay");
         
         if allow_retry {
-            let mut retry_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0)*2.0, back_button.size(), "Retry", font.clone());
+            let mut retry_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0)*2.0, back_button.size(), "Retry", Font::Main);
             retry_button.set_tag("retry");
             buttons.push(retry_button);
         }
@@ -183,8 +182,6 @@ impl AsyncMenu<Game> for ScoreMenu {
     }
 
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        let font = get_font();
-        
         // draw background so score info is readable
         list.push(visibility_bg(
             Vector2::ONE * 5.0, 
@@ -197,7 +194,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             TITLE_STRING_FONT_SIZE,
             format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed),
             Color::BLACK,
-            font.clone()
+            Font::Main
         ));
 
         let mut current_pos = Vector2::new(25.0, 80.0);
@@ -209,7 +206,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             30.0,
             format!("Score: {}", format_number(self.score.score.score)),
             Color::BLACK,
-            font.clone()
+            Font::Main
         ));
         current_pos += size;
 
@@ -220,7 +217,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                 30.0,
                 format!("{str}: {}", format_number(*count)),
                 *color,
-                font.clone()
+                Font::Main
             ));
             current_pos += size;
         }
@@ -243,7 +240,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                         30.0,
                         str,
                         Color::BLACK,
-                        font.clone()
+                        Font::Main
                     ));
                 }
 
@@ -263,7 +260,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                         30.0,
                         format!("Score not submitted: {str}"),
                         Color::BLACK,
-                        font.clone()
+                        Font::Main
                     ));
                 }
 
@@ -277,7 +274,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                             30.0,
                             str,
                             Color::BLACK,
-                            font.clone()
+                            Font::Main
                         ));
                         current_pos += size;
                     }

@@ -85,14 +85,13 @@ impl Dialog<Game> for ChangelogDialog {
         let mut bg_rect = self.bounds.clone();
         bg_rect.depth = *depth;
 
-        let font = get_font();
         list.push(Box::new(Text::new(
             Color::BLACK,
             depth - 0.00001,
             Vector2::new(bg_rect.current_pos.x + ITEM_PADDING.x, ITEM_HEIGHT),
             ITEM_HEIGHT as u32,
             format!("Whats new:"),
-            font.clone()
+            Font::Main
         )));
         
         for (i, text) in self.items.iter().enumerate() {
@@ -103,7 +102,7 @@ impl Dialog<Game> for ChangelogDialog {
                 Vector2::new(bg_rect.current_pos.x + ITEM_PADDING.x, y),
                 ITEM_HEIGHT as u32,
                 text.clone(),
-                font.clone()
+                Font::Main
             )));
         }
 
