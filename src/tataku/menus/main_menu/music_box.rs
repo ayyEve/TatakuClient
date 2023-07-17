@@ -213,7 +213,7 @@ impl ScrollableItem for MusicBox {
                 t_size + CONTROL_BUTTON_PADDING * 2.0,
                 SECONDARY_COLOR.alpha(0.1),
                 None, //Some(Border::new(Color::BLACK, 1.2))
-            ).shape(Shape::Round(5.0, 10));
+            ).shape(Shape::Round(5.0));
 
             if rect.contains(self.mouse_pos) {
                 rect.color.a = 0.2;
@@ -234,7 +234,7 @@ impl ScrollableItem for MusicBox {
             Vector2::new(self.size.x * (self.song_time / self.song_duration), PROGRESSBAR_HEIGHT),
             PRIMARY_COLOR,
             None
-        ).shape(Shape::Round(2.0, 5)));
+        ).shape(Shape::Round(2.0)));
         
         // draw border after
         list.push(Rectangle::new(
@@ -242,7 +242,7 @@ impl ScrollableItem for MusicBox {
             Vector2::new(self.size.x, PROGRESSBAR_HEIGHT),
             Color::TRANSPARENT_WHITE,
             Some(Border::new(SECONDARY_COLOR, 1.2))
-        ).shape(Shape::Round(2.0, 5)));
+        ).shape(Shape::Round(2.0)));
 
     }
 }

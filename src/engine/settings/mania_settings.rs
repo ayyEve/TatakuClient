@@ -47,7 +47,7 @@ impl ManiaSettings {
             header_color_hover: Color::GRAY, 
             header_border: Some(Border::new(Color::BLACK, 2.0)), 
             header_border_hover: Some(Border::new(Color::RED, 2.0)), 
-            header_shape: Shape::Round(10.0, 0), 
+            header_shape: Shape::Round(10.0), 
             auto_height: true, 
             first_item_margin: Some(10.0),
             initially_expanded: false

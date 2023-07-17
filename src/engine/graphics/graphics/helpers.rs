@@ -19,8 +19,8 @@ impl Border {
 pub enum Shape {
     /// Square corners
     Square,
-    /// Round corners, with resolution per corner.
-    Round(f32, u32),
+    /// Round corners
+    Round(f32),
 }
 
 

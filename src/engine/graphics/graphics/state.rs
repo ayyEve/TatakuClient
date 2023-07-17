@@ -1135,7 +1135,7 @@ impl GraphicsState {
         path.end(false);
         let path = path.build();
 
-        self.tessellate_path(path, color, None, transform, scissor);
+        self.tessellate_path(&path, color, None, transform, scissor);
     }
 
     pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
@@ -1155,19 +1155,19 @@ impl GraphicsState {
             self.tessellate_polygon(points, border.color, Some(border.radius), transform, scissor);
         }
 
-        // minor optimization
-        if color.a <= 0.0 { return }
-
         // fill
-        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-        let (cw, ch) = (0.5 * w, 0.5 * h);
-        let (cx, cy) = (x + cw, y + ch);
-        let points = (0..n).map(|i| {
-            let angle = i as f32 / n as f32 * (PI * 2.0);
-            Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-        });
+        if color.a > 0.0 { 
+            let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+            let (cw, ch) = (0.5 * w, 0.5 * h);
+            let (cx, cy) = (x + cw, y + ch);
+            let points = (0..n).map(|i| {
+                let angle = i as f32 / n as f32 * (PI * 2.0);
+                Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+            });
 
-        self.tessellate_polygon(points, color, None, transform, scissor);
+            self.tessellate_polygon(points, color, None, transform, scissor);
+        }
+
     }
 
     pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, scissor: Scissor) {
@@ -1192,23 +1192,24 @@ impl GraphicsState {
         if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
 
         let [x, y, w, h] = rect;
-        let rect = Box2D::new(Point::new(x,y), Point::new(x+w, y+h));
+        let rect = Box2D::new(Point::new(x, y), Point::new(x+w, y+h));
 
         let mut path = lyon_tessellation::path::Path::builder();
         match shape {
             Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
-            Shape::Round(radius, _resolution) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive)
+            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive)
         }
         let path = path.build();
 
-        if let Some(border) = border {
-            self.tessellate_path(path.clone(), border.color, Some(border.radius), transform, scissor)
+        // fill
+        if color.a > 0.0 { 
+            self.tessellate_path(&path, color, None, transform, scissor)
         }
 
-        // minor optimization
-        if color.a <= 0.0 { return }
-
-        self.tessellate_path(path, color, None, transform, scissor)
+        // border
+        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
+            self.tessellate_path(&path, border.color, Some(border.radius), transform, scissor)
+        }
     }
 
     pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
@@ -1227,10 +1228,10 @@ impl GraphicsState {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(path, color, border, transform, scissor)
+        self.tessellate_path(&path, color, border, transform, scissor)
     }
 
-    fn tessellate_path(&mut self, path: lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
         // Create the destination vertex and index buffers.
         let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
 
@@ -1243,7 +1244,7 @@ impl GraphicsState {
 
                 // Compute the tessellation.
                 tessellator.tessellate_path(
-                    &path,
+                    path,
                     &lyon_tessellation::StrokeOptions::default().with_line_width(radius * 2.0),
                     &mut vertex_builder
                 )
@@ -1253,7 +1254,7 @@ impl GraphicsState {
 
                 // Compute the tessellation.
                 tessellator.tessellate_path(
-                    &path,
+                    path,
                     &lyon_tessellation::FillOptions::default(),
                     &mut vertex_builder
                 )
@@ -1281,6 +1282,7 @@ impl GraphicsState {
         reserved.copy_in(&mut vertices, &mut indices);
     }
 }
+
 // particle stuff 
 impl GraphicsState {
     pub fn add_emitter(&mut self, emitter: EmitterRef) {

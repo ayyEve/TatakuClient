@@ -293,7 +293,7 @@ impl ScrollableItem for MainMenuButton {
                     self.size * scale,
                     Color::new(0.2, 0.2, 0.2, 1.0),
                     Some(Border::new(Color::RED.alpha(0.0), 1.0))
-                ).shape(Shape::Round(5.0, 10));
+                ).shape(Shape::Round(5.0));
                 
                 // draw text
                 let mut txt = Text::new(

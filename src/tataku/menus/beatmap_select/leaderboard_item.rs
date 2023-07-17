@@ -111,7 +111,7 @@ impl ScrollableItem for LeaderboardItem {
                 LEADERBOARD_ITEM_SIZE * self.ui_scale,
                 Color::new(0.2, 0.2, 0.2, 1.0),
                 Some(Border::new(color, 1.5 * self.ui_scale.y))
-            ).shape(Shape::Round(5.0, 10)));
+            ).shape(Shape::Round(5.0)));
         }
 
 

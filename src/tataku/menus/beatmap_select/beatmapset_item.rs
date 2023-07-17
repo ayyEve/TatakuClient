@@ -265,7 +265,7 @@ impl ScrollableItem for BeatmapsetItem {
                 } else {
                     Some(Border::new(Color::WHITE * 0.8, 1.0))
                 }
-            ).shape(Shape::Round(5.0, 10)));
+            ).shape(Shape::Round(5.0)));
         }
 
         // title line
@@ -339,7 +339,7 @@ impl ScrollableItem for BeatmapsetItem {
                         BEATMAP_ITEM_SIZE * btn_scale,
                         Color::new(0.2, 0.2, 0.2, 1.0),
                         Some(Border::new(color, radius))
-                    ).shape(Shape::Round(5.0, 10)));
+                    ).shape(Shape::Round(5.0)));
                 }
 
                 // version text

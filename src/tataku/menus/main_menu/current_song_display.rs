@@ -44,7 +44,7 @@ impl CurrentSongDisplay {
             self.text_size + INNER_PADDING * 2.0,
             SECONDARY_COLOR, 
             None
-        ).shape(Shape::Round(5.0, 10));
+        ).shape(Shape::Round(5.0));
         text.center_text(&rect);
         text.pos.y -= INNER_PADDING;
 

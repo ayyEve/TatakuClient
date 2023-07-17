@@ -192,7 +192,7 @@ impl ProcessedNotif {
                     self.notification.color,
                     1.2
                 ))
-            ).shape(Shape::Round(NOTIF_BORDER_ROUNDING, 10)));
+            ).shape(Shape::Round(NOTIF_BORDER_ROUNDING)));
         }
 
         let mut text = self.text.clone();
