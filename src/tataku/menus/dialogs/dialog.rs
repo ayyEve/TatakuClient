@@ -10,6 +10,9 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     fn should_close(&self) -> bool;
     fn get_bounds(&self) -> Bounds;
 
+    /// if in a draggable window, is this dialog resizable?
+    fn resizable(&self) -> bool { false }
+
     /// dialog is being forcefully closed
     async fn force_close(&mut self) {}
     /// if in a draggable dialog, and it was resized

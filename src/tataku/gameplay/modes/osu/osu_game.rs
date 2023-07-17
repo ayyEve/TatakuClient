@@ -775,7 +775,6 @@ impl GameMode for OsuGame {
 
                         // add point
                         if let Some(mut i) = self.follow_point_image.clone() {
-                            const FOLLOW_DOT_TEX_SIZE: Vector2 = Vector2::new(128.0, 128.0);
                             i.pos = point;
                             i.rotation = direction;
                             // i.current_scale = Vector2::ONE * self.scaling_helper.scale;

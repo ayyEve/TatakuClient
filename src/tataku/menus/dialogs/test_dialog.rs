@@ -12,7 +12,9 @@ pub struct TestDialog {
 
     last_text: String,
 
-    should_close: bool
+    should_close: bool,
+
+    yes_no_receiver: Option<Receiver<YesNoResult>>
 }
 impl TestDialog {
     pub fn new() -> Self {
@@ -36,6 +38,7 @@ impl TestDialog {
             last_text: String::new(),
 
             should_close: false,
+            yes_no_receiver: None
         }
     }
 }
@@ -61,8 +64,12 @@ impl Dialog<Game> for TestDialog {
         self.list.on_scroll(delta);
         true
     }
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.list.on_click(pos, button, *mods);
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+        if self.list.on_click(pos, button, *mods) && self.yes_no_receiver.is_none() {
+            let (receiver, dialog) = YesNoDialog::new("Test", "Are you sure?", false);
+            self.yes_no_receiver = Some(receiver);
+            game.add_dialog(Box::new(DraggableDialog::new(DraggablePosition::CenterMiddle, Box::new(dialog))), false);
+        }
         self.add_button.on_click(pos, button, *mods);
         self.search_text.on_click(pos, button, *mods);
         true
@@ -94,6 +101,12 @@ impl Dialog<Game> for TestDialog {
             let c = self.list.items.len() as u32;
             let item = PanelUser::new(OnlineUser::new(c, format!("User {c}")));
             self.list.add_item(Box::new(item));
+        }
+
+        if let Some(receiver) = &mut self.yes_no_receiver {
+            if let Ok(result) = receiver.try_recv() {
+                println!("got result {result:?}")
+            }
         }
 
         let text = self.search_text.get_text();

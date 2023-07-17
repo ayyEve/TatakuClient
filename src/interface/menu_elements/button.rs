@@ -18,12 +18,13 @@ pub struct MenuButton {
     pub on_click:Arc<dyn Fn(&mut Self) + 'static + Send + Sync>, 
 }
 impl MenuButton {
-    pub fn new(pos: Vector2, size: Vector2, text:&str, font:Font) -> Self {
+    pub fn new(pos: Vector2, size: Vector2, text: impl ToString, font: Font) -> Self {
+        let text = text.to_string();
         Self {
             pos, 
             size, 
-            text: text.to_owned(),
             keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
+            text,
 
             hover: false,
             selected: false,

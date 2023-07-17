@@ -17,8 +17,10 @@ pub struct DraggableDialog<G:Send+Sync> {
     close_button_hover: bool,
 }
 impl<G:Send+Sync> DraggableDialog<G> {
-    pub fn new(pos: Vector2, inner: Box<dyn Dialog<G>>) -> Self {
+    pub fn new(pos: impl Into<DraggablePosition>, inner: Box<dyn Dialog<G>>) -> Self {
         let inner_bounds = inner.get_bounds();
+        let pos:DraggablePosition = pos.into();
+        let pos = pos.get_pos(inner_bounds.size + Vector2::with_y(TOOLBAR_HEIGHT), Vector2::ZERO, WindowSize::get().0);
 
         let toolbar_bounds = Bounds::new(pos, Vector2::new(inner_bounds.size.x, TOOLBAR_HEIGHT));
         let close_button_bounds = Bounds::new(
@@ -142,4 +144,36 @@ impl<G:Send+Sync> Dialog<G> for DraggableDialog<G> {
     async fn on_controller_press(&mut self, controller: &GamepadInfo, button: ControllerButton) -> bool { self.inner.on_controller_press(controller, button).await }
     async fn on_controller_release(&mut self, controller: &GamepadInfo, button: ControllerButton) -> bool { self.inner.on_controller_release(controller, button).await }
     async fn on_controller_axis(&mut self, controller: &GamepadInfo, axis_data: &HashMap<Axis, (bool, f32)>) { self.on_controller_axis(controller, axis_data).await }
+}
+
+#[allow(unused)]
+pub enum DraggablePosition {
+    TopLeft, TopMiddle, TopRight,
+    CenterLeft, CenterMiddle, CenterRight,
+    BottomLeft, BottomMiddle, BottomRight,
+    Custom(Vector2)
+}
+impl DraggablePosition {
+    pub fn get_pos(&self, obj_size: Vector2, container_pos: Vector2, container_size: Vector2) -> Vector2 {
+        container_pos + match self {
+            DraggablePosition::TopLeft => Vector2::ZERO,
+            DraggablePosition::TopMiddle => Vector2::with_x((container_size.x - obj_size.x) / 2.0),
+            DraggablePosition::TopRight => Vector2::with_x(container_size.x - obj_size.x),
+
+            DraggablePosition::CenterLeft => Vector2::with_y((container_size.y - obj_size.y) / 2.0),
+            DraggablePosition::CenterMiddle => (container_size - obj_size) / 2.0,
+            DraggablePosition::CenterRight => Vector2::new(container_size.x - obj_size.x, (container_size.y - obj_size.y) / 2.0),
+
+            DraggablePosition::BottomLeft => Vector2::with_y(container_size.y - obj_size.y),
+            DraggablePosition::BottomMiddle => Vector2::new((container_size.x - obj_size.x) / 2.0, container_size.y - obj_size.y),
+            DraggablePosition::BottomRight => container_size - obj_size,
+
+            DraggablePosition::Custom(pos) => return *pos,
+        }
+    }
+}
+impl From<Vector2> for DraggablePosition {
+    fn from(value: Vector2) -> Self {
+        Self::Custom(value)
+    }
 }
