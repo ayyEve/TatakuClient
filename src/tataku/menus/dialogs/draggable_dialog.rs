@@ -74,7 +74,9 @@ impl<G:Send+Sync> Dialog<G> for DraggableDialog<G> {
         let pos = self.toolbar_bounds.pos + offset;
         
         // draw inner first so its behind everything
+        list.push_scissor([pos.x, pos.y + TOOLBAR_HEIGHT, inner_bounds.size.x, inner_bounds.size.y]);
         self.inner.draw(pos + self.toolbar_bounds.size.y_portion(), list).await;
+        list.pop_scissor();
         
         // draw toolbar
         let toolbar = Rectangle::new(pos, Vector2::new(inner_bounds.size.x, TOOLBAR_HEIGHT), Color::GRAY.alpha(0.5), Some(Border::new(Color::BLACK, 2.0)));
