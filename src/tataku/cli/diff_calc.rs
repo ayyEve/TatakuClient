@@ -47,7 +47,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         // get the diff
 
         // load existing diffs
-        init_diffs().await;
+        init_diffs(None).await;
 
         // make sure everythings updated
         for mode in AVAILABLE_PLAYMODES {
@@ -135,7 +135,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         // }
 
         // load existing diffs
-        init_diffs().await;
+        init_diffs(None).await;
 
         // make sure everythings updated
         for mode in AVAILABLE_PLAYMODES {

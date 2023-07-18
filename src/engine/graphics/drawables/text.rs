@@ -58,7 +58,7 @@ impl Text {
         self.pos = rect.pos + (rect.size * rect.scale - text_size) / 2.0;
     }
 
-    pub fn _set_text_colors(&mut self, colors: Vec<Color>) {
+    pub fn set_text_colors(&mut self, colors: Vec<Color>) {
         self.text_colors = colors
     }
 

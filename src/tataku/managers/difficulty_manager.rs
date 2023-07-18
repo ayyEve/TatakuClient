@@ -7,7 +7,11 @@ lazy_static::lazy_static! {
 }
 
 
-pub async fn init_diffs() {
+pub async fn init_diffs(status: Option<Arc<AsyncRwLock<LoadingStatus>>>) {
+    if let Some(status) = &status {
+        status.write().await.custom_message = "Reading file...".to_owned();
+    }
+
     info!("loading diffs");
     let all_diffs = match load_all_diffs() {
         Ok(d) => d,
@@ -17,6 +21,14 @@ pub async fn init_diffs() {
             Default::default()
         }
     };
+    if let Some(status) = &status {
+        let mut status = status.write().await;
+        status.custom_message.clear();
+        
+        for i in all_diffs.values() {
+            status.item_count += i.len();
+        }
+    }
 
     #[cfg(feature="debug_perf_rating")]
     for (k, v) in &all_diffs {
@@ -26,8 +38,15 @@ pub async fn init_diffs() {
     for (mode, diffs) in BEATMAP_DIFFICULTIES.iter() {
         if !AVAILABLE_PLAYMODES.contains(&&**mode) { continue }
         if let Some(loaded_diffs) = all_diffs.get(mode).cloned() {
+            let len = loaded_diffs.len();
+
             *diffs.write().unwrap() = loaded_diffs;
+                
+            if let Some(status) = &status {
+                status.write().await.items_complete += len;
+            }
         }
+
     }
 
     // *BEATMAP_DIFFICULTIES.write().unwrap() = all_diffs;

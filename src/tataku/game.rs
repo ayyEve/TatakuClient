@@ -86,6 +86,8 @@ impl Game {
     }
 
     pub async fn init(&mut self) {
+        let now = std::time::Instant::now();
+
         // online loop
         tokio::spawn(async move {
             loop {
@@ -112,25 +114,9 @@ impl Game {
         // beatmap manager loop
         BeatmapManager::download_check_loop();
 
-        // init integrations
-        if settings.integrations.lastfm {
-            LastFmIntegration::check().await;
-        }
-        if settings.integrations.discord {
-            OnlineManager::init_discord().await;
-        }
-        
         // == menu setup ==
         let mut loading_menu = LoadingMenu::new().await;
         loading_menu.load().await;
-
-        // main menu
-        // self.menus.insert("main", Arc::new(Mutex::new(MainMenu::new().await)));
-        // trace!("main menu created");
-
-        // setup beatmap select menu
-        // self.menus.insert("beatmap", Arc::new(Mutex::new(BeatmapSelectMenu::new().await)));
-        // trace!("beatmap menu created");
 
         // // check git updates
         // self.add_dialog(Box::new(ChangelogDialog::new().await));
@@ -150,6 +136,9 @@ impl Game {
                 // NotificationManager::add_error_notification("Error loading wallpaper", e).await
             }
         }
+
+        let elapsed = now.elapsed().as_secs_f32() * 1000.0;
+        println!("game init took {elapsed:.2}");
 
         self.queue_state_change(GameState::InMenu(Box::new(loading_menu)));
     }

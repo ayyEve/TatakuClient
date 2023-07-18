@@ -3,8 +3,7 @@ use crate::prelude::*;
 pub struct LastFmIntegration;
 
 impl LastFmIntegration {
-    pub async fn check() {
-        let settings = Settings::get();
+    pub async fn check(settings: &Settings) {
         let username = settings.username.clone();
         let password = settings.password.clone();
         let url = settings.score_url.clone();

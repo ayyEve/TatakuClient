@@ -8,7 +8,7 @@ lazy_static::lazy_static! {
 
 pub fn preload_fonts() {
     for i in [&*MAIN_FONT, &*FALLBACK_FONT, &*FONT_AWESOME] {
-        i.load_font_size(30.0, false);
+        i.load_font_size(30.0, true);
     }
 }
 

@@ -53,9 +53,15 @@ pub struct GameWindow {
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<Window2GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
+        let now = std::time::Instant::now();
         
         let event_loop = EventLoopBuilder::new().build();
-        let window = WindowBuilder::new().with_min_inner_size(to_size(Vector2::ONE)).build(&event_loop).expect("Unable to create window");
+        let window = WindowBuilder::new()
+            .with_title("Tataku!")
+            .with_min_inner_size(to_size(Vector2::ONE))
+            .with_inner_size(to_size(settings.window_size.into()))
+            .build(&event_loop)
+            .expect("Unable to create window");
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
         
@@ -83,7 +89,7 @@ impl GameWindow {
                     },
                     Err(e) => warn!("error setting window icon: {}", e)
                 }
-            },
+            }
             Err(e) => warn!("error setting window icon: {}", e)
         }
 
@@ -108,6 +114,10 @@ impl GameWindow {
             finger_touches: HashSet::new(),
             touch_pos: None,
         };
+
+        let elapsed = now.elapsed().as_secs_f32() * 1000.0;
+        println!("window took {elapsed:.2}");
+
         (s, event_loop)
     }
 
@@ -116,9 +126,6 @@ impl GameWindow {
         // what??
         let settings = Settings::get().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
-
-        // pre-load fonts
-        preload_fonts();
 
         self.init_media_controls();
         self.settings.update();
