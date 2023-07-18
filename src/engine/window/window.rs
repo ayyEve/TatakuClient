@@ -115,8 +115,7 @@ impl GameWindow {
             touch_pos: None,
         };
 
-        let elapsed = now.elapsed().as_secs_f32() * 1000.0;
-        println!("window took {elapsed:.2}");
+        debug!("window took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         (s, event_loop)
     }

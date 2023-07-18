@@ -137,8 +137,7 @@ impl Game {
             }
         }
 
-        let elapsed = now.elapsed().as_secs_f32() * 1000.0;
-        println!("game init took {elapsed:.2}");
+        debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         self.queue_state_change(GameState::InMenu(Box::new(loading_menu)));
     }
