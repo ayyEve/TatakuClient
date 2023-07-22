@@ -162,9 +162,9 @@ impl CursorManager {
         self.cursor_rotation = 0.0;
 
         
-        let star = SkinManager::get_texture("star", true).await.expect("no star image");
-        self.left_emitter.image = star.tex;
-        self.right_emitter.image = star.tex;
+        let tex = SkinManager::get_texture("star", true).await.map(|t|t.tex).unwrap_or_default();
+        self.left_emitter.image = tex;
+        self.right_emitter.image = tex;
     }
 
 
