@@ -6,7 +6,7 @@ const Y_OFFSET:f32 = 10.0;
 
 pub struct PauseMenu {
     // beatmap: Arc<Mutex<Beatmap>>,
-    manager: IngameManager,
+    manager: Box<IngameManager>,
     continue_button: MenuButton,
     retry_button: MenuButton,
     exit_button: MenuButton,
@@ -19,7 +19,7 @@ pub struct PauseMenu {
     bg: Option<Image>
 }
 impl PauseMenu {
-    pub async fn new(manager:IngameManager, is_fail_menu: bool) -> PauseMenu {
+    pub async fn new(manager: Box<IngameManager>, is_fail_menu: bool) -> PauseMenu {
         let window_size = WindowSize::get();
         let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
 

@@ -114,18 +114,18 @@ fn test() {
 
     let p = pool.next().unwrap();
     **p = 10;
-    drop(p);
+    // drop(p);
 
     let p2 = pool.next().unwrap();
     **p2 = 100;
     let p2_i = p2.get_index();
-    drop(p2);
+    // drop(p2);
 
     println!("{:#?}", pool.items);
 
     let p3 = pool.next().unwrap();
     **p3 = 200;
-    drop(p3);
+    // drop(p3);
 
     println!("removing index {p2_i}");
     pool.remove(p2_i);
@@ -134,13 +134,13 @@ fn test() {
     let p4 = pool.next().unwrap();
     **p4 = 600;
     assert_eq!(p2_i, p4.get_index());
-    drop(p4);
+    // drop(p4);
 
     let p5 = pool.next().unwrap();
     let p5_i = p5.get_index();
     println!("got index {p5_i}");
     **p5 = 900;
-    drop(p5);
+    // drop(p5);
 
     println!("{:#?}", pool.items);
 

@@ -55,6 +55,8 @@ pub struct OnlineManager {
     pub discord: Option<Discord>,
 
     pub user_id: u32, // this user's id
+    /// are we successfully logged in?
+    pub logged_in: bool,
 
     /// socket writer
     pub writer: Option<Arc<Mutex<WsWriter>>>,
@@ -78,6 +80,10 @@ pub struct OnlineManager {
 
     /// was a spectator request accepted? if so, this will be the user_id
     spectate_pending: u32,
+
+    
+    // // ====== multiplayer ======
+    // pub multiplayer_data: Arc<AsyncRwLock<MultiplayerData>>
 }
 
 impl OnlineManager {
@@ -93,6 +99,7 @@ impl OnlineManager {
 
         OnlineManager {
             user_id: 0,
+            logged_in: false,
             users: HashMap::new(),
             friends: HashSet::new(),
             discord: None,
@@ -107,6 +114,7 @@ impl OnlineManager {
             spectate_info_pending: Vec::new(),
             chat_messages: messages,
             spectate_pending: 0,
+            // multiplayer_data: Default::default()
         }
     }
 
@@ -120,6 +128,12 @@ impl OnlineManager {
     pub async fn start() {
         info!("starting network connection");
         let mut settings = SettingsHelper::new();
+
+        // insert multiplayer data
+        GlobalValueManager::update(Arc::new(MultiplayerData::default()));
+        GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
+
+        let server_url = settings.server_url.clone();
 
         // initialize the connection
         match tokio_tungstenite::connect_async(settings.server_url.clone()).await {
@@ -143,7 +157,13 @@ impl OnlineManager {
                 }
 
                 while let Some(message) = reader.next().await {
-                    settings.update();
+                    if settings.update() {
+                        if settings.server_url != server_url {
+                            info!("server url changed, restarting network manager");
+                            Self::restart();
+                            return;
+                        }
+                    }
 
                     match message {
                         Ok(Message::Binary(data)) => {
@@ -199,8 +219,9 @@ impl OnlineManager {
 
         // reset most values
         self.writer = None;
-        self.connected = false;
         self.user_id = 0;
+        self.connected = false;
+        self.logged_in = false;
         self.users.clear();
         self.friends.clear();
 
@@ -211,13 +232,17 @@ impl OnlineManager {
         // TODO: move these
         self.spectate_info_pending.clear();
         self.spectate_pending = 0;
+        
+        MultiplayerData::get_mut().clear();
+        *CurrentLobbyInfo::get_mut() = None;
     }
 
     /// disconnect without resetting anything
     async fn disconnect() {
         let mut s = ONLINE_MANAGER.write().await;
-        s.connected = false;
         s.writer = None;
+        s.connected = false;
+        s.logged_in = false;
     }
 
     /// handle an incoming server packet
@@ -226,7 +251,7 @@ impl OnlineManager {
 
         while reader.can_read() {
             let packet:PacketId = reader.read()?;
-            if log_settings.extra_online_logging { debug!("Got packet {:?}", packet); };
+            if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
 
             match packet {
                 // ===== ping/pong =====
@@ -239,25 +264,29 @@ impl OnlineManager {
                         LoginStatus::UnknownError => {
                             trace!("Unknown Error");
                             NotificationManager::add_text_notification("[Login] Unknown error logging in", 5000.0, Color::RED).await;
-                        },
+                        }
                         LoginStatus::BadPassword => {
                             trace!("Auth failed");
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
-                        },
+                        }
                         LoginStatus::NoUser => {
                             trace!("User not found");
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
-                        },
+                        }
                         LoginStatus::Ok => {
                             trace!("Success, got user_id: {}", user_id);
-                            ONLINE_MANAGER.write().await.user_id = user_id;
+                            {
+                                let mut om = ONLINE_MANAGER.write().await;
+                                om.user_id = user_id;
+                                om.logged_in = true;
+                            }
                             NotificationManager::add_text_notification("[Login] Logged in!", 2000.0, Color::GREEN).await;
 
                             ping_handler();
 
                             // request friends list
                             send_packet!(ONLINE_MANAGER.read().await.writer, create_packet!(PacketId::Client_GetFriends));
-                        },
+                        }
                     }
                 }
 
@@ -432,7 +461,196 @@ impl OnlineManager {
                 }
 
                 
+                // ===== multiplayer =====
+                PacketId::Server_LobbyList { lobbies } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    // let mut multi_data = multi_data.write().await;
+                    multi_data.lobbies = lobbies.into_iter().map(|l|(l.id, l)).collect();
+                }
 
+                PacketId::Server_CreateLobby { success, lobby } => {
+                    let multi_data = MultiplayerData::get();
+                    if success && multi_data.lobby_creation_pending {
+                        let our_id = ONLINE_MANAGER.read().await.user_id;
+                        
+                        let mut current_lobby = CurrentLobbyInfo::get_mut();
+                        *current_lobby = lobby.map(|i|CurrentLobbyInfo::new(i, our_id));
+                        
+                        if let Some(current) = &mut *current_lobby {
+                            current.update_usernames().await;
+                        }
+
+                        // should update the server with our current map and mode
+                        if let Some(map) = CurrentBeatmapHelper::new().0.clone() {
+                            let mode = CurrentPlaymodeHelper::new().0.clone();
+                            Self::update_lobby_beatmap(map, mode).await;
+                        }
+
+                    }
+                }
+                PacketId::Server_JoinLobby { success, lobby } => {
+                    let multi_data: Arc<MultiplayerData> = MultiplayerData::get();
+                    if success && multi_data.lobby_join_pending {
+                        let our_id = ONLINE_MANAGER.read().await.user_id;
+                        
+                        let mut current_lobby = CurrentLobbyInfo::get_mut();
+                        *current_lobby = lobby.map(|i|CurrentLobbyInfo::new(i, our_id));
+                        if let Some(current) = &mut *current_lobby {
+                            current.update_usernames().await;
+                        } else {
+                            info!("didnt set lobby?")
+                        }
+                    }
+                }
+
+
+                PacketId::Server_LobbyCreated { lobby } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.insert(lobby.id, lobby);
+                }
+                PacketId::Server_LobbyDeleted { lobby_id } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.remove(&lobby_id);
+                }
+
+                PacketId::Server_LobbyUserJoined { lobby_id, user_id } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.get_mut(&lobby_id).ok_do_mut(|l|l.players.push(user_id));
+
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(our_lobby) = &mut *current_lobby else { continue };
+                    if our_lobby.info.id == lobby_id {
+                        our_lobby.info.players.push(LobbyUser { user_id, ..Default::default() });
+
+                        let Some(user) = ONLINE_MANAGER.read().await.users.get(&user_id).cloned() else { 
+                            NotificationManager::add_text_notification(format!("user with id {} joined the match", user_id), 3000.0, Color::PURPLE).await;
+                            continue 
+                        };
+                        let user = user.lock().await;
+                        our_lobby.player_usernames.insert(user_id, user.username.clone());
+                        
+                        NotificationManager::add_text_notification(format!("{} joined the match", user.username), 3000.0, Color::PURPLE).await;
+                    }
+                }
+                PacketId::Server_LobbyUserLeft { lobby_id, user_id } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.get_mut(&lobby_id).map(|l|l.players.retain(|u|u != &user_id));
+
+
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(our_lobby) = &mut *current_lobby else { continue };
+                    if our_lobby.id != lobby_id { continue; }
+
+                    our_lobby.players.retain(|u|u.user_id != user_id);
+
+                    // find the slot that had this user and set it to empty (server will update its proper status next update)
+                    our_lobby.slots.values_mut().find(|s|**s == LobbySlot::Filled{user: user_id}).ok_do_mut(|s|**s = LobbySlot::Empty);
+                    
+                    
+                    if user_id == our_lobby.our_user_id {
+                        tokio::spawn(async {*CurrentLobbyInfo::get_mut() = None});
+                        NotificationManager::add_text_notification("You have been kicked from the match", 3000.0, Color::PURPLE).await;
+                    } else {
+                        let username = our_lobby.player_usernames.remove(&user_id).unwrap_or_default();
+                        NotificationManager::add_text_notification(format!("{username} left the match"), 3000.0, Color::PURPLE).await;
+                    }
+                }
+
+                PacketId::Server_LobbySlotChange { slot, new_status } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.info.slots.get_mut(&slot).ok_do_mut(|s|**s = new_status);
+                }
+
+                PacketId::Server_LobbyUserState { user_id, new_state } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.info.players.iter_mut().find(|u|u.user_id == user_id).ok_do_mut(|u|u.state = new_state);
+                }
+
+
+                PacketId::Server_LobbyStart => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.play_pending = true;
+                }
+                PacketId::Server_LobbyBeginRound => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.should_play = true;
+                }
+
+                PacketId::Server_LobbyMapChange { lobby_id, new_map } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.get_mut(&lobby_id).ok_do_mut(|l|l.current_beatmap = Some(new_map.title.clone()));
+                
+
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    if lobby.id == lobby_id {
+                        lobby.info.current_beatmap = Some(new_map);
+                    }
+                }
+
+                //TODO: implement no free mods
+                PacketId::Server_LobbyModsChanged { free_mods:_, mods:_, speed:_ } => {
+                    // let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    // let Some(lobby) = &mut *current_lobby else { continue };
+                    // lobby.free_mods = free_mods
+                    // lobby.mods = mods;
+                    // lobby.speed = speed;
+                }
+
+                PacketId::Server_LobbyUserModsChanged { user_id, mods, speed } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+
+                    lobby.players.iter_mut().find(|u|u.user_id == user_id).ok_do_mut(|u| {
+                        u.mods = mods;
+                        u.speed = speed;
+                    });
+                }
+
+                PacketId::Server_LobbyPlayerMapComplete { user_id, score } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.player_scores.insert(user_id, score);
+                }
+
+                PacketId::Server_LobbyRoundComplete => {
+                    info!("lobby round completed");
+                }
+
+                PacketId::Server_LobbyScoreUpdate { user_id, score } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    let Some(lobby) = &mut *current_lobby else { continue };
+                    lobby.player_scores.insert(user_id, score);
+                }
+                
+                PacketId::Server_LobbyStateChange { lobby_id, new_state } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.get_mut(&lobby_id).ok_do_mut(|l|l.state = new_state);
+                    
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    current_lobby.as_mut().filter(|l|l.info.id == lobby_id).ok_do_mut(|l|l.info.state = new_state);
+                }
+
+                PacketId::Server_LobbyInvite { inviter_id, lobby } => {
+                    let mut multi_data = MultiplayerData::get_mut();
+                    multi_data.lobbies.get_mut(&lobby.id).ok_do_mut(|l|l.has_password = false);
+
+                    let Some(inviter) = ONLINE_MANAGER.read().await.users.get(&inviter_id).cloned() else { continue };
+                    let inviter = inviter.lock().await;
+                    let text = format!("{} has inited you to a multiplayer match", inviter.username);
+
+                    let notif = Notification::new(text, Color::PURPLE_AMETHYST, 10_000.0, NotificationOnClick::MultiplayerLobby(lobby.id));
+                    NotificationManager::add_notification(notif).await;
+                }
+
+                PacketId::Server_LobbyChangeHost { new_host } => {
+                    let mut current_lobby = CurrentLobbyInfo::get_mut();
+                    current_lobby.ok_do_mut(|l|l.info.host = new_host);
+                }
 
                 // other packets
                 PacketId::Unknown => {
@@ -441,8 +659,7 @@ impl OnlineManager {
                 }
 
                 p => {
-                    warn!("Got unhandled packet: {:?}, dropping remaining packets", p);
-
+                    warn!("Got unhandled packet: {p:?}, dropping remaining packets");
                     break;
                 }
             }
@@ -509,7 +726,9 @@ impl OnlineManager {
 
             // only get info if the current mode is ingame
             match &mut game.current_state {
-                GameState::Ingame(manager) => {
+                GameState::Ingame(manager) 
+                // | GameState::Multiplaying(MultiplayerState::Ingame(manager))
+                => {
                     for user_id in self.spectate_info_pending.iter() {
                         trace!("Sending playing request");
                         let packet = SpectatorFrameData::PlayingResponse {
@@ -542,10 +761,13 @@ impl OnlineManager {
                     }
                 }
 
+
                 // clear list for any other mode
                 GameState::Closing
                 | GameState::None
-                | GameState::Spectating(_) => {
+                | GameState::Spectating(_)
+                // | GameState::Multiplaying(_) 
+                => {
                     self.spectate_info_pending.clear();
                 }
             }
@@ -613,7 +835,129 @@ impl OnlineManager {
     }
 }
 
+// multiplayer functions
+impl OnlineManager {
+    pub async fn add_lobby_listener() {
+        // info!("add lobby listener");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_AddLobbyListener));
+        send_packet!(s.writer, create_packet!(Client_LobbyList));
+    }
+    pub async fn remove_lobby_listener() {
+        // info!("remove lobby listener");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_AddLobbyListener));
+    }
 
+    pub async fn create_lobby(name: String, password: String, private: bool, players: u8) {
+        // info!("create lobby");
+        let s = ONLINE_MANAGER.read().await;
+        MultiplayerData::get_mut().lobby_creation_pending = true;
+        send_packet!(s.writer, create_packet!(Client_CreateLobby { name, password, private, players }));
+    }
+
+    pub async fn join_lobby(lobby_id: u32, password: String) {
+        // if we're already in a lobby
+        if let Some(lobby) = &*CurrentLobbyInfo::get() { 
+            // and its the lobby we want to join, dont do anything
+            if lobby.id == lobby_id { return }
+            // otherwise, leave the current lobby
+            Self::leave_lobby().await; 
+        }
+        // info!("join lobby");
+
+        let s = ONLINE_MANAGER.read().await;
+        MultiplayerData::get_mut().lobby_join_pending = true;
+        send_packet!(s.writer, create_packet!(Client_JoinLobby { lobby_id, password }));
+    }
+
+    pub async fn leave_lobby() {
+        // info!("leaving lobby");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LeaveLobby));
+        *CurrentLobbyInfo::get_mut() = None;
+    }
+
+    pub async fn invite_user(user_id: u32) {
+        // info!("inviting user {user_id}");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyInvite { user_id } ));
+    }
+
+    pub async fn update_lobby_beatmap(beatmap: Arc<BeatmapMeta>, mode: String) {
+        // info!("update lobby beatmap: {beatmap:?}, {mode}");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyMapChange { 
+            new_map: LobbyBeatmap { 
+                title: beatmap.version_string(), 
+                hash: beatmap.beatmap_hash.clone(), 
+                mode,
+                map_game: beatmap.beatmap_type.into()
+            }
+        }));
+    }
+
+    pub async fn move_lobby_slot(new_slot: u8) {
+        // info!("move slot");
+        let s = ONLINE_MANAGER.read().await;
+        let our_id = s.user_id;
+        send_packet!(s.writer, create_packet!(Client_LobbySlotChange { slot: new_slot, new_status: LobbySlot::Filled {user: our_id} } ));
+    }
+    pub async fn update_lobby_slot(slot: u8, new_state: LobbySlot) {
+        // info!("update slot");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbySlotChange { slot, new_status: new_state } ));
+    }
+
+    pub async fn update_lobby_state(new_state: LobbyUserState) {
+        // info!("update our user state: {new_state:?}");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyUserState { new_state } ));
+    }
+
+    pub async fn lobby_load_complete() {
+        // info!("sending load complete");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyMapLoaded));
+    }
+
+    pub async fn lobby_map_complete(score: Score) {
+        // info!("sending map complete");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyMapComplete { score }));
+    }
+
+    pub async fn lobby_map_start() {
+        // info!("sending map start");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyStart));
+    }
+
+    pub async fn lobby_update_score(score: Score) {
+        // info!("update lobby score");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyScoreUpdate { score }));
+    }
+
+    pub async fn lobby_change_host(new_host: u32) {
+        // info!("change lobby host");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyChangeHost { new_host }));
+    }
+
+    pub async fn lobby_kick_user(user: u32) {
+        // find the user's slot, and set it to locked (kick action)
+        let Some(this_lobby) = &*CurrentLobbyInfo::get() else { return };
+        let Some((slot, _)) = this_lobby.slots.iter().find(|(_,s)|s == &&LobbySlot::Filled { user }) else { return };
+        Self::update_lobby_slot(*slot, LobbySlot::Locked).await;
+    }
+
+    pub async fn lobby_update_mods(mods: HashSet<String>, speed: u16) {
+        // info!("update mods and speed");
+        let s = ONLINE_MANAGER.read().await;
+        send_packet!(s.writer, create_packet!(Client_LobbyUserModsChanged { mods, speed }));
+    }
+}
 
 const LOG_PINGS:bool = false;
 fn ping_handler() {

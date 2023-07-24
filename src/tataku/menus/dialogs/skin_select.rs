@@ -41,6 +41,7 @@ impl Dialog<Game> for SkinSelect {
     fn name(&self) -> &'static str { "skin_select" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, WindowSize::get().0) }
+    async fn force_close(&mut self) { self.should_close = true; }
     
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         self.draw_background(Color::WHITE, offset, list);
@@ -74,9 +75,7 @@ impl Dialog<Game> for SkinSelect {
         true
     }
 
-    async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == Key::Escape {self.should_close = true}
-        
+    async fn on_key_press(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         true
     }
     async fn on_key_release(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {

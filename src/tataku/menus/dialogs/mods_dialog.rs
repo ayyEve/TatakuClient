@@ -76,6 +76,7 @@ impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str { "mod_menu" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    async fn force_close(&mut self) { self.should_close = true; }
 
     async fn update(&mut self, _g: &mut Game) {
         self.scroll.update();
@@ -88,10 +89,6 @@ impl Dialog<Game> for ModDialog {
 
     async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         match key {
-            Key::Escape => {
-                self.should_close = true;
-                true
-            }
             Key::Up => {
                 self.deincrement_index();
                 true

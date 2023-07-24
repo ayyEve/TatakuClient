@@ -8,4 +8,5 @@ pub enum NotificationOnClick {
 
     File(String),
     Folder(String),
+    MultiplayerLobby(u32)
 }

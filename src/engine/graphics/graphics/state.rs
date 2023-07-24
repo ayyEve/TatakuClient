@@ -766,21 +766,22 @@ impl GraphicsState {
         let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
         if info.is_empty() { return Ok(info) }
 
-        let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
+        // let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
 
         let data = data
         // cast to bgra
         .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
-        // add padding bytes to both left and right side
-        .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
-        // collect into Vec<u8>
-        .flatten()
-        .map(|b|*b)
-        .collect::<Vec<_>>();
+        // // add padding bytes to both left and right side
+        // .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
+        // // collect into Vec<u8>
+        // .flatten()
+        // .map(|b|*b)
+        // .collect::<Vec<_>>()
+        ;
     
     
-        let width = width + ATLAS_PADDING * 2;
-        let height = height + ATLAS_PADDING * 2;
+        // let width = width + ATLAS_PADDING * 2;
+        // let height = height + ATLAS_PADDING * 2;
 
         let texture_size = wgpu::Extent3d {
             width,
@@ -789,10 +790,10 @@ impl GraphicsState {
         };
 
 
-        let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
-        let mut data2 = vertical_padding.clone();
-        data2.extend(data.into_iter());
-        data2.extend(vertical_padding.into_iter());
+        // let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
+        // let mut data2 = vertical_padding.clone();
+        // data2.extend(data.into_iter());
+        // data2.extend(vertical_padding.into_iter());
         
 
         self.queue.write_texture(
@@ -801,14 +802,14 @@ impl GraphicsState {
                 texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
                 mip_level: 0,
                 origin: wgpu::Origin3d {
-                    x: info.x - ATLAS_PADDING,
-                    y: info.y - ATLAS_PADDING,
+                    x: info.x, // x: info.x - ATLAS_PADDING,
+                    y: info.y, // y: info.y - ATLAS_PADDING,
                     z: 0
                 },
                 aspect: wgpu::TextureAspect::All,
             },
             // The actual pixel data
-            &data2,
+            &data,
             // The layout of the texture
             wgpu::ImageDataLayout {
                 offset: 0,
@@ -822,11 +823,48 @@ impl GraphicsState {
     }
 
     pub fn free_tex(&mut self, mut tex: TextureReference) {
+        if tex.is_empty() { return }
+
+        // write empty data to where the texture was
+        // this should remove the weird border when the atlas space is reused
+        let width = tex.width + ATLAS_PADDING * 2;
+        let height = tex.height + ATLAS_PADDING * 2;
+        // empty pixels
+        let data = vec![0u8; (width * height * 4) as usize];
+
+        self.queue.write_texture(
+            // Tells wgpu where to copy the pixel data
+            wgpu::ImageCopyTexture {
+                texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: tex.x - ATLAS_PADDING,
+                    y: tex.y - ATLAS_PADDING,
+                    z: 0
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            // The actual pixel data
+            &data,
+            // The layout of the texture
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            }
+        );
+
+        // remove from texture atlas
         if tex.layer >= LAYER_COUNT {
             tex.layer -= LAYER_COUNT;
-            self.render_target_atlas.remove_entry(tex)
+            self.render_target_atlas.remove_entry(tex);
         } else {
-            self.atlas.remove_entry(tex)
+            self.atlas.remove_entry(tex);
         }
     }
     
@@ -965,7 +1003,7 @@ impl GraphicsState {
 
         if recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF 
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            drop(recording_buffer);
+            // drop(recording_buffer);
             self.dump();
 
             if self.queued_buffers.is_empty() {

@@ -71,6 +71,7 @@ impl Dialog<Game> for GameImportDialog {
     fn name(&self) -> &'static str { "game_import" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, BASE_SIZE) }
+    async fn force_close(&mut self) { self.should_close = true; }
     
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         self.draw_background(Color::WHITE, offset, list);
@@ -151,8 +152,6 @@ impl Dialog<Game> for GameImportDialog {
     }
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == Key::Escape { self.should_close = true }
-        
         self.input_scrollable.on_key_press(key, *mods);
         self.add_button.on_key_press(key, *mods);
         self.confirm_button.on_key_press(key, *mods);

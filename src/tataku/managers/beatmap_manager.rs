@@ -259,6 +259,17 @@ impl BeatmapManager {
         // set bg
         game.set_background_beatmap(beatmap).await;
     }
+    pub async fn remove_current_beatmap(&mut self, game:&mut Game) {
+        trace!("Setting current beatmap to None");
+        GlobalValueManager::update(Arc::new(CurrentBeatmap(None)));
+        self.current_beatmap = None;
+
+        // stop song
+        AudioManager::stop_song().await;
+
+        // set bg
+        game.remove_background_beatmap().await;
+    }
     
 
     // getters

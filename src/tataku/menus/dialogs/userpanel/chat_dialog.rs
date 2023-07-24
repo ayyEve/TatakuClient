@@ -91,6 +91,7 @@ impl Chat {
 #[async_trait]
 impl Dialog<Game> for Chat {
     fn should_close(&self) -> bool { self.should_close }
+    async fn force_close(&mut self) { self.should_close = true; }
     
     fn get_bounds(&self) -> Bounds {
         let window_size = &self.window_size;
@@ -109,11 +110,6 @@ impl Dialog<Game> for Chat {
 
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == Key::Escape {
-            self.should_close = true;
-            return true;
-        }
-
         if key == Key::Return {
             let send_text = self.input.get_text();
             self.input.set_text(String::new());

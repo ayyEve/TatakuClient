@@ -35,6 +35,7 @@ impl Dialog<Game> for UserPanel {
     fn name(&self) -> &'static str { "UserPanel" }
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    async fn force_close(&mut self) { self.should_close = true; }
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
@@ -42,11 +43,6 @@ impl Dialog<Game> for UserPanel {
     
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_key_press(key, mods, game).await;
-
-        if key == Key::Escape {
-            self.should_close = true;
-            return true;
-        }
         true
     }
     async fn on_key_release(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
@@ -88,6 +84,15 @@ impl Dialog<Game> for UserPanel {
                     PANEL_QUEUE.0.lock().ignite(UserPanelEvent::AddRemoveFriend(user_id));
                     dialog.should_close = true;
                 }));
+
+                // invite to lobby
+                if let Some(_lobby) = &*CurrentLobbyInfo::get() {
+                    user_menu_dialog.add_button("Invite to Lobby", Box::new(move |dialog, _game| {
+                        tokio::spawn(OnlineManager::invite_user(user_id));
+                        dialog.should_close = true;
+                    }));
+                }
+
 
                 // close menu
                 user_menu_dialog.add_button("Close", Box::new(|dialog, _game| {

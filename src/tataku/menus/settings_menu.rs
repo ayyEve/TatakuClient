@@ -166,12 +166,6 @@ impl Dialog<Game> for SettingsMenu {
     }
 
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _game:&mut Game) -> bool {
-        // if esc is pressed, override whether we're selected or not
-        if key == Key::Escape {
-            self.finalize().await;
-            return true;
-        }
-
         if self.search_text.get_selected() {
             let old_text = self.search_text.get_text();
             self.search_text.on_key_press(key, *mods);

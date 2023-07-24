@@ -94,7 +94,7 @@ impl NotificationManager {
     }
 
 
-    pub fn on_click(&mut self, mouse_pos: Vector2, _game: &mut Game) -> bool {
+    pub async fn on_click(&mut self, mouse_pos: Vector2, game: &mut Game) -> bool {
         let mut current_pos = self.window_size.0;
         
         for n in self.processed_notifs.iter_mut() {
@@ -109,6 +109,13 @@ impl NotificationManager {
                     }
                     NotificationOnClick::Menu(menu_name) => {
                         debug!("goto menu {menu_name}");
+                    }
+
+                    NotificationOnClick::MultiplayerLobby(lobby_id) => {
+                        debug!("join lobby {lobby_id}");
+                        tokio::spawn(OnlineManager::join_lobby(*lobby_id, String::new()));
+                        let menu = LobbySelect::new().await;
+                        game.queue_state_change(GameState::InMenu(Box::new(menu)));
                     }
 
                     NotificationOnClick::File(file_path) => {

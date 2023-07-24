@@ -16,12 +16,7 @@ pub trait Visualization: Send + Sync {
             None => return
         };
 
-
-        let time = self.timer();
-        let elapsed = time.elapsed().as_secs_f32();
-        *time = Instant::now();
-        drop(time);
-
+        let elapsed = self.timer().elapsed_and_reset() / 1000.0;
 
         let mult = AudioManager::amplitude_multiplier();
         let should_lerp = self.should_lerp();

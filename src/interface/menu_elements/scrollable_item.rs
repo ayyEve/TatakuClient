@@ -1,7 +1,7 @@
 use std::any::Any;
 use crate::prelude::*;
 
-pub trait ScrollableItem: ScrollableItemGettersSetters {
+pub trait ScrollableItem: ScrollableItemGettersSetters + Any {
     fn window_size_changed(&mut self, _new_window_size: Vector2) {}
     fn ui_scale_changed(&mut self, _scale: Vector2) {}
 
@@ -42,9 +42,16 @@ pub trait ScrollableItem: ScrollableItemGettersSetters {
     // input handlers
 
     /// when the mouse is clicked, returns the tag of the item clicked (or child of the item clicked)
-    fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers) -> bool { self.on_click_tagged(pos, button, mods).is_some() }
-    /// returns the tag of the clicked item
-    fn on_click_tagged(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> Option<String> { if self.get_hover() {Some(self.get_tag())} else {None} }
+    fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool { 
+        self.get_hover()
+        // self.on_click_tagged(pos, button, mods).is_some() 
+    }
+    
+    /// when the mouse is clicked, returns the tag of the item clicked (or child of the item clicked)
+    fn on_click_tagged(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers) -> Option<String> { 
+        if self.on_click(pos, button, mods) {Some(self.get_tag())} else {None} 
+        // if self.get_hover() {Some(self.get_tag())} else {None} 
+    }
 
     /// when the mouse click is released
     fn on_click_release(&mut self, _pos:Vector2, _button:MouseButton) {}
@@ -71,6 +78,7 @@ pub trait ScrollableItem: ScrollableItemGettersSetters {
     fn get_keywords(&self) -> Vec<String> { Vec::new() }
 
     fn get_inner_tagged(&self, _tag: &String) -> Option<Vec<&Box<dyn ScrollableItem>>> { None }
+
 }
 
 /// helper trait for auto code generation

@@ -2919,7 +2919,7 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.7.2"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#263efce189d813edc1ecd873f690e8fc591eace8"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#1855894dea7d9ce210be8e3f61f41ffc8bbfb368"
 dependencies = [
  "serde",
  "serde_json",
@@ -2941,7 +2941,7 @@ dependencies = [
 [[package]]
 name = "tataku-proc-macros"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#263efce189d813edc1ecd873f690e8fc591eace8"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#1855894dea7d9ce210be8e3f61f41ffc8bbfb368"
 dependencies = [
  "proc-macro2",
  "quote",

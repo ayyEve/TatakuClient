@@ -64,21 +64,9 @@ impl ChangelogDialog {
 
 #[async_trait]
 impl Dialog<Game> for ChangelogDialog {
-    fn get_bounds(&self) -> Rectangle {
-        self.bounds
-    }
-    fn should_close(&self) -> bool {
-        self.should_close
-    }
-
-    async fn on_key_press(&mut self, key:&Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == &Key::Escape {
-            self.should_close = true;
-            return true
-        }
-
-        false
-    }
+    fn get_bounds(&self) -> Rectangle { self.bounds }
+    fn should_close(&self) -> bool { self.should_close }
+    async fn force_close(&mut self) { self.should_close = true; }
 
     async fn draw(&mut self, _args:&RenderArgs, depth: &f64, list: &mut Vec<Box<dyn Renderable>>) {
         // background and border

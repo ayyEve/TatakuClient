@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Text {
     // current
     pub color: Color,
@@ -20,7 +20,7 @@ pub struct Text {
     scissor: Scissor,
 }
 impl Text {
-    pub fn new(pos: Vector2, font_size: f32, text: String, color:Color, font: Font) -> Text {
+    pub fn new(pos: Vector2, font_size: f32, text: impl ToString, color:Color, font: Font) -> Text {
         let fonts = vec![font, Font::Fallback];
 
         // let text_size = Self::measure_text_internal(&fonts, font_size, &text, Vector2::ONE, 2.0);
@@ -38,7 +38,7 @@ impl Text {
 
             // origin,
             font_size: base_size,
-            text,
+            text: text.to_string(),
             fonts,
             text_colors: Vec::new(),
             scissor: None,
@@ -56,6 +56,11 @@ impl Text {
     pub fn center_text(&mut self, rect:&Bounds) {
         let text_size = self.measure_text();
         self.pos = rect.pos + (rect.size * rect.scale - text_size) / 2.0;
+    }
+    /// chaining helper
+    pub fn centered(mut self, bounds: &Bounds) -> Self {
+        self.center_text(bounds);
+        self
     }
 
     pub fn set_text_colors(&mut self, colors: Vec<Color>) {

@@ -140,6 +140,17 @@ pub enum Font {
     #[allow(unused)]
     Custom(Box<ActualFont>)
 }
+impl std::fmt::Debug for Font {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            Self::Main => "Main".to_owned(),
+            Self::Fallback => "Fallback".to_owned(),
+            Self::FontAwesome => "FontAwesome".to_owned(),
+            Self::Custom(f) => "Custom('".to_owned() + &f.get_name() + "')"
+        };
+        write!(f, "Font({name})")
+    }
+}
 impl Deref for Font {
     type Target = ActualFont;
     fn deref(&self) -> &Self::Target {

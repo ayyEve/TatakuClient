@@ -239,8 +239,12 @@ impl ScrollableArea {
     }
     pub fn clear(&mut self) {
         self.items.clear();
+        self.original_positions.clear();
         self.elements_height = 0.0;
         self.scroll_pos = 0.0;
+        if let ListMode::Grid(GridSettings { grid, .. }) = &mut self.list_mode {
+            grid.clear();
+        }
     }
     pub fn get_tagged(&self, tag: String) -> Vec<&Box<dyn ScrollableItem>> {
         let mut list = Vec::new();
@@ -482,8 +486,9 @@ impl ScrollableArea {
         // do the click loop
         for item in self.items.iter_mut() {
             let pre_size = item.size();
-            let clicked = item.on_click(pos, button, mods);
-            if clicked { clicked_item = Some(item.get_tag()) }
+            let inner_clicked = item.on_click_tagged(pos, button, mods);
+            let clicked = inner_clicked.is_some();
+            if clicked { clicked_item = inner_clicked }
 
             if !item.get_selectable() { continue }
             if clicked {
@@ -998,4 +1003,13 @@ pub struct GridSettings {
 
     /// used by the list to manage space usage
     pub grid: Vec<Vec<(usize, Vector2)>>
+}
+impl GridSettings {
+    pub fn new(item_margin: Vector2, row_alignment: HorizontalAlign) -> Self {
+        Self {
+            item_margin,
+            row_alignment,
+            grid: Vec::new(),
+        }
+    }
 }

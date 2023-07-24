@@ -48,7 +48,9 @@ pub struct BeatmapSelectMenu {
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
 
     diffcalc_complete: Option<Bomb<()>>,
-    new_beatmap_helper: LatestBeatmapHelper
+    new_beatmap_helper: LatestBeatmapHelper,
+
+    pub select_action: BeatmapSelectAction
 }
 impl BeatmapSelectMenu {
     pub async fn new() -> BeatmapSelectMenu {
@@ -129,6 +131,7 @@ impl BeatmapSelectMenu {
             diffcalc_complete: None,
             new_beatmap_helper: LatestBeatmapHelper::new(),
             current_skin: CurrentSkinHelper::new(),
+            select_action: BeatmapSelectAction::PlayMap
         };
 
         // reposition things
@@ -271,15 +274,23 @@ impl BeatmapSelectMenu {
         }
     }
 
-    async fn play_map(&self, game: &mut Game, map: &BeatmapMeta) {
-        // Audio::stop_song();
-        match manager_from_playmode(self.mode.clone(), map).await {
-            Ok(mut manager) => {
-                let mods = ModManager::get();
-                manager.apply_mods(mods.deref().clone()).await;
-                game.queue_state_change(GameState::Ingame(manager))
-            },
-            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+    async fn play_map(&self, game: &mut Game, map: &Arc<BeatmapMeta>) {
+        match &self.select_action {
+            BeatmapSelectAction::PlayMap => {
+                // Audio::stop_song();
+                match manager_from_playmode(self.mode.clone(), map).await {
+                    Ok(mut manager) => {
+                        let mods = ModManager::get();
+                        manager.apply_mods(mods.deref().clone()).await;
+                        game.queue_state_change(GameState::Ingame(Box::new(manager)))
+                    }
+                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                }
+            }
+
+            BeatmapSelectAction::OnComplete(sender) => {
+                sender.send(Some((map.clone(), self.mode.clone()))).await.unwrap();
+            }
         }
     }
 
@@ -336,8 +347,10 @@ impl BeatmapSelectMenu {
 
     async fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.back_button.on_click(pos, button, mods) {
-            // let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+            match &self.select_action {
+                BeatmapSelectAction::PlayMap => game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await))),
+                BeatmapSelectAction::OnComplete(sender) => sender.send(None).await.unwrap(),
+            }
             return;
         }
 
@@ -789,7 +802,10 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         if key == Escape {
             // let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+            match &self.select_action {
+                BeatmapSelectAction::PlayMap => game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await))),
+                BeatmapSelectAction::OnComplete(sender) => sender.send(None).await.unwrap(),
+            }
             return;
         }
         if key == F5 {
@@ -935,3 +951,8 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
     }
 }
 
+
+pub enum BeatmapSelectAction {
+    PlayMap,
+    OnComplete(tokio::sync::mpsc::Sender<Option<(Arc<BeatmapMeta>, String)>>)
+}

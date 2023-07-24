@@ -360,7 +360,7 @@ impl Game {
 
         if mouse_down.len() > 0 {
             // check notifs
-            if NOTIFICATION_MANAGER.write().await.on_click(mouse_pos, self) {
+            if NOTIFICATION_MANAGER.write().await.on_click(mouse_pos, self).await {
                 mouse_down.clear();
             }
         }
@@ -487,16 +487,34 @@ impl Game {
         }
 
         if keys_down.contains(&Key::PageDown) && mods.ctrl {
-            self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(TestDialog::new()))), false);
+            // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(TestDialog::new()))), false);
+            if ONLINE_MANAGER.read().await.logged_in {
+                self.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
+            } else {
+                NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;
+            }
+        }
+        if keys_down.contains(&Key::PageUp) && mods.ctrl {
+            self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
 
         // update any dialogs
         use crate::async_retain;
 
         let mut dialog_list = std::mem::take(&mut self.dialogs);
-        for d in dialog_list.iter_mut().rev() {
-            // kb events
 
+        // if escape was pressed, force close the most recent dialog
+        if let Some(dialog) = dialog_list.last_mut() {
+            if keys_down.contains(&Key::Escape) {
+                dialog.force_close().await;
+                keys_down.remove_item(Key::Escape);
+            }
+        }
+
+        for d in dialog_list.iter_mut().rev() {
+            if d.should_close() { continue }
+
+            // kb events
             async_retain!(keys_down, k, !d.on_key_press(*k, &mods, self).await);
             async_retain!(keys_up, k, !d.on_key_release(*k, &mods, self).await);
 
@@ -892,6 +910,13 @@ impl Game {
         let f = load_image(filename, false, Vector2::ONE);
         self.background_loader = Some(AsyncLoader::new(f));
     }
+    /// shortcut for removing the game's background texture
+    pub async fn remove_background_beatmap(&mut self) {
+        // let filename = beatmap.image_filename.clone();
+        // let f = load_image(filename, false, Vector2::ONE);
+        // self.background_loader = Some(AsyncLoader::new(f));
+        self.background_image = None;
+    }
 
     fn resize_bg(&mut self) {
         if let Some(bg) = &mut self.background_image {
@@ -975,15 +1000,17 @@ impl Game {
     }
 
 
-    pub async fn ingame_complete(&mut self, manager: &mut IngameManager) {
+    pub async fn ingame_complete(&mut self, manager: &mut Box<IngameManager>) {
         trace!("beatmap complete");
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
 
         if manager.failed {
             trace!("player failed");
-            let manager2 = std::mem::take(manager);
-            self.queue_state_change(GameState::InMenu(Box::new(PauseMenu::new(manager2, true).await)));
+            if !manager.multiplayer {
+                let manager2 = std::mem::take(manager);
+                self.queue_state_change(GameState::InMenu(Box::new(PauseMenu::new(manager2, true).await)));
+            }
             
         } else {
             let mut score = manager.score.clone();
@@ -1008,20 +1035,21 @@ impl Game {
                 score_submit = Some(submit);
             }
 
-            // used to indicate user stopped watching a replay
-            if manager.replaying && !manager.started {
-                // go back to beatmap select
-                // let menu = self.menus.get("beatmap").unwrap();
-                let menu = BeatmapSelectMenu::new().await; 
-                self.queue_state_change(GameState::InMenu(Box::new(menu)));
-            } else {
-                // show score menu
-                let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
-                menu.replay = Some(replay.clone());
-                menu.score_submit = score_submit;
-                self.queue_state_change(GameState::InMenu(Box::new(menu)));
+            if !manager.multiplayer {
+                // used to indicate user stopped watching a replay
+                if manager.replaying && !manager.started {
+                    // go back to beatmap select
+                    // let menu = self.menus.get("beatmap").unwrap();
+                    let menu = BeatmapSelectMenu::new().await; 
+                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
+                } else {
+                    // show score menu
+                    let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
+                    menu.replay = Some(replay.clone());
+                    menu.score_submit = score_submit;
+                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
+                }
             }
-            
         }
     }
 
@@ -1094,7 +1122,7 @@ pub enum GameState {
     #[default]
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
-    Ingame(IngameManager),
+    Ingame(Box<IngameManager>),
     InMenu(Box<dyn ControllerInputMenu<Game>>),
 
     Spectating(SpectatorManager), // frames awaiting replay, state, beatmap
@@ -1111,3 +1139,9 @@ impl GameState {
         }
     }
 }
+
+// pub enum MultiplayerState {
+//     InLobby(Box<LobbyMenu>),
+//     Ingame(Box<IngameManager>),
+//     BeatmapSelect(Box<BeatmapSelectMenu>),
+// }

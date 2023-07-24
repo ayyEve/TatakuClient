@@ -4,9 +4,7 @@ pub use crate::prelude::*;
 pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     /// helpful for determining what menu this is
     fn get_name(&self) -> &str {"none"}
-    async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, list: &mut RenderableCollection);
-
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 
     // input handlers
     async fn on_change(&mut self, _into:bool) {}// when the menu is "loaded"(into) or "unloaded"(!into)
@@ -22,7 +20,8 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     async fn on_focus_change(&mut self, _has_focus:bool, _g:&mut G) {}
 
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
+    async fn update(&mut self, _g:&mut G) {}
+    async fn draw(&mut self, list: &mut RenderableCollection);
 }
 
 

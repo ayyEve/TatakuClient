@@ -332,6 +332,10 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
         }
     }
 
+    pub fn is_complete(&self) -> bool {
+        self.written.load(Ordering::Acquire)
+    }
+
     pub async fn check(&self) -> Option<T> {
         if self.written.load(Ordering::Acquire) {
             std::mem::take(&mut *self.value.lock().await)

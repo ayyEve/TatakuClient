@@ -17,6 +17,7 @@ pub struct TestDialog {
     yes_no_receiver: Option<Receiver<YesNoResult>>
 }
 impl TestDialog {
+    #[allow(unused)]
     pub fn new() -> Self {
         let mut add_button = MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Add", Font::Main);
         let search_text = TextInput::new(Vector2::with_x(110.0), Vector2::new(200.0, 50.0), "Search", "", Font::Main);
@@ -24,11 +25,7 @@ impl TestDialog {
         let (sender, receiver) = channel(10);
         add_button.on_click = Arc::new(move |_|sender.try_send(()).unwrap());
 
-        let list = ScrollableArea::new(Vector2::with_y(60.0), Vector2::new(1000.0, 500.0), ListMode::Grid(GridSettings {
-            item_margin: Vector2::new(5.0, 20.0),
-            row_alignment: HorizontalAlign::Center,
-            grid: Vec::new(),
-        }));
+        let list = ScrollableArea::new(Vector2::with_y(60.0), Vector2::new(1000.0, 500.0), ListMode::Grid(GridSettings::new(Vector2::new(5.0, 20.0),HorizontalAlign::Center)));
 
         Self {
             list,
@@ -133,3 +130,134 @@ impl Dialog<Game> for TestDialog {
 
 }
 
+
+
+pub struct StupidDialog {
+    manager: Option<IngameManager>,
+    should_close: bool,
+
+    last_offset: Vector2,
+    size: Vector2,
+
+    beatmap: CurrentBeatmapHelper,
+    mode: CurrentPlaymodeHelper,
+}
+impl StupidDialog {
+    pub async fn new() -> Self {
+        let mode = CurrentPlaymodeHelper::new();
+        let beatmap = CurrentBeatmapHelper::new();
+
+        let size = Vector2::new(500.0, 500.0);
+
+        let mut manager = if let Some(beatmap) = &beatmap.0 {
+            manager_from_playmode(mode.0.clone(), &beatmap).await.ok()
+        } else { None };
+
+        if let Some(manager) = &mut manager {
+            manager.make_menu_background();
+            manager.gamemode.fit_to_area(Vector2::ZERO, size).await;
+            manager.start().await;
+        }
+
+        Self {
+            manager,
+            should_close: false,
+            last_offset: Vector2::ZERO,
+            size,
+
+            beatmap,
+            mode,
+        }
+    }
+}
+
+#[async_trait]
+#[allow(unused)]
+impl Dialog<Game> for StupidDialog {
+    fn name(&self) -> &'static str { "this is so dumb" }
+    fn title(&self) -> &'static str { "why did i make this" }
+    fn resizable(&self) -> bool { true }
+
+    fn should_close(&self) -> bool { self.should_close }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.size) }
+    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
+        // self.size = window_size.0;
+    }
+    
+    async fn resized(&mut self, new_size: Vector2) {
+        self.size = new_size;
+        
+        if let Some(manager) = &mut self.manager {
+            manager.gamemode.fit_to_area(self.last_offset, self.size).await;
+        }
+    }
+
+    
+    async fn force_close(&mut self) { self.should_close = true; }
+
+    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+
+    }
+    
+    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
+
+        true
+    }
+    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
+
+        true
+    }
+    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool { 
+
+        true
+    }
+
+    
+    async fn on_text(&mut self, text:&String) -> bool {
+        // self.search_text.on_text(text.clone());
+        true
+    }
+    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
+        // self.search_text.on_key_press(key, *mods);
+        true
+    }
+    async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
+        // self.search_text.on_key_release(key);
+        true
+    }
+
+
+    async fn update(&mut self, _g:&mut Game) {
+        if self.beatmap.update() || self.mode.update() {
+            self.manager = if let Some(beatmap) = &self.beatmap.0 {
+                manager_from_playmode(self.mode.0.clone(), &beatmap).await.ok()
+            } else { None };
+            if let Some(manager) = &mut self.manager {
+                manager.make_menu_background();
+                manager.gamemode.fit_to_area(self.last_offset, self.size).await;
+                manager.start().    await;
+            }
+        }
+
+
+        if let Some(manager) = &mut self.manager {
+            manager.update().await;
+        }
+    }
+
+    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+        list.push(Rectangle::new(offset, self.size, Color::GRAY.alpha(0.8), Some(Border::new(Color::BLACK, 2.0))));
+
+        if let Some(manager) = &mut self.manager {
+            if offset != self.last_offset {
+                self.last_offset = offset;
+                // manager.window_size_changed()
+                manager.gamemode.fit_to_area(offset, self.size).await;
+            }
+
+            manager.draw(list).await;
+        }
+
+    }
+
+}

@@ -64,6 +64,7 @@ pub struct IngameManager {
 
     /// is this playing in the background of the main menu?
     pub menu_background: bool,
+    pub multiplayer: bool,
 
     pub end_time: f32,
     pub lead_in_time: f32,
@@ -449,7 +450,7 @@ impl IngameManager {
 
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
-        if self.failed {
+        if self.failed && !self.multiplayer {
             let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
             if new_rate <= 0.05 {
@@ -735,6 +736,7 @@ impl IngameManager {
 
     // is this game pausable
     pub fn can_pause(&mut self) -> bool {
+        if self.multiplayer { return false; }
         self.should_pause || !(self.current_mods.has_autoplay() || self.replaying || self.failed)
     }
 
@@ -995,6 +997,11 @@ impl IngameManager {
         mods.add_mod(Autoplay.name());
         self.current_mods = Arc::new(mods);
     }
+
+    pub fn make_multiplayer(&mut self) {
+        self.multiplayer = true;
+        self.score_loader = None;
+    }
 }
 
 // Input Handlers
@@ -1053,7 +1060,7 @@ impl IngameManager {
             // set the failed time to negative, so it triggers the end
             self.failed_time = -1000.0;
         }
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         
 
         if key == Key::Escape && self.can_pause() {
@@ -1122,7 +1129,7 @@ impl IngameManager {
         self.handle_input(frame).await;
     }
     pub async fn key_up(&mut self, key:Key) {
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         
         // check map restart key
         if key == self.common_game_settings.map_restart_key {
@@ -1134,7 +1141,7 @@ impl IngameManager {
         self.handle_input(frame).await;
     }
     pub async fn on_text(&mut self, text:&String, mods: &KeyModifiers) {
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.on_text(text, mods).await;
         self.handle_input(frame).await;
     }
@@ -1145,7 +1152,7 @@ impl IngameManager {
             ui_editor.on_mouse_move(pos, &mut ()).await;
         }
 
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
 
         let frame = self.gamemode.mouse_move(pos).await;
         self.handle_input(frame).await;
@@ -1156,7 +1163,7 @@ impl IngameManager {
             return
         }
 
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.mouse_down(btn).await;
         self.handle_input(frame).await;
     }
@@ -1166,7 +1173,7 @@ impl IngameManager {
             return
         }
 
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.mouse_up(btn).await;
         self.handle_input(frame).await;
     }
@@ -1175,24 +1182,24 @@ impl IngameManager {
             ui_editor.on_mouse_scroll(delta, &mut ()).await;
         } 
 
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.mouse_scroll(delta).await;
         self.handle_input(frame).await;
     }
 
 
     pub async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) {
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.controller_press(c, btn).await;
         self.handle_input(frame).await;
     }
     pub async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) {
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.controller_release(c, btn).await;
         self.handle_input(frame).await;
     }
     pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) {
-        if self.failed { return }
+        if self.failed && !self.multiplayer { return }
         let frame = self.gamemode.controller_axis(c, axis_data).await;
         self.handle_input(frame).await;
     }
@@ -1320,6 +1327,7 @@ impl Default for IngameManager {
             completed: Default::default(),
             replaying: Default::default(),
             menu_background: Default::default(),
+            multiplayer: false,
             end_time: Default::default(),
             lead_in_time: Default::default(),
             lead_in_timer: Instant::now(),

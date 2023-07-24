@@ -104,17 +104,21 @@ impl ModManager {
         // error!("set speed: {speed} -> {}", self.speed);
     }
 
-    fn mods_list(&self, include_speed: bool) -> String {
-        let mut list = Vec::new();
+    fn mods_list(&self, include_speed: bool, mode: &String) -> String {
+        let Some(gamemode_info) = get_gamemode_info(mode) else { return String::new() };
+        let mod_groups = gamemode_info.get_mods();
+        let mods = mod_groups
+            .iter()
+            .map(|mg|&mg.mods)
+            .flatten()
+            .map(|m|(m.name(), m))
+            .collect::<HashMap<_,_>>();
 
-        for m in self.mods.iter() {
-            match &**m {
-                "easy" => list.push("EZ".to_owned()),
-                "autoplay" => list.push("AT".to_owned()),
-
-                m => list.push(m.split("_").map(|s|s.chars().next().unwrap().to_uppercase().to_string()).collect::<Vec<String>>().join("")),
-            }
-        }
+        let mut list = self.mods
+            .iter()
+            .filter_map(|id|mods.get(&**id))
+            .map(|m|m.short_name().to_owned())
+            .collect::<Vec<_>>();
 
         let speed = self.get_speed();
         if include_speed && speed != 1.0 { list.push(format!("({:.2}x)", speed)) }
@@ -122,11 +126,11 @@ impl ModManager {
         list.join(" ")
     }
 
-    pub fn mods_list_string(&self) -> String {
-        self.mods_list(true)
+    pub fn mods_list_string(&self, mode: &String) -> String {
+        self.mods_list(true, mode)
     }
-    pub fn mods_list_string_no_speed(&self) -> String {
-        self.mods_list(false)
+    pub fn mods_list_string_no_speed(&self, mode: &String) -> String {
+        self.mods_list(false, mode)
     }
 
     // inline helper

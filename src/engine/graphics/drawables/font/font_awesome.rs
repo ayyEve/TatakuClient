@@ -4,6 +4,10 @@
 #[allow(non_camel_case_types, dead_code)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum FontAwesome {
+    Lock = 0xf023,
+    UnlockAlt = 0xf13e,
+    Crown = 0xf521,
+
     Backward = 0xf04a,
     Play = 0xf04b,
     Pause = 0xf04c,
@@ -22,10 +26,18 @@ pub enum FontAwesome {
     WindowRestore = 0xf2d2,
     WindowClose = 0xf2d3,
     WindowCloseOutline = 0xf2d4,
+
+
 }
 impl FontAwesome {
     pub fn get_char(&self) -> char {
         let c = *self as u32;
-        char::from_u32(c).expect(&format!("invalid char id? {}", c))
+        char::from_u32(c).expect(&format!("invalid char: {c:#06x}"))
+    }
+}
+
+impl ToString for FontAwesome {
+    fn to_string(&self) -> String {
+        self.get_char().to_string()
     }
 }

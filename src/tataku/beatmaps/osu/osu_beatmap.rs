@@ -111,7 +111,7 @@ impl OsuBeatmap {
                 BeatmapSection::Version => {
                     match line.split("v").last().unwrap().trim().parse::<u8>() {
                         Ok(v) => beatmap.beatmap_version = v,
-                        Err(e) => warn!("[{file_path}] error parsing beatmap version: {}", e),
+                        Err(e) => warn!("[{file_path}] error parsing beatmap version: {e} (map will still load)"),
                     }
                 }
                 BeatmapSection::General => {

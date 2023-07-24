@@ -7,7 +7,6 @@ impl LastFmIntegration {
         let username = settings.username.clone();
         let password = settings.password.clone();
         let url = settings.score_url.clone();
-        drop(settings);
 
         let body = serde_json::to_string(&LastFmAuthRequest { username, password }).unwrap();
         let Ok(req) = reqwest::Client::new()

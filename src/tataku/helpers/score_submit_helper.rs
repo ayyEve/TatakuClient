@@ -33,13 +33,8 @@ impl ScoreSubmitHelper {
                 }
                 Some(map) => map.clone()
             };
-            let game = match &map.beatmap_type {
-                BeatmapType::Osu => MapGame::Osu,
-                BeatmapType::Quaver => MapGame::Quaver,
-                other => MapGame::Other(format!("{other:?}").to_lowercase())
-            };
             let map_info = ScoreMapInfo {
-                game,
+                game: map.beatmap_type.into(),
                 map_hash: score.beatmap_hash.clone(),
                 playmode: score.playmode.clone(),
             };

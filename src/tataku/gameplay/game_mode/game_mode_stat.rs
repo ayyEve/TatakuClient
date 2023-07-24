@@ -27,7 +27,7 @@ impl StatGroup {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct GameplayStats {
     data: HashMap<String, Vec<f32>>,
 }

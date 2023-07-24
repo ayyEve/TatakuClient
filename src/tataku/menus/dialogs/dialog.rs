@@ -17,6 +17,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn force_close(&mut self) {}
     /// if in a draggable dialog, and it was resized
     async fn resized(&mut self, _new_size: Vector2) {}
+    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {}
 
     async fn update(&mut self, _g:&mut G) {}
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection);
@@ -30,7 +31,6 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn on_text(&mut self, _text:&String) -> bool {false}
     async fn on_key_press(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
     async fn on_key_release(&mut self, _key:Key, _mods:&KeyModifiers, _g:&mut G) -> bool {false}
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
 
     async fn on_controller_press(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
     async fn on_controller_release(&mut self, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}

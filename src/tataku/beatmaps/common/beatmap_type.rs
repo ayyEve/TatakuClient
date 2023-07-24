@@ -1,3 +1,5 @@
+use crate::prelude::MapGame;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BeatmapType {
     Unknown,
@@ -38,6 +40,16 @@ impl From<u8> for BeatmapType {
             5 => BeatmapType::Tja,
             6 => BeatmapType::UTyping,
             _ => BeatmapType::Unknown,
+        }
+    }
+}
+
+impl Into<MapGame> for BeatmapType {
+    fn into(self) -> MapGame {
+        match self {
+            BeatmapType::Osu => MapGame::Osu,
+            BeatmapType::Quaver => MapGame::Quaver,
+            other => MapGame::Other(format!("{other:?}").to_lowercase())
         }
     }
 }

@@ -8,9 +8,6 @@ use chrono::{
     Utc
 };
 
-// const GRAPH_SIZE:Vector2 = Vector2::new(400.0, 200.0);
-// const GRAPH_PADDING:Vector2 = Vector2::new(10.0,10.0);
-
 const MENU_ITEM_COUNT:usize = 2;
 const TITLE_STRING_Y:f32 = 20.0;
 const TITLE_STRING_FONT_SIZE:f32 = 30.0;
@@ -18,43 +15,35 @@ const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 pub struct ScoreMenu {
     score: IngameScore,
     pub replay: Option<Replay>,
-    score_mods: String,
 
     beatmap: Arc<BeatmapMeta>,
     buttons: Vec<MenuButton>,
 
-    // graph: Graph<Font2, Text>,
-
     // cached
+    score_mods: String,
     hit_error: HitError,
     hit_counts: Vec<(String, u32, Color)>,
+    stats: Vec<MenuStatsInfo>,
 
     pub dont_do_menu: bool,
     pub should_close: bool,
 
+    selected_stat: usize,
     selected_index: usize,
     window_size: Arc<WindowSize>,
 
     pub score_submit: Option<Arc<ScoreSubmitHelper>>,
     score_submit_response: Option<SubmitResponse>,
 
-
-    selected_stat: usize,
-    stats: Vec<MenuStatsInfo>
+    pub is_lobby: bool,
+    lobby_helper: CurrentLobbyDataHelper,
+    lobby_scrollable: ScrollableArea, 
+    close_sender: Option<AsyncSender<()>>
 }
 impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
         let window_size = WindowSize::get();
         let hit_error = score.hit_error();
-
-        // let graph = Graph::new(
-        //     Vector2::new(window_size.x * 2.0/3.0, window_size.y) - (GRAPH_SIZE + GRAPH_PADDING), //window_size() - (GRAPH_SIZE + GRAPH_PADDING),
-        //     GRAPH_SIZE,
-        //     score.hit_timings.iter().map(|e|*e as f32).collect(),
-        //     -50.0,
-        //     50.0,
-        //     Font::Main
-        // );
 
         let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
         
@@ -104,6 +93,7 @@ impl ScoreMenu {
             stats.extend(gamemode_info.stats_from_groups(&data));
         }
 
+        let ws = window_size.0;
         ScoreMenu {
             score: score.clone(),
             score_mods,
@@ -123,7 +113,12 @@ impl ScoreMenu {
             score_submit_response: None,
 
             selected_stat: 0,
-            stats
+            stats,
+
+            is_lobby: false,
+            lobby_helper: CurrentLobbyDataHelper::new(),
+            lobby_scrollable: ScrollableArea::new(ws - Vector2::new(250.0, ws.y/2.0), Vector2::new(200.0, ws.y/2.0), ListMode::VerticalList),
+            close_sender: None,
         }
     }
 
@@ -133,7 +128,6 @@ impl ScoreMenu {
             return;
         }
 
-        // let menu = game.menus.get("beatmap").unwrap().clone();
         game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
     }
 
@@ -154,7 +148,7 @@ impl ScoreMenu {
                     replay.score_data = Some(self.score.score.clone());
                 }
                 manager.set_replay(replay);
-                game.queue_state_change(GameState::Ingame(manager));
+                game.queue_state_change(GameState::Ingame(Box::new(manager)));
             },
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
@@ -162,11 +156,64 @@ impl ScoreMenu {
 
     async fn retry(&mut self, game: &mut Game) {
         match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-            Ok(manager) => game.queue_state_change(GameState::Ingame(manager)),
+            Ok(manager) => game.queue_state_change(GameState::Ingame(Box::new(manager))),
             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
         }
     }
- 
+    
+    async fn change_score(&mut self, score: IngameScore) {
+        self.hit_error = score.hit_error();
+
+        let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
+        
+        // map hit types to a display string
+        self.hit_counts.clear();
+        for judge in judgments.iter() {
+            let txt = judge.as_str_display();
+            if txt.is_empty() { continue }
+
+            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
+
+            let mut color = judge.color();
+            if color.a == 0.0 { color = Color::BLACK }
+
+            self.hit_counts.push((txt.to_owned(), count as u32, color));
+        }
+
+        // extract mods
+        self.score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
+        if self.score_mods.len() > 0 { self.score_mods = format!("Mods: {}", self.score_mods); }
+
+        // stats
+        if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
+            let mut groups = gamemode_info.get_stat_groups();
+            groups.extend(default_stat_groups());
+            let data = score.stats.into_groups(&groups);
+
+            self.stats = default_stats_from_groups(&data);
+            self.stats.extend(gamemode_info.stats_from_groups(&data));
+        }
+
+        self.score = score;
+    }
+
+    pub fn make_lobby(&mut self, close_sender: AsyncSender<()>) {
+        self.buttons.remove(0);
+        self.is_lobby = true;
+        self.dont_do_menu = true;
+        self.close_sender = Some(close_sender);
+
+        if let Some(lobby) = &**self.lobby_helper {
+            self.lobby_scrollable.clear();
+            let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
+            scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
+
+            for (user_id, score) in scores {
+                info!("added score");
+                self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -176,6 +223,28 @@ impl AsyncMenu<Game> for ScoreMenu {
             if let Some(t) = &self.score_submit {
                 if let Some(r) = t.response.read().await.as_ref() {
                     self.score_submit_response = Some(r.clone());
+                }
+            }
+        }
+
+        if self.is_lobby {
+            // update lobby scores
+            if self.lobby_helper.update() {
+                if let Some(lobby) = &**self.lobby_helper {
+                    self.lobby_scrollable.clear();
+                    let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
+                    scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
+
+                    for (user_id, score) in scores {
+                        self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
+                    }
+                }
+                self.lobby_scrollable.update();
+            }
+
+            if self.should_close {
+                if let Some(sender) = &self.close_sender {
+                    sender.try_send(()).unwrap()
                 }
             }
         }
@@ -297,10 +366,15 @@ impl AsyncMenu<Game> for ScoreMenu {
             let bounds = Bounds::new(pos, size);
             stat.draw(&bounds, list)
         }
+    
+        
+        // draw other player's scores
+        if self.is_lobby {
+            self.lobby_scrollable.draw(Vector2::ZERO, list);
+        }
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
-
         for b in self.buttons.iter_mut() {
             if b.on_click(pos, button, mods) {
                 match &*b.get_tag() {
@@ -313,9 +387,16 @@ impl AsyncMenu<Game> for ScoreMenu {
                 break;
             }
         }
+        
+        if let Some(score_hash) = self.lobby_scrollable.on_click_tagged(pos, button, mods) {
+            let Some(lobby) = &**self.lobby_helper else { return };
+            let Some(score) = lobby.player_scores.values().find(|s|s.hash() == score_hash) else { return };
+            self.change_score(IngameScore::new(score.clone(), false, false)).await;
+        }
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+        self.lobby_scrollable.on_mouse_move(pos);
         for b in self.buttons.iter_mut() {
             b.on_mouse_move(pos);
         }
