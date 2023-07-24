@@ -9,6 +9,7 @@ const Y_OFFSET:f32 = 10.0;
 const MENU_HIDE_TIMER:f32 = 5_000.0;
 // const COOKIE_HIDE_TIMER:f32 = 10_000.0;
 // const COOKIE_FADE_TIME:f32 = 10_000.0;
+const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
     // index 0
@@ -16,8 +17,10 @@ pub struct MainMenu {
     // // index 1
     // pub direct_button: MainMenuButton,
     // index 2
-    pub settings_button: MainMenuButton,
+    pub multiplayer_button: MainMenuButton,
     // index 3
+    pub settings_button: MainMenuButton,
+    // index 4
     pub exit_button: MainMenuButton,
 
     visualization: MenuVisualization,
@@ -48,11 +51,14 @@ impl MainMenu {
         // counter += 1.0;
         // let mut direct_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "osu!Direct").await;
         counter += 1.0;
+        let mut multiplayer_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Multiplayer", "menu-button-multiplayer").await;
+        counter += 1.0;
         let mut settings_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Settings", "menu-button-options").await;
         counter += 1.0;
         let mut exit_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Exit", "menu-button-exit").await;
 
         play_button.visible = false;
+        multiplayer_button.visible = false;
         // direct_button.visible = false;
         settings_button.visible = false;
         exit_button.visible = false;
@@ -61,6 +67,7 @@ impl MainMenu {
 
         MainMenu {
             play_button,
+            multiplayer_button,
             // direct_button,
             settings_button,
             exit_button,
@@ -111,14 +118,16 @@ impl MainMenu {
 
         // ensure they have the latest window size
         self.play_button.window_size = self.window_size.0;
+        self.multiplayer_button.window_size = self.window_size.0;
         // self.direct_button.window_size = self.window_size.0;
         self.settings_button.window_size = self.window_size.0;
         self.exit_button.window_size = self.window_size.0;
 
         // show
-        let count = 3;
+        let count = BUTTON_COUNT;
         let mut counter = 0;
         self.play_button.show(counter, count, true); counter += 1;
+        self.multiplayer_button.show(counter, count, true); counter += 1;
         // self.direct_button.show(counter, count, true); counter += 1;
         self.settings_button.show(counter, count, true); counter += 1;
         self.exit_button.show(counter, count, true); // counter += 1;
@@ -129,14 +138,16 @@ impl MainMenu {
 
         // ensure they have the latest window size
         self.play_button.window_size = self.window_size.0;
+        self.multiplayer_button.window_size = self.window_size.0;
         // self.direct_button.window_size = self.window_size.0;
         self.settings_button.window_size = self.window_size.0;
         self.exit_button.window_size = self.window_size.0;
 
         // hide
-        let count = 3;
+        let count = BUTTON_COUNT;
         let mut counter = 0;
         self.play_button.hide(counter, count, true); counter += 1;
+        self.multiplayer_button.hide(counter, count, true); counter += 1;
         // self.direct_button.hide(1, 4, true); counter += 1;
         self.settings_button.hide(counter, count, true); counter += 1;
         self.exit_button.hide(counter, count, true); // counter += 1;
@@ -148,6 +159,7 @@ impl MainMenu {
             vec![
                 &mut self.music_box,
                 &mut self.play_button,
+                &mut self.multiplayer_button,
                 // &mut self.direct_button,
                 &mut self.settings_button,
                 &mut self.exit_button,
@@ -240,6 +252,7 @@ impl AsyncMenu<Game> for MainMenu {
             self.visualization.reload_skin().await;
 
             self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
+            self.multiplayer_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-multiplayer").await;
             // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
             self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
             self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
@@ -323,6 +336,7 @@ impl AsyncMenu<Game> for MainMenu {
 
         if song_done {
             trace!("song done");
+            // this needs to be separate or it double locks for some reason
             let map = BEATMAP_MANAGER.read().await.random_beatmap();
 
             // it should?
@@ -382,6 +396,16 @@ impl AsyncMenu<Game> for MainMenu {
         if self.play_button.on_click(pos, button, mods) {
             // let menu = game.menus.get("beatmap").unwrap().clone();
             game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
+            return;
+        }
+
+        // switch to multiplayer menu (if logged in)
+        if self.multiplayer_button.on_click(pos, button, mods) {
+            if ONLINE_MANAGER.read().await.logged_in {
+                game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
+            } else {
+                NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;
+            }
             return;
         }
 
@@ -491,6 +515,7 @@ impl AsyncMenu<Game> for MainMenu {
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.play_button.window_size_changed(&window_size);
+        self.multiplayer_button.window_size_changed(&window_size);
         // self.direct_button.window_size_changed(&window_size);
         self.settings_button.window_size_changed(&window_size);
         self.exit_button.window_size_changed(&window_size);
@@ -540,9 +565,10 @@ impl ControllerInputMenu<Game> for MainMenu {
             ControllerButton::South => {
                 match self.selected_index {
                     0 => game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
-                    1 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
-                    2 => game.add_dialog(Box::new(SettingsMenu::new().await), false), //game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
-                    3 => game.queue_state_change(GameState::Closing),
+                    1 => game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await))),
+                    2 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
+                    3 => game.add_dialog(Box::new(SettingsMenu::new().await), false), //game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
+                    4 => game.queue_state_change(GameState::Closing),
                     _ => {}
                 }
             }
@@ -552,6 +578,7 @@ impl ControllerInputMenu<Game> for MainMenu {
 
         if changed {
             self.play_button.set_selected(self.selected_index == 0);
+            self.multiplayer_button.set_selected(self.selected_index == 1);
             // self.direct_button.set_selected(self.selected_index == 1);
             self.settings_button.set_selected(self.selected_index == 2);
             self.exit_button.set_selected(self.selected_index == 3);

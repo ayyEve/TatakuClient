@@ -486,14 +486,6 @@ impl Game {
             }
         }
 
-        if keys_down.contains(&Key::PageDown) && mods.ctrl {
-            // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(TestDialog::new()))), false);
-            if ONLINE_MANAGER.read().await.logged_in {
-                self.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
-            } else {
-                NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;
-            }
-        }
         if keys_down.contains(&Key::PageUp) && mods.ctrl {
             self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }

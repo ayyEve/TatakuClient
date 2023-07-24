@@ -185,7 +185,7 @@ impl MenuVisualization {
         let mut cookie = self.cookie.clone();
         cookie.pos = pos;
         cookie.rotation = self.rotation * 2.0;
-        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05);
+        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05 * if self.unload_cookie {1.0} else {1.2});
         list.push(cookie);
     }
 }
@@ -258,6 +258,7 @@ impl Visualization for MenuVisualization {
         // self.timer = Instant::now();
     }
 }
+
 // free up the image from the texture atlas
 impl Drop for MenuVisualization {
     fn drop(&mut self) {
