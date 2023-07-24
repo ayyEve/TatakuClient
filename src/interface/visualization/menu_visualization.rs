@@ -167,14 +167,16 @@ impl MenuVisualization {
     }
 
     pub async fn reload_skin(&mut self) {
-        // if self.unload_cookie {
-        //     GameWindow::free_texture(self.cookie.tex);
-        // }
+        if self.unload_cookie {
+            GameWindow::free_texture(self.cookie.tex);
+        }
 
         if let Some(cookie) = SkinManager::get_texture("menu-osu", true).await {
             self.cookie = cookie;
+            self.unload_cookie = false;
         } else {
             self.cookie = load_image("./resources/icon.png", false, Vector2::ONE).await.unwrap();
+            self.unload_cookie = true;
         }
         self.cookie.set_size(Vector2::ONE * self.initial_inner_radius);
     }
