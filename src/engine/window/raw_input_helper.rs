@@ -21,12 +21,12 @@ impl MouseInputHelper {
     pub fn set_system_cursor(&mut self, enabled: bool) {
         self.system_cursor = enabled;
     }
-    pub fn set_focus(&mut self, has_focus: bool, window: &winit::window::Window) {
+    pub fn set_focus(&mut self, has_focus: bool, _window: &winit::window::Window) {
         self.window_focused = has_focus;
 
-        if has_focus {
-            let _ = window.set_cursor_position(winit::dpi::LogicalPosition::new(self.mouse_pos.x as f64, self.mouse_pos.y as f64));
-        }
+        // if has_focus {
+        //     let _ = window.set_cursor_position(winit::dpi::LogicalPosition::new(self.mouse_pos.x as f64, self.mouse_pos.y as f64));
+        // }
     }
 
     pub fn display_mouse_moved(&mut self, mouse_pos: Vector2) -> Option<Vector2> {
