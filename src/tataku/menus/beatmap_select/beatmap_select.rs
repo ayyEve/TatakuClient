@@ -242,6 +242,9 @@ impl BeatmapSelectMenu {
     }
 
     fn run_diffcalc(&mut self, modes: impl Iterator<Item=String>+Send+'static, manual: bool) {
+        // if diffcalc is not enabled, and this wasnt manually triggered
+        if !self.settings.enable_diffcalc && !manual { return }
+
         let (fuze, bomb) = Bomb::new();
         self.diffcalc_complete = Some(bomb);
         

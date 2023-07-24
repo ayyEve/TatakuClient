@@ -59,6 +59,9 @@ pub struct Settings {
     #[Setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
 
+    #[Setting(text="Enable Difficulty Calculation")]
+    pub enable_diffcalc: bool,
+
     // window settings
     pub window_pos: [i32; 2],
     pub window_size: [f32; 2],
@@ -260,6 +263,7 @@ impl Default for Settings {
             last_sort_by: SortBy::Title,
             allow_gamemode_cursor_ripple_override: true,
             beatmap_hitsounds: true,
+            enable_diffcalc: true,
 
             // window settings
             fps_target: 144,
