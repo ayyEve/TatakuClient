@@ -37,8 +37,9 @@ impl AsyncMenu<Game> for LobbySelect {
         }
     }
 
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
-
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.scrollable.set_size(window_size.0);
+        self.needs_init = true;
     }
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if let Some(tag) = self.scrollable.on_click_tagged(pos, button, mods) {

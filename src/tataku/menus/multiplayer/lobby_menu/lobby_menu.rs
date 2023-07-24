@@ -216,6 +216,21 @@ impl AsyncMenu<Game> for LobbyMenu {
         if let Some(menu) = &mut self.menu {
             menu.window_size_changed(window_size.clone()).await;
         }
+
+        // update the scrollable sizes
+        let size = Vector2::new(window_size.x / 3.0, window_size.y);
+        let size2 = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
+        
+        self.left_scrollable.set_size(size);
+        self.right_scrollable.set_pos(size.x_portion() + 10.0);
+        self.right_scrollable.set_size(size2);
+
+        // beatmap select button
+        self.right_scrollable.items.get_mut(0).unwrap().set_size(Vector2::new(size2.x, 50.0));
+        // other buttons
+        self.right_scrollable.items.get_mut(1).unwrap().set_size(Vector2::new(size2.x - 10.0, 50.0));
+
+        self.right_scrollable.refresh_layout();
     }
 
     async fn update(&mut self, game:&mut Game) {
