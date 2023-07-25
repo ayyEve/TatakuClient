@@ -996,14 +996,14 @@ impl GameMode for OsuGame {
             if has_fa {
                 let timing_points = self.timing_points.iter().filter(|t|!t.is_inherited()).map(|t|t.clone()).collect::<Vec<_>>();
                 let mut index = 0;
-                info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                 
                 for note in self.notes.iter_mut() {
                     // check next timing point
                     if let Some(next) = timing_points.get(index + 1) {
                         if next.time <= note.time() { 
                             index += 1; 
-                            info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
+                            // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
                         }
                     }
 
