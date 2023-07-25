@@ -263,6 +263,10 @@ impl GraphicsState {
             (BlendMode::AlphaBlending, wgpu::BlendState::ALPHA_BLENDING),
             (BlendMode::AlphaOverwrite, wgpu::BlendState::REPLACE),
             (BlendMode::PremultipliedAlpha, wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+            (BlendMode::AdditiveBlending, wgpu::BlendState {
+                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
+                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
+            }),
         ] {
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(&format!("{blend_mode:?} Pipeline")),

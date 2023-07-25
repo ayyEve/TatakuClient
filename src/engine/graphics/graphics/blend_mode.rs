@@ -8,5 +8,6 @@ pub enum BlendMode {
     None,
     AlphaBlending,
     AlphaOverwrite,
-    PremultipliedAlpha
+    PremultipliedAlpha,
+    AdditiveBlending,
 }
