@@ -61,7 +61,7 @@ impl ApproachCircle {
 
     pub fn draw(&self, list: &mut RenderableCollection) {
         let lerp_amount = self.time_diff / self.preempt;
-        let scale = self.easing_type.run_easing(1.0, APPROACH_CIRCLE_MULT, lerp_amount);
+        let scale = self.easing_type.run_easing(1.0, APPROACH_CIRCLE_MULT, lerp_amount.max(0.0));
 
         if let Some(mut tex) = self.image.clone() {
             tex.pos = self.pos;
