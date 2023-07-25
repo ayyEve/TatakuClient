@@ -60,6 +60,8 @@ pub struct OsuSettings {
     pub slider_body_alpha: f32,
     #[Setting(text="Slider Border Alpha", min=0.0, max=1.0)]
     pub slider_border_alpha: f32,
+    #[Setting(text="Use Skin Slider Body Color")]
+    pub use_skin_slider_body_color: bool,
 
     #[Setting(text="Playfield Alpha", min=0.0, max=1.0)]
     pub playfield_alpha: f32,
@@ -106,6 +108,7 @@ impl Default for OsuSettings {
             use_skin_judgments: true,
             slider_body_alpha: 0.8,
             slider_border_alpha: 1.0,
+            use_skin_slider_body_color: true,
             playfield_alpha: 0.5
         }
     }

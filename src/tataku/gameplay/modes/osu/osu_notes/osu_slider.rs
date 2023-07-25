@@ -187,21 +187,22 @@ impl OsuSlider {
         if self.slider_body_render_target_failed.is_some() {
             return
         }
-        // let skin = SkinManager::current_skin_config().await;
+        let skin = SkinManager::current_skin_config().await;
 
         let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
         let window_size = WindowSize::get().0;
         
         // info!("{:?}", skin.slider_track_override);
-        // let color = skin.slider_track_override.filter(|c|c != &Color::BLACK).unwrap_or_else(|| {
-            let mut color = self.color.alpha(self.standard_settings.slider_body_alpha);
+        let mut color = skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
+            let mut color = self.color;
             const DARKER:f32 = 2.0/3.0;
             color.r *= DARKER;
             color.g *= DARKER;
             color.b *= DARKER;
-            // color
-        // });
+            color
+        });
 
+        color.a = self.standard_settings.slider_body_alpha;
 
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
