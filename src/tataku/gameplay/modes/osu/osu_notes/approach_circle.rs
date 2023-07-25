@@ -46,14 +46,17 @@ impl ApproachCircle {
         self.image = SkinManager::get_texture("approachcircle", true).await;
     }
 
-    pub fn update(&mut self, map_time: f32, alpha: f32) {
-        self.alpha = alpha;
+    pub fn update(&mut self, map_time: f32) {
         self.time_diff = self.time - map_time;
     }
 
     pub fn reset(&mut self) {
         self.time_diff = 9999.0;
         self.alpha = 0.0;
+    }
+
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.alpha = alpha;
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {

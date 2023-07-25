@@ -85,12 +85,11 @@ impl OsuNote {
 
     fn get_alpha(&self) -> f32 {
         // fade im
-        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
+        let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
 
         // if after time, fade out
         if self.map_time >= self.time {
             alpha = ((self.time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
-            // debug!("fading out: {}", alpha)
         }
         alpha
     }
@@ -108,7 +107,7 @@ impl HitObject for OsuNote {
     fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
-        self.approach_circle.update(beatmap_time, self.get_alpha());
+        self.approach_circle.update(beatmap_time);
         
         self.shapes.retain_mut(|shape| {
             shape.update(beatmap_time);
@@ -135,6 +134,7 @@ impl HitObject for OsuNote {
         self.circle_image.draw(list);
 
         // timing circle
+        self.approach_circle.set_alpha(alpha);
         self.approach_circle.draw(list);
 
         // draw shapes
