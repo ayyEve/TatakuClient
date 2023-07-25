@@ -13,6 +13,8 @@ pub struct LobbyMenu {
 
     selected_beatmap: Option<Arc<BeatmapMeta>>,
     selected_mode: Option<String>,
+    current_mods: ModManagerHelper,
+    latest_beatmap_helper: LatestBeatmapHelper,
 
     menu: Option<Box<dyn AsyncMenu<Game>>>,
     on_beatmap_select: Option<Receiver<Option<(Arc<BeatmapMeta>, String)>>>,
@@ -23,7 +25,6 @@ pub struct LobbyMenu {
     manager: Option<Box<IngameManager>>,
     score_send_timer: Instant,
 
-    current_mods: ModManagerHelper,
 
     slot_senders: HashMap<u8, (AsyncSender<(LobbySlot, bool)>, AsyncSender<Option<LobbyPlayerInfo>>)>
 }
@@ -65,6 +66,10 @@ impl LobbyMenu {
             right_scrollable,
             selected_beatmap: None,
             selected_mode: Some(CurrentPlaymodeHelper::new().0.clone()),
+            
+            latest_beatmap_helper: LatestBeatmapHelper::new(),
+
+
             menu: None,
             on_beatmap_select: None,
             on_score_menu_close: None,
@@ -243,6 +248,7 @@ impl AsyncMenu<Game> for LobbyMenu {
         let old_info = self.lobby_info.clone();
         if self.lobby_info.update() {
             self.refresh_data(&old_info, game).await;
+            if self.lobby_info.is_none() { return }
         }
 
         // make sure these always run, or the mpsc channels will fill up and crash
@@ -321,6 +327,22 @@ impl AsyncMenu<Game> for LobbyMenu {
             let mods = self.current_mods.mods.clone();
             let speed = self.current_mods.speed;
             tokio::spawn(OnlineManager::lobby_update_mods(mods, speed));
+        }
+    
+        // check if a new beatmap was added
+        if self.latest_beatmap_helper.update() {
+            let newest_map = self.latest_beatmap_helper.0.clone();
+
+            // if the map that was just added is the lobby's map, set it as our current map
+            let lobby_info = self.lobby_info();
+            if let Some(beatmap) = &lobby_info.current_beatmap {
+                if beatmap.hash == newest_map.beatmap_hash {
+                    BEATMAP_MANAGER.write().await.set_current_beatmap(game, &newest_map, true).await;
+                    self.selected_beatmap = Some(newest_map);
+                    
+                    tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
+                }
+            }
         }
     }
 
@@ -418,7 +440,28 @@ impl AsyncMenu<Game> for LobbyMenu {
                         let current_map = CurrentBeatmapHelper::new().0.clone();
                         let current_hash = current_map.as_ref().map(|u|&u.beatmap_hash);
                         if hash.is_some() && hash != current_hash {
-                            info!("player wants to download map")
+                            let hash = hash.unwrap().clone();
+                            tokio::spawn(async move {
+                                let settings = Settings::get();
+                                let req = reqwest::get(format!("{}/api/get_beatmap_url?hash={hash}", settings.score_url)).await;
+                                match req {
+                                    Err(e) => NotificationManager::add_error_notification("Error with beatmap url request", e.to_string()).await,
+                                    Ok(resp) => {
+
+                                        #[allow(unused)]
+                                        #[derive(Deserialize)]
+                                        struct Resp { error: Option<String>, url: Option<String> }
+                                        
+                                        let Ok(body) = resp.text().await else { NotificationManager::add_text_notification("shit", 3000.0, Color::RED).await; return; };
+                                        info!("url resp: {body}");
+
+                                        match serde_json::from_str(&body) {
+                                            Ok(Resp {url: Some(url), ..}) => open_link(url),
+                                            _ => error!("some shit broke i dont care")
+                                        }
+                                    }
+                                }
+                            });
                         }
                     }
                 }
