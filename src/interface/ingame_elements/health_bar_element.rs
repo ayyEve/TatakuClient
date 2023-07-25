@@ -58,25 +58,13 @@ impl InnerUIElement for HealthBarElement {
                 bg.set_size(bg_size);
                 list.push(bg);
             }
-        
-            // let snip = DrawState::default().scissor([
-            //     pos_offset.x as u32,
-            //     pos_offset.y as u32,
-            //     (bg_size.x * percent) as u32,
-            //     bg_size.y as u32
-            // ]);
 
-            
-            fill.set_scissor(Some([
-                pos_offset.x, 
-                pos_offset.y, 
-                bg_size.x * percent, 
-                bg_size.y
-            ]));
             fill.pos = pos_offset;
             fill.set_size(bg_size);
-            // fill.set_draw_state(Some(snip));
+
+            list.push_scissor([pos_offset.x, pos_offset.y, bg_size.x * percent, bg_size.y]);
             list.push(fill);
+            list.pop_scissor();
 
         } else {
             let len = self.common_game_settings.healthbar_colors.len();
