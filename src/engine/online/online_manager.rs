@@ -641,7 +641,7 @@ impl OnlineManager {
 
                     let Some(inviter) = ONLINE_MANAGER.read().await.users.get(&inviter_id).cloned() else { continue };
                     let inviter = inviter.lock().await;
-                    let text = format!("{} has inited you to a multiplayer match", inviter.username);
+                    let text = format!("{} has invited you to a multiplayer match", inviter.username);
 
                     let notif = Notification::new(text, Color::PURPLE_AMETHYST, 10_000.0, NotificationOnClick::MultiplayerLobby(lobby.id));
                     NotificationManager::add_notification(notif).await;
