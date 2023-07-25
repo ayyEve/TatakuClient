@@ -62,7 +62,7 @@ impl TimingBar {
     }
 
     pub fn draw(&mut self, list: &mut RenderableCollection) {
-        if self.pos.y < 0.0 || self.pos.y > self.playfield.window_size.y { return }
+        if self.pos.y < 0.0 || self.pos.y > self.playfield.bounds.size.y { return }
 
         list.push(Rectangle::new(
             self.pos + Vector2::with_y(self.playfield.note_size().y),

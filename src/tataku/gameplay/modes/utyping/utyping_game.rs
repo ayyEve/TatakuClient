@@ -15,7 +15,7 @@ const SV_FACTOR:f32 = 700.0;
 pub struct UTypingGame {
     // lists
     pub notes: UTypingNoteQueue,
-    timing_bars: Vec<TimingBar>,
+    timing_bars: Vec<UTypingTimingBar>,
 
     // hit timing bar stuff
     hitwindow_300: f32,
@@ -26,18 +26,56 @@ pub struct UTypingGame {
     // auto_helper: UTypingAutoHelper,
 
     game_settings: Arc<TaikoSettings>,
+    playfield: Arc<UTypingPlayfield>,
 
 
     autoplay_queue: Option<(Vec<char>, f32, f32)>
+}
+impl UTypingGame {
+    pub fn get_playfield(settings: &TaikoSettings, bounds: Bounds) -> UTypingPlayfield {
+        let half_note_width = settings.note_radius * settings.big_note_multiplier;
+        let height = half_note_width * 2.0 + settings.playfield_height_padding;
+
+        let mut x_offset = settings.playfield_x_offset;
+        let mut y_offset = settings.playfield_y_offset;
+        // if not fullscreen, remove the x and y offsets
+        if bounds.size != WindowSize::get().0 {
+            x_offset = 0.0;
+            y_offset = 0.0;
+        }
+
+
+        // load hit_position
+        let base = if settings.hit_position_relative_to_window_size {
+            bounds.size - Vector2::new(bounds.size.x, bounds.size.y / settings.hit_position_relative_height_div) 
+        } else { Vector2::ZERO };
+
+        let hit_position = bounds.pos + base + Vector2::new(x_offset + half_note_width, y_offset);
+
+        UTypingPlayfield {
+            bounds,
+            height,
+            hit_position
+        }
+    } 
+
+    pub fn update_playfield(&mut self, bounds: Bounds) {
+        self.playfield = Arc::new(Self::get_playfield(&self.game_settings, bounds));
+
+        // update notes
+        self.notes.iter_mut().for_each(|n|n.update_playfield(self.playfield.clone()));
+
+        // update timing bars
+        self.timing_bars.iter_mut().for_each(|n|n.update_playfield(self.playfield.clone()));
+    }
 }
 
 #[async_trait]
 impl GameMode for UTypingGame {
     async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> TatakuResult<Self> {
-        let mut settings = Settings::get().taiko_settings.clone();
-        // calculate the hit area
-        settings.init_settings().await;
-        let settings = Arc::new(settings);
+        let settings = Arc::new(Settings::get().taiko_settings.clone());
+        let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
+
         let mut s = Self {
             notes: UTypingNoteQueue::new(),
 
@@ -50,6 +88,7 @@ impl GameMode for UTypingGame {
 
             // auto_helper: UTypingAutoHelper::new(),
             game_settings: settings.clone(),
+            playfield: playfield.clone(),
             autoplay_queue: None
         };
 
@@ -72,6 +111,7 @@ impl GameMode for UTypingGame {
                         time, 
                         note.text.clone(), 
                         settings.clone(), 
+                        playfield.clone(),
                         diff_calc_only
                     ).await);
                 }
@@ -85,6 +125,7 @@ impl GameMode for UTypingGame {
                         note.time as f32, 
                         note.text.clone(), 
                         settings.clone(), 
+                        playfield.clone(),
                         diff_calc_only
                     ).await);
                 }
@@ -236,12 +277,11 @@ impl GameMode for UTypingGame {
     async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
-        let window_size = WindowSize::get();
-        list.push(self.game_settings.get_playfield(window_size.x, manager.current_timing_point().kiai));
+        list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
 
         // draw the hit area
         list.push(Circle::new(
-            self.game_settings.hit_position,
+            self.playfield.hit_position,
             self.game_settings.note_radius * self.game_settings.hit_area_radius_mult,
             Color::BLACK,
             None
@@ -252,7 +292,6 @@ impl GameMode for UTypingGame {
         
         // draw notes
         for note in self.notes.iter_mut() { note.draw(list).await; }
-
     }
 
 
@@ -302,7 +341,7 @@ impl GameMode for UTypingGame {
                 }
 
                 // add timing bar at current time
-                self.timing_bars.push(TimingBar::new(time, sv, self.game_settings.clone()));
+                self.timing_bars.push(UTypingTimingBar::new(time, sv, self.playfield.clone()));
 
                 if tp_index < parent_tps.len() && parent_tps[tp_index].time <= time + next_bar_time {
                     time = parent_tps[tp_index].time;
@@ -312,7 +351,7 @@ impl GameMode for UTypingGame {
 
                 // why isnt this accounting for bpm changes? because the bpm change doesnt allways happen inline with the bar idiot
                 time += next_bar_time;
-                if time >= self.end_time || time.is_nan() {break}
+                if time >= self.end_time || time.is_nan() { break }
             }
 
             trace!("created {} timing bars", self.timing_bars.len());
@@ -356,8 +395,12 @@ impl GameMode for UTypingGame {
 
 
     
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {}
-    async fn fit_to_area(&mut self, _pos: Vector2, _size: Vector2) {}
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.update_playfield(Bounds::new(Vector2::ZERO, window_size.0));
+    }
+    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
+        self.update_playfield(Bounds::new(pos, size));
+    }
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}

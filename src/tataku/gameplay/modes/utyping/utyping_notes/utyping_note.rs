@@ -26,6 +26,7 @@ pub struct UTypingNote {
     speed: f32,
 
     settings: Arc<TaikoSettings>,
+    playfield: Arc<UTypingPlayfield>,
     bounce_factor: f32,
 
     /// what char are we trying to hit?
@@ -36,7 +37,7 @@ pub struct UTypingNote {
     pub judgment: Option<UTypingHitJudgment>
 }
 impl UTypingNote {
-    pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, diff_calc_only:bool) -> Self {
+    pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>, diff_calc_only:bool) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
@@ -65,6 +66,7 @@ impl UTypingNote {
             pos: Vector2::ZERO,
             image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings).await},
             settings,
+            playfield,
             bounce_factor,
             judgment: None
         }
@@ -105,11 +107,9 @@ impl HitObject for UTypingNote {
             else if self.missed {GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2)} 
             else {0.0};
         
-        self.pos = self.settings.hit_position + Vector2::new((self.time - beatmap_time) * self.speed, y);
+        self.pos = self.playfield.hit_position + Vector2::new((self.time - beatmap_time) * self.speed, y);
 
-        if let Some(image) = &mut self.image {
-            image.set_pos(self.pos)
-        }
+        self.image.ok_do_mut(|i|i.set_pos(self.pos));
     }
     async fn draw(&mut self, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
@@ -233,6 +233,10 @@ impl UTypingNote {
     pub fn get_chars(&self) -> Vec<char> {
         self.branches.get_first()
         // get_things_for_text(&self.text)
+    }
+
+    pub fn update_playfield(&mut self, playfield: Arc<UTypingPlayfield>) {
+        self.playfield = playfield;
     }
 }
 

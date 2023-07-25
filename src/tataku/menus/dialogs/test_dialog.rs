@@ -155,7 +155,7 @@ impl StupidDialog {
 
         if let Some(manager) = &mut manager {
             manager.make_menu_background();
-            manager.gamemode.fit_to_area(Vector2::ZERO, size).await;
+            manager.fit_to_area(Bounds::new(Vector2::ZERO, size)).await;
             manager.start().await;
         }
 
@@ -188,7 +188,7 @@ impl Dialog<Game> for StupidDialog {
         self.size = new_size;
         
         if let Some(manager) = &mut self.manager {
-            manager.gamemode.fit_to_area(self.last_offset, self.size).await;
+            manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
         }
     }
 
@@ -234,7 +234,7 @@ impl Dialog<Game> for StupidDialog {
             } else { None };
             if let Some(manager) = &mut self.manager {
                 manager.make_menu_background();
-                manager.gamemode.fit_to_area(self.last_offset, self.size).await;
+                manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
                 manager.start().    await;
             }
         }
@@ -252,7 +252,7 @@ impl Dialog<Game> for StupidDialog {
             if offset != self.last_offset {
                 self.last_offset = offset;
                 // manager.window_size_changed()
-                manager.gamemode.fit_to_area(offset, self.size).await;
+                manager.fit_to_area(Bounds::new(offset, self.size)).await;
             }
 
             manager.draw(list).await;

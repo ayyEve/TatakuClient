@@ -90,6 +90,7 @@ pub struct IngameManager {
     pub common_game_settings: Arc<CommonGameplaySettings>,
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
+    fit_to_bounds: Option<Bounds>,
 
     // spectator variables
     // TODO: should these be in their own struct? it might simplify things
@@ -514,10 +515,13 @@ impl IngameManager {
 
 
         // draw gamemode
+        if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
+        
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.draw(self, list).await;
         self.gamemode = gamemode;
 
+        if self.fit_to_bounds.is_some() { list.pop_scissor(); }
 
 
         // dont draw score, combo, etc if this is a menu bg
@@ -1004,6 +1008,11 @@ impl IngameManager {
         self.multiplayer = true;
         self.score_loader = None;
     }
+
+    pub async fn fit_to_area(&mut self, bounds: Bounds) {
+        self.fit_to_bounds = Some(bounds);
+        self.gamemode.fit_to_area(bounds.pos, bounds.size).await;
+    }
 }
 
 // Input Handlers
@@ -1342,6 +1351,7 @@ impl Default for IngameManager {
             last_spectator_score_sync: 0.0,
             on_start: Box::new(|_|{}),
             animation: Box::new(EmptyAnimation),
+            fit_to_bounds: None,
 
             common_game_settings: Default::default(),
 

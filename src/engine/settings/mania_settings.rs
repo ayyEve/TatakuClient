@@ -144,7 +144,7 @@ pub struct ManiaPlayfieldSettings {
 
     /// y pos of the hit area
     /// 
-    /// if not upside-down, y is window_height - this
+    /// if not upside-down, y is playfield_height - this
     pub hit_pos: f32,
 
     /// how wide is a note column?
@@ -166,7 +166,7 @@ pub struct ManiaPlayfieldSettings {
     pub upside_down: bool,
 }
 impl ManiaPlayfieldSettings {
-    pub fn new(name: &str) -> Self{
+    pub fn new(name: &str) -> Self {
         Self {
             name: name.to_owned(),
             ..Default::default()

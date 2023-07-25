@@ -849,8 +849,6 @@ impl GameMode for OsuGame {
 
 
     async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
-        let pos = pos;
-        let size = size;
         let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5, self.mods.has_mod(HardRock.name()));
         self.apply_playfield(Arc::new(playfield)).await;
     }

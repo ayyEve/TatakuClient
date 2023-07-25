@@ -41,7 +41,7 @@ impl TaikoDrumroll {
             radius,
             speed: 0.0,
 
-            pos: Vector2::new(0.0,settings.hit_position.y - radius),
+            pos: Vector2::new(0.0, playfield.hit_position.y - radius),
             end_x: 0.0,
             hit_dots: Vec::new(),
             settings,
@@ -59,8 +59,8 @@ impl HitObject for TaikoDrumroll {
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.end_time }
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos.x = self.settings.hit_position.x + self.x_at(beatmap_time);
-        self.end_x = self.settings.hit_position.x + self.end_x_at(beatmap_time);
+        self.pos.x = self.playfield.hit_position.x + self.x_at(beatmap_time);
+        self.end_x = self.playfield.hit_position.x + self.end_x_at(beatmap_time);
         self.current_time = beatmap_time;
     }
     async fn draw(&mut self, list: &mut RenderableCollection) {
@@ -122,9 +122,9 @@ impl HitObject for TaikoDrumroll {
         for time in self.hit_dots.iter() {
             let bounce_factor = 1.6;
 
-            let x = self.settings.hit_position.x + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x;
+            let x = self.playfield.hit_position.x + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.playfield.size.x;
             let diff = self.current_time - time;
-            let y = self.settings.hit_position.y + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
+            let y = self.playfield.hit_position.y + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
 
             // flying dot
             list.push(Circle::new(
@@ -187,19 +187,20 @@ impl TaikoHitObject for TaikoDrumroll {
     }
 
     fn playfield_changed(&mut self, new_playfield: Arc<TaikoPlayfield>) {
-        self.playfield = new_playfield
+        self.playfield = new_playfield;
+        self.pos.y = self.playfield.hit_position.y - self.radius;
     }
     fn get_playfield(&self) -> Arc<TaikoPlayfield> {
         self.playfield.clone()
     }
     
     fn set_settings(&mut self, settings: Arc<TaikoSettings>) {
-        self.settings = settings.clone();
+        self.settings = settings;
 
         for i in [&mut self.middle_image, &mut self.end_image] {
             if let Some(i) = i {
-                let radius = settings.note_radius * if self.finisher {settings.big_note_multiplier} else {1.0};
-                i.scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
+                // let radius = self.settings.note_radius * if self.finisher {self.settings.big_note_multiplier} else {1.0};
+                i.scale = Vector2::ONE * (self.radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
             }
         }
     }

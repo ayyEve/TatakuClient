@@ -31,9 +31,9 @@ pub struct TaikoSettings {
     #[Setting(text="Big Note Scale", min=1, max=5)]
     pub big_note_multiplier: f32,
 
-    /// hit area, but calculated before use
-    #[serde(skip)]
-    pub hit_position: Vector2,
+    // /// hit area, but calculated before use
+    // #[serde(skip)]
+    // pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
     pub hit_position_relative_height_div: f32,
     #[Setting(text="Playfield Horizontal Offset", min=0, max=500)]
@@ -61,34 +61,19 @@ pub struct TaikoSettings {
     #[Setting(text="Hit Judgment Y-Offset", min=0, max=100)]
     pub judgement_indicator_offset: f32,
 }
-impl TaikoSettings {
-    pub async fn init_settings(&mut self) {
-        // load hit_position
-        let base = if self.hit_position_relative_to_window_size {
-            let window_size = **WindowSize::get();
-            window_size - Vector2::new(window_size.x, window_size.y / self.hit_position_relative_height_div) 
-        } else {
-            Vector2::ZERO
-        };
-        self.hit_position = base + Vector2::new(self.playfield_x_offset, self.playfield_y_offset);
-
-        // // load colors
-        // self.don_color = Color::from_hex(&self.don_color_hex);
-        // self.kat_color = Color::from_hex(&self.kat_color_hex);
-    }
-
-    pub fn get_playfield(&self, width: f32, kiai: bool) -> Rectangle {
-        let height = self.note_radius * self.big_note_multiplier * 2.0 + self.playfield_height_padding;
-        Rectangle::new(
-            Vector2::new(0.0, self.hit_position.y - height / 2.0),
-            Vector2::new(width, height),
-            Color::new(0.1, 0.1, 0.1, 1.0),
-            if kiai {
-                Some(Border::new(Color::YELLOW, 2.0))
-            } else {None}
-        )
-    }
-}
+// impl TaikoSettings {
+//     pub fn get_playfield(&self, width: f32, kiai: bool) -> Rectangle {
+//         let height = self.note_radius * self.big_note_multiplier * 2.0 + self.playfield_height_padding;
+//         Rectangle::new(
+//             Vector2::new(0.0, self.hit_position.y - height / 2.0),
+//             Vector2::new(width, height),
+//             Color::new(0.1, 0.1, 0.1, 1.0),
+//             if kiai {
+//                 Some(Border::new(Color::YELLOW, 2.0))
+//             } else {None}
+//         )
+//     }
+// }
 impl Default for TaikoSettings {
     fn default() -> Self {
         Self {
@@ -109,7 +94,7 @@ impl Default for TaikoSettings {
             hit_area_radius_mult: 1.2,
             playfield_height_padding: 8.0,
             // hit area stuff
-            hit_position: Vector2::ZERO,
+            // hit_position: Vector2::ZERO,
             hit_position_relative_to_window_size: true,
             hit_position_relative_height_div: 1.375, // 3/8s the way down the screen
             playfield_x_offset: 200.0,

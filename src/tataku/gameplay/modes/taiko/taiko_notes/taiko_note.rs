@@ -30,6 +30,7 @@ impl TaikoNote {
         let bounce_factor = 1.6;
 
         Self {
+            pos: Vector2::ZERO,
             time, 
             hit_time: 0.0,
             hit_type, 
@@ -38,7 +39,6 @@ impl TaikoNote {
             speed: 0.0,
             hit: false,
             missed: false,
-            pos: Vector2::ZERO,
             image: None,
             settings,
             playfield,
@@ -68,7 +68,7 @@ impl HitObject for TaikoNote {
             else { 0.0 };
 
         let x = self.x_at(beatmap_time);
-        self.pos = self.settings.hit_position + Vector2::new(x, y);
+        self.pos = self.playfield.hit_position + Vector2::new(x, y);
 
         if let Some(image) = &mut self.image {
             image.set_pos(self.pos)

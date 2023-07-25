@@ -121,7 +121,7 @@ impl MenuGameHelper {
                         manager.make_menu_background();
 
                         if let Some((pos, size)) = self.fit_to {
-                            manager.gamemode.fit_to_area(pos, size).await
+                            manager.fit_to_area(Bounds::new(pos, size)).await
                         }
                         
                         manager.start().await;
@@ -179,7 +179,7 @@ impl MenuGameHelper {
         self.fit_to = Some((pos, size));
 
         if let Some(manager) = &mut self.manager {
-            manager.gamemode.fit_to_area(pos, size).await
+            manager.fit_to_area(Bounds::new(pos, size)).await
         }
     } 
 }
