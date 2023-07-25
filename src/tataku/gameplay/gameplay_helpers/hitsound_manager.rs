@@ -9,11 +9,8 @@ async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut H
 
         match AudioManager::load(path2) {
             Ok(sound) => {
-                // filename without extention
-                // let filename = Path::new(&filename).file_stem().unwrap().to_string_lossy().to_string();
-                // info!("inserting {filename}");
                 sounds_list.insert(filename, sound); 
-                return true
+                return true;
             },
             Err(TatakuError::Audio(AudioError::Empty)) => {
                 // ignore these errors, just means the file provided was empty (probably)
@@ -86,11 +83,8 @@ impl HitsoundManager {
 
         // skin
         let skin_filepath = format!("{skin_folder}/{filename}");
-        let skin_file = Path::new(&skin_filepath);
-        if skin_file.exists() {
-            let skin_sounds = self.sounds.get_mut(&HitsoundSource::Skin).unwrap();
-            load_sound(skin_filepath, filename.clone(), skin_sounds).await;
-        }
+        let skin_sounds = self.sounds.get_mut(&HitsoundSource::Skin).unwrap();
+        if load_sound(skin_filepath, filename.clone(), skin_sounds).await { return };
 
         // default
         let default_filepath = format!("resources/audio/{filename}");
