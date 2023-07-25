@@ -348,7 +348,7 @@ impl OsuSlider {
     }
 
     fn get_alpha(&self) -> f32 {
-        let mut alpha = (1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))).clamp(0.0, 1.0);
+        let mut alpha = ((1.0 - ((self.time - (self.time_preempt * (2.0/3.0))) - self.map_time) / (self.time_preempt * (1.0/3.0))) / 3.0).clamp(0.0, 1.0);
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
@@ -388,7 +388,8 @@ impl HitObject for OsuSlider {
 
         
         let alpha = self.get_alpha();
-        self.approach_circle.update(beatmap_time, alpha);
+        self.approach_circle.set_alpha(alpha);
+        self.approach_circle.update(beatmap_time);
 
         if self.time - beatmap_time > self.time_preempt || self.curve.end_time < beatmap_time {
             if self.slider_body_render_target.is_some() && alpha <= 0.0 {
