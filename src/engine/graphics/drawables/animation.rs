@@ -18,6 +18,7 @@ pub struct Animation {
     pub frame_delays: Vec<f32>,
 
     scissor: Scissor,
+    blend_mode: BlendMode,
 
     // current
     pub color: Color,
@@ -45,6 +46,7 @@ impl Animation {
             color,
             base_scale,
             scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
 
             frames,
             frame_index: 0,
@@ -95,13 +97,14 @@ impl Animation {
 impl TatakuRenderable for Animation {
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut GraphicsState) {
-
         let scale = self.scale;
         let transform = transform
             .trans(-self.origin) // apply origin
@@ -111,7 +114,7 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.scissor);
+        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.scissor, self.blend_mode);
     }
 }
 

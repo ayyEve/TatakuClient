@@ -1,6 +1,8 @@
+use super::BlendMode;
 use wgpu::{Buffer, BindGroup};
 
 pub struct RenderBuffer {
+    pub blend_mode: BlendMode,
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub scissor_buffer: Buffer,

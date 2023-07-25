@@ -13,11 +13,12 @@ pub struct TransformGroup {
 
     pub items: Vec<Arc<dyn TatakuRenderable>>,
     pub transforms: Vec<Transformation>,
-
-    // pub draw_state: Option<DrawState>,
     
     pub image_flip_horizonal: bool,
     pub image_flip_vertical: bool,
+
+    pub scissor: Scissor,
+    pub blend_mode: BlendMode
 }
 impl TransformGroup {
     pub fn new(pos: Vector2) -> Self {
@@ -34,6 +35,9 @@ impl TransformGroup {
 
             image_flip_horizonal: false,
             image_flip_vertical: false,
+
+            scissor: None,
+            blend_mode: BlendMode::AlphaBlending
         }
     }
 
@@ -232,6 +236,12 @@ impl TransformGroup {
 
 
 impl TatakuRenderable for TransformGroup {
+    fn get_scissor(&self) -> Scissor { self.scissor }
+    fn set_scissor(&mut self, s:Scissor) { self.scissor = s; }
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode; }
+
+
     fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
         transform = transform
             * Matrix::identity()

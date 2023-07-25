@@ -111,6 +111,7 @@ impl ActualFont {
         scale: Vector2,
         color: Color, 
         scissor: Scissor,
+        blend_mode: BlendMode,
         transform: Matrix, 
         graphics: &mut GraphicsState
     ) {
@@ -121,7 +122,7 @@ impl ActualFont {
 
         // info!("draw char '{ch}' with data {:?} at {x},{y}", character.metrics);
         // dont apply scale to this transform, its already been applied
-        graphics.draw_tex(&character.texture, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)), scissor);
+        graphics.draw_tex(&character.texture, color, false, false, transform.trans(Vector2::new(ch_x, ch_y)), scissor, blend_mode);
 
         *x += character.metrics.advance_width * scale.x;
         // *y += character.metrics.advance_height as f32;

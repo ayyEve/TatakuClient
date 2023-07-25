@@ -11,6 +11,7 @@ pub struct Image {
     pub origin: Vector2,
 
     scissor: Scissor,
+    blend_mode: BlendMode,
 
     pub color: Color,
     pub pos: Vector2,
@@ -37,6 +38,7 @@ impl Image {
             origin,
             tex,
             scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
             base_scale
         }
     }
@@ -89,6 +91,8 @@ impl TatakuRenderable for Image {
     fn get_name(&self) -> String { "Texture".to_owned() }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -115,6 +119,6 @@ impl TatakuRenderable for Image {
             .trans(self.pos) // move to pos
         ;
 
-        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor);
+        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor, self.blend_mode);
     }
 }

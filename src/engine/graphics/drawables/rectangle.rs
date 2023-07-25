@@ -3,15 +3,13 @@ use crate::prelude::*;
 #[derive(Clone, Copy)]
 pub struct Rectangle {
     inner: Bounds,
-    // pub pos: Vector2,
-    // pub size: Vector2,
-    // pub scale: Vector2,
     
     pub color: Color,
     pub rotation: f32,
 
     pub origin: Vector2,
     scissor: Scissor,
+    blend_mode: BlendMode,
 
     pub shape: Shape,
     pub border: Option<Border>,
@@ -25,6 +23,7 @@ impl Rectangle {
             rotation: 0.0,
             shape: Shape::Square,
             scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
 
             border,
             origin: size / 2.0,
@@ -44,6 +43,8 @@ impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
@@ -63,7 +64,15 @@ impl TatakuRenderable for Rectangle {
             .trans(self.inner.pos) // move to pos
         ;
 
-        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor)
+        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor, self.blend_mode)
+    }
+}
+
+impl From<Bounds> for Rectangle {
+    fn from(other: Bounds) -> Self {
+        let mut r = Self::new(other.pos, other.size, Color::BLACK, None);
+        r.inner.scale = other.scale;
+        r
     }
 }
 
@@ -79,25 +88,12 @@ impl DerefMut for Rectangle {
     }
 }
 
+
+/// The shape of the rectangle corners
 #[derive(Copy, Clone, Debug)]
-pub struct Bounds {
-    pub pos: Vector2,
-    pub size: Vector2,
-    pub scale: Vector2,
-}
-impl Bounds {
-    pub fn new(pos: Vector2, size: Vector2) -> Self {
-        Self { pos, size, scale: Vector2::ONE }
-    }
-    /// check if this rectangle contains a point
-    pub fn contains(&self, p:Vector2) -> bool {
-        p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
-    }
-}
-impl Into<Rectangle> for Bounds {
-    fn into(self) -> Rectangle {
-        let mut r = Rectangle::new(self.pos, self.size, Color::BLACK, None);
-        r.inner.scale = self.scale;
-        r
-    }
+pub enum Shape {
+    /// Square corners
+    Square,
+    /// Round corners
+    Round(f32),
 }

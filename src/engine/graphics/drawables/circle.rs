@@ -8,6 +8,7 @@ pub struct Circle {
     pub radius: f32,
 
     scissor: Scissor,
+    blend_mode: BlendMode,
 
     pub border: Option<Border>,
     pub resolution: u32,
@@ -20,6 +21,7 @@ impl Circle {
             pos,
             radius,
             scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
 
             border,
             // draw_state: None,
@@ -33,6 +35,8 @@ impl TatakuRenderable for Circle {
 
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
@@ -48,7 +52,7 @@ impl TatakuRenderable for Circle {
         ;
 
 
-        g.draw_circle(self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.scissor);
+        g.draw_circle(self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.scissor, self.blend_mode);
 
         // graphics::ellipse::Ellipse {
         //     color: self.color.alpha(alpha).into(),

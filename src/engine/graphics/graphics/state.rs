@@ -18,8 +18,9 @@ pub struct GraphicsState {
     queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
     
-    blending_pipeline: wgpu::RenderPipeline,
-    no_blending_pipeline: wgpu::RenderPipeline,
+    pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
+    // blending_pipeline: wgpu::RenderPipeline,
+    // no_blending_pipeline: wgpu::RenderPipeline,
     
     recorded_buffers: Vec<RenderBuffer>,
     queued_buffers: Vec<RenderBuffer>,
@@ -29,7 +30,6 @@ pub struct GraphicsState {
     cpu_vtx: Vec<Vertex>,
     cpu_idx: Vec<u32>,
     cpu_scissor: Vec<[f32; 4]>,
-
 
     // texture_bind_group: wgpu::BindGroup,
     projection_matrix: Matrix,
@@ -257,85 +257,51 @@ impl GraphicsState {
         });
 
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[
-                    Vertex::desc(),
-                ],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, //Some(wgpu::Face::Back),
-                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                polygon_mode: wgpu::PolygonMode::Fill,
-                // Requires Features::DEPTH_CLIP_CONTROL
-                unclipped_depth: false,
-                // Requires Features::CONSERVATIVE_RASTERIZATION
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false, 
-            },
-            multiview: None,
-        });
+        let mut pipelines = HashMap::new();
 
-        let slider_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Slider Pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[
-                    Vertex::desc(),
-                ],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, //Some(wgpu::Face::Back),
-                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                polygon_mode: wgpu::PolygonMode::Fill,
-                // Requires Features::DEPTH_CLIP_CONTROL
-                unclipped_depth: false,
-                // Requires Features::CONSERVATIVE_RASTERIZATION
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false, 
-            },
-            multiview: None,
-        });
+        for (blend_mode, blend_state) in [
+            (BlendMode::AlphaBlending, wgpu::BlendState::ALPHA_BLENDING),
+            (BlendMode::AlphaOverwrite, wgpu::BlendState::REPLACE),
+            (BlendMode::PremultipliedAlpha, wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+        ] {
+            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(&format!("{blend_mode:?} Pipeline")),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: "vs_main",
+                    buffers: &[ Vertex::desc() ],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: config.format,
+                        blend: Some(blend_state),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false, 
+                },
+                multiview: None,
+            });
+
+            pipelines.insert(blend_mode, pipeline);
+        }
+
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -360,8 +326,7 @@ impl GraphicsState {
             device,
             queue: Arc::new(queue),
             config,
-            blending_pipeline: render_pipeline,
-            no_blending_pipeline: slider_pipeline,
+            pipelines,
             atlas,
             render_target_atlas,
             atlas_texture,
@@ -369,10 +334,10 @@ impl GraphicsState {
             recorded_buffers: Vec::with_capacity(3),
             queued_buffers: Vec::with_capacity(3),
             recording_buffer: None,
+
             cpu_vtx: vec![Vertex::default(); Self::VTX_PER_BUF as usize],
             cpu_idx: vec![0; Self::IDX_PER_BUF as usize],
             cpu_scissor: vec![[0.0; 4]; Self::QUAD_PER_BUF as usize],
-
 
             // texture_bind_group: atlas_texture.bind_group,
             projection_matrix,
@@ -414,17 +379,10 @@ impl GraphicsState {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         
-        // // don't draw if our draw surface has no area
+        // don't draw if our draw surface has no area
         if output.texture.width() == 0 || output.texture.height() == 0 { return Ok(()) }
 
-        let renderable = RenderableSurface {
-            texture: &view,
-            clear_color: GFX_CLEAR_COLOR,
-            pipeline: RenderPipeline::AlphaBlending
-        };
-
-        self.render(&renderable)?;
-        // self.check_screenshot(&output);
+        self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR))?;
 
         let width = output.texture.width();
         let height = output.texture.height();
@@ -454,12 +412,7 @@ impl GraphicsState {
                 ..Default::default()
             });
 
-            let renderable = RenderableSurface {
-                texture: &view,
-                clear_color: GFX_CLEAR_COLOR,
-                pipeline: RenderPipeline::AlphaBlending,
-            };
-            self.render(&renderable)?;
+            self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR))?;
 
             self.finish_screenshot(texture, screenshot);
         }
@@ -485,14 +438,21 @@ impl GraphicsState {
                 depth_stencil_attachment: None,
             });
 
-            match renderable.pipeline {
-                RenderPipeline::AlphaBlending => render_pass.set_pipeline(&self.blending_pipeline),
-                RenderPipeline::AlphaOverwrite => render_pass.set_pipeline(&self.no_blending_pipeline),
-            }
-            render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
-
+            let mut current_blend_mode = BlendMode::None;
             for recorded_buffer in self.recorded_buffers.iter() {
+                if recorded_buffer.blend_mode != current_blend_mode {
+                    current_blend_mode = recorded_buffer.blend_mode;
+                    let Some(pipeline) = self.pipelines.get(&recorded_buffer.blend_mode) else { 
+                        error!("Pipeline not created for blend mode {current_blend_mode:?}");
+                        current_blend_mode = BlendMode::None;
+                        continue 
+                    };
+
+                    render_pass.set_pipeline(&pipeline);
+                    render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
+                    render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
+                }
+
                 // bind scissors
                 render_pass.set_bind_group(2, &recorded_buffer.scissor_buffer_bind_group, &[]);
 
@@ -528,7 +488,7 @@ impl GraphicsState {
     }
 
 
-    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, pipeline: RenderPipeline, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
+    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
         // find space in the render target atlas
         let mut atlased = self.render_target_atlas.try_insert(w, h)?;
 
@@ -540,12 +500,12 @@ impl GraphicsState {
         let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
 
         // queue rendering the data to it
-        self.update_render_target(target.clone(), pipeline, do_render);
+        self.update_render_target(target.clone(), do_render);
 
         // return the new render target
         Some(target)
     }
-    pub fn update_render_target(&mut self, target: RenderTarget, pipeline: RenderPipeline, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
+    pub fn update_render_target(&mut self, target: RenderTarget, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
         let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
@@ -589,7 +549,6 @@ impl GraphicsState {
         let renderable = RenderableSurface {
             texture: &view,
             clear_color: target.clear_color,
-            pipeline,
         };
 
         // clear buffers
@@ -940,6 +899,7 @@ impl GraphicsState {
         });
 
         self.queued_buffers.push(RenderBuffer {
+            blend_mode: BlendMode::None,
             vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Vertex Buffer"),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -967,6 +927,7 @@ impl GraphicsState {
             i.used_indices = 0;
             i.used_vertices = 0;
             i.used_scissors = 0;
+            i.blend_mode = BlendMode::None;
         }
         
         // Move all recorded buffers into the queued buffers list
@@ -998,12 +959,16 @@ impl GraphicsState {
         vtx_count: u64,
         idx_count: u64,
         scissor: Scissor,
+        blend_mode: BlendMode,
     ) -> Option<ReserveData> {
         let mut recording_buffer = self.recording_buffer.as_mut()?;
+        let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
 
-        if recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF 
+        // if !blend_mode_check { println!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
+
+        if !blend_mode_check
+        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF 
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            // drop(recording_buffer);
             self.dump();
 
             if self.queued_buffers.is_empty() {
@@ -1012,6 +977,10 @@ impl GraphicsState {
 
             self.recording_buffer = self.queued_buffers.pop();
             recording_buffer = self.recording_buffer.as_mut()?;
+            recording_buffer.blend_mode = blend_mode;
+        }
+        if recording_buffer.blend_mode == BlendMode::None {
+            recording_buffer.blend_mode = blend_mode;
         }
 
         recording_buffer.used_indices += idx_count;
@@ -1048,8 +1017,9 @@ impl GraphicsState {
         v_flip: bool,
         transform: Matrix,
         scissor: Scissor,
+        blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
+        let Some(mut reserved) = self.reserve(4, 6, scissor, blend_mode) else { return };
         
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -1120,8 +1090,9 @@ impl GraphicsState {
         color: Color,
         transform: Matrix,
         scissor: Scissor,
+        blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6, scissor) else { return };
+        let Some(mut reserved) = self.reserve(4, 6, scissor, blend_mode) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p: Vector2|Vertex {
@@ -1150,7 +1121,7 @@ impl GraphicsState {
 impl GraphicsState {
 
     /// draw an arc with the center at 0,0
-    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor) {
+    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let n = resolution;
         
         // minor optimization
@@ -1173,10 +1144,10 @@ impl GraphicsState {
         path.end(false);
         let path = path.build();
 
-        self.tessellate_path(&path, color, None, transform, scissor);
+        self.tessellate_path(&path, color, None, transform, scissor, blend_mode);
     }
 
-    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor) {
+    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let n = resolution;
 
         let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
@@ -1189,7 +1160,7 @@ impl GraphicsState {
 
         // fill
         if color.a > 0.0 { 
-            self.tessellate_polygon(&points, color, None, transform, scissor);
+            self.tessellate_polygon(&points, color, None, transform, scissor, blend_mode);
         }
         
         // border 
@@ -1203,12 +1174,12 @@ impl GraphicsState {
             //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             // });
 
-            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, scissor);
+            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, scissor, blend_mode);
         }
 
     }
 
-    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, scissor: Scissor) {
+    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let p1 = Vector2::new(line[0], line[1]);
         let p2 = Vector2::new(line[2], line[3]);
 
@@ -1221,11 +1192,11 @@ impl GraphicsState {
         let n3 = p2 - n;
 
         let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, color, transform, scissor);
+        self.reserve_quad(quad, color, transform, scissor, blend_mode);
     }
 
     /// rect is [x,y,w,h]
-    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor) {
+    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
         if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
 
@@ -1241,22 +1212,22 @@ impl GraphicsState {
 
         // fill
         if color.a > 0.0 { 
-            self.tessellate_path(&path, color, None, transform, scissor)
+            self.tessellate_path(&path, color, None, transform, scissor, blend_mode)
         }
 
         // border
         if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            self.tessellate_path(&path, border.color, Some(border.radius), transform, scissor)
+            self.tessellate_path(&path, border.color, Some(border.radius), transform, scissor, blend_mode)
         }
     }
 
-    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor) {
+    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, scissor);
+        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, scissor, blend_mode);
     }
 
 
-    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
@@ -1267,10 +1238,10 @@ impl GraphicsState {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(&path, color, border, transform, scissor)
+        self.tessellate_path(&path, color, border, transform, scissor, blend_mode)
     }
 
-    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor) {
+    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         // Create the destination vertex and index buffers.
         let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
 
@@ -1305,7 +1276,7 @@ impl GraphicsState {
 
         }
 
-        let mut reserved = self.reserve(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor).expect("nope");
+        let mut reserved = self.reserve(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
@@ -1343,9 +1314,14 @@ pub struct WgpuTexture {
 pub struct RenderableSurface<'a> {
     texture: &'a wgpu::TextureView,
     clear_color: Color,
-    pipeline: RenderPipeline
 }
 impl<'a> RenderableSurface<'a> {
+    fn new(texture: &'a wgpu::TextureView, clear_color: Color) -> Self {
+        Self {
+            texture,
+            clear_color
+        }
+    }
     fn get_clear_color(&self) -> wgpu::Color {
         wgpu::Color { 
             r: self.clear_color.r as f64, 
@@ -1354,11 +1330,6 @@ impl<'a> RenderableSurface<'a> {
             a: self.clear_color.a as f64 
         }
     }
-}
-
-pub enum RenderPipeline {
-    AlphaBlending,
-    AlphaOverwrite
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Dropdown, Eq, PartialEq)]
@@ -1416,134 +1387,4 @@ fn align(num: u32) -> u32 {
     } else {
         num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
     }
-}
-
-#[allow(unused)]
-#[tokio::test]
-async fn test() {
-    use winit::{
-        event::*,
-        event_loop::{ControlFlow, EventLoopBuilder},
-        window::WindowBuilder,
-        platform::windows::EventLoopBuilderExtWindows
-    };
-
-    let settings = Settings::load().await;
-    let size = [800, 600];
-    
-    let event_loop = EventLoopBuilder::new().with_any_thread(true).build();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
-
-    let mut state = GraphicsState::new(&window, &settings, size).await;
-
-    let tex_bytes = std::fs::read("C:/Users/Eve/Desktop/Projects/rust/tataku/tataku-client/game/skins/bubbleman/default-4.png").unwrap();
-    let tex = state.load_texture_bytes(tex_bytes).expect("failed to load tex");
-    println!("got tex data {tex:?}");
-
-
-    struct TestThing {
-        position: Vector2,
-        size: Vector2,
-        scale: Vector2,
-        rotation: f32,
-        tex: TextureReference,
-    }
-    impl TestThing {
-        fn draw(&self, state: &mut GraphicsState) {
-            let depth = 0.0;
-            let m = 
-                Matrix::from_translation(Vector3::new(self.position.x, self.position.y, depth))
-                * Matrix::from_nonuniform_scale(self.scale.x, self.scale.y, 1.0)
-                * Matrix::from_angle_z(cgmath::Rad(self.rotation))
-            ;
-            
-            // state.draw_circle(depth, 100.0, Color::GREEN, None, 100, m);
-
-            let angle = PI as f32 / 3.0;
-            let p2 = Vector2::from_angle(angle) * 100.0;
-            let line = [0.0, 0.0, p2.x, p2.y];
-            state.draw_line(line, 5.0, Color::RED, m, None);
-
-
-            state.draw_tex(&self.tex, Color::WHITE, false, false, m, None);
-        }
-    }
-
-    let mut things:Vec<TestThing> = Vec::new();
-    let mut mouse_pos = Vector2::ZERO;
-
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent { ref event, window_id } if window_id == window.id() => match event {
-            WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
-                input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Escape), .. }, ..
-            } => *control_flow = ControlFlow::Exit,
-
-            WindowEvent::Resized(physical_size) => state.resize(*physical_size),
-            
-            // new_inner_size is &&mut so we have to dereference it twice
-            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => state.resize(**new_inner_size),
-            
-            WindowEvent::CursorMoved { position, .. } => {
-                mouse_pos = Vector2::new(
-                    position.x as f32,
-                    position.y as f32,
-                )
-            }
-
-
-            WindowEvent::MouseInput { state: ElementState::Pressed, button: winit::event::MouseButton::Left, .. } => {
-                println!("mouse: {mouse_pos:?}");
-                things.push(TestThing {
-                    position: mouse_pos,
-                    size: Vector2::ONE * 100.0,
-                    scale: Vector2::ONE,
-                    rotation: 0.0,
-                    tex
-                });
-            }
-
-            // WindowEvent::KeyboardInput {
-            //     input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Left), .. }, ..
-            // } => t.position.x -= 100.0,
-            // WindowEvent::KeyboardInput {
-            //     input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Right), .. }, ..
-            // } => t.position.x += 100.0,
-
-            // WindowEvent::KeyboardInput {
-            //     input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Up), .. }, ..
-            // } => t.position.y -= 100.0,
-            // WindowEvent::KeyboardInput {
-            //     input: KeyboardInput { state: ElementState::Pressed, virtual_keycode: Some(VirtualKeyCode::Down), .. }, ..
-            // } => t.position.y += 100.0,
-            
-            _ => {}
-        }
-
-        Event::RedrawRequested(window_id) if window_id == window.id() => {
-            state.begin();
-            for i in things.iter_mut() {
-                i.draw(&mut state)
-            }
-            state.end();
-
-            match state.render_current_surface() {
-                Ok(_) => {}
-                // Reconfigure the surface if lost
-                // Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
-                // The system is out of memory, we should probably quit
-                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                Err(e) => eprintln!("error: {:?}", e),
-            }
-        }
-
-        Event::MainEventsCleared => {
-            // RedrawRequested will only trigger once, unless we manually
-            // request it.
-            window.request_redraw();
-        }
-        
-        _ => {}
-    });
-
 }

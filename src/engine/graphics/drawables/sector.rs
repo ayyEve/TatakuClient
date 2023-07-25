@@ -12,6 +12,7 @@ pub struct Sector {
     pub end: f32,
 
     scissor: Scissor,
+    blend_mode: BlendMode,
 
     pub border: Option<Border>
 }
@@ -29,7 +30,8 @@ impl Sector {
             scale,
 
             border,
-            scissor: None
+            scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
         }
     }
 }
@@ -38,6 +40,8 @@ impl TatakuRenderable for Sector {
     fn get_name(&self) -> String { "Sector".to_owned() }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -51,7 +55,8 @@ impl TatakuRenderable for Sector {
             self.color.alpha(alpha),
             20,
             transform * Matrix::identity().scale(self.scale).trans(self.pos),
-            self.scissor
+            self.scissor,
+            self.blend_mode
         )
 
         //TODO: this!

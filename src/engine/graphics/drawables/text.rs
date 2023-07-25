@@ -18,6 +18,7 @@ pub struct Text {
     pub fonts: Vec<Font>,
 
     scissor: Scissor,
+    blend_mode: BlendMode,
 }
 impl Text {
     pub fn new(pos: Vector2, font_size: f32, text: impl ToString, color:Color, font: Font) -> Text {
@@ -42,6 +43,7 @@ impl Text {
             fonts,
             text_colors: Vec::new(),
             scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
         }
     }
 
@@ -102,6 +104,8 @@ impl TatakuRenderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size) }
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
  
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -150,6 +154,7 @@ impl TatakuRenderable for Text {
                         scale,
                         color, 
                         self.scissor,
+                        self.blend_mode,
                         transform, 
                         g
                     );

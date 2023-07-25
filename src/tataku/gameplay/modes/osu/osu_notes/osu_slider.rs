@@ -219,15 +219,19 @@ impl OsuSlider {
 
         // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
         // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
-        for (radius, color) in [(self.radius - border_radius * 0.5, border_color), (self.radius - border_radius * 1.5, color)] {
-
+        for (radius, color, blend_mode) in [
+            // border
+            (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), 
+            // fill
+            (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite)
+        ] {
             // add starting circle manually
             list.push(Box::new(Circle::new(
                 p,
                 radius,
                 color,
                 None
-            )));
+            ).with_blend_mode(blend_mode)));
 
             // add all lines
             for line in self.curve.curve_lines.iter() {
@@ -244,17 +248,13 @@ impl OsuSlider {
                 if p2.x + radius_with_border > max_pos.x { max_pos.x = p2.x + radius_with_border; }
                 if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
 
-
-                // p1.y = window_size.y - p1.y;
-                // p2.y = window_size.y - p2.y;
-
                 // add a line to connect the points
                 list.push(Box::new(Line::new(
                     p1,
                     p2,
                     radius,
                     color
-                )));
+                ).with_blend_mode(blend_mode)));
 
                 // add a circle to smooth out the corners
                 // border
@@ -263,20 +263,20 @@ impl OsuSlider {
                     radius,
                     color,
                     None
-                )));
+                ).with_blend_mode(blend_mode)));
             }
         }
 
         // draw it to the render texture
         if let Some(target) = self.slider_body_render_target.clone() {
-            GameWindow::update_render_target(target, RenderPipeline::AlphaOverwrite, move |state, matrix| {
+            GameWindow::update_render_target(target, move |state, matrix| {
                 let m = matrix.trans(-min_pos);
                 for i in list { i.draw(m, state); }
             }).await;
         } else {
             let size = max_pos - min_pos;
 
-            let rt = RenderTarget::new(size.x as u32, size.y as u32, RenderPipeline::AlphaOverwrite, move |state, matrix| {
+            let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, matrix| {
                 let m = matrix.trans(-min_pos);
                 for i in list { i.draw(m, state); } 
             }).await;

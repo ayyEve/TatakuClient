@@ -6,7 +6,8 @@ pub struct HalfCircle {
     pub pos: Vector2,
     pub radius: f32,
     pub left_side: bool,
-    pub scissor: Scissor
+    pub scissor: Scissor,
+    blend_mode: BlendMode,
     // draw_state: Option<DrawState>,
 }
 impl HalfCircle {
@@ -16,7 +17,8 @@ impl HalfCircle {
             pos,
             radius,
             left_side,
-            scissor: None
+            scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
             // draw_state: None,
         }
     }
@@ -26,6 +28,8 @@ impl TatakuRenderable for HalfCircle {
     fn get_name(&self) -> String { "Half Circle".to_owned() }
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor (&mut self, s:Scissor) {self.scissor = s}
+    fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
+    fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
@@ -41,7 +45,8 @@ impl TatakuRenderable for HalfCircle {
             self.color.alpha(alpha), 
             20, 
             transform.trans(self.pos), 
-            self.scissor
+            self.scissor,
+            self.blend_mode
         )
 
         // TODO: this

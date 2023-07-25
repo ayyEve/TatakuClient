@@ -375,12 +375,12 @@ impl GameWindow {
                 self.graphics.free_tex(tex);
             }
 
-            LoadImage::CreateRenderTarget((w, h), on_done, pipeline, callback) => {
-                let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, pipeline, callback);
+            LoadImage::CreateRenderTarget((w, h), on_done, callback) => {
+                let rt = self.graphics.create_render_target(w, h, Color::TRANSPARENT_WHITE, callback);
                 on_done.send(rt.ok_or(TatakuError::String("failed".to_owned()))).ok().expect("uh oh");
             }
-            LoadImage::UpdateRenderTarget(target, on_done, pipeline, callback) => {
-                self.graphics.update_render_target(target, pipeline, callback);
+            LoadImage::UpdateRenderTarget(target, on_done, callback) => {
+                self.graphics.update_render_target(target, callback);
                 on_done.send(()).ok().expect("uh oh");
             }
 
@@ -594,21 +594,21 @@ impl GameWindow {
     }
 
 
-    pub async fn create_render_target(size: (u32, u32), pipeline: RenderPipeline, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
+    pub async fn create_render_target(size: (u32, u32), callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<RenderTarget> {
         trace!("create render target");
 
         let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, pipeline, Box::new(callback))));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::CreateRenderTarget(size, sender, Box::new(callback))));
 
         receiver.recv().await.unwrap()
     }
 
     #[allow(unused)]
-    pub async fn update_render_target(rt:RenderTarget, pipeline: RenderPipeline, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
+    pub async fn update_render_target(rt:RenderTarget, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
         trace!("update render target");
 
         let (sender, mut receiver) = unbounded_channel();
-        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, pipeline, Box::new(callback))));
+        Self::send_event(Game2WindowEvent::LoadImage(LoadImage::UpdateRenderTarget(rt, sender, Box::new(callback))));
 
         receiver.recv().await;
     }

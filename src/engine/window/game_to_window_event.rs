@@ -22,6 +22,6 @@ pub enum LoadImage {
     Font(ActualFont, f32, Option<UnboundedSender<TatakuResult<()>>>),
     FreeTexture(TextureReference),
 
-    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, RenderPipeline, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
-    UpdateRenderTarget(RenderTarget, UnboundedSender<()>, RenderPipeline, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
+    CreateRenderTarget((u32, u32), UnboundedSender<TatakuResult<RenderTarget>>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
+    UpdateRenderTarget(RenderTarget, UnboundedSender<()>, Box<dyn FnOnce(&mut GraphicsState, Matrix) + Send>),
 }
