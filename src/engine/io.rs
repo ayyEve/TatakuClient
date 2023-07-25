@@ -294,13 +294,23 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
 }
 
 pub fn open_link(url: String) {
+    info!("Opening link '{url}'");
     #[cfg(windows)] {
         let mut cmd = std::process::Command::new("explorer");
         cmd.arg(url);
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
+    }
 
-        if let Err(e) = cmd.spawn() {
-            error!("error running cmd: {e}")
-        }
+    #[cfg(linux)] {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(url);
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
+    }
+
+    #[cfg(macos)] {
+        let mut cmd = std::process::Command::new("open");
+        cmd.arg(url);
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
     }
 }
 
