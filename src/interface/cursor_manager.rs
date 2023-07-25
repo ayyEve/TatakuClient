@@ -87,7 +87,7 @@ impl CursorManager {
         CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
 
         let a = PI / 4.0;
-        let tex = SkinManager::get_texture("star", true).await.map(|t|t.tex).unwrap_or_default();
+        let tex = SkinManager::get_texture("star2", true).await.map(|t|t.tex).unwrap_or_default();
         let builder = EmitterBuilder::new()
             .spawn_delay(20.0)
             .angle(EmitterVal::init_only(-a..a))
@@ -162,7 +162,7 @@ impl CursorManager {
         self.cursor_rotation = 0.0;
 
         
-        let tex = SkinManager::get_texture("star", true).await.map(|t|t.tex).unwrap_or_default();
+        let tex = SkinManager::get_texture("star2", true).await.map(|t|t.tex).unwrap_or_default();
         self.left_emitter.image = tex;
         self.right_emitter.image = tex;
     }
