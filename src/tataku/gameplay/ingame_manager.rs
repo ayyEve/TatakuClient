@@ -824,6 +824,7 @@ impl IngameManager {
                 self.lead_in_time = 0.0;
             } else {
                 self.song.set_position(0.0);
+                if self.song.is_stopped() { self.song.play(true); }
                 self.song.pause();
                 self.song.set_rate(self.current_mods.get_speed());
                 
@@ -891,6 +892,7 @@ impl IngameManager {
             // reset song
             self.song.set_rate(self.game_speed());
             self.song.set_position(0.0);
+            if self.song.is_stopped() { self.song.play(true); }
             self.song.pause();
         }
 
