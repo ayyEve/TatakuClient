@@ -18,6 +18,10 @@ pub struct BackgroundGameSettings {
     #[Setting(text="Settings Background Gameplay")]
     pub settings_menu_enabled: bool,
 
+    /// whether to have gameplay in the settings menu bg or not
+    #[Setting(text="Multiplayer Background Gameplay")]
+    pub multiplayer_menu_enabled: bool,
+
     /// gameplay alpha multiplier
     pub opacity: f32,
     /// hitsound volume multiplier
@@ -31,6 +35,7 @@ impl Default for BackgroundGameSettings {
             main_menu_enabled: true,
             beatmap_select_enabled: true,
             settings_menu_enabled: true,
+            multiplayer_menu_enabled: true,
             opacity: 0.5,
             hitsound_volume: 0.3,
             mode: "osu".to_owned()

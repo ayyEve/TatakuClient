@@ -9,7 +9,7 @@ pub struct MenuGameHelper {
     settings: SettingsHelper,
     pub manager: Option<IngameManager>,
 
-    pub fit_to: Option<(Vector2, Vector2)>,
+    pub fit_to: Option<Bounds>,
 
     /// use bg game settings, or global gamemode?
     use_global_playmode: bool,
@@ -120,8 +120,8 @@ impl MenuGameHelper {
                     Ok(mut manager) => {
                         manager.make_menu_background();
 
-                        if let Some((pos, size)) = self.fit_to {
-                            manager.fit_to_area(Bounds::new(pos, size)).await
+                        if let Some(bounds) = self.fit_to {
+                            manager.fit_to_area(bounds).await
                         }
                         
                         manager.start().await;
@@ -175,11 +175,11 @@ impl MenuGameHelper {
         }
     }
 
-    pub async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
-        self.fit_to = Some((pos, size));
+    pub async fn fit_to_area(&mut self, bounds: Bounds) {
+        self.fit_to = Some(bounds);
 
         if let Some(manager) = &mut self.manager {
-            manager.fit_to_area(Bounds::new(pos, size)).await
+            manager.fit_to_area(bounds).await
         }
     } 
 }

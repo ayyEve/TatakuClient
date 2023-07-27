@@ -497,13 +497,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
 
         self.menu_game.window_size_changed(window_size).await;
-        self.menu_game.fit_to_area(
+        self.menu_game.fit_to_area(Bounds::new(
             Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
             self.window_size.0 - Vector2::new(
                 (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
                 INFO_BAR_HEIGHT
             )
-        ).await;
+        )).await;
     }
 
     async fn update(&mut self, game:&mut Game) {

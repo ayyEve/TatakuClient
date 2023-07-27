@@ -24,7 +24,8 @@ pub struct LobbyMenu {
     load_complete_sent: bool,
     manager: Option<Box<IngameManager>>,
     score_send_timer: Instant,
-
+    
+    menu_game: MenuGameHelper,
 
     slot_senders: HashMap<u8, (AsyncSender<(LobbySlot, bool)>, AsyncSender<Option<LobbyPlayerInfo>>)>
 }
@@ -32,16 +33,16 @@ impl LobbyMenu {
     pub async fn new() -> Self {
         let lobby_info = CurrentLobbyDataHelper::new();
         let window_size = WindowSize::get().0;
-        let size = Vector2::new(window_size.x / 3.0, window_size.y);
-        let size2 = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
+        let left_size = Vector2::new(window_size.x / 3.0, window_size.y);
+        let mut right_size = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
 
-        let mut left_scrollable = ScrollableArea::new(Vector2::ZERO, size, ListMode::VerticalList);
-        let mut right_scrollable = ScrollableArea::new(size.x_portion() + 10.0, size2, ListMode::VerticalList);
-        right_scrollable.add_item(Box::new(BeatmapSelectButton::new(Vector2::new(size2.x, 50.0))));
+        let mut left_scrollable = ScrollableArea::new(Vector2::ZERO, left_size, ListMode::VerticalList);
+        let mut right_scrollable = ScrollableArea::new(left_size.x_portion() + 10.0, right_size, ListMode::VerticalList);
+        right_scrollable.add_item(Box::new(BeatmapSelectButton::new(right_size.x)));
 
 
         {
-            let mut buttons = ScrollableArea::new(Vector2::ZERO, Vector2::new(size2.x - 10.0, 50.0), ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Center)));
+            let mut buttons = ScrollableArea::new(Vector2::ZERO, Vector2::new(right_size.x - 10.0, 50.0), ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Center)));
             buttons.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Leave", Font::Main).with_tag("leave")));
             buttons.add_item(Box::new(LobbyReadyButton::new()));
             // buttons.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Start", Font::Main).with_tag("start")));
@@ -53,10 +54,17 @@ impl LobbyMenu {
             let (state_sender, state_receiver) = async_channel(CHANNEL_COUNT);
             let (player_sender, player_receiver) = async_channel(CHANNEL_COUNT);
             
-            left_scrollable.add_item(Box::new(LobbySlotDisplay::new(size.x, slot, state_receiver, player_receiver)));
+            left_scrollable.add_item(Box::new(LobbySlotDisplay::new(left_size.x, slot, state_receiver, player_receiver)));
             slot_senders.insert(slot, (state_sender, player_sender));
         }
 
+        right_size.y = right_scrollable.get_elements_height();
+        let menu_game_bounds = Bounds::new(
+            Vector2::new(left_size.x, right_size.y) + Vector2::ONE * 10.0, 
+            Vector2::new(right_size.x, window_size.y / 2.0) - Vector2::ONE * 10.0
+        );
+        let mut menu_game = MenuGameHelper::new(true, true, Box::new(|s|s.background_game_settings.multiplayer_menu_enabled));
+        menu_game.fit_to_area(menu_game_bounds).await;
         Self {
             init_pending: true,
             slot_senders,
@@ -68,7 +76,7 @@ impl LobbyMenu {
             selected_mode: Some(CurrentPlaymodeHelper::new().0.clone()),
             
             latest_beatmap_helper: LatestBeatmapHelper::new(),
-
+            menu_game,
 
             menu: None,
             on_beatmap_select: None,
@@ -223,19 +231,29 @@ impl AsyncMenu<Game> for LobbyMenu {
         }
 
         // update the scrollable sizes
-        let size = Vector2::new(window_size.x / 3.0, window_size.y);
-        let size2 = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
+        let left_size = Vector2::new(window_size.x / 3.0, window_size.y);
+        let mut right_size = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y / 2.0);
         
-        self.left_scrollable.set_size(size);
-        self.right_scrollable.set_pos(size.x_portion() + 10.0);
-        self.right_scrollable.set_size(size2);
+        self.left_scrollable.set_size(left_size);
+        self.right_scrollable.set_pos(left_size.x_portion() + 10.0);
+        self.right_scrollable.set_size(right_size);
 
         // beatmap select button
-        self.right_scrollable.items.get_mut(0).unwrap().set_size(Vector2::new(size2.x, 50.0));
+        {
+            let btn = self.right_scrollable.items.get_mut(0).unwrap();
+            btn.set_size(Vector2::new(right_size.x, btn.size().y));
+        }
         // other buttons
-        self.right_scrollable.items.get_mut(1).unwrap().set_size(Vector2::new(size2.x - 10.0, 50.0));
+        self.right_scrollable.items.get_mut(1).unwrap().set_size(Vector2::new(right_size.x - 10.0, 50.0));
 
         self.right_scrollable.refresh_layout();
+
+        right_size.y = self.right_scrollable.get_elements_height();
+        let menu_game_bounds = Bounds::new(
+            Vector2::new(left_size.x, right_size.y) + Vector2::ONE * 10.0, 
+            Vector2::new(right_size.x, window_size.y / 2.0) - Vector2::ONE * 10.0
+        );
+        self.menu_game.fit_to_area(menu_game_bounds).await;
     }
 
     async fn update(&mut self, game:&mut Game) {
@@ -286,6 +304,24 @@ impl AsyncMenu<Game> for LobbyMenu {
             return;
         }
 
+        // check audio state
+        let mut song_done = false;
+        match AudioManager::get_song().await {
+            Some(song) => {
+                if !song.is_playing() && !song.is_paused() { song_done = true; }
+            }
+            _ => song_done = true,
+        }
+        if song_done {
+            if let Some(audio) = AudioManager::get_song().await {
+                audio.play(true);
+                self.menu_game.setup().await;
+            }
+        }
+
+        // update our menu game
+        self.menu_game.update().await;
+
         // if we're waiting to select a beatmap, check if its been selected
         if let Some(result) = self.on_beatmap_select.as_mut().and_then(|r|r.try_recv().ok()) {
             self.on_beatmap_select = None;
@@ -309,7 +345,7 @@ impl AsyncMenu<Game> for LobbyMenu {
             self.menu = None;
         }
 
-        // if we have a beatmap menu, update it
+        // if we have a menu, update it
         if let Some(menu) = &mut self.menu {
             menu.update(game).await;
         }
@@ -357,6 +393,8 @@ impl AsyncMenu<Game> for LobbyMenu {
             menu.draw(list).await;
             return;
         }
+
+        self.menu_game.draw(list).await;
 
         self.left_scrollable.draw(Vector2::ZERO, list);
         self.right_scrollable.draw(Vector2::ZERO, list);
