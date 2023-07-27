@@ -19,4 +19,8 @@ pub trait HitObject: Send + Sync {
     async fn time_jump(&mut self, _new_time: f32) {}
 
     async fn reload_skin(&mut self) {}
+
+    
+    fn beat_happened(&mut self, _pulse_length: f32) {}
+    fn kiai_changed(&mut self, _is_kiai: bool) {}
 }

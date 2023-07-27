@@ -1054,6 +1054,14 @@ impl GameMode for OsuGame {
         //     info!("using mouse input");
         // }
     }
+
+    
+    async fn beat_happened(&mut self, pulse_length: f32) {
+        self.notes.iter_mut().for_each(|n|n.beat_happened(pulse_length));
+    }
+    async fn kiai_changed(&mut self, is_kiai: bool) {
+        self.notes.iter_mut().for_each(|n|n.kiai_changed(is_kiai));
+    }
 }
 
 #[async_trait]

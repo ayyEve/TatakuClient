@@ -27,6 +27,12 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn time_jump(&mut self, _new_time: f32) {}
     async fn apply_mods(&mut self, mods: Arc<ModManager>);
     // fn apply_auto(&mut self, settings: &BackgroundGameSettings);
+
+    /// happens right when a beat occurs (or a bit after if theres lag/stutter)
+    async fn beat_happened(&mut self, pulse_length: f32);
+    /// happens right when kiai changes
+    async fn kiai_changed(&mut self, is_kiai: bool);
+
 }
 impl Default for Box<dyn GameMode> {
     fn default() -> Self {

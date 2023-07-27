@@ -20,6 +20,10 @@ impl GameMode for NoMode {
     
     async fn reload_skin(&mut self) {}
     async fn apply_mods(&mut self, _: Arc<ModManager>) {}
+
+    
+    async fn beat_happened(&mut self, _pulse_length: f32) {}
+    async fn kiai_changed(&mut self, _is_kiai: bool) {}
 }
 
 #[async_trait]

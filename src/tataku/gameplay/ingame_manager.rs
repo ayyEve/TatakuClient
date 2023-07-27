@@ -70,8 +70,11 @@ pub struct IngameManager {
     pub lead_in_time: f32,
     pub lead_in_timer: Instant,
 
-    pub timing_points: Vec<TimingPoint>,
-    pub timing_point_index: usize,
+    // pub timing_points: Vec<TimingPoint>,
+    // pub timing_point_index: usize,
+    // next_beat: f32,
+    pub timing_points: TimingPointHelper,
+
     pub song: Arc<dyn AudioInstance>,
     pub hitsound_manager: HitsoundManager,
 
@@ -173,7 +176,7 @@ impl IngameManager {
 
         Self {
             metadata,
-            timing_points,
+            timing_points: TimingPointHelper::new(timing_points),
             // hitsound_cache,
             current_mods,
             health,
@@ -393,11 +396,33 @@ impl IngameManager {
         }
         let time = self.time();
 
-        // check timing point
-        let timing_points = &self.timing_points;
-        if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
-            self.timing_point_index += 1;
-        }
+        // check timing point, beats, and kiai
+        // let timing_points = &self.timing_points;
+        // let mut kiai_change = None;
+        // let mut do_beat = false;
+        // let mut timing_point = timing_points[self.timing_point_index];
+        // let mut control_point = self.beatmap.control_point_at(time);
+
+        // if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
+        //     let old_kiai = timing_point.kiai;
+
+        //     self.timing_point_index += 1;
+        //     timing_point = timing_points[self.timing_point_index];
+
+        //     if !timing_point.is_inherited() { 
+        //         control_point = timing_point;
+        //         self.next_beat = timing_point.time;
+        //     }
+        //     if timing_point.kiai != old_kiai { kiai_change = Some(timing_point.kiai) }
+        // }
+        // // check beat 
+        // if time <= self.next_beat {
+        //     do_beat = true;
+        //     self.next_beat += control_point.beat_length;
+        // }
+
+        let tp_updates = self.timing_points.update(time);
+
 
         // check if scores have been loaded
         if let Some(loader) = self.score_loader.clone() {
@@ -410,6 +435,13 @@ impl IngameManager {
 
         
         let mut gamemode = std::mem::take(&mut self.gamemode);
+        for tp_update in tp_updates {
+            match tp_update {
+                TimingPointUpdate::BeatHappened(pulse_length) => gamemode.beat_happened(pulse_length).await,
+                TimingPointUpdate::KiaiChanged(kiai) => gamemode.kiai_changed(kiai).await,
+            }
+        }
+
         let mut pending_frames = Vec::new();
 
         // read inputs from replay if replaying
@@ -755,19 +787,11 @@ impl IngameManager {
 
 
     pub fn current_timing_point(&self) -> &TimingPoint {
-        &self.timing_points[self.timing_point_index]
+        self.timing_points.timing_point()
+        // &self.timing_points[self.timing_point_index]
     }
     pub fn timing_point_at(&self, time: f32, allow_inherited: bool) -> &TimingPoint {
-        let mut tp = &self.timing_points[0];
-
-        for i in self.timing_points.iter() {
-            if i.is_inherited() && !allow_inherited { continue }
-            if i.time <= time {
-                tp = i
-            }
-        }
-
-        tp
+        self.timing_points.timing_point_at(time, allow_inherited)
     }
 
 }
@@ -910,6 +934,7 @@ impl IngameManager {
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.speed = self.current_mods.get_speed();
         self.score_multiplier = 1.0;
+        self.timing_points.reset();
 
         {
             *self.score.mods_mut() = self.current_mods.mods.clone();
@@ -931,7 +956,6 @@ impl IngameManager {
 
 
         self.replay_frame = 0;
-        self.timing_point_index = 0;
         
         if !self.replaying {
             // only reset the replay if we arent replaying
@@ -1343,7 +1367,7 @@ impl Default for IngameManager {
             lead_in_time: Default::default(),
             lead_in_timer: Instant::now(),
             timing_points: Default::default(),
-            timing_point_index: Default::default(),
+            // timing_point_index: Default::default(),
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),

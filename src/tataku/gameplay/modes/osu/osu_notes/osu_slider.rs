@@ -4,6 +4,7 @@ use super::super::prelude::*;
 const SLIDER_DOT_RADIUS:f32 = 8.0;
 const BORDER_RADIUS:f32 = 6.0;
 const BORDER_COLOR:Color = Color::WHITE;
+const BEAT_SCALE: f32 = 1.4;
 
 pub struct OsuSlider {
     /// slider definition for this slider
@@ -93,7 +94,11 @@ pub struct OsuSlider {
     slider_body_render_target_failed: Option<f32>,
     
     hitsounds: Vec<Vec<Hitsound>>,
-    sliderdot_hitsound: Hitsound
+    sliderdot_hitsound: Hitsound,
+
+    last_beat: f32,
+    pulse_length: f32,
+    beat_scale: f32,
 }
 impl OsuSlider {
     pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
@@ -179,6 +184,11 @@ impl OsuSlider {
             hitsounds,
             sliderdot_hitsound,
             velocity,
+            
+            
+            last_beat: -100.0,
+            pulse_length: 0.0,
+            beat_scale: 1.0,
         }
     }
 
@@ -376,6 +386,8 @@ impl HitObject for OsuSlider {
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
 
+        self.beat_scale = f32::lerp(BEAT_SCALE, 1.0, (beatmap_time - self.last_beat) / self.pulse_length).clamp(1.0, BEAT_SCALE);
+
         // update shapes
         self.shapes.retain_mut(|shape| {
             shape.update(beatmap_time);
@@ -492,7 +504,7 @@ impl HitObject for OsuSlider {
         // draw hit dots
         for dot in self.hit_dots.iter() {
             if dot.slide_layer == self.slides_complete {
-                dot.draw(list)
+                dot.draw(self.beat_scale, list)
             }
         }
 
@@ -500,6 +512,37 @@ impl HitObject for OsuSlider {
         let slides_remaining = self.def.slides - self.slides_complete;
         let end_repeat = slides_remaining > self.def.slides % 2 + 1;
         let start_repeat = slides_remaining > 2 - self.def.slides % 2;
+
+
+        // end pos
+        if let Some(end_circle) = &self.end_circle_image {
+            let mut im = end_circle.clone();
+            im.color.a = alpha;
+            list.push(im);
+        } else if self.start_circle_image.circle.is_none() {
+            list.push(Circle::new(
+                self.visual_end_pos,
+                self.radius,
+                color,
+                Some(Border::new(
+                    if end_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
+                    self.scaling_helper.border_scaled
+                ))
+            ));
+        }
+
+        if end_repeat {
+            if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
+                reverse_arrow.pos = self.visual_end_pos;
+                reverse_arrow.color.a = alpha;
+                reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.scaled_cs;
+
+                let l = self.curve.curve_lines.last().unwrap();
+                reverse_arrow.rotation = (l.p1 - l.p2).atan2_wrong();
+
+                list.push(reverse_arrow);
+            }
+        }
 
 
         // start pos
@@ -528,51 +571,20 @@ impl HitObject for OsuSlider {
             }
 
             if start_repeat {
-                if let Some(reverse_arrow) = &self.slider_reverse_image {
-                    let mut im = reverse_arrow.clone();
-                    im.pos = self.pos;
-                    im.color.a = alpha;
-                    im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
+                if let Some(mut reverse_arrow) = self.slider_reverse_image.clone() {
+                    reverse_arrow.pos = self.pos;
+                    reverse_arrow.color.a = alpha;
+                    reverse_arrow.scale = Vector2::ONE * self.beat_scale * self.scaling_helper.scaled_cs;
 
-                    let l = self.curve.curve_lines[0];
-                    im.rotation = Vector2::atan2_wrong(l.p2 - l.p1);
+                    let l = self.curve.curve_lines.first().unwrap();
+                    reverse_arrow.rotation = (l.p2 - l.p1).atan2_wrong();
 
-                    list.push(im);
+                    list.push(reverse_arrow);
                 }
             }
         }
 
 
-        // end pos
-        if let Some(end_circle) = &self.end_circle_image {
-            let mut im = end_circle.clone();
-            im.color.a = alpha;
-            list.push(im);
-        } else if self.start_circle_image.circle.is_none() {
-            list.push(Circle::new(
-                self.visual_end_pos,
-                self.radius,
-                color,
-                Some(Border::new(
-                    if end_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
-                    self.scaling_helper.border_scaled
-                ))
-            ));
-        }
-
-        if end_repeat {
-            if let Some(reverse_arrow) = &self.slider_reverse_image {
-                let mut im = reverse_arrow.clone();
-                im.pos = self.visual_end_pos;
-                im.color.a = alpha;
-                im.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
-
-                let l = self.curve.curve_lines[self.curve.curve_lines.len() - 1];
-                im.rotation = Vector2::atan2_wrong(l.p1 - l.p2);
-
-                list.push(im);
-            }
-        }
 
 
         // slider ball
@@ -711,6 +723,12 @@ impl HitObject for OsuSlider {
 
     }
 
+    
+    fn beat_happened(&mut self, pulse_length: f32) {
+        self.last_beat = self.map_time;
+        self.pulse_length = pulse_length;
+    }
+    fn kiai_changed(&mut self, _is_kiai: bool) {}
 }
 
 #[async_trait]
@@ -858,7 +876,6 @@ impl OsuHitObject for OsuSlider {
     }
 }
 
-
 /// helper struct for drawing hit slider points
 #[derive(Clone)]
 struct SliderDot {
@@ -870,7 +887,8 @@ struct SliderDot {
 
     /// which slide "layer" is this on?
     slide_layer: u64,
-    dot_image: Option<Image>
+    dot_image: Option<Image>,
+
 }
 impl SliderDot {
     pub async fn new(time:f32, pos:Vector2, scale: f32, slide_layer: u64) -> SliderDot {
@@ -882,7 +900,7 @@ impl SliderDot {
 
             hit: false,
             checked: false,
-            dot_image: SkinManager::get_texture("sliderscorepoint", true).await
+            dot_image: SkinManager::get_texture("sliderscorepoint", true).await,
         }
     }
     /// returns true if the hitsound should play
@@ -890,23 +908,24 @@ impl SliderDot {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
             self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * 2.0;
+
             Some(self.hit)
         } else {
             None
         }
     }
     
-    pub fn draw(&self, list: &mut RenderableCollection) {
-        if self.checked{ return }
+    pub fn draw(&self, beat_scale: f32, list: &mut RenderableCollection) {
+        if self.checked { return }
 
         if let Some(mut image) = self.dot_image.clone() {
             image.pos = self.pos;
-            image.scale = Vector2::ONE * self.scale * 0.8;
+            image.scale = Vector2::ONE * beat_scale * self.scale * 0.8;
             list.push(image);
         } else {
             list.push(Circle::new(
                 self.pos,
-                SLIDER_DOT_RADIUS * self.scale,
+                SLIDER_DOT_RADIUS * self.scale * beat_scale,
                 Color::WHITE,
                 Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE * self.scale))
             ));

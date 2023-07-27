@@ -965,6 +965,13 @@ impl GameMode for ManiaGame {
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) {
 
     }
+
+    async fn beat_happened(&mut self, pulse_length: f32) {
+        self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))
+    }
+    async fn kiai_changed(&mut self, is_kiai: bool) {
+        self.columns.iter_mut().flatten().for_each(|n|n.kiai_changed(is_kiai))
+    }
 }
 
 
