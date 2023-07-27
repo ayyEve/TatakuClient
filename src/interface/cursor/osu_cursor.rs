@@ -43,6 +43,7 @@ pub struct OsuCursor {
 
     left_emitter: Emitter,
     right_emitter: Emitter,
+    pub emitter_enabled: bool,
 }
 
 impl OsuCursor {
@@ -82,6 +83,7 @@ impl OsuCursor {
             trail_fadeout_timer_start: TRAIL_FADEOUT_TIMER_START,
             trail_fadeout_timer_duration: TRAIL_FADEOUT_TIMER_DURATION,
             cursor_rotation: 0.0,
+            emitter_enabled: true,
 
 
             left_pressed: false,
@@ -187,10 +189,12 @@ impl CustomCursor for OsuCursor {
         // check settings update 
         self.settings.update();
 
-        self.left_emitter.position = self.pos;
-        self.right_emitter.position = self.pos;
-        self.left_emitter.update(time);
-        self.right_emitter.update(time);
+        if self.emitter_enabled {
+            self.left_emitter.position = self.pos;
+            self.right_emitter.position = self.pos;
+            self.left_emitter.update(time);
+            self.right_emitter.update(time);
+        }
 
 
         if self.skin.cursor_rotate {
@@ -272,8 +276,10 @@ impl CustomCursor for OsuCursor {
             }
         }
 
-        self.left_emitter.draw(list);
-        self.right_emitter.draw(list);
+        if self.emitter_enabled {
+            self.left_emitter.draw(list);
+            self.right_emitter.draw(list);
+        }
         
 
         // draw cursor itself

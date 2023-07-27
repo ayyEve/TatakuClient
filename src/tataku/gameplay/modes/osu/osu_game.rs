@@ -531,6 +531,12 @@ impl GameMode for OsuGame {
 
     async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
         let mut pending_frames = Vec::new();
+
+        // disable the cursor particle emitter if this is a menu game
+        // the emitter nukes perf so its best to keep it off unless needed
+        if manager.menu_background && self.cursor.emitter_enabled {
+            self.cursor.emitter_enabled = false;
+        }
         self.cursor.update(time).await;
 
         let has_autoplay = self.mods.has_autoplay();
