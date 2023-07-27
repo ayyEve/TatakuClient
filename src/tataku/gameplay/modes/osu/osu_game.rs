@@ -51,7 +51,9 @@ pub struct OsuGame {
     mods: Arc<ModManager>,
     timing_points: Vec<TimingPoint>,
 
-    smoke_emitter: Option<Emitter>
+    smoke_emitter: Option<Emitter>,
+
+    cursor: OsuCursor,
 }
 impl OsuGame {
     async fn playfield_changed(&mut self) {
@@ -226,6 +228,7 @@ impl GameMode for OsuGame {
         let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
         let timing_points = map.get_timing_points();
+        let cursor = OsuCursor::new().await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
@@ -267,7 +270,8 @@ impl GameMode for OsuGame {
                     metadata,
                     mods,
                     timing_points: map.get_timing_points(),
-                    smoke_emitter: None
+                    smoke_emitter: None,
+                    cursor,
                 };
                 
                 // join notes and sliders into a single array
@@ -425,8 +429,8 @@ impl GameMode for OsuGame {
                 self.hold_count += 1;
 
                 match key {
-                    KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(true, true),
-                    KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(true, true),
+                    KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(true),
+                    KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(true),
                     KeyPress::Dash => {
                         self.smoke_emitter.iter_mut().for_each(|i|i.should_emit = true);
                         return;
@@ -487,8 +491,8 @@ impl GameMode for OsuGame {
                 self.hold_count -= 1;
 
                 match key {
-                    KeyPress::Left | KeyPress::LeftMouse => CursorManager::left_pressed(false, true),
-                    KeyPress::Right | KeyPress::RightMouse => CursorManager::right_pressed(false, true),
+                    KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(false),
+                    KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(false),
                     KeyPress::Dash => {
                         self.smoke_emitter.ok_do_mut(|i|i.should_emit = false);
                         return;
@@ -514,6 +518,7 @@ impl GameMode for OsuGame {
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
                 self.smoke_emitter.ok_do_mut(|i|i.position = pos);
+                self.cursor.cursor_pos(pos);
 
                 for note in self.notes.iter_mut() {
                     note.mouse_move(pos);
@@ -526,6 +531,7 @@ impl GameMode for OsuGame {
 
     async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
         let mut pending_frames = Vec::new();
+        self.cursor.update(time).await;
 
         let has_autoplay = self.mods.has_autoplay();
         let has_relax = self.mods.has_mod(Relax.name());
@@ -724,6 +730,8 @@ impl GameMode for OsuGame {
             list.push(playfield);
         }
 
+        // draw cursor ripples
+        self.cursor.draw_below(list).await;
 
         // draw follow points
         let time = manager.time();
@@ -793,11 +801,6 @@ impl GameMode for OsuGame {
             }
         }
 
-        // if this is a replay, we need to move the replay curser
-        if manager.replaying || manager.current_mods.has_autoplay() || self.use_controller_cursor {
-            CursorManager::set_pos(self.mouse_pos)
-        }
-
         // draw notes
         let mut spinners = Vec::new();
         for note in self.notes.iter_mut().rev() {
@@ -815,6 +818,9 @@ impl GameMode for OsuGame {
 
         // need to draw the smoke particles on top of everything
         self.smoke_emitter.ok_do(|e|e.draw(list));
+
+        // draw the cursor on top of smoke tho
+        self.cursor.draw_above(list).await;
     }
 
     
@@ -872,6 +878,7 @@ impl GameMode for OsuGame {
     }
 
     async fn reload_skin(&mut self) {
+        self.cursor.reload_skin().await;
         self.judgment_helper.reload_skin().await;
 
         for n in self.notes.iter_mut() {
@@ -1048,7 +1055,7 @@ impl GameMode for OsuGame {
         // info!("unpause");
         if self.use_controller_cursor {
             // info!("using to controller input");
-            CursorManager::set_gamemode_override(true);
+            // CursorManager::set_gamemode_override(true);
         } 
         // else {
         //     info!("using mouse input");
@@ -1113,7 +1120,6 @@ impl GameModeInput for OsuGame {
     async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayFrame> {
         if self.use_controller_cursor {
             // info!("switched to mouse");
-            CursorManager::set_gamemode_override(false);
             self.use_controller_cursor = false;
         }
         self.window_mouse_pos = pos;
@@ -1145,7 +1151,7 @@ impl GameModeInput for OsuGame {
             self.playfield_changed().await;
             return None;
         }
-
+        
 
         // convert window pos to playfield pos
         let pos = self.scaling_helper.descale_coords(pos);
@@ -1223,7 +1229,7 @@ impl GameModeInput for OsuGame {
     async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayFrame> {
         if !self.use_controller_cursor {
             // info!("switched to controller input");
-            CursorManager::set_gamemode_override(true);
+            // CursorManager::set_gamemode_override(true);
             self.use_controller_cursor = true;
         }
 
@@ -1260,7 +1266,7 @@ impl GameModeInput for OsuGame {
 impl GameModeProperties for OsuGame {
     fn playmode(&self) -> PlayMode { "osu".to_owned() }
     fn end_time(&self) -> f32 { self.end_time }
-    fn show_cursor(&self) -> bool { true }
+    fn show_cursor(&self) -> bool { false } // we have our own cursor
     fn ripple_size(&self) -> Option<f32> {
         Some(self.scaling_helper.scaled_circle_size.x)
     }

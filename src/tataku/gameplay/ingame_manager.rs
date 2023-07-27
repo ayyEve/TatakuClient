@@ -804,18 +804,24 @@ impl IngameManager {
             CursorManager::set_ripple_override(self.gamemode.ripple_size());
         }
 
-        if !self.gamemode.show_cursor() {
-            if !self.menu_background {
-                CursorManager::set_visible(false)
-            } else {
-                CursorManager::set_visible(true);
-            }
-        } else if self.replaying || self.current_mods.has_autoplay() {
-            CursorManager::show_system_cursor(true)
+        if self.gamemode.show_cursor() || self.menu_background {
+            CursorManager::set_visible(true)
         } else {
-            CursorManager::set_visible(true);
-            CursorManager::show_system_cursor(false);
+            CursorManager::set_visible(false)
         }
+
+        // if !self.gamemode.show_cursor() {
+        //     if !self.menu_background {
+        //         CursorManager::set_visible(false)
+        //     } else {
+        //         CursorManager::set_visible(true);
+        //     }
+        // } else if self.replaying || self.current_mods.has_autoplay() {
+        //     CursorManager::show_system_cursor(true)
+        // } else {
+        //     CursorManager::set_visible(true);
+        //     CursorManager::show_system_cursor(false);
+        // }
 
         self.pause_pending = false;
         self.should_pause = false;
@@ -885,12 +891,8 @@ impl IngameManager {
     pub fn pause(&mut self) {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
-        // make sure the system cursor is not visible
-        CursorManager::show_system_cursor(false);
         // undo any cursor override
         CursorManager::set_ripple_override(None);
-        // undo any cursor position override
-        CursorManager::set_gamemode_override(false);
 
         self.song.pause();
         self.pause_start = Some(chrono::Utc::now().timestamp());
@@ -1005,12 +1007,8 @@ impl IngameManager {
     pub fn on_complete(&mut self) {
         // make sure the cursor is visible
         CursorManager::set_visible(true);
-        // make sure the system cursor is not visible
-        CursorManager::show_system_cursor(false);
         // undo any cursor override
         CursorManager::set_ripple_override(None);
-        // undo any cursor position override
-        CursorManager::set_gamemode_override(false);
 
         // let info = get_gamemode_info(&self.score.playmode).unwrap();
         // let groups = self.score.stats.into_groups(&info.get_stat_groups());
@@ -1110,10 +1108,7 @@ impl IngameManager {
                 ui_editor.should_close = true;
 
                 // re-disable cursor
-                CursorManager::show_system_cursor(false);
-                if !self.gamemode.show_cursor() {
-                    CursorManager::set_visible(false)
-                }
+                CursorManager::set_visible(false);
             }
         } else if key == Key::F9 {
             self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
@@ -1128,15 +1123,7 @@ impl IngameManager {
                 self.current_mods = Arc::new(new_mods);
             }
             
-            if self.gamemode.show_cursor() {
-                if self.replaying || self.current_mods.has_autoplay() {
-                    CursorManager::show_system_cursor(true)
-                }
-            } else {
-                if !self.menu_background {
-                    CursorManager::set_visible(true)
-                }
-            }
+            CursorManager::set_visible(true);
         }
 
         // check for offset changing keys
@@ -1187,7 +1174,7 @@ impl IngameManager {
             ui_editor.on_mouse_move(pos, &mut ()).await;
         }
 
-        if self.failed && !self.multiplayer { return }
+        // if self.failed && !self.multiplayer { return }
 
         let frame = self.gamemode.mouse_move(pos).await;
         self.handle_input(frame).await;

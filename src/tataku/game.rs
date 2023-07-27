@@ -270,7 +270,6 @@ impl Game {
     async fn update(&mut self, _delta:f64) {
         let elapsed = self.game_start.as_millis();
         // update the cursor
-        self.cursor_manager.update(elapsed, self.input_manager.mouse_pos).await;
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -330,17 +329,19 @@ impl Game {
         let controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
         
+
+        self.cursor_manager.update(elapsed, self.input_manager.mouse_pos).await;
         
         // update cursor
         if mouse_down.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(true, false)
+            self.cursor_manager.left_pressed(true);
         } else if mouse_up.contains(&MouseButton::Left) {
-            CursorManager::left_pressed(false, false)
+            self.cursor_manager.left_pressed(false);
         }
         if mouse_down.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(true, false)
+            self.cursor_manager.right_pressed(true);
         } else if mouse_up.contains(&MouseButton::Right) {
-            CursorManager::right_pressed(false, false)
+            self.cursor_manager.right_pressed(false);
         }
 
         let mut controller_pause = false;

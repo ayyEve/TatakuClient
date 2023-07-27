@@ -99,18 +99,18 @@ pub struct Settings {
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
-    pub cursor_color: String,
+    pub cursor_color: Color,
     #[Setting(text="Cursor Scale", min=0.1, max=10.0)]
     pub cursor_scale: f32,
     #[Setting(text="Cursor Border", min=0.1, max=5.0)]
     pub cursor_border: f32,
     #[Setting(text="Cursor Border Color")]
-    pub cursor_border_color: String,
+    pub cursor_border_color: Color,
 
     #[Setting(text="Cursor Ripples")]
     pub cursor_ripples: bool,
     #[Setting(text="Cursor Ripple Color")]
-    pub cursor_ripple_color: String,
+    pub cursor_ripple_color: Color,
     #[Setting(text="Cursor Ripple Scale")]
     pub cursor_ripple_final_scale: f32,
 
@@ -286,10 +286,10 @@ impl Default for Settings {
             // cursor
             cursor_scale: 1.0,
             cursor_border: 1.5,
-            cursor_color: "#ffff32".to_owned(),
-            cursor_border_color: "#000".to_owned(),
+            cursor_color: Color::from_hex("#ffff32".to_owned()),
+            cursor_border_color: Color::from_hex("#000".to_owned()),
             cursor_ripples: true,
-            cursor_ripple_color: "#000".to_owned(),
+            cursor_ripple_color: Color::from_hex("#000".to_owned()),
             cursor_ripple_final_scale: 1.5,
             
             // keybinds

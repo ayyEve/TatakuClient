@@ -13,3 +13,12 @@ pub enum VerticalAlign {
     Center,
     Bottom,
 }
+
+
+#[allow(unused)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Align {
+    TopLeft, TopMiddle, TopRight,
+    CenterLeft, CenterMiddle, CenterRight,
+    BottomLeft, BottomMiddle, BottomRight,
+}

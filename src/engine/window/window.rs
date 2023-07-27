@@ -62,6 +62,7 @@ impl GameWindow {
             .with_inner_size(to_size(settings.window_size.into()))
             .build(&event_loop)
             .expect("Unable to create window");
+        window.set_cursor_visible(false);
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
         

@@ -1,3 +1,4 @@
+mod cursor;
 mod skinning;
 mod ui_element;
 mod fps_display;
@@ -10,6 +11,7 @@ mod cursor_manager;
 mod ingame_elements;
 mod centered_text_helper;
 
+pub use cursor::*;
 pub use skinning::*;
 pub use ui_element::*;
 pub use fps_display::*;

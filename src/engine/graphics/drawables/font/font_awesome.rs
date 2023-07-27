@@ -6,7 +6,6 @@
 pub enum FontAwesome {
     Lock = 0xf023,
     UnlockAlt = 0xf13e,
-    Crown = 0xf521,
 
     Backward = 0xf04a,
     Play = 0xf04b,
@@ -21,6 +20,13 @@ pub enum FontAwesome {
     Circle_Play = 0xf144,
     Circle_Stop = 0xf28d,
 
+    ArrowPointer = 0xf245,
+    HandPointer = 0xf25a,
+    UpDown = 0xf338,
+    LeftRight = 0xf337,
+    UpDownLeftRight = 0xf0b2,
+    ICursor = 0xf246,
+
     WindowMaximize = 0xf2d0,
     WindowMinimize = 0xf2d1,
     WindowRestore = 0xf2d2,
@@ -28,6 +34,7 @@ pub enum FontAwesome {
     WindowCloseOutline = 0xf2d4,
 
 
+    Crown = 0xf521,
 }
 impl FontAwesome {
     pub fn get_char(&self) -> char {
