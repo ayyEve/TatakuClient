@@ -19,13 +19,14 @@ pub struct EmitterBuilder {
     rotation: EmitterVal,
     color: Color,
     image: TextureReference,
-    should_emit: bool
+    should_emit: bool,
+    blend_mode: BlendMode,
 }
 impl EmitterBuilder {
     pub fn new() -> Self { Self::default().should_emit(true) }
 
     pub fn build(self, time: f32) -> Emitter {
-        let mut e = Emitter::new(time, self.spawn_delay, self.position, self.angle, self.speed, self.scale, self.life, self.opacity, self.rotation, self.color, self.image);
+        let mut e = Emitter::new(time, self.spawn_delay, self.position, self.angle, self.speed, self.scale, self.life, self.opacity, self.rotation, self.color, self.image, self.blend_mode);
         e.should_emit = self.should_emit;
         e
     }
@@ -41,4 +42,5 @@ impl EmitterBuilder {
     chain!(color, Color);
     chain!(image, TextureReference);
     chain!(should_emit, bool);
+    chain!(blend_mode, BlendMode);
 }

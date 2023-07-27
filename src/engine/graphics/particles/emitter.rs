@@ -25,6 +25,7 @@ pub struct Emitter {
     pub color: Color,
 
     pub image: TextureReference,
+    pub blend_mode: BlendMode,
     
     pool: Arc<RwLock<Pool<Particle>>>,
 }
@@ -44,6 +45,7 @@ impl Emitter {
     
         color: Color,
         image: TextureReference,
+        blend_mode: BlendMode,
     ) -> Self {
         let capacity = (life.end * spawn_delay) as usize;
 
@@ -67,6 +69,7 @@ impl Emitter {
             image,
             pool,
             last_time: time,
+            blend_mode,
         }
     }
 
@@ -114,6 +117,7 @@ impl Emitter {
             let mut image = Image::new(i.position, i.image, Vector2::ONE);
             image.color = i.color;
             image.scale = Vector2::ONE * i.scale;
+            image.set_blend_mode(self.blend_mode);
 
             list.push(image);
         }

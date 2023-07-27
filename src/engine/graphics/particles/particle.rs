@@ -14,4 +14,3 @@ pub struct Particle {
     pub color: Color,
     pub image: TextureReference,
 }
-
