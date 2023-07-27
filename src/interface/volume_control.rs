@@ -158,16 +158,16 @@ impl VolumeControl {
 
             list.push(b);
             list.push(master_text);
-            list.push(master_border);
             list.push(master_fill);
+            list.push(master_border);
             
             list.push(effect_text);
-            list.push(effect_border);
             list.push(effect_fill);
+            list.push(effect_border);
 
             list.push(music_text);
-            list.push(music_border);
             list.push(music_fill);
+            list.push(music_border);
         }
     }
 
