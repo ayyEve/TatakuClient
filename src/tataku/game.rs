@@ -478,7 +478,7 @@ impl Game {
         // }
 
         // notfications menu
-        if keys_down.contains(&Key::N) && mods.ctrl {
+        if keys_down.contains(&Key::B) && mods.ctrl {
             self.add_dialog(Box::new(NotificationsDialog::new().await), false);
         }
 
