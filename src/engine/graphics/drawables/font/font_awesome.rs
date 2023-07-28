@@ -1,7 +1,7 @@
 
 /// list of points for font awesome font
 #[repr(u32)]
-#[allow(non_camel_case_types, dead_code)]
+#[allow(dead_code)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum FontAwesome {
     Lock = 0xf023,
@@ -13,12 +13,12 @@ pub enum FontAwesome {
     Stop = 0xf04d,
     Forward = 0xf04e,
 
-    Backward_Step = 0xf048,
-    Forward_Step = 0xf051,
+    BackwardStep = 0xf048,
+    ForwardStep = 0xf051,
 
-    Circle_Pause = 0xf28b,
-    Circle_Play = 0xf144,
-    Circle_Stop = 0xf28d,
+    CirclePause = 0xf28b,
+    CirclePlay = 0xf144,
+    CircleStop = 0xf28d,
 
     ArrowPointer = 0xf245,
     HandPointer = 0xf25a,

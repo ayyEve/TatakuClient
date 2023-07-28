@@ -458,24 +458,9 @@ impl AsyncMenu<Game> for MainMenu {
 
     async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         self.reset_timer();
-        if mods.ctrl && key == Key::N {
-            NotificationManager::add_text_notification("test notif\nnewline1\nnewline2", 4000.0, Color::CRYSTAL_BLUE).await;
-        }
 
         let mut needs_manager_setup = false;
-        // if mods.ctrl && key == Key::Up {
-        //     self.visualization.index += 1;
-        //     info!("i: {}", self.visualization.index)
-        // }
-        // if mods.ctrl && key == Key::Down {
-        //     if self.visualization.index > 0 {
-        //         self.visualization.index -= 1;
-        //     }
-        //     info!("i: {}", self.visualization.index)
-        // }
-
         
-
         // check offset keys
         self.menu_game.key_down(key, mods).await;
 

@@ -263,6 +263,7 @@ impl TatakuRenderable for TransformGroup {
 }
 
 
+#[derive(Copy, Clone)]
 pub struct InitialCurrent<T> {
     pub initial: T,
     pub current: T,
@@ -285,12 +286,3 @@ impl<T> Deref for InitialCurrent<T> {
         &self.current
     }
 }
-impl<T:Clone> Clone for InitialCurrent<T> {
-    fn clone(&self) -> Self {
-        Self {
-            current: self.current.clone(),
-            initial: self.initial.clone(),
-        }
-    }
-}
-impl<T:Copy> Copy for InitialCurrent<T> {}

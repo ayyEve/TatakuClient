@@ -69,6 +69,13 @@ impl Text {
         self.text_colors = colors
     }
 
+    // pub fn fit_to_area(&mut self, area: Bounds, align: Align) {
+    //     // find the scale
+    //     let size = self.measure_text();
+    //     let scale = area.size / size;
+
+    // }
+
     
     fn measure_text_internal(fonts: &Vec<Font>, font_size: f32, text: &String, scale: Vector2, line_spacing: f32) -> Vector2 {
         if fonts.len() == 0 { return Vector2::ZERO }

@@ -477,6 +477,12 @@ impl Game {
         //     GlobalValueManager::update(Arc::new(CurrentTheme(osu_theme())))
         // }
 
+        // notfications menu
+        if keys_down.contains(&Key::N) && mods.ctrl {
+            self.add_dialog(Box::new(NotificationsDialog::new().await), false);
+        }
+
+        // settings menu
         if keys_down.contains(&Key::O) && mods.ctrl {
             let allow_ingame = self.settings.common_game_settings.allow_ingame_settings;
             let is_ingame = self.current_state.is_ingame(false, true);
@@ -487,6 +493,7 @@ impl Game {
             }
         }
 
+        // meme
         if keys_down.contains(&Key::PageUp) && mods.ctrl {
             self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }

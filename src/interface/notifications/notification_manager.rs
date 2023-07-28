@@ -25,9 +25,12 @@ lazy_static::lazy_static! {
 
 
 pub struct NotificationManager {
-    processed_notifs: Vec<ProcessedNotif>,
-    pending_notifs: Vec<Notification>,
+    // every notif thats been added
+    pub all_notifs: Vec<Arc<Notification>>,
 
+    processed_notifs: Vec<ProcessedNotif>,
+    pending_notifs: Vec<Arc<Notification>>,
+    
     current_skin: CurrentSkinHelper,
     window_size: WindowSizeHelper,
     notification_image: Option<Image>,
@@ -35,6 +38,7 @@ pub struct NotificationManager {
 impl NotificationManager {
     fn new() -> Self { // technically static but i dont care
         Self {
+            all_notifs: Vec::new(),
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
             
@@ -45,7 +49,10 @@ impl NotificationManager {
     }
 
     pub async fn add_notification(notif: Notification) {
-        NOTIFICATION_MANAGER.write().await.pending_notifs.push(notif);
+        let mut manager = NOTIFICATION_MANAGER.write().await;
+        let notif = Arc::new(notif);
+        manager.pending_notifs.push(notif.clone());
+        manager.all_notifs.push(notif);
     }
     pub async fn add_text_notification(text: impl ToString, duration: f32, color: Color) {
         let text = text.to_string();
@@ -101,34 +108,7 @@ impl NotificationManager {
             let pos = current_pos - Vector2::new(n.size.x + NOTIF_MARGIN.x, NOTIF_Y_OFFSET + n.size.y);
             
             if Bounds::new(pos, n.size).contains(mouse_pos) {
-                match &n.notification.onclick {
-                    NotificationOnClick::None => {}
-                    NotificationOnClick::Url(url) => {
-                        debug!("open url {url}");
-                        open_link(url.clone());
-                    }
-                    NotificationOnClick::Menu(menu_name) => {
-                        debug!("goto menu {menu_name}");
-                    }
-
-                    NotificationOnClick::MultiplayerLobby(lobby_id) => {
-                        debug!("join lobby {lobby_id}");
-                        tokio::spawn(OnlineManager::join_lobby(*lobby_id, String::new()));
-                        let menu = LobbySelect::new().await;
-                        game.queue_state_change(GameState::InMenu(Box::new(menu)));
-                    }
-
-                    NotificationOnClick::File(file_path) => {
-                        let path = Path::new(file_path);
-                        let folder = path.parent().unwrap().to_string_lossy().to_string();
-                        let file = path.file_name().unwrap().to_string_lossy().to_string();
-
-                        open_folder(folder, Some(file));
-                    }
-                    NotificationOnClick::Folder(folder) => {
-                        open_folder(folder.clone(), None);
-                    }
-                }
+                n.notification.onclick.do_action(game).await;
                 n.remove = true;
                 return true;
             }
@@ -147,11 +127,11 @@ struct ProcessedNotif {
     size: Vector2,
     time: Instant,
     text: Text,
-    notification: Notification,
+    notification: Arc<Notification>,
     remove: bool
 }
 impl ProcessedNotif {
-    fn new(notification: Notification) -> Self {
+    fn new(notification: Arc<Notification>) -> Self {
         let text = Text::new(
             Vector2::ZERO,
             NOTIF_TEXT_SIZE,

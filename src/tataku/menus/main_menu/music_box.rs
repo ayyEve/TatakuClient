@@ -3,11 +3,11 @@ use crate::prelude::*;
 // draw buttons
 const CONTROL_BUTTONS: &[Option<FontAwesome>] = &[
     Some(FontAwesome::Backward),
-    Some(FontAwesome::Backward_Step),
+    Some(FontAwesome::BackwardStep),
     None,
     Some(FontAwesome::Pause), // Some(FontAwesome::Pause), //  detect for this
     None,
-    Some(FontAwesome::Forward_Step),
+    Some(FontAwesome::ForwardStep),
     Some(FontAwesome::Forward),
 ];
 const PLAY_INDEX:usize = 2;
@@ -158,16 +158,16 @@ impl ScrollableItem for MusicBox {
                 match self.actions.get(i) {
                     Some(&FontAwesome::Play)
                     | Some(&FontAwesome::Pause)
-                    | Some(&FontAwesome::Circle_Play)
-                    | Some(&FontAwesome::Circle_Pause) => self.pause_or_resume(),
+                    | Some(&FontAwesome::CirclePlay)
+                    | Some(&FontAwesome::CirclePause) => self.pause_or_resume(),
                     
                     Some(&FontAwesome::Stop)
-                    | Some(&FontAwesome::Circle_Stop) => self.stop(),
+                    | Some(&FontAwesome::CircleStop) => self.stop(),
 
                     Some(&FontAwesome::Backward) => self.previous(),
                     Some(&FontAwesome::Forward) => self.next(),
-                    Some(&FontAwesome::Backward_Step) => self.skip_behind(),
-                    Some(&FontAwesome::Forward_Step) =>  self.skip_ahead(),
+                    Some(&FontAwesome::BackwardStep) => self.skip_behind(),
+                    Some(&FontAwesome::ForwardStep) =>  self.skip_ahead(),
 
                     _ => warn!("unknown action"),
                 }
