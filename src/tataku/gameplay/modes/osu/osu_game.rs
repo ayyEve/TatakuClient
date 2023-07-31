@@ -843,6 +843,8 @@ impl GameMode for OsuGame {
 
         // reset the smoke particles
         self.smoke_emitter.ok_do_mut(|e|e.reset(0.0));
+
+        self.cursor.reset()
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {

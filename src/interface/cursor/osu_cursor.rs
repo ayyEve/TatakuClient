@@ -162,6 +162,14 @@ impl OsuCursor {
         g
     }
 
+    pub fn reset(&mut self) {
+        let time = -2000.0;
+        self.left_emitter.reset(time);
+        self.right_emitter.reset(time);
+        self.ripples.clear();
+        self.trail_images.clear();
+        self.last_trail_time = time;
+    }
 }
 
 #[async_trait]
