@@ -224,6 +224,7 @@ impl OsuBeatmap {
                     }
                     
                     let hitsound = hitsound.unwrap_or(0).abs() as u8; // 0 = normal, 2 = whistle, 4 = finish, 8 = clap
+                    let hitsound_str = &*hitsound.to_string();
 
                     // read type:
                     // abcdefgh
@@ -246,9 +247,9 @@ impl OsuBeatmap {
                         let length = split.next().unwrap().parse::<f32>().unwrap();
                         let edge_sounds = split
                             .next()
-                            .unwrap_or("0")
+                            .unwrap_or(hitsound_str)
                             .split("|")
-                            .map(|s|s.parse::<u8>().unwrap_or(0)).collect();
+                            .map(|s|s.parse::<u8>().unwrap_or(hitsound)).collect();
                         let edge_sets = split
                             .next()
                             .unwrap_or("0:0")
