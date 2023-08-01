@@ -1,9 +1,14 @@
 use crate::prelude::*;
+const HEALTH_DAMP: f32 = 1.0;
 
 pub struct HealthBarElement {
     common_game_settings: Arc<CommonGameplaySettings>,
     health_ratio: f32,
     window_size: Arc<WindowSize>,
+
+    
+    last_health_ratio: f32,
+    last_health_time: f32,
 
     healthbar_image: Option<Image>,
     healthbar_bg_image: Option<Image>,
@@ -24,7 +29,10 @@ impl HealthBarElement {
         Self {
             common_game_settings,
             health_ratio: 0.0,
+            last_health_ratio: -1000.0,
+            
             window_size: WindowSize::get(),
+            last_health_time: 0.0,
 
             healthbar_image,
             healthbar_bg_image
@@ -43,7 +51,22 @@ impl InnerUIElement for HealthBarElement {
     
     fn update(&mut self, manager: &mut IngameManager) {
         self.window_size = WindowSize::get();
+
         self.health_ratio = manager.health.get_ratio();
+        if self.last_health_ratio == -1000.0 {
+            self.last_health_ratio = self.health_ratio; 
+        }
+
+        let time = manager.time();
+        let time_diff = time - self.last_health_time;
+        self.last_health_time = time;
+
+        if self.health_ratio < self.last_health_ratio {
+            let ratio_diff = (self.last_health_ratio - self.health_ratio).max(0.05) * time_diff * HEALTH_DAMP / 1000.0;
+            self.last_health_ratio = self.last_health_ratio - ratio_diff;
+        } else {
+            self.last_health_ratio = self.health_ratio;
+        }
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
@@ -62,9 +85,20 @@ impl InnerUIElement for HealthBarElement {
             fill.pos = pos_offset;
             fill.set_size(bg_size);
 
-            list.push_scissor([pos_offset.x, pos_offset.y, bg_size.x * percent, bg_size.y]);
-            list.push(fill);
+            let width = bg_size.x * percent;
+            list.push_scissor([pos_offset.x, pos_offset.y, width, bg_size.y]);
+            list.push(fill.clone());
             list.pop_scissor();
+
+            // add drained health
+            let width2 = bg_size.x * self.last_health_ratio;
+            // if width2 != width {
+                fill.color.a = 0.2;
+
+                list.push_scissor([pos_offset.x + width, pos_offset.y, width2 - width, bg_size.y]);
+                list.push(fill);
+                list.pop_scissor();
+            // }
 
         } else {
             let len = self.common_game_settings.healthbar_colors.len();
