@@ -30,16 +30,6 @@ impl InnerUIElement for DurationBarElement {
     }
 
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
-
-        // duration bar
-        // duration remaining
-        list.push(Rectangle::new(
-            pos_offset + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
-            Vector2::new(self.window_size.x, DURATION_HEIGHT) * scale,
-            self.common_game_settings.duration_color,
-            Some(Border::new(self.common_game_settings.duration_border_color, 1.8 * scale.x))
-        ));
-
         // fill
         list.push(Rectangle::new(
             pos_offset - Vector2::with_y(DURATION_HEIGHT + 3.0),
@@ -48,5 +38,12 @@ impl InnerUIElement for DurationBarElement {
             None
         ));
 
+        // border
+        list.push(Rectangle::new(
+            pos_offset + Vector2::with_y(-(DURATION_HEIGHT + 3.0)),
+            Vector2::new(self.window_size.x, DURATION_HEIGHT) * scale,
+            self.common_game_settings.duration_color,
+            Some(Border::new(self.common_game_settings.duration_border_color, 1.8 * scale.x))
+        ));
     }
 }
