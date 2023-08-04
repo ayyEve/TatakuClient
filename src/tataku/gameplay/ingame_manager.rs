@@ -396,31 +396,6 @@ impl IngameManager {
         }
         let time = self.time();
 
-        // check timing point, beats, and kiai
-        // let timing_points = &self.timing_points;
-        // let mut kiai_change = None;
-        // let mut do_beat = false;
-        // let mut timing_point = timing_points[self.timing_point_index];
-        // let mut control_point = self.beatmap.control_point_at(time);
-
-        // if self.timing_point_index + 1 < timing_points.len() && timing_points[self.timing_point_index + 1].time <= time {
-        //     let old_kiai = timing_point.kiai;
-
-        //     self.timing_point_index += 1;
-        //     timing_point = timing_points[self.timing_point_index];
-
-        //     if !timing_point.is_inherited() { 
-        //         control_point = timing_point;
-        //         self.next_beat = timing_point.time;
-        //     }
-        //     if timing_point.kiai != old_kiai { kiai_change = Some(timing_point.kiai) }
-        // }
-        // // check beat 
-        // if time <= self.next_beat {
-        //     do_beat = true;
-        //     self.next_beat += control_point.beat_length;
-        // }
-
         let tp_updates = self.timing_points.update(time);
 
 
@@ -1040,6 +1015,7 @@ impl IngameManager {
 // Input Handlers
 impl IngameManager {
     async fn handle_frame(&mut self, frame: ReplayAction, force: bool, force_time: Option<f32>, gamemode: &mut Box<dyn GameMode>) {
+        // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             gamemode.skip_intro(self);
             // more to do?
@@ -1058,7 +1034,7 @@ impl IngameManager {
             let time = force_time.unwrap_or_else(||self.time());
             gamemode.handle_replay_frame(frame, time, self).await;
 
-            if !add_frames {
+            if add_frames {
                 self.replay.frames.push(ReplayFrame::new(time, frame));
                 self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction{ action: frame }));
             }
