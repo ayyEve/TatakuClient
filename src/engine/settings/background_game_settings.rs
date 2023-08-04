@@ -27,7 +27,7 @@ pub struct BackgroundGameSettings {
     /// hitsound volume multiplier
     pub hitsound_volume: f32,
     /// what mode should be playing?
-    pub mode: PlayMode,
+    pub mode: String,
 }
 impl Default for BackgroundGameSettings {
     fn default() -> Self {

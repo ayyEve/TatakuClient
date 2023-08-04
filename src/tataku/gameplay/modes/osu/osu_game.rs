@@ -15,7 +15,6 @@ pub struct OsuGame {
     hit_windows: Vec<(OsuHitJudgments, Range<f32>)>,
     miss_window: f32,
 
-    // draw_points: Vec<(f32, Vector2, ScoreHit)>,
     mouse_pos: Vector2,
     window_mouse_pos: Vector2,
 
@@ -415,7 +414,7 @@ impl GameMode for OsuGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
             KeyPress::Right,
@@ -425,7 +424,7 @@ impl GameMode for OsuGame {
         ];
 
         match frame {
-            ReplayFrame::Press(key) if ALLOWED_PRESSES.contains(&key) => {
+            ReplayAction::Press(key) if ALLOWED_PRESSES.contains(&key) => {
                 self.hold_count += 1;
 
                 match key {
@@ -487,7 +486,7 @@ impl GameMode for OsuGame {
                 }
             }
             // dont continue if no keys were being held (happens when leaving a menu)
-            ReplayFrame::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
+            ReplayAction::Release(key) if ALLOWED_PRESSES.contains(&key) && self.hold_count > 0 => {
                 self.hold_count -= 1;
 
                 match key {
@@ -513,7 +512,7 @@ impl GameMode for OsuGame {
                     }
                 }
             }
-            ReplayFrame::MousePos(x, y) => {
+            ReplayAction::MousePos(x, y) => {
                 // scale the coords from playfield to window
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
@@ -529,7 +528,7 @@ impl GameMode for OsuGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayFrame> {
+    async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayAction> {
         let mut pending_frames = Vec::new();
 
         // disable the cursor particle emitter if this is a menu game
@@ -586,13 +585,13 @@ impl GameMode for OsuGame {
 
                     match note.note_type() {
                         NoteType::Note => {
-                            pending_frames.push(ReplayFrame::Press(key));
-                            pending_frames.push(ReplayFrame::Release(key));
+                            pending_frames.push(ReplayAction::Press(key));
+                            pending_frames.push(ReplayAction::Release(key));
                         }
                         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
                             // make sure we're not already holding
                             if let Some(false) = manager.key_counter.keys.get(&key).map(|a|a.held) {
-                                pending_frames.push(ReplayFrame::Press(key));
+                                pending_frames.push(ReplayAction::Press(key));
                             }
                         }
                     }
@@ -605,7 +604,7 @@ impl GameMode for OsuGame {
                         NoteType::Note => {}
                         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
                             // assume we're holding i guess?
-                            pending_frames.push(ReplayFrame::Release(key));
+                            pending_frames.push(ReplayAction::Release(key));
                         }
                     }
                 }
@@ -1081,7 +1080,7 @@ impl GameMode for OsuGame {
 
 #[async_trait]
 impl GameModeInput for OsuGame {
-    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
         // playfield adjustment
         if key == Key::LControl {
             let old = self.game_settings.get_playfield();
@@ -1093,17 +1092,17 @@ impl GameModeInput for OsuGame {
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
-            Some(ReplayFrame::Press(KeyPress::Left))
+            Some(ReplayAction::Press(KeyPress::Left))
         } else if key == self.game_settings.right_key {
-            Some(ReplayFrame::Press(KeyPress::Right))
+            Some(ReplayAction::Press(KeyPress::Right))
         } else if key == self.game_settings.smoke_key {
-            Some(ReplayFrame::Press(KeyPress::Dash))
+            Some(ReplayAction::Press(KeyPress::Dash))
         } else {
             None
         }
     }
     
-    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
         // playfield adjustment
         if key == Key::LControl {
             self.move_playfield = None;
@@ -1114,18 +1113,18 @@ impl GameModeInput for OsuGame {
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
-            Some(ReplayFrame::Release(KeyPress::Left))
+            Some(ReplayAction::Release(KeyPress::Left))
         } else if key == self.game_settings.right_key {
-            Some(ReplayFrame::Release(KeyPress::Right))
+            Some(ReplayAction::Release(KeyPress::Right))
         } else if key == self.game_settings.smoke_key {
-            Some(ReplayFrame::Release(KeyPress::Dash))
+            Some(ReplayAction::Release(KeyPress::Dash))
         } else {
             None
         }
     }
     
 
-    async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayFrame> {
+    async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayAction> {
         if self.use_controller_cursor {
             // info!("switched to mouse");
             self.use_controller_cursor = false;
@@ -1163,10 +1162,10 @@ impl GameModeInput for OsuGame {
 
         // convert window pos to playfield pos
         let pos = self.scaling_helper.descale_coords(pos);
-        Some(ReplayFrame::MousePos(pos.x as f32, pos.y as f32))
+        Some(ReplayAction::MousePos(pos.x as f32, pos.y as f32))
     }
     
-    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayAction> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
@@ -1174,15 +1173,15 @@ impl GameModeInput for OsuGame {
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
         
         if btn == MouseButton::Left {
-            Some(ReplayFrame::Press(KeyPress::LeftMouse))
+            Some(ReplayAction::Press(KeyPress::LeftMouse))
         } else if btn == MouseButton::Right {
-            Some(ReplayFrame::Press(KeyPress::RightMouse))
+            Some(ReplayAction::Press(KeyPress::RightMouse))
         } else {
             None
         }
     }
     
-    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
@@ -1190,15 +1189,15 @@ impl GameModeInput for OsuGame {
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         if btn == MouseButton::Left {
-            Some(ReplayFrame::Release(KeyPress::LeftMouse))
+            Some(ReplayAction::Release(KeyPress::LeftMouse))
         } else if btn == MouseButton::Right {
-            Some(ReplayFrame::Release(KeyPress::RightMouse))
+            Some(ReplayAction::Release(KeyPress::RightMouse))
         } else {
             None
         }
     }
 
-    async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayFrame> {
+    async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayAction> {
         if self.move_playfield.is_some() {
             {
                 let settings = &mut Settings::get_mut().osu_settings;
@@ -1212,29 +1211,29 @@ impl GameModeInput for OsuGame {
     }
 
 
-    async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayFrame> {
+    async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         match btn {
-            ControllerButton::LeftTrigger => Some(ReplayFrame::Press(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayFrame::Press(KeyPress::Right)),
+            ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
+            ControllerButton::RightTrigger => Some(ReplayAction::Press(KeyPress::Right)),
             _ => None
         }
     }
     
-    async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayFrame> {
+    async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
         if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
 
         match btn {
-            ControllerButton::LeftTrigger => Some(ReplayFrame::Release(KeyPress::Left)),
-            ControllerButton::RightTrigger => Some(ReplayFrame::Release(KeyPress::Right)),
+            ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
+            ControllerButton::RightTrigger => Some(ReplayAction::Release(KeyPress::Right)),
             _ => None
         }
     }
     
-    async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayFrame> {
+    async fn controller_axis(&mut self, _:&GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayAction> {
         if !self.use_controller_cursor {
             // info!("switched to controller input");
             // CursorManager::set_gamemode_override(true);
@@ -1265,14 +1264,14 @@ impl GameModeInput for OsuGame {
         }
 
         let new_pos = scaling_helper.descale_coords(new_pos);
-        Some(ReplayFrame::MousePos(new_pos.x, new_pos.y))
+        Some(ReplayAction::MousePos(new_pos.x, new_pos.y))
     }
 
 }
 
 #[async_trait]
 impl GameModeProperties for OsuGame {
-    fn playmode(&self) -> PlayMode { "osu".to_owned() }
+    fn playmode(&self) -> String { "osu".to_owned() }
     fn end_time(&self) -> f32 { self.end_time }
     fn show_cursor(&self) -> bool { false } // we have our own cursor
     fn ripple_size(&self) -> Option<f32> {

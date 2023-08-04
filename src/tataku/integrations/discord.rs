@@ -38,7 +38,7 @@ impl Discord {
         })
     }
 
-    pub async fn change_status(&self, action_info: &SetAction, playmode: Option<PlayMode>) {
+    pub async fn change_status(&self, action_info: &SetAction, playmode: Option<String>) {
         let state;
         let mut desc = String::new();
         let mut timestamps = None;

@@ -322,13 +322,13 @@ impl OsuReplay {
                     if (pressed & i2) > 0 {
                         if !pressed_keys.contains(&i) {
                             pressed_keys.insert(i);
-                            replay.frames.push((f.time as f32, ReplayFrame::Press(get_mania_key(i))));
+                            replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Press(get_mania_key(i))));
                         }
                     } else {
                         // check release
                         if pressed_keys.contains(&i) {
                             pressed_keys.remove(&i);
-                            replay.frames.push((f.time as f32, ReplayFrame::Release(get_mania_key(i))));
+                            replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Release(get_mania_key(i))));
                         }
                     }
                 }
@@ -344,7 +344,7 @@ impl OsuReplay {
                 let mouse_pos = Vector2::new(f.x, f.y);
                 if last_mouse_pos != mouse_pos {
                     last_mouse_pos = mouse_pos;
-                    replay.frames.push((f.time as f32, ReplayFrame::MousePos(f.x, f.y)));
+                    replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::MousePos(f.x, f.y)));
                 }
 
                 // check press and release
@@ -354,14 +354,14 @@ impl OsuReplay {
                     if !last_keys.contains(k) && f.keys.contains(k) {
                         let key = k.to_keypress(&game_mode);
 
-                        replay.frames.push((f.time as f32, ReplayFrame::Press(key)));
+                        replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Press(key)));
                     }
                     
                     // release 
                     if last_keys.contains(k) && !f.keys.contains(k) && game_mode != "taiko" {
                         let key = k.to_keypress(&game_mode);
 
-                        replay.frames.push((f.time as f32, ReplayFrame::Release(key)));
+                        replay.frames.push(ReplayFrame::new(f.time as f32, ReplayAction::Release(key)));
                     }
                 }
 
@@ -492,7 +492,7 @@ impl OsuKeys {
         }
     }
 
-    fn to_keypress(&self, playmode:&PlayMode) -> KeyPress {
+    fn to_keypress(&self, playmode:&String) -> KeyPress {
         match (&**playmode, self) {
             // osu
             ("osu", Self::M1) => KeyPress::LeftMouse,

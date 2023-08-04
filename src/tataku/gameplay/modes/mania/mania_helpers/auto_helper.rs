@@ -17,7 +17,7 @@ impl ManiaAutoHelper {
         ((col + base_key as usize) as u8).into()
     }
 
-    pub fn update(&mut self, columns: &Vec<Vec<Box<dyn ManiaHitObject>>>, column_indices: &mut Vec<usize>, time: f32, list: &mut Vec<ReplayFrame>) {
+    pub fn update(&mut self, columns: &Vec<Vec<Box<dyn ManiaHitObject>>>, column_indices: &mut Vec<usize>, time: f32, list: &mut Vec<ReplayAction>) {
         if self.states.len() != columns.len() {
             let new_len = columns.len();
             self.states.resize(new_len, AutoplayColumnState::default());
@@ -27,7 +27,7 @@ impl ManiaAutoHelper {
         for c in 0..columns.len() {
             let state = &mut self.states[c];
             if state.pressed && time > state.release_time {
-                list.push(ReplayFrame::Release(Self::get_keypress(c)));
+                list.push(ReplayAction::Release(Self::get_keypress(c)));
                 state.pressed = false;
             }
 
@@ -51,7 +51,7 @@ impl ManiaAutoHelper {
                 if state.pressed { continue }
 
                 // press the key, and hold it until the note's end time
-                list.push(ReplayFrame::Press(Self::get_keypress(c)));
+                list.push(ReplayAction::Press(Self::get_keypress(c)));
                 state.pressed = true;
                 if note.note_type() == NoteType::Hold {
                     state.release_time = note.end_time(0.0);

@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[async_trait]
 pub trait GameModeProperties: Send + Sync {
     /// playmode for this game mode
-    fn playmode(&self) -> PlayMode;
+    fn playmode(&self) -> String;
     /// should the cursor be visible (ie, osu yes, taiko/mania no)
     fn show_cursor(&self) -> bool { false }
     /// what should the cursor ripple size be? None for default

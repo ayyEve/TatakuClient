@@ -6,7 +6,7 @@ mod quaver_direct; pub use quaver_direct::*;
 #[async_trait]
 pub trait DirectApi: Send+Sync {
     fn api_name(&self) -> &'static str;
-    fn supported_modes(&self) -> Vec<PlayMode>;
+    fn supported_modes(&self) -> Vec<String>;
     async fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>>;
 
     // TODO: 

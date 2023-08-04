@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PlayModeDropdown {
-    Mode(PlayMode)
+    Mode(String)
 }
 impl Dropdownable for PlayModeDropdown {
     fn variants() -> Vec<Self> {

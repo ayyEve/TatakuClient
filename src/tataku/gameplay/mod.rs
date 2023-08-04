@@ -44,7 +44,7 @@ pub fn gamemode_display_name(playmode: &String) -> &str {
         .unwrap_or("Unknown")
 }
 
-pub async fn manager_from_playmode(playmode: PlayMode, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
+pub async fn manager_from_playmode(playmode: String, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let playmode = beatmap.playmode(playmode);
 

@@ -27,7 +27,7 @@ pub struct BeatmapSelectMenu {
     search_text: TextInput,
 
     sort_method: SortBy,
-    mode: PlayMode,
+    mode: String,
 
     sort_by_dropdown: Dropdown<SortBy>,
     playmode_dropdown: Dropdown<PlayModeDropdown>,
@@ -139,7 +139,7 @@ impl BeatmapSelectMenu {
         m
     }
 
-    async fn set_selected_mode(&mut self, new_mode: PlayMode) {
+    async fn set_selected_mode(&mut self, new_mode: String) {
         // update values
         self.mode = new_mode.clone();
         GlobalValueManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
@@ -641,7 +641,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // update our window size
         self.window_size_changed(WindowSize::get()).await;
 
-        OnlineManager::send_spec_frames(vec![(0.0, SpectatorFrameData::ChangingMap)], true);
+        OnlineManager::send_spec_frames(vec![SpectatorFrame::new(0.0, SpectatorAction::ChangingMap)], true);
 
         // play song if it exists
         if let Some(song) = AudioManager::get_song().await {

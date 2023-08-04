@@ -336,7 +336,7 @@ impl GameMode for CatchGame {
     fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
         if !manager.replaying {
             manager.replay.frames.push((time, frame.clone()));
-            manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
+            manager.outgoing_spectator_frame((time, SpectatorAction::ReplayFrame{frame}));
         }
         
         match frame {

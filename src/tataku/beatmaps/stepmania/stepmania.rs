@@ -286,7 +286,7 @@ impl StepmaniaBeatmap {
 
 impl TatakuBeatmap for StepmaniaBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
-    fn playmode(&self, _incoming:PlayMode) -> PlayMode {"mania".to_owned()}
+    fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
     fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {

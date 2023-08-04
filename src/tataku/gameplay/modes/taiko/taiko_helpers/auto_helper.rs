@@ -18,7 +18,7 @@ impl TaikoAutoHelper {
         }
     }
 
-    pub fn update(&mut self, time: f32, queues: &mut Vec<TaikoNoteQueue>, frames: &mut Vec<ReplayFrame>) {
+    pub fn update(&mut self, time: f32, queues: &mut Vec<TaikoNoteQueue>, frames: &mut Vec<ReplayAction>) {
         let catching_up = time - self.last_update > 20.0;
         self.last_update = time;
 
@@ -78,26 +78,26 @@ impl TaikoAutoHelper {
 
                 if is_finisher {
                     if is_kat {
-                        frames.push(ReplayFrame::Press(KeyPress::LeftKat));
-                        frames.push(ReplayFrame::Press(KeyPress::RightKat));
+                        frames.push(ReplayAction::Press(KeyPress::LeftKat));
+                        frames.push(ReplayAction::Press(KeyPress::RightKat));
                     } else {
-                        frames.push(ReplayFrame::Press(KeyPress::LeftDon));
-                        frames.push(ReplayFrame::Press(KeyPress::RightDon));
+                        frames.push(ReplayAction::Press(KeyPress::LeftDon));
+                        frames.push(ReplayAction::Press(KeyPress::RightDon));
                     }
                 } else {
                     let side = (self.don_presses + self.kat_presses) % 2;
                     match (is_kat, side) {
                         // kat, left side
-                        (true, 0) => frames.push(ReplayFrame::Press(KeyPress::LeftKat)),
+                        (true, 0) => frames.push(ReplayAction::Press(KeyPress::LeftKat)),
 
                         // kat, right side
-                        (true, 1) => frames.push(ReplayFrame::Press(KeyPress::RightKat)),
+                        (true, 1) => frames.push(ReplayAction::Press(KeyPress::RightKat)),
 
                         // don, left side
-                        (false, 0) => frames.push(ReplayFrame::Press(KeyPress::LeftDon)),
+                        (false, 0) => frames.push(ReplayAction::Press(KeyPress::LeftDon)),
                         
                         // don, right side
-                        (false, 1) => frames.push(ReplayFrame::Press(KeyPress::RightDon)),
+                        (false, 1) => frames.push(ReplayAction::Press(KeyPress::RightDon)),
 
                         // shouldnt happen
                         _ => {}

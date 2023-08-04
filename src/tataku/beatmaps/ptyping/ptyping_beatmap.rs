@@ -69,7 +69,7 @@ impl TatakuBeatmap for PTypingBeatmap {
         self.def.id.clone()
         // self.hash.clone()
     }
-    fn playmode(&self, _incoming:PlayMode) -> PlayMode { "utyping".to_owned() }
+    fn playmode(&self, _incoming:String) -> String { "utyping".to_owned() }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         vec![self.control_point_at(0.0)]

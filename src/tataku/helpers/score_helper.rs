@@ -19,7 +19,7 @@ impl ScoreHelper {
         }
     }
 
-    pub async fn get_scores(&self, map_hash: &String, playmode: &PlayMode) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
+    pub async fn get_scores(&self, map_hash: &String, playmode: &String) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
         let map_hash = map_hash.clone();
         let playmode = playmode.clone();
         let method = self.current_method;

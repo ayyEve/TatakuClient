@@ -70,7 +70,7 @@ pub struct OnlineManager {
     // is this user spectating someone?
     pub spectating: bool,
     /// buffer for incoming and outgoing spectator frames
-    pub buffered_spectator_frames: SpectatorFrames,
+    pub buffered_spectator_frames: Vec<SpectatorFrame>,
     pub last_spectator_frame: Instant,
 
     pub spectator_list: Vec<(u32, String)>,
@@ -670,7 +670,7 @@ impl OnlineManager {
 
 
     /// set our user's action for the server and any enabled integrations
-    pub fn set_action(action_info: SetAction, incoming_mode: Option<PlayMode>) {
+    pub fn set_action(action_info: SetAction, incoming_mode: Option<String>) {
         tokio::spawn(async move {
             let s = ONLINE_MANAGER.read().await;
             let mode = incoming_mode.clone().unwrap_or(String::new());
@@ -731,7 +731,7 @@ impl OnlineManager {
                 => {
                     for user_id in self.spectate_info_pending.iter() {
                         trace!("Sending playing request");
-                        let packet = SpectatorFrameData::PlayingResponse {
+                        let packet = SpectatorAction::PlayingResponse {
                             user_id: *user_id,
                             beatmap_hash: manager.beatmap.hash(),
                             mode: manager.gamemode.playmode(),
@@ -742,7 +742,7 @@ impl OnlineManager {
 
                         let clone = self.writer.clone();
                         tokio::spawn(async move {
-                            let frames = vec![(0.0, packet)];
+                            let frames = vec![SpectatorFrame::new(0.0, packet)];
                             send_packet!(clone, create_packet!(Client_SpectatorFrames {frames}));
                             trace!("Playing request sent");
                         });
@@ -782,7 +782,7 @@ impl OnlineManager {
 
 // spectator functions
 impl OnlineManager {
-    pub fn send_spec_frames(frames:SpectatorFrames, force_send: bool) {
+    pub fn send_spec_frames(frames:Vec<SpectatorFrame>, force_send: bool) {
         let s = ONLINE_MANAGER.clone();
         tokio::spawn(async move {
             let mut lock = s.write().await;
@@ -830,7 +830,7 @@ impl OnlineManager {
         });
     }
 
-    pub fn get_pending_spec_frames(&mut self) -> SpectatorFrames {
+    pub fn get_pending_spec_frames(&mut self) -> Vec<SpectatorFrame> {
         std::mem::take(&mut self.buffered_spectator_frames)
     }
 }

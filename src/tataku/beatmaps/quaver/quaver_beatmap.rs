@@ -98,7 +98,7 @@ impl QuaverBeatmap {
 }
 impl TatakuBeatmap for QuaverBeatmap {
     fn hash(&self) -> String {self.hash.clone()}
-    fn playmode(&self, _incoming:PlayMode) -> PlayMode {"mania".to_owned()}
+    fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points

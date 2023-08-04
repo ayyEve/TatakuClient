@@ -10,7 +10,7 @@ impl OsuDirect {
 #[async_trait]
 impl DirectApi for OsuDirect {
     fn api_name(&self) -> &'static str {"Osu"}
-    fn supported_modes(&self) -> Vec<PlayMode> {
+    fn supported_modes(&self) -> Vec<String> {
         vec![
             "osu".to_owned(),
             "taiko".to_owned(),
@@ -168,5 +168,18 @@ impl Into<OsuMapStatus> for MapStatus {
             MapStatus::Approved => OsuMapStatus::Approved,
             MapStatus::Loved => OsuMapStatus::Loved,
         }
+    }
+}
+
+
+
+pub fn playmode_to_u8(s:String) -> u8 {
+    match &*s {
+        "osu" => 0,
+        "taiko" => 1,
+        "catch" => 2,
+        "mania" => 3,
+
+        _ => 255
     }
 }

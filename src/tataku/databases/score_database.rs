@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::REPLAYS_DIR;
 
 impl Database {
-    pub async fn get_scores(hash:&String, playmode:PlayMode) -> Vec<Score> {
+    pub async fn get_scores(hash:&String, playmode:String) -> Vec<Score> {
         let db = Self::get().await;
         let mut s = db.prepare(&format!("SELECT * FROM scores WHERE map_hash='{}' AND playmode='{}'", hash, playmode)).unwrap();
 
@@ -135,6 +135,7 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<String> {
     if r.score_data.is_none() {
         r.score_data = Some(s.clone());
     }
+    info!("frames: {:#?}", r.frames);
 
     let mut writer = SerializationWriter::new();
     writer.write(&r);

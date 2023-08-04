@@ -11,7 +11,7 @@ impl QuaverDirect {
 #[async_trait]
 impl DirectApi for QuaverDirect {
     fn api_name(&self) -> &'static str {"Quaver"}
-    fn supported_modes(&self) -> Vec<PlayMode> {vec!["mania".to_owned()]}
+    fn supported_modes(&self) -> Vec<String> {vec!["mania".to_owned()]}
 
     async fn do_search(&mut self, search_params:SearchParams) -> Vec<Arc<dyn DirectDownloadable>> {
         trace!("Searching");

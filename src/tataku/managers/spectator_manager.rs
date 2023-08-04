@@ -5,7 +5,7 @@ const BANNER_WPADDING:f32 = 5.0;
 const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
 
 pub struct SpectatorManager {
-    pub frames: SpectatorFrames, 
+    pub frames: Vec<SpectatorFrame>, 
     pub state: SpectatorState, 
     pub game_manager: Option<IngameManager>,
     score_menu: Option<ScoreMenu>,
@@ -18,7 +18,7 @@ pub struct SpectatorManager {
 
     /// what is the current map's hash? 
     /// if this is Some and game_manager is None, we dont have the map
-    pub current_map: Option<(String, PlayMode, String, u16)>,
+    pub current_map: Option<(String, String, String, u16)>,
 
     /// list of id,username for specs
     pub spectator_cache: HashMap<u32, String>,
@@ -76,17 +76,17 @@ impl SpectatorManager {
 
 
         // check all incoming frames
-        for (time, frame) in std::mem::take(&mut self.frames) {
+        for SpectatorFrame {time, action } in std::mem::take(&mut self.frames) {
             self.good_until = self.good_until.max(time as f32);
 
-            trace!("Packet: {:?}", frame);
-            match frame {
-                SpectatorFrameData::Play { beatmap_hash, mode, mods, speed} => {
+            trace!("Packet: {action:?}");
+            match action {
+                SpectatorAction::Play { beatmap_hash, mode, mods, speed} => {
                     info!("got play: {beatmap_hash}, {mode}, {mods}");
                     self.start_game(game, beatmap_hash, mode, mods, 0.0, speed).await;
                 }
 
-                SpectatorFrameData::MapInfo { beatmap_hash, game, download_link: _ } => {
+                SpectatorAction::MapInfo { beatmap_hash, game, download_link: _ } => {
                     let beatmap_manager = BEATMAP_MANAGER.read().await;
                     if beatmap_manager.get_by_hash(&beatmap_hash).is_none() {
                         // we dont have the map, try downloading it
@@ -125,30 +125,30 @@ impl SpectatorManager {
                     }
                 }
 
-                SpectatorFrameData::Pause => {
+                SpectatorAction::Pause => {
                     trace!("Pause");
                     self.state = SpectatorState::Paused;
                     if let Some(manager) = self.game_manager.as_mut() {
                         manager.pause();
                     }
                 }
-                SpectatorFrameData::UnPause => {
+                SpectatorAction::UnPause => {
                     trace!("Unpause");
                     self.state = SpectatorState::Watching;
                     if let Some(manager) = self.game_manager.as_mut() {
                         manager.start().await;
                     }
                 }
-                SpectatorFrameData::Buffer => {/*nothing to handle here*/},
-                SpectatorFrameData::SpectatingOther { .. } => {
+                SpectatorAction::Buffer => {/*nothing to handle here*/},
+                SpectatorAction::SpectatingOther { .. } => {
                     NotificationManager::add_text_notification("Host speccing someone", 2000.0, Color::BLUE).await;
                 }
-                SpectatorFrameData::ReplayFrame { frame } => {
+                SpectatorAction::ReplayAction { action } => {
                     if let Some(manager) = self.game_manager.as_mut() {
-                        manager.replay.frames.push((time as f32, frame))
+                        manager.replay.frames.push(ReplayFrame::new(time, action))
                     }
                 }
-                SpectatorFrameData::ScoreSync { score } => {
+                SpectatorAction::ScoreSync { score } => {
                     // received score update
                     trace!("Got score update");
                     self.buffered_score_frames.push((time as f32, score));
@@ -157,7 +157,7 @@ impl SpectatorManager {
                     // as this score is probably more accurate, or at the very least will update new spectators
                 }
 
-                SpectatorFrameData::ChangingMap => {
+                SpectatorAction::ChangingMap => {
                     trace!("Host changing maps");
                     self.state = SpectatorState::MapChanging;
 
@@ -166,7 +166,7 @@ impl SpectatorManager {
                     }
                 }
 
-                SpectatorFrameData::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time, speed } => {
+                SpectatorAction::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time, speed } => {
                     warn!("got playing response: {user_id}, {beatmap_hash}, {mode}, {mods}, {current_time}");
 
                     let self_id = ONLINE_MANAGER.read().await.user_id;
@@ -175,7 +175,7 @@ impl SpectatorManager {
                         self.start_game(game, beatmap_hash, mode, mods, current_time, speed).await
                     }
                 }
-                SpectatorFrameData::Unknown => {
+                SpectatorAction::Unknown => {
                     // uh oh
                 },
             }
@@ -253,7 +253,7 @@ impl SpectatorManager {
         }
     }
 
-    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:PlayMode, mods_str:String, current_time:f32, speed: u16) {
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:String, mods_str:String, current_time:f32, speed: u16) {
         self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
 
         self.good_until = 0.0;

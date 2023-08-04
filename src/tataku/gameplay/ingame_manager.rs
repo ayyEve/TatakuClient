@@ -451,10 +451,10 @@ impl IngameManager {
             loop {
                 if self.replay_frame as usize >= self.replay.frames.len() { break }
                 
-                let (frame_time, frame) = self.replay.frames[self.replay_frame as usize];
+                let ReplayFrame {time:frame_time, action} = self.replay.frames[self.replay_frame as usize];
                 if frame_time > time { break }
 
-                pending_frames.push((frame, frame_time));
+                pending_frames.push((action, frame_time));
                 // gamemode.handle_replay_frame(frame, frame_time, self).await;
                 
                 self.replay_frame += 1;
@@ -490,7 +490,7 @@ impl IngameManager {
                 self.song.pause();
 
                 self.completed = true;
-                // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Failed));
+                // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorAction::Failed));
                 trace!("show fail menu");
             } else {
                 self.song.set_rate(new_rate);
@@ -503,8 +503,8 @@ impl IngameManager {
 
         // send map completed packets
         if self.completed {
-            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}));
-            self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorFrameData::Buffer));
+            self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::ScoreSync {score: self.score.score.clone()}));
+            self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::Buffer));
 
             // check if we failed
             if self.health.check_fail_at_end && self.health.is_dead() && !self.failed {
@@ -522,7 +522,7 @@ impl IngameManager {
             self.last_spectator_score_sync = time;
             
             // create and send the packet
-            self.outgoing_spectator_frame((time, SpectatorFrameData::ScoreSync {score: self.score.score.clone()}))
+            self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ScoreSync {score: self.score.score.clone()}))
         }
 
         // handle any frames
@@ -839,14 +839,14 @@ impl IngameManager {
             self.reset().await;
 
             if !self.replaying {
-                self.outgoing_spectator_frame((0.0, SpectatorFrameData::Play {
+                self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
                     mods: self.score.mods_string_sorted(),
                     speed: self.current_mods.speed
                 }));
                 
-                self.outgoing_spectator_frame((0.0, SpectatorFrameData::MapInfo {
+                self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::MapInfo {
                     beatmap_hash: self.beatmap.hash(),
                     game: format!("{:?}", self.metadata.beatmap_type).to_lowercase(),
                     download_link: None
@@ -878,9 +878,9 @@ impl IngameManager {
             // if this is the menu, dont do anything
             if self.menu_background {return}
             
-            let frame = SpectatorFrameData::UnPause;
+            let frame = SpectatorAction::UnPause;
             let time = self.time();
-            self.outgoing_spectator_frame((time, frame));
+            self.outgoing_spectator_frame(SpectatorFrame::new(time, frame));
             self.song.play(false);
 
             let mut gamemode = std::mem::take(&mut self.gamemode);
@@ -902,7 +902,7 @@ impl IngameManager {
         // might mess with lead-in but meh
 
         let time = self.time();
-        self.outgoing_spectator_frame_force((time, SpectatorFrameData::Pause));
+        self.outgoing_spectator_frame_force(SpectatorFrame::new(time, SpectatorAction::Pause));
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
         gamemode.pause(self);
@@ -1039,8 +1039,8 @@ impl IngameManager {
 
 // Input Handlers
 impl IngameManager {
-    async fn handle_frame(&mut self, frame: ReplayFrame, force: bool, force_time: Option<f32>, gamemode: &mut Box<dyn GameMode>) {
-        if let ReplayFrame::Press(KeyPress::SkipIntro) = frame {
+    async fn handle_frame(&mut self, frame: ReplayAction, force: bool, force_time: Option<f32>, gamemode: &mut Box<dyn GameMode>) {
+        if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             gamemode.skip_intro(self);
             // more to do?
             return;
@@ -1050,8 +1050,8 @@ impl IngameManager {
 
         if force || add_frames {
             match frame {
-                ReplayFrame::Press(k) => self.key_counter.key_down(k),
-                ReplayFrame::Release(k) => self.key_counter.key_up(k),
+                ReplayAction::Press(k) => self.key_counter.key_down(k),
+                ReplayAction::Release(k) => self.key_counter.key_up(k),
                 _ => {}
             }
 
@@ -1059,13 +1059,13 @@ impl IngameManager {
             gamemode.handle_replay_frame(frame, time, self).await;
 
             if !add_frames {
-                self.replay.frames.push((time, frame));
-                self.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{ frame }));
+                self.replay.frames.push(ReplayFrame::new(time, frame));
+                self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction{ action: frame }));
             }
         }
     }
 
-    async fn handle_input(&mut self, frame: Option<ReplayFrame>) {
+    async fn handle_input(&mut self, frame: Option<ReplayAction>) {
         let Some(frame) = frame else { return };
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
@@ -1143,7 +1143,7 @@ impl IngameManager {
 
         // skip intro
         let frame = if key == Key::Space {
-            Some(ReplayFrame::Press(KeyPress::SkipIntro))
+            Some(ReplayAction::Press(KeyPress::SkipIntro))
         } else {
             self.gamemode.key_down(key).await
         };
@@ -1258,6 +1258,7 @@ impl IngameManager {
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl IngameManager {
     pub fn set_replay(&mut self, replay: Replay) {
+        info!("setting replay: {replay:?}");
         self.replaying = true;
         self.replay = replay;
 

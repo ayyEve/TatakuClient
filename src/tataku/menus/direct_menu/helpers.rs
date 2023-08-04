@@ -4,7 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Default)]
 pub struct SearchParams {
     // used by osu/common
-    pub mode: Option<PlayMode>,
+    pub mode: Option<String>,
     pub page: u16,
     pub sort: Option<SortMethod>,
     pub map_status: Option<MapStatus>,

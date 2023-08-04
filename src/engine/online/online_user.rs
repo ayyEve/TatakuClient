@@ -7,7 +7,7 @@ pub struct OnlineUser {
 
     pub action: Option<UserAction>,
     pub action_text: Option<String>,
-    pub mode: Option<PlayMode>,
+    pub mode: Option<String>,
 
     pub game: String,
 

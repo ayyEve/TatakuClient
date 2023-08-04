@@ -159,7 +159,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         })
     }
 
-    fn playmode(&self, _incoming:PlayMode) -> PlayMode {
+    fn playmode(&self, _incoming:String) -> String {
         //TODO
         "taiko".to_owned()
     }

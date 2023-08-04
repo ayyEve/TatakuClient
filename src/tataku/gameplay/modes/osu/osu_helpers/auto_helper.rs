@@ -11,7 +11,7 @@ pub struct StandardAutoHelper {
     /// list of notes currently being held, and what key was held for that note
     holding: HashMap<usize, KeyPress>,
 
-    release_queue: Vec<ReplayFrame>,
+    release_queue: Vec<ReplayAction>,
 
     press_counter: usize,
 }
@@ -30,7 +30,7 @@ impl StandardAutoHelper {
             press_counter: 0
         }
     }
-    pub fn get_release_queue(&mut self) -> Vec<ReplayFrame> {
+    pub fn get_release_queue(&mut self) -> Vec<ReplayAction> {
         std::mem::take(&mut self.release_queue)
     }
 
@@ -42,7 +42,7 @@ impl StandardAutoHelper {
         }
     }
 
-    pub fn update(&mut self, time:f32, notes: &Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayFrame>) {
+    pub fn update(&mut self, time:f32, notes: &Vec<Box<dyn OsuHitObject>>, scaling_helper: &Arc<ScalingHelper>, frames: &mut Vec<ReplayAction>) {
         let mut any_checked = false;
 
         let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);
@@ -56,7 +56,7 @@ impl StandardAutoHelper {
             if self.holding.contains_key(&i) {
                 if time >= note.end_time(0.0) {
                     let k = self.holding.remove(&i).unwrap_or(KeyPress::LeftMouse);
-                    self.release_queue.push(ReplayFrame::Release(k));
+                    self.release_queue.push(ReplayAction::Release(k));
 
                     let pos = scaling_helper.descale_coords(note.pos_at(time));
                     if i+1 >= notes.len() {
@@ -75,7 +75,7 @@ impl StandardAutoHelper {
                 } else {
                     let pos = scaling_helper.descale_coords(note.pos_at(time));
                     // move the mouse to the pos
-                    frames.push(ReplayFrame::MousePos(
+                    frames.push(ReplayAction::MousePos(
                         pos.x as f32,
                         pos.y as f32
                     ));
@@ -88,17 +88,17 @@ impl StandardAutoHelper {
             if time >= note.time() {
                 let pos = scaling_helper.descale_coords(note.pos_at(time));
                 // move the mouse to the pos
-                frames.push(ReplayFrame::MousePos(
+                frames.push(ReplayAction::MousePos(
                     pos.x as f32,
                     pos.y as f32
                 ));
                 
                 self.press_counter += 1;
                 let k = self.get_key();
-                frames.push(ReplayFrame::Press(k));
+                frames.push(ReplayAction::Press(k));
                 if note.note_type() == NoteType::Note {
                     // TODO: add some delay to the release?
-                    self.release_queue.push(ReplayFrame::Release(k));
+                    self.release_queue.push(ReplayAction::Release(k));
                 } else {
                     self.holding.insert(i, k);
                 }
@@ -134,7 +134,7 @@ impl StandardAutoHelper {
         let len = current / duration;
         
         let new_pos = Vector2::lerp(self.point_trail_start_pos, self.point_trail_end_pos, len as f32);
-        frames.push(ReplayFrame::MousePos(
+        frames.push(ReplayAction::MousePos(
             new_pos.x as f32,
             new_pos.y as f32
         ));

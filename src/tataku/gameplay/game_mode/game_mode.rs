@@ -7,9 +7,9 @@ pub type PerformanceCalc = Box<fn(f32, f32) -> f32>;
 pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self:Sized;
 
-    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager);
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager);
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame>;
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction>;
     async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection);
 
     fn skip_intro(&mut self, manager: &mut IngameManager);

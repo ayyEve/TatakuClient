@@ -141,15 +141,15 @@ impl GameMode for UTypingGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
         if !manager.replaying {
-            manager.replay.frames.push((time, frame.clone()));
-            manager.outgoing_spectator_frame((time, SpectatorFrameData::ReplayFrame{frame}));
+            manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
+            manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
         }
 
         let input_char;
         // utyping uses chars for input, so we encode it in the mouse pos
-        if let ReplayFrame::MousePos(c, _) = &frame {
+        if let ReplayAction::MousePos(c, _) = &frame {
             // c is actually a u8 encoded as an f32
             input_char = (*c as u8) as char
         } else {
@@ -190,7 +190,7 @@ impl GameMode for UTypingGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction> {
         let mut autoplay_list = Vec::new();
 
         // do autoplay things
@@ -203,7 +203,7 @@ impl GameMode for UTypingGame {
                     *last_hit = time;
 
                     let char = queue.remove(0);
-                    autoplay_list.push(ReplayFrame::MousePos(char as u8 as f32, 0.0));
+                    autoplay_list.push(ReplayAction::MousePos(char as u8 as f32, 0.0));
                 }
 
                 if queue.len() == 0 {
@@ -414,13 +414,13 @@ impl GameMode for UTypingGame {
 
 #[async_trait]
 impl GameModeInput for UTypingGame {
-    async fn key_down(&mut self, _key:Key) -> Option<ReplayFrame> { None }
+    async fn key_down(&mut self, _key:Key) -> Option<ReplayAction> { None }
     
-    async fn key_up(&mut self, _key:Key) -> Option<ReplayFrame> { None }
+    async fn key_up(&mut self, _key:Key) -> Option<ReplayAction> { None }
 
-    async fn on_text(&mut self, text: &String, _mods: &KeyModifiers) -> Option<ReplayFrame> {
+    async fn on_text(&mut self, text: &String, _mods: &KeyModifiers) -> Option<ReplayAction> {
         if let Some(c) = text.chars().next() {
-            Some(ReplayFrame::MousePos(c as u8 as f32, 0.0))
+            Some(ReplayAction::MousePos(c as u8 as f32, 0.0))
         } else {
             None
         }
@@ -428,7 +428,7 @@ impl GameModeInput for UTypingGame {
 }
 
 impl GameModeProperties for UTypingGame {
-    fn playmode(&self) -> PlayMode {"utyping".to_owned()}
+    fn playmode(&self) -> String {"utyping".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}

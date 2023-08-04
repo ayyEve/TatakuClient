@@ -388,8 +388,8 @@ impl GameMode for TaikoGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
-        let ReplayFrame::Press(key) = frame else { return };
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
+        let ReplayAction::Press(key) = frame else { return };
 
         // turn the keypress into a hit type
         let taiko_hit_type = match key {
@@ -504,7 +504,7 @@ impl GameMode for TaikoGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction> {
 
         // check healthbar swap
         if self.healthbar_swap_pending {
@@ -1003,77 +1003,77 @@ impl GameMode for TaikoGame {
 
 #[async_trait]
 impl GameModeInput for TaikoGame {
-    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
         // // dont accept key input when autoplay is enabled, or a replay is being watched
         // if manager.current_mods.has_autoplay() || manager.replaying {
         //     return;
         // }
 
         if key == self.taiko_settings.left_kat {
-            Some(ReplayFrame::Press(KeyPress::LeftKat))
+            Some(ReplayAction::Press(KeyPress::LeftKat))
         } else if key == self.taiko_settings.left_don {
-            Some(ReplayFrame::Press(KeyPress::LeftDon))
+            Some(ReplayAction::Press(KeyPress::LeftDon))
         } else if key == self.taiko_settings.right_don {
-            Some(ReplayFrame::Press(KeyPress::RightDon))
+            Some(ReplayAction::Press(KeyPress::RightDon))
         } else if key == self.taiko_settings.right_kat {
-            Some(ReplayFrame::Press(KeyPress::RightKat))
+            Some(ReplayAction::Press(KeyPress::RightKat))
         } else {
             None
         }
     }
     
-    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
 
         if key == self.taiko_settings.left_kat {
-            Some(ReplayFrame::Release(KeyPress::LeftKat))
+            Some(ReplayAction::Release(KeyPress::LeftKat))
         } else if key == self.taiko_settings.left_don {
-            Some(ReplayFrame::Release(KeyPress::LeftDon))
+            Some(ReplayAction::Release(KeyPress::LeftDon))
         } else if key == self.taiko_settings.right_don {
-            Some(ReplayFrame::Release(KeyPress::RightDon))
+            Some(ReplayAction::Release(KeyPress::RightDon))
         } else if key == self.taiko_settings.right_kat {
-            Some(ReplayFrame::Release(KeyPress::RightKat))
+            Some(ReplayAction::Release(KeyPress::RightKat))
         } else {
             None
         }
     }
 
 
-    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayAction> {
         if self.taiko_settings.ignore_mouse_buttons { return None }
         
         match btn {
-            MouseButton::Left  => Some(ReplayFrame::Press(KeyPress::LeftDon)),
-            MouseButton::Right => Some(ReplayFrame::Press(KeyPress::LeftKat)),
+            MouseButton::Left  => Some(ReplayAction::Press(KeyPress::LeftDon)),
+            MouseButton::Right => Some(ReplayAction::Press(KeyPress::LeftKat)),
             _ => None
         }
     }
 
-    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayFrame> {
+    async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
         if self.taiko_settings.ignore_mouse_buttons { return None }
         
         match btn {
-            MouseButton::Left =>  Some(ReplayFrame::Release(KeyPress::LeftDon)),
-            MouseButton::Right => Some(ReplayFrame::Release(KeyPress::LeftKat)),
+            MouseButton::Left =>  Some(ReplayAction::Release(KeyPress::LeftDon)),
+            MouseButton::Right => Some(ReplayAction::Release(KeyPress::LeftKat)),
             _ => None
         }
     }
 
 
-    async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayFrame> {
+    async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
 
         if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
 
             // skip
             if ControllerButton::North == btn {
-                Some(ReplayFrame::Press(KeyPress::SkipIntro))
+                Some(ReplayAction::Press(KeyPress::SkipIntro))
             } else if c_config.left_kat.check_button(btn) {
-                Some(ReplayFrame::Press(KeyPress::LeftKat))
+                Some(ReplayAction::Press(KeyPress::LeftKat))
             } else if c_config.left_don.check_button(btn) {
-                Some(ReplayFrame::Press(KeyPress::LeftDon))
+                Some(ReplayAction::Press(KeyPress::LeftDon))
             } else if c_config.right_don.check_button(btn) {
-                Some(ReplayFrame::Press(KeyPress::RightDon))
+                Some(ReplayAction::Press(KeyPress::RightDon))
             } else if c_config.right_kat.check_button(btn) {
-                Some(ReplayFrame::Press(KeyPress::RightKat))
+                Some(ReplayAction::Press(KeyPress::RightKat))
             } else {
                 None
             }
@@ -1101,16 +1101,16 @@ impl GameModeInput for TaikoGame {
         }
     }
 
-    async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayFrame> {
+    async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) -> Option<ReplayAction> {
         if let Some(c_config) = self.taiko_settings.controller_config.get(&*c.name) {
             if c_config.left_kat.check_button(btn) {
-                Some(ReplayFrame::Release(KeyPress::LeftKat))
+                Some(ReplayAction::Release(KeyPress::LeftKat))
             } else if c_config.left_don.check_button(btn) {
-                Some(ReplayFrame::Release(KeyPress::LeftDon))
+                Some(ReplayAction::Release(KeyPress::LeftDon))
             } else if c_config.right_don.check_button(btn) {
-                Some(ReplayFrame::Release(KeyPress::RightDon))
+                Some(ReplayAction::Release(KeyPress::RightDon))
             } else if c_config.right_kat.check_button(btn) {
-                Some(ReplayFrame::Release(KeyPress::RightKat))
+                Some(ReplayAction::Release(KeyPress::RightKat))
             } else {
                 None
             }
@@ -1142,7 +1142,7 @@ impl GameModeInput for TaikoGame {
 
 #[async_trait]
 impl GameModeProperties for TaikoGame {
-    fn playmode(&self) -> PlayMode {"taiko".to_owned()}
+    fn playmode(&self) -> String {"taiko".to_owned()}
     fn end_time(&self) -> f32 {self.end_time}
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {

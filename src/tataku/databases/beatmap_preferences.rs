@@ -71,7 +71,7 @@ impl Database {
         });
     }
 
-    pub async fn get_beatmap_mode_prefs(map_hash:&String, playmode:&PlayMode) -> BeatmapPlaymodePreferences {
+    pub async fn get_beatmap_mode_prefs(map_hash:&String, playmode:&String) -> BeatmapPlaymodePreferences {
         let db = Self::get().await;
 
         let query = format!("SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");
@@ -84,7 +84,7 @@ impl Database {
             Default::default()
         }
     }
-    pub fn save_beatmap_mode_prefs(map_hash:&String, playmode:&PlayMode, prefs:&BeatmapPlaymodePreferences) {
+    pub fn save_beatmap_mode_prefs(map_hash:&String, playmode:&String, prefs:&BeatmapPlaymodePreferences) {
         let BeatmapPlaymodePreferences { scroll_speed } = prefs;
 
         Self::add_query(DatabaseQuery::InsertOrUpdate { 

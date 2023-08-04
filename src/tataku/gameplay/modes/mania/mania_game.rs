@@ -633,9 +633,9 @@ impl GameMode for ManiaGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayFrame, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
         match frame {
-            ReplayFrame::Press(key) => {
+            ReplayAction::Press(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
                 // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
 
@@ -684,7 +684,7 @@ impl GameMode for ManiaGame {
                     manager.play_note_sound(thing.get_hitsound()).await;
                 }
             }
-            ReplayFrame::Release(key) => {
+            ReplayAction::Release(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
 
                 *self.column_states.get_mut(col).unwrap() = false;
@@ -733,7 +733,7 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayFrame> {
+    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction> {
         if manager.current_mods.has_autoplay() {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
@@ -978,7 +978,7 @@ impl GameMode for ManiaGame {
 #[async_trait]
 impl GameModeInput for ManiaGame {
 
-    async fn key_down(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
@@ -1006,10 +1006,10 @@ impl GameModeInput for ManiaGame {
         }
         
         if game_key == KeyPress::RightDon { return None }
-        Some(ReplayFrame::Press(game_key))
+        Some(ReplayAction::Press(game_key))
     }
     
-    async fn key_up(&mut self, key:Key) -> Option<ReplayFrame> {
+    async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
         let mut game_key = KeyPress::RightDon;
 
         let keys = &self.game_settings.keys[(self.column_count-1) as usize];
@@ -1023,14 +1023,14 @@ impl GameModeInput for ManiaGame {
         }
 
         if game_key == KeyPress::RightDon { return None } 
-        Some(ReplayFrame::Release(game_key))
+        Some(ReplayAction::Release(game_key))
     }
 
 }
 
 #[async_trait]
 impl GameModeProperties for ManiaGame {
-    fn playmode(&self) -> PlayMode { "mania".to_owned() }
+    fn playmode(&self) -> String { "mania".to_owned() }
 
     fn end_time(&self) -> f32 { self.end_time }
     

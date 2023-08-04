@@ -123,7 +123,7 @@ impl OsuBeatmap {
                         "AudioFilename" => metadata.audio_filename = parent_dir.join(val).to_str().unwrap().to_owned(),
                         "PreviewTime" => metadata.audio_preview = val.parse().unwrap_or(0.0),
                         "StackLeniency" => beatmap.stack_leniency = val.parse().unwrap_or(0.0),
-                        "Mode" => metadata.mode = playmode_from_u8(val.parse::<u8>().unwrap()),
+                        "Mode" => metadata.mode = playmode_from_u8(val.parse::<u8>().unwrap()).to_owned(),
 
                         _ => {}
                     }
@@ -428,7 +428,7 @@ impl TatakuBeatmap for OsuBeatmap {
             .collect()
     }
 
-    fn playmode(&self, incoming:PlayMode) -> PlayMode {
+    fn playmode(&self, incoming:String) -> String {
         match &*self.metadata.mode {
             "osu" => incoming,
             "adofai" => panic!("osu map has adofai mode !?"),
@@ -651,5 +651,16 @@ impl FromStr for OsuEvent {
 
             None => Err(TatakuError::String("bad event".to_owned()))
         }
+    }
+}
+
+
+fn playmode_from_u8(p:u8) -> &'static str {
+    match p {
+        0 => "osu",
+        1 => "taiko",
+        2 => "catch",
+        3 => "mania",
+        _ => "osu",
     }
 }

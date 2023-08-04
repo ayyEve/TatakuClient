@@ -9,8 +9,8 @@ pub struct NoMode;
 impl GameMode for NoMode {
     async fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
-    async fn handle_replay_frame(&mut self, _:ReplayFrame, _:f32, _:&mut IngameManager) {}
-    async fn update(&mut self, _:&mut IngameManager, _: f32) -> Vec<ReplayFrame> { Vec::new() }
+    async fn handle_replay_frame(&mut self, _:ReplayAction, _:f32, _:&mut IngameManager) {}
+    async fn update(&mut self, _:&mut IngameManager, _: f32) -> Vec<ReplayAction> { Vec::new() }
     async fn draw(&mut self, _:&mut IngameManager, _: &mut RenderableCollection) {}
     fn skip_intro(&mut self, _: &mut IngameManager) {}
     async fn reset(&mut self, _:&Beatmap) {}
@@ -28,12 +28,12 @@ impl GameMode for NoMode {
 
 #[async_trait]
 impl GameModeInput for NoMode {
-    async fn key_down(&mut self, _:Key) -> Option<ReplayFrame> { None }
-    async fn key_up(&mut self, _:Key) -> Option<ReplayFrame> { None }
+    async fn key_down(&mut self, _:Key) -> Option<ReplayAction> { None }
+    async fn key_up(&mut self, _:Key) -> Option<ReplayAction> { None }
 }
 
 impl GameModeProperties for NoMode {
-    fn playmode(&self) -> PlayMode {"none".to_owned()}
+    fn playmode(&self) -> String {"none".to_owned()}
     fn end_time(&self) -> f32 {0.0}
     
     // fn combo_bounds(&self) -> Rectangle {SimpleRectangle::new(Vector2::ZERO, Vector2::ZERO)}

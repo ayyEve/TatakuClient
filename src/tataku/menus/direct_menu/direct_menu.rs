@@ -41,14 +41,14 @@ pub struct DirectMenu {
     current_api: Box<dyn DirectApi>,
 
 
-    mode: PlayMode,
+    mode: String,
     // status: MapStatus,
     // _converts: bool,
 
     window_size: Arc<WindowSize>
 }
 impl DirectMenu {
-    pub async fn new(mode: PlayMode) -> DirectMenu {
+    pub async fn new(mode: String) -> DirectMenu {
         let window_size = WindowSize::get();
 
         let mut x = DirectMenu {
