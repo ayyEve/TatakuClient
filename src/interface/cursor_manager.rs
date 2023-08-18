@@ -112,9 +112,9 @@ impl CursorManager {
             self.reload_skin().await;
         }
 
-        if self.current_skin.cursor_rotate {
-            self.cursor_rotation = (time / 2000.0) % (PI * 2.0);
-        }
+        // if self.current_skin.cursor_rotate {
+        //     self.cursor_rotation = (time / 2000.0) % (PI * 2.0);
+        // }
 
         // update ripples
         let time = self.time.as_millis();
