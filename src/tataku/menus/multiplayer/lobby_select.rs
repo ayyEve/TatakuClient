@@ -117,7 +117,7 @@ impl AsyncMenu<Game> for LobbySelect {
         }
 
         // lost connection
-        if !ONLINE_MANAGER.read().await.logged_in {
+        if !OnlineManager::get().await.logged_in {
             game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
         }
     }

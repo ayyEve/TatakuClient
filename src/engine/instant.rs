@@ -38,3 +38,8 @@ impl Instant {
         dur
     }
 }
+impl Default for Instant {
+    fn default() -> Self {
+        Self::now()
+    }
+}

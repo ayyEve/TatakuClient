@@ -66,7 +66,7 @@ impl CurrentLobbyInfo {
 
     pub async fn update_usernames(&mut self) {
         self.player_usernames.clear();
-        let om = ONLINE_MANAGER.read().await;
+        let om = OnlineManager::get().await;
         
         for user in self.info.players.iter() {
             if let Some(user) = om.users.get(&user.user_id) {

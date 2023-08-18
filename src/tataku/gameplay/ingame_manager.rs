@@ -95,11 +95,9 @@ pub struct IngameManager {
     window_size: Arc<WindowSize>,
     fit_to_bounds: Option<Bounds>,
 
-    // spectator variables
-    // TODO: should these be in their own struct? it might simplify things
-    /// when was the last score sync packet sent?
-    last_spectator_score_sync: f32,
-    pub spectator_cache: Vec<(u32, String)>,
+    // spectator info
+    pub spectator_info: IngameSpectatorInfo,
+
 
     /// what should the game do on start?
     /// mainly a helper for spectator
@@ -488,13 +486,18 @@ impl IngameManager {
         }
 
         // update our spectator list if we can
-        if let Ok(manager) = ONLINE_MANAGER.try_read() {
-            self.spectator_cache = manager.spectator_list.clone()
+        if let Some(mut manager) = OnlineManager::try_get_mut() {
+            let our_list = manager.spectator_info.our_spectator_list();
+            if our_list.updated {
+                info!("updated ingame spectator list");
+                self.spectator_info.spectators = our_list.clone();
+                our_list.updated = false
+            }
         }
 
         // if its time to send another score sync packet
-        if self.last_spectator_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
-            self.last_spectator_score_sync = time;
+        if self.spectator_info.last_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
+            self.spectator_info.last_score_sync = time;
             
             // create and send the packet
             self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ScoreSync {score: self.score.score.clone()}))
@@ -818,14 +821,16 @@ impl IngameManager {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
                     mods: self.score.mods_string_sorted(),
-                    speed: self.current_mods.speed
+                    speed: self.current_mods.speed,
+                    map_game: self.metadata.beatmap_type.into(),
+                    map_link: None
                 }));
                 
-                self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::MapInfo {
-                    beatmap_hash: self.beatmap.hash(),
-                    game: format!("{:?}", self.metadata.beatmap_type).to_lowercase(),
-                    download_link: None
-                }));
+                // self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::MapInfo {
+                //     beatmap_hash: self.beatmap.hash(),
+                //     game: format!("{:?}", self.metadata.beatmap_type).to_lowercase(),
+                //     download_link: None
+                // }));
             }
 
             if self.menu_background {
@@ -1234,7 +1239,6 @@ impl IngameManager {
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl IngameManager {
     pub fn set_replay(&mut self, replay: Replay) {
-        info!("setting replay: {replay:?}");
         self.replaying = true;
         self.replay = replay;
 
@@ -1301,7 +1305,6 @@ impl IngameManager {
         if self.menu_background || self.replaying { return }
         OnlineManager::send_spec_frames(vec![frame], true);
     }
-
 }
 
 // default
@@ -1335,8 +1338,7 @@ impl Default for IngameManager {
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
             replay_frame: Default::default(),
-            spectator_cache: Default::default(),
-            last_spectator_score_sync: 0.0,
+            spectator_info: Default::default(),
             on_start: Box::new(|_|{}),
             animation: Box::new(EmptyAnimation),
             fit_to_bounds: None,
@@ -1370,7 +1372,17 @@ impl Default for IngameManager {
     }
 }
 
+
 #[derive(Clone, Debug)]
 pub enum InGameEvent {
     Break { start: f32, end: f32 }
+}
+
+#[derive(Default)]
+pub struct IngameSpectatorInfo {
+    /// when was the last time the score was synchronized?
+    pub last_score_sync: f32,   
+
+    /// who is currently spectating us?
+    pub spectators: SpectatorList
 }

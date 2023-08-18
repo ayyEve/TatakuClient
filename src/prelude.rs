@@ -49,10 +49,6 @@ pub use crate::SONGS_DIR;
 pub use crate::SKIN_FOLDER;
 pub use crate::DOWNLOADS_DIR;
 
-// macro imports
-pub use crate::send_packet;
-pub use crate::create_packet;
-
 // general game imports
 pub use crate::engine::*;
 pub use crate::tataku::*;
@@ -61,5 +57,5 @@ pub use crate::tataku::modes::*;
 pub use tataku_client_proc_macros::*;
 
 // online imports
-pub use tataku_common::PacketId;
+pub use tataku_common::packets::*;
 pub use tataku_common::serialization::*;

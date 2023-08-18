@@ -115,13 +115,11 @@ impl Dialog<Game> for Chat {
             self.input.set_text(String::new());
 
             if let Some(channel) = self.selected_channel.clone() {
-                let clone = ONLINE_MANAGER.clone();
                 tokio::spawn(async move {
-                    let man = clone.read().await;
-                    send_packet!(man.writer, create_packet!(PacketId::Client_SendMessage {
+                    OnlineManager::get().await.send_packet(ChatPacket::Client_SendMessage {
                         channel: channel.get_name(),
                         message: send_text
-                    }));
+                    });
                 });
             }
             return true;
@@ -249,7 +247,7 @@ impl Dialog<Game> for Chat {
     }
 
     async fn update(&mut self, _g:&mut Game) {
-        if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
+        if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             let mut scroll_pending = false;
 
             if let Some(selected_channel) = &self.selected_channel {

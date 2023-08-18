@@ -104,7 +104,7 @@ impl MediaControlHelper {
                 title: s(&meta.title),
                 artist: s(&meta.artist),
                 album: None,
-                cover_url: s(&meta.cover_url),
+                cover_url: s(&meta.cover_url).filter(|s|!s.is_empty()),
                 duration: meta.duration.map(|d|Duration::from_millis(d as u64))
             };
 

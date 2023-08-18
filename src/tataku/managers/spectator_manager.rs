@@ -8,6 +8,7 @@ pub struct SpectatorManager {
     pub frames: Vec<SpectatorFrame>, 
     pub state: SpectatorState, 
     pub game_manager: Option<IngameManager>,
+    pub host_id: u32,
     score_menu: Option<ScoreMenu>,
     window_size: WindowSizeHelper,
 
@@ -20,7 +21,7 @@ pub struct SpectatorManager {
     /// if this is Some and game_manager is None, we dont have the map
     pub current_map: Option<(String, String, String, u16)>,
 
-    /// list of id,username for specs
+    /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
 
     /// list
@@ -29,10 +30,11 @@ pub struct SpectatorManager {
     new_map_check: LatestBeatmapHelper
 }
 impl SpectatorManager {
-    pub async fn new() -> Self {
+    pub async fn new(host_id: u32) -> Self {
         Self {
             frames: Vec::new(),
             state: SpectatorState::None,
+            host_id,
             game_manager: None,
             good_until: 0.0,
             map_length: 0.0,
@@ -45,12 +47,61 @@ impl SpectatorManager {
         }
     }
 
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:String, mods_str:String, current_time:f32, speed: u16) {
+        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
+
+        self.good_until = 0.0;
+        self.map_length = 0.0;
+        self.buffered_score_frames.clear();
+        // user started playing a map
+        trace!("Host started playing map");
+
+        let mut mods = ModManager::new().with_speed(speed);
+        mods.mods = Score::mods_from_string(mods_str);
+
+        // find the map
+        let mut beatmap_manager = BEATMAP_MANAGER.write().await;
+        match beatmap_manager.get_by_hash(&beatmap_hash) {
+            Some(map) => {
+                beatmap_manager.set_current_beatmap(game, &map, false).await;
+                match manager_from_playmode(mode.clone(), &map).await {
+                    Ok(mut manager) => {
+                        // remove score menu
+                        self.score_menu = None;
+
+                        // set manager things
+                        manager.apply_mods(mods).await;
+                        manager.replaying = true;
+                        manager.on_start = Box::new(move |manager| {
+                            trace!("Jumping to time {current_time}");
+                            manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
+                        });
+                        manager.start().await;
+                        
+                        // set our game manager
+                        self.map_length = manager.end_time;
+                        self.game_manager = Some(manager);
+                        self.state = SpectatorState::Watching;
+                    }
+                    Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
+                }
+            }
+            
+            // user doesnt have beatmap
+            None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED).await
+        }
+    }
+
+    pub fn stop(&mut self) {
+        OnlineManager::stop_spectating(self.host_id);
+    }
+
     pub async fn update(&mut self, game: &mut Game) {
         self.window_size.update();
 
         // (try to) read pending data from the online manager
-        if let Ok(mut online_manager) = ONLINE_MANAGER.try_write() {
-            self.frames.extend(online_manager.get_pending_spec_frames());
+        if let Some(mut online_manager) = OnlineManager::try_get_mut() {
+            self.frames.extend(online_manager.get_pending_spec_frames(self.host_id));
         }
 
         if let Some(menu) = &self.score_menu {
@@ -76,23 +127,19 @@ impl SpectatorManager {
 
 
         // check all incoming frames
-        for SpectatorFrame {time, action } in std::mem::take(&mut self.frames) {
+        for SpectatorFrame { time, action } in std::mem::take(&mut self.frames) {
             self.good_until = self.good_until.max(time as f32);
 
-            trace!("Packet: {action:?}");
+            // debug!("Packet: {action:?}");
             match action {
-                SpectatorAction::Play { beatmap_hash, mode, mods, speed} => {
+                SpectatorAction::Play { beatmap_hash, mode, mods, speed, map_game, map_link:_} => {
                     info!("got play: {beatmap_hash}, {mode}, {mods}");
-                    self.start_game(game, beatmap_hash, mode, mods, 0.0, speed).await;
-                }
 
-                SpectatorAction::MapInfo { beatmap_hash, game, download_link: _ } => {
-                    let beatmap_manager = BEATMAP_MANAGER.read().await;
-                    if beatmap_manager.get_by_hash(&beatmap_hash).is_none() {
+                    if BEATMAP_MANAGER.read().await.get_by_hash(&beatmap_hash).is_none() {
                         // we dont have the map, try downloading it
 
-                        match &*game {
-                            "osu" => {
+                        match map_game {
+                            MapGame::Osu => {
                                 // need to query the osu api to get the set id for this hashmap
                                 match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
                                     Ok(Some(map_info)) => {
@@ -113,16 +160,18 @@ impl SpectatorManager {
                                     Ok(None) => warn!("not downloading map, map not found"),
                                     Err(e) => warn!("not downloading map, {e}"),
                                 }
-                            },
-                            "quaver" => {
+                            }
+                            MapGame::Quaver => {
                                 // dont know how to download these yet
-                            },
+                            }
 
                             _ => {
                                 // hmm
                             }
                         }
                     }
+
+                    self.start_game(game, beatmap_hash, mode, mods, 0.0, speed).await;
                 }
 
                 SpectatorAction::Pause => {
@@ -166,18 +215,15 @@ impl SpectatorManager {
                     }
                 }
 
-                SpectatorAction::PlayingResponse { user_id, beatmap_hash, mode, mods, current_time, speed } => {
-                    warn!("got playing response: {user_id}, {beatmap_hash}, {mode}, {mods}, {current_time}");
-
-                    let self_id = ONLINE_MANAGER.read().await.user_id;
-
-                    if user_id == self_id {
-                        self.start_game(game, beatmap_hash, mode, mods, current_time, speed).await
+                SpectatorAction::TimeJump { time } => {
+                    if let Some(manager) = self.game_manager.as_mut() {
+                        manager.jump_to_time(time, true);
                     }
                 }
+
                 SpectatorAction::Unknown => {
                     // uh oh
-                },
+                }
             }
         }
         
@@ -250,51 +296,6 @@ impl SpectatorManager {
             }
             SpectatorState::Paused => {},
             SpectatorState::MapChanging => {},
-        }
-    }
-
-    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:String, mods_str:String, current_time:f32, speed: u16) {
-        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
-
-        self.good_until = 0.0;
-        self.map_length = 0.0;
-        self.buffered_score_frames.clear();
-        // user started playing a map
-        trace!("Host started playing map");
-
-        let mut mods = ModManager::new().with_speed(speed);
-        mods.mods = Score::mods_from_string(mods_str);
-
-        // find the map
-        let mut beatmap_manager = BEATMAP_MANAGER.write().await;
-        match beatmap_manager.get_by_hash(&beatmap_hash) {
-            Some(map) => {
-                beatmap_manager.set_current_beatmap(game, &map, false).await;
-                match manager_from_playmode(mode.clone(), &map).await {
-                    Ok(mut manager) => {
-                        // remove score menu
-                        self.score_menu = None;
-
-                        // set manager things
-                        manager.apply_mods(mods).await;
-                        manager.replaying = true;
-                        manager.on_start = Box::new(move |manager| {
-                            trace!("Jumping to time {}", current_time);
-                            manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
-                        });
-                        manager.start().await;
-                        
-                        // set our game manager
-                        self.map_length = manager.end_time;
-                        self.game_manager = Some(manager);
-                        self.state = SpectatorState::Watching;
-                    }
-                    Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
-                }
-            }
-            
-            // user doesnt have beatmap
-            None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED).await
         }
     }
 
@@ -400,14 +401,6 @@ impl SpectatorManager {
         }
     }
 }
-
-// when the manager is dropped, tell the server we stopped spectating
-impl Drop for SpectatorManager {
-    fn drop(&mut self) {
-        OnlineManager::stop_spectating();
-    }
-}
-
 
 fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection) {
     let mut offset_text = Text::new(

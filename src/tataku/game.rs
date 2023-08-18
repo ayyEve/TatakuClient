@@ -38,7 +38,9 @@ pub struct Game {
     cursor_manager: CursorManager,
     last_skin: String,
 
-    background_loader: Option<AsyncLoader<Option<Image>>>
+    background_loader: Option<AsyncLoader<Option<Image>>>,
+
+    spec_watch_action: SpectatorWatchAction,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -58,6 +60,7 @@ impl Game {
             // menus: HashMap::new(),
             current_state: GameState::None,
             queued_state: GameState::None,
+            spec_watch_action: SpectatorWatchAction::FullMenu,
 
             // fps
             render_display: AsyncFpsDisplay::new("fps", 3, RENDER_COUNT.clone(), RENDER_FRAMETIME.clone()).await,
@@ -211,7 +214,7 @@ impl Game {
 
                 // update discord
                 match (last_discord_enabled, self.settings.integrations.discord) {
-                    (true, false) => ONLINE_MANAGER.write().await.discord = None,
+                    (true, false) => OnlineManager::get_mut().await.discord = None,
                     (false, true) => OnlineManager::init_discord().await,
                     _ => {}
                 }
@@ -708,16 +711,13 @@ impl Game {
                 }
                 self.dialogs.clear();
 
-                // if the old state is a menu, tell it we're changing
-                if let GameState::InMenu(menu) = &mut current_state {
-                    menu.on_change(false).await
-                }
+                // handle cleaup of the old state
+                match &mut current_state {
+                    GameState::InMenu(menu) => menu.on_change(false).await,
+                    GameState::Spectating(spectator_manager) => spectator_manager.stop(),
 
-                // let cloned_mode = self.queued_mode.clone();
-                // self.threading.spawn(async move {
-                //     online_manager.lock().await.discord.change_status(cloned_mode);
-                //     OnlineManager::set_action(online_manager, UserAction::Leaving, String::new()).await;
-                // });
+                    _ => {}
+                }
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
@@ -801,9 +801,25 @@ impl Game {
         // update the notification manager
         NOTIFICATION_MANAGER.write().await.update().await;
 
+        if let Some(mut manager) = OnlineManager::try_get_mut() {
+            for host_id in std::mem::take(&mut manager.spectator_info.spectate_pending) {
+                trace!("Speccing {host_id}");
+                manager.spectator_info.outgoing_frames.clear();
+                manager.spectator_info.incoming_frames.insert(host_id, Vec::new());
 
-        if let Ok(manager) = &mut ONLINE_MANAGER.try_write() {
-            manager.do_game_things(self).await;
+                match self.spec_watch_action {
+                    SpectatorWatchAction::FullMenu => {
+                        // stop spectating everyone else
+                        for other_host_id in manager.spectator_info.currently_spectating() {
+                            if other_host_id == host_id { continue }
+                            OnlineManager::stop_spectating(other_host_id);
+                        }
+
+                        self.queue_state_change(GameState::Spectating(SpectatorManager::new(host_id).await));
+                    },
+                    _ => {}
+                };
+            }
         }
         
         // let elapsed = timer.elapsed().as_secs_f32() * 1000.0;
@@ -1125,23 +1141,24 @@ pub enum GameState {
     Ingame(Box<IngameManager>),
     InMenu(Box<dyn ControllerInputMenu<Game>>),
 
-    Spectating(SpectatorManager), // frames awaiting replay, state, beatmap
-    // Multiplaying(MultiplayerState), // wink wink nudge nudge (dont hold your breath)
+    Spectating(SpectatorManager),
 }
 impl GameState {
     /// spec_check means if we're spectator, check the inner game
-    fn is_ingame(&self, spec_check: bool, _multi_check: bool) -> bool {
+    fn is_ingame(&self, spec_check: bool, multi_check: bool) -> bool {
         match self {
             Self::Ingame(_) => true,
             Self::Spectating(s) if spec_check => s.game_manager.is_some(),
+            Self::InMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
             
             _ => false
         }
     }
 }
 
-// pub enum MultiplayerState {
-//     InLobby(Box<LobbyMenu>),
-//     Ingame(Box<IngameManager>),
-//     BeatmapSelect(Box<BeatmapSelectMenu>),
-// }
+#[allow(unused)]
+pub enum SpectatorWatchAction {
+    FullMenu,
+    OpenDialog,
+    MultiSpec,
+}

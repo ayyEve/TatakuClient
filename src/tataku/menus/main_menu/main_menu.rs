@@ -401,7 +401,7 @@ impl AsyncMenu<Game> for MainMenu {
 
         // switch to multiplayer menu (if logged in)
         if self.multiplayer_button.on_click(pos, button, mods) {
-            if ONLINE_MANAGER.read().await.logged_in {
+            if OnlineManager::get().await.logged_in {
                 game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
             } else {
                 NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;

@@ -78,7 +78,7 @@ impl Dialog<Game> for UserPanel {
                 }));
 
                 // add/remove friend
-                let is_friend = ONLINE_MANAGER.read().await.friends.contains(&user_id);
+                let is_friend = OnlineManager::get().await.friends.contains(&user_id);
                 let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
                 user_menu_dialog.add_button(friend_txt, Box::new(move |dialog, _game| {
                     PANEL_QUEUE.0.lock().ignite(UserPanelEvent::AddRemoveFriend(user_id));
@@ -129,18 +129,17 @@ impl Dialog<Game> for UserPanel {
                 UserPanelEvent::OpenChat(username) => self.chat.selected_channel = Some(ChatChannel::from_name(username)),
 
                 UserPanelEvent::AddRemoveFriend(friend_id) => {
-                    let manager = ONLINE_MANAGER.read().await;
+                    let manager = OnlineManager::get().await;
                     let is_friend = !manager.friends.contains(&friend_id);
 
-                    use futures_util::SinkExt;
-                    send_packet!(manager.writer, create_packet!(PacketId::Client_UpdateFriend {friend_id, is_friend}));
+                    manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
                 }
             }
         }
 
 
         // update users from online manager
-        if let Ok(om) = ONLINE_MANAGER.try_read() {
+        if let Some(om) = OnlineManager::try_get() {
             for (_, user) in &om.users {
                 if let Ok(u) = user.try_lock() {
                     if !self.users.contains_key(&u.user_id) {

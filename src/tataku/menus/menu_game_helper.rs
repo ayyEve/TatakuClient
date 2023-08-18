@@ -146,11 +146,13 @@ impl MenuGameHelper {
                 }
             }
 
-            // no value, set it to something
+            // no value, try to set it to something
             _ => {
                 if let Some(map) = &self.current_beatmap.clone().0 {
-                    let audio = AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await.unwrap();
-                    if self.apply_rate { audio.set_rate(self.current_mods.get_speed()); }
+                    match AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await {
+                        Ok(audio) => if self.apply_rate { audio.set_rate(self.current_mods.get_speed()); },
+                        Err(_) => {error!("failed to set audio, crying")},
+                    }
                 }
             },
         }

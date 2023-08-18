@@ -6,12 +6,12 @@ const PADDING:f32 = 4.0;
 
 
 pub struct SpectatorsElement {
-    spectator_cache: Vec<(u32, String)>
+    spectators: SpectatorList
 }
 impl SpectatorsElement {
     pub fn new() -> Self {
         Self {
-            spectator_cache: Vec::new()
+            spectators: SpectatorList::default()
         }
     }
 }
@@ -32,28 +32,31 @@ impl InnerUIElement for SpectatorsElement {
 
 
     fn update(&mut self, manager: &mut IngameManager) {
-        self.spectator_cache = manager.spectator_cache.clone();
+        if manager.spectator_info.spectators.updated {
+            info!("updated spectator element list");
+            self.spectators = manager.spectator_info.spectators.clone();
+            manager.spectator_info.spectators.updated = false;
+        }
     }
 
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
+        if self.spectators.list.is_empty() { return }
 
         // draw spectators
-        if self.spectator_cache.len() > 0 {
-            list.push(visibility_bg(
-                pos_offset,
-                Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectator_cache.len() as f32) * scale,
-            ));
-            for (i, (_, username)) in self.spectator_cache.iter().enumerate() {
-                // draw username
-                list.push(Text::new(
-                    pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32) * scale,
-                    30.0 * scale.y,
-                    username.clone(),
-                    Color::WHITE, 
-                    Font::Main
-                ))
-            }
-        }
+        list.push(visibility_bg(
+            pos_offset,
+            Vector2::new(SPECTATOR_ITEM_SIZE.x, (SPECTATOR_ITEM_SIZE.y + PADDING) * self.spectators.list.len() as f32) * scale,
+        ));
 
+        for (i, user) in self.spectators.list.iter().enumerate() {
+            // draw username
+            list.push(Text::new(
+                pos_offset + Vector2::new(0.0, (SPECTATOR_ITEM_SIZE.y + PADDING) * i as f32) * scale,
+                30.0 * scale.y,
+                &user.username,
+                Color::WHITE, 
+                Font::Main
+            ))
+        }
     }
 }

@@ -135,7 +135,6 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<String> {
     if r.score_data.is_none() {
         r.score_data = Some(s.clone());
     }
-    info!("frames: {:#?}", r.frames);
 
     let mut writer = SerializationWriter::new();
     writer.write(&r);
