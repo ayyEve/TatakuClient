@@ -193,7 +193,9 @@ impl CustomCursor for OsuCursor {
         self.pos = pos;
     }
 
-    async fn update(&mut self, time: f32) {
+    async fn update(&mut self, _time: f32) {
+        let time = self.time.as_millis();
+
         // check settings update 
         self.settings.update();
 
@@ -227,7 +229,9 @@ impl CustomCursor for OsuCursor {
 
     }
     
-    async fn render_trail(&mut self, time: f32) {
+    async fn render_trail(&mut self, _time: f32) {
+        let time = self.time.as_millis();
+
         // check if we should add a new trail
         let is_solid_trail = self.cursor_middle_image.is_some();
 

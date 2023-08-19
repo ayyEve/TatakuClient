@@ -149,7 +149,7 @@ impl HitsoundManager {
         } else {
             sound.filename.clone()
         };
-        info!("attempting to play sound {name} with volume {vol}");
+        // info!("attempting to play sound {name} with volume {vol}");
 
         for source in [
             HitsoundSource::Beatmap,
