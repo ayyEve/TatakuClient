@@ -499,17 +499,17 @@ impl GameMode for OsuGame {
                     _ => {}
                 }
 
-                let mut check_notes = Vec::new();
+                // let mut check_notes = Vec::new();
                 for note in self.notes.iter_mut() {
                     // if this is the last key to be released
                     if self.hold_count == 0 {
                         note.release(time)
                     }
 
-                    // check if note is in hitwindow
-                    if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() == NoteType::Slider {
-                        check_notes.push(note);
-                    }
+                    // // check if note is in hitwindow
+                    // if time >= note.end_time(self.miss_window) && !note.was_hit() && note.note_type() == NoteType::Slider {
+                    //     check_notes.push(note);
+                    // }
                 }
             }
             ReplayAction::MousePos(x, y) => {

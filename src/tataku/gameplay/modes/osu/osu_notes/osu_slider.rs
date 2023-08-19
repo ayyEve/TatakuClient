@@ -6,6 +6,8 @@ const BORDER_RADIUS:f32 = 6.0;
 const BORDER_COLOR:Color = Color::WHITE;
 const BEAT_SCALE: f32 = 1.4;
 
+const OK_RADIUS_MULT: f32 = 4.0;
+
 pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -397,7 +399,7 @@ impl HitObject for OsuSlider {
         // check sliding ok
         self.slider_ball_pos = self.scaling_helper.scale_coords(self.curve.position_at_time(beatmap_time));
         let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
-        self.sliding_ok = self.holding && distance <= self.radius * 2.0;
+        self.sliding_ok = self.holding && distance <= self.radius * OK_RADIUS_MULT;
 
         
         let alpha = self.get_alpha();
@@ -764,11 +766,12 @@ impl OsuHitObject for OsuSlider {
         self.end_checked = true;
         self.sound_index = self.def.edge_sounds.len() - 1;
         let distance = self.mouse_pos.distance(self.time_end_pos); //((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
+        let ok_distance = self.radius * OK_RADIUS_MULT;
 
         match self.start_judgment {
             OsuHitJudgments::Miss => {
                 if self.dot_count == 0 {
-                    if distance > self.radius * 2.0 || !self.holding {
+                    if distance > ok_distance || !self.holding {
                         OsuHitJudgments::Miss
                     } else {
                         self.sound_index = self.def.edge_sounds.len() - 1;
@@ -787,7 +790,7 @@ impl OsuHitObject for OsuSlider {
             }
 
             _ => {
-                if self.dots_missed == 0 && self.holding && distance < self.radius * 2.0 {
+                if self.dots_missed == 0 && self.holding && distance < ok_distance {
                     self.add_end_ripple(time);
                     OsuHitJudgments::X300
                 } else {
