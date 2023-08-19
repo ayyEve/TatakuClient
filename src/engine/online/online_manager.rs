@@ -190,7 +190,7 @@ impl OnlineManager {
 
         while reader.can_read() {
             let packet:PacketId = reader.read()?;
-            if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
+            // if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
 
             match packet {
                 // ===== ping/pong =====

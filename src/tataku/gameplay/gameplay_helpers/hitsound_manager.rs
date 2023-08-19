@@ -69,6 +69,11 @@ impl HitsoundManager {
             for hitsound in HITSOUNDS {
                 let filename = format!("{sample}-{hitsound}");
                 self.load_hitsound(&skin_folder, filename).await;
+
+                if !self.playmode_prefix.is_empty() {
+                    let filename = format!("{}-{sample}-{hitsound}", self.playmode_prefix);
+                    self.load_hitsound(&skin_folder, filename).await;
+                }
             }
         }
 
@@ -144,7 +149,7 @@ impl HitsoundManager {
         } else {
             sound.filename.clone()
         };
-        // info!("attempting to play sound {name} with volume {vol}");
+        info!("attempting to play sound {name} with volume {vol}");
 
         for source in [
             HitsoundSource::Beatmap,
