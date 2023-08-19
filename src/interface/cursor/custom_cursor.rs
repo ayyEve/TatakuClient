@@ -11,4 +11,5 @@ pub trait CustomCursor {
     fn left_pressed(&mut self, pressed: bool);
     fn right_pressed(&mut self, pressed: bool);
     fn cursor_pos(&mut self, pos: Vector2);
+    async fn render_trail(&mut self, time: f32);
 }

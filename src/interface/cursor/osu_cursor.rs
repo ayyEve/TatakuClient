@@ -150,6 +150,7 @@ impl OsuCursor {
 
     fn make_trail_group(pos: Vector2, mut trail: Image, start: f32, duration: f32, scale:Vector2, time: f32) -> TransformGroup {
         trail.scale = scale;
+        trail.set_blend_mode(BlendMode::SourceAlphaBlending);
         let mut g = TransformGroup::new(pos).alpha(1.0).border_alpha(0.0);
         g.transforms.push(Transformation::new(
             start, 
@@ -193,7 +194,6 @@ impl CustomCursor for OsuCursor {
     }
 
     async fn update(&mut self, time: f32) {
-
         // check settings update 
         self.settings.update();
 
@@ -210,7 +210,24 @@ impl CustomCursor for OsuCursor {
         }
 
         // trail stuff
+        self.render_trail(time).await;
+        
+        // update the transforms, removing any that are not visible
+        self.trail_images.retain_mut(|i| {
+            i.update(time);
+            i.visible()
+        });
 
+        // update ripples
+        let time = self.time.as_millis();
+        self.ripples.retain_mut(|ripple| {
+            ripple.update(time);
+            ripple.visible()
+        });
+
+    }
+    
+    async fn render_trail(&mut self, time: f32) {
         // check if we should add a new trail
         let is_solid_trail = self.cursor_middle_image.is_some();
 
@@ -220,15 +237,17 @@ impl CustomCursor for OsuCursor {
             if is_solid_trail {
                 // solid trail, a bit more to check
                 let width = trail.size().x;
-                let dist = self.pos.distance(self.last_pos);
+                let dist = self.pos.distance(self.last_pos) * 2.5;
                 let count = (dist / width).ceil() as i32;
+                
+                if dist < width { return; }
 
                 for i in 0..count {
                     let pos = Vector2::lerp(self.last_pos, self.pos, i as f32 / count as f32);
                     self.trail_images.push(Self::make_trail_group(
-                        pos, 
-                        trail.clone(), 
-                        self.trail_fadeout_timer_start, 
+                        pos,
+                        trail.clone(),
+                        self.trail_fadeout_timer_start,
                         self.trail_fadeout_timer_duration,
                         scale,
                         time
@@ -243,31 +262,15 @@ impl CustomCursor for OsuCursor {
                 self.last_trail_time = time;
                 self.last_pos = self.pos;
                 self.trail_images.push(Self::make_trail_group(
-                    self.pos, 
-                    trail.clone(), 
-                    self.trail_fadeout_timer_start, 
+                    self.pos,
+                    trail.clone(),
+                    self.trail_fadeout_timer_start,
                     self.trail_fadeout_timer_duration,
-                    scale, 
+                    scale,
                     time
                 ));
             }
-
         }
-
-    
-        // update the transforms, removing any that are not visible
-        self.trail_images.retain_mut(|i| {
-            i.update(time);
-            i.visible()
-        });
-
-        // update ripples
-        let time = self.time.as_millis();
-        self.ripples.retain_mut(|ripple| {
-            ripple.update(time);
-            ripple.visible()
-        });
-
     }
 
     async fn draw_above(&mut self, list: &mut RenderableCollection) {
