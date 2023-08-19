@@ -7,6 +7,7 @@ const BORDER_COLOR:Color = Color::WHITE;
 const BEAT_SCALE: f32 = 1.4;
 
 const OK_RADIUS_MULT: f32 = 4.0;
+const OK_TICK_RADIUS_MULT: f32 = 2.0;
 
 pub struct OsuSlider {
     /// slider definition for this slider
@@ -910,7 +911,7 @@ impl SliderDot {
     pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f32) -> Option<bool> {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
-            self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius;
+            self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * OK_TICK_RADIUS_MULT;
 
             Some(self.hit)
         } else {

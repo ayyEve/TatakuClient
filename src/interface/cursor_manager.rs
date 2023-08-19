@@ -92,7 +92,7 @@ impl CursorManager {
     }
 
 
-    pub async fn update(&mut self, time: f32, cursor_pos: Vector2) {
+    pub async fn update(&mut self, _time: f32, cursor_pos: Vector2) {
         self.pos = cursor_pos;
 
         // check settings update 
