@@ -633,7 +633,7 @@ impl HitObject for OsuSlider {
             } else {
                 list.push(Circle::new(
                     self.slider_ball_pos,
-                    self.radius * 2.0,
+                    self.radius * OK_RADIUS_MULT,
                     Color::TRANSPARENT_WHITE,
                     Some(Border::new(if self.sliding_ok {Color::LIME} else {Color::RED}.alpha(alpha), 2.0)
                 )));
@@ -910,7 +910,7 @@ impl SliderDot {
     pub fn update(&mut self, beatmap_time:f32, mouse_down: bool, mouse_pos: Vector2, slider_radius:f32) -> Option<bool> {
         if beatmap_time >= self.time && !self.checked {
             self.checked = true;
-            self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius * 2.0;
+            self.hit = mouse_down && mouse_pos.distance(self.pos) < slider_radius;
 
             Some(self.hit)
         } else {
