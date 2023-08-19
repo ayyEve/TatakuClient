@@ -488,9 +488,10 @@ impl IngameManager {
         // update our spectator list if we can
         if let Some(mut manager) = OnlineManager::try_get_mut() {
             let our_list = manager.spectator_info.our_spectator_list();
-            if our_list.updated {
+            if our_list.updated || self.spectator_info.spectators.list.len() != our_list.list.len() {
                 info!("updated ingame spectator list");
                 self.spectator_info.spectators = our_list.clone();
+                self.spectator_info.spectators.updated = true; // make sure this update gets propogated to the spectator element
                 our_list.updated = false
             }
         }
