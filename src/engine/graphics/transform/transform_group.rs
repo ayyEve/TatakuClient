@@ -189,9 +189,7 @@ impl TransformGroup {
         }
     }
 
-    #[allow(unused)] // will be used eventually probably
     pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
-        
         // transparency
         if let Some(start_a) = do_transparency {
             self.transforms.push(Transformation::new(
@@ -217,7 +215,7 @@ impl TransformGroup {
             offset,
             duration * 1.1,
             TransformType::Scale { start: scale.start, end: scale.end },
-            Easing::Linear,
+            Easing::EaseOutQuadratic,
             time
         ));
 
