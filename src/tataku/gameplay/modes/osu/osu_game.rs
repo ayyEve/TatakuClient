@@ -389,11 +389,21 @@ impl GameMode for OsuGame {
                     if let Some(spinner) = spinner {
                         let duration = spinner.end_time - spinner.time;
                         let min_rps = map_difficulty(od, 2.0, 4.0, 6.0) * 0.6;
+
+                        let mut spins_required = (duration / 1000.0 * min_rps) as u16;
+                        // fudge until we can properly calculate
+                        if spins_required < 10 {
+                            if spins_required > 2 {
+                                spins_required = 2;
+                            } else {
+                                spins_required = 0;
+                            }
+                        }
                         
                         s.notes.push(Box::new(OsuSpinner::new(
                             spinner.clone(),
                             scaling_helper.clone(),
-                            (duration / 1000.0 * min_rps) as u16
+                            spins_required
                         ).await))
                     }
                     
