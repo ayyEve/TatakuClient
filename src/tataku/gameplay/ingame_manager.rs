@@ -913,7 +913,6 @@ impl IngameManager {
         self.lead_in_time = LEAD_IN_TIME / self.current_mods.get_speed();
         self.lead_in_timer = Instant::now();
         self.map_diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
-        
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
         self.score.speed = self.current_mods.get_speed();
         self.score_multiplier = 1.0;
@@ -939,11 +938,14 @@ impl IngameManager {
 
 
         self.replay_frame = 0;
-        
         if !self.replaying {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
             self.score.speed = self.current_mods.get_speed();
+        } else {
+            if let Some(score) = &self.replay.score_data {
+                self.score.username = score.username.clone();
+            }
         }
 
         // reset elements
@@ -1242,7 +1244,7 @@ impl IngameManager {
     pub fn set_replay(&mut self, replay: Replay) {
         self.replaying = true;
         self.replay = replay;
-
+        
         // load speed from score
         if let Some(score) = &self.replay.score_data {
             let mut mods = ModManager::new();
@@ -1250,6 +1252,11 @@ impl IngameManager {
             mods.set_speed(score.speed);
             self.current_mods = Arc::new(mods);
             *self.score.mods_mut() = self.current_mods.mods.clone();
+
+            self.score.username = score.username.clone()
+
+        } else {
+            self.score.username = "User".to_owned();
         }
     }
     

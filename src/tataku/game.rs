@@ -814,8 +814,13 @@ impl Game {
                             if other_host_id == host_id { continue }
                             OnlineManager::stop_spectating(other_host_id);
                         }
+                        let username = if let Some(u) = manager.users.get(&host_id) {
+                            u.lock().await.username.clone()
+                        } else {
+                            "Host".to_owned()
+                        };
 
-                        self.queue_state_change(GameState::Spectating(SpectatorManager::new(host_id).await));
+                        self.queue_state_change(GameState::Spectating(SpectatorManager::new(host_id, username).await));
                     },
                     _ => {}
                 };

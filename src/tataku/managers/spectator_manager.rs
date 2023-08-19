@@ -9,6 +9,7 @@ pub struct SpectatorManager {
     pub state: SpectatorState, 
     pub game_manager: Option<IngameManager>,
     pub host_id: u32,
+    pub host_username: String,
     score_menu: Option<ScoreMenu>,
     window_size: WindowSizeHelper,
 
@@ -30,11 +31,12 @@ pub struct SpectatorManager {
     new_map_check: LatestBeatmapHelper
 }
 impl SpectatorManager {
-    pub async fn new(host_id: u32) -> Self {
+    pub async fn new(host_id: u32, host_username: String) -> Self {
         Self {
             frames: Vec::new(),
             state: SpectatorState::None,
             host_id,
+            host_username,
             game_manager: None,
             good_until: 0.0,
             map_length: 0.0,
@@ -72,6 +74,7 @@ impl SpectatorManager {
                         // set manager things
                         manager.apply_mods(mods).await;
                         manager.replaying = true;
+                        manager.replay.score_data = Some(Score::new(map.beatmap_hash.clone(), self.host_username.clone(), mode.clone()));
                         manager.on_start = Box::new(move |manager| {
                             trace!("Jumping to time {current_time}");
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
