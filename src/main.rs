@@ -229,7 +229,7 @@ async fn check_bass() {
 
 fn init_logging() {
     // start log handler
-    tataku_logging::init_with_level("logs/", log::Level::Info).unwrap();
+    tataku_logging::init_with_level("logs/", log::Level::Debug).unwrap();
 
     // clean up any old log files
     let Ok(files) = std::fs::read_dir("logs/") else { return };
