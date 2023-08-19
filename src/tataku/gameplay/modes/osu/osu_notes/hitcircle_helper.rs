@@ -161,23 +161,11 @@ impl HitCircleImageHelper {
 
 
     pub fn ripple(&self, time: f32) -> TransformGroup {
-        let scale = 1.0..1.3;
+        let scale = 1.0..1.4;
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
         let mut group = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
 
-        // combo text
-        if let Some(mut c) = self.combo_image.clone() {
-            let bounds = Bounds::new(-Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
-            c.center_text(&bounds);
-            group.push(c);
-        }
-        // else if let Some(mut text) = self.combo_text.clone() {
-        //     text.pos = -text.measure_text() / 2.0;
-        //     group.push(text);
-        // }
-
-
-        // hitcircle
+        // hit circle
         if let Some(mut circle) = self.circle.clone() {
             circle.pos = Vector2::ZERO;
             group.push(circle);
@@ -200,10 +188,8 @@ impl HitCircleImageHelper {
             ));
         }
 
-        
-
         // make it ripple and add it to the list
-        group.ripple_scale_range(0.0, 500.0, time, scale, None, Some(0.5));
+        group.ripple_scale_range(0.0, 240.0, time, scale, None, Some(0.5));
         group
     }
 }
