@@ -82,7 +82,8 @@ impl SkinSettings {
                     "[Fonts]" => current_area = SkinSection::Fonts,
                     "[Mania]" => {
                         current_area = SkinSection::Mania;
-                        let ms = ManiaSkinSettings::default();
+                        let mut ms = ManiaSkinSettings::default();
+                        ms.is_osu = true;
                         s.mania_settings.push(ms);
                     },
 
@@ -161,7 +162,7 @@ impl SkinSettings {
 
                     if key.starts_with("KeyImage") {
                         let num:u8 = key.trim_start_matches("KeyImage").trim_end_matches("D").parse().unwrap_or(10);
-                        if num > 9 {continue}
+                        if num > 9 { continue }
 
                         if key.ends_with("D") {
                             s.key_image_d.insert(num, val);
@@ -176,7 +177,7 @@ impl SkinSettings {
                             .trim_end_matches("T")
                             .parse()
                             .unwrap_or(10);
-                        if num > 9 {continue}
+                        if num > 9 { continue }
 
                         if key.ends_with("H") {
                             s.note_image_h.insert(num, val);
@@ -189,8 +190,45 @@ impl SkinSettings {
                         }
                     } else {
                         match &*key {
-                            "Keys" => s.keys = val.parse().unwrap_or_default(),
+                            "Keys" => {
+                                s.keys = val.parse().unwrap_or_default();
+                                // pre-populate the image paths with defaults
+                                let kc = s.keys;
+                                let h = (kc as f32 / 2.0).ceil() as u8;
+                                let has_center = kc % 2 == 1;
+
+                                for c in 0..s.keys {
+                                    let n;
+
+                                    // before center, use 1,2,1,2
+                                    // after center, use 2,1,2,1
+                                    // use S for center (if there is one)
+                                    if c + 1 == h && has_center {
+                                        n = "S";
+                                    } else {
+                                        let mut c3 = c;
+                                        if c3 > h-1 && !has_center { c3 -= 1; }
+                                        if c3 % 2 == 0 {
+                                            n = "1";
+                                        } else {
+                                            n = "2";
+                                        }
+                                    }
+
+                                    s.key_image.insert(c, format!("mania-key{n}"));
+                                    s.key_image_d.insert(c, format!("mania-key{n}D"));
+
+                                    s.note_image.insert(c, format!("mania-note{n}"));
+                                    s.note_image_h.insert(c, format!("mania-note{n}H"));
+                                    s.note_image_l.insert(c, format!("mania-note{n}L"));
+                                    s.note_image_t.insert(c, format!("mania-note{n}T"));
+                                }
+
                             
+                                info!("{s:?}");
+                            },
+                            "ColumnStart" => s.column_start = val.parse::<i32>().unwrap_or_default() as f32,
+                            "HitPosition" => s.hit_position = val.parse::<i32>().unwrap_or_default() as f32,
 
                             _ => {}
                         }
@@ -265,6 +303,7 @@ fn col(b:&[u8]) -> Color {
 
 #[derive(Clone, Default, Debug)]
 pub struct ManiaSkinSettings {
+    pub is_osu: bool,
     pub keys: u8,
 
     pub colors:      HashMap<u8, Color>,
@@ -275,4 +314,27 @@ pub struct ManiaSkinSettings {
     pub note_image_h: HashMap<u8, String>,
     pub note_image_l: HashMap<u8, String>,
     pub note_image_t: HashMap<u8, String>,
+
+    /// how many pixels from the left should the first column be
+    /// 
+    /// if is_osu, this is osu pixels
+    pub column_start: f32,
+    
+    /// how many pixels from the top should the hit area be?
+    /// 
+    /// if is_osu, this is osu pixels
+    pub hit_position: f32,
+
+    /// should the playfield be upside down?
+    pub upside_down: bool,
+
+    /// how many pixels from the top should the score position be?
+    /// 
+    /// if is_osu, this is osu pixels
+    pub score_position: f32,
+
+    /// how many pixels from the top should the combo position be?
+    /// 
+    /// if is_osu, this is osu pixels
+    pub combo_position: f32,
 }

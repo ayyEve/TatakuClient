@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Image {
     // pub size: Vector2,
     pub tex: TextureReference,

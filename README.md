@@ -1,4 +1,4 @@
-Tataku is a rhythme game with a focus on performance.
+Tataku is an osu clone with a focus on performance.
 It started out as a taiko sim, but has since expanded to include popular games such as Osu and Mania (osu!mania, quaver, beatmania, etc)
 Join our Discord server! https://discord.gg/PGa6XY7mKC
 
@@ -31,8 +31,6 @@ How to build:
 TODO:
 - // Gameplay
  - letter ranking
- - multiplayer (oh boy lmao)
- - online replays
 
 - // UI
  - skin folder overhaul (separate ui, gamemodes, etc)
@@ -43,7 +41,6 @@ TODO:
 
 - // Code
  - handle peppy direct download moment
- - depth doc (detail what is drawn at what depth range)
 
 maybe todo:
  - profiler

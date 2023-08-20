@@ -43,7 +43,6 @@ impl ManiaHold {
 
         hitsounds: Vec<Hitsound>,
     ) -> Self {
-
         Self {
             time, 
             end_time,
@@ -91,7 +90,6 @@ impl HitObject for ManiaHold {
 
     async fn update(&mut self, beatmap_time: f32) {
         let (start, end) = self.y_at(beatmap_time);
-
         self.pos.y = start;
         self.end_y = end;
 
@@ -100,24 +98,23 @@ impl HitObject for ManiaHold {
         }
 
         let note_size = self.playfield.note_size();
-        let y = if self.holding {self.playfield.hit_y()} else {self.pos.y} + note_size.y / 2.0;
+        let y = if self.holding {self.playfield.hit_y()} else {self.pos.y}; // + note_size.y / 2.0;
 
         // update start tex
-        if let Some(img) = &mut self.start_image {
-            img.pos = self.pos;
-            img.scale = self.playfield.note_size() / img.tex_size();
-        }
+        self.start_image.ok_do_mut(|img|img.pos = self.pos);
 
         // update middle tex
         if let Some(img) = &mut self.middle_image {
             img.pos = Vector2::new(self.pos.x, y);
-            img.scale = Vector2::new(self.playfield.column_width, self.end_y - y + note_size.y) / img.tex_size();
+            let length = self.end_y - (y - note_size.y / 2.0);
+
+            img.scale.y = length / img.tex_size().y;
         }
 
         // update end tex
         if let Some(img) = &mut self.end_image {
-            img.pos = Vector2::new(self.pos.x, self.end_y + note_size.y);
-            img.scale = self.playfield.note_size() / img.tex_size();
+            img.pos = Vector2::new(self.pos.x, self.end_y);
+            // img.scale = self.playfield.note_size() / img.tex_size();
         }
 
     }
@@ -228,52 +225,41 @@ impl HitObject for ManiaHold {
     }
 
     async fn reload_skin(&mut self) {
+        self.start_image = None;
+        self.middle_image = None;
+        self.end_image = None;
+
+        let Some(settings) = &self.mania_skin_settings else { return };
         
-        let mut start_image = None;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image_h;
-            
-            if let Some(path) = map.get(&self.column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.color = self.color;
-                    img.origin = Vector2::ZERO;
-
-                    start_image = Some(img);
-                }
-            }
-        }
-
-        let mut middle_image = None;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image_l;
-            
-            if let Some(path) = map.get(&self.column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::ZERO;
-                    img.color = Color::WHITE;
-
-                    middle_image = Some(img);
-                }
+        // start
+        if let Some(path) = settings.note_image_h.get(&self.column) {
+            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                self.playfield.note_image(&mut img);
+                img.color = self.color;
+                self.start_image = Some(img);
             }
         }
         
-        let mut end_image = None;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image_t;
-            
-            if let Some(path) = map.get(&self.column) {
-                if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    img.origin = Vector2::ZERO;
-                    img.color = Color::WHITE;
-                    img.scale.y *= -1.0;
-                    end_image = Some(img)
-                }
+        // middle
+        if let Some(path) = settings.note_image_l.get(&self.column) {
+            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                img.origin = Vector2::ZERO;
+                img.color = Color::WHITE;
+                img.scale.x = self.playfield.column_width / img.tex_size().x;
+
+                self.middle_image = Some(img);
             }
         }
 
-        self.start_image = start_image;
-        self.middle_image = middle_image;
-        self.end_image = end_image;
+        // end
+        if let Some(path) = settings.note_image_t.get(&self.column) {
+            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+                self.playfield.note_image(&mut img);
+                img.scale.y *= -1.0;
+                img.color = Color::WHITE;
+                self.end_image = Some(img);
+            }
+        }
     }
 }
 impl ManiaHitObject for ManiaHold {
@@ -307,8 +293,14 @@ impl ManiaHitObject for ManiaHold {
     
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
-        
         self.pos.x = self.playfield.col_pos(self.column);
+
+        for (img, flip) in [(&mut self.start_image, false), (&mut self.end_image, true)] {
+            let Some(img) = img else { continue };
+            self.playfield.note_image(img);
+            if flip { img.scale.y *= -1.0; }
+        }
+        self.middle_image.ok_do_mut(|img|img.scale.x = self.playfield.column_width / img.tex_size().x);
     }
 
     fn get_hitsound(&self) -> &Vec<Hitsound> {

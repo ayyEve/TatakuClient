@@ -2,14 +2,12 @@
  * Mania game mode
  * Authored by ayyEve
  * scroll velocity by Nebula
- * 
- * 
- * depth doc:
- * tbi
  */
 
 use crate::prelude::*;
 use super::prelude::*;
+
+const OSU_SIZE: Vector2 = Vector2::new(640.0, 480.0);
 
 pub struct ManiaGame {
     map_meta: Arc<BeatmapMeta>,
@@ -135,34 +133,27 @@ impl ManiaGame {
     
     async fn load_col_images(&mut self) {
         let Some(settings) = &self.mania_skin_settings else { return };
+        self.key_images_down.clear();
+        self.key_images_up.clear();
+        
+        let note_size = self.playfield.note_size();
+        let y = self.playfield.hit_y() + note_size.y;
 
-        let up_map = &settings.key_image;
-        let down_map = &settings.key_image_d;
         for col in 0..self.column_count {
             let x = self.playfield.col_pos(col);
 
-            // up image
-            if let Some(path) = up_map.get(&col) {
-                if let Some(img) = SkinManager::get_texture(path, true).await {
-                    let mut img = img.clone();
-                    img.origin = Vector2::ZERO;
-                    img.scale = self.playfield.note_size() / img.tex_size();
-                    img.pos = Vector2::new(x, self.playfield.hit_y());
+            for (path_map, image_map) in [
+                // up images
+                (&settings.key_image, &mut self.key_images_up),
+                // down images
+                (&settings.key_image_d, &mut self.key_images_down),
+            ] {
+                let Some(path) = path_map.get(&col) else { continue };
+                let Some(mut img) = SkinManager::get_texture(path, true).await else { continue };
+                self.playfield.column_image(&mut img);
+                img.pos = Vector2::new(x, y);
 
-                    self.key_images_up.insert(col, img);
-                }
-            }
-
-            // down image
-            if let Some(path) = down_map.get(&col) {
-                if let Some(img) = SkinManager::get_texture(path, true).await {
-                    let mut img = img.clone();
-                    img.origin = Vector2::ZERO;
-                    img.scale = self.playfield.note_size() / img.tex_size();
-                    img.pos = Vector2::new(x, self.playfield.hit_y());
-
-                    self.key_images_down.insert(col, img);
-                }
+                image_map.insert(col, img);
             }
 
         }
@@ -180,6 +171,25 @@ impl ManiaGame {
         for timing_bar in self.timing_bars.iter_mut() {
             timing_bar.playfield_changed(playfield.clone());
         }
+
+        let note_size = self.playfield.note_size();
+        let y = playfield.hit_y() + note_size.y;
+        for col in 0..self.column_count {
+            let x = self.playfield.col_pos(col);
+
+            for image_map in [&mut self.key_images_down, &mut self.key_images_up] {
+                let Some(img) = image_map.get_mut(&col) else { continue };
+                self.playfield.column_image(img);
+
+                let tex_size = img.tex_size();
+                // img.origin = Vector2::new(0.0, tex_size.y-playfield.note_yoffset);
+                // img.origin = Vector2::with_y(tex_size.y);
+
+                img.scale = Vector2::ONE * (note_size.x / tex_size.x);
+                img.pos = Vector2::new(x, y);
+            }
+        }
+
     }
 
     
@@ -249,6 +259,48 @@ impl ManiaGame {
         }
     }
 
+    async fn draw_notes(&mut self, list: &mut RenderableCollection) {
+        // draw timing bars
+        for tb in self.timing_bars.iter_mut() { tb.draw(list) }
+
+        // draw notes
+        for col in self.columns.iter_mut() {
+            for note in col.iter_mut() { note.draw(list).await }
+        }
+    }
+
+    async fn draw_columns(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+
+        for col in 0..self.column_count {
+            let x = self.playfield.col_pos(col);
+
+            // column background
+            list.push(Rectangle::new(
+                Vector2::new(x, bounds.pos.y),
+                Vector2::new(self.playfield.column_width, bounds.size.y),
+                Color::new(0.1, 0.1, 0.1, 0.8),
+                Some(Border::new(Color::GREEN, 1.2))
+            ));
+
+            // hit area/button state for this col
+            let map = if self.column_states[col as usize] { &self.key_images_down } else { &self.key_images_up };
+
+            if let Some(img) = map.get(&col) {
+                // let mut img = img.clone();
+                // img.pos = Vector2::new(x, self.playfield.hit_y());
+                
+                list.push(img.clone());
+            } else {
+                list.push(Rectangle::new(
+                    Vector2::new(x, self.playfield.hit_y()),
+                    self.playfield.note_size(),
+                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
+                    Some(Border::new(Color::RED, self.playfield.note_border_width))
+                ));
+            }
+        }
+    }
+    
 }
 
 #[async_trait]
@@ -341,12 +393,25 @@ impl GameMode for ManiaGame {
         let mut s = match beatmap {
             Beatmap::Osu(beatmap) => {
                 let column_count = (beatmap.metadata.cs as u8).clamp(1, 9);
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), Bounds::new(Vector2::ZERO, window_size.0), column_count));
                 
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time);
                     Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
+                for i in all_mania_skin_settings.iter() {
+                    if i.keys == column_count {
+                        mania_skin_settings = Some(Arc::new(i.clone()));
+                        break;
+                    }
+                }
+
+                let playfield = Arc::new(ManiaPlayfield::new(
+                    playfields[(column_count - 1) as usize].clone(), 
+                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    column_count,
+                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+                ));
+
 
                 let mut s = Self {
                     map_meta: metadata.clone(),
@@ -373,12 +438,6 @@ impl GameMode for ManiaGame {
                     key_images_down: HashMap::new(),
                 };
 
-                for i in all_mania_skin_settings.iter() {
-                    if i.keys == s.column_count {
-                        s.mania_skin_settings = Some(Arc::new(i.clone()));
-                        break;
-                    }
-                }
 
                 // init defaults for the columsn
                 for _col in 0..s.column_count {
@@ -459,7 +518,12 @@ impl GameMode for ManiaGame {
                     }
                 }
 
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), Bounds::new(Vector2::ZERO, window_size.0), column_count));
+                let playfield = Arc::new(ManiaPlayfield::new(
+                    playfields[(column_count - 1) as usize].clone(), 
+                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    column_count,
+                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
+                ));
 
                 let get_hitsounds = || {
                     vec![Hitsound::new_simple("normal-hitnormal")]
@@ -542,7 +606,12 @@ impl GameMode for ManiaGame {
                     }
                 }
 
-                let playfield = Arc::new(ManiaPlayfield::new(playfields[(column_count - 1) as usize].clone(), Bounds::new(Vector2::ZERO, window_size.0), column_count));
+                let playfield = Arc::new(ManiaPlayfield::new(
+                    playfields[(column_count - 1) as usize].clone(), 
+                    Bounds::new(Vector2::ZERO, window_size.0), 
+                    column_count,
+                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+                ));
 
                 let get_hitsounds = || {
                     vec![Hitsound::new_simple("normal-hitnormal")]
@@ -788,44 +857,10 @@ impl GameMode for ManiaGame {
 
 
         // draw columns
-        for col in 0..self.column_count {
-            let x = self.playfield.col_pos(col);
+        self.draw_columns(bounds, list).await;
 
-            // column background
-            list.push(Rectangle::new(
-                Vector2::new(x, bounds.pos.y),
-                Vector2::new(self.playfield.column_width, bounds.size.y),
-                Color::new(0.1, 0.1, 0.1, 0.8),
-                Some(Border::new(Color::GREEN, 1.2))
-            ));
-
-
-            // hit area/button state for this col
-            let map = if self.column_states[col as usize] { &self.key_images_down } else { &self.key_images_up };
-
-            if let Some(img) = map.get(&col) {
-                let mut img = img.clone();
-                img.pos = Vector2::new(x, self.playfield.hit_y());
-                
-                list.push(img);
-            } else {
-                list.push(Rectangle::new(
-                    Vector2::new(x, self.playfield.hit_y()),
-                    self.playfield.note_size(),
-                    if self.column_states[col as usize] { self.get_color(col) } else { Color::TRANSPARENT_WHITE },
-                    Some(Border::new(Color::RED, self.playfield.note_border_width))
-                ));
-            }
-        }
-
-        // draw timing bars
-        for tb in self.timing_bars.iter_mut() { tb.draw(list) }
-
-        // draw notes
-        for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.draw(list).await }
-        }
-
+        // draw notes and timing bars
+        self.draw_notes(list).await;
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
@@ -916,7 +951,12 @@ impl GameMode for ManiaGame {
 
     
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        let playfield = Arc::new(ManiaPlayfield::new(self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), Bounds::new(Vector2::ZERO, window_size.0), self.column_count));
+        let playfield = Arc::new(ManiaPlayfield::new(
+            self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
+            Bounds::new(Vector2::ZERO, window_size.0), 
+            self.column_count,
+            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+        ));
         self.apply_new_playfield(playfield);
     }
 
@@ -925,7 +965,8 @@ impl GameMode for ManiaGame {
         let mut playfield = ManiaPlayfield::new(
             self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
             Bounds::new(pos, size), 
-            self.column_count
+            self.column_count,
+            self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
         );
 
         playfield.settings.x_offset = pos.x;

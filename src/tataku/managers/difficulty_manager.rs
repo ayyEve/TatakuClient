@@ -99,11 +99,13 @@ pub async fn do_diffcalc(playmode: String) {
                 // only load the calc if its actually needed
                 if calc.as_ref().is_none() {
                     if calc_failed {
+                        debug!("calc failed");
                         data.insert(diff_key, -1.0);
                         continue;
                     } else {
                         calc = calc_diff(map, playmode.clone()).await.ok();
                         if calc.is_none() { 
+                            debug!("couldnt get calc");
                             data.insert(diff_key, -1.0);
                             calc_failed = true;
                             continue;

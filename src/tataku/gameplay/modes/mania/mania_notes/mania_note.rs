@@ -63,22 +63,17 @@ impl ManiaNote {
 #[async_trait]
 impl HitObject for ManiaNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
-    fn time(&self) -> f32 {self.time}
-    fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
-
+    fn time(&self) -> f32 { self.time }
+    fn end_time(&self, hw_miss:f32) -> f32 { self.time + hw_miss }
+ 
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos.y = self.y_at(beatmap_time);
+        self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
     }
     async fn draw(&mut self, list: &mut RenderableCollection) {
-        if self.pos.y + self.playfield.note_size().y < 0.0 || self.pos.y > 100000.0 { return } // || self.pos.y > args.window_size[1] as f64 { return }
-        if self.hit { return }
+        if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
         
-        
-        if let Some(img) = &self.note_image {
-            let mut img = img.clone();
-            
+        if let Some(mut img) = self.note_image.clone() {
             img.pos = self.pos;
-            img.scale = self.playfield.note_size() / img.tex_size();
             list.push(img);
         } else {
             list.push(Rectangle::new(
@@ -99,21 +94,15 @@ impl HitObject for ManiaNote {
     }
 
     async fn reload_skin(&mut self) {
-        let mut note_image = None;
-        if let Some(settings) = &self.mania_skin_settings {
-            let map = &settings.note_image;
-            
-            if let Some(path) = map.get(&self.column) {
-                if let Some(img) = SkinManager::get_texture_grayscale(path, true, true).await {
-                    let mut img = img.clone();
-                    img.color = self.color;
-                    img.origin = Vector2::ZERO;
-                    note_image = Some(img);
-                }
-            }
-        }
-
-        self.note_image = note_image;
+        self.note_image = None;
+        let Some(settings) = &self.mania_skin_settings else { warn!("no skin settings"); return }; 
+        let Some(path) = settings.note_image.get(&self.column) else { warn!("no path for note"); return };
+        let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await else { warn!("no image"); return };
+        
+        info!("a");
+        self.playfield.note_image(&mut img);
+        img.color = self.color;
+        self.note_image = Some(img);
     }
 }
 impl ManiaHitObject for ManiaNote {
@@ -138,6 +127,10 @@ impl ManiaHitObject for ManiaNote {
     fn playfield_changed(&mut self, playfield: Arc<ManiaPlayfield>) {
         self.playfield = playfield;
         self.pos.x = self.playfield.col_pos(self.column);
+
+        if let Some(img) = &mut self.note_image {
+            self.playfield.note_image(img);
+        }
     }
 
     fn get_hitsound(&self) -> &Vec<Hitsound> {
