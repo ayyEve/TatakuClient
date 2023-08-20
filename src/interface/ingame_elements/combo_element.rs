@@ -40,7 +40,7 @@ impl InnerUIElement for ComboElement {
             let mut combo_text = Text::new(
                 Vector2::ZERO,
                 30.0 * scale.x,
-                crate::format_number(self.combo),
+                format_number(self.combo),
                 Color::WHITE,
                 Font::Main
             );

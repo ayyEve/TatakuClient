@@ -1,7 +1,8 @@
 use crate::prelude::*;
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature="graphics", derive(bytemuck::Pod, bytemuck::Zeroable))]
 pub struct Vertex {
     pub position: [f32; 2],
     pub tex_coords: [f32; 2],
@@ -9,6 +10,7 @@ pub struct Vertex {
     pub color: [f32; 4],
     pub scissor_index: u32
 }
+#[cfg(feature="graphics")]
 impl Vertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {

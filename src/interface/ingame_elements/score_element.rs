@@ -22,7 +22,7 @@ impl ScoreElement {
             Text::new(
                 Vector2::ZERO,
                 30.0,
-                crate::format_number(number),
+                format_number(number),
                 Color::BLACK,
                 Font::Main
             ).measure_text()
@@ -72,7 +72,7 @@ impl InnerUIElement for ScoreElement {
             let mut text = Text::new(
                 pos_offset - self.bounds_size.x_portion(),
                 30.0 * scale.y,
-                crate::format_number(self.score),
+                format_number(self.score),
                 if WHITE_TEXT { Color::WHITE } else { Color::BLACK },
                 Font::Main
             );

@@ -8,10 +8,12 @@ authors = [
 edition = "2021"
 build = "build/mod.rs"
 
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["bass_audio"]
+default = ["gameplay"]
+gameplay = ["bass_audio", "graphics"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
 debug_sliders = []
@@ -20,6 +22,8 @@ debug_perf_rating = []
 storyboards = []
 texture_arrays = []
 no_media_control = []
+# removes as much graphics-side stuff as possible
+graphics = ["wgpu", "bytemuck", "lyon_tessellation"]
 
 [dependencies]
 tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
@@ -46,11 +50,11 @@ fontdue = "0.7"
 # math stuff
 cgmath = "*"
 guillotiere = "*"
-lyon_tessellation = "*"
+lyon_tessellation = { version="*", optional = true }
 
 # windowing
-wgpu = "*"
-bytemuck = { version = "1.12", features = [ "derive" ] }
+wgpu = { version="0.17", optional = true }
+bytemuck = { version = "1.12", features = [ "derive" ], optional = true }
 winit = { version = "0.28", features = ["serde"] }
 clipboard = "0.5"
 # gamepad input
@@ -74,7 +78,7 @@ reqwest = { version = "0.11.4", features = ["blocking"] }
 discord-rich-presence = "0.2.0"
 
 # serde
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0.180", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.8"
 
@@ -82,7 +86,7 @@ serde_yaml = "0.8"
 zip = "0.5"
 md5 = "0.7.0"
 lzma-rs = "0.2"
-base64 = "*"
+base64 = "0.21.2"
 encoding_rs = "0.8"
 
 # other stuff

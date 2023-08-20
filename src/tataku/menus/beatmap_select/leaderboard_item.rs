@@ -119,7 +119,7 @@ impl ScrollableItem for LeaderboardItem {
         list.push(Text::new(
             self.pos + pos_offset + PADDING * self.ui_scale,
             15.0 * self.ui_scale.y,
-            format!("{}: {}", self.score.username, crate::format_number(self.score.score.score)),
+            format!("{}: {}", self.score.username, format_number(self.score.score.score)),
             text_color,
             self.font.clone()
         ));
@@ -128,7 +128,7 @@ impl ScrollableItem for LeaderboardItem {
         list.push(Text::new(
             self.pos + pos_offset + (PADDING + Vector2::new(0.0, PADDING.y + 15.0)) * self.ui_scale,
             12.0 * self.ui_scale.y,
-            format!("{}x, {:.2}%, {}{time_diff_str}", crate::format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods),
+            format!("{}x, {:.2}%, {}{time_diff_str}", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, self.score_mods),
             text_color,
             self.font.clone()
         ));

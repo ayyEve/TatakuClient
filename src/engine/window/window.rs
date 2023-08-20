@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use image::RgbaImage;
+#[cfg(feature="graphics")]
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoopBuilder, EventLoop},
@@ -27,7 +28,10 @@ lazy_static::lazy_static! {
 pub type RenderData = Vec<Arc<dyn TatakuRenderable>>;
 
 pub struct GameWindow {
+    #[cfg(feature="graphics")]
     window: winit::window::Window,
+    
+    #[cfg(feature="graphics")]
     graphics: GraphicsState,
     settings: SettingsHelper,
 
@@ -50,6 +54,7 @@ pub struct GameWindow {
     // what finger id started the touch, and where is the floating touch location
     touch_pos: Option<(u64, Vector2)>,
 }
+#[cfg(feature="graphics")]
 impl GameWindow {
     pub async fn new(render_event_receiver: TripleBufferReceiver<RenderData>, game_event_sender: Sender<Window2GameEvent>) -> (Self, EventLoop<()>) {
         let settings = SettingsHelper::new();
@@ -63,15 +68,13 @@ impl GameWindow {
             .build(&event_loop)
             .expect("Unable to create window");
         window.set_cursor_visible(false);
+        
         let graphics = GraphicsState::new(&window, &settings, window.inner_size().into()).await;
         debug!("done graphics");
         
         let (window_event_sender, window_event_receiver) = unbounded_channel(); //sync_channel(30);
         WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
         debug!("done texture load queue");
-        
-        // init audio
-        AudioManager::init_audio().expect("error initializing audio");
 
         // set window icon
         match image::open("resources/icon-small.png") {
@@ -237,6 +240,7 @@ impl GameWindow {
             self.send_game_event(event);
         });
     }
+    
     fn send_game_event(&mut self, event: Window2GameEvent) {
         // try to send without spawning a task.
         if let Err(tokio::sync::mpsc::error::TrySendError::Full(event)) = self.game_event_sender.try_send(event) {
@@ -447,10 +451,12 @@ impl GameWindow {
         MEDIA_CONTROLS.get().cloned().unwrap()
     }
 
+    #[cfg(feature="graphics")]
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window.available_monitors().filter_map(|m|m.name()).collect();
     }
 
+    #[cfg(feature="graphics")]
     fn apply_fullscreen(&mut self) {
         if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
             if let Some((_, monitor)) = self.window.available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
@@ -466,6 +472,7 @@ impl GameWindow {
         self.window.set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
     }
 
+    #[cfg(feature="graphics")]
     fn apply_vsync(&mut self) {
         self.graphics.set_vsync(self.settings.vsync);
     }
@@ -480,6 +487,7 @@ impl GameWindow {
     }
 
 
+    #[cfg(feature="graphics")]
     fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
@@ -493,6 +501,7 @@ impl GameWindow {
                 // otherwise, dont send events, 
                 if self.finger_touches.len() == 1 {
                     self.touch_pos = Some((id, touch_pos));
+                    
                     self.send_game_event(Window2GameEvent::MouseMove(Vector2::new(location.x as f32, location.y as f32)));
                     Some(Window2GameEvent::MousePress(MouseButton::Left))
                 } else {
@@ -541,6 +550,7 @@ impl GameWindow {
         }
     }
 
+    #[cfg(feature="graphics")]
     fn post_cursor_move(&mut self) {
         // if self.mouse_helper.check_bounds(&self.window) {
         //     let Ok(pos) = self.window.inner_position() else { return };
@@ -558,6 +568,7 @@ impl GameWindow {
 impl GameWindow {
     pub fn send_event(event: Game2WindowEvent) {
         // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
+        #[cfg(feature="graphics")]
         WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 
@@ -622,12 +633,14 @@ impl GameWindow {
 
 
 
+#[cfg(feature="graphics")]
 fn to_size(s: Vector2) -> winit::dpi::Size {
     winit::dpi::Size::Logical(winit::dpi::LogicalSize::new(s.x as f64, s.y as f64))
 }
+#[cfg(feature="graphics")]
 fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
     match delta {
-        MouseScrollDelta::LineDelta(_, y) => y,
-        MouseScrollDelta::PixelDelta(p) => p.y as f32,
+        winit::event::MouseScrollDelta::LineDelta(_, y) => y,
+        winit::event::MouseScrollDelta::PixelDelta(p) => p.y as f32,
     }
 }

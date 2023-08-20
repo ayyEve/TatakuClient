@@ -162,3 +162,13 @@ impl EmitterRef {
     }
 }
 
+
+#[cfg(not(feature="graphics"))]
+#[derive(Clone)]
+pub struct EmitterInfo;
+#[cfg(not(feature="graphics"))]
+impl EmitterInfo {
+    pub fn new(_:&EmitterVal, _:&EmitterVal, _:&EmitterVal) -> Self {
+        Self
+    }
+}

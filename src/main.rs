@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature="graphics"), allow(unused))]
 use crate::prelude::*; 
 
 #[macro_use]
@@ -48,6 +49,8 @@ const FIRST_MAPS: &[u32] = &[
 // main fn
 #[tokio::main]
 async fn main() {
+    #[cfg(not(feature="graphics"))] panic!("The client is **NOT** designed to be run without the graphics feature, it will break, and therefor i will not let you do it.");
+
     // enter game dir
     const GAME_DIR:&str = "./game";
 
@@ -108,6 +111,7 @@ async fn start_game() {
     let window_side_barrier = window_load_barrier.clone();
 
     // setup window
+    #[cfg(feature="graphics")]
     main_thread.spawn_local(async move {
         info!("creating window");
         let (w, e) = GameWindow::new(render_queue_receiver, game_event_sender).await;
@@ -123,8 +127,10 @@ async fn start_game() {
     // start game
     let game = tokio::spawn(async move {
         // wait for the window side to be ready
-        window_load_barrier.wait().await;
-        trace!("window ready");
+        #[cfg(feature="graphics")] {
+            window_load_barrier.wait().await;
+            trace!("window ready");
+        }
 
         // start the game
         trace!("creating game");

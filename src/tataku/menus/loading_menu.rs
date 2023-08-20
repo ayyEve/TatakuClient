@@ -6,7 +6,7 @@ const STATUS_MARGIN:f32 = 5.0;
 /// helper for when starting the game. will load beatmaps, settings, etc from storage
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
-    statuses: Vec<Arc<AsyncRwLock<LoadingStatus>>>,
+    pub statuses: Vec<Arc<AsyncRwLock<LoadingStatus>>>,
     window_size: Arc<WindowSize>,
 }
 
@@ -166,6 +166,7 @@ impl LoadingMenu {
     async fn init_fonts(status: Arc<AsyncRwLock<LoadingStatus>>) {
         status.write().await.item_count = 3;
 
+        #[cfg(feature="graphics")]
         preload_fonts();
 
         status.write().await.complete = true;

@@ -28,6 +28,7 @@ settings.json
 test-commits.rs
 commits.rs
 src/tataku/gameplay/modes/mod.rs
+src/build_version.rs
 
 
 # test files

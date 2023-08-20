@@ -388,6 +388,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             }
         }
         
+        #[cfg(feature="graphics")]
         if let Some(score_hash) = self.lobby_scrollable.on_click_tagged(pos, button, mods) {
             let Some(lobby) = &**self.lobby_helper else { return };
             let Some(score) = lobby.player_scores.values().find(|s|s.hash() == score_hash) else { return };

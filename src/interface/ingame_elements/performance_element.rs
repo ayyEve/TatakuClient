@@ -23,7 +23,7 @@ impl PerformanceElement {
             Text::new(
                 Vector2::ZERO,
                 30.0,
-                crate::format_float(number, 2),
+                format_float(number, 2),
                 Color::BLACK,
                 Font::Main
             ).measure_text()

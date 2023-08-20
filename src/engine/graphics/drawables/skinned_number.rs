@@ -133,7 +133,7 @@ impl SkinnedNumber {
     }
 
     fn number_as_text_base(num: f64, precision: usize, symbol: &Option<char>) -> String {
-        let mut s = crate::format_float(num, precision);
+        let mut s = format_float(num, precision);
 
         if precision == 0 {
             s = s.split(".").next().unwrap().to_owned();

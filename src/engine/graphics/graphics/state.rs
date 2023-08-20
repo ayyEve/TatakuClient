@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use lyon_tessellation::{geom::{Box2D, Point}, path::builder::BorderRadii};
+
 use wgpu::{ BufferBinding, util::DeviceExt, TextureViewDimension, ImageCopyBuffer, Extent3d, TextureViewDescriptor };
 
 // the sum of these two must not go past 16
@@ -48,7 +49,9 @@ pub struct GraphicsState {
     particle_system: ParticleSystem,
 }
 impl GraphicsState {
+
     // Creating some of the wgpu types requires async code
+    #[cfg(feature="graphics")]
     pub async fn new(window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
         let window_size = settings.window_size;
         let window_size = Vector2::new(window_size[0], window_size[1]);
@@ -422,6 +425,7 @@ impl GraphicsState {
 
             self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR))?;
 
+            #[cfg(feature="graphics")]
             self.finish_screenshot(texture, screenshot);
         }
 
@@ -835,9 +839,12 @@ impl GraphicsState {
         }
     }
     
+    #[cfg(feature="graphics")]
     pub fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
         self.screenshot_pending = Some(Box::new(callback));
     }
+    
+    #[cfg(feature="graphics")]
     fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, u32, u32)) + Send + Sync>) {
         let (w, h) = (texture.width(), texture.height());
         let format = texture.format();
@@ -1387,6 +1394,7 @@ fn cast_to_rgba_bytes(bytes: &[u8], _format: wgpu::TextureFormat) -> [u8; 4] {
 }
 
 /// pad `num` to align with `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
+#[cfg(feature="graphics")]
 fn align(num: u32) -> u32 {
     let m = num % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
 

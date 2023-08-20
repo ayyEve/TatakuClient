@@ -89,6 +89,10 @@ impl Game {
     }
 
     pub async fn init(&mut self) {
+        
+        // init audio
+        AudioManager::init_audio().expect("error initializing audio");
+
         let now = std::time::Instant::now();
 
         // online loop
@@ -264,12 +268,15 @@ impl Game {
                 return;
             }
 
-            const DRAW_DAMPENING_FACTOR:f64 = 0.9;
-            let elapsed = now.duration_since(draw_timer).as_secs_f64();
-            if elapsed + last_draw_offset >= render_rate {
-                draw_timer = now;
-                last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * DRAW_DAMPENING_FACTOR;
-                self.draw().await;
+            
+            #[cfg(feature="graphics")] {
+                const DRAW_DAMPENING_FACTOR:f64 = 0.9;
+                let elapsed = now.duration_since(draw_timer).as_secs_f64();
+                if elapsed + last_draw_offset >= render_rate {
+                    draw_timer = now;
+                    last_draw_offset = (elapsed - render_rate).clamp(-5.0, 5.0) * DRAW_DAMPENING_FACTOR;
+                    self.draw().await;
+                }
             }
 
         }
@@ -841,6 +848,7 @@ impl Game {
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
     }
 
+    #[cfg(feature="graphics")]
     async fn draw(&mut self) {
         // let timer = Instant::now();
         let elapsed = self.game_start.as_millis();

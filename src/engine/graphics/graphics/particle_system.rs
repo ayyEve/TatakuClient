@@ -1,12 +1,13 @@
 use crate::prelude::*;
-use wgpu::BindGroupDescriptor;
-use wgpu::BindGroupLayout;
-use wgpu::BindGroupLayoutDescriptor;
-use wgpu::Buffer;
-use wgpu::BindGroup;
-use wgpu::ComputePassDescriptor;
-use wgpu::PipelineLayoutDescriptor;
-use wgpu::ShaderStages;
+use wgpu::{
+    BindGroupDescriptor,
+    BindGroupLayout,BindGroupLayoutDescriptor,
+    Buffer,
+    BindGroup,
+    ComputePassDescriptor,
+    PipelineLayoutDescriptor,
+    ShaderStages,
+};
 
 const SIZE:u64 = 300;
 
@@ -243,6 +244,7 @@ struct GpuParticle {
     /// the index of the particle within the particle pool cpu side
     particle_index: u32,
 }
+
 impl GpuParticle {
     pub fn new(p: &PoolEntry<Particle>, info: u32, emitter: u32) -> Self {
         Self {
@@ -283,6 +285,7 @@ pub struct ParticleBuffer {
 
     // recording_periods_since_last_use: usize
 }
+
 impl ParticleBuffer {
     pub fn new(device: &wgpu::Device, index: usize) -> Self {
 
