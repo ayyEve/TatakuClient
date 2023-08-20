@@ -36,8 +36,8 @@ impl OnlineSpectatorInfo {
         self.incoming_frames.keys().map(|i|*i).collect()
     }
 
-    pub fn our_spectator_list(&mut self) -> &mut SpectatorList {
-        self.spectator_list.get_mut(&self.our_id).unwrap()
+    pub fn our_spectator_list(&mut self) -> Option<&mut SpectatorList> {
+        self.spectator_list.get_mut(&self.our_id)
     }
 
     pub fn add_spec(&mut self, host_id: u32, user_id: u32, username: String) {
