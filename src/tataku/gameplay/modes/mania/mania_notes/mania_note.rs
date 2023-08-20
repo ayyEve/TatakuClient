@@ -99,7 +99,6 @@ impl HitObject for ManiaNote {
         let Some(path) = settings.note_image.get(&self.column) else { warn!("no path for note"); return };
         let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await else { warn!("no image"); return };
         
-        info!("a");
         self.playfield.note_image(&mut img);
         img.color = self.color;
         self.note_image = Some(img);
