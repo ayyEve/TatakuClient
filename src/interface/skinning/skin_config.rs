@@ -223,9 +223,6 @@ impl SkinSettings {
                                     s.note_image_l.insert(c, format!("mania-note{n}L"));
                                     s.note_image_t.insert(c, format!("mania-note{n}T"));
                                 }
-
-                            
-                                info!("{s:?}");
                             },
                             "ColumnStart" => s.column_start = val.parse::<i32>().unwrap_or_default() as f32,
                             "HitPosition" => s.hit_position = val.parse::<i32>().unwrap_or_default() as f32,
