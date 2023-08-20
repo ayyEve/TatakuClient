@@ -152,6 +152,8 @@ impl Game {
 
         let game_start = std::time::Instant::now();
 
+        let mut last_setting_update = None;
+
 
         let mut last_render_target = self.settings.fps_target as f64;
         let mut last_update_target = self.settings.update_target as f64;
@@ -185,8 +187,9 @@ impl Game {
 
                 // dont save when audio is changed, that would spam too hard
                 if !audio_changed && !self.settings.skip_autosaveing {
-                    // save the settings
-                    self.settings.save().await;
+                    // // save the settings
+                    // self.settings.save().await;
+                    last_setting_update = Some(Instant::now());
                 }
 
                 if self.settings.fps_target as f64 != last_render_target {
@@ -237,6 +240,13 @@ impl Game {
                 }
             }
 
+            // wait 100ms before writing settings changes
+            if let Some(last_update) = last_setting_update {
+                if last_update.as_millis() > 100.0 {
+                    self.settings.save().await;
+                    last_setting_update = None;
+                }
+            }
 
             // update our instant's time
             set_time(game_start.elapsed());
