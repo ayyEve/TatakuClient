@@ -133,7 +133,7 @@ impl StandardAutoHelper {
         let current = time - self.point_trail_start_time;
         let len = current / duration;
         
-        let new_pos = Vector2::lerp(self.point_trail_start_pos, self.point_trail_end_pos, len as f32);
+        let new_pos = Vector2::lerp(self.point_trail_start_pos, self.point_trail_end_pos, len.clamp(0.0, 1.0));
         frames.push(ReplayAction::MousePos(
             new_pos.x as f32,
             new_pos.y as f32
