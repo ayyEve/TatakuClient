@@ -48,7 +48,6 @@ impl StandardAutoHelper {
         let map_over = time > notes.last().map(|n| n.end_time(100.0)).unwrap_or(0.0);
         if map_over { return; }
 
-
         for i in 0..notes.len() {
             let note = &notes[i];
             if note.was_hit() { continue }
@@ -75,10 +74,7 @@ impl StandardAutoHelper {
                 } else {
                     let pos = scaling_helper.descale_coords(note.pos_at(time));
                     // move the mouse to the pos
-                    frames.push(ReplayAction::MousePos(
-                        pos.x as f32,
-                        pos.y as f32
-                    ));
+                    frames.push(ReplayAction::MousePos(pos.x, pos.y));
                 }
                 
                 any_checked = true;
@@ -88,10 +84,7 @@ impl StandardAutoHelper {
             if time >= note.time() {
                 let pos = scaling_helper.descale_coords(note.pos_at(time));
                 // move the mouse to the pos
-                frames.push(ReplayAction::MousePos(
-                    pos.x as f32,
-                    pos.y as f32
-                ));
+                frames.push(ReplayAction::MousePos(pos.x, pos.y));
                 
                 self.press_counter += 1;
                 let k = self.get_key();
@@ -134,9 +127,6 @@ impl StandardAutoHelper {
         let len = current / duration;
         
         let new_pos = Vector2::lerp(self.point_trail_start_pos, self.point_trail_end_pos, len.clamp(0.0, 1.0));
-        frames.push(ReplayAction::MousePos(
-            new_pos.x as f32,
-            new_pos.y as f32
-        ));
+        frames.push(ReplayAction::MousePos(new_pos.x, new_pos.y));
     }
 }
