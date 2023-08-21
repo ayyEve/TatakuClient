@@ -57,31 +57,9 @@ impl HitsoundManager {
 
         // skin and default sounds
         self.sounds.insert(HitsoundSource::Beatmap, beatmap_sounds);
-        self.sounds.insert(HitsoundSource::Skin, HashMap::new());
-        self.sounds.insert(HitsoundSource::Default, HashMap::new());
 
-
-        let skin = settings.current_skin.clone();
-        let skin_folder = format!("{SKINS_FOLDER}/{skin}");
-        const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
-        const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];
-        for sample in SAMPLE_SETS {
-            for hitsound in HITSOUNDS {
-                let filename = format!("{sample}-{hitsound}");
-                self.load_hitsound(&skin_folder, filename).await;
-
-                if !self.playmode_prefix.is_empty() {
-                    let filename = format!("{}-{sample}-{hitsound}", self.playmode_prefix);
-                    self.load_hitsound(&skin_folder, filename).await;
-                }
-            }
-        }
-
-        const OTHER_SOUNDS:&[&str] = &["combobreak"];
-        for sound in OTHER_SOUNDS {
-            self.load_hitsound(&skin_folder, (*sound).to_owned()).await;
-        }
-
+        // handle loading the rest here so we avoid duplicate code
+        self.reload_skin(&settings).await;
     } 
 
     async fn load_hitsound(&mut self, skin_folder: &String, filename: String) {
@@ -197,6 +175,32 @@ impl HitsoundManager {
         }
     }
 
+
+    pub async fn reload_skin(&mut self, settings: &Settings) {
+        self.sounds.insert(HitsoundSource::Skin, HashMap::new());
+        self.sounds.insert(HitsoundSource::Default, HashMap::new());
+
+        let skin = settings.current_skin.clone();
+        let skin_folder = format!("{SKINS_FOLDER}/{skin}");
+        const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
+        const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];
+        for sample in SAMPLE_SETS {
+            for hitsound in HITSOUNDS {
+                let filename = format!("{sample}-{hitsound}");
+                self.load_hitsound(&skin_folder, filename).await;
+
+                if !self.playmode_prefix.is_empty() {
+                    let filename = format!("{}-{sample}-{hitsound}", self.playmode_prefix);
+                    self.load_hitsound(&skin_folder, filename).await;
+                }
+            }
+        }
+
+        const OTHER_SOUNDS:&[&str] = &["combobreak"];
+        for sound in OTHER_SOUNDS {
+            self.load_hitsound(&skin_folder, (*sound).to_owned()).await;
+        }
+    }
 
 }
 

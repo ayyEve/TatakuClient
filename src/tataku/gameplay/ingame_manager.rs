@@ -320,8 +320,7 @@ impl IngameManager {
         // update settings
         self.settings.update();
         if self.skin_helper.update() {
-            self.gamemode.reload_skin().await;
-            info!("reloading skin");
+            self.reload_skin().await;
         }
         
         // make sure we jump to the time we're supposed to be at
@@ -1286,7 +1285,9 @@ impl IngameManager {
     }
 
     pub async fn reload_skin(&mut self) {
+        info!("reloading skin");
         self.gamemode.reload_skin().await;
+        self.hitsound_manager.reload_skin(&self.settings).await;
     }
 
 
