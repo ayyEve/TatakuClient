@@ -1,22 +1,9 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
-use crate::prelude::*; 
+use tataku_client::prelude::*; 
 
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 
-// include files
-mod engine;
-mod tataku;
-mod prelude;
-mod interface;
-pub mod commits;
 
-// folders
-pub const DOWNLOADS_DIR:&str = "downloads";
-pub const SONGS_DIR:&str = "songs";
-pub const REPLAYS_DIR:&str = "replays";
-pub const SKINS_FOLDER:&str = "skins";
-pub const REPLAY_EXPORTS_DIR:&str = "../replays";
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.xyz/tataku";
 
 #[inline]

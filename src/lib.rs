@@ -1,12 +1,9 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
-
+#[macro_use] extern crate log;
 pub mod engine;
 pub mod tataku;
 pub mod prelude;
 pub mod interface;
-
-#[macro_use]
-extern crate log;
 
 // folders
 pub const DOWNLOADS_DIR:&str = "downloads";
