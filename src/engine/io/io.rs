@@ -115,10 +115,6 @@ impl Io {
 
 
 
-
-
-
-
 /// load an image file to an image struct
 /// non-main thread safe
 pub async fn load_image(path: impl AsRef<str> + Send + Sync, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
@@ -172,89 +168,7 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
 }
 
 
-pub async fn extract_all() -> Vec<String> {
-    let mut paths = Vec::new();
-
-    // check for new maps
-    let Ok(files) = std::fs::read_dir(crate::DOWNLOADS_DIR) else { return paths};
-
-    for filename in files.filter_map(|f|f.ok()) {
-        trace!("Looping file {:?}", filename);
-        // let completed = completed.clone();
-
-        trace!("File ok");
-        trace!("Reading file {:?}", filename);
-
-        let mut error_counter = 0;
-        // unzip file into ./Songs
-        while let Err(e) = std::fs::File::open(filename.path()) {
-            error!("Error opening archive file: {}", e);
-            error_counter += 1;
-
-            // if we've waited 5 seconds and its still broken
-            if error_counter > 5 {
-                error!("5 errors opening archive file: {}", e);
-                return paths;
-            }
-
-            // tokio::time::sleep(Duration::from_millis(1000)).await;
-        }
-
-        let file = std::fs::File::open(filename.path()).unwrap();
-        let mut archive = match zip::ZipArchive::new(file) {
-            Ok(a) => a,
-            Err(e) => {
-                error!("Error extracting zip archive: {}", e);
-                NotificationManager::add_text_notification("Error extracting file\nSee console for details", 3000.0, Color::RED).await;
-                continue;
-            }
-        };
-    
-        let ext = ".".to_owned() + &filename.path().extension().map(|s|s.to_string_lossy().to_string()).unwrap_or(".".to_owned());
-        let y = format!("{}/{}/", SONGS_DIR, filename.file_name().to_str().unwrap().trim_end_matches(&ext));
-        paths.push(y.clone());
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).unwrap();
-            let mut outpath = match file.enclosed_name() {
-                Some(path) => path,
-                None => continue,
-            };
-
-            let x = outpath.to_str().unwrap();
-            let z = &(y.clone() + x);
-            outpath = Path::new(z);
-
-            if (&*file.name()).ends_with('/') {
-                debug!("File {} extracted to \"{}\"", i, outpath.display());
-                std::fs::create_dir_all(&outpath).unwrap();
-            } else {
-                debug!("File {} extracted to \"{}\" ({} bytes)", i, outpath.display(), file.size());
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() { std::fs::create_dir_all(&p).unwrap() }
-                }
-                let mut outfile = std::fs::File::create(&outpath).unwrap();
-                std::io::copy(&mut file, &mut outfile).unwrap();
-            }
-        }
-    
-        if let Err(e) = std::fs::remove_file(filename.path()) {
-            error!("Error deleting file: {}", e)
-        }
-        
-        trace!("Done");
-    }
-    
-    paths
-    // while *completed.lock() < len {
-    //     debug!("waiting for downloads {} of {}", *completed.lock(), len);
-    //     std::thread::sleep(Duration::from_millis(500));
-    // }
-}
-
-
-
-pub async fn read_other_game_replay(path: impl AsRef<Path>) -> TatakuResult<Replay> {
+pub async fn read_replay_path(path: impl AsRef<Path>) -> TatakuResult<Replay> {
     let path = path.as_ref();
 
     match path.extension().and_then(|s|s.to_str()) {

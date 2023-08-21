@@ -837,7 +837,7 @@ impl Game {
                             "Host".to_owned()
                         };
 
-                        self.queue_state_change(GameState::Spectating(SpectatorManager::new(host_id, username).await));
+                        self.queue_state_change(GameState::Spectating(Box::new(SpectatorManager::new(host_id, username).await)));
                     },
                     _ => {}
                 };
@@ -975,31 +975,67 @@ impl Game {
 
     pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();
-        let filename = path.file_name();
 
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap();
             match *&ext {
                 // osu | quaver | ptyping zipped set file
                 "osz" | "qp" | "ptm" => {
-                    if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
-                        error!("Error copying file: {}", e);
-                        NotificationManager::add_error_notification(
-                            "Error copying file", 
-                            e
-                        ).await;
-                    } else {
-                        NotificationManager::add_text_notification(
-                            "Set file added, it will be loaded soon...", 
-                            2_000.0, 
-                            Color::BLUE
-                        ).await;
+                    // if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
+                    //     error!("Error copying file: {}", e);
+                    //     NotificationManager::add_error_notification(
+                    //         "Error copying file", 
+                    //         e
+                    //     ).await;
+                    // } else {
+                    //     NotificationManager::add_text_notification(
+                    //         "Set file added, it will be loaded soon...", 
+                    //         2_000.0, 
+                    //         Color::BLUE
+                    //     ).await;
+                    // }
+                    match Zip::extract_single(path.to_path_buf(), SONGS_DIR, true, ArchiveDelete::OnSuccess).await {
+                        Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
+                        Ok(path) => {
+                            // load the map
+                            let mut beatmap_manager = BEATMAP_MANAGER.write().await;
+                            let Some(last) = beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
+                            // set it as current map if wanted
+                            let mut use_preview_time = true;
+                            let change_map = match &self.current_state {
+                                GameState::InMenu(menu) => {
+                                    if menu.get_name() == "main_menu" { use_preview_time = false; }
+                                    true
+                                },
+                                // spec should handle this itself
+                                GameState::Spectating(_) => false,
+                                _ => false,
+                            };
+                            if change_map {
+                                beatmap_manager.set_current_beatmap(self, &last, use_preview_time).await;
+                            }
+                        }
+                    }
+                }
+
+                // osu skin file
+                "osk" => {
+                    match Zip::extract_single(path.to_path_buf(), SKINS_FOLDER, true, ArchiveDelete::Never).await {
+                        Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
+                        Ok(path) => {
+                            // set as current skin
+                            if let Some(folder) = Path::new(&path).file_name() {
+                                let name = folder.to_string_lossy().to_string();
+                                Settings::get_mut().current_skin = name.clone();
+                                NotificationManager::add_text_notification(format!("Added skin {name}"), 5000.0, Color::BLUE).await
+                            }
+                        }
                     }
                 }
 
                 // tataku | osu replay
                 "ttkr" | "osr" => {
-                    match read_other_game_replay(path).await {
+                    match read_replay_path(path).await {
                         Ok(replay) => self.try_open_replay(replay).await,
                         Err(e) => NotificationManager::add_error_notification("Error opening replay", e).await,
                     }
@@ -1164,7 +1200,7 @@ pub enum GameState {
     Ingame(Box<IngameManager>),
     InMenu(Box<dyn ControllerInputMenu<Game>>),
 
-    Spectating(SpectatorManager),
+    Spectating(Box<SpectatorManager>),
 }
 impl GameState {
     /// spec_check means if we're spectator, check the inner game

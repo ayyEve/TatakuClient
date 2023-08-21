@@ -95,9 +95,9 @@ impl HitObject for ManiaNote {
 
     async fn reload_skin(&mut self) {
         self.note_image = None;
-        let Some(settings) = &self.mania_skin_settings else { warn!("no skin settings"); return }; 
-        let Some(path) = settings.note_image.get(&self.column) else { warn!("no path for note"); return };
-        let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await else { warn!("no image"); return };
+        let Some(settings) = &self.mania_skin_settings else { return }; 
+        let Some(path) = settings.note_image.get(&self.column) else { return };
+        let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await else { return };
         
         self.playfield.note_image(&mut img);
         img.color = self.color;

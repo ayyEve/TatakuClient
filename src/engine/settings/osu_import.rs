@@ -15,7 +15,7 @@ pub async fn load_osu_skins(path: impl AsRef<Path>) {
                 if f.path().is_dir() {
                     let mut options = fs_extra::dir::CopyOptions::new();
                     options.copy_inside = true;
-                    if let Err(e) = fs_extra::dir::copy(f.path(), SKIN_FOLDER, &options) {
+                    if let Err(e) = fs_extra::dir::copy(f.path(), SKINS_FOLDER, &options) {
                         NotificationManager::add_error_notification("error copying skin", TatakuError::from_err(e)).await;
                     }
                 }

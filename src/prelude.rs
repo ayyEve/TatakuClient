@@ -46,7 +46,7 @@ pub use tataku_common::types::*;
 
 // folder imports
 pub use crate::SONGS_DIR;
-pub use crate::SKIN_FOLDER;
+pub use crate::SKINS_FOLDER;
 pub use crate::DOWNLOADS_DIR;
 
 // general game imports

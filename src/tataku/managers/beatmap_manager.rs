@@ -68,16 +68,8 @@ impl BeatmapManager {
     // download checking
     async fn check_downloads() {
         if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
-            let folders = extract_all().await;
+            let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR).await;
             info!("checking folders {folders:#?}");
-
-            // let mut folders = Vec::new();
-            // read_dir(SONGS_DIR)
-            //     .unwrap()
-            //     .for_each(|f| {
-            //         let f = f.unwrap().path();
-            //         folders.push(f.to_str().unwrap().to_owned());
-            //     });
 
             for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f, true).await; }
         }
@@ -117,7 +109,7 @@ impl BeatmapManager {
     }
 
     /// if this doesnt handle the database entries, returns a list of new beatmaps that should be added to the database
-    pub async fn check_folder(&mut self, dir: impl AsRef<Path>, handle_database: bool) -> Option<Vec<Arc<BeatmapMeta>>> {
+    pub async fn check_folder(&mut self, dir: impl AsRef<Path>, handle_database: impl Into<HandleDatabase>) -> Option<Vec<Arc<BeatmapMeta>>> {
         let dir = dir.as_ref();
 
         if !dir.is_dir() { return None }
@@ -161,7 +153,7 @@ impl BeatmapManager {
                     }
                 }
 
-                match Beatmap::load_multiple_metadata(file.to_owned()) {
+                match Beatmap::load_multiple_metadata(file) {
                     Ok(maps) => {
                         for map in maps {
                             self.add_beatmap(&map);
@@ -178,13 +170,17 @@ impl BeatmapManager {
             }
         }
 
-        if handle_database {
-            if !maps_to_add_to_database.is_empty() {
+        let handle_database:HandleDatabase = handle_database.into();
+        match handle_database {
+            HandleDatabase::No => Some(maps_to_add_to_database),
+            HandleDatabase::Yes => {
                 Database::insert_beatmaps(maps_to_add_to_database).await;
+                None
             }
-            None
-        } else {
-            Some(maps_to_add_to_database)
+            HandleDatabase::YesAndReturnNewMaps => {
+                Database::insert_beatmaps(maps_to_add_to_database.clone()).await;
+                Some(maps_to_add_to_database)
+            }
         }
     }
 
@@ -375,3 +371,14 @@ crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBea
 crate::create_value_helper!(LatestBeatmap, Arc<BeatmapMeta>, LatestBeatmapHelper);
 crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
 
+/// this is a bad name for this
+pub enum HandleDatabase {
+    No,
+    Yes,
+    YesAndReturnNewMaps
+}
+impl From<bool> for HandleDatabase {
+    fn from(value: bool) -> Self {
+        if value {Self::Yes} else {Self::No}
+    }
+}

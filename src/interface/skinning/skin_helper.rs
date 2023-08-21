@@ -8,8 +8,10 @@ lazy_static::lazy_static! {
     // TODO: change this to skin meta
     static ref SKINS:Arc<RwLock<Vec<String>>> = {
         let mut list = vec!["None".to_owned()];
-        for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
-            list.push(f.unwrap().file_name().to_string_lossy().to_string())
+        if let Ok(folder) = std::fs::read_dir(SKINS_FOLDER) {
+            for f in folder.filter_map(|f|f.ok()) {
+                list.push(f.file_name().to_string_lossy().to_string())
+            }
         }
         Arc::new(RwLock::new(list))
     };
@@ -18,7 +20,7 @@ lazy_static::lazy_static! {
 /// path to a texture file
 #[inline]
 fn get_tex_path(tex_name:&String, skin_name:&String) -> String {
-    format!("{}/{}/{}.png", SKIN_FOLDER, skin_name, tex_name)
+    format!("{SKINS_FOLDER}/{skin_name}/{tex_name}.png")
 }
 
 pub struct SkinManager {
@@ -36,7 +38,7 @@ impl SkinManager {
         let settings = Settings::get();
         
         let current_skin = settings.current_skin.clone();
-        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
+        let current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKINS_FOLDER}/{current_skin}/skin.ini")).unwrap_or_default());
         GlobalValueManager::update(Arc::new(CurrentSkin(current_skin_config.clone())));
         
         Self {
@@ -81,7 +83,7 @@ impl SkinManager {
         let mut s = SKIN_MANAGER.write().await;
         if s.last_skin == new_skin { return }
         s.last_skin = new_skin.clone();
-        s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKIN_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
+        s.current_skin_config = Arc::new(SkinSettings::from_file(format!("{SKINS_FOLDER}/{new_skin}/skin.ini")).unwrap_or_default());
 
         // free up the last skin's images in the atlas for reuse
         std::mem::take(&mut s.texture_cache).into_iter().filter_map(|(_, i)| i.map(|i|i.tex)).for_each(GameWindow::free_texture);
@@ -92,7 +94,7 @@ impl SkinManager {
 
     pub fn refresh_skins() {
         let mut list = vec!["None".to_owned()];
-        for f in std::fs::read_dir(SKIN_FOLDER).unwrap() {
+        for f in std::fs::read_dir(SKINS_FOLDER).unwrap() {
             list.push(f.unwrap().file_name().to_string_lossy().to_string())
         }
 

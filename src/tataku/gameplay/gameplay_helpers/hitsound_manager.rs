@@ -62,7 +62,7 @@ impl HitsoundManager {
 
 
         let skin = settings.current_skin.clone();
-        let skin_folder = format!("{SKIN_FOLDER}/{skin}");
+        let skin_folder = format!("{SKINS_FOLDER}/{skin}");
         const SAMPLE_SETS:&[&str] = &["normal", "soft", "drum"];
         const HITSOUNDS:&[&str] = &["hitnormal", "hitwhistle", "hitfinish", "hitclap", "slidertick"];
         for sample in SAMPLE_SETS {

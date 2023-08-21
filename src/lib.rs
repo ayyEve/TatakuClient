@@ -12,5 +12,5 @@ extern crate log;
 pub const DOWNLOADS_DIR:&str = "downloads";
 pub const SONGS_DIR:&str = "songs";
 pub const REPLAYS_DIR:&str = "replays";
-pub const SKIN_FOLDER:&str = "skins";
+pub const SKINS_FOLDER:&str = "skins";
 pub const REPLAY_EXPORTS_DIR:&str = "../replays";
