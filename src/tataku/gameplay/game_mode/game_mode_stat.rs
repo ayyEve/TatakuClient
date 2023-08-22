@@ -27,43 +27,6 @@ impl StatGroup {
     }
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct GameplayStats {
-    data: HashMap<String, Vec<f32>>,
-}
-impl GameplayStats {
-    pub fn insert<S:GameModeStat>(&mut self, stat: S, value: f32) {
-        let key = stat.name().to_owned();
-
-        if let Some(values) = self.data.get_mut(&key) {
-            values.push(value)
-        } else {
-            self.data.insert(key, vec![value]);
-        }
-    }
-
-    /// group the data into sets of groups
-    /// the hashmap is indexed by the group name, and the data is a hashmap of stat name, and values for said stat
-    /// note that this will not include stats that dont have at least one value
-    pub fn into_groups(&self, groups: &Vec<StatGroup>) -> HashMap<String, HashMap<String, Vec<f32>>> {
-        let mut output = HashMap::new();
-
-        for group in groups {
-            let mut data = HashMap::new();
-
-            for stat in group.stats.iter() {
-                if let Some(val) = self.data.get(&stat.name().to_owned()) {
-                    data.insert(stat.name().to_owned(), val.clone());
-                }
-            }
-            output.insert(group.name.clone(), data);
-        }
-
-        output
-    }
-}
-
-
 pub fn default_stat_groups() -> Vec<StatGroup>{
     vec![
         StatGroup::new("variance", "Variance")

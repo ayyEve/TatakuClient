@@ -87,7 +87,7 @@ impl ScoreMenu {
         if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
             let mut groups = gamemode_info.get_stat_groups();
             groups.extend(default_stat_groups());
-            let data = score.stats.into_groups(&groups);
+            let data = score.stats_into_groups(&groups);
 
             stats = default_stats_from_groups(&data);
             stats.extend(gamemode_info.stats_from_groups(&data));
@@ -188,7 +188,7 @@ impl ScoreMenu {
         if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
             let mut groups = gamemode_info.get_stat_groups();
             groups.extend(default_stat_groups());
-            let data = score.stats.into_groups(&groups);
+            let data = score.stats_into_groups(&groups);
 
             self.stats = default_stats_from_groups(&data);
             self.stats.extend(gamemode_info.stats_from_groups(&data));

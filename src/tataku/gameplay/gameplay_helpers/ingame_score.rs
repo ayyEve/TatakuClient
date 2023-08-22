@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 /// used for ingame_manager leaderboard
 #[derive(Clone, Debug)]
 pub struct IngameScore {
@@ -12,9 +11,6 @@ pub struct IngameScore {
 
     /// is this score from the internet? (ie not local)
     pub replay_location: ReplayLocation,
-
-    // snapshots
-    pub stats: GameplayStats,
 }
 impl IngameScore {
     pub fn new(score: Score, is_current: bool, is_previous: bool) -> Self {
@@ -23,7 +19,6 @@ impl IngameScore {
             is_current,
             is_previous,
             replay_location: ReplayLocation::Local,
-            stats: GameplayStats::default(),
         }
     }
 
@@ -50,6 +45,36 @@ impl IngameScore {
         }
 
         None
+    }
+
+    pub fn insert_stat<S:GameModeStat>(&mut self, stat: S, value: f32) {
+        let key = stat.name().to_owned();
+
+        if let Some(values) = self.score.stat_data.get_mut(&key) {
+            values.push(value)
+        } else {
+            self.score.stat_data.insert(key, vec![value]);
+        }
+    }
+
+    /// group the data into sets of groups
+    /// the hashmap is indexed by the group name, and the data is a hashmap of stat name, and values for said stat
+    /// note that this will not include stats that dont have at least one value
+    pub fn stats_into_groups(&self, groups: &Vec<StatGroup>) -> HashMap<String, HashMap<String, Vec<f32>>> {
+        let mut output = HashMap::new();
+
+        for group in groups {
+            let mut data = HashMap::new();
+
+            for stat in group.stats.iter() {
+                if let Some(val) = self.score.stat_data.get(&stat.name().to_owned()) {
+                    data.insert(stat.name().to_owned(), val.clone());
+                }
+            }
+            output.insert(group.name.clone(), data);
+        }
+
+        output
     }
 
 }
