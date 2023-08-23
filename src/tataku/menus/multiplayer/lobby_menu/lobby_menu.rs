@@ -367,14 +367,14 @@ impl AsyncMenu<Game> for LobbyMenu {
     
         // check if a new beatmap was added
         if self.latest_beatmap_helper.update() {
-            let newest_map = self.latest_beatmap_helper.0.clone();
-
             // if the map that was just added is the lobby's map, set it as our current map
             let lobby_info = self.lobby_info();
             if let Some(beatmap) = &lobby_info.current_beatmap {
-                if beatmap.hash == newest_map.beatmap_hash {
-                    BEATMAP_MANAGER.write().await.set_current_beatmap(game, &newest_map, true).await;
-                    self.selected_beatmap = Some(newest_map);
+
+                let mut beatmap_manager = BEATMAP_MANAGER.write().await;
+                if let Some(beatmap) = beatmap_manager.get_by_hash(&beatmap.hash) {
+                    beatmap_manager.set_current_beatmap(game, &beatmap, true).await;
+                    self.selected_beatmap = Some(beatmap);
                     
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
                 }

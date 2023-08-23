@@ -50,13 +50,12 @@ impl SpectatorManager {
     }
 
     async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:String, mods_str:String, current_time:f32, speed: u16) {
+        trace!("Started watching host play a map");
         self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
 
         self.good_until = 0.0;
         self.map_length = 0.0;
         self.buffered_score_frames.clear();
-        // user started playing a map
-        trace!("Host started playing map");
 
         let mut mods = ModManager::new().with_speed(speed);
         mods.mods = Score::mods_from_string(mods_str);
@@ -100,7 +99,18 @@ impl SpectatorManager {
     }
 
     pub async fn update(&mut self, game: &mut Game) {
-        self.window_size.update();
+        // check for window size updates
+        if self.window_size.update() {
+            let window_size = (*self.window_size).clone();
+
+            if let Some(menu) = &mut self.score_menu {
+                menu.window_size_changed(window_size.clone()).await;
+            }
+
+            if let Some(game) = &mut self.game_manager {
+                game.window_size_changed(window_size.clone()).await;
+            }
+        }
 
         // (try to) read pending data from the online manager
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
@@ -124,6 +134,14 @@ impl SpectatorManager {
                 if &new_map.beatmap_hash == &current_map {
                     info!("starting map");
                     self.start_game(game, current_map, mode, mods, current_time, speed).await;
+                } else {
+                    info!("starting map");
+                    // if this wasnt the map we wanted, check to see if the map we wanted was added anyways
+                    // because it might have loaded a group of maps, and the one we wanted was loaded before the last map added
+                    let has_map = BEATMAP_MANAGER.read().await.get_by_hash(&current_map).is_some();
+                    if has_map {
+                        self.start_game(game, current_map, mode, mods, current_time, speed).await;
+                    }
                 }
             }
         }

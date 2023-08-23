@@ -981,19 +981,6 @@ impl Game {
             match *&ext {
                 // osu | quaver | ptyping zipped set file
                 "osz" | "qp" | "ptm" => {
-                    // if let Err(e) = std::fs::copy(path, format!("{}/{}", DOWNLOADS_DIR, filename.unwrap().to_str().unwrap())) {
-                    //     error!("Error copying file: {}", e);
-                    //     NotificationManager::add_error_notification(
-                    //         "Error copying file", 
-                    //         e
-                    //     ).await;
-                    // } else {
-                    //     NotificationManager::add_text_notification(
-                    //         "Set file added, it will be loaded soon...", 
-                    //         2_000.0, 
-                    //         Color::BLUE
-                    //     ).await;
-                    // }
                     match Zip::extract_single(path.to_path_buf(), SONGS_DIR, true, ArchiveDelete::OnSuccess).await {
                         Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
                         Ok(path) => {
