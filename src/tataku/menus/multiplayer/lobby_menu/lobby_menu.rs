@@ -27,7 +27,9 @@ pub struct LobbyMenu {
     
     menu_game: MenuGameHelper,
 
-    slot_senders: HashMap<u8, (AsyncSender<(LobbySlot, bool)>, AsyncSender<Option<LobbyPlayerInfo>>)>
+    since_last_escape: Instant,
+
+    slot_senders: HashMap<u8, (AsyncSender<(LobbySlot, bool)>, AsyncSender<Option<LobbyPlayerInfo>>)>,
 }
 impl LobbyMenu {
     pub async fn new() -> Self {
@@ -77,6 +79,7 @@ impl LobbyMenu {
             
             latest_beatmap_helper: LatestBeatmapHelper::new(),
             menu_game,
+            since_last_escape: Instant::now(),
 
             menu: None,
             on_beatmap_select: None,
@@ -461,6 +464,7 @@ impl AsyncMenu<Game> for LobbyMenu {
         }
         
         if let Some(tag) = self.right_scrollable.on_click_tagged(pos, button, mods) {
+            // info!("clicked: {tag}");
             match &*tag {
                 "beatmap_select" => {
                     if self.is_host() {
@@ -557,6 +561,16 @@ impl AsyncMenu<Game> for LobbyMenu {
     }
     async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
         if let Some(manager) = &mut self.manager {
+            // if ingame and escape is pressed
+            if key == Key::Escape {
+                if self.since_last_escape.elapsed_and_reset() < 1_000.0 {
+                    self.quit_lobby(game).await;
+                    return;
+                } else {
+                    NotificationManager::add_text_notification("Press escape again to quit the lobby", 3_000.0, Color::BLUE).await;
+                }
+            }
+
             manager.key_down(key, mods).await;
             return;
         }
