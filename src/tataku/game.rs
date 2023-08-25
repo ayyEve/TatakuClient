@@ -981,7 +981,7 @@ impl Game {
             match *&ext {
                 // osu | quaver | ptyping zipped set file
                 "osz" | "qp" | "ptm" => {
-                    match Zip::extract_single(path.to_path_buf(), SONGS_DIR, true, ArchiveDelete::OnSuccess).await {
+                    match Zip::extract_single(path.to_path_buf(), SONGS_DIR, true, ArchiveDelete::Always).await {
                         Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
                         Ok(path) => {
                             // load the map
