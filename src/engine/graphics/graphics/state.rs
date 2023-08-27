@@ -471,6 +471,7 @@ impl GraphicsState {
                 if recorded_buffer.scissor.unwrap() != current_scissor {
                     current_scissor = recorded_buffer.scissor.unwrap();
                     let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
+                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
 
                     render_pass.set_scissor_rect(
                         x.clamp(0.0, renderable.size.x) as u32, 
