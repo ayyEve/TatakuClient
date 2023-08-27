@@ -4,7 +4,7 @@ pub struct ReserveData<'a> {
     pub vtx: &'a mut [Vertex],
     pub idx: &'a mut [u32],
     pub idx_offset: u64,
-    pub scissor_index: u32,
+    // pub scissor_index: u32,
 }
 impl<'a> ReserveData<'a> {
     pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {

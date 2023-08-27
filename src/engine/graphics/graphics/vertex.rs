@@ -8,7 +8,7 @@ pub struct Vertex {
     pub tex_coords: [f32; 2],
     pub tex_index: i32,
     pub color: [f32; 4],
-    pub scissor_index: u32
+    // pub scissor_index: u32
 }
 #[cfg(feature="graphics")]
 impl Vertex {
@@ -41,12 +41,12 @@ impl Vertex {
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float32x4,
                 },
-                // scissor index
-                wgpu::VertexAttribute {
-                    offset: (std::mem::size_of::<[f32;2]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>() + std::mem::size_of::<[f32;4]>()) as wgpu::BufferAddress,
-                    shader_location: 4,
-                    format: wgpu::VertexFormat::Uint32,
-                },
+                // // scissor index
+                // wgpu::VertexAttribute {
+                //     offset: (std::mem::size_of::<[f32;2]>() + std::mem::size_of::<[f32;2]>() + std::mem::size_of::<i32>() + std::mem::size_of::<[f32;4]>()) as wgpu::BufferAddress,
+                //     shader_location: 4,
+                //     format: wgpu::VertexFormat::Uint32,
+                // },
             ]
         }
     }
@@ -68,7 +68,7 @@ impl Default for Vertex {
             tex_coords: [0.0; 2],
             tex_index: -1,
             color: [0.0; 4],
-            scissor_index: 0,
+            // scissor_index: 0,
         }
     }
 }
