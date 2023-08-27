@@ -9,6 +9,7 @@ mod loading_menu;
 mod settings_menu;
 mod beatmap_select;
 mod menu_game_helper;
+mod music_player_menu;
 
 pub use menu::*;
 pub use dialogs::*;
@@ -21,3 +22,4 @@ pub use loading_menu::*;
 pub use settings_menu::*;
 pub use beatmap_select::*;
 pub use menu_game_helper::*;
+pub use music_player_menu::*;

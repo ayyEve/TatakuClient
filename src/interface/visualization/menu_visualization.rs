@@ -226,7 +226,7 @@ impl Visualization for MenuVisualization {
             if val <= CUTOFF { continue }
 
             let factor = (i as f32 + 2.0).log10();
-            let l = self.current_inner_radius + val as f32 * factor * self.bar_height * BAR_MULT;
+            let l = self.current_inner_radius + val * factor * self.bar_height * BAR_MULT;
 
             let theta = self.rotation + a * i as f32;
             let cos = theta.cos();
