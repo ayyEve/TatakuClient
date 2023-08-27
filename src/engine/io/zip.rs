@@ -3,7 +3,7 @@ const ATTEMPTS: usize = 5;
 
 pub struct Zip;
 impl Zip {
-    pub async fn extract_all(in_folder: impl AsRef<Path>, out_folder: impl AsRef<Path>) -> Vec<String> {
+    pub async fn extract_all(in_folder: impl AsRef<Path>, out_folder: impl AsRef<Path>, delete_archive: ArchiveDelete) -> Vec<String> {
         let in_folder = in_folder.as_ref();
         let out_folder = out_folder.as_ref();
 
@@ -15,7 +15,7 @@ impl Zip {
         for filename in files.filter_map(|f|f.ok()) {
             trace!("Archive chcking file {:?}", filename);
             
-            match Self::extract_single(filename.path(), out_folder, true, ArchiveDelete::Never).await {
+            match Self::extract_single(filename.path(), out_folder, true, delete_archive).await {
                 Ok(path) => paths.push(path),
                 Err(e) => {
                     error!("Error extracting zip archive: {e}");
@@ -99,6 +99,7 @@ impl Zip {
 }
 
 #[allow(unused)]
+#[derive(Copy, Clone)]
 pub enum ArchiveDelete {
     Always,
     OnSuccess,

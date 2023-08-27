@@ -68,7 +68,7 @@ impl BeatmapManager {
     // download checking
     async fn check_downloads() {
         if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
-            let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR).await;
+            let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR, ArchiveDelete::Always).await;
             info!("checking folders {folders:#?}");
 
             for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f, true).await; }
