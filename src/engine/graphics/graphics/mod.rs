@@ -14,6 +14,8 @@ mod reserve_data;
 mod render_buffer;
 #[cfg(feature="graphics")]
 mod particle_system;
+#[cfg(feature="graphics")]
+mod slider_render;
 
 #[cfg(feature="graphics")]
 pub use state::*;
@@ -29,3 +31,6 @@ pub use render_buffer::*;
 
 #[cfg(feature="graphics")]
 pub use particle_system::*;
+
+#[cfg(feature="graphics")]
+pub use slider_render::*;

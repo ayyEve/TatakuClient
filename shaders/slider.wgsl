@@ -1,11 +1,11 @@
 struct VertexInputs {
-    @location(0) pos: vec3<f32>,
+    @location(0) pos: vec2<f32>,
 
-    @location(0) grid_origin: vec2<f32>,
-    @location(1) grid_size: vec2<u32>,
-    @location(2) body_color: vec4<f32>,
-    @location(3) border_color: vec4<f32>,
-    @location(4) grid_cells: array<GridCell>,
+    @location(1) grid_origin: vec2<f32>,
+    @location(2) grid_size: vec2<u32>,
+    @location(3) grid_index: u32,
+    @location(4) body_color: vec4<f32>,
+    @location(5) border_color: vec4<f32>,
 }
 
 struct FragmentInputs {
@@ -16,14 +16,15 @@ struct FragmentInputs {
     @location(0) grid_origin: vec2<f32>,
     // Size of the slider in grid units
     @location(1) grid_size: vec2<u32>,
+    // Grid cells of this slider. This represents the start index into the
+    // `slider_grids` array, where the length of the slice is the area of the
+    // grid, as given by `grid_size`.
+    @location(2) grid_index: u32,
 
     // Colour of the body of slider
-    @location(2) body_color: vec4<f32>, // todo: consider interpolating between two colours by distance
+    @location(3) body_color: vec4<f32>, // todo: consider interpolating between two colours by distance
     // Colour of the border of the slider
-    @location(3) border_color: vec4<f32>,
-
-    // Grid cells of this slider
-    @location(4) grid_cells: array<GridCell>,
+    @location(4) border_color: vec4<f32>,
 }
 
 // Slice into the index buffer representing the grid cell
@@ -46,13 +47,13 @@ struct LineSegment {
 fn vs_main(input: VertexInputs) -> FragmentInputs {
     var output: FragmentInputs;
 
-    output.position = projection_matrix * vec4<f32>(input.pos, 1.0);
+    output.position = projection_matrix * vec4<f32>(input.pos, 0.0, 1.0);
 
     output.grid_origin = input.grid_origin;
     output.grid_size = input.grid_size;
+    output.grid_index = input.grid_index;
     output.body_color = input.body_color;
     output.border_color = input.border_color;
-    output.grid_cells = input.grid_cells;
 
     return output;
 }
@@ -62,11 +63,14 @@ fn vs_main(input: VertexInputs) -> FragmentInputs {
 // Width of border around slider body
 @group(1) @binding(1) var<uniform> border_width: f32;
 
-// Line segments of all sliders in the current render
-@group(1) @binding(2) var<storage> line_segments: array<LineSegment>;
+// Grids for different sliders. Slices of this array represent an individual slider grid,
+// where each value is a slice into the `grid_cells` array.
+@group(1) @binding(2) var<storage> slider_grids: array<GridCell>;
 // Grid cells for different sliders. Slices of this array represent an individual cell,
 // where each value is an index into the `line_segments` array.
 @group(1) @binding(3) var<storage> grid_cells: array<u32>;
+// Line segments of all sliders in the current render
+@group(1) @binding(4) var<storage> line_segments: array<LineSegment>;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
@@ -93,9 +97,9 @@ fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
             if x <= 0 || x >= i32(input.grid_size.x) { continue; }
 
             // Row major: y position * row length + x position
-            let cell_index = y * i32(input.grid_size.x) + x;
+            let cell_index = u32(y) * input.grid_size.x + u32(x);
 
-            let cell_slice = input.grid_cells[cell_index];
+            let cell_slice = slider_grids[input.grid_index + cell_index];
 
             // Iterate over all line segments in cell
             for(var i = cell_slice.index; i < cell_slice.index + cell_slice.length; i++) {
