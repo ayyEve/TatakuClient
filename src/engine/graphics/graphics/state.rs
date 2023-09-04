@@ -23,8 +23,9 @@ pub struct GraphicsState {
     // blending_pipeline: wgpu::RenderPipeline,
     // no_blending_pipeline: wgpu::RenderPipeline,
 
-    render_buffer_queue: RenderBufferQueue<RenderBuffer>,
-    slider_render_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
+    vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
+    slider_vertex_buffer_queue: RenderBufferQueue<SliderVertexBuffer>,
+    slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
 
 
     // recorded_buffers: Vec<RenderBuffer>,
@@ -457,8 +458,9 @@ impl GraphicsState {
             render_target_atlas,
             atlas_texture,
 
-            render_buffer_queue: RenderBufferQueue::new(),
-            slider_render_buffer_queue: RenderBufferQueue::new(),
+            vertex_buffer_queue: RenderBufferQueue::new(),
+            slider_buffer_queue: RenderBufferQueue::new(),
+            slider_vertex_buffer_queue: RenderBufferQueue::new(),
 
             // recorded_buffers: Vec::with_capacity(3),
             // queued_buffers: Vec::with_capacity(3),
@@ -478,8 +480,9 @@ impl GraphicsState {
             screenshot_pending: None,
             particle_system,
         };
-        s.render_buffer_queue.create_render_buffer(&s.device);
-        s.slider_render_buffer_queue.create_render_buffer(&s.device);
+        s.vertex_buffer_queue.create_render_buffer(&s.device);
+        s.slider_buffer_queue.create_render_buffer(&s.device);
+        s.slider_vertex_buffer_queue.create_render_buffer(&s.device);
         // s.create_render_buffer();
         s
     }
@@ -575,7 +578,7 @@ impl GraphicsState {
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
 
-            for recorded_buffer in self.render_buffer_queue.recorded_buffers().iter() {
+            for recorded_buffer in self.vertex_buffer_queue.recorded_buffers().iter() {
                 if recorded_buffer.blend_mode != current_blend_mode {
                     current_blend_mode = recorded_buffer.blend_mode;
                     let Some(pipeline) = self.pipelines.get(&recorded_buffer.blend_mode) else {
@@ -1048,8 +1051,9 @@ impl GraphicsState {
     // }
 
     pub fn begin(&mut self) {
-        self.render_buffer_queue.begin();
-        self.slider_render_buffer_queue.begin();
+        self.vertex_buffer_queue.begin();
+        self.slider_buffer_queue.begin();
+        self.slider_vertex_buffer_queue.begin();
 
         // // Go through all recorded buffers, and set their used counts to 0, resetting them for the next use
         // for i in self.recorded_buffers.iter_mut() {
@@ -1066,8 +1070,9 @@ impl GraphicsState {
     }
 
     pub fn end(&mut self) {
-        self.render_buffer_queue.end(&self.queue);
-        self.slider_render_buffer_queue.end(&self.queue);
+        self.vertex_buffer_queue.end(&self.queue);
+        self.slider_vertex_buffer_queue.end(&self.queue);
+        self.slider_buffer_queue.end(&self.queue);
         // self.dump();
     }
 
@@ -1084,15 +1089,15 @@ impl GraphicsState {
     //     // }
     // }
 
-    /// returns reserve data and scissor index if applicable
-    fn reserve(
+    /// returns reserve data
+    fn reserve_vertex(
         &mut self,
         vtx_count: u64,
         idx_count: u64,
         scissor: Scissor,
-        blend_mode: BlendMode,
-    ) {
-        let Some(mut recording_buffer) = self.render_buffer_queue.recording_buffer() else { return };
+        blend_mode: BlendMode
+    ) -> Option<VertexReserveData> {
+        let mut recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
@@ -1102,8 +1107,8 @@ impl GraphicsState {
         || !scissor_check
         || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            self.render_buffer_queue.dump_and_next(&self.queue, &self.device);
-            recording_buffer = self.render_buffer_queue.recording_buffer().unwrap();
+            self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
+            recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
 
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
@@ -1118,42 +1123,135 @@ impl GraphicsState {
         recording_buffer.used_indices += idx_count;
         recording_buffer.used_vertices += vtx_count;
 
-    }
-
-    fn reserve_regular(
-        &mut self,
-        vtx_count: u64,
-        idx_count: u64,
-        scissor: Scissor,
-        blend_mode: BlendMode
-    ) -> Option<ReserveData<Vertex>> {
-        self.reserve(vtx_count, idx_count, scissor, blend_mode);
-        let recording_buffer = self.render_buffer_queue.recording_buffer()?;
         let used_vertices = recording_buffer.used_vertices;
         let used_indices = recording_buffer.used_indices;
 
-        Some(ReserveData {
-            vtx: &mut self.render_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut self.render_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+        Some(VertexReserveData {
+            vtx: &mut self.vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut self.vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
             idx_offset: used_vertices - vtx_count,
         })
     }
 
-    fn reserve_slider(
+    /// returns reserve data
+    fn reserve_slider_vertex(
         &mut self,
         vtx_count: u64,
         idx_count: u64,
         scissor: Scissor,
-    ) -> Option<ReserveData<SliderVertex>> {
-        self.reserve(vtx_count, idx_count, scissor, BlendMode::Slider);
-        let recording_buffer = self.slider_render_buffer_queue.recording_buffer()?;
+    ) -> Option<SliderVertexReserveData> {
+        let mut recording_buffer = self.slider_vertex_buffer_queue.recording_buffer()?;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
-        // Some(ReserveData {
-        //     vtx: &mut self.cpu_slider_vtx[(recording_buffer.used_vertices - vtx_count) as usize .. recording_buffer.used_vertices as usize],
-        //     idx: &mut self.cpu_idx[(recording_buffer.used_indices - idx_count) as usize .. recording_buffer.used_indices as usize],
-        //     idx_offset: recording_buffer.used_vertices - vtx_count,
-        // })
-        todo!()
+        if !scissor_check
+        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
+            self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
+            recording_buffer = self.slider_vertex_buffer_queue.recording_buffer()?;
+
+            recording_buffer.scissor = Some(scissor);
+        }
+        if recording_buffer.scissor.is_none() {
+            recording_buffer.scissor = Some(scissor);
+        }
+
+        recording_buffer.used_indices += idx_count;
+        recording_buffer.used_vertices += vtx_count;
+
+        let used_vertices = recording_buffer.used_vertices;
+        let used_indices = recording_buffer.used_indices;
+
+        Some(SliderVertexReserveData {
+            vtx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            idx_offset: used_vertices - vtx_count,
+        })
+    }
+
+    // quad is tl,tr, bl,br
+    fn reserve_slider_quad(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+        scissor: Scissor,
+        slider_index: u32
+    ) {
+        let Some(mut reserved) = self.reserve_slider_vertex(4, 6, scissor) else { return };
+
+        let vertices = quad.into_iter().map(|p|SliderVertex {
+            position: transform.mul_v2(p).into(),
+            slider_index,
+        }).collect::<Vec<_>>();
+
+        let offset = reserved.idx_offset as u32;
+        reserved.copy_in(&vertices, &[
+            0 + offset,
+            2 + offset,
+            1 + offset,
+
+            1 + offset,
+            2 + offset,
+            3 + offset,
+        ]);
+    }
+
+    fn reserve_slider(
+        &mut self,
+        circle_radius: f32,
+        border_width: f32,
+
+        quad: [Vector2; 4],
+        transform: Matrix,
+        scissor: Scissor,
+
+
+        //
+        slider_grid_count: u64,
+        grid_cell_count: u64,
+        line_segment_count: u64,
+    ) -> Option<SliderReserveData> {
+        self.slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
+        self.slider_buffer_queue.cpu_cache.border_width = border_width;
+
+        let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+
+        if (recording_buffer.used_slider_data + 1 >= EXPECTED_SLIDER_COUNT)
+        || (recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT)
+        || (recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT)
+        || (recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT)
+        {
+            self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
+            recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+        }
+
+
+
+        recording_buffer.used_slider_data += 1;
+        recording_buffer.used_slider_grids += slider_grid_count;
+        recording_buffer.used_grid_cells += grid_cell_count;
+        recording_buffer.used_line_segments += line_segment_count;
+
+        let used_slider_grids = recording_buffer.used_slider_grids;
+        let used_grid_cells = recording_buffer.used_grid_cells;
+        let used_line_segments = recording_buffer.used_line_segments;
+
+        // reserve slider vertex data
+        let slider_index = recording_buffer.used_slider_data;
+        self.reserve_slider_quad(quad, transform, scissor, slider_index as u32);
+
+
+        // vtx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+        // idx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+        // idx_offset: used_vertices - vtx_count,
+        Some(SliderReserveData {
+            slider_data: &mut self.slider_buffer_queue.cpu_cache.slider_data[slider_index as usize],
+            slider_grids: &mut self.slider_buffer_queue.cpu_cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
+            grid_cells: &mut self.slider_buffer_queue.cpu_cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
+            line_segments: &mut self.slider_buffer_queue.cpu_cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
+            slider_grid_offset: (used_slider_grids - slider_grid_count) as u32,
+            grid_cell_offset: (used_grid_cells - grid_cell_count) as u32,
+            line_segment_offset: (used_line_segments - line_segment_count) as u32,
+        })
     }
 
     fn reserve_tex_quad(
@@ -1167,7 +1265,7 @@ impl GraphicsState {
         scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve_regular(4, 6, scissor, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
 
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -1235,7 +1333,7 @@ impl GraphicsState {
         scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve_regular(4, 6, scissor, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p: Vector2|Vertex {
@@ -1262,14 +1360,15 @@ impl GraphicsState {
         transform: Matrix,
         scissor: Scissor,
 
-        grid_origin: [f32; 2],
-        grid_size: [u32; 2],
-        grid_index: u32,
-        body_color: [f32; 4],
-        border_color: [f32; 4],
-    ) {
-        let Some(mut reserved) = self.reserve_slider(4, 6, scissor) else { return };
+        circle_radius: f32,
+        border_width: f32,
 
+        slider_data: &SliderData,
+        slider_grids: &Vec<GridCell>,
+        grid_cells: &Vec<u32>,
+        line_segments: &Vec<u32>
+    ) {
+        let Some(mut reserved) = self.reserve_slider(circle_radius, border_width, quad, transform, scissor, slider_grids.len() as u64, grid_cells.len() as u64, line_segments.len() as u64) else { return };
 
 
     }
@@ -1435,7 +1534,7 @@ impl GraphicsState {
 
         }
 
-        let mut reserved = self.reserve_regular(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
+        let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {

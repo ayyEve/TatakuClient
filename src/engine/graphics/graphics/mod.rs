@@ -9,7 +9,6 @@ mod fake_state;
 mod atlas;
 mod vertex;
 mod blend_mode;
-mod reserve_data;
 #[cfg(feature="graphics")]
 mod buffers;
 #[cfg(feature="graphics")]
@@ -25,7 +24,6 @@ pub use fake_state::*;
 pub use atlas::*;
 pub use vertex::*;
 pub use blend_mode::*;
-pub use reserve_data::*;
 #[cfg(feature="graphics")]
 pub use buffers::*;
 

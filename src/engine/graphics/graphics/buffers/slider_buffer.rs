@@ -5,10 +5,10 @@ use wgpu::{
 };
 use crate::prelude::*;
 
-const EXPECTED_SLIDER_COUNT: u64 = 500;
-const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
-const GRID_CELL_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16;
-const LINE_SEGMENT_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16 * 2;
+pub const EXPECTED_SLIDER_COUNT: u64 = 500;
+pub const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
+pub const GRID_CELL_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16;
+pub const LINE_SEGMENT_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16 * 2;
 
 pub struct SliderRenderBuffer {
     pub circle_radius: Buffer,
@@ -96,5 +96,35 @@ impl Default for CpuSliderRenderBuffer {
             grid_cells: vec![Default::default(); GRID_CELL_COUNT as usize],
             line_segments: vec![Default::default(); LINE_SEGMENT_COUNT as usize],
         }
+    }
+}
+
+pub struct SliderReserveData<'a> {
+    pub slider_data: &'a mut SliderData,
+    pub slider_grids: &'a mut [GridCell],
+    pub grid_cells: &'a mut [u32],
+    pub line_segments: &'a mut [LineSegment],
+
+    pub slider_grid_offset: u32,
+    pub grid_cell_offset: u32,
+    pub line_segment_offset: u32,
+}
+
+impl<'a> SliderReserveData<'a> {
+    pub fn copy_in(
+        &mut self,
+        slider_data: &SliderData,
+        slider_grids: &[GridCell],
+        grid_cells: &[u32],
+        line_segments: &[LineSegment]
+    ) {
+        *self.slider_data = slider_data.clone();
+        self.slider_grids.copy_from_slice(slider_grids);
+        self.grid_cells.copy_from_slice(grid_cells);
+        self.line_segments.copy_from_slice(line_segments);
+
+        // for i in 0..slider_grids.len() { self.slider_grids[i] = slider_grids[i] }
+        // for i in 0..grid_cells.len() { self.grid_cells[i] = grid_cells[i] }
+        // for i in 0..line_segments.len() { self.line_segments[i] = line_segments[i] }
     }
 }

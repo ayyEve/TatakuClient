@@ -9,7 +9,7 @@ const QUAD_PER_BUF:u64 = 3000;
 const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;
 const IDX_PER_BUF:u64 = QUAD_PER_BUF * 6;
 
-pub struct RenderBuffer {
+pub struct VertexBuffer {
     pub blend_mode: BlendMode,
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
@@ -25,8 +25,8 @@ pub struct RenderBuffer {
     // recording_periods_since_last_use: usize
 }
 
-impl RenderBufferable for RenderBuffer {
-    type Cache = CpuRenderBuffer;
+impl RenderBufferable for VertexBuffer {
+    type Cache = CpuVertexBuffer;
 
     fn reset(&mut self) {
         self.blend_mode = BlendMode::None;
@@ -46,7 +46,7 @@ impl RenderBufferable for RenderBuffer {
 
 
     fn create_new_buffer(device: &Device) -> Self {
-        RenderBuffer {
+        VertexBuffer {
             blend_mode: BlendMode::None,
             scissor: None,
             vertex_buffer: device.create_buffer(&wgpu::BufferDescriptor {
@@ -67,15 +67,31 @@ impl RenderBufferable for RenderBuffer {
     }
 }
 
-pub struct CpuRenderBuffer {
+pub struct CpuVertexBuffer {
     pub cpu_vtx: Vec<Vertex>,
     pub cpu_idx: Vec<u32>,
 }
-impl Default for CpuRenderBuffer {
+impl Default for CpuVertexBuffer {
     fn default() -> Self {
         Self {
             cpu_vtx: vec![Vertex::default(); VTX_PER_BUF as usize],
             cpu_idx: vec![0; IDX_PER_BUF as usize],
         }
+    }
+}
+
+
+pub struct VertexReserveData<'a> {
+    pub vtx: &'a mut [Vertex],
+    pub idx: &'a mut [u32],
+    pub idx_offset: u64,
+}
+impl<'a> VertexReserveData<'a> {
+    pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {
+        // std::mem::swap(vtx, self.vtx);
+        // std::mem::swap(idx, self.idx);
+
+        for i in 0..vtx.len() { self.vtx[i] = vtx[i] }
+        for i in 0..idx.len() { self.idx[i] = idx[i] }
     }
 }

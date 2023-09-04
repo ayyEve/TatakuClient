@@ -1,7 +1,9 @@
 mod buffer_queue;
-mod render_buffer;
+mod vertex_buffer;
 mod slider_buffer;
+mod slider_vertex_buffer;
 
 pub use buffer_queue::*;
-pub use render_buffer::*;
+pub use vertex_buffer::*;
 pub use slider_buffer::*;
+pub use slider_vertex_buffer::*;
