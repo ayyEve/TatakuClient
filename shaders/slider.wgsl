@@ -1,17 +1,18 @@
 struct VertexInputs {
     @location(0) pos: vec2<f32>,
 
-    @location(1) grid_origin: vec2<f32>,
-    @location(2) grid_size: vec2<u32>,
-    @location(3) grid_index: u32,
-    @location(4) body_color: vec4<f32>,
-    @location(5) border_color: vec4<f32>,
+    @location(1) slider_index: u32,
 }
 
 struct FragmentInputs {
     //The position of the fragment
     @builtin(position) position: vec4<f32>,
 
+    // Index into the `slider_data` array.
+    @location(0) slider_index: u32,
+}
+
+struct SliderData {
     // Origin position of grid in viewport space
     @location(0) grid_origin: vec2<f32>,
     // Size of the slider in grid units
@@ -49,11 +50,7 @@ fn vs_main(input: VertexInputs) -> FragmentInputs {
 
     output.position = projection_matrix * vec4<f32>(input.pos, 0.0, 1.0);
 
-    output.grid_origin = input.grid_origin;
-    output.grid_size = input.grid_size;
-    output.grid_index = input.grid_index;
-    output.body_color = input.body_color;
-    output.border_color = input.border_color;
+    output.slider_index = input.slider_index;
 
     return output;
 }
@@ -63,22 +60,27 @@ fn vs_main(input: VertexInputs) -> FragmentInputs {
 // Width of border around slider body
 @group(1) @binding(1) var<uniform> border_width: f32;
 
+// Per slider data
+@group(1) @binding(2) var<storage> slider_data: array<SliderData>;
+
 // Grids for different sliders. Slices of this array represent an individual slider grid,
 // where each value is a slice into the `grid_cells` array.
-@group(1) @binding(2) var<storage> slider_grids: array<GridCell>;
+@group(1) @binding(3) var<storage> slider_grids: array<GridCell>;
 // Grid cells for different sliders. Slices of this array represent an individual cell,
 // where each value is an index into the `line_segments` array.
-@group(1) @binding(3) var<storage> grid_cells: array<u32>;
+@group(1) @binding(4) var<storage> grid_cells: array<u32>;
 // Line segments of all sliders in the current render
-@group(1) @binding(4) var<storage> line_segments: array<LineSegment>;
+@group(1) @binding(5) var<storage> line_segments: array<LineSegment>;
 
 @fragment
 fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     let cell_size = circle_radius + border_width;
 
+    let slider = slider_data[input.slider_index];
+
     // Calculate the index of the grid cell we are currently in
-    let grid_index = floor((input.position.xy - input.grid_origin) / cell_size);
-    let grid_index = vec2(i32(grid_index.x), i32(grid_index.y));
+    let grid_index_bad = floor((input.position.xy - slider.grid_origin) / cell_size);
+    let grid_index = vec2(i32(grid_index_bad.x), i32(grid_index_bad.y));
 
     // Set initial (square) distance to be larger than full slider radius.
     // Arbitrary amount.
@@ -90,16 +92,16 @@ fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     // Row major
     for(var y = grid_index.y - 1; y <= grid_index.y + 1; y++) {
         // Bounds check
-        if y <= 0 || y >= i32(input.grid_size.y) { continue; }
+        if y <= 0 || y >= i32(slider.grid_size.y) { continue; }
 
         for(var x = grid_index.x - 1; x <= grid_index.x + 1; x++) {
             // Bounds check
-            if x <= 0 || x >= i32(input.grid_size.x) { continue; }
+            if x <= 0 || x >= i32(slider.grid_size.x) { continue; }
 
             // Row major: y position * row length + x position
-            let cell_index = u32(y) * input.grid_size.x + u32(x);
+            let cell_index = u32(y) * slider.grid_size.x + u32(x);
 
-            let cell_slice = slider_grids[input.grid_index + cell_index];
+            let cell_slice = slider_grids[slider.grid_index + cell_index];
 
             // Iterate over all line segments in cell
             for(var i = cell_slice.index; i < cell_slice.index + cell_slice.length; i++) {
@@ -141,9 +143,9 @@ fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     }
 
     if quit_early {
-        return input.body_color;
+        return slider.body_color;
     } else if distance <= cell_size * cell_size {
-        return input.border_color
+        return slider.border_color;
     } else {
         discard;
     }
@@ -151,5 +153,5 @@ fn fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
 
 fn square_distance(a: vec2<f32>, b: vec2<f32>) -> f32 {
     let c = b-a;
-    dot(c,c)
+    return dot(c,c);
 }

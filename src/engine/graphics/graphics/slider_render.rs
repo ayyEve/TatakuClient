@@ -22,10 +22,17 @@ pub struct SliderRender {
 
 /// Vertex buffer layout for sliders
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct SliderBuffer {
+#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SliderVertex {
     pub position: [f32; 2],
 
+    pub slider_index: u32,
+}
+
+/// Vertex buffer layout for sliders
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SliderData {
     /// Origin position of grid in viewport space
     pub grid_origin: [f32; 2],
     /// Size of the slider in grid units
@@ -43,7 +50,7 @@ pub struct SliderBuffer {
 
 /// Slice into the index buffer representing the grid cell
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GridCell {
     /// Starting index for slice in `grid_cells` array
     pub index: u32,
@@ -52,13 +59,13 @@ pub struct GridCell {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LineSegment {
     pub p1: [f32; 2],
     pub p2: [f32; 2],
 }
 
-impl SliderBuffer {
+impl SliderVertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         // todo: convert to macro
 
@@ -72,35 +79,11 @@ impl SliderBuffer {
                     shader_location: 0,
                     format: wgpu::VertexFormat::Float32x2,
                 },
-                // grid origin
+                // slider index
                 wgpu::VertexAttribute {
                     offset: size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                // grid size
-                wgpu::VertexAttribute {
-                    offset: (2 * size_of::<[f32; 2]>()) as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Uint32x2,
-                },
-                // grid index
-                wgpu::VertexAttribute {
-                    offset: (2 * size_of::<[f32; 2]>() + size_of::<[u32; 2]>()) as wgpu::BufferAddress,
-                    shader_location: 3,
                     format: wgpu::VertexFormat::Uint32,
-                },
-                // body color
-                wgpu::VertexAttribute {
-                    offset: (2 * size_of::<[f32; 2]>() + size_of::<[u32; 2]>() + size_of::<u32>()) as wgpu::BufferAddress,
-                    shader_location: 4,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                // border color
-                wgpu::VertexAttribute {
-                    offset: (2 * size_of::<[f32; 2]>() + size_of::<[u32; 2]>() + size_of::<u32>() + size_of::<[f32; 4]>()) as wgpu::BufferAddress,
-                    shader_location: 5,
-                    format: wgpu::VertexFormat::Float32x4,
                 },
             ]
         }

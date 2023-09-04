@@ -11,7 +11,7 @@ mod vertex;
 mod blend_mode;
 mod reserve_data;
 #[cfg(feature="graphics")]
-mod render_buffer;
+mod buffers;
 #[cfg(feature="graphics")]
 mod particle_system;
 #[cfg(feature="graphics")]
@@ -27,7 +27,7 @@ pub use vertex::*;
 pub use blend_mode::*;
 pub use reserve_data::*;
 #[cfg(feature="graphics")]
-pub use render_buffer::*;
+pub use buffers::*;
 
 #[cfg(feature="graphics")]
 pub use particle_system::*;

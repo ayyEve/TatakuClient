@@ -1,13 +1,13 @@
 use crate::prelude::*;
 
-pub struct ReserveData<'a> {
-    pub vtx: &'a mut [Vertex],
+pub struct ReserveData<'a, V> {
+    pub vtx: &'a mut [V],
     pub idx: &'a mut [u32],
     pub idx_offset: u64,
     // pub scissor_index: u32,
 }
-impl<'a> ReserveData<'a> {
-    pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {
+impl<'a, V: Copy> ReserveData<'a, V> {
+    pub fn copy_in(&mut self, vtx: &[V], idx: &[u32]) {
         // std::mem::swap(vtx, self.vtx);
         // std::mem::swap(idx, self.idx);
 

@@ -18,18 +18,23 @@ pub struct GraphicsState {
     device: wgpu::Device,
     queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
-    
+
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
     // blending_pipeline: wgpu::RenderPipeline,
     // no_blending_pipeline: wgpu::RenderPipeline,
-    
-    recorded_buffers: Vec<RenderBuffer>,
-    queued_buffers: Vec<RenderBuffer>,
-    recording_buffer: Option<RenderBuffer>,
-    
-    // The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
-    cpu_vtx: Vec<Vertex>,
-    cpu_idx: Vec<u32>,
+
+    render_buffer_queue: RenderBufferQueue<RenderBuffer>,
+    slider_render_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
+
+
+    // recorded_buffers: Vec<RenderBuffer>,
+    // queued_buffers: Vec<RenderBuffer>,
+    // recording_buffer: Option<RenderBuffer>,
+
+    // // The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
+    // cpu_vtx: Vec<Vertex>,
+    // cpu_slider_vtx: Vec<SliderVertex>,
+    // cpu_idx: Vec<u32>,
     // cpu_scissor: Vec<[f32; 4]>,
 
     // texture_bind_group: wgpu::BindGroup,
@@ -61,7 +66,7 @@ impl GraphicsState {
             backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL,
             dx12_shader_compiler: Default::default(),
         });
-        
+
         // create the serface
         let surface = unsafe { instance.create_surface(window).unwrap() };
 
@@ -78,16 +83,16 @@ impl GraphicsState {
         // create device and queue
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                #[cfg(feature="texture_arrays")] 
+                #[cfg(feature="texture_arrays")]
                 features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
-                #[cfg(not(feature="texture_arrays"))] 
+                #[cfg(not(feature="texture_arrays"))]
                 features: wgpu::Features::default(),
                 limits: wgpu::Limits::default(),
                 label: None,
             },
             None,
         ).await.unwrap();
-        
+
         // no more comments good luck!
 
         let surface_caps = surface.get_capabilities(&adapter);
@@ -112,8 +117,8 @@ impl GraphicsState {
             #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader_with_tex_array.wgsl").into()),
             #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/shader.wgsl").into()),
         });
-        
-        
+
+
         #[cfg(feature="texture_arrays")]
         let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas group layout"),
@@ -198,9 +203,9 @@ impl GraphicsState {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer { 
-                        ty: wgpu::BufferBindingType::Uniform, 
-                        has_dynamic_offset: false, 
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: std::num::NonZeroU64::new(proj_matrix_size)
                     },
                     count: None,
@@ -232,28 +237,11 @@ impl GraphicsState {
             }
         );
 
-
-        // let scissor_buffer_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        //     label: Some("scissor buffer group layout"),
-        //     entries: &[
-        //         wgpu::BindGroupLayoutEntry {
-        //             binding: 0,
-        //             visibility: wgpu::ShaderStages::FRAGMENT,
-        //             ty: wgpu::BindingType::Buffer { 
-        //                 ty: wgpu::BufferBindingType::Uniform, 
-        //                 has_dynamic_offset: false, 
-        //                 min_binding_size: std::num::NonZeroU64::new(Self::QUAD_PER_BUF * std::mem::size_of::<[f32; 4]>() as u64)
-        //             },
-        //             count: None,
-        //         },
-        //     ],
-        // });
-
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
                 &projection_matrix_bind_group_layout,
-                &texture_bind_group_layout, 
+                &texture_bind_group_layout,
                 // &scissor_buffer_layout
             ],
             push_constant_ranges: &[],
@@ -261,20 +249,15 @@ impl GraphicsState {
 
 
         let mut pipelines = HashMap::new();
-
-        for (blend_mode, blend_state) in [
-            (BlendMode::AlphaBlending, wgpu::BlendState::ALPHA_BLENDING),
-            (BlendMode::AlphaOverwrite, wgpu::BlendState::REPLACE),
-            (BlendMode::PremultipliedAlpha, wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-            (BlendMode::AdditiveBlending, wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::One, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
-            }),
-            (BlendMode::SourceAlphaBlending, wgpu::BlendState {
-                color: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add },
-                alpha: wgpu::BlendComponent { src_factor: wgpu::BlendFactor::SrcAlpha, dst_factor: wgpu::BlendFactor::One, operation: wgpu::BlendOperation::Add }
-            }),
+        for blend_mode in [
+            BlendMode::AlphaBlending,
+            BlendMode::AlphaOverwrite,
+            BlendMode::PremultipliedAlpha,
+            BlendMode::AdditiveBlending,
+            BlendMode::SourceAlphaBlending,
         ] {
+            let blend_state = blend_mode.get_blend_state();
+
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(&format!("{blend_mode:?} Pipeline")),
                 layout: Some(&render_pipeline_layout),
@@ -305,13 +288,145 @@ impl GraphicsState {
                 multisample: wgpu::MultisampleState {
                     count: 1,
                     mask: !0,
-                    alpha_to_coverage_enabled: false, 
+                    alpha_to_coverage_enabled: false,
                 },
                 multiview: None,
             });
 
             pipelines.insert(blend_mode, pipeline);
         }
+
+        // create slider pipeline
+        {
+            let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Slider Shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/slider.wgsl").into()),
+            });
+
+            let slider_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("slider group layout"),
+                entries: &[
+                    // circle_radius
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<f32>() as u64)
+                        },
+                        count: None,
+                    },
+                    // border_radius
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<f32>() as u64)
+                        },
+                        count: None,
+                    },
+
+                    // slider_data
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<SliderData>() as u64 * 2)
+                        },
+                        count: None,
+                    },
+
+                    // slider_grids
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<GridCell>() as u64 * 2)
+                        },
+                        count: None,
+                    },
+
+                    // grid_cells
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64 * 2)
+                        },
+                        count: None,
+                    },
+
+                    // line_segments
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<LineSegment>() as u64 * 2)
+                        },
+                        count: None,
+                    },
+
+                ],
+            });
+
+            let slider_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Slider Pipeline Layout"),
+                bind_group_layouts: &[
+                    &projection_matrix_bind_group_layout,
+                    &slider_bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
+
+            let slider_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(&format!("Slider Pipeline")),
+                layout: Some(&slider_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &slider_shader,
+                    entry_point: "vs_main",
+                    buffers: &[ SliderVertex::desc() ],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &slider_shader,
+                    entry_point: "fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: config.format,
+                        blend: Some(BlendMode::AlphaOverwrite.get_blend_state()),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview: None,
+            });
+
+            pipelines.insert(BlendMode::Slider, slider_pipeline);
+        }
+
 
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -322,7 +437,7 @@ impl GraphicsState {
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
             ..Default::default()
-        }); 
+        });
 
         let atlas_size = device.limits().max_texture_dimension_2d.min(8192);
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
@@ -342,12 +457,16 @@ impl GraphicsState {
             render_target_atlas,
             atlas_texture,
 
-            recorded_buffers: Vec::with_capacity(3),
-            queued_buffers: Vec::with_capacity(3),
-            recording_buffer: None,
+            render_buffer_queue: RenderBufferQueue::new(),
+            slider_render_buffer_queue: RenderBufferQueue::new(),
 
-            cpu_vtx: vec![Vertex::default(); Self::VTX_PER_BUF as usize],
-            cpu_idx: vec![0; Self::IDX_PER_BUF as usize],
+            // recorded_buffers: Vec::with_capacity(3),
+            // queued_buffers: Vec::with_capacity(3),
+            // recording_buffer: None,
+
+            // cpu_vtx: vec![Vertex::default(); Self::VTX_PER_BUF as usize],
+            // cpu_slider_vtx: vec![SliderVertex::default(); Self::VTX_PER_BUF as usize],
+            // cpu_idx: vec![0; Self::IDX_PER_BUF as usize],
             // cpu_scissor: vec![[0.0; 4]; Self::QUAD_PER_BUF as usize],
 
             // texture_bind_group: atlas_texture.bind_group,
@@ -359,7 +478,9 @@ impl GraphicsState {
             screenshot_pending: None,
             particle_system,
         };
-        s.create_render_buffer();
+        s.render_buffer_queue.create_render_buffer(&s.device);
+        s.slider_render_buffer_queue.create_render_buffer(&s.device);
+        // s.create_render_buffer();
         s
     }
 
@@ -390,10 +511,10 @@ impl GraphicsState {
         let output = self.surface.get_current_texture()?;
         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let size = output.texture.size();
-        
+
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
-        
+
         self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR, Vector2::new(size.width as f32, size.height as f32)))?;
 
         let width = output.texture.width();
@@ -402,18 +523,18 @@ impl GraphicsState {
         output.present();
 
         if let Some(screenshot) = std::mem::take(&mut self.screenshot_pending) {
-            let texture = self.device.create_texture(&wgpu::TextureDescriptor { 
-                label: Some("Screenshot Texture"), 
-                size: Extent3d { 
-                    width, 
-                    height, 
+            let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("Screenshot Texture"),
+                size: Extent3d {
+                    width,
+                    height,
                     depth_or_array_layers: 1
-                }, 
-                mip_level_count: 1, 
-                sample_count: 1, 
-                dimension: wgpu::TextureDimension::D2, 
-                format: wgpu::TextureFormat::Bgra8UnormSrgb, 
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC, 
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[]
             });
             let view = texture.create_view(&TextureViewDescriptor {
@@ -436,7 +557,7 @@ impl GraphicsState {
 
     pub fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
-        
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -454,13 +575,13 @@ impl GraphicsState {
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
 
-            for recorded_buffer in self.recorded_buffers.iter() {
+            for recorded_buffer in self.render_buffer_queue.recorded_buffers().iter() {
                 if recorded_buffer.blend_mode != current_blend_mode {
                     current_blend_mode = recorded_buffer.blend_mode;
-                    let Some(pipeline) = self.pipelines.get(&recorded_buffer.blend_mode) else { 
+                    let Some(pipeline) = self.pipelines.get(&recorded_buffer.blend_mode) else {
                         error!("Pipeline not created for blend mode {current_blend_mode:?}");
                         current_blend_mode = BlendMode::None;
-                        continue 
+                        continue
                     };
 
                     render_pass.set_pipeline(&pipeline);
@@ -474,9 +595,9 @@ impl GraphicsState {
                     if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
 
                     render_pass.set_scissor_rect(
-                        x.clamp(0.0, renderable.size.x) as u32, 
-                        y.clamp(0.0, renderable.size.y) as u32, 
-                        w.clamp(0.0, renderable.size.x - x) as u32, 
+                        x.clamp(0.0, renderable.size.x) as u32,
+                        y.clamp(0.0, renderable.size.y) as u32,
+                        w.clamp(0.0, renderable.size.x - x) as u32,
                         h.clamp(0.0, renderable.size.y - y) as u32
                     );
                 }
@@ -486,6 +607,7 @@ impl GraphicsState {
 
                 render_pass.draw_indexed(0..recorded_buffer.used_indices as u32, 0, 0..1);
             }
+
         }
 
         // submit will accept anything that implements IntoIter
@@ -503,7 +625,7 @@ impl GraphicsState {
         let far = MAX_DEPTH;
         let near = -far;
         let depth_range = 1.0 / (far - near);
-        
+
         [
             [sx, 0.0, 0.0, 0.0],
             [0.0, sy, 0.0, 0.0],
@@ -593,7 +715,7 @@ impl GraphicsState {
         let mut dest = atlas_tex.as_image_copy();
         dest.origin.x = target.texture.x;
         dest.origin.y = target.texture.y;
-        
+
         encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
         self.queue.submit([encoder.finish()]);
 
@@ -638,7 +760,7 @@ impl GraphicsState {
                     view_formats: &[],
                 }
             );
-            
+
             let view = texture.create_view(&wgpu::TextureViewDescriptor {
                 label: Some("atlas_texture_view"),
                 dimension: Some(TextureViewDimension::D2),
@@ -759,8 +881,8 @@ impl GraphicsState {
         // .map(|b|*b)
         // .collect::<Vec<_>>()
         ;
-    
-    
+
+
         // let width = width + ATLAS_PADDING * 2;
         // let height = height + ATLAS_PADDING * 2;
 
@@ -775,7 +897,7 @@ impl GraphicsState {
         // let mut data2 = vertical_padding.clone();
         // data2.extend(data.into_iter());
         // data2.extend(vertical_padding.into_iter());
-        
+
 
         self.queue.write_texture(
             // Tells wgpu where to copy the pixel data
@@ -848,12 +970,12 @@ impl GraphicsState {
             self.atlas.remove_entry(tex);
         }
     }
-    
+
     #[cfg(feature="graphics")]
     pub fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
         self.screenshot_pending = Some(Box::new(callback));
     }
-    
+
     #[cfg(feature="graphics")]
     fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, u32, u32)) + Send + Sync>) {
         let (w, h) = (texture.width(), texture.height());
@@ -870,9 +992,9 @@ impl GraphicsState {
 
         let tex_buffer = ImageCopyBuffer {
             buffer: &buffer,
-            layout: wgpu::ImageDataLayout { 
-                offset: 0, 
-                bytes_per_row: Some(align(w*4)), 
+            layout: wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(align(w*4)),
                 rows_per_image: Some(h)
             }
         };
@@ -888,10 +1010,10 @@ impl GraphicsState {
             let (s, r) = tokio::sync::oneshot::channel();
             slice.map_async(wgpu::MapMode::Read, move |_result| s.send(()).unwrap());
             queue.submit(None);
-            
+
             r.await.unwrap();
             let data = slice.get_mapped_range().chunks_exact(4).map(|b|cast_to_rgba_bytes(b, format)).flatten().collect();
-            
+
             callback((data, w, h));
         });
     }
@@ -904,57 +1026,63 @@ impl GraphicsState {
     const VTX_PER_BUF:u64 = Self::QUAD_PER_BUF * 4;
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
-    fn create_render_buffer(&mut self) {
-        self.queued_buffers.push(RenderBuffer {
-            blend_mode: BlendMode::None,
-            scissor: None,
-            vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("Vertex Buffer"),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                size: Self::VTX_PER_BUF * std::mem::size_of::<Vertex>() as u64,
-                mapped_at_creation: false,
-            }),
-            index_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("Index Buffer"),
-                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-                size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
-                mapped_at_creation: false,
-            }),
-            used_vertices: 0,
-            used_indices: 0,
-        })
-    }
+    // fn create_render_buffer(&mut self) {
+    //     self.queued_buffers.push(RenderBuffer {
+    //         blend_mode: BlendMode::None,
+    //         scissor: None,
+    //         vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
+    //             label: Some("Vertex Buffer"),
+    //             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+    //             size: Self::VTX_PER_BUF * std::mem::size_of::<Vertex>() as u64,
+    //             mapped_at_creation: false,
+    //         }),
+    //         index_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
+    //             label: Some("Index Buffer"),
+    //             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+    //             size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
+    //             mapped_at_creation: false,
+    //         }),
+    //         used_vertices: 0,
+    //         used_indices: 0,
+    //     })
+    // }
 
     pub fn begin(&mut self) {
-        // Go through all recorded buffers, and set their used counts to 0, resetting them for the next use
-        for i in self.recorded_buffers.iter_mut() {
-            i.used_indices = 0;
-            i.used_vertices = 0;
-            i.blend_mode = BlendMode::None;
-            i.scissor = None;
-        }
-        
-        // Move all recorded buffers into the queued buffers list
-        self.queued_buffers.append(&mut self.recorded_buffers);
-        self.recording_buffer = Some(self.queued_buffers.pop().unwrap());
-        // self.started = true;
+        self.render_buffer_queue.begin();
+        self.slider_render_buffer_queue.begin();
+
+        // // Go through all recorded buffers, and set their used counts to 0, resetting them for the next use
+        // for i in self.recorded_buffers.iter_mut() {
+        //     i.used_indices = 0;
+        //     i.used_vertices = 0;
+        //     i.blend_mode = BlendMode::None;
+        //     i.scissor = None;
+        // }
+
+        // // Move all recorded buffers into the queued buffers list
+        // self.queued_buffers.append(&mut self.recorded_buffers);
+        // self.recording_buffer = Some(self.queued_buffers.pop().unwrap());
+        // // self.started = true;
     }
 
     pub fn end(&mut self) {
-        self.dump();
+        self.render_buffer_queue.end(&self.queue);
+        self.slider_render_buffer_queue.end(&self.queue);
+        // self.dump();
     }
 
-    fn dump(&mut self) {
-        if let Some(recording_buffer) = std::mem::take(&mut self.recording_buffer) {
-            if recording_buffer.used_indices != 0 {
-                self.queue.write_buffer(&recording_buffer.vertex_buffer, 0, bytemuck::cast_slice(&self.cpu_vtx));
-                self.queue.write_buffer(&recording_buffer.index_buffer, 0, bytemuck::cast_slice(&self.cpu_idx));
-                self.recorded_buffers.push(recording_buffer);
-            } else {
-                self.queued_buffers.push(recording_buffer);
-            }
-        }
-    }
+    // fn dump(&mut self) {
+
+    //     // if let Some(recording_buffer) = std::mem::take(&mut self.recording_buffer) {
+    //     //     if recording_buffer.used_indices != 0 {
+    //     //         self.queue.write_buffer(&recording_buffer.vertex_buffer, 0, bytemuck::cast_slice(&self.cpu_vtx));
+    //     //         self.queue.write_buffer(&recording_buffer.index_buffer, 0, bytemuck::cast_slice(&self.cpu_idx));
+    //     //         self.recorded_buffers.push(recording_buffer);
+    //     //     } else {
+    //     //         self.queued_buffers.push(recording_buffer);
+    //     //     }
+    //     // }
+    // }
 
     /// returns reserve data and scissor index if applicable
     fn reserve(
@@ -963,25 +1091,20 @@ impl GraphicsState {
         idx_count: u64,
         scissor: Scissor,
         blend_mode: BlendMode,
-    ) -> Option<ReserveData> {
-        let mut recording_buffer = self.recording_buffer.as_mut()?;
+    ) {
+        let Some(mut recording_buffer) = self.render_buffer_queue.recording_buffer() else { return };
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
         // if !blend_mode_check { println!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
-        if !blend_mode_check 
+        if !blend_mode_check
         || !scissor_check
-        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF 
+        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            self.dump();
+            self.render_buffer_queue.dump_and_next(&self.queue, &self.device);
+            recording_buffer = self.render_buffer_queue.recording_buffer().unwrap();
 
-            if self.queued_buffers.is_empty() {
-                self.create_render_buffer();
-            }
-
-            self.recording_buffer = self.queued_buffers.pop();
-            recording_buffer = self.recording_buffer.as_mut()?;
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
         }
@@ -994,14 +1117,44 @@ impl GraphicsState {
 
         recording_buffer.used_indices += idx_count;
         recording_buffer.used_vertices += vtx_count;
-        
+
+    }
+
+    fn reserve_regular(
+        &mut self,
+        vtx_count: u64,
+        idx_count: u64,
+        scissor: Scissor,
+        blend_mode: BlendMode
+    ) -> Option<ReserveData<Vertex>> {
+        self.reserve(vtx_count, idx_count, scissor, blend_mode);
+        let recording_buffer = self.render_buffer_queue.recording_buffer()?;
+        let used_vertices = recording_buffer.used_vertices;
+        let used_indices = recording_buffer.used_indices;
+
         Some(ReserveData {
-            vtx: &mut self.cpu_vtx[(recording_buffer.used_vertices - vtx_count) as usize .. recording_buffer.used_vertices as usize],
-            idx: &mut self.cpu_idx[(recording_buffer.used_indices - idx_count) as usize .. recording_buffer.used_indices as usize],
-            idx_offset: recording_buffer.used_vertices - vtx_count,
+            vtx: &mut self.render_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut self.render_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            idx_offset: used_vertices - vtx_count,
         })
     }
 
+    fn reserve_slider(
+        &mut self,
+        vtx_count: u64,
+        idx_count: u64,
+        scissor: Scissor,
+    ) -> Option<ReserveData<SliderVertex>> {
+        self.reserve(vtx_count, idx_count, scissor, BlendMode::Slider);
+        let recording_buffer = self.slider_render_buffer_queue.recording_buffer()?;
+
+        // Some(ReserveData {
+        //     vtx: &mut self.cpu_slider_vtx[(recording_buffer.used_vertices - vtx_count) as usize .. recording_buffer.used_vertices as usize],
+        //     idx: &mut self.cpu_idx[(recording_buffer.used_indices - idx_count) as usize .. recording_buffer.used_indices as usize],
+        //     idx_offset: recording_buffer.used_vertices - vtx_count,
+        // })
+        todo!()
+    }
 
     fn reserve_tex_quad(
         &mut self,
@@ -1014,8 +1167,8 @@ impl GraphicsState {
         scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6, scissor, blend_mode) else { return };
-        
+        let Some(mut reserved) = self.reserve_regular(4, 6, scissor, blend_mode) else { return };
+
         let [x, y, w, h] = rect;
         let color = color.into();
 
@@ -1082,7 +1235,7 @@ impl GraphicsState {
         scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve(4, 6, scissor, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_regular(4, 6, scissor, blend_mode) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p: Vector2|Vertex {
@@ -1090,7 +1243,7 @@ impl GraphicsState {
             color,
             ..Default::default()
         }).collect::<Vec<_>>();
-        
+
         let offset = reserved.idx_offset as u32;
         reserved.copy_in(&vertices, &[
             0 + offset,
@@ -1103,6 +1256,23 @@ impl GraphicsState {
         ]);
     }
 
+    fn draw_slider(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+        scissor: Scissor,
+
+        grid_origin: [f32; 2],
+        grid_size: [u32; 2],
+        grid_index: u32,
+        body_color: [f32; 4],
+        border_color: [f32; 4],
+    ) {
+        let Some(mut reserved) = self.reserve_slider(4, 6, scissor) else { return };
+
+
+
+    }
 }
 
 
@@ -1112,7 +1282,7 @@ impl GraphicsState {
     /// draw an arc with the center at 0,0
     pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let n = resolution;
-        
+
         // minor optimization
         if color.a <= 0.0 { return }
 
@@ -1124,8 +1294,8 @@ impl GraphicsState {
         for i in 0..=n {
             let angle = f32::lerp(start, end, i as f32 / n as f32);
             let p = Point::new(cx + angle.cos() * cw, cy + angle.sin() * ch);
-            if i == 0 { 
-                path.begin(p); 
+            if i == 0 {
+                path.begin(p);
             } else {
                 path.line_to(p);
             }
@@ -1148,11 +1318,11 @@ impl GraphicsState {
         }).collect::<Vec<_>>();
 
         // fill
-        if color.a > 0.0 { 
+        if color.a > 0.0 {
             self.tessellate_polygon(&points, color, None, transform, scissor, blend_mode);
         }
-        
-        // border 
+
+        // border
         if let Some(border) = border.filter(|b|b.color.a > 0.0) {
             // let radius = radius + border.radius;
             // let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
@@ -1174,7 +1344,7 @@ impl GraphicsState {
 
         let n = p2 - p1;
         let n = Vector2::new(-n.y, n.x).normalize() * thickness;
-    
+
         let n0 = p1 + n;
         let n1 = p2 + n;
         let n2 = p1 - n;
@@ -1200,7 +1370,7 @@ impl GraphicsState {
         let path = path.build();
 
         // fill
-        if color.a > 0.0 { 
+        if color.a > 0.0 {
             self.tessellate_path(&path, color, None, transform, scissor, blend_mode)
         }
 
@@ -1220,9 +1390,9 @@ impl GraphicsState {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
-        for p in polygon { 
+        for p in polygon {
             if !p.x.is_normal() || !p.y.is_normal() { return }
-            path.line_to(Point::new(p.x, p.y)); 
+            path.line_to(Point::new(p.x, p.y));
         }
         path.end(true);
         let path = path.build();
@@ -1257,7 +1427,7 @@ impl GraphicsState {
                     &lyon_tessellation::FillOptions::default(),
                     &mut vertex_builder
                 )
-            }; 
+            };
             if let Err(e) = result {
                 error!("Tesselator error: {e}");
                 return;
@@ -1265,7 +1435,7 @@ impl GraphicsState {
 
         }
 
-        let mut reserved = self.reserve(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
+        let mut reserved = self.reserve_regular(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {
@@ -1275,14 +1445,14 @@ impl GraphicsState {
                 ..Default::default()
             }.apply_matrix(&transform)
         ).collect::<Vec<_>>();
-        
+
         // insert the vertices and indices into the render buffer
         let mut indices = buffers.indices.into_iter().map(|a|reserved.idx_offset as u32 + a as u32).collect::<Vec<_>>();
         reserved.copy_in(&mut vertices, &mut indices);
     }
 }
 
-// particle stuff 
+// particle stuff
 impl GraphicsState {
     pub fn add_emitter(&mut self, emitter: EmitterRef) {
         self.particle_system.add(emitter);
@@ -1314,11 +1484,11 @@ impl<'a> RenderableSurface<'a> {
         }
     }
     fn get_clear_color(&self) -> wgpu::Color {
-        wgpu::Color { 
-            r: self.clear_color.r as f64, 
-            g: self.clear_color.g as f64, 
-            b: self.clear_color.b as f64, 
-            a: self.clear_color.a as f64 
+        wgpu::Color {
+            r: self.clear_color.r as f64,
+            g: self.clear_color.g as f64,
+            b: self.clear_color.b as f64,
+            a: self.clear_color.a as f64
         }
     }
 }
