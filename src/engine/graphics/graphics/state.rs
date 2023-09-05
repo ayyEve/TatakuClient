@@ -387,7 +387,7 @@ impl GraphicsState {
                     entry_point: "slider_fs_main",
                     targets: &[Some(wgpu::ColorTargetState {
                         format: config.format,
-                        blend: Some(BlendMode::AlphaOverwrite.get_blend_state()),
+                        blend: Some(BlendMode::AlphaBlending.get_blend_state()),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),

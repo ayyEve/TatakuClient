@@ -14,18 +14,18 @@ struct FragmentInputs {
 
 struct SliderData {
     // Origin position of grid in viewport space
-    grid_origin: vec2<f32>,
+    grid_origin: array<f32, 2>,
     // Size of the slider in grid units
-    grid_size: vec2<u32>,
+    grid_size: array<u32, 2>,
     // Grid cells of this slider. This represents the start index into the
     // `slider_grids` array, where the length of the slice is the area of the
     // grid, as given by `grid_size`.
     grid_index: u32,
 
     // Colour of the body of slider
-    body_color: vec4<f32>, // todo: consider interpolating between two colours by distance
+    body_color: array<f32, 4>, // todo: consider interpolating between two colours by distance
     // Colour of the border of the slider
-    border_color: vec4<f32>,
+    border_color: array<f32, 4>,
 }
 
 // Slice into the index buffer representing the grid cell
@@ -78,7 +78,8 @@ fn slider_fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
 
     let slider = slider_data[input.slider_index];
 
-    let position = input.position.xy - slider.grid_origin;
+    let slider_grid_origin = cast_vec2_f32(slider.grid_origin);
+    let position = input.position.xy - slider_grid_origin;
 
     // Calculate the index of the grid cell we are currently in
     let grid_index_bad = floor(position / cell_size);
@@ -94,14 +95,14 @@ fn slider_fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     // Row major
     for(var y = grid_index.y - 1; y <= grid_index.y + 1; y++) {
         // Bounds check
-        if y < 0 || y >= i32(slider.grid_size.y) { continue; }
+        if y < 0 || y >= i32(slider.grid_size[1]) { continue; }
 
         for(var x = grid_index.x - 1; x <= grid_index.x + 1; x++) {
             // Bounds check
-            if x < 0 || x >= i32(slider.grid_size.x) { continue; }
+            if x < 0 || x >= i32(slider.grid_size[0]) { continue; }
 
             // Row major: y position * row length + x position
-            let cell_index = u32(y) * slider.grid_size.x + u32(x);
+            let cell_index = u32(y) * slider.grid_size[0] + u32(x);
 
             let cell_slice = slider_grids[slider.grid_index + cell_index];
 
@@ -145,16 +146,23 @@ fn slider_fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
     }
 
     if quit_early {
-        return slider.body_color;
+        return cast_vec4_f32(slider.body_color);
     } else if distance <= cell_size * cell_size {
-        return slider.border_color;
+        return cast_vec4_f32(slider.border_color);
     } else {
-        return vec4(0.0, 0.0, 0.0, 0.4);
-        // discard;
+        // return vec4(0.0, 0.0, 0.0, 0.4);
+        discard;
     }
 }
 
 fn square_distance(a: vec2<f32>, b: vec2<f32>) -> f32 {
     let c = b-a;
     return dot(c,c);
+}
+
+fn cast_vec2_f32(a: array<f32, 2>) -> vec2<f32> {
+    return vec2(a[0], a[1]);
+}
+fn cast_vec4_f32(a: array<f32, 4>) -> vec4<f32> {
+    return vec4(a[0], a[1], a[2], a[3]);
 }

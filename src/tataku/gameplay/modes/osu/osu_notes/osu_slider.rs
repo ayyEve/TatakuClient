@@ -9,6 +9,9 @@ const BEAT_SCALE: f32 = 1.4;
 const OK_RADIUS_MULT: f32 = 4.0;
 const OK_TICK_RADIUS_MULT: f32 = 2.0;
 
+/// TODO: make setting
+const USE_RENDER_TARGET: bool = false;
+
 pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -263,10 +266,7 @@ impl OsuSlider {
         let cell_size = self.radius;
 
         let grid_size = size / cell_size;
-        // todo: double check this
         let grid_size = [1 + grid_size.x.floor() as u32, 1 + grid_size.y.floor() as u32];
-
-        // info!("size: {grid_size:?}");
 
         let mut grid_cells: Vec<Vec<u32>> = vec![Vec::new(); (grid_size[0] * grid_size[1]) as usize];
 
@@ -311,79 +311,41 @@ impl OsuSlider {
                 (indexes, cells)
             });
 
-        let quad = [
-            Vector2::ZERO,
-            Vector2::new(0.0, 1.0),
-            Vector2::new(1.0, 0.0),
-            Vector2::ONE,
-        ];
-
-        // info!("body: {color:?}, border: {border_color:?}");
-        // info!("{} : {} : {}", slider_grids.len(), grid_cells.len(), line_segments.len());
 
         let slider_data = SliderData {
-            grid_origin: Vector2::ZERO.into(), //min_pos.into(),
+            grid_origin: min_pos.into(),
             grid_size,
             grid_index: 0,
             body_color: color.into(),
             border_color: border_color.into(),
         };
 
-        // info!("{:#?}", (&slider_data, &slider_grids, &grid_cells, &line_segments));
-
-        // self.slider_body.circle_radius = circle_radius;
-        // self.slider_body.border_width = border_width;
-        // self.slider_body.size = size;
-        // self.slider_body.slider_data = slider_data;
-        // self.slider_body.slider_grids = slider_grids;
-        // self.slider_body.grid_cells = grid_cells;
-        // self.slider_body.line_segments = line_segments;
+        self.slider_body.circle_radius = circle_radius;
+        self.slider_body.border_width = border_width;
+        self.slider_body.size = size;
+        self.slider_body.slider_data = slider_data;
+        self.slider_body.slider_grids = slider_grids;
+        self.slider_body.grid_cells = grid_cells;
+        self.slider_body.line_segments = line_segments;
 
         // draw it to the render texture
-        if let Some(target) = self.slider_body_render_target.clone() {
-            GameWindow::update_render_target(target, move |state, transform| {
-                let transform = transform
-                    .scale(size);
-                    // .trans(-min_pos);
-
-                state.draw_slider(
-                    quad,
-                    transform,
-                    None,
-                    circle_radius,
-                    border_width,
-                    slider_data,
-                    slider_grids,
-                    grid_cells,
-                    line_segments
-                );
-            }).await;
-        } else {
-            let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, transform| {
-                let transform = transform
-                    .scale(size);
-                    // .trans(-min_pos);
-
-                    state.draw_slider(
-                        quad,
-                        transform,
-                        None,
-                        circle_radius,
-                        border_width,
-                        slider_data,
-                        slider_grids,
-                        grid_cells,
-                        line_segments
-                    );
-            }).await;
-
-            if let Ok(mut slider_body_render_target) = rt {
-                slider_body_render_target.image.pos = min_pos;
-                slider_body_render_target.image.origin = Vector2::ZERO;
-                self.slider_body_render_target = Some(slider_body_render_target);
+        if USE_RENDER_TARGET {
+            let mut slider_body = self.slider_body.clone();
+            slider_body.slider_data.grid_origin = [0.0; 2]; // reset grid origin when rendering to a target
+            slider_body.alpha = 1.0;
+            if let Some(target) = self.slider_body_render_target.clone() {
+                GameWindow::update_render_target(target, move |state, transform| slider_body.draw(transform, state)).await;
             } else {
-                warn!("failed to slider");
-                self.slider_body_render_target_failed = Some(self.map_time);
+                let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, transform| slider_body.draw(transform, state)).await;
+
+                if let Ok(mut slider_body_render_target) = rt {
+                    slider_body_render_target.image.pos = min_pos;
+                    slider_body_render_target.image.origin = Vector2::ZERO;
+                    self.slider_body_render_target = Some(slider_body_render_target);
+                } else {
+                    warn!("failed to slider");
+                    self.slider_body_render_target_failed = Some(self.map_time);
+                }
             }
         }
 
@@ -579,14 +541,18 @@ impl HitObject for OsuSlider {
         // color
         let alpha = self.get_alpha();
         let color = self.color.alpha(alpha);
+        self.slider_body.alpha = alpha;
 
         // slider body
-        if let Some(rt) = &self.slider_body_render_target {
-            let mut b = rt.image.clone();
-            b.color.a = alpha;
-            list.push(b);
+        if USE_RENDER_TARGET {
+            if let Some(rt) = &self.slider_body_render_target {
+                let mut b = rt.image.clone();
+                b.color.a = alpha;
+                list.push(b);
+            }
+        } else {
+            list.push(self.slider_body.clone());
         }
-        // list.push(self.slider_body.clone());
 
         // draw hit dots
         for dot in self.hit_dots.iter() {
@@ -1030,6 +996,7 @@ pub struct SliderDrawable {
     size: Vector2,
     circle_radius: f32,
     border_width: f32,
+    alpha: f32,
 
     slider_data: SliderData,
     slider_grids: Vec<GridCell>,
@@ -1052,13 +1019,17 @@ impl TatakuRenderable for SliderDrawable {
             .scale(self.size)
             .trans(Vector2::from(self.slider_data.grid_origin));
 
+        let mut slider_data = self.slider_data.clone();
+        slider_data.body_color[3] *= self.alpha;
+        slider_data.border_color[3] *= self.alpha;
+
         g.draw_slider(
             quad,
             transform,
             None,
             self.circle_radius,
             self.border_width,
-            self.slider_data.clone(),
+            slider_data,
             self.slider_grids.clone(),
             self.grid_cells.clone(),
             self.line_segments.clone()
