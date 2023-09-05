@@ -379,12 +379,12 @@ impl GraphicsState {
                 layout: Some(&slider_pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: &slider_shader,
-                    entry_point: "vs_main",
+                    entry_point: "slider_vs_main",
                     buffers: &[ SliderVertex::desc() ],
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &slider_shader,
-                    entry_point: "fs_main",
+                    entry_point: "slider_fs_main",
                     targets: &[Some(wgpu::ColorTargetState {
                         format: config.format,
                         blend: Some(BlendMode::AlphaOverwrite.get_blend_state()),
@@ -599,9 +599,9 @@ impl GraphicsState {
                         h.clamp(0.0, renderable.size.y - y) as u32
                     );
                 }
-                
+
                 render_pass.set_bind_group(1, &data_buffer.bind_group, &[]);
-                
+
                 render_pass.set_vertex_buffer(0, vertex_buffer.vertex_buffer.slice(..));
                 render_pass.set_index_buffer(vertex_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
@@ -1096,6 +1096,7 @@ impl GraphicsState {
         if !scissor_check
         || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
+            info!("dumping vertex yuck");
             self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
             recording_buffer = self.slider_vertex_buffer_queue.recording_buffer()?;
 
@@ -1162,12 +1163,13 @@ impl GraphicsState {
         self.slider_buffer_queue.cpu_cache.border_width = border_width;
 
         let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
-        if (recording_buffer.used_slider_data + 1 >= EXPECTED_SLIDER_COUNT)
+        if (recording_buffer.used_slider_data + 1 > EXPECTED_SLIDER_COUNT)
         || (recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT)
         || (recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT)
         || (recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT)
         {
             // these need to increment together.
+            info!("dumping");
             self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
             self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
             recording_buffer = self.slider_buffer_queue.recording_buffer()?;
@@ -1313,21 +1315,23 @@ impl GraphicsState {
         line_segments: Vec<LineSegment>
     ) {
         let Some(mut reserved) = self.reserve_slider(
-            circle_radius, 
-            border_width, 
-            quad, 
-            transform, 
-            scissor, 
-            slider_grids.len() as u64, 
-            grid_cells.len() as u64, 
+            circle_radius,
+            border_width,
+            quad,
+            transform,
+            scissor,
+            slider_grids.len() as u64,
+            grid_cells.len() as u64,
             line_segments.len() as u64
         ) else { return };
 
+        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
+
         slider_data.grid_index += reserved.slider_grid_offset;
         reserved.copy_in(
-            slider_data, 
-            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(), 
-            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(), 
+            slider_data,
+            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
+            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
             &line_segments
         );
     }

@@ -9,8 +9,8 @@ use crate::prelude::*;
 
 pub const EXPECTED_SLIDER_COUNT: u64 = 500;
 pub const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
-pub const GRID_CELL_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16;
-pub const LINE_SEGMENT_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16 * 2;
+pub const GRID_CELL_COUNT: u64 = SLIDER_GRID_COUNT * 16;
+pub const LINE_SEGMENT_COUNT: u64 = GRID_CELL_COUNT * 2;
 
 pub static SLIDER_BIND_GROUP_LAYOUT: OnceCell<BindGroupLayout> = OnceCell::const_new();
 
@@ -62,9 +62,9 @@ impl RenderBufferable for SliderRenderBuffer {
         let circle_radius = create_buffer::<f32>(device, BufferUsages::UNIFORM, 1);
         let border_width = create_buffer::<f32>(device, BufferUsages::UNIFORM, 1);
         let slider_data = create_buffer::<SliderData>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT);
-        let slider_grids = create_buffer::<GridCell>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32);
-        let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16);
-        let line_segments = create_buffer::<LineSegment>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16 * 2);
+        let slider_grids = create_buffer::<GridCell>(device, BufferUsages::STORAGE, SLIDER_GRID_COUNT);
+        let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, GRID_CELL_COUNT);
+        let line_segments = create_buffer::<LineSegment>(device, BufferUsages::STORAGE, LINE_SEGMENT_COUNT);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,

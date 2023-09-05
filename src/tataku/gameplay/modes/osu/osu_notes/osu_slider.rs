@@ -44,7 +44,7 @@ pub struct OsuSlider {
     color: Color,
     /// note size
     radius: f32,
-    
+
     /// was the start checked?
     start_checked: bool,
     /// was the release checked?
@@ -95,19 +95,21 @@ pub struct OsuSlider {
     approach_circle: ApproachCircle,
     slider_body_render_target: Option<RenderTarget>,
     slider_body_render_target_failed: Option<f32>,
-    
+
     hitsounds: Vec<Vec<Hitsound>>,
     sliderdot_hitsound: Hitsound,
 
     last_beat: f32,
     pulse_length: f32,
     beat_scale: f32,
+
+    slider_body: SliderDrawable,
 }
 impl OsuSlider {
     pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
-        
+
         let pos = scaling_helper.scale_coords(def.pos);
         let visual_end_pos = scaling_helper.scale_coords(curve.curve_lines.last().unwrap().p2);
         let time_end_pos = if def.slides % 2 == 1 {visual_end_pos} else {pos};
@@ -123,7 +125,7 @@ impl OsuSlider {
             samples.addition_set = addition_set;
 
             let hitsound = def.edge_sounds[n.min(def.edge_sounds.len() - 1)];
-            
+
             hitsound_fn(def.time, hitsound, samples)
         }).collect();
 
@@ -146,7 +148,7 @@ impl OsuSlider {
             visual_end_pos,
             time_end_pos,
 
-            time, 
+            time,
             hit_dots: Vec::new(),
             pending_combo: Vec::new(),
             sound_index: 0,
@@ -158,7 +160,7 @@ impl OsuSlider {
             end_checked: false,
             holding: false,
             mouse_pos: Vector2::ZERO,
-            
+
             dots_missed: 0,
             dot_count: 0,
             start_judgment: OsuHitJudgments::Miss,
@@ -187,11 +189,13 @@ impl OsuSlider {
             hitsounds,
             sliderdot_hitsound,
             velocity,
-            
-            
+
+
             last_beat: -100.0,
             pulse_length: 0.0,
             beat_scale: 1.0,
+
+            slider_body: SliderDrawable::default(),
         }
     }
 
@@ -202,9 +206,9 @@ impl OsuSlider {
         }
         let skin = SkinManager::current_skin_config().await;
 
-        let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
+        // let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
         let window_size = WindowSize::get().0;
-        
+
         // info!("{:?}", skin.slider_track_override);
         let mut color = skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
             let mut color = self.color;
@@ -220,104 +224,133 @@ impl OsuSlider {
         let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
-        // starting point
-        let p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
-        // p.y = window_size.y - p.y;
-
         let mut min_pos = window_size;
         let mut max_pos = Vector2::ZERO;
 
-        let radius_with_border = self.radius - border_radius * 0.5;
-        // circles with a border have extra radius because of the border (i think its 0.5x the border width)
+        let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().map(|segment| {
+            let points = segment.all_points();
 
-        // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
-        // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
-        for (radius, color, blend_mode) in [
-            // border
-            (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), 
-            // fill
-            (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite)
-        ] {
-            // add starting circle manually
-            list.push(Box::new(Circle::new(
-                p,
-                radius,
-                color,
-                None
-            ).with_blend_mode(blend_mode)));
+            if points.len() == 0 { return Vec::new(); }
 
-            // add all lines
-            for line in self.curve.curve_lines.iter() {
-                let p1 = self.scaling_helper.scale_coords(line.p1);
-                let p2 = self.scaling_helper.scale_coords(line.p2);
-                
-                if p1.x - radius_with_border < min_pos.x { min_pos.x = p1.x - radius_with_border; }
-                if p1.y - radius_with_border < min_pos.y { min_pos.y = p1.y - radius_with_border; }
-                if p2.x - radius_with_border < min_pos.x { min_pos.x = p2.x - radius_with_border; }
-                if p2.y - radius_with_border < min_pos.y { min_pos.y = p2.y - radius_with_border; }
+            // Calculate bounds of first point
+            let first = self.scaling_helper.scale_coords(*points.first().unwrap());
+            min_pos.x = min_pos.x.min(first.x);
+            min_pos.y = min_pos.y.min(first.y);
+            max_pos.x = max_pos.x.max(first.x);
+            max_pos.y = max_pos.y.max(first.y);
 
-                if p1.x + radius_with_border > max_pos.x { max_pos.x = p1.x + radius_with_border; }
-                if p1.y + radius_with_border > max_pos.y { max_pos.y = p1.y + radius_with_border; }
-                if p2.x + radius_with_border > max_pos.x { max_pos.x = p2.x + radius_with_border; }
-                if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
+            points.windows(2).map(|points| {
+                let p1 = self.scaling_helper.scale_coords(points[0]);
+                let p2 = self.scaling_helper.scale_coords(points[1]);
 
-                // add a line to connect the points
-                list.push(Box::new(Line::new(
-                    p1,
-                    p2,
-                    radius,
-                    color
-                ).with_blend_mode(blend_mode)));
+                // Calculate bounds of remaining points
+                min_pos.x = min_pos.x.min(p2.x);
+                min_pos.y = min_pos.y.min(p2.y);
+                max_pos.x = max_pos.x.max(p2.x);
+                max_pos.y = max_pos.y.max(p2.y);
 
-                // add a circle to smooth out the corners
-                // border
-                list.push(Box::new(Circle::new(
-                    p2,
-                    radius,
-                    color,
-                    None
-                ).with_blend_mode(blend_mode)));
-            }
-        }
+                LineSegment { p1: p1.into(), p2: p2.into() }
+            }).collect::<Vec<_>>() // todo: avoid too many allocations here
+        }).flatten().collect();
 
-        //TODO: test data here
-        let slider_radius = self.radius / 100.0;
-        let border_width = 2.0;
+        min_pos -= self.radius;
+        max_pos += self.radius;
+
+        let size = max_pos - min_pos;
+
+        let border_width = border_radius;
+        let circle_radius = self.radius - border_width;
+        let cell_size = self.radius;
+
+        let grid_size = size / cell_size;
+        // todo: double check this
+        let grid_size = [1 + grid_size.x.floor() as u32, 1 + grid_size.y.floor() as u32];
+
+        // info!("size: {grid_size:?}");
+
+        let mut grid_cells: Vec<Vec<u32>> = vec![Vec::new(); (grid_size[0] * grid_size[1]) as usize];
+
+        line_segments.iter_mut().enumerate()
+            .for_each(|(i, s)| {
+                let p1 = Vector2::from(s.p1) - min_pos;
+                let p2 = Vector2::from(s.p2) - min_pos;
+
+                s.p1 = p1.into();
+                s.p2 = p2.into();
+
+                let grid_index = |p: Vector2| {
+                    let grid_coord = p / cell_size;
+                    let (grid_x, grid_y) = (grid_coord.x.floor() as usize, grid_coord.y.floor() as usize);
+
+                    // info!("adding ({grid_x}, {grid_y})");
+
+                    grid_y * grid_size[0] as usize + grid_x
+                };
+
+                let p1_grid_index = grid_index(p1);
+                let p2_grid_index = grid_index(p2);
+
+                // todo: fix intermediate cells
+
+                grid_cells[p1_grid_index].push(i as u32);
+                if p1_grid_index != p2_grid_index {
+                    grid_cells[p2_grid_index].push(i as u32);
+                }
+            });
+
+        let grid_cells_len = grid_cells.len();
+
+        let (slider_grids, grid_cells) = grid_cells.into_iter()
+            .fold((Vec::with_capacity(grid_cells_len), Vec::with_capacity(grid_cells_len)), |(mut indexes, mut cells), v| {
+                indexes.push(GridCell {
+                    index: cells.len() as u32,
+                    length: v.len() as u32,
+                });
+                cells.extend(v);
+
+                (indexes, cells)
+            });
+
         let quad = [
-            Vector2::ZERO, 
-            Vector2::new(1000.0, 0.0), 
-            Vector2::new(0.0, 1000.0), 
-            Vector2::new(1000.0, 1000.0)
+            Vector2::ZERO,
+            Vector2::new(0.0, 1.0),
+            Vector2::new(1.0, 0.0),
+            Vector2::ONE,
         ];
-        let slider_data = SliderData {
-            grid_origin: min_pos.into(),
-            grid_size: [1, 1],
-            grid_index: 0,
-            body_color: Color::LIME.into(),
-            border_color: Color::CRIMSON.into(),
-        };
-        let slider_grids = vec![GridCell {
-            index: 0,
-            length: 1
-        }];
-        let grid_cells = vec![0];
 
-        let line_segments = self.curve.segments.iter()
-            .map(|s| s.all_points().windows(2).map(|p|LineSegment {p1: p[0].into(), p2: p[1].into()}).collect::<Vec<_>>())
-            .flatten()
-            .collect();
+        // info!("body: {color:?}, border: {border_color:?}");
+        // info!("{} : {} : {}", slider_grids.len(), grid_cells.len(), line_segments.len());
+
+        let slider_data = SliderData {
+            grid_origin: Vector2::ZERO.into(), //min_pos.into(),
+            grid_size,
+            grid_index: 0,
+            body_color: color.into(),
+            border_color: border_color.into(),
+        };
+
+        // info!("{:#?}", (&slider_data, &slider_grids, &grid_cells, &line_segments));
+
+        // self.slider_body.circle_radius = circle_radius;
+        // self.slider_body.border_width = border_width;
+        // self.slider_body.size = size;
+        // self.slider_body.slider_data = slider_data;
+        // self.slider_body.slider_grids = slider_grids;
+        // self.slider_body.grid_cells = grid_cells;
+        // self.slider_body.line_segments = line_segments;
 
         // draw it to the render texture
         if let Some(target) = self.slider_body_render_target.clone() {
+            GameWindow::update_render_target(target, move |state, transform| {
+                let transform = transform
+                    .scale(size);
+                    // .trans(-min_pos);
 
-            GameWindow::update_render_target(target, move |state, matrix| {
-                let m = matrix.trans(-min_pos);
-                // for i in list { i.draw(m, state); }
                 state.draw_slider(
                     quad,
-                    m,
-                    None, 
-                    slider_radius, 
+                    transform,
+                    None,
+                    circle_radius,
                     border_width,
                     slider_data,
                     slider_grids,
@@ -326,26 +359,26 @@ impl OsuSlider {
                 );
             }).await;
         } else {
-            let size = max_pos - min_pos;
+            let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, transform| {
+                let transform = transform
+                    .scale(size);
+                    // .trans(-min_pos);
 
-            let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, matrix| {
-                let m = matrix.trans(-min_pos);
-                // for i in list { i.draw(m, state); } 
-                state.draw_slider(
-                    quad,
-                    m,
-                    None, 
-                    slider_radius, 
-                    border_width,
-                    slider_data,
-                    slider_grids,
-                    grid_cells,
-                    line_segments
-                );
+                    state.draw_slider(
+                        quad,
+                        transform,
+                        None,
+                        circle_radius,
+                        border_width,
+                        slider_data,
+                        slider_grids,
+                        grid_cells,
+                        line_segments
+                    );
             }).await;
 
             if let Ok(mut slider_body_render_target) = rt {
-                slider_body_render_target.image.pos = min_pos; 
+                slider_body_render_target.image.pos = min_pos;
                 slider_body_render_target.image.origin = Vector2::ZERO;
                 self.slider_body_render_target = Some(slider_body_render_target);
             } else {
@@ -452,7 +485,7 @@ impl HitObject for OsuSlider {
         let distance = self.slider_ball_pos.distance(self.mouse_pos); //((self.slider_ball_pos.x - self.mouse_pos.x).powi(2) + (self.slider_ball_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         self.sliding_ok = self.holding && distance <= self.radius * OK_RADIUS_MULT;
 
-        
+
         let alpha = self.get_alpha();
         self.approach_circle.set_alpha(alpha);
         self.approach_circle.update(beatmap_time);
@@ -462,7 +495,7 @@ impl HitObject for OsuSlider {
                 self.slider_body_render_target = None;
             }
 
-            return 
+            return
         }
 
         // check if the start of the slider was missed.
@@ -513,7 +546,7 @@ impl HitObject for OsuSlider {
                 if was_hit {
                     self.add_ripple(beatmap_time, dot.pos, true);
 
-                    
+
                     self.pending_combo.push((OsuHitJudgments::SliderDot, dot.pos));
                     self.sound_queue.push(vec![self.sliderdot_hitsound.clone()]);
                 } else {
@@ -542,7 +575,7 @@ impl HitObject for OsuSlider {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.map_time > self.curve.end_time + self.hitwindow_miss { return }
-        
+
         // color
         let alpha = self.get_alpha();
         let color = self.color.alpha(alpha);
@@ -553,6 +586,7 @@ impl HitObject for OsuSlider {
             b.color.a = alpha;
             list.push(b);
         }
+        // list.push(self.slider_body.clone());
 
         // draw hit dots
         for dot in self.hit_dots.iter() {
@@ -610,7 +644,7 @@ impl HitObject for OsuSlider {
                 end_circle.color.a = alpha;
                 end_circle.pos = self.pos;
                 list.push(end_circle);
-                
+
             } else if self.start_circle_image.circle.is_none() {
                 list.push(Circle::new(
                     self.pos,
@@ -636,9 +670,6 @@ impl HitObject for OsuSlider {
                 }
             }
         }
-
-
-
 
         // slider ball
         if self.map_time < self.curve.end_time && self.map_time >= self.time {
@@ -695,7 +726,7 @@ impl HitObject for OsuSlider {
         // approach circle
         if self.map_time < self.time {
             self.approach_circle.draw(list);
-        } 
+        }
     }
 
     async fn reset(&mut self) {
@@ -706,7 +737,7 @@ impl HitObject for OsuSlider {
         self.holding = false;
         self.start_checked = false;
         self.end_checked = false;
-        
+
         self.pending_combo.clear();
         self.sound_index = 0;
         self.slides_complete = 0;
@@ -715,7 +746,7 @@ impl HitObject for OsuSlider {
         self.dots_missed = 0;
         self.dot_count = 0;
         self.start_judgment = OsuHitJudgments::Miss;
-        
+
         self.make_dots().await;
     }
 
@@ -745,7 +776,7 @@ impl HitObject for OsuSlider {
 
         // slider ball
         self.sliderball_under_image = SkinManager::get_texture("sliderb-nd", true).await;
-        
+
         let mut i = 0;
         let mut images = Vec::new();
         loop {
@@ -776,7 +807,7 @@ impl HitObject for OsuSlider {
 
     }
 
-    
+
     fn beat_happened(&mut self, pulse_length: f32) {
         self.last_beat = self.map_time;
         self.pulse_length = pulse_length;
@@ -801,7 +832,7 @@ impl OsuHitObject for OsuSlider {
     fn set_judgment(&mut self, j: &OsuHitJudgments) {
         self.start_checked = true;
         self.start_judgment = *j;
-        
+
         self.ripple_start();
     }
 
@@ -852,7 +883,7 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    
+
     fn check_distance(&self, _mouse_pos: Vector2) -> bool {
         let distance = if self.start_checked {
             (self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)
@@ -863,7 +894,7 @@ impl OsuHitObject for OsuSlider {
         distance <= self.radius.powi(2)
     }
 
-    
+
     fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
         std::mem::take(&mut self.pending_combo)
     }
@@ -919,7 +950,7 @@ impl OsuHitObject for OsuSlider {
     fn set_approach_easing(&mut self, easing: Easing) {
         self.approach_circle.easing_type = easing;
     }
-    
+
     fn get_hitsound(&self) -> Vec<Hitsound> {
         // println!("playing hitsound index {}/{}", self.sound_index+1, self.def.edge_sets.len());
         let index = self.sound_index.min(self.def.edge_sets.len() - 1);
@@ -968,7 +999,7 @@ impl SliderDot {
             None
         }
     }
-    
+
     pub fn draw(&self, beat_scale: f32, list: &mut RenderableCollection) {
         if self.checked { return }
 
@@ -989,5 +1020,48 @@ impl SliderDot {
 
     pub async fn reload_skin(&mut self) {
         self.dot_image = SkinManager::get_texture("sliderscorepoint", true).await;
+    }
+}
+
+
+
+#[derive(Clone, Debug, Default)]
+pub struct SliderDrawable {
+    size: Vector2,
+    circle_radius: f32,
+    border_width: f32,
+
+    slider_data: SliderData,
+    slider_grids: Vec<GridCell>,
+    grid_cells: Vec<u32>,
+    line_segments: Vec<LineSegment>,
+}
+impl TatakuRenderable for SliderDrawable {
+    fn get_blend_mode(&self) -> BlendMode { BlendMode::AlphaBlending }
+    fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
+
+    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+        let quad = [
+            Vector2::ZERO,
+            Vector2::new(0.0, 1.0),
+            Vector2::new(1.0, 0.0),
+            Vector2::ONE,
+        ];
+
+        let transform = transform * Matrix::identity()
+            .scale(self.size)
+            .trans(Vector2::from(self.slider_data.grid_origin));
+
+        g.draw_slider(
+            quad,
+            transform,
+            None,
+            self.circle_radius,
+            self.border_width,
+            self.slider_data.clone(),
+            self.slider_grids.clone(),
+            self.grid_cells.clone(),
+            self.line_segments.clone()
+        );
     }
 }
