@@ -1,5 +1,5 @@
+// use crate::prelude::*;
 use wgpu::{ Queue, Device };
-use crate::prelude::*;
 
 pub struct RenderBufferQueue<B:RenderBufferable> {
     pub cpu_cache: B::Cache,
@@ -23,7 +23,7 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
         }
 
         self.queued_buffers.append(&mut self.recorded_buffers);
-        self.recording_buffer = Some(self.queued_buffers.pop().unwrap());
+        self.recording_buffer = self.queued_buffers.pop();
     }
 
     pub fn end(&mut self, queue: &Queue) {
@@ -53,8 +53,8 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
         if self.queued_buffers.is_empty() {
             self.create_render_buffer(device);
         }
-        self.recording_buffer = self.queued_buffers.pop();
 
+        self.recording_buffer = self.queued_buffers.pop();
     }
 }
 

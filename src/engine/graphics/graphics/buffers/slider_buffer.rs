@@ -2,6 +2,8 @@ use wgpu::{
     Device,
     Buffer,
     BufferUsages,
+    BindGroup,
+    BindGroupLayout, BindGroupEntry,
 };
 use crate::prelude::*;
 
@@ -9,6 +11,8 @@ pub const EXPECTED_SLIDER_COUNT: u64 = 500;
 pub const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16;
 pub const LINE_SEGMENT_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32 * 16 * 2;
+
+pub static SLIDER_BIND_GROUP_LAYOUT: OnceCell<BindGroupLayout> = OnceCell::const_new();
 
 pub struct SliderRenderBuffer {
     pub circle_radius: Buffer,
@@ -23,6 +27,8 @@ pub struct SliderRenderBuffer {
     pub used_slider_grids: u64,
     pub used_grid_cells: u64,
     pub used_line_segments: u64,
+
+    pub bind_group: BindGroup
 }
 
 impl RenderBufferable for SliderRenderBuffer {
@@ -49,21 +55,43 @@ impl RenderBufferable for SliderRenderBuffer {
         self.used_slider_data > 0
     }
 
-
-
     fn create_new_buffer(device: &Device) -> Self {
+        info!("creating new slider buffer");
+        let bind_group_layout = SLIDER_BIND_GROUP_LAYOUT.get().unwrap();
+
+        let circle_radius = create_buffer::<f32>(device, BufferUsages::UNIFORM, 1);
+        let border_width = create_buffer::<f32>(device, BufferUsages::UNIFORM, 1);
+        let slider_data = create_buffer::<SliderData>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT);
+        let slider_grids = create_buffer::<GridCell>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32);
+        let grid_cells = create_buffer::<u32>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16);
+        let line_segments = create_buffer::<LineSegment>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16 * 2);
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: bind_group_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: circle_radius.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: border_width.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: slider_data.as_entire_binding() },
+                BindGroupEntry { binding: 3, resource: slider_grids.as_entire_binding() },
+                BindGroupEntry { binding: 4, resource: grid_cells.as_entire_binding() },
+                BindGroupEntry { binding: 5, resource: line_segments.as_entire_binding() },
+            ]
+        });
+
         Self {
             used_slider_data: 0,
             used_slider_grids: 0,
             used_grid_cells: 0,
             used_line_segments: 0,
 
-            circle_radius: create_buffer::<f32>(device, BufferUsages::UNIFORM, 1),
-            border_width: create_buffer::<f32>(device, BufferUsages::UNIFORM, 1),
-            slider_data: create_buffer::<SliderData>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT),
-            slider_grids: create_buffer::<GridCell>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32),
-            grid_cells: create_buffer::<u32>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16),
-            line_segments: create_buffer::<LineSegment>(device, BufferUsages::STORAGE, EXPECTED_SLIDER_COUNT * 32 * 16 * 2),
+            bind_group,
+            circle_radius,
+            border_width,
+            slider_data,
+            slider_grids,
+            grid_cells,
+            line_segments,
         }
     }
 }
@@ -99,6 +127,7 @@ impl Default for CpuSliderRenderBuffer {
     }
 }
 
+#[derive(Debug)]
 pub struct SliderReserveData<'a> {
     pub slider_data: &'a mut SliderData,
     pub slider_grids: &'a mut [GridCell],
@@ -113,12 +142,12 @@ pub struct SliderReserveData<'a> {
 impl<'a> SliderReserveData<'a> {
     pub fn copy_in(
         &mut self,
-        slider_data: &SliderData,
+        slider_data: SliderData,
         slider_grids: &[GridCell],
         grid_cells: &[u32],
         line_segments: &[LineSegment]
     ) {
-        *self.slider_data = slider_data.clone();
+        *self.slider_data = slider_data;
         self.slider_grids.copy_from_slice(slider_grids);
         self.grid_cells.copy_from_slice(grid_cells);
         self.line_segments.copy_from_slice(line_segments);

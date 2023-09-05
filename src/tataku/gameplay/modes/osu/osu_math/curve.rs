@@ -143,6 +143,16 @@ pub enum CurveSegment {
         curve: Vec<Vector2>
     },
 }
+impl CurveSegment {
+    pub fn all_points(&self) -> Vec<Vector2> {
+        match self {
+            Self::Bezier { curve }
+            | Self::Catmull { curve }
+            | Self::Perfect { curve } => curve.clone(),
+            Self::Linear { p1, p2 } => vec![*p1, *p2]
+        }
+    }
+}
 
 
 

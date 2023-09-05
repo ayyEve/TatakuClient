@@ -86,8 +86,10 @@ impl<'a> SliderVertexReserveData<'a> {
     pub fn copy_in(&mut self, vtx: &[SliderVertex], idx: &[u32]) {
         // std::mem::swap(vtx, self.vtx);
         // std::mem::swap(idx, self.idx);
+        self.vtx.copy_from_slice(vtx);
+        self.idx.copy_from_slice(idx);
 
-        for i in 0..vtx.len() { self.vtx[i] = vtx[i] }
-        for i in 0..idx.len() { self.idx[i] = idx[i] }
+        // for i in 0..vtx.len() { self.vtx[i] = vtx[i] }
+        // for i in 0..idx.len() { self.idx[i] = idx[i] }
     }
 }

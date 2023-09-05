@@ -280,18 +280,68 @@ impl OsuSlider {
             }
         }
 
+        //TODO: test data here
+        let slider_radius = self.radius / 100.0;
+        let border_width = 2.0;
+        let quad = [
+            Vector2::ZERO, 
+            Vector2::new(1000.0, 0.0), 
+            Vector2::new(0.0, 1000.0), 
+            Vector2::new(1000.0, 1000.0)
+        ];
+        let slider_data = SliderData {
+            grid_origin: min_pos.into(),
+            grid_size: [1, 1],
+            grid_index: 0,
+            body_color: Color::LIME.into(),
+            border_color: Color::CRIMSON.into(),
+        };
+        let slider_grids = vec![GridCell {
+            index: 0,
+            length: 1
+        }];
+        let grid_cells = vec![0];
+
+        let line_segments = self.curve.segments.iter()
+            .map(|s| s.all_points().windows(2).map(|p|LineSegment {p1: p[0].into(), p2: p[1].into()}).collect::<Vec<_>>())
+            .flatten()
+            .collect();
+
         // draw it to the render texture
         if let Some(target) = self.slider_body_render_target.clone() {
+
             GameWindow::update_render_target(target, move |state, matrix| {
                 let m = matrix.trans(-min_pos);
-                for i in list { i.draw(m, state); }
+                // for i in list { i.draw(m, state); }
+                state.draw_slider(
+                    quad,
+                    m,
+                    None, 
+                    slider_radius, 
+                    border_width,
+                    slider_data,
+                    slider_grids,
+                    grid_cells,
+                    line_segments
+                );
             }).await;
         } else {
             let size = max_pos - min_pos;
 
             let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, matrix| {
                 let m = matrix.trans(-min_pos);
-                for i in list { i.draw(m, state); } 
+                // for i in list { i.draw(m, state); } 
+                state.draw_slider(
+                    quad,
+                    m,
+                    None, 
+                    slider_radius, 
+                    border_width,
+                    slider_data,
+                    slider_grids,
+                    grid_cells,
+                    line_segments
+                );
             }).await;
 
             if let Ok(mut slider_body_render_target) = rt {

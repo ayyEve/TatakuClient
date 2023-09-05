@@ -20,31 +20,14 @@ pub struct GraphicsState {
     config: wgpu::SurfaceConfiguration,
 
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
-    // blending_pipeline: wgpu::RenderPipeline,
-    // no_blending_pipeline: wgpu::RenderPipeline,
 
     vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
     slider_vertex_buffer_queue: RenderBufferQueue<SliderVertexBuffer>,
     slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
 
-
-    // recorded_buffers: Vec<RenderBuffer>,
-    // queued_buffers: Vec<RenderBuffer>,
-    // recording_buffer: Option<RenderBuffer>,
-
-    // // The in-progress CPU side buffers that get uploaded to the GPU upon a call to dump()
-    // cpu_vtx: Vec<Vertex>,
-    // cpu_slider_vtx: Vec<SliderVertex>,
-    // cpu_idx: Vec<u32>,
-    // cpu_scissor: Vec<[f32; 4]>,
-
-    // texture_bind_group: wgpu::BindGroup,
     projection_matrix: Matrix,
     projection_matrix_buffer: wgpu::Buffer,
     projection_matrix_bind_group: wgpu::BindGroup,
-    // texture_bind_group_layout: wgpu::BindGroupLayout,
-
-    // scissor_buffer_layout: wgpu::BindGroupLayout,
 
     atlas: Atlas,
     render_target_atlas: Atlas,
@@ -380,12 +363,13 @@ impl GraphicsState {
 
                 ],
             });
+            SLIDER_BIND_GROUP_LAYOUT.set(slider_bind_group_layout).unwrap();
 
             let slider_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Slider Pipeline Layout"),
                 bind_group_layouts: &[
                     &projection_matrix_bind_group_layout,
-                    &slider_bind_group_layout,
+                    SLIDER_BIND_GROUP_LAYOUT.get().unwrap(),
                 ],
                 push_constant_ranges: &[],
             });
@@ -428,8 +412,6 @@ impl GraphicsState {
             pipelines.insert(BlendMode::Slider, slider_pipeline);
         }
 
-
-
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -462,28 +444,15 @@ impl GraphicsState {
             slider_buffer_queue: RenderBufferQueue::new(),
             slider_vertex_buffer_queue: RenderBufferQueue::new(),
 
-            // recorded_buffers: Vec::with_capacity(3),
-            // queued_buffers: Vec::with_capacity(3),
-            // recording_buffer: None,
-
-            // cpu_vtx: vec![Vertex::default(); Self::VTX_PER_BUF as usize],
-            // cpu_slider_vtx: vec![SliderVertex::default(); Self::VTX_PER_BUF as usize],
-            // cpu_idx: vec![0; Self::IDX_PER_BUF as usize],
-            // cpu_scissor: vec![[0.0; 4]; Self::QUAD_PER_BUF as usize],
-
-            // texture_bind_group: atlas_texture.bind_group,
             projection_matrix,
             projection_matrix_buffer,
             projection_matrix_bind_group,
-            // scissor_buffer_layout,
-            // texture_bind_group_layout
             screenshot_pending: None,
             particle_system,
         };
         s.vertex_buffer_queue.create_render_buffer(&s.device);
         s.slider_buffer_queue.create_render_buffer(&s.device);
         s.slider_vertex_buffer_queue.create_render_buffer(&s.device);
-        // s.create_render_buffer();
         s
     }
 
@@ -609,6 +578,34 @@ impl GraphicsState {
                 render_pass.set_index_buffer(recorded_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
                 render_pass.draw_indexed(0..recorded_buffer.used_indices as u32, 0, 0..1);
+            }
+
+
+            // do slider render stuff
+            current_scissor = None;
+            render_pass.set_pipeline(self.pipelines.get(&BlendMode::Slider).unwrap());
+            render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
+
+            for (vertex_buffer, data_buffer) in self.slider_vertex_buffer_queue.recorded_buffers().iter().zip(self.slider_buffer_queue.recorded_buffers().iter()) {
+                if vertex_buffer.scissor.unwrap() != current_scissor {
+                    current_scissor = vertex_buffer.scissor.unwrap();
+                    let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
+                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
+
+                    render_pass.set_scissor_rect(
+                        x.clamp(0.0, renderable.size.x) as u32,
+                        y.clamp(0.0, renderable.size.y) as u32,
+                        w.clamp(0.0, renderable.size.x - x) as u32,
+                        h.clamp(0.0, renderable.size.y - y) as u32
+                    );
+                }
+                
+                render_pass.set_bind_group(1, &data_buffer.bind_group, &[]);
+                
+                render_pass.set_vertex_buffer(0, vertex_buffer.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(vertex_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+
+                render_pass.draw_indexed(0..vertex_buffer.used_indices as u32, 0, 0..1);
             }
 
         }
@@ -1029,44 +1026,10 @@ impl GraphicsState {
     const VTX_PER_BUF:u64 = Self::QUAD_PER_BUF * 4;
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
-    // fn create_render_buffer(&mut self) {
-    //     self.queued_buffers.push(RenderBuffer {
-    //         blend_mode: BlendMode::None,
-    //         scissor: None,
-    //         vertex_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
-    //             label: Some("Vertex Buffer"),
-    //             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-    //             size: Self::VTX_PER_BUF * std::mem::size_of::<Vertex>() as u64,
-    //             mapped_at_creation: false,
-    //         }),
-    //         index_buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
-    //             label: Some("Index Buffer"),
-    //             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-    //             size: Self::IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
-    //             mapped_at_creation: false,
-    //         }),
-    //         used_vertices: 0,
-    //         used_indices: 0,
-    //     })
-    // }
-
     pub fn begin(&mut self) {
         self.vertex_buffer_queue.begin();
         self.slider_buffer_queue.begin();
         self.slider_vertex_buffer_queue.begin();
-
-        // // Go through all recorded buffers, and set their used counts to 0, resetting them for the next use
-        // for i in self.recorded_buffers.iter_mut() {
-        //     i.used_indices = 0;
-        //     i.used_vertices = 0;
-        //     i.blend_mode = BlendMode::None;
-        //     i.scissor = None;
-        // }
-
-        // // Move all recorded buffers into the queued buffers list
-        // self.queued_buffers.append(&mut self.recorded_buffers);
-        // self.recording_buffer = Some(self.queued_buffers.pop().unwrap());
-        // // self.started = true;
     }
 
     pub fn end(&mut self) {
@@ -1075,19 +1038,6 @@ impl GraphicsState {
         self.slider_buffer_queue.end(&self.queue);
         // self.dump();
     }
-
-    // fn dump(&mut self) {
-
-    //     // if let Some(recording_buffer) = std::mem::take(&mut self.recording_buffer) {
-    //     //     if recording_buffer.used_indices != 0 {
-    //     //         self.queue.write_buffer(&recording_buffer.vertex_buffer, 0, bytemuck::cast_slice(&self.cpu_vtx));
-    //     //         self.queue.write_buffer(&recording_buffer.index_buffer, 0, bytemuck::cast_slice(&self.cpu_idx));
-    //     //         self.recorded_buffers.push(recording_buffer);
-    //     //     } else {
-    //     //         self.queued_buffers.push(recording_buffer);
-    //     //     }
-    //     // }
-    // }
 
     /// returns reserve data
     fn reserve_vertex(
@@ -1204,8 +1154,6 @@ impl GraphicsState {
         transform: Matrix,
         scissor: Scissor,
 
-
-        //
         slider_grid_count: u64,
         grid_cell_count: u64,
         line_segment_count: u64,
@@ -1214,17 +1162,16 @@ impl GraphicsState {
         self.slider_buffer_queue.cpu_cache.border_width = border_width;
 
         let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
-
         if (recording_buffer.used_slider_data + 1 >= EXPECTED_SLIDER_COUNT)
         || (recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT)
         || (recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT)
         || (recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT)
         {
+            // these need to increment together.
             self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
+            self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
             recording_buffer = self.slider_buffer_queue.recording_buffer()?;
         }
-
-
 
         recording_buffer.used_slider_data += 1;
         recording_buffer.used_slider_grids += slider_grid_count;
@@ -1236,13 +1183,10 @@ impl GraphicsState {
         let used_line_segments = recording_buffer.used_line_segments;
 
         // reserve slider vertex data
-        let slider_index = recording_buffer.used_slider_data;
+        let slider_index = recording_buffer.used_slider_data - 1;
         self.reserve_slider_quad(quad, transform, scissor, slider_index as u32);
 
 
-        // vtx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-        // idx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
-        // idx_offset: used_vertices - vtx_count,
         Some(SliderReserveData {
             slider_data: &mut self.slider_buffer_queue.cpu_cache.slider_data[slider_index as usize],
             slider_grids: &mut self.slider_buffer_queue.cpu_cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
@@ -1354,7 +1298,7 @@ impl GraphicsState {
         ]);
     }
 
-    fn draw_slider(
+    pub fn draw_slider(
         &mut self,
         quad: [Vector2; 4],
         transform: Matrix,
@@ -1363,14 +1307,29 @@ impl GraphicsState {
         circle_radius: f32,
         border_width: f32,
 
-        slider_data: &SliderData,
-        slider_grids: &Vec<GridCell>,
-        grid_cells: &Vec<u32>,
-        line_segments: &Vec<u32>
+        mut slider_data: SliderData,
+        slider_grids: Vec<GridCell>,
+        grid_cells: Vec<u32>,
+        line_segments: Vec<LineSegment>
     ) {
-        let Some(mut reserved) = self.reserve_slider(circle_radius, border_width, quad, transform, scissor, slider_grids.len() as u64, grid_cells.len() as u64, line_segments.len() as u64) else { return };
+        let Some(mut reserved) = self.reserve_slider(
+            circle_radius, 
+            border_width, 
+            quad, 
+            transform, 
+            scissor, 
+            slider_grids.len() as u64, 
+            grid_cells.len() as u64, 
+            line_segments.len() as u64
+        ) else { return };
 
-
+        slider_data.grid_index += reserved.slider_grid_offset;
+        reserved.copy_in(
+            slider_data, 
+            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(), 
+            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(), 
+            &line_segments
+        );
     }
 }
 
