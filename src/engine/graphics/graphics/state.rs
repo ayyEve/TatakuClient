@@ -21,8 +21,10 @@ pub struct GraphicsState {
 
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
 
+    last_drawn: LastDrawn,
     vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
     slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
+    completed_buffers: Vec<RenderBufferType>,
 
     projection_matrix: Matrix,
     projection_matrix_buffer: wgpu::Buffer,
@@ -77,7 +79,6 @@ impl GraphicsState {
         ).await.unwrap();
 
         // no more comments good luck!
-
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps.formats.iter()
             .copied()
@@ -438,9 +439,11 @@ impl GraphicsState {
             atlas,
             render_target_atlas,
             atlas_texture,
+            last_drawn: LastDrawn::None,
 
             vertex_buffer_queue: RenderBufferQueue::new(),
             slider_buffer_queue: RenderBufferQueue::new(),
+            completed_buffers: Vec::new(),
 
             projection_matrix,
             projection_matrix_buffer,
@@ -544,10 +547,25 @@ impl GraphicsState {
             let mut current_blend_mode = BlendMode::None;
             let mut current_scissor: Scissor = None;
 
-            for recorded_buffer in self.vertex_buffer_queue.recorded_buffers().iter() {
-                if recorded_buffer.blend_mode != current_blend_mode {
-                    current_blend_mode = recorded_buffer.blend_mode;
-                    let Some(pipeline) = self.pipelines.get(&recorded_buffer.blend_mode) else {
+            for i in self.completed_buffers.iter() {
+                let scissor = i.get_scissor();
+                if scissor != current_scissor {
+                    current_scissor = scissor;
+                    let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
+                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
+
+                    render_pass.set_scissor_rect(
+                        x.clamp(0.0, renderable.size.x) as u32,
+                        y.clamp(0.0, renderable.size.y) as u32,
+                        w.clamp(0.0, renderable.size.x - x) as u32,
+                        h.clamp(0.0, renderable.size.y - y) as u32
+                    );
+                }
+
+                let blend_mode = i.get_blend_mode();
+                if blend_mode != current_blend_mode {
+                    current_blend_mode = blend_mode;
+                    let Some(pipeline) = self.pipelines.get(&blend_mode) else {
                         error!("Pipeline not created for blend mode {current_blend_mode:?}");
                         current_blend_mode = BlendMode::None;
                         continue
@@ -555,54 +573,19 @@ impl GraphicsState {
 
                     render_pass.set_pipeline(&pipeline);
                     render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
-                    render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
+
+                    if let RenderBufferType::Vertex(_) = i {
+                        render_pass.set_bind_group(1, &self.atlas_texture.bind_group, &[]);
+                    }
                 }
 
-                if recorded_buffer.scissor.unwrap() != current_scissor {
-                    current_scissor = recorded_buffer.scissor.unwrap();
-                    let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
-                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
-
-                    render_pass.set_scissor_rect(
-                        x.clamp(0.0, renderable.size.x) as u32,
-                        y.clamp(0.0, renderable.size.y) as u32,
-                        w.clamp(0.0, renderable.size.x - x) as u32,
-                        h.clamp(0.0, renderable.size.y - y) as u32
-                    );
+                if let RenderBufferType::Slider(slider) = i {
+                    render_pass.set_bind_group(1, &slider.bind_group, &[])
                 }
 
-                render_pass.set_vertex_buffer(0, recorded_buffer.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(recorded_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-
-                render_pass.draw_indexed(0..recorded_buffer.used_indices as u32, 0, 0..1);
-            }
-
-
-            // do slider render stuff
-            current_scissor = None;
-            render_pass.set_pipeline(self.pipelines.get(&BlendMode::Slider).unwrap());
-            render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
-
-            for buffer in self.slider_buffer_queue.recorded_buffers().iter() {
-                if buffer.scissor.unwrap() != current_scissor {
-                    current_scissor = buffer.scissor.unwrap();
-                    let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
-                    if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
-
-                    render_pass.set_scissor_rect(
-                        x.clamp(0.0, renderable.size.x) as u32,
-                        y.clamp(0.0, renderable.size.y) as u32,
-                        w.clamp(0.0, renderable.size.x - x) as u32,
-                        h.clamp(0.0, renderable.size.y - y) as u32
-                    );
-                }
-
-                render_pass.set_bind_group(1, &buffer.bind_group, &[]);
-
-                render_pass.set_vertex_buffer(0, buffer.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-
-                render_pass.draw_indexed(0..buffer.used_indices as u32, 0, 0..1);
+                render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
+                render_pass.set_index_buffer(i.get_index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.draw_indexed(0..i.get_used_indices() as u32, 0, 0..1);
             }
 
         }
@@ -1024,13 +1007,29 @@ impl GraphicsState {
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
     pub fn begin(&mut self) {
-        self.vertex_buffer_queue.begin();
-        self.slider_buffer_queue.begin();
+        self.last_drawn = LastDrawn::None;
+
+        let mut vertex_buffers = Vec::new();
+        let mut slider_buffers = Vec::new();
+
+        for i in std::mem::take(&mut self.completed_buffers) {
+            match i {
+                RenderBufferType::Vertex(v) => vertex_buffers.push(v),
+                RenderBufferType::Slider(s) => slider_buffers.push(s),
+            }
+        }
+
+        self.vertex_buffer_queue.begin(vertex_buffers);
+        self.slider_buffer_queue.begin(slider_buffers);
     }
 
     pub fn end(&mut self) {
-        self.vertex_buffer_queue.end(&self.queue);
-        self.slider_buffer_queue.end(&self.queue);
+        if let Some(b) = self.vertex_buffer_queue.end(&self.queue) {
+            self.completed_buffers.push(RenderBufferType::Vertex(b))
+        }
+        if let Some(b) = self.slider_buffer_queue.end(&self.queue) {
+            self.completed_buffers.push(RenderBufferType::Slider(b))
+        }
     }
 
     /// returns reserve data
@@ -1045,15 +1044,25 @@ impl GraphicsState {
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
+        if self.last_drawn == LastDrawn::None { self.last_drawn = LastDrawn::Vertex; }
+        if self.last_drawn != LastDrawn::Vertex {
+            self.last_drawn = LastDrawn::Vertex;
+            if let Some(b) = self.slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
+                self.completed_buffers.push(RenderBufferType::Slider(b))
+            }
+        }
+
         // if !blend_mode_check { println!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
         || !scissor_check
         || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
-            recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
+            if let Some(b) = self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
+                self.completed_buffers.push(RenderBufferType::Vertex(b))
+            }
 
+            recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
         }
@@ -1193,6 +1202,14 @@ impl GraphicsState {
         let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
+        if self.last_drawn == LastDrawn::None { self.last_drawn = LastDrawn::Slider; }
+        if self.last_drawn != LastDrawn::Slider {
+            self.last_drawn = LastDrawn::Slider;
+            if let Some(b) = self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
+                self.completed_buffers.push(RenderBufferType::Vertex(b))
+            }
+        }
+
         let vtx_count = 4;
         let idx_count = 6;
 
@@ -1204,12 +1221,13 @@ impl GraphicsState {
         || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
         || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
         {
-            // these need to increment together.
             info!("dumping");
-            self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
+            if let Some(b) = self.slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
+                self.completed_buffers.push(RenderBufferType::Slider(b))
+            }
             recording_buffer = self.slider_buffer_queue.recording_buffer()?;
         }
-        
+
         if recording_buffer.scissor.is_none() {
             recording_buffer.scissor = Some(scissor);
         }
@@ -1574,5 +1592,50 @@ fn align(num: u32) -> u32 {
         num
     } else {
         num + (wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - m)
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum LastDrawn {
+    None,
+    Vertex,
+    Slider
+}
+
+enum RenderBufferType {
+    Vertex(VertexBuffer),
+    Slider(SliderRenderBuffer)
+}
+impl RenderBufferType {
+    fn get_scissor(&self) -> Scissor {
+        match self {
+            Self::Vertex(v) => v.scissor.unwrap(),
+            Self::Slider(s) => s.scissor.unwrap(),
+        }
+    }
+    fn get_blend_mode(&self) -> BlendMode {
+        match self {
+            Self::Vertex(v) => v.blend_mode,
+            Self::Slider(_s) => BlendMode::Slider,
+        }
+    }
+    fn get_vertex_buffer(&self) -> &wgpu::Buffer {
+        match self {
+            Self::Vertex(v) => &v.vertex_buffer,
+            Self::Slider(s) => &s.vertex_buffer,
+        }
+    }
+    fn get_index_buffer(&self) -> &wgpu::Buffer {
+        match self {
+            Self::Vertex(v) => &v.index_buffer,
+            Self::Slider(s) => &s.index_buffer,
+        }
+    }
+    fn get_used_indices(&self) -> u64 {
+        match self {
+            Self::Vertex(v) => v.used_indices,
+            Self::Slider(s) => s.used_indices,
+        }
     }
 }
