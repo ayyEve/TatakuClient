@@ -1,5 +1,3 @@
-use crate::prelude::*;
-
 use std::mem::size_of;
 
 pub struct SliderRender {

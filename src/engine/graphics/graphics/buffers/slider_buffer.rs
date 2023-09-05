@@ -7,6 +7,10 @@ use wgpu::{
 };
 use crate::prelude::*;
 
+const QUAD_PER_BUF:u64 = 3000;
+const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;
+const IDX_PER_BUF:u64 = QUAD_PER_BUF * 6;
+
 pub const EXPECTED_SLIDER_COUNT: u64 = 500;
 pub const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT: u64 = SLIDER_GRID_COUNT * 16;
@@ -15,6 +19,10 @@ pub const LINE_SEGMENT_COUNT: u64 = GRID_CELL_COUNT * 2;
 pub static SLIDER_BIND_GROUP_LAYOUT: OnceCell<BindGroupLayout> = OnceCell::const_new();
 
 pub struct SliderRenderBuffer {
+    pub vertex_buffer: Buffer,
+    pub index_buffer: Buffer,
+    pub scissor: Option<Scissor>,
+
     pub circle_radius: Buffer,
     pub border_width: Buffer,
 
@@ -22,6 +30,10 @@ pub struct SliderRenderBuffer {
     pub slider_grids: Buffer,
     pub grid_cells: Buffer,
     pub line_segments: Buffer,
+
+
+    pub used_vertices: u64,
+    pub used_indices: u64,
 
     pub used_slider_data: u64,
     pub used_slider_grids: u64,
@@ -35,6 +47,10 @@ impl RenderBufferable for SliderRenderBuffer {
     type Cache = CpuSliderRenderBuffer;
 
     fn reset(&mut self) {
+        self.scissor = None;
+        self.used_indices = 0;
+        self.used_vertices = 0;
+
         self.used_slider_data = 0;
         self.used_slider_grids = 0;
         self.used_grid_cells = 0;
@@ -42,6 +58,9 @@ impl RenderBufferable for SliderRenderBuffer {
     }
 
     fn dump(&mut self, queue: &wgpu::Queue, cache: &Self::Cache) {
+        queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
+        queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
+
         queue.write_buffer(&self.circle_radius, 0, bytemuck::cast_slice(&[cache.circle_radius]));
         queue.write_buffer(&self.border_width, 0, bytemuck::cast_slice(&[cache.border_width]));
 
@@ -80,18 +99,35 @@ impl RenderBufferable for SliderRenderBuffer {
         });
 
         Self {
+            scissor: None,
+
             used_slider_data: 0,
             used_slider_grids: 0,
             used_grid_cells: 0,
             used_line_segments: 0,
+            used_vertices: 0,
+            used_indices: 0,
 
-            bind_group,
+            vertex_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Vertex Buffer"),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                size: VTX_PER_BUF * std::mem::size_of::<Vertex>() as u64,
+                mapped_at_creation: false,
+            }),
+            index_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Index Buffer"),
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                size: IDX_PER_BUF * std::mem::size_of::<u32>() as u64,
+                mapped_at_creation: false,
+            }),
+
             circle_radius,
             border_width,
             slider_data,
             slider_grids,
             grid_cells,
             line_segments,
+            bind_group,
         }
     }
 }
@@ -107,6 +143,9 @@ fn create_buffer<T>(device: &Device, t: BufferUsages, count: u64) -> Buffer {
 
 
 pub struct CpuSliderRenderBuffer {
+    pub cpu_vtx: Vec<SliderVertex>,
+    pub cpu_idx: Vec<u32>,
+
     pub circle_radius: f32,
     pub border_width: f32,
     pub slider_data: Vec<SliderData>,
@@ -117,6 +156,9 @@ pub struct CpuSliderRenderBuffer {
 impl Default for CpuSliderRenderBuffer {
     fn default() -> Self {
         Self {
+            cpu_vtx: vec![SliderVertex::default(); VTX_PER_BUF as usize],
+            cpu_idx: vec![0; IDX_PER_BUF as usize],
+
             circle_radius: 0.0,
             border_width: 0.0,
             slider_data: vec![Default::default(); EXPECTED_SLIDER_COUNT as usize],
@@ -129,11 +171,17 @@ impl Default for CpuSliderRenderBuffer {
 
 #[derive(Debug)]
 pub struct SliderReserveData<'a> {
+    pub vtx: &'a mut [SliderVertex],
+    pub idx: &'a mut [u32],
+
     pub slider_data: &'a mut SliderData,
     pub slider_grids: &'a mut [GridCell],
     pub grid_cells: &'a mut [u32],
     pub line_segments: &'a mut [LineSegment],
 
+
+    pub idx_offset: u64,
+    pub slider_index: u32,
     pub slider_grid_offset: u32,
     pub grid_cell_offset: u32,
     pub line_segment_offset: u32,
@@ -141,12 +189,18 @@ pub struct SliderReserveData<'a> {
 
 impl<'a> SliderReserveData<'a> {
     pub fn copy_in(
-        &mut self,
+        &mut self, 
+        vtx: &[SliderVertex], 
+        idx: &[u32],
+
         slider_data: SliderData,
         slider_grids: &[GridCell],
         grid_cells: &[u32],
         line_segments: &[LineSegment]
     ) {
+        self.vtx.copy_from_slice(vtx);
+        self.idx.copy_from_slice(idx);
+        
         *self.slider_data = slider_data;
         self.slider_grids.copy_from_slice(slider_grids);
         self.grid_cells.copy_from_slice(grid_cells);

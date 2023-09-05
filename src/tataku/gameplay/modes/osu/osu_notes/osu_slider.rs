@@ -333,6 +333,7 @@ impl OsuSlider {
             let mut slider_body = self.slider_body.clone();
             slider_body.slider_data.grid_origin = [0.0; 2]; // reset grid origin when rendering to a target
             slider_body.alpha = 1.0;
+
             if let Some(target) = self.slider_body_render_target.clone() {
                 GameWindow::update_render_target(target, move |state, transform| slider_body.draw(transform, state)).await;
             } else {

@@ -22,7 +22,6 @@ pub struct GraphicsState {
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
 
     vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
-    slider_vertex_buffer_queue: RenderBufferQueue<SliderVertexBuffer>,
     slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
 
     projection_matrix: Matrix,
@@ -442,7 +441,6 @@ impl GraphicsState {
 
             vertex_buffer_queue: RenderBufferQueue::new(),
             slider_buffer_queue: RenderBufferQueue::new(),
-            slider_vertex_buffer_queue: RenderBufferQueue::new(),
 
             projection_matrix,
             projection_matrix_buffer,
@@ -452,7 +450,6 @@ impl GraphicsState {
         };
         s.vertex_buffer_queue.create_render_buffer(&s.device);
         s.slider_buffer_queue.create_render_buffer(&s.device);
-        s.slider_vertex_buffer_queue.create_render_buffer(&s.device);
         s
     }
 
@@ -586,9 +583,9 @@ impl GraphicsState {
             render_pass.set_pipeline(self.pipelines.get(&BlendMode::Slider).unwrap());
             render_pass.set_bind_group(0, &self.projection_matrix_bind_group, &[]);
 
-            for (vertex_buffer, data_buffer) in self.slider_vertex_buffer_queue.recorded_buffers().iter().zip(self.slider_buffer_queue.recorded_buffers().iter()) {
-                if vertex_buffer.scissor.unwrap() != current_scissor {
-                    current_scissor = vertex_buffer.scissor.unwrap();
+            for buffer in self.slider_buffer_queue.recorded_buffers().iter() {
+                if buffer.scissor.unwrap() != current_scissor {
+                    current_scissor = buffer.scissor.unwrap();
                     let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
                     if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
 
@@ -600,12 +597,12 @@ impl GraphicsState {
                     );
                 }
 
-                render_pass.set_bind_group(1, &data_buffer.bind_group, &[]);
+                render_pass.set_bind_group(1, &buffer.bind_group, &[]);
 
-                render_pass.set_vertex_buffer(0, vertex_buffer.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(vertex_buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                render_pass.set_vertex_buffer(0, buffer.vertex_buffer.slice(..));
+                render_pass.set_index_buffer(buffer.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-                render_pass.draw_indexed(0..vertex_buffer.used_indices as u32, 0, 0..1);
+                render_pass.draw_indexed(0..buffer.used_indices as u32, 0, 0..1);
             }
 
         }
@@ -1029,14 +1026,11 @@ impl GraphicsState {
     pub fn begin(&mut self) {
         self.vertex_buffer_queue.begin();
         self.slider_buffer_queue.begin();
-        self.slider_vertex_buffer_queue.begin();
     }
 
     pub fn end(&mut self) {
         self.vertex_buffer_queue.end(&self.queue);
-        self.slider_vertex_buffer_queue.end(&self.queue);
         self.slider_buffer_queue.end(&self.queue);
-        // self.dump();
     }
 
     /// returns reserve data
@@ -1080,123 +1074,6 @@ impl GraphicsState {
             vtx: &mut self.vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
             idx: &mut self.vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
             idx_offset: used_vertices - vtx_count,
-        })
-    }
-
-    /// returns reserve data
-    fn reserve_slider_vertex(
-        &mut self,
-        vtx_count: u64,
-        idx_count: u64,
-        scissor: Scissor,
-    ) -> Option<SliderVertexReserveData> {
-        let mut recording_buffer = self.slider_vertex_buffer_queue.recording_buffer()?;
-        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
-
-        if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            info!("dumping vertex yuck");
-            self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
-            recording_buffer = self.slider_vertex_buffer_queue.recording_buffer()?;
-
-            recording_buffer.scissor = Some(scissor);
-        }
-        if recording_buffer.scissor.is_none() {
-            recording_buffer.scissor = Some(scissor);
-        }
-
-        recording_buffer.used_indices += idx_count;
-        recording_buffer.used_vertices += vtx_count;
-
-        let used_vertices = recording_buffer.used_vertices;
-        let used_indices = recording_buffer.used_indices;
-
-        Some(SliderVertexReserveData {
-            vtx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut self.slider_vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
-            idx_offset: used_vertices - vtx_count,
-        })
-    }
-
-    // quad is tl,tr, bl,br
-    fn reserve_slider_quad(
-        &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
-        scissor: Scissor,
-        slider_index: u32
-    ) {
-        let Some(mut reserved) = self.reserve_slider_vertex(4, 6, scissor) else { return };
-
-        let vertices = quad.into_iter().map(|p|SliderVertex {
-            position: transform.mul_v2(p).into(),
-            slider_index,
-        }).collect::<Vec<_>>();
-
-        let offset = reserved.idx_offset as u32;
-        reserved.copy_in(&vertices, &[
-            0 + offset,
-            2 + offset,
-            1 + offset,
-
-            1 + offset,
-            2 + offset,
-            3 + offset,
-        ]);
-    }
-
-    fn reserve_slider(
-        &mut self,
-        circle_radius: f32,
-        border_width: f32,
-
-        quad: [Vector2; 4],
-        transform: Matrix,
-        scissor: Scissor,
-
-        slider_grid_count: u64,
-        grid_cell_count: u64,
-        line_segment_count: u64,
-    ) -> Option<SliderReserveData> {
-        self.slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
-        self.slider_buffer_queue.cpu_cache.border_width = border_width;
-
-        let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
-        if (recording_buffer.used_slider_data + 1 > EXPECTED_SLIDER_COUNT)
-        || (recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT)
-        || (recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT)
-        || (recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT)
-        {
-            // these need to increment together.
-            info!("dumping");
-            self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
-            self.slider_vertex_buffer_queue.dump_and_next(&self.queue, &self.device);
-            recording_buffer = self.slider_buffer_queue.recording_buffer()?;
-        }
-
-        recording_buffer.used_slider_data += 1;
-        recording_buffer.used_slider_grids += slider_grid_count;
-        recording_buffer.used_grid_cells += grid_cell_count;
-        recording_buffer.used_line_segments += line_segment_count;
-
-        let used_slider_grids = recording_buffer.used_slider_grids;
-        let used_grid_cells = recording_buffer.used_grid_cells;
-        let used_line_segments = recording_buffer.used_line_segments;
-
-        // reserve slider vertex data
-        let slider_index = recording_buffer.used_slider_data - 1;
-        self.reserve_slider_quad(quad, transform, scissor, slider_index as u32);
-
-
-        Some(SliderReserveData {
-            slider_data: &mut self.slider_buffer_queue.cpu_cache.slider_data[slider_index as usize],
-            slider_grids: &mut self.slider_buffer_queue.cpu_cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
-            grid_cells: &mut self.slider_buffer_queue.cpu_cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
-            line_segments: &mut self.slider_buffer_queue.cpu_cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
-            slider_grid_offset: (used_slider_grids - slider_grid_count) as u32,
-            grid_cell_offset: (used_grid_cells - grid_cell_count) as u32,
-            line_segment_offset: (used_line_segments - line_segment_count) as u32,
         })
     }
 
@@ -1300,6 +1177,78 @@ impl GraphicsState {
         ]);
     }
 
+    fn reserve_slider(
+        &mut self,
+        circle_radius: f32,
+        border_width: f32,
+        scissor: Scissor,
+
+        slider_grid_count: u64,
+        grid_cell_count: u64,
+        line_segment_count: u64,
+    ) -> Option<SliderReserveData> {
+        self.slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
+        self.slider_buffer_queue.cpu_cache.border_width = border_width;
+
+        let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+
+        let vtx_count = 4;
+        let idx_count = 6;
+
+        if !scissor_check
+        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF
+        || recording_buffer.used_slider_data + 1 > EXPECTED_SLIDER_COUNT
+        || recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT
+        || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
+        || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
+        {
+            // these need to increment together.
+            info!("dumping");
+            self.slider_buffer_queue.dump_and_next(&self.queue, &self.device);
+            recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+        }
+        
+        if recording_buffer.scissor.is_none() {
+            recording_buffer.scissor = Some(scissor);
+        }
+
+        recording_buffer.used_indices += idx_count;
+        recording_buffer.used_vertices += vtx_count;
+
+        recording_buffer.used_slider_data += 1;
+        recording_buffer.used_slider_grids += slider_grid_count;
+        recording_buffer.used_grid_cells += grid_cell_count;
+        recording_buffer.used_line_segments += line_segment_count;
+
+        let used_vertices = recording_buffer.used_vertices;
+        let used_indices = recording_buffer.used_indices;
+
+        let used_slider_grids = recording_buffer.used_slider_grids;
+        let used_grid_cells = recording_buffer.used_grid_cells;
+        let used_line_segments = recording_buffer.used_line_segments;
+
+        // reserve slider vertex data
+        let slider_index = recording_buffer.used_slider_data - 1;
+
+        Some(SliderReserveData {
+            vtx: &mut self.slider_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut self.slider_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+
+            slider_data: &mut self.slider_buffer_queue.cpu_cache.slider_data[slider_index as usize],
+            slider_grids: &mut self.slider_buffer_queue.cpu_cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
+            grid_cells: &mut self.slider_buffer_queue.cpu_cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
+            line_segments: &mut self.slider_buffer_queue.cpu_cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
+
+            idx_offset: used_vertices - vtx_count,
+            slider_index: slider_index as u32,
+            slider_grid_offset: (used_slider_grids - slider_grid_count) as u32,
+            grid_cell_offset: (used_grid_cells - grid_cell_count) as u32,
+            line_segment_offset: (used_line_segments - line_segment_count) as u32,
+        })
+    }
+
     pub fn draw_slider(
         &mut self,
         quad: [Vector2; 4],
@@ -1317,8 +1266,6 @@ impl GraphicsState {
         let Some(mut reserved) = self.reserve_slider(
             circle_radius,
             border_width,
-            quad,
-            transform,
             scissor,
             slider_grids.len() as u64,
             grid_cells.len() as u64,
@@ -1327,8 +1274,25 @@ impl GraphicsState {
 
         // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
 
+        
+        let vertices = quad.into_iter().map(|p|SliderVertex {
+            position: transform.mul_v2(p).into(),
+            slider_index: reserved.slider_index,
+        }).collect::<Vec<_>>();
+
+        let offset = reserved.idx_offset as u32;
         slider_data.grid_index += reserved.slider_grid_offset;
         reserved.copy_in(
+            &vertices, 
+            &[
+                0 + offset,
+                2 + offset,
+                1 + offset,
+
+                1 + offset,
+                2 + offset,
+                3 + offset,
+            ],
             slider_data,
             &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
             &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
