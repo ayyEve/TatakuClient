@@ -12,6 +12,13 @@ pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
 pub type Scissor = Option<[f32; 4]>;
 
+macro_rules! get_render_buffer {
+    ($self: ident, $t: ident) => {{
+        let b = $self.current_render_buffer.as_mut().expect("last drawn type not set");
+        if let RenderBufferQueueType::$t(b2) = &mut **b {b2} else { panic!("wrong buffer type") }
+    }}
+}
+
 pub struct GraphicsState {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -20,12 +27,9 @@ pub struct GraphicsState {
 
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
 
-    last_drawn: LastDrawn,
-    buffer_queues: HashMap<LastDrawn, RenderBufferQueueType>,
+    buffer_queues: HashMap<LastDrawn, Box<RenderBufferQueueType>>,
     completed_buffers: Vec<RenderBufferType>,
-
-    // vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
-    // slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
+    current_render_buffer: Option<Box<RenderBufferQueueType>>,
 
     projection_matrix: Matrix,
     projection_matrix_buffer: wgpu::Buffer,
@@ -432,8 +436,8 @@ impl GraphicsState {
         let particle_system = ParticleSystem::new(&device);
 
         let buffer_queues = [
-            (LastDrawn::Slider, RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device))),
-            (LastDrawn::Vertex, RenderBufferQueueType::Vertex(RenderBufferQueue::new().init(&device))),
+            (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device)))),
+            (LastDrawn::Vertex, Box::new(RenderBufferQueueType::Vertex(RenderBufferQueue::new().init(&device)))),
         ].into_iter().collect();
 
         let s = Self {
@@ -446,7 +450,7 @@ impl GraphicsState {
             render_target_atlas,
             atlas_texture,
 
-            last_drawn: LastDrawn::None,
+            current_render_buffer: None,
             buffer_queues,
             completed_buffers: Vec::new(),
 
@@ -1010,7 +1014,8 @@ impl GraphicsState {
     const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
 
     pub fn begin(&mut self) {
-        self.last_drawn = LastDrawn::None;
+        // if self.last_drawn is not None at this point, something went wrong
+        assert!(self.current_render_buffer.is_none());
 
         let mut vertex_buffers = Vec::new();
         let mut slider_buffers = Vec::new();
@@ -1023,7 +1028,7 @@ impl GraphicsState {
         }
 
         for i in self.buffer_queues.values_mut() {
-            match i {
+            match &mut **i {
                 RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
                 RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
             }
@@ -1031,27 +1036,29 @@ impl GraphicsState {
     }
 
     pub fn end(&mut self) {
-        for i in self.buffer_queues.values_mut() {
-            let Some(b) = i.end(&self.queue) else { continue };
-            self.completed_buffers.push(b);
+        if let Some(mut last_queue) = std::mem::take(&mut self.current_render_buffer) {
+            if let Some(b) = last_queue.end(&self.queue) {
+                self.completed_buffers.push(b);
+            }
+
+            self.buffer_queues.insert(last_queue.draw_type(), last_queue);
         }
     }
 
-    pub fn dump_and_next_last_drawn(&mut self) {
-        let Some(queue) = self.buffer_queues.get_mut(&self.last_drawn) else { return };
-        let Some(b) = queue.dump_and_next(&self.queue, &self.device) else { return };
-        self.completed_buffers.push(b);
+
+    pub fn dump_last_drawn(&mut self) {
+        let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
+        if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device) { self.completed_buffers.push(b); };
+        self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
+
     pub fn check_dump_and_next(&mut self, to_draw: LastDrawn) {
-        if self.last_drawn == LastDrawn::None {
-            self.last_drawn = to_draw; 
-            return;
+        if let Some(last_drawn) = &self.current_render_buffer {
+            if last_drawn.draw_type() == to_draw { return }
         }
-
-        if self.last_drawn != to_draw {
-            self.dump_and_next_last_drawn();
-            self.last_drawn = to_draw;
-        }
+        
+        self.dump_last_drawn();
+        self.current_render_buffer = self.buffer_queues.remove(&to_draw);
     }
 
     /// returns reserve data
@@ -1064,14 +1071,13 @@ impl GraphicsState {
     ) -> Option<VertexReserveData> {
         self.check_dump_and_next(LastDrawn::Vertex);
 
-        let vertex_buffer_queue = self.buffer_queues.values_mut().find_map(|b| {
-            if let RenderBufferQueueType::Vertex(b) = b { Some(b)} else { None }
-        }).unwrap();
+        let vertex_buffer_queue = get_render_buffer!(self, Vertex);
+        // if let Some(RenderBufferQueueType::Vertex(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
-        // if !blend_mode_check { println!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
+        // if !blend_mode_check { info!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
         || !scissor_check
@@ -1218,9 +1224,8 @@ impl GraphicsState {
     ) -> Option<SliderReserveData> {
         self.check_dump_and_next(LastDrawn::Slider);
 
-        let slider_buffer_queue = self.buffer_queues.values_mut().find_map(|b| {
-            if let RenderBufferQueueType::Slider(b) = b { Some(b)} else { None }
-        }).unwrap();
+        let slider_buffer_queue = get_render_buffer!(self, Slider);
+        // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
 
         slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
         slider_buffer_queue.cpu_cache.border_width = border_width;
@@ -1624,8 +1629,8 @@ pub enum LastDrawn {
 }
 
 pub enum RenderBufferType {
-    Vertex(VertexBuffer),
-    Slider(SliderRenderBuffer)
+    Vertex(Box<VertexBuffer>),
+    Slider(Box<SliderRenderBuffer>)
 }
 impl RenderBufferType {
     pub fn get_scissor(&self) -> Scissor {
@@ -1677,6 +1682,13 @@ impl RenderBufferQueueType {
         match self {
             Self::Slider(s) => s.end(queue).map(|b|RenderBufferType::Slider(b)),
             Self::Vertex(v) => v.end(queue).map(|b|RenderBufferType::Vertex(b)),
+        }
+    }
+
+    pub fn draw_type(&self) -> LastDrawn {
+        match self {
+            Self::Slider(_) => LastDrawn::Slider,
+            Self::Vertex(_) => LastDrawn::Vertex,
         }
     }
 }
