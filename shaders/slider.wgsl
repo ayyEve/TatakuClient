@@ -13,6 +13,14 @@ struct FragmentInputs {
 }
 
 struct SliderData {
+    // Radius of inner slider body
+    circle_radius: f32,
+    // Width of border around slider body
+    border_width: f32,
+
+    // snaking progress as a percentage (0-1)
+    snake_percentage: f32,
+
     // Origin position of grid in viewport space
     grid_origin: array<f32, 2>,
     // Size of the slider in grid units
@@ -55,28 +63,26 @@ fn slider_vs_main(input: VertexInputs) -> FragmentInputs {
     return output;
 }
 
-// Radius of inner slider body
-@group(1) @binding(0) var<uniform> circle_radius: f32;
-// Width of border around slider body
-@group(1) @binding(1) var<uniform> border_width: f32;
-
 // Per slider data
-@group(1) @binding(2) var<storage> slider_data: array<SliderData>;
+@group(1) @binding(0) var<storage> slider_data: array<SliderData>;
 
 // Grids for different sliders. Slices of this array represent an individual slider grid,
 // where each value is a slice into the `grid_cells` array.
-@group(1) @binding(3) var<storage> slider_grids: array<GridCell>;
+@group(1) @binding(1) var<storage> slider_grids: array<GridCell>;
 // Grid cells for different sliders. Slices of this array represent an individual cell,
 // where each value is an index into the `line_segments` array.
-@group(1) @binding(4) var<storage> grid_cells: array<u32>;
+@group(1) @binding(2) var<storage> grid_cells: array<u32>;
 // Line segments of all sliders in the current render
-@group(1) @binding(5) var<storage> line_segments: array<LineSegment>;
+@group(1) @binding(3) var<storage> line_segments: array<LineSegment>;
 
 @fragment
 fn slider_fs_main(input: FragmentInputs) -> @location(0) vec4<f32> {
+    let slider = slider_data[input.slider_index];
+    let circle_radius = slider.circle_radius;
+    let border_width = slider.border_width;
+
     let cell_size = circle_radius + border_width;
 
-    let slider = slider_data[input.slider_index];
 
     let slider_grid_origin = cast_vec2_f32(slider.grid_origin);
     let position = input.position.xy - slider_grid_origin;

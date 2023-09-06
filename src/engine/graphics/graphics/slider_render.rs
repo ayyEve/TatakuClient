@@ -31,6 +31,14 @@ pub struct SliderVertex {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SliderData {
+    /// Radius of inner slider body
+    pub circle_radius: f32,
+    /// Width of border around slider body
+    pub border_width: f32,
+
+    /// snaking progress as a percentage (0-1)
+    pub snake_percentage: f32,
+
     /// Origin position of grid in viewport space
     pub grid_origin: [f32; 2],
     /// Size of the slider in grid units

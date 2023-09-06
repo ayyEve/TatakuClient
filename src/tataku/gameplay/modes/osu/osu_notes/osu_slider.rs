@@ -313,6 +313,9 @@ impl OsuSlider {
 
 
         let slider_data = SliderData {
+            circle_radius,
+            border_width,
+            snake_percentage: 1.0,
             grid_origin: min_pos.into(),
             grid_size,
             grid_index: 0,
@@ -1028,8 +1031,6 @@ impl TatakuRenderable for SliderDrawable {
             quad,
             transform,
             None,
-            self.circle_radius,
-            self.border_width,
             slider_data,
             self.slider_grids.clone(),
             self.grid_cells.clone(),

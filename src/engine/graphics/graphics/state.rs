@@ -209,29 +209,26 @@ impl GraphicsState {
             contents: bytemuck::cast_slice(&projection_matrix.to_raw()),
         });
 
-        let projection_matrix_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &projection_matrix_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::Buffer(BufferBinding {
-                            buffer: &projection_matrix_buffer,
-                            offset: 0,
-                            size: std::num::NonZeroU64::new(proj_matrix_size)
-                        }),
-                    },
-                ],
-                label: Some("diffuse_bind_group"),
-            }
-        );
+        let projection_matrix_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("diffuse_bind_group"),
+            layout: &projection_matrix_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(BufferBinding {
+                        buffer: &projection_matrix_buffer,
+                        offset: 0,
+                        size: std::num::NonZeroU64::new(proj_matrix_size)
+                    }),
+                },
+            ],
+        });
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &[
                 &projection_matrix_bind_group_layout,
                 &texture_bind_group_layout,
-                // &scissor_buffer_layout
             ],
             push_constant_ranges: &[],
         });
@@ -295,32 +292,9 @@ impl GraphicsState {
             let slider_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("slider group layout"),
                 entries: &[
-                    // circle_radius
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<f32>() as u64)
-                        },
-                        count: None,
-                    },
-                    // border_radius
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<f32>() as u64)
-                        },
-                        count: None,
-                    },
-
                     // slider_data
                     wgpu::BindGroupLayoutEntry {
-                        binding: 2,
+                        binding: 0,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -332,7 +306,7 @@ impl GraphicsState {
 
                     // slider_grids
                     wgpu::BindGroupLayoutEntry {
-                        binding: 3,
+                        binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -344,7 +318,7 @@ impl GraphicsState {
 
                     // grid_cells
                     wgpu::BindGroupLayoutEntry {
-                        binding: 4,
+                        binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -356,7 +330,7 @@ impl GraphicsState {
 
                     // line_segments
                     wgpu::BindGroupLayoutEntry {
-                        binding: 5,
+                        binding: 3,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -1214,8 +1188,6 @@ impl GraphicsState {
 
     fn reserve_slider(
         &mut self,
-        circle_radius: f32,
-        border_width: f32,
         scissor: Scissor,
 
         slider_grid_count: u64,
@@ -1226,9 +1198,6 @@ impl GraphicsState {
 
         let slider_buffer_queue = get_render_buffer!(self, Slider);
         // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
-
-        slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
-        slider_buffer_queue.cpu_cache.border_width = border_width;
 
         let mut recording_buffer = slider_buffer_queue.recording_buffer().expect("didnt get slider recording buffer");
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
@@ -1291,56 +1260,6 @@ impl GraphicsState {
         })
     }
 
-    pub fn draw_slider(
-        &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
-        scissor: Scissor,
-
-        circle_radius: f32,
-        border_width: f32,
-
-        mut slider_data: SliderData,
-        slider_grids: Vec<GridCell>,
-        grid_cells: Vec<u32>,
-        line_segments: Vec<LineSegment>
-    ) {
-        let Some(mut reserved) = self.reserve_slider(
-            circle_radius,
-            border_width,
-            scissor,
-            slider_grids.len() as u64,
-            grid_cells.len() as u64,
-            line_segments.len() as u64
-        ) else { return };
-
-        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
-
-        
-        let vertices = quad.into_iter().map(|p|SliderVertex {
-            position: transform.mul_v2(p).into(),
-            slider_index: reserved.slider_index,
-        }).collect::<Vec<_>>();
-
-        let offset = reserved.idx_offset as u32;
-        slider_data.grid_index += reserved.slider_grid_offset;
-        reserved.copy_in(
-            &vertices, 
-            &[
-                0 + offset,
-                2 + offset,
-                1 + offset,
-
-                1 + offset,
-                2 + offset,
-                3 + offset,
-            ],
-            slider_data,
-            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
-            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
-            &line_segments
-        );
-    }
 }
 
 
@@ -1451,6 +1370,53 @@ impl GraphicsState {
     pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
         self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, scissor, blend_mode);
+    }
+
+    
+    pub fn draw_slider(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+        scissor: Scissor,
+
+        mut slider_data: SliderData,
+        slider_grids: Vec<GridCell>,
+        grid_cells: Vec<u32>,
+        line_segments: Vec<LineSegment>
+    ) {
+        let Some(mut reserved) = self.reserve_slider(
+            scissor,
+            slider_grids.len() as u64,
+            grid_cells.len() as u64,
+            line_segments.len() as u64
+        ) else { return };
+
+        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
+
+        
+        let vertices = quad.into_iter().map(|p|SliderVertex {
+            position: transform.mul_v2(p).into(),
+            slider_index: reserved.slider_index,
+        }).collect::<Vec<_>>();
+
+        let offset = reserved.idx_offset as u32;
+        slider_data.grid_index += reserved.slider_grid_offset;
+        reserved.copy_in(
+            &vertices, 
+            &[
+                0 + offset,
+                2 + offset,
+                1 + offset,
+
+                1 + offset,
+                2 + offset,
+                3 + offset,
+            ],
+            slider_data,
+            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
+            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
+            &line_segments
+        );
     }
 
 
