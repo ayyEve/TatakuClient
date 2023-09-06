@@ -1,9 +1,10 @@
 use wgpu::{
     Device,
     Buffer,
-    BufferUsages,
     BindGroup,
-    BindGroupLayout, BindGroupEntry,
+    BufferUsages,
+    BindGroupEntry,
+    BindGroupLayout, 
 };
 use crate::prelude::*;
 
@@ -11,7 +12,7 @@ const QUAD_PER_BUF:u64 = 3000;
 const VTX_PER_BUF:u64 = QUAD_PER_BUF * 4;
 const IDX_PER_BUF:u64 = QUAD_PER_BUF * 6;
 
-pub const EXPECTED_SLIDER_COUNT: u64 = 500;
+pub const EXPECTED_SLIDER_COUNT: u64 = 10;
 pub const SLIDER_GRID_COUNT: u64 = EXPECTED_SLIDER_COUNT * 32;
 pub const GRID_CELL_COUNT: u64 = SLIDER_GRID_COUNT * 16;
 pub const LINE_SEGMENT_COUNT: u64 = GRID_CELL_COUNT * 2;
@@ -45,6 +46,7 @@ pub struct SliderRenderBuffer {
 
 impl RenderBufferable for SliderRenderBuffer {
     type Cache = CpuSliderRenderBuffer;
+    fn name() -> &'static str { "slider buffer" }
 
     fn reset(&mut self) {
         self.scissor = None;
@@ -132,6 +134,7 @@ impl RenderBufferable for SliderRenderBuffer {
     }
 }
 
+/// helper for creating buffers, since SliderRenderBuffer has so goddamn many
 fn create_buffer<T>(device: &Device, t: BufferUsages, count: u64) -> Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Slider Buffer"),
@@ -205,9 +208,5 @@ impl<'a> SliderReserveData<'a> {
         self.slider_grids.copy_from_slice(slider_grids);
         self.grid_cells.copy_from_slice(grid_cells);
         self.line_segments.copy_from_slice(line_segments);
-
-        // for i in 0..slider_grids.len() { self.slider_grids[i] = slider_grids[i] }
-        // for i in 0..grid_cells.len() { self.grid_cells[i] = grid_cells[i] }
-        // for i in 0..line_segments.len() { self.line_segments[i] = line_segments[i] }
     }
 }

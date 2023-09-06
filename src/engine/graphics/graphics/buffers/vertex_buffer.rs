@@ -15,18 +15,14 @@ pub struct VertexBuffer {
     pub index_buffer: Buffer,
     pub scissor: Option<Scissor>,
 
-    // pub scissor_buffer: Buffer,
-    // pub scissor_buffer_bind_group: BindGroup,
-
     pub used_vertices: u64,
     pub used_indices: u64,
-    // pub used_scissors: u64,
-
-    // recording_periods_since_last_use: usize
 }
 
 impl RenderBufferable for VertexBuffer {
     type Cache = CpuVertexBuffer;
+    fn name() -> &'static str { "vertex buffer" }
+    fn should_write(&self) -> bool { self.used_indices > 0 }
 
     fn reset(&mut self) {
         self.blend_mode = BlendMode::None;
@@ -39,11 +35,6 @@ impl RenderBufferable for VertexBuffer {
         queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&cache.cpu_vtx));
         queue.write_buffer(&self.index_buffer, 0, bytemuck::cast_slice(&cache.cpu_idx));
     }
-
-    fn should_write(&self) -> bool {
-        self.used_indices > 0
-    }
-
 
     fn create_new_buffer(device: &Device) -> Self {
         VertexBuffer {
@@ -88,10 +79,7 @@ pub struct VertexReserveData<'a> {
 }
 impl<'a> VertexReserveData<'a> {
     pub fn copy_in(&mut self, vtx: &[Vertex], idx: &[u32]) {
-        // std::mem::swap(vtx, self.vtx);
-        // std::mem::swap(idx, self.idx);
-
-        for i in 0..vtx.len() { self.vtx[i] = vtx[i] }
-        for i in 0..idx.len() { self.idx[i] = idx[i] }
+        self.vtx.copy_from_slice(vtx);
+        self.idx.copy_from_slice(idx);
     }
 }

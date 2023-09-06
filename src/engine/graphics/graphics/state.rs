@@ -10,7 +10,6 @@ pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
-
 pub type Scissor = Option<[f32; 4]>;
 
 pub struct GraphicsState {
@@ -22,9 +21,11 @@ pub struct GraphicsState {
     pipelines: HashMap<BlendMode, wgpu::RenderPipeline>,
 
     last_drawn: LastDrawn,
-    vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
-    slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
+    buffer_queues: HashMap<LastDrawn, RenderBufferQueueType>,
     completed_buffers: Vec<RenderBufferType>,
+
+    // vertex_buffer_queue: RenderBufferQueue<VertexBuffer>,
+    // slider_buffer_queue: RenderBufferQueue<SliderRenderBuffer>,
 
     projection_matrix: Matrix,
     projection_matrix_buffer: wgpu::Buffer,
@@ -430,7 +431,12 @@ impl GraphicsState {
 
         let particle_system = ParticleSystem::new(&device);
 
-        let mut s = Self {
+        let buffer_queues = [
+            (LastDrawn::Slider, RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device))),
+            (LastDrawn::Vertex, RenderBufferQueueType::Vertex(RenderBufferQueue::new().init(&device))),
+        ].into_iter().collect();
+
+        let s = Self {
             surface,
             device,
             queue: Arc::new(queue),
@@ -439,10 +445,9 @@ impl GraphicsState {
             atlas,
             render_target_atlas,
             atlas_texture,
-            last_drawn: LastDrawn::None,
 
-            vertex_buffer_queue: RenderBufferQueue::new(),
-            slider_buffer_queue: RenderBufferQueue::new(),
+            last_drawn: LastDrawn::None,
+            buffer_queues,
             completed_buffers: Vec::new(),
 
             projection_matrix,
@@ -451,8 +456,6 @@ impl GraphicsState {
             screenshot_pending: None,
             particle_system,
         };
-        s.vertex_buffer_queue.create_render_buffer(&s.device);
-        s.slider_buffer_queue.create_render_buffer(&s.device);
         s
     }
 
@@ -1019,16 +1022,35 @@ impl GraphicsState {
             }
         }
 
-        self.vertex_buffer_queue.begin(vertex_buffers);
-        self.slider_buffer_queue.begin(slider_buffers);
+        for i in self.buffer_queues.values_mut() {
+            match i {
+                RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
+                RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
+            }
+        }
     }
 
     pub fn end(&mut self) {
-        if let Some(b) = self.vertex_buffer_queue.end(&self.queue) {
-            self.completed_buffers.push(RenderBufferType::Vertex(b))
+        for i in self.buffer_queues.values_mut() {
+            let Some(b) = i.end(&self.queue) else { continue };
+            self.completed_buffers.push(b);
         }
-        if let Some(b) = self.slider_buffer_queue.end(&self.queue) {
-            self.completed_buffers.push(RenderBufferType::Slider(b))
+    }
+
+    pub fn dump_and_next_last_drawn(&mut self) {
+        let Some(queue) = self.buffer_queues.get_mut(&self.last_drawn) else { return };
+        let Some(b) = queue.dump_and_next(&self.queue, &self.device) else { return };
+        self.completed_buffers.push(b);
+    }
+    pub fn check_dump_and_next(&mut self, to_draw: LastDrawn) {
+        if self.last_drawn == LastDrawn::None {
+            self.last_drawn = to_draw; 
+            return;
+        }
+
+        if self.last_drawn != to_draw {
+            self.dump_and_next_last_drawn();
+            self.last_drawn = to_draw;
         }
     }
 
@@ -1040,29 +1062,26 @@ impl GraphicsState {
         scissor: Scissor,
         blend_mode: BlendMode
     ) -> Option<VertexReserveData> {
-        let mut recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
+        self.check_dump_and_next(LastDrawn::Vertex);
+
+        let vertex_buffer_queue = self.buffer_queues.values_mut().find_map(|b| {
+            if let RenderBufferQueueType::Vertex(b) = b { Some(b)} else { None }
+        }).unwrap();
+
+        let mut recording_buffer = vertex_buffer_queue.recording_buffer().expect("didnt get vertex recording buffer");
         let blend_mode_check = recording_buffer.blend_mode == blend_mode || recording_buffer.blend_mode == BlendMode::None;
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
-
-        if self.last_drawn == LastDrawn::None { self.last_drawn = LastDrawn::Vertex; }
-        if self.last_drawn != LastDrawn::Vertex {
-            self.last_drawn = LastDrawn::Vertex;
-            if let Some(b) = self.slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
-                self.completed_buffers.push(RenderBufferType::Slider(b))
-            }
-        }
-
         // if !blend_mode_check { println!("blend mode changed from {:?} to {blend_mode:?}", recording_buffer.blend_mode) }
 
         if !blend_mode_check
         || !scissor_check
         || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
         || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
-            if let Some(b) = self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
+            if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
                 self.completed_buffers.push(RenderBufferType::Vertex(b))
             }
 
-            recording_buffer = self.vertex_buffer_queue.recording_buffer()?;
+            recording_buffer = vertex_buffer_queue.recording_buffer()?;
             recording_buffer.blend_mode = blend_mode;
             recording_buffer.scissor = Some(scissor);
         }
@@ -1079,9 +1098,10 @@ impl GraphicsState {
         let used_vertices = recording_buffer.used_vertices;
         let used_indices = recording_buffer.used_indices;
 
+        let cache = &mut vertex_buffer_queue.cpu_cache;
         Some(VertexReserveData {
-            vtx: &mut self.vertex_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut self.vertex_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
             idx_offset: used_vertices - vtx_count,
         })
     }
@@ -1196,19 +1216,18 @@ impl GraphicsState {
         grid_cell_count: u64,
         line_segment_count: u64,
     ) -> Option<SliderReserveData> {
-        self.slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
-        self.slider_buffer_queue.cpu_cache.border_width = border_width;
+        self.check_dump_and_next(LastDrawn::Slider);
 
-        let mut recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+        let slider_buffer_queue = self.buffer_queues.values_mut().find_map(|b| {
+            if let RenderBufferQueueType::Slider(b) = b { Some(b)} else { None }
+        }).unwrap();
+
+        slider_buffer_queue.cpu_cache.circle_radius = circle_radius;
+        slider_buffer_queue.cpu_cache.border_width = border_width;
+
+        let mut recording_buffer = slider_buffer_queue.recording_buffer().expect("didnt get slider recording buffer");
         let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
 
-        if self.last_drawn == LastDrawn::None { self.last_drawn = LastDrawn::Slider; }
-        if self.last_drawn != LastDrawn::Slider {
-            self.last_drawn = LastDrawn::Slider;
-            if let Some(b) = self.vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
-                self.completed_buffers.push(RenderBufferType::Vertex(b))
-            }
-        }
 
         let vtx_count = 4;
         let idx_count = 6;
@@ -1221,11 +1240,10 @@ impl GraphicsState {
         || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
         || recording_buffer.used_line_segments + line_segment_count > LINE_SEGMENT_COUNT
         {
-            info!("dumping");
-            if let Some(b) = self.slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
+            if let Some(b) = slider_buffer_queue.dump_and_next(&self.queue, &self.device) {
                 self.completed_buffers.push(RenderBufferType::Slider(b))
             }
-            recording_buffer = self.slider_buffer_queue.recording_buffer()?;
+            recording_buffer = slider_buffer_queue.recording_buffer()?;
         }
 
         if recording_buffer.scissor.is_none() {
@@ -1249,15 +1267,16 @@ impl GraphicsState {
 
         // reserve slider vertex data
         let slider_index = recording_buffer.used_slider_data - 1;
-
+        
+        let cache = &mut slider_buffer_queue.cpu_cache;
         Some(SliderReserveData {
-            vtx: &mut self.slider_buffer_queue.cpu_cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
-            idx: &mut self.slider_buffer_queue.cpu_cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
 
-            slider_data: &mut self.slider_buffer_queue.cpu_cache.slider_data[slider_index as usize],
-            slider_grids: &mut self.slider_buffer_queue.cpu_cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
-            grid_cells: &mut self.slider_buffer_queue.cpu_cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
-            line_segments: &mut self.slider_buffer_queue.cpu_cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
+            slider_data: &mut cache.slider_data[slider_index as usize],
+            slider_grids: &mut cache.slider_grids[(used_slider_grids - slider_grid_count) as usize .. used_slider_grids as usize],
+            grid_cells: &mut cache.grid_cells[(used_grid_cells - grid_cell_count) as usize .. used_grid_cells as usize],
+            line_segments: &mut cache.line_segments[(used_line_segments - line_segment_count) as usize .. used_line_segments as usize],
 
             idx_offset: used_vertices - vtx_count,
             slider_index: slider_index as u32,
@@ -1596,46 +1615,68 @@ fn align(num: u32) -> u32 {
 }
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum LastDrawn {
+// TODO: rename this
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum LastDrawn {
     None,
     Vertex,
     Slider
 }
 
-enum RenderBufferType {
+pub enum RenderBufferType {
     Vertex(VertexBuffer),
     Slider(SliderRenderBuffer)
 }
 impl RenderBufferType {
-    fn get_scissor(&self) -> Scissor {
+    pub fn get_scissor(&self) -> Scissor {
         match self {
             Self::Vertex(v) => v.scissor.unwrap(),
             Self::Slider(s) => s.scissor.unwrap(),
         }
     }
-    fn get_blend_mode(&self) -> BlendMode {
+    pub fn get_blend_mode(&self) -> BlendMode {
         match self {
             Self::Vertex(v) => v.blend_mode,
             Self::Slider(_s) => BlendMode::Slider,
         }
     }
-    fn get_vertex_buffer(&self) -> &wgpu::Buffer {
+    pub fn get_vertex_buffer(&self) -> &wgpu::Buffer {
         match self {
             Self::Vertex(v) => &v.vertex_buffer,
             Self::Slider(s) => &s.vertex_buffer,
         }
     }
-    fn get_index_buffer(&self) -> &wgpu::Buffer {
+    pub fn get_index_buffer(&self) -> &wgpu::Buffer {
         match self {
             Self::Vertex(v) => &v.index_buffer,
             Self::Slider(s) => &s.index_buffer,
         }
     }
-    fn get_used_indices(&self) -> u64 {
+    pub fn get_used_indices(&self) -> u64 {
         match self {
             Self::Vertex(v) => v.used_indices,
             Self::Slider(s) => s.used_indices,
+        }
+    }
+}
+
+pub enum RenderBufferQueueType {
+    Vertex(RenderBufferQueue<VertexBuffer>),
+    Slider(RenderBufferQueue<SliderRenderBuffer>)
+}
+impl RenderBufferQueueType {
+    /// dumps the cached data to the gpu, and returns the buffers which contained that data
+    /// also sets up the next recording buffer (creating one if one is not available in the queue)
+    pub fn dump_and_next(&mut self, queue: &wgpu::Queue, device: &wgpu::Device) -> Option<RenderBufferType> {
+        match self {
+            Self::Slider(s) => s.dump_and_next(queue, device).map(|b|RenderBufferType::Slider(b)),
+            Self::Vertex(v) => v.dump_and_next(queue, device).map(|b|RenderBufferType::Vertex(b)),
+        }
+    }
+    pub fn end(&mut self, queue: &wgpu::Queue) -> Option<RenderBufferType> {
+        match self {
+            Self::Slider(s) => s.end(queue).map(|b|RenderBufferType::Slider(b)),
+            Self::Vertex(v) => v.end(queue).map(|b|RenderBufferType::Vertex(b)),
         }
     }
 }
