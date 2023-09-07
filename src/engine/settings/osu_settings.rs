@@ -65,6 +65,9 @@ pub struct OsuSettings {
 
     #[Setting(text="Playfield Alpha", min=0.0, max=1.0)]
     pub playfield_alpha: f32,
+
+    #[Setting(text="Slider Render Targets")]
+    pub slider_render_targets: bool,
 }
 impl OsuSettings {
     pub fn get_playfield(&self) -> (f32, Vector2) {
@@ -109,7 +112,9 @@ impl Default for OsuSettings {
             slider_body_alpha: 0.8,
             slider_border_alpha: 1.0,
             use_skin_slider_body_color: true,
-            playfield_alpha: 0.5
+            playfield_alpha: 0.5,
+
+            slider_render_targets: false
         }
     }
 }

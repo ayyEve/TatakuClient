@@ -9,9 +9,6 @@ const BEAT_SCALE: f32 = 1.4;
 const OK_RADIUS_MULT: f32 = 4.0;
 const OK_TICK_RADIUS_MULT: f32 = 2.0;
 
-/// TODO: make setting
-const USE_RENDER_TARGET: bool = false;
-
 pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -332,7 +329,7 @@ impl OsuSlider {
         self.slider_body.line_segments = line_segments;
 
         // draw it to the render texture
-        if USE_RENDER_TARGET {
+        if self.standard_settings.slider_render_targets {
             let mut slider_body = self.slider_body.clone();
             slider_body.slider_data.grid_origin = [0.0; 2]; // reset grid origin when rendering to a target
             slider_body.alpha = 1.0;
@@ -524,7 +521,9 @@ impl HitObject for OsuSlider {
         self.hit_dots = dots;
 
         if alpha > 0.0 && self.slider_body_render_target.is_none() {
-            self.make_body().await;
+            if self.standard_settings.slider_render_targets || self.slider_body.circle_radius == 0.0 {
+                self.make_body().await;
+            }
         }
 
         if let Some(ball) = &mut self.sliderball_image {
@@ -548,7 +547,7 @@ impl HitObject for OsuSlider {
         self.slider_body.alpha = alpha;
 
         // slider body
-        if USE_RENDER_TARGET {
+        if self.standard_settings.slider_render_targets {
             if let Some(rt) = &self.slider_body_render_target {
                 let mut b = rt.image.clone();
                 b.color.a = alpha;
@@ -885,7 +884,7 @@ impl OsuHitObject for OsuSlider {
            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
 
-        if self.slider_body_render_target.is_some() {
+        if self.slider_body_render_target.is_some() || !self.standard_settings.slider_render_targets {
             // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
             self.slider_body_render_target = None;
             self.make_body().await;
@@ -907,7 +906,7 @@ impl OsuHitObject for OsuSlider {
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
         self.standard_settings = settings;
 
-        if self.slider_body_render_target.is_some() && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
+        if (self.slider_body_render_target.is_some() || !self.standard_settings.slider_render_targets) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
             self.make_body().await;
         }
     }
