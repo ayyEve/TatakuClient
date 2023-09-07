@@ -15,6 +15,7 @@ pub enum BlendMode {
     /// special case
     Slider,
 }
+#[cfg(feature="graphics")]
 impl BlendMode {
     pub fn get_blend_state(&self) -> wgpu::BlendState {
         match self {

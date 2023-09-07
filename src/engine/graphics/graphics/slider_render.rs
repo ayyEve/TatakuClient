@@ -20,7 +20,8 @@ pub struct SliderRender {
 
 /// Vertex buffer layout for sliders
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature="graphics", derive(bytemuck::Pod, bytemuck::Zeroable))]
 pub struct SliderVertex {
     pub position: [f32; 2],
 
@@ -29,7 +30,8 @@ pub struct SliderVertex {
 
 /// Vertex buffer layout for sliders
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature="graphics", derive(bytemuck::Pod, bytemuck::Zeroable))]
 pub struct SliderData {
     /// Radius of inner slider body
     pub circle_radius: f32,
@@ -59,7 +61,8 @@ pub struct SliderData {
 
 /// Slice into the index buffer representing the grid cell
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature="graphics", derive(bytemuck::Pod, bytemuck::Zeroable))]
 pub struct GridCell {
     /// Starting index for slice in `grid_cells` array
     pub index: u32,
@@ -68,12 +71,14 @@ pub struct GridCell {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature="graphics", derive(bytemuck::Pod, bytemuck::Zeroable))]
 pub struct LineSegment {
     pub p1: [f32; 2],
     pub p2: [f32; 2],
 }
 
+#[cfg(feature="graphics")]
 impl SliderVertex {
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         // todo: convert to macro

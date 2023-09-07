@@ -321,8 +321,6 @@ impl OsuSlider {
             border_color: border_color.into(),
         };
 
-        self.slider_body.circle_radius = circle_radius;
-        self.slider_body.border_width = border_width;
         self.slider_body.size = size;
         self.slider_body.slider_data = slider_data;
         self.slider_body.slider_grids = slider_grids;
@@ -522,7 +520,7 @@ impl HitObject for OsuSlider {
         self.hit_dots = dots;
 
         if alpha > 0.0 && self.slider_body_render_target.is_none() {
-            if self.standard_settings.slider_render_targets || self.slider_body.circle_radius == 0.0 {
+            if self.standard_settings.slider_render_targets || self.slider_body.slider_data.circle_radius == 0.0 {
                 self.make_body().await;
             }
         }
@@ -993,48 +991,3 @@ impl SliderDot {
     }
 }
 
-
-
-#[derive(Clone, Debug, Default)]
-pub struct SliderDrawable {
-    size: Vector2,
-    circle_radius: f32,
-    border_width: f32,
-    alpha: f32,
-
-    slider_data: SliderData,
-    slider_grids: Vec<GridCell>,
-    grid_cells: Vec<u32>,
-    line_segments: Vec<LineSegment>,
-}
-impl TatakuRenderable for SliderDrawable {
-    fn get_blend_mode(&self) -> BlendMode { BlendMode::AlphaBlending }
-    fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
-
-    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
-        let quad = [
-            Vector2::ZERO,
-            Vector2::new(0.0, 1.0),
-            Vector2::new(1.0, 0.0),
-            Vector2::ONE,
-        ];
-
-        let transform = transform * Matrix::identity()
-            .scale(self.size)
-            .trans(Vector2::from(self.slider_data.grid_origin));
-
-        let mut slider_data = self.slider_data.clone();
-        slider_data.body_color[3] *= self.alpha;
-        slider_data.border_color[3] *= self.alpha;
-
-        g.draw_slider(
-            quad,
-            transform,
-            None,
-            slider_data,
-            self.slider_grids.clone(),
-            self.grid_cells.clone(),
-            self.line_segments.clone()
-        );
-    }
-}

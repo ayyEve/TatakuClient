@@ -13,7 +13,6 @@ mod blend_mode;
 mod buffers;
 #[cfg(feature="graphics")]
 mod particle_system;
-#[cfg(feature="graphics")]
 mod slider_render;
 
 #[cfg(feature="graphics")]
@@ -30,5 +29,4 @@ pub use buffers::*;
 #[cfg(feature="graphics")]
 pub use particle_system::*;
 
-#[cfg(feature="graphics")]
 pub use slider_render::*;
