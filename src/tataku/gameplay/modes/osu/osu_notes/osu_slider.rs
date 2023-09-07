@@ -313,6 +313,7 @@ impl OsuSlider {
             circle_radius,
             border_width,
             snake_percentage: 1.0,
+            slider_velocity: self.velocity,
             grid_origin: min_pos.into(),
             grid_size,
             grid_index: 0,

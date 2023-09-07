@@ -20,6 +20,8 @@ struct SliderData {
 
     // snaking progress as a percentage (0-1)
     snake_percentage: f32,
+    // slider velocity (neb to describe this properly)
+    slider_velocity: f32,
 
     // Origin position of grid in viewport space
     grid_origin: array<f32, 2>,
