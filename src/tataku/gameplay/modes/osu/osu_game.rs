@@ -447,29 +447,32 @@ impl GameMode for OsuGame {
                     _ => {}
                 }
 
-                let mut check_notes = Vec::new();
+                let mut hittable_notes = Vec::new();
+                let mut visible_notes = Vec::new();
+
                 for note in self.notes.iter_mut() {
                     note.press(time);
                     // check if note is in hitwindow, has not yet been hit, and is not a spinner
-                    if (time - note.time()).abs() <= self.miss_window && !note.was_hit() && note.note_type() != NoteType::Spinner {
-                        check_notes.push(note);
+                    let note_time = note.time();
+                    let in_hitwindow = (time - note_time).abs() <= self.miss_window;
+                    let is_visible = time > note_time - note.get_preempt() && time < note_time;
+
+                    if (in_hitwindow || is_visible) && !note.was_hit() && note.note_type() != NoteType::Spinner {
+                        if in_hitwindow {
+                            hittable_notes.push(note)
+                        } else { 
+                            visible_notes.push(note) 
+                        }
                     }
                 }
-                if check_notes.len() == 0 { return } // no notes to check
-                check_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
+
+                if hittable_notes.is_empty() && visible_notes.is_empty() { return } // no notes to check
+                hittable_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
                 
-                for note in check_notes {
+                for note in hittable_notes {
+                    if !note.check_distance(self.mouse_pos) { continue }
                     let note_time = note.time();
-
-                    // spinners are a special case. hit windows don't affect them, or else you can miss for no reason lol
-                    // if note.note_type() == NoteType::Spinner {
-                    //     return;
-                    // }
-
-                    // check distance
-                    if !note.check_distance(self.mouse_pos) { continue; }
-
-                    // get the judgment
+                    
                     if let Some(judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
                         note.set_judgment(judge);
 
@@ -490,9 +493,18 @@ impl GameMode for OsuGame {
                             let hitsound = note.get_hitsound();
                             manager.play_note_sound(&hitsound).await;
                         }
-                    }
 
-                    break;
+                        return;
+                    }
+                }
+
+                // no notes were hit, check visible notes
+                visible_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
+                for note in visible_notes {
+                    if !note.check_distance(self.mouse_pos) { continue }
+
+                    note.shake(time);
+                    break
                 }
             }
             // dont continue if no keys were being held (happens when leaving a menu)

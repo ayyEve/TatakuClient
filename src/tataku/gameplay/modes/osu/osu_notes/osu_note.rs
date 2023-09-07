@@ -100,6 +100,7 @@ impl OsuNote {
         self.shapes.push(self.circle_image.ripple(self.map_time));
     }
 }
+
 #[async_trait]
 impl HitObject for OsuNote {
     fn note_type(&self) -> NoteType { NoteType::Note }
@@ -108,6 +109,7 @@ impl HitObject for OsuNote {
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
         self.approach_circle.update(beatmap_time);
+        self.circle_image.update(beatmap_time);
         
         self.shapes.retain_mut(|shape| {
             shape.update(beatmap_time);
@@ -231,4 +233,7 @@ impl OsuHitObject for OsuNote {
     fn get_hitsound(&self) -> Vec<Hitsound> {
         self.hitsounds.clone()
     }
+
+    
+    fn shake(&mut self, time: f32) { self.circle_image.shake(time) }
 }
