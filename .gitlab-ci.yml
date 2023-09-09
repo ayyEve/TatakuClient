@@ -19,6 +19,7 @@ build-windows-linux:
     # build
     - ~/.cargo/bin/cargo build --release
     # push 
+    - ls $CI_PROJECT_DIR/target/x86_64-pc-windows-gnu/release/
     - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/windows/tataku-client.exe --upload-file $CI_PROJECT_DIR/target/x86_64-pc-windows-gnu/release/tataku-client.exe
   tags:
     - docker
