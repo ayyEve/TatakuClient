@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-pub fn md5<B:AsRef<[u8]>>(body: B) -> String {
-    format!("{:x}", md5::compute(body).to_owned())
+pub fn md5<B:AsRef<[u8]>>(body: B) -> Md5Hash {
+    format!("{:x}", md5::compute(body).to_owned()).try_into().unwrap()
 }
 
 pub fn sha512<B:AsRef<[u8]>>(body: B) -> String {
@@ -32,7 +32,7 @@ fn check_all_hex(s:&String) -> bool {
 
 pub fn check_md5(s:String) -> String {
     if s.len() != 32 || !check_all_hex(&s) {
-        md5(s)
+        md5(s).to_string()
     } else {
         s
     }

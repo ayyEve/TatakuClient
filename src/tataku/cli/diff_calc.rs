@@ -22,15 +22,18 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
 
         // load the map
         let mut map = None;
-        if let Some(map_hash_or_path) = args.map.as_ref().or_else(||Some(&score.beatmap_hash)) {
+        if let Some(map_hash_or_path) = args.map.as_ref().cloned().or_else(||Some(score.beatmap_hash.to_string())) {
+
             // try to find by hash or path
-            for i in maps.iter() {
-                if &i.beatmap_hash == map_hash_or_path {
-                    map = Some(i.clone())
+            if let Ok(hash) = map_hash_or_path.clone().try_into() {
+                for i in maps.iter() {
+                    if &i.beatmap_hash == &hash {
+                        map = Some(i.clone())
+                    }
                 }
             }
             if map.is_none() {
-                match Beatmap::load_multiple(map_hash_or_path) {
+                match Beatmap::load_multiple(&map_hash_or_path) {
                     Ok(maps) => {
                         map = maps.get(0).map(|m|m.get_beatmap_meta());
                         if let Some(map) = &map {
@@ -38,7 +41,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
                             BEATMAP_MANAGER.write().await.add_beatmap(map);
                         }
                     },
-                    Err(e) => panic!("error loading beatmap '{}': {}", map_hash_or_path, e),
+                    Err(e) => panic!("error loading beatmap '{map_hash_or_path}': {e}"),
                 }
             }
         }
@@ -86,9 +89,11 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         let mut map = None;
         
         // try to find by hash or path
-        for i in maps.iter() {
-            if &i.beatmap_hash == map_hash_or_path {
-                map = Some(i.clone())
+        if let Ok(hash) = map_hash_or_path.try_into() {
+            for i in maps.iter() {
+                if &i.beatmap_hash == &hash {
+                    map = Some(i.clone())
+                }
             }
         }
         if map.is_none() {
@@ -267,7 +272,7 @@ impl DiffCalcData {
 
                 let data: Vec<Data> = self.0.iter().map(|(b, s, d, m)| {
                     Data {
-                        hash: b.beatmap_hash.clone(),
+                        hash: b.beatmap_hash.to_string(),
                         title: b.title.clone(),
                         artist: b.artist.clone(),
                         version: b.version.clone(),

@@ -42,7 +42,7 @@ impl Io {
 
     
     /// get a file's hash
-    pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> std::io::Result<String> {
+    pub fn get_file_hash<P:AsRef<Path>>(file_path:P) -> TatakuResult<Md5Hash> {
         Ok(md5(Self::read_file(file_path)?))
     }
 

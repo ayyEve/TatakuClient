@@ -250,7 +250,7 @@ pub struct OsuReplay {
 }
 impl OsuReplay {
     pub fn get_score(&self) -> Score {
-        let mut score = Score::new(self.map_hash.clone(), self.username.clone(), self.game_mode.clone());
+        let mut score = Score::new((&self.map_hash).try_into().unwrap(), self.username.clone(), self.game_mode.clone());
         score.score = self.score as u64;
         score.max_combo = self.max_combo;
         

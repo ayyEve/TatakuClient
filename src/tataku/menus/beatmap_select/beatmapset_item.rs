@@ -57,9 +57,9 @@ impl BeatmapsetItem {
     }
 
     /// set the currently selected map
-    pub fn check_selected(&mut self, current_hash: &String) -> bool {
+    pub fn check_selected(&mut self, current_hash: Md5Hash) -> bool {
         for i in 0..self.beatmaps.len() {
-            if &self.beatmaps[i].beatmap_hash == current_hash {
+            if self.beatmaps[i].beatmap_hash == current_hash {
                 self.selected = true;
                 self.selected_index = i;
                 return true;
@@ -128,7 +128,7 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
             ) 
         }
     }
-    fn get_tag(&self) -> String {self.beatmaps[self.selected_index.min(self.beatmaps.len()-1)].beatmap_hash.clone()}
+    fn get_tag(&self) -> String {self.beatmaps[self.selected_index.min(self.beatmaps.len()-1)].beatmap_hash.to_string()}
     // fn set_tag(&mut self, _tag:&str) {self.pending_play = false} // bit of a jank strat: when this is called, reset the pending_play property
     fn get_pos(&self) -> Vector2 {
         self.pos +

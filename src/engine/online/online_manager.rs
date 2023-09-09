@@ -189,6 +189,7 @@ impl OnlineManager {
         let mut reader = SerializationReader::new(data);
 
         while reader.can_read() {
+            // info!("reading packet from server");
             let packet:PacketId = reader.read()?;
             // if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
 
@@ -784,7 +785,7 @@ impl OnlineManager {
         s.send_packet(MultiplayerPacket::Client_LobbyMapChange { 
             new_map: LobbyBeatmap { 
                 title: beatmap.version_string(), 
-                hash: beatmap.beatmap_hash.clone(), 
+                hash: beatmap.beatmap_hash, 
                 mode,
                 map_game: beatmap.beatmap_type.into()
             }

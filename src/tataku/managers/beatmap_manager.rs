@@ -12,7 +12,7 @@ pub struct BeatmapManager {
 
     pub current_beatmap: Option<Arc<BeatmapMeta>>,
     pub beatmaps: Vec<Arc<BeatmapMeta>>,
-    pub beatmaps_by_hash: HashMap<String, Arc<BeatmapMeta>>,
+    pub beatmaps_by_hash: HashMap<Md5Hash, Arc<BeatmapMeta>>,
     pub ignore_beatmaps: HashSet<String>,
 
     /// previously played maps
@@ -209,7 +209,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn delete_beatmap(&mut self, beatmap:String, game: &mut Game) {
+    pub async fn delete_beatmap(&mut self, beatmap:Md5Hash, game: &mut Game) {
         // delete beatmap
         self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
 
@@ -292,7 +292,7 @@ impl BeatmapManager {
 
 
     }
-    pub fn get_by_hash(&self, hash:&String) -> Option<Arc<BeatmapMeta>> {
+    pub fn get_by_hash(&self, hash:&Md5Hash) -> Option<Arc<BeatmapMeta>> {
         self.beatmaps_by_hash.get(hash).cloned()
     }
 

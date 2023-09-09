@@ -51,7 +51,7 @@ pub struct QuaverBeatmap {
 
     // extra info added later
     #[serde(default)]
-    hash: String,
+    hash: Md5Hash,
     #[serde(default)]
     path: String,
 }
@@ -97,7 +97,7 @@ impl QuaverBeatmap {
     }
 }
 impl TatakuBeatmap for QuaverBeatmap {
-    fn hash(&self) -> String {self.hash.clone()}
+    fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {

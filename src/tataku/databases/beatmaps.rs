@@ -43,7 +43,7 @@ impl Database {
 fn row_into_metadata(r: &rusqlite::Row) -> rusqlite::Result<BeatmapMeta> {
     Ok(BeatmapMeta {
         file_path: r.get("beatmap_path")?,
-        beatmap_hash: r.get("beatmap_hash")?,
+        beatmap_hash: r.get::<&str, String>("beatmap_hash")?.try_into().unwrap(),
         beatmap_type: r.get::<&str, u8>("beatmap_type")?.into(),
         mode: r.get("playmode")?,
         artist: r.get("artist")?,
@@ -112,7 +112,7 @@ fn insert_beatmap_values(map: impl AsRef<BeatmapMeta>) -> String {
 
         {}, {}
     )",
-        map.file_path, map.beatmap_hash, beatmap_type,
+        map.file_path, map.beatmap_hash.to_string(), beatmap_type,
 
         map.mode,
         map.artist.replace("\"", "\"\""), map.artist_unicode.replace("\"", "\"\""),

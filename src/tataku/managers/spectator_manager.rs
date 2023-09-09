@@ -20,7 +20,7 @@ pub struct SpectatorManager {
 
     /// what is the current map's hash? 
     /// if this is Some and game_manager is None, we dont have the map
-    pub current_map: Option<(String, String, String, u16)>,
+    pub current_map: Option<(Md5Hash, String, String, u16)>,
 
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
@@ -49,9 +49,9 @@ impl SpectatorManager {
         }
     }
 
-    async fn start_game(&mut self, game:&mut Game, beatmap_hash:String, mode:String, mods_str:String, current_time:f32, speed: u16) {
+    async fn start_game(&mut self, game:&mut Game, beatmap_hash:Md5Hash, mode:String, mods_str:String, current_time:f32, speed: u16) {
         trace!("Started watching host play a map");
-        self.current_map = Some((beatmap_hash.clone(), mode.clone(), mods_str.clone(), speed));
+        self.current_map = Some((beatmap_hash, mode.clone(), mods_str.clone(), speed));
 
         self.good_until = 0.0;
         self.map_length = 0.0;
@@ -73,7 +73,7 @@ impl SpectatorManager {
                         // set manager things
                         manager.apply_mods(mods).await;
                         manager.replaying = true;
-                        manager.replay.score_data = Some(Score::new(map.beatmap_hash.clone(), self.host_username.clone(), mode.clone()));
+                        manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
                         manager.on_start = Box::new(move |manager| {
                             trace!("Jumping to time {current_time}");
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
@@ -155,6 +155,7 @@ impl SpectatorManager {
             match action {
                 SpectatorAction::Play { beatmap_hash, mode, mods, speed, map_game, map_link:_} => {
                     info!("got play: {beatmap_hash}, {mode}, {mods}");
+                    let beatmap_hash = beatmap_hash.try_into().unwrap();
 
                     if BEATMAP_MANAGER.read().await.get_by_hash(&beatmap_hash).is_none() {
                         // we dont have the map, try downloading it

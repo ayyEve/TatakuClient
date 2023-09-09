@@ -19,8 +19,7 @@ impl ScoreHelper {
         }
     }
 
-    pub async fn get_scores(&self, map_hash: &String, playmode: &String) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
-        let map_hash = map_hash.clone();
+    pub async fn get_scores(&self, map_hash: Md5Hash, playmode: &String) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
         let playmode = playmode.clone();
         let method = self.current_method;
         let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::new()));
@@ -30,6 +29,7 @@ impl ScoreHelper {
             ScoreRetreivalMethod::Local 
             | ScoreRetreivalMethod::LocalMods => {
                 tokio::spawn(async move {
+                    let map_hash = map_hash.to_string();
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
 
                     if method.filter_by_mods() {
@@ -45,6 +45,7 @@ impl ScoreHelper {
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
                 tokio::spawn(async move {
+                    let map_hash = map_hash.to_string();
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
                     if method.filter_by_mods() {
@@ -67,6 +68,7 @@ impl ScoreHelper {
 
                     let mut online_scores = Vec::new();
                     if let Some(map) = map_by_hash {
+                        let map_hash = map_hash.to_string();
                         match map.beatmap_type {
                             BeatmapType::Osu => online_scores = osu::get_scores(&map, &playmode).await,
                             BeatmapType::Quaver => online_scores = quaver::get_scores(&map_hash).await,
@@ -247,8 +249,9 @@ mod osu {
             NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
             Err(TatakuError::String("no api key".to_owned()))
         } else {
+            let hash = map.beatmap_hash.to_string();
             // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
-            if let Some(id) = fetch_beatmap_id(&key, &map.beatmap_hash).await {
+            if let Some(id) = fetch_beatmap_id(&key, &hash).await {
                 let url = format!("https://osu.ppy.sh/api/get_scores?k={key}&b={id}&m={mode}");
 
                 let bytes = reqwest::get(url).await?.bytes().await?;
