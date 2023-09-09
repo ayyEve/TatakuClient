@@ -9,18 +9,16 @@ build-windows-linux:
     # - if: $CI_COMMIT_REF_PROTECTED != "true"
     #   when: never
   script:
-    # # linux
-    # # build
-    # - ~/.cargo/bin/cargo build --release
-    # # push
-    # - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/linux/tataku-client --upload-file $CI_PROJECT_DIR/target/release/tataku-client
+    # linux
+    # build
+    - ~/.cargo/bin/cargo build --release
+    # push
+    - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/linux/tataku-client --upload-file $CI_PROJECT_DIR/target/release/tataku-client
     
     # windows 
     # build
-    - ~/.cargo/bin/cargo build --release
+    - ~/.cargo/bin/cargo build --release --target x86_64-pc-windows-gnu
     # push 
-    - apt install tree
-    - tree
     - curl -X PUT http://$RELEASE_ADDR/$CI_COMMIT_BRANCH/windows/tataku-client.exe --upload-file $CI_PROJECT_DIR/target/x86_64-pc-windows-gnu/release/tataku-client.exe
   tags:
     - docker
