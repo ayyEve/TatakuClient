@@ -234,8 +234,9 @@ impl OsuGame {
             let n1_pos = n1.pos_at(n2_time);
             let n2_pos = n2.pos_at(n1_time);
             let distance = n1_pos.distance(n2_pos);
+            if distance < follow_dot_distance { continue }
+
             let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
-            
             let follow_dot_count = distance / follow_dot_distance;
             for i in 1..(follow_dot_count as u64 - 1) {
                 let lerp_amount = i as f32 / follow_dot_count;
