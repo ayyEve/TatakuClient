@@ -6,8 +6,8 @@ build-windows-linux:
   image: ayyeve/tataku-client-build:v1.0
   rules:
     # - if: $TATAKU_RELEASE_KEY != null
-    - if: $CI_COMMIT_REF_PROTECTED != true
-      when: never
+    # - if: $CI_COMMIT_REF_PROTECTED != "true"
+    #   when: never
   script:
     # linux
     # build
