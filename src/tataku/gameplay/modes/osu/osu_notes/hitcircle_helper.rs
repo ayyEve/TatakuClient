@@ -3,6 +3,13 @@ use crate::prelude::*;
 /// needed to fix text hitcircle skins
 const TEXT_SCALE:f32 = 0.8;
 
+/// how long a single shake is
+const SHAKE_TIME:f32 = 20.0;
+/// how many shakes to perform
+const SHAKE_COUNT:usize = 6;
+/// can a shake request inturrupt another shake?
+const SHAKE_INTURRUPT: bool = true;
+
 #[derive(Clone)]
 pub struct HitCircleImageHelper {
     pub base_pos: Vector2,
@@ -22,6 +29,7 @@ pub struct HitCircleImageHelper {
     combo_image: Option<SkinnedNumber>,
 
     skin_settings: Arc<SkinSettings>,
+    shake_group: Option<TransformGroup>
 }
 impl HitCircleImageHelper {
     pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, color: Color, combo_num: u16) -> Self {
@@ -40,6 +48,7 @@ impl HitCircleImageHelper {
 
             alpha: 0.0,
             color,
+            shake_group: None
         }
     }
 
@@ -126,7 +135,21 @@ impl HitCircleImageHelper {
         self.alpha = alpha;
     }
 
+    pub fn update(&mut self, time: f32) {
+        if let Some(group) = &mut self.shake_group { 
+            group.update(time);
+
+            if group.transforms.is_empty() {
+                self.shake_group = None;
+            }
+        }
+    }
+
     pub fn draw(&mut self, list: &mut RenderableCollection) {
+        if let Some(group) = self.shake_group.clone() {
+            list.push(group);
+            return
+        }
 
         if let Some(mut circle) = self.circle.clone() {
             circle.color.a = self.alpha;
@@ -159,12 +182,10 @@ impl HitCircleImageHelper {
 
     }
 
-
-    pub fn ripple(&self, time: f32) -> TransformGroup {
-        let scale = 1.0..1.4;
-        let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
+    /// helper fn to reduce duplicate code
+    fn get_group(&self, include_combo_num: bool) -> TransformGroup {
         let mut group = TransformGroup::new(self.pos).alpha(1.0).border_alpha(1.0);
-
+        
         // hit circle
         if let Some(mut circle) = self.circle.clone() {
             circle.pos = Vector2::ZERO;
@@ -179,7 +200,7 @@ impl HitCircleImageHelper {
         if group.items.len() == 0 {
             group.push(Circle::new(
                 Vector2::ZERO,
-                radius,
+                self.scaling_helper.scaled_cs,
                 self.color,
                 Some(Border::new(
                     Color::BLACK,
@@ -188,8 +209,39 @@ impl HitCircleImageHelper {
             ));
         }
 
+        if include_combo_num {
+            // let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
+            let size = self.scaling_helper.scaled_circle_size;
+            let rect = Bounds::new(-size / 2.0, size);
+
+            if let Some(mut image) = self.combo_image.clone() {
+                image.center_text(&rect);
+                group.push(image);
+            } else if let Some(mut text) = self.combo_text.clone() {
+                text.center_text(&rect);
+                group.push(text);
+            }
+        }
+
+        group
+    }
+
+
+    pub fn shake(&mut self, time: f32) {
+        if self.shake_group.is_some() && !SHAKE_INTURRUPT { return }
+
+        let mut group = self.get_group(true);
+        group.shake(0.0, time, Vector2::new(8.0, 0.0) * self.scaling_helper.scale, SHAKE_TIME, SHAKE_COUNT);
+        self.shake_group = Some(group);
+    }
+
+    pub fn ripple(&self, time: f32) -> TransformGroup {
+        let scale = 1.0..1.4;
+        let mut group = self.get_group(false);
+
         // make it ripple and add it to the list
         group.ripple_scale_range(0.0, 240.0, time, scale, None, Some(0.5));
         group
     }
+
 }

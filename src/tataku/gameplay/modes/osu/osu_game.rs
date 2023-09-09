@@ -199,6 +199,83 @@ impl OsuGame {
     pub fn get_cs(meta: &BeatmapMeta, mods: &ModManager) -> f32 {
         Self::scale_by_mods(meta.cs, 0.5, 1.3, &mods).clamp(1.0, 10.0)
     }
+
+    fn draw_follow_points(&mut self, time: f32, list: &mut RenderableCollection) {
+        if !self.game_settings.draw_follow_points { return; }
+        if self.notes.len() == 0 { return }
+
+        let follow_dot_size = 3.0 * self.scaling_helper.scale;
+        let follow_dot_distance = 20.0 * self.scaling_helper.scale;
+
+        for i in 0..self.notes.len() - 1 {
+            if self.new_combos.contains(&(i + 1)) { continue }
+
+            let n1 = &self.notes[i];
+            let n2 = &self.notes[i + 1];
+
+            // skip if either note is a spinner
+            if n1.note_type() == NoteType::Spinner { continue }
+            if n2.note_type() == NoteType::Spinner { continue }
+
+            // old code as backup
+            // let preempt = n2.get_preempt();
+            // let n1_time = n1.time();
+            // if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
+            // let n2_time = n2.time();
+            // if time >= n2_time { continue }//|| time <= n1_time {continue}
+
+            let preempt = n2.get_preempt();
+            let n1_time = n1.time();
+            if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
+            let n2_time = n2.end_time(0.0);
+            if time >= n2_time { continue }//|| time <= n1_time {continue}
+
+            // setup follow points and the time they should exist at
+            let n1_pos = n1.pos_at(n2_time);
+            let n2_pos = n2.pos_at(n1_time);
+            let distance = n1_pos.distance(n2_pos);
+            let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
+            
+            let follow_dot_count = distance / follow_dot_distance;
+            for i in 1..(follow_dot_count as u64 - 1) {
+                let lerp_amount = i as f32 / follow_dot_count;
+                let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
+                let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
+                
+                // get the alpha
+                let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
+                let alpha = if alpha_lerp_amount > 2.0 || alpha_lerp_amount < 0.0 {
+                    0.0
+                } else if alpha_lerp_amount > 1.0 {
+                    f32::easeout_sine(1.0, 0.0, alpha_lerp_amount - 1.0)
+                } else {
+                    f32::easein_sine(0.0, 1.0, alpha_lerp_amount)
+                };
+
+                if alpha == 0.0 { continue }
+
+                // add point
+                if let Some(mut i) = self.follow_point_image.clone() {
+                    i.pos = point;
+                    i.rotation = direction;
+                    // i.current_scale = Vector2::ONE * self.scaling_helper.scale;
+                    list.push(i);
+                } else {
+                    list.push(Circle::new(
+                        point,
+                        follow_dot_size,
+                        Color::WHITE.alpha(alpha),
+                        None
+                    ));
+                }
+
+            }
+            
+        }
+        
+
+    }
+
 }
 
 #[async_trait]
@@ -447,29 +524,32 @@ impl GameMode for OsuGame {
                     _ => {}
                 }
 
-                let mut check_notes = Vec::new();
+                let mut hittable_notes = Vec::new();
+                let mut visible_notes = Vec::new();
+
                 for note in self.notes.iter_mut() {
                     note.press(time);
                     // check if note is in hitwindow, has not yet been hit, and is not a spinner
-                    if (time - note.time()).abs() <= self.miss_window && !note.was_hit() && note.note_type() != NoteType::Spinner {
-                        check_notes.push(note);
+                    let note_time = note.time();
+                    let in_hitwindow = (time - note_time).abs() <= self.miss_window;
+                    let is_visible = time > note_time - note.get_preempt() && time < note_time;
+
+                    if (in_hitwindow || is_visible) && !note.was_hit() && note.note_type() != NoteType::Spinner {
+                        if in_hitwindow {
+                            hittable_notes.push(note)
+                        } else { 
+                            visible_notes.push(note) 
+                        }
                     }
                 }
-                if check_notes.len() == 0 { return } // no notes to check
-                check_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
+
+                if hittable_notes.is_empty() && visible_notes.is_empty() { return } // no notes to check
+                hittable_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
                 
-                for note in check_notes {
+                for note in hittable_notes {
+                    if !note.check_distance(self.mouse_pos) { continue }
                     let note_time = note.time();
-
-                    // spinners are a special case. hit windows don't affect them, or else you can miss for no reason lol
-                    // if note.note_type() == NoteType::Spinner {
-                    //     return;
-                    // }
-
-                    // check distance
-                    if !note.check_distance(self.mouse_pos) { continue; }
-
-                    // get the judgment
+                    
                     if let Some(judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
                         note.set_judgment(judge);
 
@@ -490,9 +570,18 @@ impl GameMode for OsuGame {
                             let hitsound = note.get_hitsound();
                             manager.play_note_sound(&hitsound).await;
                         }
-                    }
 
-                    break;
+                        return;
+                    }
+                }
+
+                // no notes were hit, check visible notes
+                visible_notes.sort_by(|a, b| a.time().partial_cmp(&b.time()).unwrap());
+                for note in visible_notes {
+                    if !note.check_distance(self.mouse_pos) { continue }
+
+                    note.shake(time);
+                    break
                 }
             }
             // dont continue if no keys were being held (happens when leaving a menu)
@@ -747,74 +836,10 @@ impl GameMode for OsuGame {
 
         // draw cursor ripples
         self.cursor.draw_below(list).await;
+        let time = manager.time();
 
         // draw follow points
-        let time = manager.time();
-        if self.game_settings.draw_follow_points {
-            if self.notes.len() == 0 { return }
-
-            let follow_dot_size = 3.0 * self.scaling_helper.scale;
-            let follow_dot_distance = 20.0 * self.scaling_helper.scale;
-
-            for i in 0..self.notes.len() - 1 {
-                if !self.new_combos.contains(&(i + 1)) {
-                    let n1 = &self.notes[i];
-                    let n2 = &self.notes[i + 1];
-
-                    // skip if either note is a spinner
-                    if n1.note_type() == NoteType::Spinner { continue }
-                    if n2.note_type() == NoteType::Spinner { continue }
-
-                    let preempt = n2.get_preempt();
-                    let n1_time = n1.time();
-                    if time < n1_time - preempt { continue } //|| time > n2.end_time(0.0) {continue}
-                    let n2_time = n2.time();
-                    if time >= n2_time { continue }//|| time <= n1_time {continue}
-
-
-                    // setup follow points and the time they should exist at
-                    let n1_pos = n1.pos_at(n2_time);
-                    let n2_pos = n2.pos_at(n2_time);
-                    let distance = n1_pos.distance(n2_pos);
-                    let direction = PI * 2.0 - Vector2::atan2(n2_pos - n1_pos);
-                    
-                    let follow_dot_count = distance / follow_dot_distance;
-                    for i in 1..follow_dot_count as u64 {
-                        let lerp_amount = i as f32 / follow_dot_count;
-                        let time_at_this_point = f32::lerp(n1_time, n2_time, lerp_amount);
-                        let point = Vector2::lerp(n1_pos, n2_pos, lerp_amount);
-                        
-                        // get the alpha
-                        let alpha_lerp_amount = (time_at_this_point - time) / (n2_time - n1_time);
-                        let alpha = if alpha_lerp_amount > 2.0 || alpha_lerp_amount < 0.0 {
-                            0.0
-                        } else if alpha_lerp_amount > 1.0 {
-                            f32::easeout_sine(1.0, 0.0, alpha_lerp_amount - 1.0)
-                        } else {
-                            f32::easein_sine(0.0, 1.0, alpha_lerp_amount)
-                        };
-
-                        if alpha == 0.0 { continue }
-
-                        // add point
-                        if let Some(mut i) = self.follow_point_image.clone() {
-                            i.pos = point;
-                            i.rotation = direction;
-                            // i.current_scale = Vector2::ONE * self.scaling_helper.scale;
-                            list.push(i);
-                        } else {
-                            list.push(Circle::new(
-                                point,
-                                follow_dot_size,
-                                Color::WHITE.alpha(alpha),
-                                None
-                            ));
-                        }
-
-                    }
-                }
-            }
-        }
+        self.draw_follow_points(time, list);
 
         // draw notes
         let mut spinners = Vec::new();
