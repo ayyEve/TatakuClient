@@ -309,7 +309,7 @@ impl IngameManager {
 
     pub async fn apply_mods(&mut self, mut mods: ModManager) {
         if self.menu_background {
-            mods.add_mod(Autoplay.name());
+            mods.add_mod(Autoplay);
         }
 
         self.current_mods = Arc::new(mods);
@@ -928,7 +928,7 @@ impl IngameManager {
             // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
             self.score.mods_mut().retain(|m| {
                 if let Some(m) = ok_mods.get(m) {
-                    self.score_multiplier *= m.score_multiplier();
+                    self.score_multiplier *= m.score_multiplier;
                     true
                 } else {
                     false
@@ -1005,7 +1005,7 @@ impl IngameManager {
         self.pending_time_jump = Some(self.time());
 
         let mut mods = self.current_mods.as_ref().clone();
-        mods.add_mod(Autoplay.name());
+        mods.add_mod(Autoplay);
         self.current_mods = Arc::new(mods);
     }
 
@@ -1103,7 +1103,7 @@ impl IngameManager {
                 self.replaying = true;
 
                 let mut new_mods = self.current_mods.as_ref().clone();
-                new_mods.add_mod(Autoplay.name());
+                new_mods.add_mod(Autoplay);
                 self.current_mods = Arc::new(new_mods);
             }
             

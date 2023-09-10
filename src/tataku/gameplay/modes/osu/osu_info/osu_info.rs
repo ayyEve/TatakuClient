@@ -30,7 +30,7 @@ impl GameModeInfo for OsuGameInfo {
         // }
 
         let mut easing_group = GameplayModGroup::new("Easing");
-        for (name, short_name, display_name, desc, removes) in [
+        for (name, short_name, display_name, description, removes) in [
             // ("sine", "SE", "Sine Easing", "Approach circles have sine wave easing",         &[        "quad", "cube", "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
             // ("quad", "2E", "Quadratic Easing", "Approach circles have quadratic easing",    &["sine",         "cube", "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
             // ("cube", "3E", "Cubic Easing", "Approach circles have cubic easing",            &["sine", "quad",         "quart", "quint", "exp", "circ", "back", "on_the_beat"] ),
@@ -40,7 +40,7 @@ impl GameModeInfo for OsuGameInfo {
             // ("circ", "CE", "Circular Easing", "Approach circles have circular easing",      &["sine", "quad", "cube", "quart", "quint", "exp",         "back", "on_the_beat"] ),
             // ("back", "BE", "Back Easing", "Approach circles have back easing",              &["sine", "quad", "cube", "quart", "quint", "exp", "circ"        , "on_the_beat"] ),
         ] {
-            easing_group = easing_group.with_mod(EasingMod { name, short_name, display_name, desc, removes })
+            easing_group = easing_group.with_mod(GameplayMod { name, short_name, display_name, description, removes, ..Default::default() })
         }
 
 

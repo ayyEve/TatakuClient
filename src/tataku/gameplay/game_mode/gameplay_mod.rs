@@ -1,102 +1,159 @@
+#![allow(non_upper_case_globals)]
+// pub trait GameplayMod: Send + Sync {
+//     fn name(&self) -> &'static str;
+//     fn short_name(&self) -> &'static str;
+//     fn display_name(&self) -> &'static str;
 
-pub trait GameplayMod: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn short_name(&self) -> &'static str;
-    fn display_name(&self) -> &'static str;
-
-    fn description(&self) -> &'static str { "No description provided :c" }
-    fn texture_name(&self) -> &'static str { self.name() }
+//     fn description(&self) -> &'static str { "No description provided :c" }
+//     fn texture_name(&self) -> &'static str { self.name() }
     
-    fn score_multiplier(&self) -> f32 { 1.0 }
-    fn removes(&self) -> &'static [&'static str] { &[] }
-}
+//     fn score_multiplier(&self) -> f32 { 1.0 }
+//     fn removes(&self) -> &'static [&'static str] { &[] }
+// }
 
-pub struct GameplayModGroup {
-    pub name: String,
-    pub mods: Vec<Box<dyn GameplayMod>>
+#[derive(Copy, Clone, Debug)]
+pub struct GameplayMod {
+    /// mod identifier, used in the mods hashmap
+    pub name: &'static str,
+
+    /// short (usually 2 letter) name for the mod (ie HR, EZ)
+    pub short_name: &'static str,
+
+    /// actual display name for the mod
+    pub display_name: &'static str,
+
+    /// a short description of the mod
+    pub description: &'static str,
+
+    /// texture name for this mod
+    ///
+    /// if this is empty when loading a texture, the loader will use the name property
+    pub texture_name: &'static str,
+
+
+    /// does this mod adjust the difficulty rating? used for diff calc
+    pub adjusts_difficulty: bool,
+
+    /// how much does this mod adjust the score multiplier?
+    pub score_multiplier: f32,
+
+    /// which mods is this mod incompatible with?
+    pub removes: &'static [&'static str]
 }
-impl GameplayModGroup {
-    pub fn new(name: impl ToString) -> Self {
+impl GameplayMod {
+    pub const DEFAULT:Self = Self {
+        name: "",
+        short_name: "",
+        display_name: "",
+        description: "",
+        texture_name: "",
+        adjusts_difficulty: false,
+        score_multiplier: 1.0,
+        removes: &[]
+    };
+
+    pub const fn new(
+        name: &'static str,
+        short_name: &'static str,
+        display_name: &'static str,
+        texture_name: &'static str,
+
+        description: &'static str,
+
+        adjusts_difficulty: bool,
+        score_multiplier: f32,
+        removes: &'static [&'static str]
+    ) -> Self { 
         Self {
-            name: name.to_string(),
-            mods: Vec::new()
+            name,
+            short_name,
+            display_name,
+            description,
+            texture_name,
+            adjusts_difficulty,
+            score_multiplier,
+            removes
         }
     }
-    
-    pub fn with_mod<G: GameplayMod + 'static>(mut self, m: G) -> Self {
-        self.mods.push(Box::new(m));
-        self
-    }
+}
+impl Default for GameplayMod {
+    fn default() -> Self { Self::DEFAULT }
+}
+impl PartialEq for GameplayMod {
+    fn eq(&self, other: &Self) -> bool { self.name == other.name }
+}
+impl Eq for GameplayMod {}
+impl AsRef<str> for GameplayMod {
+    fn as_ref(&self) -> &str { self.name }
 }
 
+impl std::fmt::Display for GameplayMod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.display_name)
+    }
+}
 
 
 // default mods
+pub const Autoplay: GameplayMod = GameplayMod {
+    name: "autoplay",
+    short_name: "AT",
+    display_name: "Autoplay",
 
-pub struct Autoplay;
-impl GameplayMod for Autoplay {
-    fn name(&self) -> &'static str { "autoplay" }
-    fn short_name(&self) -> &'static str {"AT" }
-    fn display_name(&self) -> &'static str { "Autoplay" }
+    description: "Let the game play for you!",
+    texture_name: "autoplay",
+    
+    score_multiplier: 0.0,
+    adjusts_difficulty: false,
+    removes: &[],
+};
 
-    fn description(&self) -> &'static str { "Let the game play for you!" }
-    fn score_multiplier(&self) -> f32 { 0.0 }
-}
+pub const NoFail: GameplayMod = GameplayMod {
+    name: "no_fail",
+    short_name: "NF",
+    display_name: "No Fail",
 
-pub struct NoFail;
-impl GameplayMod for NoFail {
-    fn name(&self) -> &'static str { "no_fail" }
-    fn short_name(&self) -> &'static str { "NF" }
-    fn display_name(&self) -> &'static str { "No Fail" }
-    fn description(&self) -> &'static str { "Even if you fail, you don't!" }
+    description: "Even if you fail, you don't!",
+    texture_name: "no_fail",
 
-    fn removes(&self) -> &'static [&'static str] {
-        &[
-            "sudden_death",
-            "perfect"
-        ]
-    }
-}
-pub struct SuddenDeath;
-impl GameplayMod for SuddenDeath {
-    fn name(&self) -> &'static str { "sudden_death" }
-    fn short_name(&self) -> &'static str { "SD" }
-    fn display_name(&self) -> &'static str { "Sudden Death" }
-    fn description(&self) -> &'static str { "Insta-fail if you miss" }
-
-    fn removes(&self) -> &'static [&'static str] {
-        &[
-            "no_fail",
-            "perfect"
-        ]
-    }
-}
-pub struct Perfect;
-impl GameplayMod for Perfect {
-    fn name(&self) -> &'static str { "perfect" }
-    fn short_name(&self) -> &'static str { "PF" }
-    fn display_name(&self) -> &'static str { "Perfect" }
-    fn description(&self) -> &'static str { "Insta-fail if you do any less than perfect" }
-
-    fn removes(&self) -> &'static [&'static str] {
-        &[
-            "no_fail",
-            "sudden_death"
-        ]
-    }
-}
-
-
-pub fn default_mod_groups() -> Vec<GameplayModGroup> {
-    vec![
-        GameplayModGroup::new("Difficulty")
-            .with_mod(NoFail)
-            .with_mod(SuddenDeath)
-            .with_mod(Perfect)
-        ,
-        
-        GameplayModGroup::new("Fun")
-            .with_mod(Autoplay)
-        ,
+    adjusts_difficulty: false,
+    score_multiplier: 0.8,
+    removes: &[
+        "sudden_death",
+        "perfect"
     ]
-}
+};
+
+pub const SuddenDeath: GameplayMod = GameplayMod {
+    name: "sudden_death",
+    short_name: "SD",
+    display_name: "Sudden Death",
+
+    description: "Insta-fail if you miss",
+    texture_name: "sudden_death",
+
+    score_multiplier: 1.0,
+    adjusts_difficulty: false,
+
+    removes: &[
+        "no_fail",
+        "perfect"
+    ]
+};
+
+pub const Perfect: GameplayMod = GameplayMod {
+    name: "perfect",
+    short_name: "PF",
+    display_name: "Perfect",
+
+    description: "Insta-fail if you do any less than perfect",
+    texture_name: "perfect",
+
+    score_multiplier: 1.0,
+    adjusts_difficulty: false,
+
+    removes: &[
+        "no_fail",
+        "sudden_death"
+    ]
+};

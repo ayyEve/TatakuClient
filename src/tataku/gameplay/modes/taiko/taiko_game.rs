@@ -164,9 +164,9 @@ impl TaikoGame {
 
     #[inline]
     pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-        if mods.mods.contains(Easy.name()) {
+        if mods.has_mod(Easy) {
             val * ez_scale
-        } else if mods.mods.contains(HardRock.name()) {
+        } else if mods.has_mod(HardRock) {
             val * hr_scale
         } else {
             val
@@ -405,7 +405,7 @@ impl GameMode for TaikoGame {
         else { manager.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
-        if manager.current_mods.has_mod(FullAlt.name()) {
+        if manager.current_mods.has_mod(FullAlt) {
             if !self.counter.add_hit(taiko_hit_type) {
                 return;
             }
@@ -416,7 +416,7 @@ impl GameMode for TaikoGame {
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
         let mut hit_time = time;
-        let has_relax = manager.current_mods.has_mod(Relax.name());
+        let has_relax = manager.current_mods.has_mod(Relax);
 
         let mut did_hit = false;
         for queue in [&mut self.notes, &mut self.other_notes] {
@@ -515,7 +515,7 @@ impl GameMode for TaikoGame {
             manager.health = Default::default();
 
             // if we're using battery health
-            if !self.current_mods.has_mod(NoBattery.name()) {
+            if !self.current_mods.has_mod(NoBattery) {
                 let note_count = self.notes.iter().filter(|n|n.note_type() == NoteType::Note).count() as f32;
 
                 const MAX_HEALTH:f32 = 200.0;
@@ -720,7 +720,7 @@ impl GameMode for TaikoGame {
                 note.reset().await;
 
                 // set note svs
-                if self.current_mods.has_mod(NoSV.name()) {
+                if self.current_mods.has_mod(NoSV) {
                     note.set_sv(self.taiko_settings.sv_multiplier);
                 } else {
                     let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
@@ -744,7 +744,7 @@ impl GameMode for TaikoGame {
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !self.current_mods.has_mod(NoSV.name()) {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
+                if !self.current_mods.has_mod(NoSV) {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
@@ -819,7 +819,7 @@ impl GameMode for TaikoGame {
         self.playfield = playfield.clone();
 
         let old_sv_mult = self.taiko_settings.sv_multiplier;
-        let sv_static = self.current_mods.has_mod(NoSV.name());
+        let sv_static = self.current_mods.has_mod(NoSV);
 
         self.taiko_settings = settings.clone();
 
@@ -919,12 +919,12 @@ impl GameMode for TaikoGame {
         let old_sv_mult = self.taiko_settings.sv_multiplier;
         let old_mods = self.current_mods.clone();
 
-        let old_sv_static = old_mods.has_mod(NoSV.name());
-        let current_sv_static = mods.has_mod(NoSV.name());
+        let old_sv_static = old_mods.has_mod(NoSV);
+        let current_sv_static = mods.has_mod(NoSV);
         self.current_mods = mods;
 
-        // let old_no_finisher = old_mods.has_mod(NoFinisher.name());
-        let new_no_finisher = self.current_mods.has_mod(NoFinisher.name());
+        // let old_no_finisher = old_mods.has_mod(NoFinisher);
+        let new_no_finisher = self.current_mods.has_mod(NoFinisher);
         
         // update bars
         if current_sv_static != old_sv_static {
@@ -964,7 +964,7 @@ impl GameMode for TaikoGame {
         }
 
 
-        if old_mods.has_mod(NoBattery.name()) != self.current_mods.has_mod(NoBattery.name()) {
+        if old_mods.has_mod(NoBattery) != self.current_mods.has_mod(NoBattery) {
             self.healthbar_swap_pending = true;
         }
     }

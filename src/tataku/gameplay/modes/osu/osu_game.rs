@@ -56,7 +56,7 @@ pub struct OsuGame {
 }
 impl OsuGame {
     async fn playfield_changed(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock.name())).await);
+        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
         self.apply_playfield(new_scale).await
     }
     async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
@@ -176,9 +176,9 @@ impl OsuGame {
 
     #[inline]
     fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
-        if mods.has_mod(Easy.name()) {
+        if mods.has_mod(Easy) {
             val * ez_scale
-        } else if mods.has_mod(HardRock.name()) {
+        } else if mods.has_mod(HardRock) {
             val * hr_scale
         } else {
             val
@@ -292,7 +292,7 @@ impl GameMode for OsuGame {
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
         let od = Self::get_od(&metadata, &mods);
-        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock.name())).await);
+        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock)).await);
 
         let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
         let mut combo_colors = if skin_combo_colors.len() > 0 {
@@ -639,7 +639,7 @@ impl GameMode for OsuGame {
         self.cursor.update(time).await;
 
         let has_autoplay = self.mods.has_autoplay();
-        let has_relax = self.mods.has_mod(Relax.name());
+        let has_relax = self.mods.has_mod(Relax);
 
         // do autoplay things
         if has_autoplay {
@@ -898,7 +898,7 @@ impl GameMode for OsuGame {
 
 
     async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
-        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5, self.mods.has_mod(HardRock.name()));
+        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5, self.mods.has_mod(HardRock));
         self.apply_playfield(Arc::new(playfield)).await;
     }
 
@@ -950,13 +950,13 @@ impl GameMode for OsuGame {
     }
 
     async fn apply_mods(&mut self, mods: Arc<ModManager>) {
-        let had_easy_or_hr = self.mods.has_mod(Easy.name()) || self.mods.has_mod(HardRock.name());
+        let had_easy_or_hr = self.mods.has_mod(Easy) || self.mods.has_mod(HardRock);
 
-        let has_hr = mods.has_mod(HardRock.name());
-        let has_easy_or_hr = mods.has_mod(Easy.name()) || has_hr;
+        let has_hr = mods.has_mod(HardRock);
+        let has_easy_or_hr = mods.has_mod(Easy) || has_hr;
 
-        let had_fa = self.mods.has_mod(OnTheBeat.name());
-        let has_fa = mods.has_mod(OnTheBeat.name());
+        let had_fa = self.mods.has_mod(OnTheBeat);
+        let has_fa = mods.has_mod(OnTheBeat);
 
         // check easing type
         let easing_type_names = ["in", "out", "inout"];
@@ -1125,7 +1125,7 @@ impl GameModeInput for OsuGame {
         }
 
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
             Some(ReplayAction::Press(KeyPress::Left))
@@ -1146,7 +1146,7 @@ impl GameModeInput for OsuGame {
         }
 
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
         if key == self.game_settings.left_key {
             Some(ReplayAction::Release(KeyPress::Left))
@@ -1206,7 +1206,7 @@ impl GameModeInput for OsuGame {
         if self.game_settings.ignore_mouse_buttons { return None }
 
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
         
         if btn == MouseButton::Left {
             Some(ReplayAction::Press(KeyPress::LeftMouse))
@@ -1222,7 +1222,7 @@ impl GameModeInput for OsuGame {
         if self.game_settings.ignore_mouse_buttons { return None }
 
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
         if btn == MouseButton::Left {
             Some(ReplayAction::Release(KeyPress::LeftMouse))
@@ -1249,7 +1249,7 @@ impl GameModeInput for OsuGame {
 
     async fn controller_press(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
         match btn {
             ControllerButton::LeftTrigger => Some(ReplayAction::Press(KeyPress::Left)),
@@ -1260,7 +1260,7 @@ impl GameModeInput for OsuGame {
     
     async fn controller_release(&mut self, _:&GamepadInfo, btn:ControllerButton) -> Option<ReplayAction> {
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax.name()) && !self.game_settings.manual_input_with_relax { return None; }
+        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
 
         match btn {
             ControllerButton::LeftTrigger => Some(ReplayAction::Release(KeyPress::Left)),
