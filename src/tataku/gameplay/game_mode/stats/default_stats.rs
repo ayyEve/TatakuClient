@@ -1,45 +1,35 @@
+#![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
-pub trait GameModeStat {
-    fn name(&self) -> &'static str;
-    fn display_name(&self) -> &'static str { self.name() }
-    fn description(&self) -> &'static str { "" }
-}
+/// hit variance stat
+pub const HitVarianceStat: GameModeStat = GameModeStat {
+    name: "hit_variance",
+    display_name: "Hit Variance",
+    description: ""
+};
 
-#[derive(Default)]
-pub struct StatGroup {
-    pub name: String,
-    pub display_name: String,
-    pub stats: Vec<Box<dyn GameModeStat>>,
-}
-impl StatGroup {
-    pub fn new(name: impl ToString, display_name: impl ToString) -> Self {
-        Self {
-            name: name.to_string(),
-            display_name: display_name.to_string(),
-            stats: Vec::new()
-        }
-    }
-    
-    pub fn with_stat<S: GameModeStat + 'static>(mut self, m: S) -> Self {
-        self.stats.push(Box::new(m));
-        self
-    }
-}
-
-pub fn default_stat_groups() -> Vec<StatGroup>{
-    vec![
-        StatGroup::new("variance", "Variance")
-            .with_stat(HitVarianceStat)
+/// hit variance stat group
+const VarianceStatGroup: StatGroup = StatGroup {
+    name: "variance", 
+    display_name: "Variance",
+    stats: &[
+        HitVarianceStat
     ]
-}
+};
+
+/// all default stat groups
+const DEFAULT_STAT_GROUPS: &'static [StatGroup] = &[
+    VarianceStatGroup,
+];
+
+pub fn default_stat_groups() -> Vec<StatGroup> { DEFAULT_STAT_GROUPS.to_vec() }
 
 
 pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
     let mut info = Vec::new();
 
-    if let Some(variance) = data.get(&"variance".to_owned()) {
-        if let Some(variance_values) = variance.get(&HitVarianceStat.name().to_owned()) {
+    if let Some(variance) = data.get(&VarianceStatGroup.name()) {
+        if let Some(variance_values) = variance.get(&HitVarianceStat.name()) {
             let mut list = Vec::new();
 
             let mut late_total = 0.0;
@@ -75,11 +65,4 @@ pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>
     }
 
     info
-}
-
-
-pub struct HitVarianceStat;
-impl GameModeStat for HitVarianceStat {
-    fn name(&self) -> &'static str { "hit_variance" }
-    fn display_name(&self) -> &'static str { "Hit Variance" }
 }

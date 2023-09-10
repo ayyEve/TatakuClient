@@ -716,7 +716,7 @@ impl IngameManager {
     }
 
 
-    pub fn add_stat(&mut self, stat: impl GameModeStat, value: f32) {
+    pub fn add_stat(&mut self, stat: GameModeStat, value: f32) {
         self.score.insert_stat(stat, value)
     }
 

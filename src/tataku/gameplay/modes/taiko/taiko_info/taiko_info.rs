@@ -34,9 +34,7 @@ impl GameModeInfo for TaikoGameInfo {
 
     fn get_stat_groups(&self) -> Vec<StatGroup> {
         vec![
-            StatGroup::new("press_counters", "Press Counts")
-                .with_stat(TaikoStatLeftPresses)
-                .with_stat(TaikoStatRightPresses)
+            TaikoPressCounterStatGroup,
         ]
     }
 

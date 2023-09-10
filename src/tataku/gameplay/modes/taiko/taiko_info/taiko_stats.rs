@@ -1,13 +1,23 @@
+#![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
-pub struct TaikoStatLeftPresses;
-impl GameModeStat for TaikoStatLeftPresses {
-    fn name(&self) -> &'static str { "count_left" }
-    fn display_name(&self) -> &'static str { "Left Presses" }
-}
+pub const TaikoStatLeftPresses: GameModeStat = GameModeStat {
+    name: "count_left",
+    display_name: "Left Presses",
+    description: ""
+};
 
-pub struct TaikoStatRightPresses;
-impl GameModeStat for TaikoStatRightPresses {
-    fn name(&self) -> &'static str { "count_right" }
-    fn display_name(&self) -> &'static str { "Right Presses" }
-}
+pub const TaikoStatRightPresses: GameModeStat = GameModeStat {
+    name: "count_right",
+    display_name: "Right Presses",
+    description: ""
+};
+
+pub const TaikoPressCounterStatGroup: StatGroup = StatGroup {
+    name: "press_counters", 
+    display_name: "Press Counts",
+    stats: & [
+        TaikoStatLeftPresses,
+        TaikoStatRightPresses,
+    ]
+};

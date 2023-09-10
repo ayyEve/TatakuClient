@@ -1,5 +1,10 @@
 use crate::prelude::*;
 
+pub struct GameplayModGroupStatic {
+    pub name: &'static str,
+    pub mods: &'static [GameplayMod],
+}
+
 pub struct GameplayModGroup {
     pub name: String,
     pub mods: Vec<GameplayMod>

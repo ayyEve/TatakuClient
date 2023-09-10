@@ -181,7 +181,7 @@ impl ScoreMenu {
         // stats
         if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
             let mut groups = gamemode_info.get_stat_groups();
-            groups.extend(default_stat_groups());
+            groups.extend(default_stat_groups().clone());
             let data = score.stats_into_groups(&groups);
 
             self.stats = default_stats_from_groups(&data);

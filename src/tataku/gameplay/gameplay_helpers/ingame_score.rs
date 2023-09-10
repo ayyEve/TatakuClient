@@ -47,8 +47,8 @@ impl IngameScore {
         None
     }
 
-    pub fn insert_stat<S:GameModeStat>(&mut self, stat: S, value: f32) {
-        let key = stat.name().to_owned();
+    pub fn insert_stat(&mut self, stat: GameModeStat, value: f32) {
+        let key = stat.name.to_owned();
 
         if let Some(values) = self.score.stat_data.get_mut(&key) {
             values.push(value)
@@ -67,11 +67,11 @@ impl IngameScore {
             let mut data = HashMap::new();
 
             for stat in group.stats.iter() {
-                if let Some(val) = self.score.stat_data.get(&stat.name().to_owned()) {
-                    data.insert(stat.name().to_owned(), val.clone());
+                if let Some(val) = self.score.stat_data.get(&stat.name()) {
+                    data.insert(stat.name(), val.clone());
                 }
             }
-            output.insert(group.name.clone(), data);
+            output.insert(group.name(), data);
         }
 
         output
