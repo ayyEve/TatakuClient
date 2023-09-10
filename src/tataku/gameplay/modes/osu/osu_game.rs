@@ -835,6 +835,13 @@ impl GameMode for OsuGame {
             list.push(playfield);
         }
 
+        let has_flashlight = self.mods.has_mod(Flashlight);
+        // if flashlight is enabled, we want to scissor all items by the playfield
+        // this prevents things like approach circles and ripples from showing up outside the flashlight radius
+        if has_flashlight {
+            list.push_scissor(self.scaling_helper.playfield_scaled_with_cs_border.into_scissor())
+        }
+
         // draw cursor ripples
         self.cursor.draw_below(list).await;
         let time = manager.time();
@@ -852,7 +859,9 @@ impl GameMode for OsuGame {
         }
 
         // draw flashlight
-        if self.mods.has_mod(Flashlight) {
+        if has_flashlight {
+            list.pop_scissor();
+
             let radius = match manager.score.combo {
                 0..=99 => 125.0,
                 100..=199 => 100.0,

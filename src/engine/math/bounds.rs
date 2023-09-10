@@ -26,4 +26,11 @@ impl Bounds {
         let br = self.pos + self.size;
         [tl, tr, bl, br]
     }
+
+    pub fn into_scissor(&self) -> [f32; 4] {
+        [
+            self.pos.x, self.pos.y,
+            self.size.x, self.size.y
+        ]
+    }
 }
