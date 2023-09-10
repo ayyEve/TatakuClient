@@ -12,8 +12,9 @@ pub enum BlendMode {
     AdditiveBlending,
     SourceAlphaBlending,
 
-    /// special case
+    /// special cases
     Slider,
+    Flashlight,
 }
 #[cfg(feature="graphics")]
 impl BlendMode {

@@ -825,6 +825,24 @@ impl GameMode for OsuGame {
             }
         }
 
+        // draw flashlight
+        if self.mods.has_mod(Flashlight.name()) {
+            let radius = match manager.score.combo {
+                0..=99 => 125.0,
+                100..=199 => 100.0,
+                _ => 75.0
+            } * self.scaling_helper.scale;
+            let fade_radius = radius / 5.0;
+
+            list.push(FlashlightDrawable::new(
+                self.mouse_pos,
+                radius - fade_radius,
+                fade_radius,
+                *self.scaling_helper.playfield_scaled_with_cs_border,
+                Color::BLACK
+            ));
+        }
+
         // spinners should be drawn last since they should be on top of everything
         // (we dont want notes or sliders drawn on top of the spinners)
         for i in spinners {

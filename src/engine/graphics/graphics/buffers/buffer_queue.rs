@@ -74,6 +74,9 @@ impl<B:RenderBufferable> RenderBufferQueue<B> {
 pub trait RenderBufferable: Sized {
     type Cache: Default;
 
+    const VTX_PER_BUF: u64;
+    const IDX_PER_BUF: u64;
+
     /// name for this buffer (helpful for debugging)
     fn name() -> &'static str;
 

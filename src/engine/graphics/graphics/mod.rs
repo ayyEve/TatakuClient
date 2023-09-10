@@ -13,7 +13,9 @@ mod blend_mode;
 mod buffers;
 #[cfg(feature="graphics")]
 mod particle_system;
+
 mod slider_render;
+mod flashlight_render;
 
 #[cfg(feature="graphics")]
 pub use state::*;
@@ -30,3 +32,4 @@ pub use buffers::*;
 pub use particle_system::*;
 
 pub use slider_render::*;
+pub use flashlight_render::*;

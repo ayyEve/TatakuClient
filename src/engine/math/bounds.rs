@@ -18,4 +18,12 @@ impl Bounds {
     pub fn contains(&self, p:Vector2) -> bool {
         p.x > self.pos.x && p.x < self.pos.x + self.size.x && p.y > self.pos.y && p.y < self.pos.y + self.size.y
     }
+
+    pub fn into_quad(&self) -> [Vector2; 4] {
+        let tl = self.pos;
+        let tr = self.pos + self.size.x_portion();
+        let bl = self.pos + self.size.y_portion();
+        let br = self.pos + self.size;
+        [tl, tr, bl, br]
+    }
 }

@@ -46,6 +46,7 @@ impl GameModeInfo for OsuGameInfo {
 
         vec![
             GameplayModGroup::new("Difficulty")
+                .with_mod(Flashlight)
                 .with_mod(HardRock)
                 .with_mod(Easy)
                 .with_mod(Relax)

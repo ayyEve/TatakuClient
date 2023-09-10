@@ -1,7 +1,18 @@
 use crate::prelude::*;
 
 // pub struct Hidden;
-// pub struct Flashlight;
+
+pub struct Flashlight;
+impl GameplayMod for Flashlight {
+    fn name(&self) -> &'static str { "flashlight" }
+    fn short_name(&self) -> &'static str { "FL" }
+    fn display_name(&self) -> &'static str { "Flashlight" }
+    fn description(&self) -> &'static str { "Waaa I can't see anything!" }
+    
+    fn score_multiplier(&self) -> f32 { 1.1 }
+    // fn removes(&self) -> &'static [&'static str] { &["hardrock"] }
+}
+
 
 pub struct Easy;
 impl GameplayMod for Easy {

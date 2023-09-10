@@ -283,113 +283,11 @@ impl GraphicsState {
         }
 
         // create slider pipeline
-        {
-            let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("Slider Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../../../../shaders/slider.wgsl").into()),
-            });
-
-            let slider_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("slider group layout"),
-                entries: &[
-                    // slider_data
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<SliderData>() as u64 * 2)
-                        },
-                        count: None,
-                    },
-
-                    // slider_grids
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<GridCell>() as u64 * 2)
-                        },
-                        count: None,
-                    },
-
-                    // grid_cells
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<u32>() as u64 * 2)
-                        },
-                        count: None,
-                    },
-
-                    // line_segments
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<LineSegment>() as u64 * 2)
-                        },
-                        count: None,
-                    },
-
-                ],
-            });
-            SLIDER_BIND_GROUP_LAYOUT.set(slider_bind_group_layout).unwrap();
-
-            let slider_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Slider Pipeline Layout"),
-                bind_group_layouts: &[
-                    &projection_matrix_bind_group_layout,
-                    SLIDER_BIND_GROUP_LAYOUT.get().unwrap(),
-                ],
-                push_constant_ranges: &[],
-            });
-
-            let slider_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(&format!("Slider Pipeline")),
-                layout: Some(&slider_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &slider_shader,
-                    entry_point: "slider_vs_main",
-                    buffers: &[ SliderVertex::desc() ],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &slider_shader,
-                    entry_point: "slider_fs_main",
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(BlendMode::AlphaBlending.get_blend_state()),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: None,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview: None,
-            });
-
-            pipelines.insert(BlendMode::Slider, slider_pipeline);
-        }
+        pipelines.insert(BlendMode::Slider, create_slider_pipeline(&device, &config, &projection_matrix_bind_group_layout));
+        
+        // create flashlight pipeline
+        pipelines.insert(BlendMode::Flashlight, create_flashlight_pipeline(&device, &config, &projection_matrix_bind_group_layout));
+        
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -412,6 +310,7 @@ impl GraphicsState {
         let buffer_queues = [
             (LastDrawn::Slider, Box::new(RenderBufferQueueType::Slider(RenderBufferQueue::new().init(&device)))),
             (LastDrawn::Vertex, Box::new(RenderBufferQueueType::Vertex(RenderBufferQueue::new().init(&device)))),
+            (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device)))),
         ].into_iter().collect();
 
         let s = Self {
@@ -562,6 +461,9 @@ impl GraphicsState {
 
                 if let RenderBufferType::Slider(slider) = i {
                     render_pass.set_bind_group(1, &slider.bind_group, &[])
+                }
+                if let RenderBufferType::Flashlight(flashlight) = i {
+                    render_pass.set_bind_group(1, &flashlight.bind_group, &[])
                 }
 
                 render_pass.set_vertex_buffer(0, i.get_vertex_buffer().slice(..));
@@ -983,21 +885,19 @@ impl GraphicsState {
 
 // render code
 impl GraphicsState {
-    const QUAD_PER_BUF:u64 = 3000;
-    const VTX_PER_BUF:u64 = Self::QUAD_PER_BUF * 4;
-    const IDX_PER_BUF:u64 = Self::QUAD_PER_BUF * 6;
-
     pub fn begin(&mut self) {
         // if self.last_drawn is not None at this point, something went wrong
         assert!(self.current_render_buffer.is_none());
 
         let mut vertex_buffers = Vec::new();
         let mut slider_buffers = Vec::new();
+        let mut flashlight_buffers = Vec::new();
 
         for i in std::mem::take(&mut self.completed_buffers) {
             match i {
                 RenderBufferType::Vertex(v) => vertex_buffers.push(v),
                 RenderBufferType::Slider(s) => slider_buffers.push(s),
+                RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
             }
         }
 
@@ -1005,6 +905,7 @@ impl GraphicsState {
             match &mut **i {
                 RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
                 RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
+                RenderBufferQueueType::Flashlight(f) => f.begin(std::mem::take(&mut flashlight_buffers)),
             }
         }
     }
@@ -1032,7 +933,7 @@ impl GraphicsState {
         }
         
         self.dump_last_drawn();
-        self.current_render_buffer = self.buffer_queues.remove(&to_draw);
+        self.current_render_buffer = Some(self.buffer_queues.remove(&to_draw).expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?")));
     }
 
     /// returns reserve data
@@ -1055,8 +956,8 @@ impl GraphicsState {
 
         if !blend_mode_check
         || !scissor_check
-        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF {
+        || recording_buffer.used_vertices + vtx_count > VertexBuffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > VertexBuffer::IDX_PER_BUF {
             if let Some(b) = vertex_buffer_queue.dump_and_next(&self.queue, &self.device) {
                 self.completed_buffers.push(RenderBufferType::Vertex(b))
             }
@@ -1207,8 +1108,8 @@ impl GraphicsState {
         let idx_count = 6;
 
         if !scissor_check
-        || recording_buffer.used_vertices + vtx_count > Self::VTX_PER_BUF
-        || recording_buffer.used_indices + idx_count > Self::IDX_PER_BUF
+        || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
         || recording_buffer.used_slider_data + 1 > EXPECTED_SLIDER_COUNT
         || recording_buffer.used_slider_grids + slider_grid_count > SLIDER_GRID_COUNT
         || recording_buffer.used_grid_cells + grid_cell_count > GRID_CELL_COUNT
@@ -1260,6 +1161,55 @@ impl GraphicsState {
         })
     }
 
+
+    fn reserve_flashlight(
+        &mut self,
+        scissor: Scissor,
+    ) -> Option<FlashlightReserveData> {
+        self.check_dump_and_next(LastDrawn::Flashlight);
+
+        let buffer_queue = get_render_buffer!(self, Flashlight);
+        // if let Some(RenderBufferQueueType::Slider(b)) = &mut self.last_drawn {b} else {panic!("wrong buffer type")};
+
+        let mut recording_buffer = buffer_queue.recording_buffer().expect("didnt get flashlight recording buffer");
+        let scissor_check = recording_buffer.scissor == Some(scissor) || recording_buffer.scissor == None;
+
+        let vtx_count = 4;
+        let idx_count = 6;
+
+        if !scissor_check
+        || recording_buffer.used_vertices + vtx_count > SliderRenderBuffer::VTX_PER_BUF
+        || recording_buffer.used_indices + idx_count > SliderRenderBuffer::IDX_PER_BUF
+        {
+            if let Some(b) = buffer_queue.dump_and_next(&self.queue, &self.device) {
+                self.completed_buffers.push(RenderBufferType::Flashlight(b))
+            }
+            recording_buffer = buffer_queue.recording_buffer()?;
+        }
+        if recording_buffer.scissor.is_none() {
+            recording_buffer.scissor = Some(scissor);
+        }
+
+        recording_buffer.used_flashlights += 1;
+        recording_buffer.used_vertices += vtx_count;
+        recording_buffer.used_indices += idx_count;
+
+
+        // reserve flashlight vertex data
+        let flashlight_index = recording_buffer.used_flashlights - 1;
+        let used_vertices = recording_buffer.used_vertices;
+        let used_indices = recording_buffer.used_indices;
+        
+        let cache = &mut buffer_queue.cpu_cache;
+        Some(FlashlightReserveData {
+            vtx: &mut cache.cpu_vtx[(used_vertices - vtx_count) as usize .. used_vertices as usize],
+            idx: &mut cache.cpu_idx[(used_indices - idx_count) as usize .. used_indices as usize],
+            flashlight_data: &mut cache.cpu_flashlights[flashlight_index as usize],
+
+            idx_offset: used_vertices - vtx_count,
+            flashlight_index: flashlight_index as u32,
+        })
+    }
 }
 
 
@@ -1417,6 +1367,23 @@ impl GraphicsState {
             &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
             &line_segments
         );
+    }
+
+    pub fn draw_flashlight(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+        scissor: Scissor,
+        flashlight_data: FlashlightData
+    ) {
+        let Some(mut reserved) = self.reserve_flashlight(scissor) else { return };
+        
+        let vertices = quad.into_iter().map(|p|FlashlightVertex {
+            position: transform.mul_v2(p).into(),
+            flashlight_index: reserved.flashlight_index,
+        }).collect::<Vec<_>>();
+        
+        reserved.copy_in(&vertices, flashlight_data);
     }
 
 
@@ -1591,49 +1558,57 @@ fn align(num: u32) -> u32 {
 pub enum LastDrawn {
     None,
     Vertex,
-    Slider
+    Slider,
+    Flashlight
 }
 
 pub enum RenderBufferType {
     Vertex(Box<VertexBuffer>),
-    Slider(Box<SliderRenderBuffer>)
+    Slider(Box<SliderRenderBuffer>),
+    Flashlight(Box<FlashlightBuffer>),
 }
 impl RenderBufferType {
     pub fn get_scissor(&self) -> Scissor {
         match self {
             Self::Vertex(v) => v.scissor.unwrap(),
             Self::Slider(s) => s.scissor.unwrap(),
+            Self::Flashlight(f) => f.scissor.unwrap(),
         }
     }
     pub fn get_blend_mode(&self) -> BlendMode {
         match self {
             Self::Vertex(v) => v.blend_mode,
             Self::Slider(_s) => BlendMode::Slider,
+            Self::Flashlight(_f) => BlendMode::Flashlight,
         }
     }
     pub fn get_vertex_buffer(&self) -> &wgpu::Buffer {
         match self {
             Self::Vertex(v) => &v.vertex_buffer,
             Self::Slider(s) => &s.vertex_buffer,
+            Self::Flashlight(f) => &f.vertex_buffer
         }
     }
     pub fn get_index_buffer(&self) -> &wgpu::Buffer {
         match self {
             Self::Vertex(v) => &v.index_buffer,
             Self::Slider(s) => &s.index_buffer,
+            Self::Flashlight(f) => &f.index_buffer
         }
     }
     pub fn get_used_indices(&self) -> u64 {
         match self {
             Self::Vertex(v) => v.used_indices,
             Self::Slider(s) => s.used_indices,
+            Self::Flashlight(f) => f.used_indices,
         }
     }
 }
 
 pub enum RenderBufferQueueType {
     Vertex(RenderBufferQueue<VertexBuffer>),
-    Slider(RenderBufferQueue<SliderRenderBuffer>)
+    Slider(RenderBufferQueue<SliderRenderBuffer>),
+    Flashlight(RenderBufferQueue<FlashlightBuffer>),
 }
 impl RenderBufferQueueType {
     /// dumps the cached data to the gpu, and returns the buffers which contained that data
@@ -1642,12 +1617,14 @@ impl RenderBufferQueueType {
         match self {
             Self::Slider(s) => s.dump_and_next(queue, device).map(|b|RenderBufferType::Slider(b)),
             Self::Vertex(v) => v.dump_and_next(queue, device).map(|b|RenderBufferType::Vertex(b)),
+            Self::Flashlight(f) => f.dump_and_next(queue, device).map(|b|RenderBufferType::Flashlight(b)),
         }
     }
     pub fn end(&mut self, queue: &wgpu::Queue) -> Option<RenderBufferType> {
         match self {
             Self::Slider(s) => s.end(queue).map(|b|RenderBufferType::Slider(b)),
             Self::Vertex(v) => v.end(queue).map(|b|RenderBufferType::Vertex(b)),
+            Self::Flashlight(f) => f.end(queue).map(|b|RenderBufferType::Flashlight(b)),
         }
     }
 
@@ -1655,6 +1632,7 @@ impl RenderBufferQueueType {
         match self {
             Self::Slider(_) => LastDrawn::Slider,
             Self::Vertex(_) => LastDrawn::Vertex,
+            Self::Flashlight(_) => LastDrawn::Flashlight
         }
     }
 }
