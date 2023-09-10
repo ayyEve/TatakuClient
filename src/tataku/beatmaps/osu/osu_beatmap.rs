@@ -5,7 +5,7 @@ use crate::prelude::*;
 pub struct OsuBeatmap {
     // meta info
     pub metadata: Arc<BeatmapMeta>,
-    pub hash: String,
+    pub hash: Md5Hash,
     pub beatmap_version: u8,
     pub slider_multiplier: f32,
     pub slider_tick_rate: f32,
@@ -418,7 +418,7 @@ impl OsuBeatmap {
 }
 #[async_trait]
 impl TatakuBeatmap for OsuBeatmap {
-    fn hash(&self) -> String { self.hash.clone() }
+    fn hash(&self) -> Md5Hash { self.hash }
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> { self.metadata.clone() }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {

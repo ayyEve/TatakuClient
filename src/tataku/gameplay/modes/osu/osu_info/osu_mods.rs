@@ -1,3 +1,4 @@
+#![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
 // pub struct Hidden;
@@ -14,65 +15,62 @@ impl GameplayMod for Flashlight {
 }
 
 
-pub struct Easy;
-impl GameplayMod for Easy {
-    fn name(&self) -> &'static str { "easy" }
-    fn short_name(&self) -> &'static str { "EZ" }
-    fn display_name(&self) -> &'static str { "Easy" }
-    fn description(&self) -> &'static str { "bigger and slower notes c:" }
-    
-    fn score_multiplier(&self) -> f32 { 0.6 }
-    fn removes(&self) -> &'static [&'static str] { &["hardrock"] }
-}
+pub const Easy:GameplayMod = GameplayMod {
+    name: "easy", 
+    short_name: "EZ", 
+    display_name: "Easy", 
+    description: "Bigger and slower notes c:", 
+    texture_name: "easy", 
+    score_multiplier: 0.6, 
 
+    adjusts_difficulty: false,
+    removes: &[HardRock.name]
+};
 
-pub struct HardRock;
-impl GameplayMod for HardRock {
-    fn name(&self) -> &'static str { "hardrock" }
-    fn short_name(&self) -> &'static str { "HR" }
-    fn display_name(&self) -> &'static str { "Hard Rock" }
-    fn description(&self) -> &'static str { "smaller notes, higher approach, what fun!" }
+pub const HardRock:GameplayMod = GameplayMod {
+    name: "hardrock", 
+    short_name: "HR", 
+    display_name: "Hard Rock", 
+    description: "Smaller notes, higher approach, what fun!", 
+    texture_name: "hardrock", 
+    score_multiplier: 1.4, 
 
-    fn score_multiplier(&self) -> f32 { 1.4 }
-    fn removes(&self) -> &'static [&'static str] { &["easy"] }
-}
+    adjusts_difficulty: false,
+    removes: &["easy"]
+};
 
-pub struct Relax;
-impl GameplayMod for Relax {
-    fn name(&self) -> &'static str { "relax" }
-    fn short_name(&self) -> &'static str { "RX" }
-    fn display_name(&self) -> &'static str { "Relax" }
-    fn description(&self) -> &'static str { "You just need to aim!" }
+pub const Relax:GameplayMod = GameplayMod {
+    name: "relax", 
+    short_name: "RX", 
+    display_name: "Relax", 
+    description: "You just need to aim!", 
+    texture_name: "relax", 
+    score_multiplier: 0.0, 
 
-    fn score_multiplier(&self) -> f32 { 0.0 }
-    fn removes(&self) -> &'static [&'static str] { &["autoplay"] }
-}
+    adjusts_difficulty: false,
+    removes: &["autoplay"]
+};
 
-/// helper for easing mods
-pub struct EasingMod {
-    pub(super) name: &'static str,
-    pub(super) short_name: &'static str,
-    pub(super) display_name: &'static str,
-    pub(super) desc: &'static str,
-    pub(super) removes: &'static [&'static str],
-}
-impl GameplayMod for EasingMod {
-    fn name(&self) -> &'static str { self.name }
-    fn short_name(&self) -> &'static str { self.short_name }
-    fn display_name(&self) -> &'static str { self.display_name }
-    fn description(&self) -> &'static str { self.desc }
+pub const OnTheBeat:GameplayMod = GameplayMod {
+    name: "on_the_beat", 
+    short_name: "OB", 
+    display_name: "On the Beat", 
+    description: "Notes on beats have something off about them", 
+    texture_name: "relax", 
+    score_multiplier: 1.0, 
 
-    fn score_multiplier(&self) -> f32 { 1.0 }
-    fn removes(&self) -> &'static [&'static str] { self.removes }
-}
-
-pub struct OnTheBeat;
-impl GameplayMod for OnTheBeat {
-    fn name(&self) -> &'static str { "on_the_beat" }
-    fn short_name(&self) -> &'static str { "OB" }
-    fn display_name(&self) -> &'static str { "On the Beat" }
-    fn description(&self) -> &'static str { "Notes on beats have something off about them" }
-
-    fn score_multiplier(&self) -> f32 { 1.0 }
-    fn removes(&self) -> &'static [&'static str] { &["sine", "quad", "cube", "quart", "quint", "exp", "circ", "back", "in", "out", "inout"] }
-}
+    adjusts_difficulty: false,
+    removes: &[
+        "sine", 
+        "quad", 
+        "cube", 
+        "quart", 
+        "quint", 
+        "exp", 
+        "circ", 
+        "back", 
+        "in", 
+        "out", 
+        "inout"
+    ]
+};

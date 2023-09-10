@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Default, Clone)]
 #[allow(unused)]
 pub struct StepmaniaBeatmap {
-    hash: String,
+    hash: Md5Hash,
     file_path: String,
 
     title: String,
@@ -285,7 +285,7 @@ impl StepmaniaBeatmap {
 }
 
 impl TatakuBeatmap for StepmaniaBeatmap {
-    fn hash(&self) -> String {self.hash.clone()}
+    fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
     fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
 

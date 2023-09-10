@@ -31,7 +31,7 @@ impl ModManager {
         GlobalValueManager::get::<Self>().unwrap().as_ref().clone()
     }
 
-    pub fn mods_for_playmode(playmode: &String) -> Vec<Box<dyn GameplayMod>> {
+    pub fn mods_for_playmode(playmode: &String) -> Vec<GameplayMod> {
         let Some(info) = get_gamemode_info(playmode) else { return Vec::new() };
 
         default_mod_groups()
@@ -41,7 +41,7 @@ impl ModManager {
             .flatten()
             .collect::<Vec<_>>()
     }
-    pub fn mods_for_playmode_as_hashmap(playmode: &String) -> HashMap<String, Box<dyn GameplayMod>> {
+    pub fn mods_for_playmode_as_hashmap(playmode: &String) -> HashMap<String, GameplayMod> {
         let Some(info) = get_gamemode_info(playmode) else { return HashMap::new() };
 
         default_mod_groups()
@@ -49,7 +49,7 @@ impl ModManager {
             .chain(info.get_mods().into_iter())
             .map(|m|m.mods)
             .flatten()
-            .map(|m|(m.name().to_owned(), m))
+            .map(|m|(m.name.to_owned(), m))
             .collect()
     }
 
@@ -64,7 +64,7 @@ impl ModManager {
         let mut list = Vec::new();
         for m in mods.iter() {
             if let Some(m) = ok_mods.get(m) {
-                list.push(m.short_name())
+                list.push(m.short_name)
             }
         }
 
@@ -111,13 +111,13 @@ impl ModManager {
             .iter()
             .map(|mg|&mg.mods)
             .flatten()
-            .map(|m|(m.name(), m))
+            .map(|m|(m.name, m))
             .collect::<HashMap<_,_>>();
 
         let mut list = self.mods
             .iter()
             .filter_map(|id|mods.get(&**id))
-            .map(|m|m.short_name().to_owned())
+            .map(|m|m.short_name.to_owned())
             .collect::<Vec<_>>();
 
         let speed = self.get_speed();
@@ -172,16 +172,16 @@ impl ModManager {
 
     // common mods
     pub fn has_nofail(&self) -> bool {
-        self.has_mod(NoFail.name())
+        self.has_mod(NoFail)
     }
     pub fn has_sudden_death(&self) -> bool {
-        self.has_mod(SuddenDeath.name())
+        self.has_mod(SuddenDeath)
     }
     pub fn has_perfect(&self) -> bool {
-        self.has_mod(Perfect.name())
+        self.has_mod(Perfect)
     }
     pub fn has_autoplay(&self) -> bool {
-        self.has_mod(Autoplay.name())
+        self.has_mod(Autoplay)
     }
 
     pub fn as_md5_u128(&self) -> u128 {

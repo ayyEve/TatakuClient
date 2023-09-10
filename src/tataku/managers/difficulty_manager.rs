@@ -61,7 +61,7 @@ pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Opti
     let mut mods = mods.clone();
     mods.mods.clear();
 
-    let diff_key = DifficultyEntry::new(&map.beatmap_hash, &mods);
+    let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
     BEATMAP_DIFFICULTIES.get(playmode)?.read().unwrap().get(&diff_key).cloned()
 }
 
@@ -93,7 +93,7 @@ pub async fn do_diffcalc(playmode: String) {
             for mut mods in mod_mutations.clone() {
                 mods.speed = speed;
 
-                let diff_key = DifficultyEntry::new(&map.beatmap_hash, &mods);
+                let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
                 if existing.contains_key(&diff_key) { continue }
 
                 // only load the calc if its actually needed
@@ -162,13 +162,13 @@ fn save_all_diffs() -> TatakuResult<()> {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DifficultyEntry {
-    pub map_hash: u128,
+    pub map_hash: Md5Hash,
     pub mods: u128, // ModManager
 }
 
 impl DifficultyEntry {
-    pub fn new(map_hash: &String, mods: &ModManager) -> Self {
-        let map_hash = u128::from_str_radix(&map_hash, 16).unwrap();
+    pub fn new(map_hash: Md5Hash, mods: &ModManager) -> Self {
+        // let map_hash = Md5Hash::try_from(map_).unwrap();//u128::from_str_radix(&map_hash, 16).unwrap();
         let mods = mods.as_md5_u128();
         Self {
             map_hash,

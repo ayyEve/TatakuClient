@@ -1,4 +1,5 @@
 use crate::prelude::*;
+pub type PerformanceCalc = Box<fn(f32, f32) -> f32>;
 
 #[async_trait]
 pub trait GameModeInfo {

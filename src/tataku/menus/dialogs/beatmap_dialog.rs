@@ -6,13 +6,13 @@ const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
 pub struct BeatmapDialog {
     bounds: Rectangle,
-    target_map: String,
+    target_map: Md5Hash,
     delete_map: MenuButton,
     copy_hash: MenuButton,
     should_close: bool,
 }
 impl BeatmapDialog {
-    pub fn new(map_hash: String) -> Self {
+    pub fn new(map_hash: Md5Hash) -> Self {
         let window = WindowSize::get();
 
         let offset = 100.0;
@@ -79,13 +79,13 @@ impl Dialog<Game> for BeatmapDialog {
         if self.delete_map.on_click(pos, button, *mods) {
             trace!("delete map {}", self.target_map);
 
-            BEATMAP_MANAGER.write().await.delete_beatmap(self.target_map.clone(), game).await;
+            BEATMAP_MANAGER.write().await.delete_beatmap(self.target_map, game).await;
             self.should_close = true;
         }
 
         if self.copy_hash.on_click(pos, button, *mods) {
             trace!("copy hash map {}", self.target_map);
-            match GameWindow::set_clipboard(self.target_map.clone()) {
+            match GameWindow::set_clipboard(self.target_map.to_string()) {
                 Ok(_) => NotificationManager::add_text_notification("Hash copied to clipboard!", 3000.0, Color::LIGHT_BLUE).await,
                 Err(e) => NotificationManager::add_error_notification("Failed to copy hash to clipboard", e).await,
             }

@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait TatakuBeatmap:Send+Sync {
-    fn hash(&self) -> String;
+    fn hash(&self) -> Md5Hash;
 
     fn get_timing_points(&self) -> Vec<TimingPoint>;
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta>;

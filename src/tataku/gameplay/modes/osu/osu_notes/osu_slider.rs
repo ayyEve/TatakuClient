@@ -433,6 +433,7 @@ impl HitObject for OsuSlider {
 
     async fn update(&mut self, beatmap_time: f32) {
         self.map_time = beatmap_time;
+        self.start_circle_image.update(beatmap_time);
 
         self.beat_scale = f32::lerp(BEAT_SCALE, 1.0, (beatmap_time - self.last_beat) / self.pulse_length).clamp(1.0, BEAT_SCALE);
 
@@ -927,6 +928,8 @@ impl OsuHitObject for OsuSlider {
     fn get_sound_queue(&mut self) -> Vec<Vec<Hitsound>> {
         std::mem::take(&mut self.sound_queue)
     }
+    
+    fn shake(&mut self, time: f32) { self.start_circle_image.shake(time) }
 }
 
 /// helper struct for drawing hit slider points

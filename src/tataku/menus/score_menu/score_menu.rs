@@ -1,12 +1,6 @@
 use crate::prelude::*;
 use crate::REPLAY_EXPORTS_DIR;
-
-use chrono::{ 
-    NaiveDateTime,
-    DateTime,
-    Local,
-    Utc
-};
+use chrono::{ NaiveDateTime, Local };
 
 const MENU_ITEM_COUNT:usize = 2;
 const TITLE_STRING_Y:f32 = 20.0;
@@ -187,7 +181,7 @@ impl ScoreMenu {
         // stats
         if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
             let mut groups = gamemode_info.get_stat_groups();
-            groups.extend(default_stat_groups());
+            groups.extend(default_stat_groups().clone());
             let data = score.stats_into_groups(&groups);
 
             self.stats = default_stats_from_groups(&data);
@@ -213,6 +207,47 @@ impl ScoreMenu {
                 self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
             }
         }
+    }
+
+    async fn save_replay(&mut self) {
+        let Some(replay) = &self.replay else { 
+            NotificationManager::add_text_notification("There is no replay to save!", 5_000.0, Color::RED).await;
+            return;
+        };
+        
+        // save the replay
+        match save_replay(replay, &self.score) {
+            Ok(saved_path) => {
+                let saved_path = Path::new(&saved_path);
+
+                let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
+                let Score { playmode, username, time, .. } = &self.score.score;
+                let playmode = gamemode_display_name(playmode);
+
+                let mut date = String::new();
+                if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
+                    let score_time = datetime.and_local_timezone(Local).unwrap();
+                    date = score_time.date_naive().format("%d-%m-%Y").to_string();
+                }
+
+                let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &Io::sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
+                let export_path = Path::new(&export_path);
+
+                // ensure export dir exists
+                match std::fs::create_dir_all(&export_path.parent().unwrap()) {
+                    Ok(_) => {
+                        // copy the file from the saved_path to the exports file
+                        if let Err(e) = std::fs::copy(saved_path, export_path) {
+                            NotificationManager::add_error_notification("Error exporting replay", e).await;
+                        } else {
+                            NotificationManager::add_text_notification("Replay exported!", 5000.0, Color::BLUE).await;
+                        }
+                    }
+                    Err(e) => NotificationManager::add_error_notification("Error creating exports directory", e).await,
+                }
+            }
+            Err(e) => NotificationManager::add_error_notification("Error saving replay", e).await,
+        };
     }
 }
 
@@ -409,41 +444,7 @@ impl AsyncMenu<Game> for ScoreMenu {
         }
 
         if key == Key::F2 {
-            if let Some(replay) = &self.replay {
-                // save the replay
-                match save_replay(replay, &self.score) {
-                    Ok(saved_path) => {
-                        let saved_path = Path::new(&saved_path);
-
-                        let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
-                        let Score { playmode, username, time, .. } = &self.score.score;
-                        let playmode = gamemode_display_name(playmode);
-
-                        let mut date = String::new();
-                        if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
-                            let score_time = DateTime::<Utc>::from_utc(datetime, Utc).with_timezone(&Local);
-                            date = score_time.date_naive().format("%d-%m-%Y").to_string();
-                        }
-
-                        let export_path = format!("{REPLAY_EXPORTS_DIR}/") + &Io::sanitize_filename(format!("{username}[{playmode}] - {artist} - {title} [{version}] ({date}).ttkr"));
-                        let export_path = Path::new(&export_path);
-
-                        // ensure export dir exists
-                        match std::fs::create_dir_all(&export_path.parent().unwrap()) {
-                            Ok(_) => {
-                                // copy the file from the saved_path to the exports file
-                                if let Err(e) = std::fs::copy(saved_path, export_path) {
-                                    NotificationManager::add_error_notification("Error exporting replay", e).await;
-                                } else {
-                                    NotificationManager::add_text_notification("Replay exported!", 5000.0, Color::BLUE).await;
-                                }
-                            }
-                            Err(e) => NotificationManager::add_error_notification("Error creating exports directory", e).await,
-                        }
-                    }
-                    Err(e) => NotificationManager::add_error_notification("Error saving replay", e).await,
-                };
-            }
+            self.save_replay().await;
         }
     
         if key == Key::Left && self.stats.len() > 0 {

@@ -3,8 +3,8 @@ use crate::prelude::*;
 
 pub struct OsuApi;
 impl OsuApi {
-    pub async fn get_beatmap_by_hash(hash: impl AsRef<str>) -> TatakuResult<Option<OsuApiBeatmap>> {
-        let hash = hash.as_ref();
+    pub async fn get_beatmap_by_hash(hash: impl Display) -> TatakuResult<Option<OsuApiBeatmap>> {
+        // let hash = hash.as_ref();
         
         // need to query the osu api to get the set id for this hashmap
         let key = Settings::get().osu_api_key.clone();

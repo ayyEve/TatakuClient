@@ -212,7 +212,7 @@ impl BeatmapSelectMenu {
             let meta = &maps[0];
             let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
             let mut i = BeatmapsetItem::new(maps, display_text).await;
-            i.check_selected(&current_hash);
+            i.check_selected(current_hash);
             full_list.push(Box::new(i));
         }
 
@@ -269,7 +269,7 @@ impl BeatmapSelectMenu {
     pub async fn load_scores(&mut self) {
         // if nothing is selected, leave
         if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
-            self.score_loader = Some(SCORE_HELPER.read().await.get_scores(&map.beatmap_hash, &map.check_mode_override(self.mode.clone())).await);
+            self.score_loader = Some(SCORE_HELPER.read().await.get_scores(map.beatmap_hash, &map.check_mode_override(self.mode.clone())).await);
 
             // clear lists
             self.leaderboard_scroll.clear();
@@ -297,7 +297,7 @@ impl BeatmapSelectMenu {
         }
     }
 
-    async fn select_map(&mut self, game: &mut Game, map: String, can_start: bool) {
+    async fn select_map(&mut self, game: &mut Game, map: Md5Hash, can_start: bool) {
         let mut lock = BEATMAP_MANAGER.write().await;
 
         // compare last clicked map hash with the new hash.
@@ -436,7 +436,7 @@ impl BeatmapSelectMenu {
         }
 
         // check if beatmap item was clicked
-        if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods) {
+        if let Some(clicked_hash) = self.beatmap_scroll.on_click_tagged(pos, button, mods).and_then(|h|Md5Hash::try_from(h).ok()) {
             if button == MouseButton::Right {
                 // clicked hash is the target
                 let dialog = BeatmapDialog::new(clicked_hash.clone());
@@ -787,13 +787,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         if key == Left && !mods.alt {
-            if let Some(hash) = self.beatmap_scroll.select_previous_item() {
+            if let Some(hash) = self.beatmap_scroll.select_previous_item().and_then(|h|h.try_into().ok()) {
                 self.select_map(game, hash, false).await;
                 self.beatmap_scroll.scroll_to_selection();
             }
         }
         if key == Right && !mods.alt  {
-            if let Some(hash) = self.beatmap_scroll.select_next_item() {
+            if let Some(hash) = self.beatmap_scroll.select_next_item().and_then(|h|h.try_into().ok()) {
                 self.select_map(game, hash, false).await;
                 self.beatmap_scroll.scroll_to_selection();
             }
@@ -890,7 +890,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         if self.beatmap_scroll.on_key_press(key, mods) || key == Return {
             if let Some(selected_index) = self.beatmap_scroll.get_selected_index() {
                 if let Some(item) = self.beatmap_scroll.items.get(selected_index) {
-                    let hash = item.get_tag();
+                    let hash = item.get_tag().try_into().unwrap();
                     self.select_map(game, hash, key == Return).await;
                 }
             }

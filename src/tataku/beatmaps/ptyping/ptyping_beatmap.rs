@@ -8,7 +8,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 pub struct PTypingBeatmap {
     // paths etc
-    // pub hash: String,
+    pub hash: Md5Hash,
     pub file_path: String,
     pub parent_dir: String,
 
@@ -48,6 +48,7 @@ impl PTypingBeatmap {
                 parent_dir: parent_dir.clone(),
                 artist: data.artist.clone(),
                 title: data.title.clone(),
+                hash: (&def.id).try_into().unwrap(),
                 def,
                 // start_time,
                 duration,
@@ -61,12 +62,12 @@ impl PTypingBeatmap {
     pub fn load_single(path:impl AsRef<Path>, meta: &BeatmapMeta) -> TatakuResult<Self> {
         let maps = Self::load_multiple(path)?;
 
-        maps.into_iter().find(|m|m.def.id == meta.beatmap_hash).ok_or_else(||BeatmapError::InvalidFile.into())
+        maps.into_iter().find(|m|m.hash == meta.beatmap_hash).ok_or_else(||BeatmapError::InvalidFile.into())
     }
 }
 impl TatakuBeatmap for PTypingBeatmap {
-    fn hash(&self) -> String {
-        self.def.id.clone()
+    fn hash(&self) -> Md5Hash {
+        self.hash
         // self.hash.clone()
     }
     fn playmode(&self, _incoming:String) -> String { "utyping".to_owned() }

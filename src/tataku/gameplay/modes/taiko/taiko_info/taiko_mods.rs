@@ -1,61 +1,64 @@
+#![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
-pub struct FullAlt;
-impl GameplayMod for FullAlt {
-    fn name(&self) -> &'static str { "full_alt" }
-    fn short_name(&self) -> &'static str { "FA" }
-    fn display_name(&self) -> &'static str { "Full Alt" }
-    fn description(&self) -> &'static str { "Force full-alt :D" }
-}
+pub const FullAlt: GameplayMod = GameplayMod {
+    name: "full_alt",
+    short_name: "FA",
+    display_name: "Full Alt",
+    description: "Force full-alt :D",
+    ..GameplayMod::DEFAULT
+};
 
-pub struct NoSV;
-impl GameplayMod for NoSV {
-    fn name(&self) -> &'static str { "no_sv" }
-    fn short_name(&self) -> &'static str { "NS" }
-    fn display_name(&self) -> &'static str { "No SV" }
-    fn description(&self) -> &'static str { "No more slider velocity changes!" }
-}
-pub struct Relax;
-impl GameplayMod for Relax {
-    fn name(&self) -> &'static str { "relax" }
-    fn short_name(&self) -> &'static str { "RX" }
-    fn display_name(&self) -> &'static str { "Relax" }
-    fn description(&self) -> &'static str { "Hit any (taiko) key you want!" }
-}
+pub const NoSV: GameplayMod = GameplayMod {
+    name: "no_sv",
+    short_name: "NS",
+    display_name: "No SV",
+    description: "No more slider velocity changes!",
+    ..GameplayMod::DEFAULT
+};
 
-pub struct HardRock;
-impl GameplayMod for HardRock {
-    fn name(&self) -> &'static str { "hardrock" }
-    fn short_name(&self) -> &'static str { "HR" }
-    fn display_name(&self) -> &'static str { "Hard Rock" }
-    fn description(&self) -> &'static str { "Timing is tigher >:3" }
+pub const Relax: GameplayMod = GameplayMod {
+    name: "relax",
+    short_name: "RX",
+    display_name: "Relax",
+    description: "Hit any (taiko) key you want!",
+    ..GameplayMod::DEFAULT
+};
 
-    fn score_multiplier(&self) -> f32 { 1.4 }
-}
+pub const HardRock:GameplayMod = GameplayMod {
+    name: "hardrock",
+    short_name: "HR",
+    display_name: "Hard Rock",
+    description: "Timing is tigher >:3",
+    score_multiplier: 1.4,
 
-pub struct Easy;
-impl GameplayMod for Easy {
-    fn name(&self) -> &'static str { "easy" }
-    fn short_name(&self) -> &'static str { "EZ" }
-    fn display_name(&self) -> &'static str { "Easy" }
-    fn description(&self) -> &'static str { "Timing is looser :3" }
+    ..GameplayMod::DEFAULT
+};
 
-    fn score_multiplier(&self) -> f32 { 0.6 }
-}
+pub const Easy: GameplayMod = GameplayMod {
+    name: "easy",
+    short_name: "EZ",
+    display_name: "Easy",
+    description: "Timing is looser :3",
+    score_multiplier: 0.6,
+    
+    ..GameplayMod::DEFAULT
+};
 
+pub const NoBattery: GameplayMod = GameplayMod {
+    name: "no_battery",
+    short_name: "NB",
+    display_name: "No Battery",
+    description: "Don't use battery health",
+    
+    ..GameplayMod::DEFAULT
+};
 
-pub struct NoBattery;
-impl GameplayMod for NoBattery {
-    fn name(&self) -> &'static str { "no_battery" }
-    fn short_name(&self) -> &'static str { "NB" }
-    fn display_name(&self) -> &'static str { "No Battery" }
-    fn description(&self) -> &'static str { "Don't use battery health" }
-}
+pub const NoFinisher: GameplayMod = GameplayMod {
+    name: "no_finisher",
+    short_name: "NX",
+    display_name: "No Finishers",
+    description: "Turn all big notes into small notes",
+    ..GameplayMod::DEFAULT
+};
 
-pub struct NoFinisher;
-impl GameplayMod for NoFinisher {
-    fn name(&self) -> &'static str { "no_finisher" }
-    fn short_name(&self) -> &'static str { "NX" }
-    fn display_name(&self) -> &'static str { "No Finishers" }
-    fn description(&self) -> &'static str { "Turn all big notes into small notes" }
-}

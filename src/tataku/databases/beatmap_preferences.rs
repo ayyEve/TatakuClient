@@ -46,10 +46,10 @@ impl Default for BeatmapPlaymodePreferences {
 
 
 impl Database {
-    pub async fn get_beatmap_prefs(map_hash:&String) -> BeatmapPreferences {
+    pub async fn get_beatmap_prefs(map_hash:Md5Hash) -> BeatmapPreferences {
         let db = Self::get().await;
 
-        let query = format!("SELECT * FROM beatmap_preferences WHERE beatmap_hash='{map_hash}'");
+        let query = format!("SELECT * FROM beatmap_preferences WHERE beatmap_hash='{}'", map_hash.to_string());
         let mut s = db.prepare(&query).unwrap();
         let res = s.query_map([], BeatmapPreferences::from_row);
 
@@ -59,8 +59,9 @@ impl Database {
             Default::default()
         }
     }
-    pub fn save_beatmap_prefs(map_hash:&String, prefs: &BeatmapPreferences) {
+    pub fn save_beatmap_prefs(map_hash:Md5Hash, prefs: &BeatmapPreferences) {
         let BeatmapPreferences{ audio_offset, background_video, storyboard } = prefs;
+        let map_hash = map_hash.to_string();
 
         Self::add_query(DatabaseQuery::InsertOrUpdate { 
             sql: format!("INSERT INTO beatmap_preferences (beatmap_hash, audio_offset, background_video, storyboard) VALUES ('{map_hash}', {audio_offset}, {background_video}, {storyboard})"), 
@@ -71,8 +72,9 @@ impl Database {
         });
     }
 
-    pub async fn get_beatmap_mode_prefs(map_hash:&String, playmode:&String) -> BeatmapPlaymodePreferences {
+    pub async fn get_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String) -> BeatmapPlaymodePreferences {
         let db = Self::get().await;
+        let map_hash = map_hash.to_string();
 
         let query = format!("SELECT * FROM beatmap_mode_preferences WHERE beatmap_hash='{map_hash}' AND playmode='{playmode}'");
         let mut s = db.prepare(&query).unwrap();
@@ -84,8 +86,9 @@ impl Database {
             Default::default()
         }
     }
-    pub fn save_beatmap_mode_prefs(map_hash:&String, playmode:&String, prefs:&BeatmapPlaymodePreferences) {
+    pub fn save_beatmap_mode_prefs(map_hash:Md5Hash, playmode:&String, prefs:&BeatmapPlaymodePreferences) {
         let BeatmapPlaymodePreferences { scroll_speed } = prefs;
+        let map_hash = map_hash.to_string();
 
         Self::add_query(DatabaseQuery::InsertOrUpdate { 
             sql: format!("INSERT INTO beatmap_mode_preferences (beatmap_hash, playmode, scroll_speed) VALUES ('{map_hash}', '{playmode}', {scroll_speed})"), 

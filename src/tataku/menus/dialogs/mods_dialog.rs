@@ -154,16 +154,16 @@ struct ModButton {
     hover: bool,
     selected: bool,
 
-    gameplay_mod: Box<dyn GameplayMod>,
+    gameplay_mod: GameplayMod,
     mod_name: String,
     enabled: bool,
 
     mods: ModManagerHelper
 }
 impl ModButton {
-    fn new(pos: Vector2, gameplay_mod: Box<dyn GameplayMod>, current_mods: &ModManager) -> Self {
-        let enabled = current_mods.has_mod(gameplay_mod.name());
-        let mod_name = gameplay_mod.display_name().to_owned();
+    fn new(pos: Vector2, gameplay_mod: GameplayMod, current_mods: &ModManager) -> Self {
+        let enabled = current_mods.has_mod(gameplay_mod.name);
+        let mod_name = gameplay_mod.display_name.to_owned();
 
         Self {
             size: Vector2::new(500.0, 50.0),
@@ -180,8 +180,8 @@ impl ModButton {
     }
 
     fn toggle(&self) {
-        let name = self.gameplay_mod.name();
-        let removes:HashSet<String> = self.gameplay_mod.removes().iter().map(|m|(*m).to_owned()).collect();
+        let name = self.gameplay_mod.name;
+        let removes:HashSet<String> = self.gameplay_mod.removes.iter().map(|m|(*m).to_owned()).collect();
         tokio::spawn(async move {
             let mut manager = ModManager::get_mut();
             manager.toggle_mod(name);
@@ -192,7 +192,7 @@ impl ModButton {
 impl ScrollableItem for ModButton {
     fn update(&mut self) {
         if self.mods.update() {
-            self.enabled = self.mods.has_mod(self.gameplay_mod.name())
+            self.enabled = self.mods.has_mod(self.gameplay_mod)
         }
     }
 
@@ -209,7 +209,7 @@ impl ScrollableItem for ModButton {
         let desc_text = Text::new(
             desc_pos, 
             font_size, 
-            self.gameplay_mod.description().to_owned(), 
+            self.gameplay_mod.description, 
             Color::WHITE, 
             Font::Main
         );

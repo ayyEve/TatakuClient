@@ -4,7 +4,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug, Default)]
 pub struct BeatmapMeta {
     pub file_path: String,
-    pub beatmap_hash: String,
+    pub beatmap_hash: Md5Hash,
     pub beatmap_type: BeatmapType,
 
     pub mode: String,
@@ -28,7 +28,7 @@ pub struct BeatmapMeta {
     pub bpm_max: f32,
 }
 impl BeatmapMeta {
-    pub fn new(file_path:String, beatmap_hash:String, beatmap_type:BeatmapType) -> BeatmapMeta {
+    pub fn new(file_path:String, beatmap_hash:Md5Hash, beatmap_type:BeatmapType) -> BeatmapMeta {
         let unknown = "Unknown".to_owned();
 
         BeatmapMeta {

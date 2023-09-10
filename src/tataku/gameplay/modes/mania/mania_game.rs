@@ -315,7 +315,7 @@ impl GameMode for ManiaGame {
 
         let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
         let mut mania_skin_settings = None;
-        let map_preferences = Database::get_beatmap_mode_prefs(&metadata.beatmap_hash, &"mania".to_owned()).await;
+        let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
         
         // windows
         let hit_windows = vec![
@@ -1141,7 +1141,7 @@ impl GameModeProperties for ManiaGame {
 // this is better than saving the update every time the values change
 impl Drop for ManiaGame {
     fn drop(&mut self) {
-        Database::save_beatmap_mode_prefs(&self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
+        Database::save_beatmap_mode_prefs(self.map_meta.beatmap_hash, &"mania".to_owned(), &self.map_preferences);
     }
 }
 

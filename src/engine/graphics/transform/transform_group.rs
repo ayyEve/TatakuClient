@@ -230,6 +230,50 @@ impl TransformGroup {
             ));
         }
     }
+
+    pub fn shake(&mut self, offset:f32, time: f32, shake_amount: Vector2, time_between_shakes: f32, shake_count: usize) {
+        self.transforms.reserve(shake_count);
+        
+        self.transforms.push(Transformation::new(
+            offset,
+            time_between_shakes,
+            TransformType::Position { start: Vector2::ZERO, end: shake_amount },
+            Easing::Linear,
+            time
+        ));
+
+        if shake_count > 2 {
+            for i in 0..shake_count-2 {
+                let pos = if i % 2 == 0 { 
+                    TransformType::Position { start: shake_amount, end: -shake_amount }
+                } else { 
+                    TransformType::Position { start: -shake_amount, end: shake_amount }
+                };
+
+                self.transforms.push(Transformation::new(
+                    offset + (time_between_shakes * (i+1) as f32),
+                    time_between_shakes,
+                    pos,
+                    Easing::Linear,
+                    time
+                ));
+            }
+        }
+
+        let end_pos = if shake_count % 2 == 0 { 
+            TransformType::Position { start: -shake_amount, end: Vector2::ZERO }
+        } else { 
+            TransformType::Position { start: shake_amount, end: Vector2::ZERO }
+        };
+
+        self.transforms.push(Transformation::new(
+            offset + (time_between_shakes * (shake_count+2) as f32),
+            time_between_shakes,
+            end_pos,
+            Easing::Linear,
+            time
+        ));
+    }
 }
 
 

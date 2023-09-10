@@ -8,7 +8,7 @@ use crate::prelude::*;
 #[derive(Clone, Default, Debug)]
 pub struct UTypingBeatmap {
     // paths etc
-    pub hash: String,
+    pub hash: Md5Hash,
     pub file_path: String,
     pub audio_path: String,
 
@@ -189,7 +189,7 @@ impl UTypingBeatmap {
     }
 }
 impl TatakuBeatmap for UTypingBeatmap {
-    fn hash(&self) -> String {self.hash.clone()}
+    fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"utyping".to_owned()}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {

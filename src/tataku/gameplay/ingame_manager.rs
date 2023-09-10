@@ -123,7 +123,7 @@ impl IngameManager {
         let metadata = beatmap.get_beatmap_meta();
 
         let settings = SettingsHelper::new();
-        let beatmap_preferences = Database::get_beatmap_prefs(&metadata.beatmap_hash).await;
+        let beatmap_preferences = Database::get_beatmap_prefs(metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
 
@@ -134,12 +134,12 @@ impl IngameManager {
 
         let common_game_settings = Arc::new(settings.common_game_settings.clone());
 
-        let mut score =  Score::new(beatmap.hash().clone(), settings.username.clone(), playmode.clone());
+        let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.get_speed();
 
 
         let health = HealthHelper::new();
-        let score_loader = Some(SCORE_HELPER.read().await.get_scores(&metadata.beatmap_hash, &playmode).await);
+        let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
 
         let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
@@ -309,7 +309,7 @@ impl IngameManager {
 
     pub async fn apply_mods(&mut self, mut mods: ModManager) {
         if self.menu_background {
-            mods.add_mod(Autoplay.name());
+            mods.add_mod(Autoplay);
         }
 
         self.current_mods = Arc::new(mods);
@@ -716,7 +716,7 @@ impl IngameManager {
     }
 
 
-    pub fn add_stat(&mut self, stat: impl GameModeStat, value: f32) {
+    pub fn add_stat(&mut self, stat: GameModeStat, value: f32) {
         self.score.insert_stat(stat, value)
     }
 
@@ -928,7 +928,7 @@ impl IngameManager {
             // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
             self.score.mods_mut().retain(|m| {
                 if let Some(m) = ok_mods.get(m) {
-                    self.score_multiplier *= m.score_multiplier();
+                    self.score_multiplier *= m.score_multiplier;
                     true
                 } else {
                     false
@@ -1005,7 +1005,7 @@ impl IngameManager {
         self.pending_time_jump = Some(self.time());
 
         let mut mods = self.current_mods.as_ref().clone();
-        mods.add_mod(Autoplay.name());
+        mods.add_mod(Autoplay);
         self.current_mods = Arc::new(mods);
     }
 
@@ -1103,7 +1103,7 @@ impl IngameManager {
                 self.replaying = true;
 
                 let mut new_mods = self.current_mods.as_ref().clone();
-                new_mods.add_mod(Autoplay.name());
+                new_mods.add_mod(Autoplay);
                 self.current_mods = Arc::new(new_mods);
             }
             
@@ -1268,7 +1268,7 @@ impl IngameManager {
         // update the beatmap offset
         let new_prefs = self.beatmap_preferences.clone();
         let hash = self.beatmap.hash();
-        tokio::spawn(async move { Database::save_beatmap_prefs(&hash, &new_prefs); });
+        tokio::spawn(async move { Database::save_beatmap_prefs(hash, &new_prefs); });
     }
     
     pub async fn increment_global_offset(&mut self, delta:f32) {

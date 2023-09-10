@@ -12,7 +12,7 @@ pub struct AdofaiBeatmap {
     pub actions: Vec<AdofaiAction>,
 
     #[serde(default)]
-    pub hash: String,
+    pub hash: Md5Hash,
 
     #[serde(default)]
     pub file_path: String,
@@ -113,7 +113,7 @@ impl AdofaiBeatmap {
     }
 }
 impl TatakuBeatmap for AdofaiBeatmap {
-    fn hash(&self) -> String {self.hash.clone()}
+    fn hash(&self) -> Md5Hash {self.hash}
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.timing_points.clone()

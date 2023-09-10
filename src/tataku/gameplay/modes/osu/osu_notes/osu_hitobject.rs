@@ -26,7 +26,6 @@ pub trait OsuHitObject: HitObject {
     fn set_hitwindow_miss(&mut self, window: f32);
     fn set_approach_easing(&mut self, easing: Easing);
 
-
     fn miss(&mut self);
     fn hit(&mut self, time: f32);
     fn set_judgment(&mut self, _j:&OsuHitJudgments) {}
@@ -35,4 +34,5 @@ pub trait OsuHitObject: HitObject {
     fn check_distance(&self, mouse_pos: Vector2) -> bool;
     fn check_release_points(&mut self, _time: f32) -> OsuHitJudgments { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
 
+    fn shake(&mut self, _time: f32) {}
 }

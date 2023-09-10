@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-pub type PerformanceCalc = Box<fn(f32, f32) -> f32>;
-
-
 #[async_trait]
 pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self:Sized;
