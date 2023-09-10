@@ -3,16 +3,15 @@ use crate::prelude::*;
 
 // pub struct Hidden;
 
-pub struct Flashlight;
-impl GameplayMod for Flashlight {
-    fn name(&self) -> &'static str { "flashlight" }
-    fn short_name(&self) -> &'static str { "FL" }
-    fn display_name(&self) -> &'static str { "Flashlight" }
-    fn description(&self) -> &'static str { "Waaa I can't see anything!" }
-    
-    fn score_multiplier(&self) -> f32 { 1.1 }
-    // fn removes(&self) -> &'static [&'static str] { &["hardrock"] }
-}
+pub const Flashlight: GameplayMod = GameplayMod {
+    name: "flashlight",
+    short_name: "FL",
+    display_name: "Flashlight",
+    description: "Waaa I can't see anything!",
+    score_multiplier: 1.1,
+
+    ..GameplayMod::DEFAULT
+};
 
 
 pub const Easy:GameplayMod = GameplayMod {

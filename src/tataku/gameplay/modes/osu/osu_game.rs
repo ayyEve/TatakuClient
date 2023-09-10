@@ -852,7 +852,7 @@ impl GameMode for OsuGame {
         }
 
         // draw flashlight
-        if self.mods.has_mod(Flashlight.name()) {
+        if self.mods.has_mod(Flashlight) {
             let radius = match manager.score.combo {
                 0..=99 => 125.0,
                 100..=199 => 100.0,
