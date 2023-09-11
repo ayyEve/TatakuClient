@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 
 const BEATMAP_ITEM_Y_PADDING:f32 = 5.0;
-pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(700.0, 50.0);
+pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x() * 0.8, 50.0);
 
 
@@ -278,95 +278,106 @@ impl ScrollableItem for BeatmapsetItem {
 
 
         // if selected, draw map items
-        if self.selected {
-            let mut updated = self.mods.update();
-            updated |= self.playmode.update();
-            if updated {
-                let playmode = self.playmode.0.clone();
-                for i in self.beatmaps.iter_mut() {
-                    let playmode = i.check_mode_override(playmode.clone());
-                    i.diff = get_diff(&i, &playmode, &self.mods);
-                    i.sort_pending = true;
-                }
-            }
-            
-            let set_button_size = BEATMAPSET_ITEM_SIZE * scale;
-            let padding = BEATMAP_ITEM_Y_PADDING * scale.y;
+        if !self.selected { return }
 
-            let btn_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapScale).unwrap_or(Vector2::ONE) * self.scale;
-            let btn_hover_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapHoveredScale).unwrap_or(Vector2::ONE) * self.scale;
-            let btn_selected_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapSelectedScale).unwrap_or(Vector2::ONE) * self.scale;
-            
-            let btn_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapOffset).unwrap_or(Vector2::ZERO);
-            let btn_hover_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapHoveredOffset).unwrap_or(Vector2::ZERO);
-            let btn_selected_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapSelectedOffset).unwrap_or(Vector2::ZERO);
-
-            let btn_color = self.theme.get_color(ThemeColor::BeatmapSelectMapBg).unwrap_or_else(||Color::new(0.2, 0.2, 0.2, 1.0));
-            let btn_hover_color = self.theme.get_color(ThemeColor::BeatmapSelectMapHover).unwrap_or_else(||Color::BLUE);
-            let btn_select_color = self.theme.get_color(ThemeColor::BeatmapSelectMapSelect).unwrap_or_else(||Color::RED);
-
-
-            let mut pos = pos + Vector2::new(set_button_size.x, set_button_size.y + padding);
-
-            // try to find the clicked item
-            let index = self.index_at(self.mouse_pos);
-            let btn_base = self.button_image.clone();
-
-            for i in 0..self.beatmaps.len() {
-                let meta = &mut self.beatmaps[i];
-                let hover = i == index;
-                let selected = i == self.selected_index;
-
-                let color = if hover { btn_hover_color } else if selected { btn_select_color } else { btn_color };
-                let btn_scale = if hover { btn_hover_scale } else if selected { btn_selected_scale } else { btn_scale };
-                let mut btn_pos = pos + if hover { btn_hover_offset } else if selected { btn_selected_offset } else { btn_offset } * btn_scale;
-                // maintain right alignment
-                btn_pos.x -= BEATMAP_ITEM_SIZE.x * btn_scale.x;
-
-                // bounding rect
-                if let Some(mut btn) = btn_base.clone() {
-                    btn.color = color;
-                    btn.pos = btn_pos;
-
-                    btn.set_size(BEATMAP_ITEM_SIZE * btn_scale);
-                    list.push(btn)
-                    // btn.draw(args, parent_depth + 5.0, Vector2::ZERO, list);
-                } else {
-                    let radius = 1.0 * btn_scale.y;
-                    list.push(Rectangle::new(
-                        btn_pos,
-                        BEATMAP_ITEM_SIZE * btn_scale,
-                        Color::new(0.2, 0.2, 0.2, 1.0),
-                        Some(Border::new(color, radius))
-                    ).shape(Shape::Round(5.0)));
-                }
-
-                // version text
-                list.push(Text::new(
-                    btn_pos + Vector2::new(10.0, 5.0) * btn_scale,
-                    12.0 * btn_scale.y,
-                    format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
-                    if selected { selected_text_color } else { text_color },
-                    Font::Main
-                ));
-
-
-                // diff text
-                let playmode = self.playmode.0.clone();
-                if let Some(info) = get_gamemode_info(&meta.check_mode_override(playmode)) { 
-                    list.push(Text::new(
-                        btn_pos + Vector2::new(10.0, 5.0 + 20.0) * btn_scale,
-                        12.0 * btn_scale.y,
-                        info.get_diff_string(meta, &self.mods),
-                        if selected { selected_text_color } else { text_color },
-                        Font::Main
-                    ));
-                };
-
-
-                pos.y += (BEATMAP_ITEM_SIZE.y * btn_scale.y) + padding;
+        let mut updated = self.mods.update();
+        updated |= self.playmode.update();
+        if updated {
+            let playmode = self.playmode.0.clone();
+            for i in self.beatmaps.iter_mut() {
+                let playmode = i.check_mode_override(playmode.clone());
+                i.diff = get_diff(&i, &playmode, &self.mods);
+                i.sort_pending = true;
             }
         }
+        
+        let set_button_size = BEATMAPSET_ITEM_SIZE * scale;
+        let padding = BEATMAP_ITEM_Y_PADDING * scale.y;
+
+        let btn_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapScale).unwrap_or(Vector2::ONE) * self.scale;
+        let btn_hover_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapHoveredScale).unwrap_or(Vector2::ONE) * self.scale;
+        let btn_selected_scale = self.theme.get_scale(ThemeScale::BeatmapSelectMapSelectedScale).unwrap_or(Vector2::ONE) * self.scale;
+        
+        let btn_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapOffset).unwrap_or(Vector2::ZERO);
+        let btn_hover_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapHoveredOffset).unwrap_or(Vector2::ZERO);
+        let btn_selected_offset = self.theme.get_pos(ThemePosition::BeatmapSelectMapSelectedOffset).unwrap_or(Vector2::ZERO);
+
+        let btn_color = self.theme.get_color(ThemeColor::BeatmapSelectMapBg).unwrap_or_else(||Color::new(0.2, 0.2, 0.2, 1.0));
+        let btn_hover_color = self.theme.get_color(ThemeColor::BeatmapSelectMapHover).unwrap_or_else(||Color::BLUE);
+        let btn_select_color = self.theme.get_color(ThemeColor::BeatmapSelectMapSelect).unwrap_or_else(||Color::RED);
+
+
+        let mut pos = pos + Vector2::new(set_button_size.x, set_button_size.y + padding);
+
+        // try to find the clicked item
+        let index = self.index_at(self.mouse_pos);
+        let btn_base = self.button_image.clone();
+
+        for i in 0..self.beatmaps.len() {
+            let meta = &mut self.beatmaps[i];
+            let hover = i == index;
+            let selected = i == self.selected_index;
+
+            let color = if hover { btn_hover_color } else if selected { btn_select_color } else { btn_color };
+            let btn_scale = if hover { btn_hover_scale } else if selected { btn_selected_scale } else { btn_scale };
+            let mut btn_pos = pos + if hover { btn_hover_offset } else if selected { btn_selected_offset } else { btn_offset } * btn_scale;
+            // maintain right alignment
+            btn_pos.x -= BEATMAP_ITEM_SIZE.x * btn_scale.x;
+
+            // bounding rect
+            if let Some(mut btn) = btn_base.clone() {
+                btn.color = color;
+                btn.pos = btn_pos;
+
+                btn.set_size(BEATMAP_ITEM_SIZE * btn_scale);
+                list.push(btn)
+                // btn.draw(args, parent_depth + 5.0, Vector2::ZERO, list);
+            } else {
+                let radius = 1.0 * btn_scale.y;
+                list.push(Rectangle::new(
+                    btn_pos,
+                    BEATMAP_ITEM_SIZE * btn_scale,
+                    Color::new(0.2, 0.2, 0.2, 1.0),
+                    Some(Border::new(color, radius))
+                ).shape(Shape::Round(5.0)));
+            }
+
+            // version text
+            list.push(Text::new(
+                btn_pos + Vector2::new(10.0, 5.0) * btn_scale,
+                12.0 * btn_scale.y,
+                format!("{} - {}", gamemode_display_name(&meta.mode), meta.version),
+                if selected { selected_text_color } else { text_color },
+                Font::Main
+            ));
+
+
+            // diff text
+            let playmode = self.playmode.0.clone();
+            if let Some(info) = get_gamemode_info(&meta.check_mode_override(playmode)) { 
+                let font_size = 12.0 * btn_scale.y;
+                
+                let mut diff_text = Text::new(
+                    btn_pos + Vector2::new(10.0, 5.0 + 20.0) * btn_scale,
+                    font_size,
+                    info.get_diff_string(meta, &self.mods),
+                    if selected { selected_text_color } else { text_color },
+                    Font::Main
+                );
+                let txt_size = diff_text.measure_text();
+
+                let bounds = BEATMAP_ITEM_SIZE * btn_scale;
+                if txt_size.x > bounds.x {
+                    diff_text.set_font_size(font_size * (txt_size.x / bounds.x));
+                }
+
+                list.push(diff_text);
+            };
+
+
+            pos.y += (BEATMAP_ITEM_SIZE.y * btn_scale.y) + padding;
+        }
+        
     
     }
 
