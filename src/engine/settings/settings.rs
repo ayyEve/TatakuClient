@@ -54,8 +54,6 @@ pub struct Settings {
     pub last_score_retreival_method: ScoreRetreivalMethod,
     pub last_sort_by: SortBy,
     
-    #[Setting(text="Gamemode Ripple Override")]
-    pub allow_gamemode_cursor_ripple_override: bool,
     #[Setting(text="Beatmap Hitsounds")]
     pub beatmap_hitsounds: bool,
 
@@ -261,7 +259,6 @@ impl Default for Settings {
             last_played_mode: "osu".to_owned(),
             last_score_retreival_method: ScoreRetreivalMethod::Local,
             last_sort_by: SortBy::Title,
-            allow_gamemode_cursor_ripple_override: true,
             beatmap_hitsounds: true,
             enable_diffcalc: true,
 

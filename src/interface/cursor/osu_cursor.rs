@@ -17,7 +17,7 @@ pub struct OsuCursor {
     pub pos: Vector2,
     last_pos: Vector2,
 
-    ripple_radius_override: Option<f32>,
+    pub note_radius: f32,
     // ripple_image: Option<Image>,
 
     cursor_rotation: f32,
@@ -47,8 +47,7 @@ pub struct OsuCursor {
 }
 
 impl OsuCursor {
-    pub async fn new() -> Self {
-
+    pub async fn new(note_radius: f32) -> Self {
         let a = PI / 4.0;
         let builder = EmitterBuilder::new()
             .spawn_delay(20.0)
@@ -88,7 +87,7 @@ impl OsuCursor {
 
             left_pressed: false,
             right_pressed: false,
-            ripple_radius_override: None,
+            note_radius,
             settings,
             skin,
 
@@ -125,10 +124,8 @@ impl OsuCursor {
         //     group.push(ripple);
         //     group.ripple_scale_range(0.0, duration, time, end_scale..SCALE, Some(2.0..0.0), Some(0.2));
         // } else {
-
-            // primitive ripple, not always correct
-            let radius = DEFAULT_CURSOR_SIZE / 2.0 * self.settings.cursor_scale * PRESSED_CURSOR_SCALE;
-            let end_radius = self.ripple_radius_override.unwrap_or(radius * self.settings.cursor_ripple_final_scale);
+            let radius = self.note_radius * 0.33; //self.scaling_helper.scaled_circle_size.x; //DEFAULT_CURSOR_SIZE / 2.0 * self.settings.cursor_scale * PRESSED_CURSOR_SCALE;
+            let end_radius = self.note_radius * 1.9; //self.ripple_radius_override.unwrap_or(radius * self.settings.cursor_ripple_final_scale);
 
             let end_scale = end_radius / radius;
 

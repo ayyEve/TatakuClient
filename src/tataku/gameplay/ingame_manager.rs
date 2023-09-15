@@ -779,9 +779,6 @@ impl IngameManager {
 impl IngameManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
-        if self.settings.allow_gamemode_cursor_ripple_override {
-            CursorManager::set_ripple_override(self.gamemode.ripple_size());
-        }
 
         if self.gamemode.show_cursor() || self.menu_background {
             CursorManager::set_visible(true)
