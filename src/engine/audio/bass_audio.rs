@@ -19,7 +19,7 @@ impl AudioApi for BassAudio {
 
     fn load_sample_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
         let channel = SampleChannel::load_from_memory(data, 0i32, 64)?;
-        Ok(Arc::new(SampleChannelInstance(channel)))
+        Ok(Arc::new(SampleChannelInstance::new(channel)))
     }
     fn load_stream_data(&self, data: Vec<u8>) -> TatakuResult<Arc<dyn AudioInstance>> {
         let channel = StreamChannel::load_from_memory(data, 0i32)?;
@@ -35,58 +35,98 @@ impl AudioApi for BassAudio {
     }
 }
 
-pub struct SampleChannelInstance(SampleChannel);
+struct SampleChannelData {
+    channel: SampleChannel,
+    volume: f32,
+    rate: f32,
+}
+impl SampleChannelData {
+    fn set_rate(&mut self, rate: f32) {
+        self.rate = rate;
+        // for i in self.channel.get_channels() {
+        //     let _ = i.set_rate(rate);
+        // }
+    }
+    fn set_vol(&mut self, vol: f32) {
+        self.volume = vol;
+        // for i in self.channel.get_channels() {
+        //     if let Err(e) = i.set_volume(vol) {
+        //         warn!("couldnt set vol: {e:?}")
+        //     }
+        // }
+    }
+}
+
+pub struct SampleChannelInstance(RwLock<SampleChannelData>);
+impl SampleChannelInstance {
+    fn new(channel: SampleChannel) -> Self {
+        Self(RwLock::new(SampleChannelData { channel, volume: 1.0, rate: 1.0 }))
+    }
+    fn data(&self) -> parking_lot::RwLockReadGuard<SampleChannelData> {
+        self.0.read()
+    }
+    fn data_mut(&self) -> parking_lot::RwLockWriteGuard<SampleChannelData> {
+        self.0.write()
+    }
+}
 impl AudioInstance for SampleChannelInstance {
     fn set_rate(&self, rate: f32) {
-        let _ = self.0.set_rate(rate);
+        self.data_mut().set_rate(rate);
     }
     fn play(&self, restart: bool) {
-        let _ = self.0.play(restart);
+        let mut data = self.data_mut();
+        
+        let Ok(new_channel) = data.channel.get_channel() else { warn!("couldnt get new channel"); return }; 
+        // make sure the new channel has the correct volume and rate set
+        let _ = new_channel.set_rate(data.rate);
+        let _ = new_channel.set_volume(data.volume);
+        let _ = new_channel.play(restart);
     }
 
     fn pause(&self) {
-        let _ = self.0.pause(); 
+        let _ = self.data().channel.pause();
     }
 
     fn stop(&self) {
-        let _ = self.0.stop(); 
+        let _ = self.data().channel.stop();
     }
 
     fn is_playing(&self) -> bool {
-        self.0.get_playback_state() == Ok(PlaybackState::Playing)
+        self.data().channel.get_playback_state() == Ok(PlaybackState::Playing)
     }
 
     fn is_paused(&self) -> bool {
-        let state = self.0.get_playback_state();
+        let state = self.data().channel.get_playback_state();
         state == Ok(PlaybackState::Paused) || state == Ok(PlaybackState::PausedDevice)
     }
 
     fn is_stopped(&self) -> bool {
-        let state = self.0.get_playback_state();
+        let state = self.data().channel.get_playback_state();
         state == Ok(PlaybackState::Stopped) || state == Ok(PlaybackState::Stalled)
     }
 
     fn get_position(&self) -> f32 {
-        self.0.get_position().unwrap_or_default() as f32
+        self.data().channel.get_position().unwrap_or_default() as f32
     }
 
     fn set_position(&self, pos: f32) {
-        let _ = self.0.set_position(pos as f64);
+        let _ = self.data().channel.set_position(pos as f64);
     }
 
     fn set_volume(&self, vol: f32) {
-        let _ = self.0.set_volume(vol);
+        self.data_mut().set_vol(vol);
     }
 
     fn get_data(&self) -> Vec<FFTData> {
-        self.0.get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
+        self.data().channel
+        .get_data(DataType::FFT2048, 1024u32).unwrap_or_default()
         .into_iter()
         .map(|a|FFTData::AmplitudeOnly(a))
         .collect()
     }
 
     fn get_duration(&self) -> f32 {
-        self.0.get_length_seconds().unwrap_or_default() as f32 * 1000.0
+        self.data().channel.get_length_seconds().unwrap_or_default() as f32 * 1000.0
     }
 }
 
