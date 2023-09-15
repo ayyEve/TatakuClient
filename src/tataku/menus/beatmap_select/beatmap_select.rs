@@ -5,6 +5,7 @@ const INFO_BAR_HEIGHT:f32 = 60.0;
 const DRAG_THRESHOLD:f32 = 50.0;
 const DRAG_FACTOR:f32 = 10.0;
 
+const DEFAULT_WIDTH: f32 = 1270.0;
 const DEFAULT_HEIGHT: f32 = 768.0;
 
 
@@ -475,11 +476,12 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size.clone();
         let size = self.window_size.0;
-        let scale = size.y / DEFAULT_HEIGHT;
-        
+        let scale = size.x / DEFAULT_WIDTH;
+        let scale2 = size.y / DEFAULT_HEIGHT;
+        let scale = scale.min(scale2);
         
         self.beatmap_scroll.set_pos(Vector2::new(self.window_size.x - BEATMAPSET_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT));
-        self.beatmap_scroll.set_size(Vector2::new(size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
+        self.beatmap_scroll.set_size(Vector2::new(self.window_size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
         self.beatmap_scroll.window_size_changed(size);
         self.beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
         self.beatmap_scroll.scroll_to_selection();

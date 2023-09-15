@@ -61,6 +61,7 @@ impl OsuGame {
     }
     async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
         self.scaling_helper = playfield.clone();
+        self.cursor.note_radius = self.scaling_helper.scaled_circle_size.x / 2.0;
 
         // update playfield for notes
         for note in self.notes.iter_mut() {
@@ -305,7 +306,7 @@ impl GameMode for OsuGame {
         let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
         let timing_points = map.get_timing_points();
-        let cursor = OsuCursor::new().await;
+        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0).await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
@@ -982,8 +983,8 @@ impl GameMode for OsuGame {
         let has_hr = mods.has_mod(HardRock);
         let has_easy_or_hr = mods.has_mod(Easy) || has_hr;
 
-        let had_fa = self.mods.has_mod(OnTheBeat);
-        let has_fa = mods.has_mod(OnTheBeat);
+        let had_otb = self.mods.has_mod(OnTheBeat);
+        let has_otb = mods.has_mod(OnTheBeat);
 
         // check easing type
         let easing_type_names = ["in", "out", "inout"];
@@ -1067,8 +1068,8 @@ impl GameMode for OsuGame {
             set_easing = Some(easing);
         }
         
-        if has_fa != had_fa {
-            if has_fa {
+        if has_otb != had_otb {
+            if has_otb {
                 let timing_points = self.timing_points.iter().filter(|t|!t.is_inherited()).map(|t|t.clone()).collect::<Vec<_>>();
                 let mut index = 0;
                 // info!("tp: {} -> {}", timing_points[index].time, timing_points[index].beat_length);
@@ -1337,9 +1338,6 @@ impl GameModeProperties for OsuGame {
     fn playmode(&self) -> String { "osu".to_owned() }
     fn end_time(&self) -> f32 { self.end_time }
     fn show_cursor(&self) -> bool { false } // we have our own cursor
-    fn ripple_size(&self) -> Option<f32> {
-        Some(self.scaling_helper.scaled_circle_size.x)
-    }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![
