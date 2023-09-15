@@ -9,6 +9,8 @@ const BEAT_SCALE: f32 = 1.4;
 const OK_RADIUS_MULT: f32 = 4.0;
 const OK_TICK_RADIUS_MULT: f32 = 2.0;
 
+const USE_NEW_SLIDER_RENDERING:bool = false;
+
 pub struct OsuSlider {
     /// slider definition for this slider
     def: SliderDef,
@@ -199,6 +201,10 @@ impl OsuSlider {
         }
     }
 
+    fn use_render_targets(&self) -> bool {
+        self.standard_settings.slider_render_targets || !USE_NEW_SLIDER_RENDERING
+    }
+
     async fn make_body(&mut self) {
         // TODO: check if we should try again
         if self.slider_body_render_target_failed.is_some() {
@@ -226,117 +232,193 @@ impl OsuSlider {
 
         let mut min_pos = window_size;
         let mut max_pos = Vector2::ZERO;
+        let size;
 
-        let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().map(|segment| {
-            let points = segment.all_points();
+        let mut drawables: Vec<Box<dyn TatakuRenderable>> = Vec::new();
+        let mut offset = Vector2::ZERO;
 
-            if points.len() == 0 { return Vec::new(); }
+        if USE_NEW_SLIDER_RENDERING {
+            let mut line_segments: Vec<LineSegment> = self.curve.segments.iter().map(|segment| {
+                let points = segment.all_points();
 
-            // Calculate bounds of first point
-            let first = self.scaling_helper.scale_coords(*points.first().unwrap());
-            min_pos.x = min_pos.x.min(first.x);
-            min_pos.y = min_pos.y.min(first.y);
-            max_pos.x = max_pos.x.max(first.x);
-            max_pos.y = max_pos.y.max(first.y);
+                if points.len() == 0 { return Vec::new(); }
 
-            points.windows(2).map(|points| {
-                let p1 = self.scaling_helper.scale_coords(points[0]);
-                let p2 = self.scaling_helper.scale_coords(points[1]);
+                // Calculate bounds of first point
+                let first = self.scaling_helper.scale_coords(*points.first().unwrap());
+                min_pos.x = min_pos.x.min(first.x);
+                min_pos.y = min_pos.y.min(first.y);
+                max_pos.x = max_pos.x.max(first.x);
+                max_pos.y = max_pos.y.max(first.y);
 
-                // Calculate bounds of remaining points
-                min_pos.x = min_pos.x.min(p2.x);
-                min_pos.y = min_pos.y.min(p2.y);
-                max_pos.x = max_pos.x.max(p2.x);
-                max_pos.y = max_pos.y.max(p2.y);
+                points.windows(2).map(|points| {
+                    let p1 = self.scaling_helper.scale_coords(points[0]);
+                    let p2 = self.scaling_helper.scale_coords(points[1]);
 
-                LineSegment { p1: p1.into(), p2: p2.into() }
-            }).collect::<Vec<_>>() // todo: avoid too many allocations here
-        }).flatten().collect();
+                    // Calculate bounds of remaining points
+                    min_pos.x = min_pos.x.min(p2.x);
+                    min_pos.y = min_pos.y.min(p2.y);
+                    max_pos.x = max_pos.x.max(p2.x);
+                    max_pos.y = max_pos.y.max(p2.y);
 
-        min_pos -= self.radius;
-        max_pos += self.radius;
+                    LineSegment { p1: p1.into(), p2: p2.into() }
+                }).collect::<Vec<_>>() // todo: avoid too many allocations here
+            }).flatten().collect();
 
-        let size = max_pos - min_pos;
+            min_pos -= self.radius;
+            max_pos += self.radius;
 
-        let border_width = border_radius;
-        let circle_radius = self.radius - border_width;
-        let cell_size = self.radius;
+            size = max_pos - min_pos;
 
-        let grid_size = size / cell_size;
-        let grid_size = [1 + grid_size.x.floor() as u32, 1 + grid_size.y.floor() as u32];
+            let border_width = border_radius;
+            let circle_radius = self.radius - border_width;
+            let cell_size = self.radius;
 
-        let mut grid_cells: Vec<Vec<u32>> = vec![Vec::new(); (grid_size[0] * grid_size[1]) as usize];
+            let grid_size = size / cell_size;
+            let grid_size = [1 + grid_size.x.floor() as u32, 1 + grid_size.y.floor() as u32];
 
-        line_segments.iter_mut().enumerate()
-            .for_each(|(i, s)| {
-                let p1 = Vector2::from(s.p1) - min_pos;
-                let p2 = Vector2::from(s.p2) - min_pos;
+            let mut grid_cells: Vec<Vec<u32>> = vec![Vec::new(); (grid_size[0] * grid_size[1]) as usize];
 
-                s.p1 = p1.into();
-                s.p2 = p2.into();
+            line_segments.iter_mut().enumerate()
+                .for_each(|(i, s)| {
+                    let p1 = Vector2::from(s.p1) - min_pos;
+                    let p2 = Vector2::from(s.p2) - min_pos;
 
-                let grid_index = |p: Vector2| {
-                    let grid_coord = p / cell_size;
-                    let (grid_x, grid_y) = (grid_coord.x.floor() as usize, grid_coord.y.floor() as usize);
+                    s.p1 = p1.into();
+                    s.p2 = p2.into();
 
-                    // info!("adding ({grid_x}, {grid_y})");
+                    let grid_index = |p: Vector2| {
+                        let grid_coord = p / cell_size;
+                        let (grid_x, grid_y) = (grid_coord.x.floor() as usize, grid_coord.y.floor() as usize);
 
-                    grid_y * grid_size[0] as usize + grid_x
-                };
+                        // info!("adding ({grid_x}, {grid_y})");
 
-                let p1_grid_index = grid_index(p1);
-                let p2_grid_index = grid_index(p2);
+                        grid_y * grid_size[0] as usize + grid_x
+                    };
 
-                // todo: fix intermediate cells
+                    let p1_grid_index = grid_index(p1);
+                    let p2_grid_index = grid_index(p2);
 
-                grid_cells[p1_grid_index].push(i as u32);
-                if p1_grid_index != p2_grid_index {
-                    grid_cells[p2_grid_index].push(i as u32);
-                }
-            });
+                    // todo: fix intermediate cells
 
-        let grid_cells_len = grid_cells.len();
-
-        let (slider_grids, grid_cells) = grid_cells.into_iter()
-            .fold((Vec::with_capacity(grid_cells_len), Vec::with_capacity(grid_cells_len)), |(mut indexes, mut cells), v| {
-                indexes.push(GridCell {
-                    index: cells.len() as u32,
-                    length: v.len() as u32,
+                    grid_cells[p1_grid_index].push(i as u32);
+                    if p1_grid_index != p2_grid_index {
+                        grid_cells[p2_grid_index].push(i as u32);
+                    }
                 });
-                cells.extend(v);
 
-                (indexes, cells)
-            });
+            let grid_cells_len = grid_cells.len();
+
+            let (slider_grids, grid_cells) = grid_cells.into_iter()
+                .fold((Vec::with_capacity(grid_cells_len), Vec::with_capacity(grid_cells_len)), |(mut indexes, mut cells), v| {
+                    indexes.push(GridCell {
+                        index: cells.len() as u32,
+                        length: v.len() as u32,
+                    });
+                    cells.extend(v);
+
+                    (indexes, cells)
+                });
 
 
-        let slider_data = SliderData {
-            circle_radius,
-            border_width,
-            snake_percentage: 1.0,
-            slider_velocity: self.velocity,
-            grid_origin: min_pos.into(),
-            grid_size,
-            grid_index: 0,
-            body_color: color.into(),
-            border_color: border_color.into(),
-        };
+            let slider_data = SliderData {
+                circle_radius,
+                border_width,
+                snake_percentage: 1.0,
+                slider_velocity: self.velocity,
+                grid_origin: min_pos.into(),
+                grid_size,
+                grid_index: 0,
+                body_color: color.into(),
+                border_color: border_color.into(),
+            };
 
-        self.slider_body.size = size;
-        self.slider_body.slider_data = slider_data;
-        self.slider_body.slider_grids = slider_grids;
-        self.slider_body.grid_cells = grid_cells;
-        self.slider_body.line_segments = line_segments;
+            self.slider_body.size = size;
+            self.slider_body.slider_data = slider_data;
+            self.slider_body.slider_grids = slider_grids;
+            self.slider_body.grid_cells = grid_cells;
+            self.slider_body.line_segments = line_segments;
 
-        // draw it to the render texture
-        if self.standard_settings.slider_render_targets {
+
             let mut slider_body = self.slider_body.clone();
             slider_body.slider_data.grid_origin = [0.0; 2]; // reset grid origin when rendering to a target
             slider_body.alpha = 1.0;
+            drawables.push(Box::new(slider_body));
+        } else {
+            // starting point
+            let p: Vector2 = self.scaling_helper.scale_coords(self.curve.curve_lines[0].p1);
 
+            let radius_with_border = self.radius - border_radius * 0.5;
+            // circles with a border have extra radius because of the border (i think its 0.5x the border width)
+    
+            // both body and border use the same code with a few differences, so might as well for-loop them to simplify code
+            // border is first, body is 2nd, since the body must be drawn on top of the border (which creates the border)
+            for (radius, color, blend_mode) in [
+                (self.radius - border_radius * 0.5, border_color, BlendMode::AlphaBlending), // border
+                (self.radius - border_radius * 1.5, color, BlendMode::AlphaOverwrite) // fill
+            ] {
+                // add starting circle manually
+                drawables.push(Box::new(Circle::new(
+                    p,
+                    radius,
+                    color,
+                    None
+                ).with_blend_mode(blend_mode)));
+    
+                // add all lines
+                for line in self.curve.curve_lines.iter() {
+                    let p1 = self.scaling_helper.scale_coords(line.p1);
+                    let p2 = self.scaling_helper.scale_coords(line.p2);
+                    
+                    if p1.x - radius_with_border < min_pos.x { min_pos.x = p1.x - radius_with_border; }
+                    if p1.y - radius_with_border < min_pos.y { min_pos.y = p1.y - radius_with_border; }
+                    if p2.x - radius_with_border < min_pos.x { min_pos.x = p2.x - radius_with_border; }
+                    if p2.y - radius_with_border < min_pos.y { min_pos.y = p2.y - radius_with_border; }
+    
+                    if p1.x + radius_with_border > max_pos.x { max_pos.x = p1.x + radius_with_border; }
+                    if p1.y + radius_with_border > max_pos.y { max_pos.y = p1.y + radius_with_border; }
+                    if p2.x + radius_with_border > max_pos.x { max_pos.x = p2.x + radius_with_border; }
+                    if p2.y + radius_with_border > max_pos.y { max_pos.y = p2.y + radius_with_border; }
+    
+                    // add a line to connect the points
+                    drawables.push(Box::new(Line::new(
+                        p1,
+                        p2,
+                        radius,
+                        color
+                    ).with_blend_mode(blend_mode)));
+    
+                    // add a circle to smooth out the corners
+                    // border
+                    drawables.push(Box::new(Circle::new(
+                        p2,
+                        radius,
+                        color,
+                        None
+                    ).with_blend_mode(blend_mode)));
+                }
+            }
+
+            size = max_pos - min_pos;
+            offset = -min_pos;
+        }
+
+
+        // draw it to the render texture
+        if self.use_render_targets() {
             if let Some(target) = self.slider_body_render_target.clone() {
-                GameWindow::update_render_target(target, move |state, transform| slider_body.draw(transform, state)).await;
+                GameWindow::update_render_target(target, move |g, mut transform| {
+                    transform = transform.trans(offset); 
+                    drawables.into_iter().for_each(|d|d.draw(transform, g))
+                }).await;
             } else {
-                let rt = RenderTarget::new(size.x as u32, size.y as u32, move |state, transform| slider_body.draw(transform, state)).await;
+                let rt = RenderTarget::new(
+                    size.x as u32,
+                    size.y as u32, 
+                    move |g, mut transform| {
+                        transform = transform.trans(offset); 
+                        drawables.into_iter().for_each(|d|d.draw(transform, g))
+                    }
+                ).await;
 
                 if let Ok(mut slider_body_render_target) = rt {
                     slider_body_render_target.image.pos = min_pos;
@@ -411,6 +493,7 @@ impl OsuSlider {
         if self.map_time >= self.curve.end_time {
             alpha = ((self.curve.end_time + self.hitwindow_miss) - self.map_time) / self.hitwindow_miss;
         }
+        
         alpha
     }
 
@@ -520,10 +603,8 @@ impl HitObject for OsuSlider {
         }
         self.hit_dots = dots;
 
-        if alpha > 0.0 && self.slider_body_render_target.is_none() {
-            if self.standard_settings.slider_render_targets || self.slider_body.slider_data.circle_radius == 0.0 {
-                self.make_body().await;
-            }
+        if alpha > 0.0 && self.slider_body_render_target.is_none() && (self.use_render_targets() || self.slider_body.slider_data.circle_radius == 0.0) {
+            self.make_body().await;
         }
 
         if let Some(ball) = &mut self.sliderball_image {
@@ -547,7 +628,7 @@ impl HitObject for OsuSlider {
         self.slider_body.alpha = alpha;
 
         // slider body
-        if self.standard_settings.slider_render_targets {
+        if self.use_render_targets() {
             if let Some(rt) = &self.slider_body_render_target {
                 let mut b = rt.image.clone();
                 b.color.a = alpha;
@@ -884,7 +965,7 @@ impl OsuHitObject for OsuSlider {
            image.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
 
-        if self.slider_body_render_target.is_some() || !self.standard_settings.slider_render_targets {
+        if self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING) {
             // if the playfield was resized, if we dont set this to none it will use the old size and then be wrong
             self.slider_body_render_target = None;
             self.make_body().await;
