@@ -239,7 +239,7 @@ impl Game {
                     GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager { 
                         if skin_changed { igm.reload_skin().await; }
                         igm.force_update_settings().await;
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -254,13 +254,16 @@ impl Game {
 
             // update our instant's time
             set_time(game_start.elapsed());
-            
-            let now = Instant::now();
+            let mut now = Instant::now();
 
             let update_elapsed = now.duration_since(update_timer).as_secs_f64();
             if update_elapsed >= update_target {
                 update_timer = now;
-                self.update(update_elapsed).await;
+                self.update().await;
+                
+                // re-update the time
+                set_time(game_start.elapsed());
+                now = Instant::now();
             }
 
             if let GameState::Closing = &self.current_state {
@@ -287,7 +290,7 @@ impl Game {
         warn!("stopping game");
     }
 
-    async fn update(&mut self, _delta:f64) {
+    async fn update(&mut self) {
         let elapsed = self.game_start.as_millis();
         // update the cursor
 

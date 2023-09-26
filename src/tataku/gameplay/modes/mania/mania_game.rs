@@ -259,13 +259,13 @@ impl ManiaGame {
         }
     }
 
-    async fn draw_notes(&mut self, list: &mut RenderableCollection) {
+    async fn draw_notes(&mut self, time: f32, list: &mut RenderableCollection) {
         // draw timing bars
         for tb in self.timing_bars.iter_mut() { tb.draw(list) }
 
         // draw notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() { note.draw(list).await }
+            for note in col.iter_mut() { note.draw(time, list).await }
         }
     }
 
@@ -844,7 +844,7 @@ impl GameMode for ManiaGame {
         Vec::new()
     }
     
-    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -860,7 +860,7 @@ impl GameMode for ManiaGame {
         self.draw_columns(bounds, list).await;
 
         // draw notes and timing bars
-        self.draw_notes(list).await;
+        self.draw_notes(time, list).await;
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {

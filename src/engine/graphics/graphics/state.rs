@@ -85,6 +85,8 @@ impl GraphicsState {
 
         // no more comments good luck!
         let surface_caps = surface.get_capabilities(&adapter);
+        AVAILABLE_PRESENT_MODES.set(surface_caps.present_modes.into_iter().map(|p|p.into()).chain([Vsync::AutoNoVsync, Vsync::AutoVsync]).collect()).unwrap();
+
         let surface_format = surface_caps.formats.iter()
             .copied()
             .find(|f| f.is_srgb())
@@ -348,13 +350,8 @@ impl GraphicsState {
         }
     }
 
-    pub fn set_vsync(&mut self, enable: bool) {
-        if enable {
-            self.config.present_mode = wgpu::PresentMode::AutoVsync;
-        } else {
-            self.config.present_mode = wgpu::PresentMode::AutoNoVsync;
-        }
-
+    pub fn set_vsync(&mut self, vsync: Vsync) {
+        self.config.present_mode = (vsync.to_okay()).into();
         self.surface.configure(&self.device, &self.config);
     }
 

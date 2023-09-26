@@ -60,22 +60,20 @@ impl HitObject for TaikoNote {
     fn time(&self) -> f32 {self.time}
     fn end_time(&self, hw_miss:f32) -> f32 {self.time + hw_miss}
 
-    async fn update(&mut self, beatmap_time: f32) {
-        let delta_time = beatmap_time - self.hit_time;
+    async fn update(&mut self, _time: f32) {}
+    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+        let x = self.x_at(time);
+        let delta_time = time - self.hit_time;
         let y = 
             if self.hit { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) - (delta_time * self.bounce_factor) } 
             else if self.missed { GRAVITY_SCALING * 9.81 * (delta_time/1000.0).powi(2) } 
             else { 0.0 };
 
-        let x = self.x_at(beatmap_time);
         self.pos = self.playfield.hit_position + Vector2::new(x, y);
-
         if let Some(image) = &mut self.image {
             image.set_pos(self.pos)
         }
-        
-    }
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+
         if self.pos.x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
 
         if let Some(image) = &mut self.image {

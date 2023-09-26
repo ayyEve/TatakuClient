@@ -2,10 +2,12 @@
 #[cfg(feature="graphics")]
 mod state;
 
+
 #[cfg(not(feature="graphics"))]
 mod fake_state;
 
 
+mod vsync;
 mod atlas;
 mod vertex;
 mod blend_mode;
@@ -22,6 +24,7 @@ pub use state::*;
 #[cfg(not(feature="graphics"))]
 pub use fake_state::*;
 
+pub use vsync::*;
 pub use atlas::*;
 pub use vertex::*;
 pub use blend_mode::*;

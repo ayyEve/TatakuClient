@@ -274,7 +274,7 @@ impl GameMode for UTypingGame {
 
         autoplay_list
     }
-    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
@@ -288,10 +288,10 @@ impl GameMode for UTypingGame {
         ));
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(list); }
+        for tb in self.timing_bars.iter_mut() { tb.draw(time, list); }
         
         // draw notes
-        for note in self.notes.iter_mut() { note.draw(list).await; }
+        for note in self.notes.iter_mut() { note.draw(time, list).await; }
     }
 
 

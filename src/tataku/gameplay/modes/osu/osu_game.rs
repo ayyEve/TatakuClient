@@ -785,7 +785,7 @@ impl GameMode for OsuGame {
         pending_frames
     }
     
-    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         if !manager.menu_background {
@@ -845,7 +845,6 @@ impl GameMode for OsuGame {
 
         // draw cursor ripples
         self.cursor.draw_below(list).await;
-        let time = manager.time();
 
         // draw follow points
         self.draw_follow_points(time, list);
@@ -855,7 +854,7 @@ impl GameMode for OsuGame {
         for note in self.notes.iter_mut().rev() {
             match note.note_type() {
                 NoteType::Spinner => spinners.push(note),
-                _ => note.draw(list).await,
+                _ => note.draw(time, list).await,
             }
         }
 
@@ -882,7 +881,7 @@ impl GameMode for OsuGame {
         // spinners should be drawn last since they should be on top of everything
         // (we dont want notes or sliders drawn on top of the spinners)
         for i in spinners {
-            i.draw(list).await
+            i.draw(time, list).await
         }
 
         // need to draw the smoke particles on top of everything

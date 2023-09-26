@@ -36,12 +36,11 @@ impl UTypingTimingBar {
         self.pos.y = self.playfield.hit_position.y - self.size.y/2.0
     }
 
-    pub fn update(&mut self, time:f32) {
-        self.pos.x = self.playfield.hit_position.x + ((self.time - time) * self.speed) - BAR_WIDTH / 2.0;
-    }
+    pub fn update(&mut self, _time:f32) {}
 
-    pub fn draw(&mut self, list: &mut RenderableCollection){
-        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 1000000.0 {return}
+    pub fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+        self.pos.x = self.playfield.hit_position.x + ((self.time - time) * self.speed) - BAR_WIDTH / 2.0;
+        if self.pos.x + BAR_WIDTH < 0.0 || self.pos.x - BAR_WIDTH > 1000000.0 { return }
 
         list.push(Rectangle::new(
             self.pos,

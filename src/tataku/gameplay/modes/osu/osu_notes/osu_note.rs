@@ -117,7 +117,7 @@ impl HitObject for OsuNote {
         });
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
 
         // if its not time to draw anything else, leave
         if self.time - self.map_time > self.time_preempt || self.time + self.hitwindow_miss < self.map_time || self.hit { 

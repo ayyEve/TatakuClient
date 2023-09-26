@@ -10,7 +10,6 @@ pub struct TaikoDrumroll {
 
     time: f32, // ms
     end_time: f32, // ms
-    current_time: f32, 
     /// should this be a finisher
     pub base_finisher: bool,
     pub finisher: bool,
@@ -35,7 +34,6 @@ impl TaikoDrumroll {
         Self {
             time, 
             end_time,
-            current_time: 0.0,
             base_finisher: finisher,
             finisher,
             radius,
@@ -58,12 +56,12 @@ impl HitObject for TaikoDrumroll {
     fn note_type(&self) -> NoteType { NoteType::Slider }
     fn time(&self) -> f32 { self.time }
     fn end_time(&self,_:f32) -> f32 { self.end_time }
-    async fn update(&mut self, beatmap_time: f32) {
-        self.pos.x = self.playfield.hit_position.x + self.x_at(beatmap_time);
-        self.end_x = self.playfield.hit_position.x + self.end_x_at(beatmap_time);
-        self.current_time = beatmap_time;
-    }
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn update(&mut self, _time: f32) {}
+    
+    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+        self.pos.x = self.playfield.hit_position.x + self.x_at(time);
+        self.end_x = self.playfield.hit_position.x + self.end_x_at(time);
+
         if self.end_x + self.settings.note_radius < self.playfield.pos.x || self.pos.x - self.settings.note_radius > self.playfield.pos.x + self.playfield.size.x { return }
 
         let color = Color::YELLOW;
@@ -119,11 +117,11 @@ impl HitObject for TaikoDrumroll {
 
 
         // draw hit dots
-        for time in self.hit_dots.iter() {
+        for dot_time in self.hit_dots.iter() {
             let bounce_factor = 1.6;
 
-            let x = self.playfield.hit_position.x + ((time - self.current_time) / SV_OVERRIDE) * self.get_sv() * self.playfield.size.x;
-            let diff = self.current_time - time;
+            let x = self.playfield.hit_position.x + ((dot_time - time) / SV_OVERRIDE) * self.get_sv() * self.playfield.size.x;
+            let diff = time - dot_time;
             let y = self.playfield.hit_position.y + GRAVITY_SCALING * 9.81 * (diff/1000.0).powi(2) - (diff * bounce_factor);
 
             // flying dot

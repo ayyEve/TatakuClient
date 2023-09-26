@@ -111,7 +111,7 @@ impl HitObject for UTypingNote {
 
         self.image.ok_do_mut(|i|i.set_pos(self.pos));
     }
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.pos.x + self.settings.note_radius < 0.0 || self.pos.x - self.settings.note_radius > 10000000.0 { return }
 
         let size = Vector2::new(self.settings.note_radius, self.settings.note_radius);

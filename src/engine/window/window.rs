@@ -141,10 +141,7 @@ impl GameWindow {
 
         event_loop.run(move |event, _, control_flow| {
             control_flow.set_wait_timeout(Duration::from_nanos(5));
-            self.update();
             if self.close_pending { *control_flow = ControlFlow::Exit; }
-
-            // control_flow.set_wait_until(instant)
 
             let event = match event {
                 Event::WindowEvent { window_id:_, event } => {
@@ -155,12 +152,11 @@ impl GameWindow {
                             let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
                             
                             if new_size != Vector2::ZERO { 
-                                GlobalValueManager::update(Arc::new(WindowSize(new_size)))
-                            };
+                                GlobalValueManager::update(Arc::new(WindowSize(new_size)));
+                            }
             
                             return;
                         }
-
 
                         // winit::event::WindowEvent::Moved(_) => todo!(),
                         // winit::event::WindowEvent::Destroyed => todo!(),
@@ -225,14 +221,23 @@ impl GameWindow {
                     }
                 }
                 
-                Event::RedrawRequested(_) => {
-                    self.render();
-
-                    // we want this to run after the game has been rendered so it doesnt interfere with the render latency
-                    self.graphics.update_emitters();
-
+                Event::MainEventsCleared => {
+                    self.update();
                     return;
                 }
+
+                Event::RedrawRequested(_) => {
+                    self.render();
+                    return;
+                }
+
+                // we want this to run after the game has been rendered so it doesnt interfere with the render latency
+                Event::RedrawEventsCleared => {
+                    self.graphics.update_emitters();
+                    return;
+                }
+
+
 
                 _ => return
             };
@@ -292,6 +297,10 @@ impl GameWindow {
                     self.mouse_helper.set_system_cursor(false);
                     self.window.set_cursor_visible(false);
                 }
+                // Game2WindowEvent::Redraw => {
+                //     self.redraw_requested = Instant::now();
+                //     self.window.request_redraw();
+                // }
 
                 Game2WindowEvent::RequestAttention => self.window.request_user_attention(Some(winit::window::UserAttentionType::Informational)),
 
@@ -313,8 +322,12 @@ impl GameWindow {
         INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
         INPUT_COUNT.fetch_add(1, SeqCst);
 
-        // request a redraw. the render code is run in the event loop
-        self.window.request_redraw();
+        // // request a redraw. the render code is run in the event loop
+        // self.window.request_redraw();
+        
+        if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
+            self.window.request_redraw();
+        }
 
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
@@ -401,7 +414,7 @@ impl GameWindow {
         let inner_size = self.window.inner_size();
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
-        let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
+        // let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
         let data = self.render_event_receiver.read();
 
         let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
@@ -644,3 +657,4 @@ fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
         winit::event::MouseScrollDelta::PixelDelta(p) => p.y as f32,
     }
 }
+

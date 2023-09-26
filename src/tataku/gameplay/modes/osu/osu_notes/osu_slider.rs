@@ -613,7 +613,7 @@ impl HitObject for OsuSlider {
 
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // draw shapes
         for shape in self.shapes.iter_mut() {
             list.push(shape.clone())

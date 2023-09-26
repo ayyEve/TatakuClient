@@ -57,12 +57,12 @@ impl HitObject for TaikoSpinner {
     }
 
     async fn update(&mut self, beatmap_time: f32) {
-        self.pos = self.playfield.hit_position + Vector2::with_x(self.x_at(beatmap_time));
         if beatmap_time > self.end_time { self.complete = true }
     }
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
         // if done, dont draw anything
         if self.complete { return }
+        self.pos = self.playfield.hit_position + Vector2::with_x(self.x_at(time));
 
         let spinner_position = self.playfield.hit_position + Vector2::new(100.0, 0.0);
 

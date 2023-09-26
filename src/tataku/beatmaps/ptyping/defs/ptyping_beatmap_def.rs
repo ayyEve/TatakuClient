@@ -56,14 +56,13 @@ fn infinity_reader<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<
         fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
             match value {
                 "Infinity" => Ok(f64::INFINITY),
-                _ => panic!("bad")
+                other => Err(de::Error::invalid_value(de::Unexpected::Str(other), &self))
             }
         }
 
         fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
             Ok(v)
         }
-        
         fn visit_f32<E: de::Error>(self, v: f32) -> Result<Self::Value, E> {
             Ok(v as f64)
         }

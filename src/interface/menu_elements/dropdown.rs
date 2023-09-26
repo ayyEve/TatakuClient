@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait Dropdownable : Sized + Clone + Send + Sync {
+pub trait Dropdownable: Sized + Clone + Send + Sync {
     fn variants() -> Vec<Self>;
     fn display_text(&self) -> String;
     fn from_string(s:String) -> Self;

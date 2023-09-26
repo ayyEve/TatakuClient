@@ -165,8 +165,8 @@ impl HitObject for OsuSpinner {
         self.current_time = beatmap_time;
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        if !(self.last_update >= self.time && self.last_update <= self.end_time) { return }
+    async fn draw(&mut self, time: f32, list: &mut RenderableCollection) {
+        if !(time >= self.time && time <= self.end_time) { return }
         let scale = Vector2::ONE * self.scaling_helper.scaled_cs;
 
         let border = Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE));

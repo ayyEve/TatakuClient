@@ -9,7 +9,6 @@ pub enum Game2WindowEvent {
     RequestAttention,
     CloseGame,
     TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
-
     LoadImage(LoadImage),
 
     RefreshMonitors,

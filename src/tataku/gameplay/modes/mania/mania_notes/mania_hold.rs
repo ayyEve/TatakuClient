@@ -119,7 +119,7 @@ impl HitObject for ManiaHold {
 
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         // if self.playfield.upside_down {
         //     if self.end_y < 0.0 || self.pos.y > args.window_size[1] as f64 {return}
         // } 

@@ -613,9 +613,7 @@ impl GameMode for TaikoGame {
 
         Vec::new()
     }
-    async fn draw(&mut self, manager:&mut IngameManager, list: &mut RenderableCollection) {
-        let time = manager.time();
-        
+    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
         // draw the playfield
         list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
         
@@ -642,7 +640,7 @@ impl GameMode for TaikoGame {
         });
 
         for note in note_list { 
-            note.draw(list).await 
+            note.draw(time, list).await 
         }
 
         // draw hit indicators

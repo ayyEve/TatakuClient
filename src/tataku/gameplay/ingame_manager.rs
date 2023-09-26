@@ -529,7 +529,7 @@ impl IngameManager {
         if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
         
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.draw(self, list).await;
+        gamemode.draw(time, self, list).await;
         self.gamemode = gamemode;
 
         if self.fit_to_bounds.is_some() { list.pop_scissor(); }

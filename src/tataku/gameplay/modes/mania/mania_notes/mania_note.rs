@@ -69,7 +69,7 @@ impl HitObject for ManiaNote {
     async fn update(&mut self, beatmap_time: f32) {
         self.pos.y = self.y_at(beatmap_time); // + self.playfield.note_size().y;
     }
-    async fn draw(&mut self, list: &mut RenderableCollection) {
+    async fn draw(&mut self, _time: f32, list: &mut RenderableCollection) {
         if self.hit || self.pos.y + self.playfield.note_size().y < self.playfield.bounds.pos.y || self.pos.y > self.playfield.bounds.pos.y + self.playfield.bounds.size.y { return } 
         
         if let Some(mut img) = self.note_image.clone() {

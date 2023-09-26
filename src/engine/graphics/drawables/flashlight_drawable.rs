@@ -32,6 +32,7 @@ impl TatakuRenderable for FlashlightDrawable {
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) { }
 
     fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+        #[cfg(feature="graphics")]
         g.draw_flashlight(
             self.bounds.into_quad(), 
             transform, 
