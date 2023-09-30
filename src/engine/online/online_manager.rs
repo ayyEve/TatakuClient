@@ -213,6 +213,10 @@ impl OnlineManager {
                             trace!("User not found");
                             NotificationManager::add_text_notification("[Login] Authentication failed", 5000.0, Color::RED).await;
                         }
+                        LoginStatus::NotActivated => {
+                            trace!("User not activated");
+                            NotificationManager::add_text_notification("[Login] Your account is pending activation", 5000.0, Color::YELLOW).await;
+                        }
                         LoginStatus::Ok => {
                             trace!("Success, got user_id: {}", user_id);
                             {
@@ -892,6 +896,7 @@ impl OnlineManager {
 
 const LOG_PINGS:bool = false;
 fn ping_handler() {
+    #[cfg(feature="gameplay")]
     tokio::spawn(async move {
         let duration = std::time::Duration::from_millis(1000);
 

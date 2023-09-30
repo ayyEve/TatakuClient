@@ -987,7 +987,7 @@ impl OsuHitObject for OsuSlider {
         //TODO: cache these and only update if the difference is above some threshhold so we dont absolutely spam render targets\
         self.standard_settings = settings;
 
-        if (self.slider_body_render_target.is_some() || !self.standard_settings.slider_render_targets) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
+        if (self.slider_body_render_target.is_some() || (!self.standard_settings.slider_render_targets && USE_NEW_SLIDER_RENDERING)) && (self.standard_settings.slider_body_alpha != old_body_alpha || old_border_alpha != self.standard_settings.slider_border_alpha) {
             self.make_body().await;
         }
     }

@@ -13,6 +13,7 @@ build = "build/mod.rs"
 
 [features]
 default = ["gameplay"]
+as_crate = ["no_media_control"]
 gameplay = ["bass_audio", "graphics"]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]

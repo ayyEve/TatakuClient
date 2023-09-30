@@ -10,6 +10,9 @@ pub struct Discord {
 
 impl Discord {
     pub fn new() -> TatakuResult<Self> {
+        // dont start discord if theres no gameplay
+        #[cfg(not(feature="gameplay"))] return Err(TatakuError::String(String::new()));
+
         trace!("Setting up Discord RPC");
         macro_rules! map_err {
             ($e:expr) => {
