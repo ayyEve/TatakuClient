@@ -431,9 +431,12 @@ impl GraphicsState {
                     let [x, y, w, h] = current_scissor.unwrap_or_else(||[0.0, 0.0, renderable.size.x, renderable.size.y]);
                     if renderable.size.x - x < 0.0 || renderable.size.y - y < 0.0 { continue }
 
+                    let x = x.clamp(0.0, renderable.size.x);
+                    let y = y.clamp(0.0, renderable.size.y);
+
                     render_pass.set_scissor_rect(
-                        x.clamp(0.0, renderable.size.x) as u32,
-                        y.clamp(0.0, renderable.size.y) as u32,
+                        x as u32,
+                        y as u32,
                         w.clamp(0.0, renderable.size.x - x) as u32,
                         h.clamp(0.0, renderable.size.y - y) as u32
                     );
