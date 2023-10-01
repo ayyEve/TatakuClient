@@ -177,13 +177,12 @@ impl TatakuRenderable for SkinnedNumber {
         let s = self.number_as_text();
         let mut current_pos = Vector2::ZERO;
         for c in s.chars() {
-            if let Some(mut t) = self.get_char_tex(c).cloned() {
-                t.color = color;
-                t.set_scissor(self.scissor);
-                t.set_blend_mode(self.blend_mode);
-                t.draw(transform.trans(current_pos), g);
-                current_pos.x += t.size().x + x_spacing;
-            }
+            let Some(mut t) = self.get_char_tex(c).cloned() else { continue }; 
+            t.color = color;
+            t.set_scissor(self.scissor);
+            t.set_blend_mode(self.blend_mode);
+            t.draw(transform.trans(current_pos), g);
+            current_pos.x += t.size().x * self.scale.x + x_spacing;
         }
         
     }
