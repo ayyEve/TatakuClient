@@ -149,7 +149,7 @@ impl SpectatorManager {
 
         // check all incoming frames
         for SpectatorFrame { time, action } in std::mem::take(&mut self.frames) {
-            self.good_until = self.good_until.max(time as f32);
+            self.good_until = self.good_until.max(time);
 
             // debug!("Packet: {action:?}");
             match action {
@@ -222,7 +222,7 @@ impl SpectatorManager {
                 SpectatorAction::ScoreSync { score } => {
                     // received score update
                     trace!("Got score update");
-                    self.buffered_score_frames.push((time as f32, score));
+                    self.buffered_score_frames.push((time, score));
                     // we should buffer these, and check the time. 
                     // if the time is at the score time, we should update our score, 
                     // as this score is probably more accurate, or at the very least will update new spectators

@@ -203,7 +203,7 @@ impl ManiaGame {
         if index == 0 { return 0.0 }; // bad fix while neb fixes this
         let a = &position_function[index - 1];
 
-        f32::lerp(a.position, b.position, ((time - a.time) / (b.time - a.time)) as f32)
+        f32::lerp(a.position, b.position, (time - a.time) / (b.time - a.time))
     }
 
 
@@ -1023,11 +1023,11 @@ impl GameModeInput for ManiaGame {
         // check sv change keys
         if key == Key::F4 || key == Key::F3 {
             if key == Key::F4 {
-                self.sv_mult += self.game_settings.sv_change_delta as f32;
+                self.sv_mult += self.game_settings.sv_change_delta;
             } else {
-                self.sv_mult -= self.game_settings.sv_change_delta as f32;
+                self.sv_mult -= self.game_settings.sv_change_delta;
             }
-            self.map_preferences.scroll_speed = self.sv_mult as f32;
+            self.map_preferences.scroll_speed = self.sv_mult;
 
             self.set_sv_mult_notes();
 

@@ -152,16 +152,6 @@ impl TaikoGame {
         ))
     }
 
-    // #[inline]
-    // pub fn get_depth(time: f32) -> f32 {
-    //     // NOTE_DEPTH_RANGE.end - (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.start) / 
-    //     NOTE_DEPTH_RANGE.start + (NOTE_DEPTH_RANGE.end - NOTE_DEPTH_RANGE.end / time)
-    // }
-    // #[inline]
-    // pub fn get_slider_depth(_time: f32) -> f32 {
-    //     _RANGE.end
-    // }
-
     #[inline]
     pub fn scale_by_mods<V:std::ops::Mul<Output=V>>(val:V, ez_scale: V, hr_scale: V, mods: &ModManager) -> V {
         if mods.has_mod(Easy) {
@@ -614,6 +604,7 @@ impl GameMode for TaikoGame {
         Vec::new()
     }
     async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
+
         // draw the playfield
         list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
         
@@ -708,6 +699,22 @@ impl GameMode for TaikoGame {
             }
         }
 
+        if manager.current_mods.has_mod(Flashlight) {
+            let radius = match manager.score.combo {
+                0..=99 => 125.0,
+                100..=199 => 100.0,
+                _ => 75.0
+            } * self.taiko_settings.sv_multiplier * 2.0;
+            let fade_radius = radius / 5.0;
+
+            list.push(FlashlightDrawable::new(
+                self.playfield.hit_position,
+                radius - fade_radius,
+                fade_radius,
+                self.playfield.bounds,
+                Color::BLACK
+            ));
+        }
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
@@ -773,7 +780,7 @@ impl GameMode for TaikoGame {
     }
 
     fn skip_intro(&mut self, manager: &mut IngameManager) {
-        let x_needed = (self.playfield.pos.x + self.playfield.size.x) as f32;
+        let x_needed = self.playfield.pos.x + self.playfield.size.x;
         let mut time = self.end_time; //manager.time();
         
         for queue in [&self.notes, &self.other_notes] {

@@ -62,3 +62,13 @@ pub const NoFinisher: GameplayMod = GameplayMod {
     ..GameplayMod::DEFAULT
 };
 
+
+pub const Flashlight: GameplayMod = GameplayMod {
+    name: "flashlight",
+    short_name: "FL",
+    display_name: "Flashlight",
+    description: "Waaa I can't see anything!",
+    score_multiplier: 1.5,
+
+    ..GameplayMod::DEFAULT
+};

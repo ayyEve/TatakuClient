@@ -24,10 +24,10 @@ pub trait TaikoHitObject: HitObject + Send + Sync {
 
     fn x_at(&self, time:f32) -> f32 {
         // (self.time() - time) * self.get_sv()
-        ((self.time() - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32
+        ((self.time() - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x
     }
     fn end_x_at(&self, time:f32) -> f32 {
-        ((self.end_time(0.0) - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x as f32
+        ((self.end_time(0.0) - time) / SV_OVERRIDE) * self.get_sv() * self.get_playfield().size.x
     }
 
     fn time_at(&self, x: f32) -> f32 {

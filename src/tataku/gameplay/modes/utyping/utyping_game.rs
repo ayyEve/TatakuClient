@@ -366,7 +366,7 @@ impl GameMode for UTypingGame {
     fn skip_intro(&mut self, manager: &mut IngameManager) {
         // if self.note_index > 0 {return}
 
-        let x_needed = WindowSize::get().x as f32;
+        let x_needed = WindowSize::get().x;
         let mut time = self.end_time; //manager.time();
 
         for i in self.notes.iter().rev() {

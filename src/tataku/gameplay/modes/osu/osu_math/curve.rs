@@ -16,7 +16,7 @@ impl CurveLine {
 
     pub fn rho(&self) -> f32 {
         let p = self.p2 - self.p1;
-        (p.x*p.x + p.y*p.y).sqrt() as f32
+        (p.x*p.x + p.y*p.y).sqrt()
     }
 }
 
@@ -114,7 +114,7 @@ impl Curve {
     
         if length_next != length_previous {
             let n = (self.curve_lines[i].p2 - self.curve_lines[i].p1) 
-                * ((length - length_previous) / (length_next - length_previous)) as f32;
+                * ((length - length_previous) / (length_next - length_previous));
             res = res + n;
         }
 

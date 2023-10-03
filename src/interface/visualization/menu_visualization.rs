@@ -209,7 +209,7 @@ impl Visualization for MenuVisualization {
 
         let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
         let max = self.initial_inner_radius * VISUALIZATION_SIZE_FACTOR;
-        let val = self.data[self.index].amplitude() as f32 / 500.0;
+        let val = self.data[self.index].amplitude() / 500.0;
         self.current_inner_radius = f32::lerp(min, max, val).clamp(min, max);
 
         let rotation_increment = 0.2;

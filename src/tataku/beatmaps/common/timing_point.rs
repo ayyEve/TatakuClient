@@ -32,7 +32,7 @@ impl TimingPoint {
 
     pub fn bpm_multiplier(&self) -> f32 {
         if self.beat_length > 0.0 {1.0}
-        else {(-self.beat_length as f32).clamp(10.0, 1000.0) / 100.0}
+        else {(-self.beat_length).clamp(10.0, 1000.0) / 100.0}
     }
 }
 

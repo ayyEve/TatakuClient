@@ -19,15 +19,16 @@ impl GameModeInfo for TaikoGameInfo {
     fn get_mods(&self) -> Vec<GameplayModGroup> { 
         vec![
             GameplayModGroup::new("Skill")
-                .with_mod(super::FullAlt)
-                .with_mod(super::Relax)
-                .with_mod(super::NoFinisher)
-                .with_mod(super::NoSV)
+                .with_mod(FullAlt)
+                .with_mod(Relax)
+                .with_mod(NoFinisher)
+                .with_mod(NoSV)
             ,
             GameplayModGroup::new("Difficulty")
-                .with_mod(super::HardRock)
-                .with_mod(super::Easy)
-                .with_mod(super::NoBattery)
+                .with_mod(HardRock)
+                .with_mod(Easy)
+                .with_mod(Flashlight)
+                .with_mod(NoBattery)
             ,
         ]
     }

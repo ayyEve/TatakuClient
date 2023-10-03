@@ -481,8 +481,8 @@ impl GraphicsState {
 
 
     fn create_projection(draw_size: Vector2) -> Matrix {
-        let sx = (2.0 / draw_size.x) as f32;
-        let sy = (-2.0 / draw_size.y) as f32;
+        let sx = 2.0 / draw_size.x;
+        let sy = -2.0 / draw_size.y;
 
         // setup depth range
         let far = MAX_DEPTH;

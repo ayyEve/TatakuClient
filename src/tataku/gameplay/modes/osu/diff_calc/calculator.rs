@@ -167,7 +167,7 @@ impl DiffCalc for OsuDifficultyCalculator {
             diff: difficulty,
             diffs,
             strains: [
-                ("Aim".to_owned(), aim.into_iter().map(|a|a as f32).collect()),
+                ("Aim".to_owned(), aim),
                 ("Density".to_owned(), note_density)
             ].into_iter().collect(),
         };
