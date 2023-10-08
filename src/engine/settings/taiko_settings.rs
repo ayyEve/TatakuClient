@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Settings, SettingsFormat)]
-#[serde(default, from="TaikoSettingsDeserializer")]
+#[derive(Clone, Serialize, PartialEq)]
+#[derive(Settings, SettingsDeserialize)]
+#[serde(default)]
 pub struct TaikoSettings {
     // input
     #[Setting(text="Left Kat")]

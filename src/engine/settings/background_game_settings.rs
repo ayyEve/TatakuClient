@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[derive(Settings, SettingsFormat)]
-#[serde(default, from="BackgroundGameSettingsDeserializer")]
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Settings, SettingsDeserialize)]
+#[serde(default)]
 pub struct BackgroundGameSettings {
     /// whether to have gameplay in the main menu bg or not
     #[serde(alias="enabled")]

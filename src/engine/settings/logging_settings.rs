@@ -2,9 +2,9 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
 /// helper so i dont need to recompile the game every time i want to change what things are logged
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[derive(Settings, SettingsFormat)]
-#[serde(default, from="LoggingSettingsDeserializer")]
+#[derive(Copy, Clone, Serialize, Debug, PartialEq)]
+#[derive(Settings, SettingsDeserialize)]
+#[serde(default)]
 pub struct LoggingSettings {
     #[Setting(text="Extra Online Logging")]
     pub extra_online_logging: bool,

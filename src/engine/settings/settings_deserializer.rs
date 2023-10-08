@@ -29,8 +29,8 @@ mod test2 {
     }
 
 
-    #[derive(Debug, Serialize, Deserialize)]
-    #[derive(SettingsFormat)]
+    #[derive(Debug, Serialize)]
+    #[derive(SettingsDeserialize)]
     #[serde(from="Test2Deserializer")]
     struct Test2 {
         a: String,

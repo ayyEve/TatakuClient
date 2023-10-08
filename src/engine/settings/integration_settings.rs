@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Settings, SettingsFormat)]
-#[serde(default, from="IntegrationSettingsDeserializer")]
+#[derive(Clone, Serialize, PartialEq)]
+#[derive(Settings, SettingsDeserialize)]
+#[serde(default)]
 pub struct IntegrationSettings {
     #[Setting(text="Discord Integration")]
     pub discord: bool,

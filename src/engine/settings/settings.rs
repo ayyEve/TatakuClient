@@ -3,9 +3,9 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Settings, SettingsFormat)]
-#[serde(default, from="SettingsDeserializer")]
+#[derive(Clone, Serialize, PartialEq)]
+#[derive(Settings, SettingsDeserialize)]
+#[serde(default)]
 pub struct Settings {
     // audio
     // #[Setting(text="Master Volume", category="Audio Settings")]
