@@ -1,4 +1,5 @@
 mod settings_menu;
+mod settings_format;
 use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
@@ -231,4 +232,18 @@ pub fn scrollable_getters_setters(input: TokenStream) -> TokenStream {
 
     let tokens = str.parse::<proc_macro2::TokenStream>().unwrap();
     proc_macro::TokenStream::from(quote! {#tokens})
+}
+
+
+
+#[proc_macro_derive(SettingsFormat)]
+pub fn impl_settings_format(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast = syn::parse(input).unwrap();
+
+    // Build the impl
+    let gen = settings_format::impl_settings_format(&ast);
+    
+    // Return the generated impl
+    proc_macro::TokenStream::from(gen)
 }

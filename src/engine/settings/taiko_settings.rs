@@ -1,12 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-// TODO: TaikoPlayfield, TaikoNote::playfield_changed(&mut self, playfield:Arc<TaikoPlayfield>)
-
-
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[serde(default)]
-#[derive(Settings)]
+#[derive(Settings, SettingsFormat)]
+#[serde(default, from="TaikoSettingsDeserializer")]
 pub struct TaikoSettings {
     // input
     #[Setting(text="Left Kat")]

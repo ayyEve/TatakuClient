@@ -4,8 +4,8 @@ use tataku_client_proc_macros::Settings;
 const SETTINGS_FILE:&str = "settings.json";
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Settings)]
-#[serde(default)]
+#[derive(Settings, SettingsFormat)]
+#[serde(default, from="SettingsDeserializer")]
 pub struct Settings {
     // audio
     // #[Setting(text="Master Volume", category="Audio Settings")]
@@ -249,7 +249,7 @@ impl Default for Settings {
             osu_api_key: String::new(),
 
             // game settings
-            logging_settings: LoggingSettings::new(),
+            logging_settings: LoggingSettings::default(),
             osu_settings: OsuSettings::default(),
             taiko_settings: TaikoSettings::default(),
             catch_settings: CatchSettings::default(),

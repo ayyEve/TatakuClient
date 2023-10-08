@@ -4,8 +4,9 @@ const WIDTH2:f32 = 550.0;
 const OFFSET:f32 = 25.0;
 const OFFSET2:f32 = 5.0;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Settings)]
-#[serde(default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Settings, SettingsFormat)]
+#[serde(default, from="ManiaSettingsDeserializer")]
 #[Setting(get_items="get_key_items", from_menu="keys_from_menu")]
 pub struct ManiaSettings {
     // sv

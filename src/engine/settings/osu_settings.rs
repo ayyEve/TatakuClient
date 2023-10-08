@@ -2,8 +2,8 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(default)]
-#[derive(Settings)]
+#[derive(Settings, SettingsFormat)]
+#[serde(default, from="OsuSettingsDeserializer")]
 pub struct OsuSettings {
     // input
     #[Setting(text="Osu Key 1")]

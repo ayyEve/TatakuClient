@@ -2,8 +2,8 @@ use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[serde(default)]
-#[derive(Settings)]
+#[derive(Settings, SettingsFormat)]
+#[serde(default, from="CommonGameplaySettingsDeserializer")]
 pub struct CommonGameplaySettings {
     #[Setting(text="Increase Offset")]
     pub key_offset_up: Key,
