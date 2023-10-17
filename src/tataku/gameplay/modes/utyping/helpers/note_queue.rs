@@ -1,5 +1,3 @@
-use prelude::modes::utyping::utyping_info::UTypingHitJudgment;
-
 use crate::prelude::*;
 use super::super::prelude::*;
 

@@ -1,5 +1,5 @@
 #![allow(unused, dead_code)]
-use super::prelude::*;
+use super::super::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 // request: https://github.com/Quaver/Quaver/blob/ui-redesign/Quaver.Shared/Online/API/MapsetSearch/APIRequestMapsetSearch.cs

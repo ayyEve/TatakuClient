@@ -1,5 +1,3 @@
-#![allow(unused, dead_code)]
-use crate::prelude::*;
 
 #[derive(Clone, Default)]
 pub struct SearchParams {
@@ -24,24 +22,20 @@ pub struct SearchParams {
     pub text: Option<String>
 }
 
-#[derive(Clone)]
-pub enum SortMethod {
-    Default
-}
-impl Default for SortMethod {
-    fn default() -> Self {Self::Default}
-}
-
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MapStatus {
     All,
+    #[default]
     Ranked,
     Pending,
     Graveyarded,
     Approved,
     Loved,
 }
-impl Default for MapStatus {
-    fn default() -> Self {Self::Ranked}
+
+
+#[derive(Clone, Default)]
+pub enum SortMethod {
+    #[default]
+    Default
 }
