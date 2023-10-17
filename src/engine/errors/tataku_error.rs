@@ -19,7 +19,6 @@ pub enum TatakuError {
 
     Audio(AudioError),
     Image(ImageError),
-    GlError(GlError),
 
     String(String),
     SerializationError(SerializationError),
@@ -41,7 +40,6 @@ impl Display for TatakuError {
             TatakuError::Image(e) => write!(f, "{:?}", e),
             TatakuError::Audio(e) => write!(f, "{:?}", e),
             TatakuError::String(e) => write!(f, "{:?}", e),
-            TatakuError::GlError(e) => write!(f, "{:?}", e),
             TatakuError::GameMode(e) => write!(f, "{:?}", e),
             TatakuError::SerializationError(e) => write!(f, "{:?}", e),
             TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
@@ -65,9 +63,6 @@ impl From<AudioError> for TatakuError {
 
 impl From<BeatmapError> for TatakuError {
     fn from(e: BeatmapError) -> Self {TatakuError::Beatmap(e)}
-}
-impl From<GlError> for TatakuError {
-    fn from(e: GlError) -> Self {TatakuError::GlError(e)}
 }
 impl From<String> for TatakuError {
     fn from(e: String) -> Self {TatakuError::String(e)}
