@@ -926,10 +926,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         self.apply_filter().await;
     }
-}
 
-#[async_trait]
-impl ControllerInputMenu<Game> for BeatmapSelectMenu {
+
     async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         match button {
             ControllerButton::DPadUp => self.on_key_press(Key::Up, game, KeyModifiers::default()).await,
@@ -954,6 +952,7 @@ impl ControllerInputMenu<Game> for BeatmapSelectMenu {
 
         false
     }
+
 }
 
 

@@ -510,9 +510,8 @@ impl AsyncMenu<Game> for MainMenu {
 
         self.menu_game.window_size_changed(window_size).await;
     }
-}
-#[async_trait]
-impl ControllerInputMenu<Game> for MainMenu {
+
+    
     async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         self.reset_timer();
 
@@ -572,4 +571,3 @@ impl ControllerInputMenu<Game> for MainMenu {
         true
     }
 }
-

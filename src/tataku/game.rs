@@ -1188,7 +1188,7 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(Box<IngameManager>),
-    InMenu(Box<dyn ControllerInputMenu<Game>>),
+    InMenu(Box<dyn AsyncMenu<Game>>),
 
     Spectating(Box<SpectatorManager>),
 }

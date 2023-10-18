@@ -337,9 +337,7 @@ impl AsyncMenu<Game> for DirectMenu {
         self.search_bar.on_text(text);
     }
 }
-impl ControllerInputMenu<Game> for DirectMenu {
-    
-}
+
 
 /// perform a download on another thread
 pub(crate) fn perform_download(url:String, path:String) {

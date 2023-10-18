@@ -461,10 +461,7 @@ impl AsyncMenu<Game> for ScoreMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
     }
-}
-
-#[async_trait]
-impl ControllerInputMenu<Game> for ScoreMenu {
+    
     async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
 
         let mut changed = false;
@@ -518,4 +515,5 @@ impl ControllerInputMenu<Game> for ScoreMenu {
 
         true
     }
+
 }

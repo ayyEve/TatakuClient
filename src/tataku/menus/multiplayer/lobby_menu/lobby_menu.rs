@@ -600,4 +600,3 @@ impl AsyncMenu<Game> for LobbyMenu {
         }
     }
 }
-impl ControllerInputMenu<Game> for LobbyMenu {}

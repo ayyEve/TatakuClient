@@ -128,9 +128,8 @@ impl AsyncMenu<Game> for PauseMenu {
             }
         }
     }
-}
-#[async_trait]
-impl ControllerInputMenu<Game> for PauseMenu {
+
+
     async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
         let max = if self.is_fail_menu {2} else {3};
 
@@ -185,4 +184,5 @@ impl ControllerInputMenu<Game> for PauseMenu {
 
         true
     }
+
 }

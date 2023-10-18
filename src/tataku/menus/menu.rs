@@ -19,15 +19,10 @@ pub trait AsyncMenu<G: Send+Sync>:Send+Sync {
     async fn on_key_release(&mut self, _key:Key, _g:&mut G) {}
     async fn on_focus_change(&mut self, _has_focus:bool, _g:&mut G) {}
 
-
-    async fn update(&mut self, _g:&mut G) {}
-    async fn draw(&mut self, list: &mut RenderableCollection);
-}
-
-
-#[async_trait]
-pub trait ControllerInputMenu<G:Send+Sync>:AsyncMenu<G> + Send + Sync {
     async fn controller_down(&mut self, _g:&mut Game, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
     async fn controller_up(&mut self, _g:&mut Game, _controller: &GamepadInfo, _button: ControllerButton) -> bool {false}
     async fn controller_axis(&mut self, _g:&mut Game, _controller: &GamepadInfo, _axis_data: HashMap<Axis, (bool, f32)>) -> bool {false}
+
+    async fn update(&mut self, _g:&mut G) {}
+    async fn draw(&mut self, list: &mut RenderableCollection);
 }

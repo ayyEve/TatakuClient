@@ -234,7 +234,6 @@ impl AsyncMenu<Game> for LoadingMenu {
         }
     }
 }
-impl ControllerInputMenu<Game> for LoadingMenu {}
 
 /// async helper
 pub struct LoadingStatus {

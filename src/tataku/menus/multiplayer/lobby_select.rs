@@ -127,7 +127,6 @@ impl AsyncMenu<Game> for LobbySelect {
     }
 }
 
-impl ControllerInputMenu<Game> for LobbySelect {}
 
 
 const LOBBY_DISPLAY_SIZE:Vector2 = Vector2::new(200.0, 50.0);
