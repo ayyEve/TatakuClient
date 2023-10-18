@@ -552,15 +552,21 @@ impl Game {
             if !text.is_empty() && d.on_text(&text).await {text = String::new()}
 
             // mouse events
-            if mouse_moved {d.on_mouse_move(mouse_pos, self).await}
+            if mouse_moved { d.on_mouse_move(mouse_pos, self).await }
+            
+            // mouse up is outside the bounds check because for things that require a mouse-up event to "release" its state, 
+            // if the mouse is pressed in the bounds, then released outside the bounds, the thing will never be "released"
+            // an example of this is sliders in the settings menu
+            async_retain!(mouse_up, button, !d.on_mouse_up(mouse_pos, *button, &mods, self).await);
+            
             if d.get_bounds().contains(mouse_pos) {
                 async_retain!(mouse_down, button, !d.on_mouse_down(mouse_pos, *button, &mods, self).await);
-                async_retain!(mouse_up, button, !d.on_mouse_up(mouse_pos, *button, &mods, self).await);
                 if scroll_delta != 0.0 && d.on_mouse_scroll(scroll_delta, self).await {scroll_delta = 0.0}
 
                 mouse_down.clear();
                 mouse_up.clear();
             }
+
             d.update(self).await
         }
         // remove any dialogs which should be closed
