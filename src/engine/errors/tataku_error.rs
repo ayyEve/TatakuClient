@@ -23,6 +23,7 @@ pub enum TatakuError {
     String(String),
     SerializationError(SerializationError),
     ReqwestError(reqwest::Error),
+    DownloadError(DownloadError)
 }
 impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
@@ -43,6 +44,7 @@ impl Display for TatakuError {
             TatakuError::GameMode(e) => write!(f, "{:?}", e),
             TatakuError::SerializationError(e) => write!(f, "{:?}", e),
             TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
+            TatakuError::DownloadError(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -75,6 +77,9 @@ impl From<SerializationError> for TatakuError {
 }
 impl From<reqwest::Error> for TatakuError {
     fn from(e: reqwest::Error) -> Self {TatakuError::ReqwestError(e)}
+}
+impl From<DownloadError> for TatakuError {
+    fn from(e: DownloadError) -> Self {TatakuError::DownloadError(e)}
 }
 
 

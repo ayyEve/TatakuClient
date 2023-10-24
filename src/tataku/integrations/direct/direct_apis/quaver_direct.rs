@@ -1,13 +1,10 @@
 #![allow(unused, dead_code)]
-use super::super::prelude::*;
+use crate::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 // request: https://github.com/Quaver/Quaver/blob/ui-redesign/Quaver.Shared/Online/API/MapsetSearch/APIRequestMapsetSearch.cs
 
-pub struct QuaverDirect {}
-impl QuaverDirect {
-    pub fn new() -> Self {Self{}}
-}
+pub struct QuaverDirect;
 #[async_trait]
 impl DirectApi for QuaverDirect {
     fn api_name(&self) -> &'static str {"Quaver"}
@@ -65,10 +62,9 @@ impl DirectApi for QuaverDirect {
 pub struct QuaverDirectDownloadable {
     // easier to just store the whole item tbh
     item: QuaverMapset,
-
     filename: String,
 
-    // keys: 
+    download_progress: Arc<RwLock<DownloadProgress>>,
 
     downloading: Arc<AtomicBool>
 }
@@ -78,39 +74,37 @@ impl QuaverDirectDownloadable {
         Self {
             item,
             filename,
+            download_progress: Default::default(),
             downloading: Arc::new(AtomicBool::new(false))
         }
     }
 }
-#[async_trait]
 impl DirectDownloadable for QuaverDirectDownloadable {
-    async fn download(&self) {
-        if self.is_downloading() {return}
-
-        self.downloading.store(true, SeqCst);
-
-        let download_dir = format!("downloads/{}", self.filename);
-        let settings = Settings::get();
+    fn download(&self) {
+        // if self.is_downloading() { return }
+        // self.downloading.store(true, SeqCst);
         
-        let username = &settings.osu_username;
-        let password = &settings.osu_password;
-        let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
+        // let download_dir = format!("downloads/{}", self.filename);
+        // let settings = Settings::get();
+        
+        // let username = &settings.osu_username;
+        // let password = &settings.osu_password;
+        // let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
 
-        perform_download(url, download_dir);
+        // perform_download(url, download_dir);
     }
 
     fn audio_preview(&self) -> Option<String> {
-        // https://b.ppy.sh/preview/100.mp3
         Some(format!("https://cdn.quavergame.com/audio-previews/{}.mp3", self.item.id))
     }
 
 
-    fn filename(&self) -> String {self.filename.clone()}
-    fn title(&self) -> String {self.item.title.clone()}
-    fn artist(&self) -> String {self.item.artist.clone()}
-    fn creator(&self) -> String {self.item.creator_username.clone()}
-    fn get_download_progress(&self) -> f32 {0.0}
-    fn is_downloading(&self) -> bool {self.downloading.load(SeqCst)}
+    fn filename(&self) -> String { self.filename.clone() }
+    fn title(&self) -> String { self.item.title.clone() }
+    fn artist(&self) -> String { self.item.artist.clone() }
+    fn creator(&self) -> String { self.item.creator_username.clone() }
+    fn get_download_progress(&self) -> &Arc<RwLock<DownloadProgress>> { &self.download_progress }
+    fn is_downloading(&self) -> bool { self.downloading.load(SeqCst) }
 }
 
 

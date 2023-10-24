@@ -1,7 +1,4 @@
-use super::prelude::*;
-
-mod osu_direct; pub use osu_direct::*;
-mod quaver_direct; pub use quaver_direct::*;
+use crate::prelude::*;
 
 #[async_trait]
 pub trait DirectApi: Send+Sync {

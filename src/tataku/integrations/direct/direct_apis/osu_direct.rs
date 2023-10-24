@@ -1,11 +1,8 @@
-use super::super::prelude::*;
+use crate::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 
-pub struct OsuDirect {}
-impl OsuDirect {
-    pub fn new() -> Self {Self{}}
-}
+pub struct OsuDirect;
 
 #[async_trait]
 impl DirectApi for OsuDirect {
@@ -74,7 +71,8 @@ pub struct OsuDirectDownloadable {
     title: String,
     creator: String,
 
-    downloading: Arc<AtomicBool>
+    progress: Arc<RwLock<DownloadProgress>>,
+    downloading: Arc<AtomicBool>,
 }
 impl OsuDirectDownloadable {
     pub fn from_str(str:&str) -> Option<Self> {
@@ -109,15 +107,15 @@ impl OsuDirectDownloadable {
             artist,
             title,
             creator,
-
+            
+            progress: Default::default(),
             downloading: Arc::new(AtomicBool::new(false))
         })
     }
 }
-#[async_trait]
 impl DirectDownloadable for OsuDirectDownloadable {
-    async fn download(&self) {
-        if self.is_downloading() {return}
+    fn download(&self) {
+        if self.is_downloading() { return }
 
         self.downloading.store(true, SeqCst);
 
@@ -128,7 +126,7 @@ impl DirectDownloadable for OsuDirectDownloadable {
         let password = &settings.osu_password;
         let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
 
-        perform_download(url, download_dir);
+        perform_download(url, download_dir, self.progress.clone());
     }
 
     fn audio_preview(&self) -> Option<String> {
@@ -137,12 +135,12 @@ impl DirectDownloadable for OsuDirectDownloadable {
     }
 
 
-    fn filename(&self) -> String {self.filename.clone()}
-    fn title(&self) -> String {self.title.clone()}
-    fn artist(&self) -> String {self.artist.clone()}
-    fn creator(&self) -> String {self.creator.clone()}
-    fn get_download_progress(&self) -> f32 {0.0}
-    fn is_downloading(&self) -> bool {self.downloading.load(SeqCst)}
+    fn filename(&self) -> String { self.filename.clone() }
+    fn title(&self) -> String { self.title.clone() }
+    fn artist(&self) -> String { self.artist.clone() }
+    fn creator(&self) -> String { self.creator.clone() }
+    fn get_download_progress(&self) -> &Arc<RwLock<DownloadProgress>> { &self.progress }
+    fn is_downloading(&self) -> bool { self.downloading.load(SeqCst) }
 }
 
 

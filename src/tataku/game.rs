@@ -46,6 +46,7 @@ impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
+        GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
 
         let mut g = Game {
             // engine
@@ -498,6 +499,16 @@ impl Game {
         // }
         // if keys_down.contains(&Key::D2) && mods.ctrl {
         //     GlobalValueManager::update(Arc::new(CurrentTheme(osu_theme())))
+        // }
+
+        // // direct downloads
+        // if keys_down.contains(&Key::D) && mods.ctrl {
+        //     self.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new("osu".to_string()).await)));
+        //     // self.add_dialog(Box::new(NotificationsDialog::new().await), false);
+        // }
+        // // direct downloads dialog
+        // if keys_down.contains(&Key::J) && mods.ctrl {
+        //     self.add_dialog(Box::new(DirectDownloadDialog::new()), false);
         // }
 
         // notfications menu

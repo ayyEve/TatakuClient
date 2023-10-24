@@ -174,7 +174,7 @@ impl SpectatorManager {
                                             let url = format!("https://osu.ppy.sh/d/{}.osz?u={username}&h={password}", map_info.beatmapset_id);
                                             
                                             let path = format!("downloads/{}.osz", map_info.beatmapset_id);
-                                            perform_download(url, path)
+                                            perform_download(url, path, Default::default())
                                         } else {
                                             warn!("not downloading map, osu user or password missing")
                                         }

@@ -10,6 +10,7 @@ mod beatmap_dialog;
 mod game_ui_editor;
 mod draggable_dialog;
 mod notifications_dialog;
+mod direct_downloads_dialog;
 // mod changelog_dialog;
 
 pub use dialog::*;
@@ -24,4 +25,5 @@ pub use beatmap_dialog::*;
 pub use game_ui_editor::*;
 pub use draggable_dialog::*;
 pub use notifications_dialog::*;
+pub use direct_downloads_dialog::*;
 // pub use changelog_dialog::*;

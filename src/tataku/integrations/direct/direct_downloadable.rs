@@ -1,16 +1,16 @@
+use crate::prelude::*;
 
 /// this item will always be in an arc
 /// so nothing will be directly mutable
-#[async_trait::async_trait]
 pub trait DirectDownloadable: Send + Sync {
     /// perform the download
-    async fn download(&self);
+    fn download(&self);
 
     // get if this item is downloading
     fn is_downloading(&self) -> bool;
 
-    // get the download progress for this item
-    fn get_download_progress(&self) -> f32;
+    // get the download progress data for this item
+    fn get_download_progress(&self) -> &Arc<RwLock<DownloadProgress>>;
 
     /// get a link to the preview mp3
     /// returns none if not applicable for this api

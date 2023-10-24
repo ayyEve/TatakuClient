@@ -90,10 +90,14 @@ lzma-rs = "0.2"
 base64 = "0.21.2"
 encoding_rs = "0.8"
 
+native-tls = "*"
+tokio-native-tls = "*"
+
 # other stuff
 rand = "0.8.4"
 chrono = "0.4"
 fs_extra = "1.2.0"
+
 
 
 # logging

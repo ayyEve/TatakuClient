@@ -1,10 +1,12 @@
 mod audio_error;
 mod tataku_error;
 mod beatmap_error;
+mod download_error;
 
 pub use audio_error::*;
 pub use tataku_error::*;
 pub use beatmap_error::*;
+pub use download_error::*;
 
 
 pub trait LogError {
