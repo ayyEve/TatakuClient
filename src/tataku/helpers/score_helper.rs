@@ -276,7 +276,7 @@ mod osu {
                     score.combo = s.maxcombo.parse().unwrap_or_default();
                     score.max_combo = s.maxcombo.parse().unwrap_or_default();
                     score.judgments = judgments;
-                    score.speed = 1.0;
+                    score.speed = GameSpeed::default();
                     score.accuracy = calc_acc(&score);
 
                     // mods
@@ -304,8 +304,8 @@ mod osu {
                         check!(Random, "random");
                         check!(Mirror, "mirror");
 
-                        if (peppy_fuck & Mods::DoubleTime) > 0 { score.speed = 1.5; }
-                        if (peppy_fuck & Mods::HalfTime) > 0 { score.speed = 0.75; }
+                        if (peppy_fuck & Mods::DoubleTime) > 0 { score.speed = GameSpeed::from_f32(1.5); }
+                        if (peppy_fuck & Mods::HalfTime) > 0 { score.speed = GameSpeed::from_f32(0.75); }
                     }
 
                     let mut score = IngameScore::new(score, false, false);
@@ -376,13 +376,13 @@ mod quaver {
             score.combo = s.max_combo as u16;
             score.max_combo = s.max_combo as u16;
             score.judgments = judgments;
-            score.speed = 1.0;
+            score.speed = GameSpeed::default();
             score.accuracy = s.accuracy as f64 / 100.0;
             // check mods
             for m in s.mods_string.split(", ") {
                 if m.ends_with("x") {
                     if let Ok(speed) = m.trim_end_matches("x").parse() {
-                        score.speed = speed;
+                        score.speed = GameSpeed::from_f32(speed);
                         continue;
                     }
                 }

@@ -49,7 +49,7 @@ impl Database {
             score.max_combo = r.get("max_combo")?;
             score.accuracy = r.get("accuracy").unwrap_or_default();
             score.beatmap_hash = r.get::<&str, String>("map_hash")?.try_into().unwrap();
-            score.speed = r.get("speed").unwrap_or(1.0);
+            score.speed = r.get::<&str, f32>("speed").map(|s|GameSpeed::from_f32(s)).unwrap_or_default();
             score.hit_timings = Vec::new();
             score.judgments = judgments;
             

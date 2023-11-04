@@ -135,7 +135,7 @@ impl IngameManager {
         let common_game_settings = Arc::new(settings.common_game_settings.clone());
 
         let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone());
-        score.speed = current_mods.get_speed();
+        score.speed = current_mods.speed;
 
 
         let health = HealthHelper::new();
@@ -819,7 +819,7 @@ impl IngameManager {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
                     mods: self.score.mods_string_sorted(),
-                    speed: self.current_mods.speed,
+                    speed: self.current_mods.speed.as_u16(),
                     map_game: self.metadata.beatmap_type.into(),
                     map_link: None
                 }));
@@ -911,7 +911,7 @@ impl IngameManager {
         self.lead_in_timer = Instant::now();
         self.map_diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
         self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
-        self.score.speed = self.current_mods.get_speed();
+        self.score.speed = self.current_mods.speed;
         self.score_multiplier = 1.0;
         self.timing_points.reset();
 
@@ -938,7 +938,7 @@ impl IngameManager {
         if !self.replaying {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
-            self.score.speed = self.current_mods.get_speed();
+            self.score.speed = self.current_mods.speed;
         } else {
             if let Some(score) = &self.replay.score_data {
                 self.score.username = score.username.clone();
@@ -1244,9 +1244,11 @@ impl IngameManager {
         
         // load speed from score
         if let Some(score) = &self.replay.score_data {
-            let mut mods = ModManager::new();
-            mods.mods = score.mods();
-            mods.set_speed(score.speed);
+            let mods = ModManager {
+                mods: score.mods(),
+                speed: score.speed,
+            };
+
             self.current_mods = Arc::new(mods);
             *self.score.mods_mut() = self.current_mods.mods.clone();
 

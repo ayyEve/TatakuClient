@@ -91,21 +91,26 @@ pub async fn do_diffcalc(playmode: String) {
 
         for speed in (50..=1000).step_by(5) { // 0.5..=10.0
             for mut mods in mod_mutations.clone() {
-                mods.speed = speed;
+                mods.speed = GameSpeed::from_u16(speed);
 
                 let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
                 if existing.contains_key(&diff_key) { continue }
 
                 // only load the calc if its actually needed
-                if calc.as_ref().is_none() {
+                if calc.is_none() {
                     if calc_failed {
-                        debug!("calc failed");
+                        // debug!("calc failed");
                         data.insert(diff_key, -1.0);
                         continue;
                     } else {
-                        calc = calc_diff(map, playmode.clone()).await.ok();
+                        match calc_diff(map, playmode.clone()).await {
+                            Ok(c) => calc = Some(c),
+                            Err(e) => {
+                                error!("couldnt get calc: {e}");
+                                calc = None;
+                            }
+                        }
                         if calc.is_none() { 
-                            debug!("couldnt get calc");
                             data.insert(diff_key, -1.0);
                             calc_failed = true;
                             continue;

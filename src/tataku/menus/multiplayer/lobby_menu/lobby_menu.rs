@@ -365,7 +365,7 @@ impl AsyncMenu<Game> for LobbyMenu {
         if self.current_mods.update() {
             let mods = self.current_mods.mods.clone();
             let speed = self.current_mods.speed;
-            tokio::spawn(OnlineManager::lobby_update_mods(mods, speed));
+            tokio::spawn(OnlineManager::lobby_update_mods(mods, speed.as_u16()));
         }
     
         // check if a new beatmap was added

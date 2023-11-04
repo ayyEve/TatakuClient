@@ -333,7 +333,7 @@ impl AsyncMenu<Game> for ScoreMenu {
             format!("Mean: {:.2}ms", self.hit_error.mean),
             format!("Error: {:.2}ms - {:.2}ms avg", self.hit_error.early, self.hit_error.late),
             format!("Deviance: {:.2}ms", self.hit_error.deviance),
-            if self.score.speed != 1.0 {format!("Speed: {:.2}x", self.score.speed)} else { String::new() },
+            if !self.score.speed.is_default() {format!("Speed: {:.2}x", self.score.speed)} else { String::new() },
             // format!("Expected Performance: {:.2}pr", self.score.score.performance),
             self.score_mods.clone(),
         ] {
@@ -371,7 +371,7 @@ impl AsyncMenu<Game> for ScoreMenu {
                 SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
                     for str in [
                         format!("Map Ranking: #{}", format_number(*placing)),
-                        format!("Performance: {}pr", format_float(performance_rating, 2)),
+                        format!("Performance: {}pr", format_float(*performance_rating, 2)),
                     ] {
                         list.push(Text::new(
                             current_pos,

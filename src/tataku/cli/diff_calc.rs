@@ -58,7 +58,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
         }
 
         let mut mods = ModManager::default();
-        mods.set_speed(score.speed);
+        mods.speed = score.speed;
 
         let diff = get_diff(&map, &score.playmode, &mods).unwrap_or_default();
 
@@ -119,7 +119,7 @@ pub async fn diff_calc_cli(args: &mut impl Iterator<Item = String>) {
                 mods.set_speed(speed as f32 / 100.0);
 
                 let diff = calc.calc(&mods).await.unwrap_or_default().diff.normal_or(0.0);
-                data.add(&map, mods.speed as u32, diff, playmode.clone());
+                data.add(&map, mods.speed.as_u16() as u32, diff, playmode.clone());
             }
         }
 

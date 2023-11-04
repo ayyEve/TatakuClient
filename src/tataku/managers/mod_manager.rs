@@ -7,7 +7,7 @@ pub type ModManagerHelper = GlobalValue<ModManager>;
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
-    pub speed: u16,
+    pub speed: GameSpeed,
     
     pub mods: HashSet<String>
 }
@@ -15,10 +15,7 @@ pub struct ModManager {
 // static 
 impl ModManager {
     pub fn new() -> Self {
-        Self {
-            speed: 100,
-            ..Self::default()
-        }
+        Self::default()
     }
     
     pub fn get_mut() -> GlobalValueMut<Self> {
@@ -97,10 +94,10 @@ impl ModManager {
 // instance
 impl ModManager {
     pub fn get_speed(&self) -> f32 {
-        self.speed as f32 / 100.0
+        self.speed.as_f32()
     }
     pub fn set_speed(&mut self, speed: f32) {
-        self.speed = (speed * 100.0).round() as u16;
+        self.speed = GameSpeed::from_f32(speed);
         // error!("set speed: {speed} -> {}", self.speed);
     }
 
@@ -139,7 +136,7 @@ impl ModManager {
         self
     }
     pub fn with_speed(mut self, speed: u16) -> Self {
-        self.speed = speed;
+        self.speed = GameSpeed::from_u16(speed);
         self
     }
     pub fn with_speed_f32(mut self, speed: f32) -> Self {

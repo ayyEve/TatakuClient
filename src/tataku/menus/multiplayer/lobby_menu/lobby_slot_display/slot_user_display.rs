@@ -43,7 +43,7 @@ impl ScrollableItem for LobbySlotUser {
             if let Some(player) = &self.player {
                 let mut mods = ModManager::new();
                 mods.mods = player.user.mods.clone();
-                mods.speed = player.user.speed;
+                mods.speed = GameSpeed::from_u16(player.user.speed);
 
                 let username = &player.username;
                 let mods = mods.mods_list_string(&CurrentPlaymodeHelper::new().0);

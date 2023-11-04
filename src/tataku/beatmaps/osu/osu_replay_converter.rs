@@ -266,9 +266,9 @@ impl OsuReplay {
         }
 
         if self.mods.contains(&OsuMods::DoubleTime) {
-            score.speed = 1.33;
+            score.speed = GameSpeed::from_f32(1.33);
         } else if self.mods.contains(&OsuMods::HalfTime) {
-            score.speed = 0.75;
+            score.speed = GameSpeed::from_f32(0.75);
         }
         
         // mods
