@@ -103,6 +103,7 @@ fs_extra = "1.2.0"
 # logging
 tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }
 log = "0.4.16"
+num-format = "0.4.4"
 
 # battery_level = { git = "https://gitlab.ayyeve.xyz/ayyEve/battery-level-rs" }
 

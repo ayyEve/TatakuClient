@@ -2009,6 +2009,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-format"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
+dependencies = [
+ "arrayvec",
+ "itoa",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3011,6 +3021,7 @@ dependencies = [
  "lzma-rs",
  "md5",
  "native-tls",
+ "num-format",
  "parking_lot",
  "png",
  "rand",
@@ -3046,8 +3057,8 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.9.3"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#9fce8faf233193b220b943ea5b92dd19d2311629"
+version = "0.10.1"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3069,7 +3080,7 @@ dependencies = [
 [[package]]
 name = "tataku-proc-macros"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#9fce8faf233193b220b943ea5b92dd19d2311629"
+source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -11,65 +11,32 @@ pub use score_submit_helper::*;
 
 
 /// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_number<T:Display>(num:T) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
+pub fn format_number(num: impl num_format::ToFormattedStr) -> String {
+    use num_format::{Buffer, Locale};
+    let mut buf = Buffer::default();
+    buf.write_formatted(&num, &Locale::en);
 
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
-
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
-
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        new_new += &format!(".{}", dec);
-    }
-    new_new.trim_start_matches(",").to_owned()
+    buf.as_str().to_owned()
 }
 
-/// format a number into a locale string ie 1000000 -> 1,000,000
-pub fn format_float<T:Display>(num:T, precis: usize) -> String {
-    let str = format!("{}", num);
-    let mut split = str.split(".");
-    let num = split.next().unwrap();
-    let dec = split.next();
+/// format a float into a locale string ie 1000.1 -> 1,000.100
+pub fn format_float(num: impl ToString, precis: usize) -> String {
+    let num = num.to_string();
+    let mut split = num.split(".");
+    let Some(num) = split.next().and_then(|a|a.parse::<i64>().ok()).map(format_number) else { return String::new() };
 
-    // split num into 3s
-    let mut new_str = String::new();
-    let offset = num.len() % 3;
+    let Some(dec) = split.next() else {
+        return format!("{num}.{}", "0".repeat(precis));
+    };
 
-    num.char_indices().rev().for_each(|(pos, char)| {
-        new_str.push(char);
-        if pos % 3 == offset {
-            new_str.push(',');
-        }
-    });
+    let dec = if dec.len() > precis {
+        dec.split_at(precis).0.to_owned()
+    } else {
+        format!("{dec:0precis$}")
+    };
 
-    let mut new_new = String::with_capacity(new_str.len());
-    new_new.extend(new_str.chars().rev());
-    if let Some(dec) = dec {
-        let dec = if dec.len() < precis {
-            format!("{}{}", dec, "0".repeat(precis - dec.len()))
-        } else {
-            dec.split_at(precis.min(dec.len())).0.to_owned()
-        };
-        new_new += &format!(".{}", dec);
-    } else if precis > 0 {
-        new_new += & format!(".{}", "0".repeat(precis))
-    }
-    new_new.trim_start_matches(",").to_owned()
+    format!("{num}.{dec}")
 }
-
-
 
 pub fn visibility_bg(pos:Vector2, size:Vector2) -> impl TatakuRenderable {
     Rectangle::new(
