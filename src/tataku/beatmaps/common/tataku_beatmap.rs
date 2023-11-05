@@ -9,9 +9,11 @@ pub trait TatakuBeatmap:Send+Sync {
 
     fn playmode(&self, incoming:String) -> String;
 
-    fn slider_velocity_at(&self, time:f32) -> f32;
-    fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32;
-    fn control_point_at(&self, time:f32) -> TimingPoint;
+    fn slider_velocity(&self) -> f32 { 1.0 }
+    
+    // fn slider_velocity_at(&self, time:f32) -> f32;
+    // fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32;
+    // fn control_point_at(&self, time:f32) -> TimingPoint;
 
     fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
 

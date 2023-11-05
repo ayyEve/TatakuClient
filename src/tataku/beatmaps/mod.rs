@@ -3,12 +3,14 @@ use crate::prelude::*;
 mod common;
 
 mod osu;
+mod tja;
 mod quaver;
 mod adofai;
 mod ptyping;
 mod u_typing;
 mod stepmania;
 
+pub use tja::*;
 pub use osu::*;
 pub use common::*;
 pub use quaver::*;
@@ -17,8 +19,22 @@ pub use ptyping::*;
 pub use u_typing::*;
 pub use stepmania::*;
 
+pub const AVAILABLE_MAP_EXTENSIONS: &[&str] = &[
+    ".osu", // osu
+    ".qua", // quaver
+    ".adofai", // a dance of fire and ice
+    ".ssc", // step mania
+    ".sm", // also step mania
+    ".tja", // tja
+
+    "info.txt", // utyping
+    "song", // ptyping
+];
+
+#[derive(Default)]
 pub enum Beatmap {
     /// used for defaults
+    #[default]
     None,
     /// osu file
     Osu(Box<osu::OsuBeatmap>),
@@ -30,7 +46,9 @@ pub enum Beatmap {
     UTyping(Box<u_typing::UTypingBeatmap>),
     /// uTyping beatmap
     PTyping(Box<ptyping::PTypingBeatmap>),
-
+    /// Tja beatmap
+    Tja(Box<tja::TjaBeatmap>),
+    /// Stepmania beatmap
     Stepmania(Box<stepmania::StepmaniaBeatmap>),
 }
 impl Beatmap {
@@ -52,6 +70,7 @@ impl Beatmap {
             "adofai" => Ok(vec![Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))]),
             "txt" => Ok(vec![Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path)?))]),
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Stepmania(Box::new(b))).collect()),
+            "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|Beatmap::Tja(Box::new(b))).collect()),
 
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -73,6 +92,7 @@ impl Beatmap {
             "adofai" => Ok(Beatmap::Adofai(Box::new(adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned())))),
             "txt" => Ok(Beatmap::UTyping(Box::new(u_typing::UTypingBeatmap::load(path.to_str().unwrap().to_owned())?))),
             "ssc" | "sm" => Ok(Beatmap::Stepmania(Box::new(stepmania::StepmaniaBeatmap::load_single(path, meta)?))),
+            "tja" => Ok(Beatmap::Tja(Box::new(tja::TjaBeatmap::load_single(path, meta)?))),
             
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -96,6 +116,7 @@ impl Beatmap {
             "adofai" => Ok(vec![adofai::AdofaiBeatmap::load(path.to_str().unwrap().to_owned()).get_beatmap_meta()]),
             "txt" => Ok(vec![u_typing::UTypingBeatmap::load(path)?.get_beatmap_meta()]),
             "ssc" | "sm" => Ok(stepmania::StepmaniaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
+            "tja" => Ok(tja::TjaBeatmap::load_multiple(path)?.into_iter().map(|b|b.get_beatmap_meta()).collect()),
 
             _ => Err(TatakuError::Beatmap(BeatmapError::InvalidFile)),
         }
@@ -104,9 +125,6 @@ impl Beatmap {
     pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         Self::load_single(&meta.file_path, meta)
     }
-}
-impl Default for Beatmap {
-    fn default() -> Self { Beatmap::None }
 }
 
 impl Deref for Beatmap {
@@ -121,6 +139,7 @@ impl Deref for Beatmap {
             Beatmap::UTyping(map) => &**map,
             Beatmap::PTyping(map) => &**map,
             Beatmap::Stepmania(map) => &**map,
+            Beatmap::Tja(map) => &**map,
         }
     }
 }

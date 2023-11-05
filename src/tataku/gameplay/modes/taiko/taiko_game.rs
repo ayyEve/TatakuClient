@@ -238,6 +238,8 @@ impl GameMode for TaikoGame {
             hit_cache.insert(i, -999.9);
         }
 
+        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+
         let mut s = Self {
             notes: TaikoNoteQueue::new(),
             other_notes: TaikoNoteQueue::new(),
@@ -287,12 +289,12 @@ impl GameMode for TaikoGame {
 
                     let l = (length * 1.4) * slides as f32;
                     let v2 = 100.0 * (beatmap.slider_multiplier * 1.4);
-                    let bl = beatmap.beat_length_at(time, true);
+                    let bl = timing_points.beat_length_at(time, true);
                     let end_time = time + (l / v2 * bl);
                     
                     // convert vars
-                    let v = beatmap.slider_velocity_at(time);
-                    let bl = beatmap.beat_length_at(time, beatmap.beatmap_version < 8);
+                    let v = timing_points.slider_velocity_at(time);
+                    let bl = timing_points.beat_length_at(time, beatmap.beatmap_version < 8);
                     let skip_period = (bl / beatmap.slider_tick_rate).min((end_time - time) / slides as f32);
 
                     if skip_period > 0.0 && beatmap.metadata.mode != "taiko" && l / v * 1000.0 < 2.0 * bl {
@@ -354,6 +356,37 @@ impl GameMode for TaikoGame {
                 }
             }
 
+            Beatmap::Tja(beatmap) => {
+                for note in beatmap.circles.iter() {
+                    s.notes.push(Box::new(TaikoNote::new(
+                        note.time,
+                        if note.is_don {HitType::Don} else {HitType::Kat},
+                        note.is_big,
+                        settings.clone(),
+                        playfield.clone(),
+                    ).await));
+                }
+
+                for drumroll in beatmap.drumrolls.iter() {
+                    s.other_notes.push(Box::new(TaikoDrumroll::new(
+                        drumroll.time, 
+                        drumroll.end_time, 
+                        drumroll.is_big, 
+                        settings.clone(),
+                        playfield.clone(),
+                    ).await));
+                }
+
+                for balloon in beatmap.balloons.iter() {
+                    s.other_notes.push(Box::new(TaikoSpinner::new(
+                        balloon.time,
+                        balloon.end_time, 
+                        balloon.hits_required as u16, 
+                        settings.clone(),
+                        playfield.clone(),
+                    ).await));
+                }
+            }
             _ => return Err(BeatmapError::UnsupportedMode.into()),
         };
 
@@ -718,6 +751,8 @@ impl GameMode for TaikoGame {
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {
+        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
             
@@ -728,7 +763,7 @@ impl GameMode for TaikoGame {
                 if self.current_mods.has_mod(NoSV) {
                     note.set_sv(self.taiko_settings.sv_multiplier);
                 } else {
-                    let sv = (beatmap.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
+                    let sv = (timing_points.slider_velocity_at(note.time()) / SV_FACTOR) * self.taiko_settings.sv_multiplier;
                     note.set_sv(sv);
                 }
             }
@@ -739,20 +774,19 @@ impl GameMode for TaikoGame {
 
         // setup timing bars
         if self.timing_bars.len() == 0 {
-            let tps = beatmap.get_timing_points();
             // load timing bars
-            let parent_tps = tps.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
+            let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv = self.taiko_settings.sv_multiplier;
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
-            let step = beatmap.beat_length_at(time, false);
+            let step = timing_points.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             loop {
-                if !self.current_mods.has_mod(NoSV) {sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
+                if !self.current_mods.has_mod(NoSV) {sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) * self.taiko_settings.sv_multiplier}
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
+                let next_bar_time = timing_points.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 { break; }

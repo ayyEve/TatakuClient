@@ -5,6 +5,7 @@ pub struct TimingPointHelper {
     timing_point_index: usize,
     control_point_index: usize,
     timing_points: Vec<TimingPoint>,
+    pub slider_velocity_base: f32,
 
     next_beat: f32,
 }
@@ -15,7 +16,7 @@ impl TimingPointHelper {
 
     fn indexed(&self, index: usize) -> &TimingPoint { &self.timing_points[index % self.timing_points.len()] }
 
-    pub fn new(mut timing_points: Vec<TimingPoint>) -> Self {
+    pub fn new(mut timing_points: Vec<TimingPoint>, slider_velocity: f32) -> Self {
         // make sure timing_points are sorted
         timing_points.sort_by(|t,t2|t.time.partial_cmp(&t2.time).unwrap_or(core::cmp::Ordering::Equal));
         let (control_point_index, control_point) = timing_points.iter().enumerate().find(|(_,t)|!t.is_inherited()).unwrap();
@@ -24,6 +25,7 @@ impl TimingPointHelper {
             timing_point_index: 0,
             control_point_index,
             next_beat: control_point.time,
+            slider_velocity_base: slider_velocity,
 
             timing_points,
         }
@@ -73,6 +75,63 @@ impl TimingPointHelper {
         }
 
         tp
+    }
+
+
+
+    // moved here from the beatmap object because its annoying having things in multiple places
+    pub fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
+        if self.timing_points.len() == 0 { return 0.0 }
+
+        // this isnt always a control point, need to find the first non-inherited point
+        let mut point = self.timing_points.iter().find(|t|!t.is_inherited());
+        let mut inherited_point = None;
+
+        for tp in self.timing_points.iter() {
+            if tp.time <= time {
+                if tp.is_inherited() {
+                    inherited_point = Some(tp);
+                } else {
+                    point = Some(tp);
+                }
+            }
+        }
+
+        let mut mult = 1.0;
+        let Some(p) = point else { return 0.0 };
+
+        if let Some(ip) = inherited_point.filter(|_| allow_multiplier) {
+            if p.time <= ip.time && ip.beat_length < 0.0 {
+                mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
+            }
+        }
+
+        p.beat_length * mult
+    }
+    pub fn slider_velocity_at(&self, time:f32) -> f32 {
+        let bl = self.beat_length_at(time, true);
+        100.0 * (self.slider_velocity_base * 1.4) * if bl > 0.0 {1000.0 / bl} else {1.0}
+    }
+    pub fn control_point_at(&self, time:f32) -> TimingPoint {
+        // panic as this should be dealt with earlier in the code
+        if self.timing_points.len() == 0 { panic!("beatmap has no timing points!"); }
+
+        let mut point = self.timing_points[0];
+        for tp in self.timing_points.iter() {
+            if tp.time <= time {point = *tp}
+        }
+
+        point.into()
+    }
+
+
+}
+
+impl Deref for TimingPointHelper {
+    type Target = Vec<TimingPoint>;
+    
+    fn deref(&self) -> &Self::Target {
+        &self.timing_points
     }
 }
 

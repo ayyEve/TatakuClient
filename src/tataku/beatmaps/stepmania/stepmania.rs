@@ -287,7 +287,9 @@ impl StepmaniaBeatmap {
 impl TatakuBeatmap for StepmaniaBeatmap {
     fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"mania".to_owned()}
-    fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
+    
+    fn slider_velocity(&self) -> f32 { 1.0 }
+    // fn slider_velocity_at(&self, _time:f32) -> f32 { 400.0 }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
         self.beat_lengths.iter().map(|&(time, beat_length)| {
@@ -329,28 +331,6 @@ impl TatakuBeatmap for StepmaniaBeatmap {
         })
     }
 
-
-    fn beat_length_at(&self, time:f32, _allow_multiplier:bool) -> f32 {
-        for (mut i, &(beat_time, _)) in self.beat_lengths.iter().enumerate() {
-            if beat_time >= time {
-                if i == 0 {i += 1}
-                return self.beat_lengths[i - 1].1
-            }
-        }
-        
-        0.0
-    }
-
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        let points = self.get_timing_points();
-        for (mut i, point) in points.iter().enumerate() {
-            if point.time >= time {
-                if i == 0 {i += 1}
-                return points[i - 1].clone()
-            }
-        }
-        points.last().unwrap().clone()
-    }
 }
 
 

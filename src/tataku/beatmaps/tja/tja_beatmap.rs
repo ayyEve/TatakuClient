@@ -1,520 +1,199 @@
 use crate::prelude::*;
 
+/// this is technically a single course
+#[derive(Default, Debug)]
+pub struct TjaBeatmap {
+    pub hash: Md5Hash,
+    pub filename: String,
+    pub directory: String,
 
-fn get_note_type(c: char) -> NoteType {
-    todo!();
-    // match c {
+    pub title: String,
+    pub title_unicode: String,
 
-    // }
-}
-
-#[derive(Default)]
-pub struct TJABeatmap {
-    title: String,
     /// generally artist
-    subtitle: String,
-    bpm: f32,
-    wave: String,
-    offset: f32,
-    demostart: f32,
+    pub subtitle: String,
+    pub subtitle_unicode: String,
 
-    branches: Vec<BranchObject>,
-    measures: Vec<Measure>,
-    circles: Vec<Circle>
+    pub bpm: f32,
+    pub offset: f32,
+    pub audio_path: String,
+    pub image_path: String,
+
+    // pub offset: f32,
+    pub preview_time: f32,
+
+
+    pub course_name: String,
+    pub course_level: u8,
+    pub course_creator: String,
+
+    pub course_events: Vec<TjaCourseEvent>,
+
+    pub branches: Vec<TjaBranchGroup>,
+    pub circles: Vec<TjaCircle>,
+    pub drumrolls: Vec<TjaDrumroll>,
+    pub balloons: Vec<TjaBalloon>,
 }
-impl TJABeatmap {
-    pub fn parse(path: String) -> TatakuResult<Self> {
-        if let Ok(file) = String::from_utf8(Io::read_file(path)?) {
-            let lines = file.split("\n").map(|l|l.trim());
 
-            let mut s = Self::default();
-
-            let mut in_song = false;
-            let mut courses:HashMap<String, Course> = HashMap::new();
-
-            let mut current_course_name = "oni".to_owned();
-
-            // so many vars
-            let mut bpm = 120.0;
-            let mut gogo = false; // kiai
-            let mut scroll = 1.0; // scroll speed
-            let mut measure = 4.0;
-            let mut ms = 0f32; // current time in the current map
-            let mut bar_lines = true;
-            let mut section_begin = true;
-
-            let mut last_bpm = bpm;
-            let mut last_gogo = gogo;
-
-            let mut branch = false;
-            let mut current_branch = None;
-            let mut branch_first_measure = false;
-            let mut branch_settings = BranchSettings::default();
-            let mut branch_obj = BranchObject::default();
-
-            let mut lyrics_line = String::new();
-
-            let mut last_drumroll:Option<EndDrumroll> = None;
-            let mut balloon_id = 0;
-
-            let mut current_measure:Vec<Measure> = Vec::new();
-
-            macro_rules! insert_empty_note {
-                () => {
-
-                    todo!()
-                }
-            }
-
-            macro_rules! insert_note {
-                ($c: ident) => {
-
-                    todo!()
-                }
-            }
-
-            macro_rules! push_measure {
-                () => {
-
-                    todo!()
-                }
-            }
+impl TjaBeatmap {
+    pub fn load_multiple(path: impl AsRef<Path>) -> TatakuResult<Vec<Self>> {
+        let path = path.as_ref();
 
 
-
-            for (_i, line) in lines.enumerate() {
-                // trim out comments
-                let line = line.split("//").next().unwrap_or("").trim();
-                if line.is_empty() {continue}
-
-                if line.starts_with("#") { // meta
-                    let mut split = line.split(" ");
-                    let property = split.next().unwrap();
-                    let value = split.next().unwrap_or("");
-
-                    match &*property {
-                        "#start" if !in_song => {
-                            in_song = true;
-                        }
-                        "#end" if in_song => {
-                            in_song = false;
-                        }
-                        "#lyric" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.branch = true;
-                            }
-                            lyrics_line = value.replace("\\n", "\n").to_owned();
-                        }
-
-                        // note things
-                        "#gogostart" => gogo = true,
-                        "#gogoend" => gogo = false,
-                        "#bpmchange" => bpm = value.parse().unwrap_or(bpm),
-                        "#scroll" => scroll = value.parse().unwrap_or(scroll),
-                        "#measure" => {
-                            let mut split2 = value.split("/");
-                            let (numerator, denominator):(i32,i32) = match split2.next().zip(split2.next()).and_then(|f|f.0.parse().ok().zip(f.1.parse().ok())) {
-                                Some(s) => s,
-                                None => continue
-                            };
-                            measure = (numerator as f32 / denominator as f32) * 4.0;
-                        }
-
-                        "#delay" => ms += value.parse::<f32>().unwrap_or_default() * 1000.0,
-                        "#barlineon" => bar_lines = true,
-                        "#barlineoff" => bar_lines = false,
-
-                        "#branchstart" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.branch = true;
-                            }
-
-                            branch = true;
-                            current_branch = None;
-                            branch_first_measure = true;
-
-                            branch_settings = BranchSettings {
-                                ms,
-                                gogo,
-                                bpm,
-                                scroll,
-                                section_begin
-                            };
-
-                            let mut val_split = value.split(",");
-
-                            let requirement = BranchRequirement {
-                                advanced: val_split.next().unwrap_or("0").parse().unwrap_or_default(),
-                                master: val_split.next().unwrap_or("0").parse().unwrap_or_default(),
-                            };
-
-                            let requirement_active = match (requirement.advanced > 0.0, requirement.master > 0.0) {
-                                (true, true) => RequirementActive::Normal,
-                                (false, true) => RequirementActive::Advanced,
-                                _ => RequirementActive::Master,
-                            };
-
-                            branch_obj = BranchObject {
-                                ms,
-                                original_ms: ms,
-                                requirement_active,
-                                requirement_type: if value.chars().next().unwrap_or('a') == 'r' {RequirementType::Drumroll} else {RequirementType::Accuracy},
-                                requirement,
-                                branches: HashMap::new()
-                            };
-                            s.branches.push(branch_obj.clone());
-
-                            if s.measures.len() == 1 && branch_obj.requirement_type == RequirementType::Drumroll {
-                                for circle in s.circles.iter() {
-                                    if let (Some(end_time), NoteType::Balloon|NoteType::Drumroll|NoteType::DaiDrumroll) = (circle.end_time, circle.note_type) {
-                                        s.measures.push(Measure { 
-                                            ms: end_time, 
-                                            original_ms: end_time, 
-                                            speed: circle.bpm * circle.scroll / 60.0, 
-                                            visible: false, 
-                                            branch: circle.branch.clone(),
-                                            next_branch: None
-                                        });
-                                        break
-                                    }
-                                }
-                            }
-                            if s.measures.len() > 0 {
-                                s.measures.iter_mut().last().unwrap().next_branch = Some(branch_obj.clone());
-                            }
-                        }
-
-                        "#branchend" => {
-                            branch = false;
-                            current_branch = None;
-                        }
-
-                        "#section" => {
-                            section_begin = true;
-                            if branch && current_branch.is_none() {
-                                branch_settings.section_begin = true;
-                            }
-                        }
-
-                        "#n" | "#e" | "#m" if branch => {
-                            ms = branch_settings.ms;
-                            gogo = branch_settings.gogo;
-                            bpm = branch_settings.bpm;
-                            scroll = branch_settings.scroll;
-                            section_begin = branch_settings.section_begin;
-                            branch_first_measure = true;
-
-                            let branch_name = match &*property {
-                                "#n" => "normal",
-                                "#e" => "advanced",
-                                "#m" => "master",
-                                _ => ""
-                            };
-
-                            current_branch = Some(Branch {
-                                name: branch_name.to_owned(),
-                                active: branch_name == branch_obj.requirement_active.as_str()
-                            });
-                            branch_obj.branches.insert(branch_name.to_owned(), current_branch.clone().unwrap());
-                        }
-
-                        _ => {}
-                    }
-                } else if line.contains(":") { // properties
-                    let mut split = line.split(":");
-                    let property = split.next().unwrap();
-                    let value = split.next().unwrap_or("");
-                    if value.is_empty() {continue};
-
-                    match &*property.to_lowercase() {
-                        "title" => s.title = value.to_owned(),
-                        "subtitle" => s.subtitle = value.to_owned(),
-                        "bpm" => {
-                            s.bpm = value.parse().unwrap_or_default();
-                            bpm = s.bpm;
-                        },
-                        "wave" => s.wave = value.to_owned(),
-                        "offset" => s.offset = value.parse().unwrap_or_default(),
-                        "demostart" => s.demostart = value.parse().unwrap_or_default(),
-
-                        // current course properties
-                        "course" => {
-                            current_course_name = value.to_owned();
-                            // new course, insert it
-                            courses.insert(current_course_name.clone(), Course::default());
-                        },
-                        "level" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.level = value.parse().unwrap_or_default();
-                            }
-                        }
-                        "balloon" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.balloon = value.split(",").map(|f|f.parse().unwrap_or(0)).collect();
-                            }
-                        }
-                        "scoreinit" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.score_init = value.parse().unwrap_or_default();
-                            }
-                        }
-                        "scorediff" => {
-                            if let Some(course) = courses.get_mut(&current_course_name) {
-                                course.score_diff = value.parse().unwrap_or_default();
-                            }
-                        }
-
-                        _ => {}
-                    }
-                } else { // notes
-                    
-                    for symbol in line.to_uppercase().chars() {
-                        let mut error = false;
-
-                        match symbol {
-                            '0' => insert_empty_note!(),
-                            
-                            '1'|'2'|'3'|'4'|'A'|'B' => {
-                                let t = get_note_type(symbol);
-                                let mut circle_obj = Circle {
-                                    note_type: t,
-                                    gogo, 
-                                    bpm,
-                                    scroll,
-                                    section: section_begin,
-                                    ..Circle::default()
-                                };
-                                section_begin = false;
-
-                                if last_drumroll.is_some() {
-                                    circle_obj.end_drumroll = std::mem::take(&mut last_drumroll)
-                                }
-                                insert_note!(circle_obj);
-                            }
-
-                            '5'|'6'|'7'|'9' => {
-                                let t = get_note_type(symbol);
-                                
-                                let mut circle_obj = Circle {
-                                    note_type: t,
-                                    gogo, 
-                                    bpm,
-                                    scroll,
-                                    section: section_begin,
-                                    ..Circle::default()
-                                };
-                                section_begin = false;
-
-                                if last_drumroll.is_some() {
-                                    if symbol == '9' {
-                                        let c = Circle {
-                                            end_drumroll: std::mem::take(&mut last_drumroll),
-                                            gogo, 
-                                            bpm,
-                                            scroll,
-                                            section: section_begin,
-
-                                            ..Circle::default()
-                                        };
-                                        insert_note!(c);
-                                    } else {
-                                        insert_empty_note!()
-                                    }
-                                }
-
-                                if symbol == '7' || symbol == '9' {
-                                    let hits = *courses[&current_course_name].balloon.get(balloon_id).unwrap_or(&1);
-                                    circle_obj.required_hits = Some(hits);
-                                    balloon_id += 1;
-                                }
-                                last_drumroll = Some(circle_to_end_drumroll(&circle_obj));
-                                insert_note!(circle_obj);
-                            }
-                            '8' => {
-                                if last_drumroll.is_some() {
-                                    let c = Circle {
-                                        end_drumroll: std::mem::take(&mut last_drumroll),
-                                        gogo, 
-                                        bpm,
-                                        scroll,
-                                        section: section_begin,
-
-                                        ..Circle::default()
-                                    };
-                                    insert_note!(c);
-                                    section_begin = false;
-                                    insert_empty_note!();
-                                }
-                            }
-
-                            ',' => {
-                                if current_measure.len() == 0 && (bpm != last_bpm || gogo != last_gogo || !lyrics_line.is_empty()) {
-                                    insert_empty_note!();
-                                }
-                                push_measure!();
-                                current_measure.clear();
-                            }
-
-                            'A'..='Z' => {
-                                insert_empty_note!()
-                            }
-                            _ => {
-                                // cry
-                            }
-                        }
-                    }
-
-
-                }
-            }
-
-            push_measure!();
-            if let Some(ldr) = &mut last_drumroll {
-                ldr.end_time = ms;
-                ldr.original_end_time = ms;
-            }
-
-            Ok(s)
-        } else {
-            Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
+        let mut data = std::fs::read(path)?;
+        // if theres random useless bom data, remove it
+        if &data[0..3] == &[0xEF, 0xBB, 0xBF] {
+            data = data[3..].to_vec();
         }
+
+        let lines = String::from_utf8(data).map_err(|_|BeatmapError::InvalidFile)?;
+        let lines = lines.lines();
+
+        let filename = path.to_string_lossy().to_string();
+        let parent = path.parent().unwrap().to_string_lossy().to_string();
+
+        let mut maps = super::tja_parser::TjaParser::default().parse(lines)?;
+        maps.iter_mut().for_each(|map| {
+            map.directory = parent.clone();
+            map.filename = filename.clone();
+        });
+
+        Ok(maps)
     }
-}
 
-#[derive(Clone, Debug, Default)]
-pub struct Course {
-    course: String,
-    level: u8,
+    pub fn load_single(path: impl AsRef<Path>, meta: &BeatmapMeta) -> TatakuResult<Self> {
+        let maps = Self::load_multiple(path)?;
 
-    balloon: Vec<usize>,
-    score_init: usize,
-    score_diff: usize,
-
-    branch: bool,
-    lyric: bool
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct Branch {
-    name: String,
-    active: bool,
-}
-
-#[derive(Copy, Clone, Default)]
-struct BranchSettings {
-    ms: f32,
-    gogo: bool,
-    bpm: f32,
-    scroll: f32,
-    section_begin: bool
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct BranchObject {
-    ms: f32,
-    original_ms: f32,
-    // diff name of this branch (?)
-    requirement_active: RequirementActive,
-    // idk lol
-    requirement_type: RequirementType,
-    requirement: BranchRequirement,
-
-    branches: HashMap<String, Branch>
-}
-#[derive(Clone, Debug, Default)]
-pub struct BranchRequirement {
-    advanced: f32,
-    master: f32,
-}
-
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum RequirementActive {
-    Normal,
-    Advanced,
-    Master,
-}
-impl RequirementActive {
-    fn as_str(&self) -> &'static str {
-        match self {
-            RequirementActive::Normal => "normal",
-            RequirementActive::Advanced => "advanced",
-            RequirementActive::Master => "master",
+        for map in maps {
+            if map.hash == meta.beatmap_hash {
+                return Ok(map)
+            }
         }
+
+        Err(BeatmapError::NotFoundInSet.into())
     }
-}
-impl Default for RequirementActive {
-    fn default() -> Self {Self::Normal}
+
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum RequirementType {
-    Drumroll,
-    Accuracy,
-}
-impl Default for RequirementType {
-    fn default() -> Self {Self::Drumroll}
-}
+impl TatakuBeatmap for TjaBeatmap {
+    fn hash(&self) -> Md5Hash { self.hash }
+    fn playmode(&self, _incoming:String) -> String { "taiko".to_owned() }
 
-#[derive(Clone, Debug, Default)]
-pub struct Measure {
-    ms: f32,
-    original_ms: f32,
-    speed: f32,
-    visible: bool,
-    branch: Option<BranchObject>,
-    next_branch: Option<BranchObject>,
-}
+    fn get_timing_points(&self) -> Vec<TimingPoint> {
+        let mut timing_points = Vec::new();
 
-#[derive(Clone, Debug, Default)]
-pub struct Circle {
-    note_type: NoteType,
-    // txt: String,
-    gogo: bool,
-    bpm: f32,
-    scroll: f32,
-    section: bool,
-    branch: Option<BranchObject>,
+        let mut timing_point = TimingPoint {
+            time: self.offset,
+            beat_length: 60_000.0 / self.bpm,
+            ..Default::default()
+        };
+        timing_points.push(timing_point);
+        let mut last_scroll = -100.0;
 
-    end_time: Option<f32>,
+        for event in self.course_events.iter() {
+            match event.event {
+                TjaCourseEventType::Bpm(bpm) => {
+                    last_scroll = -100.0;
+                    timing_point.beat_length = 60_000.0 / bpm;
+                    timing_points.push(timing_point);
+                }
+                TjaCourseEventType::Kiai(kiai) => {
+                    timing_point.beat_length = last_scroll;
+                    timing_point.kiai = kiai;
+                    timing_points.push(timing_point);
+                }
+                TjaCourseEventType::Scroll(scroll) => {
+                    last_scroll = -scroll * 100.0;
+                    timing_point.beat_length = last_scroll;
+                    timing_points.push(timing_point);
+                }
 
-    end_drumroll: Option<EndDrumroll>,
-    required_hits: Option<usize>
-}
+                _ => {}
+            }
+        }
 
-#[derive(Clone, Debug)]
-pub struct EndDrumroll {
-    note_type: NoteType,
-    // txt: String,
-    gogo: bool,
-    bpm: f32,
-    scroll: f32,
-    section: bool,
-}
-
-fn circle_to_end_drumroll(circle: &Circle) -> EndDrumroll {
-    EndDrumroll {
-        note_type: circle.note_type,
-        // txt: String,
-        gogo: circle.gogo,
-        bpm: circle.bpm,
-        scroll: circle.scroll,
-        section: circle.section,
+        timing_points
     }
+    fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
+        let start = [
+            self.circles.first().map(|b|b.time).unwrap_or(999999.9) as i32,
+            self.drumrolls.first().map(|b|b.time).unwrap_or(999999.9) as i32,
+            self.balloons.first().map(|b|b.time).unwrap_or(999999.9) as i32,
+        ].iter().min().map(|i|*i).unwrap_or(0) as f32;
+
+        let end = [
+            self.circles.last().map(|b|b.time).unwrap_or_default() as i32,
+            self.drumrolls.last().map(|b|b.end_time).unwrap_or_default() as i32,
+            self.balloons.last().map(|b|b.end_time).unwrap_or_default() as i32,
+        ].iter().max().map(|i|*i).unwrap_or(0) as f32;
+        let duration = end - start;
+
+        let timing_points = self.get_timing_points();
+        let mut bl_min:f32 = 99999.0;
+        let mut bl_max:f32 = 0.0;
+        for tp in timing_points.iter().filter(|i|i.beat_length > 0.0) {
+            bl_min = bl_min.min(tp.beat_length);
+            bl_max = bl_max.max(tp.beat_length);
+        }
+
+        Arc::new(BeatmapMeta { 
+            file_path: self.filename.clone(), 
+            beatmap_hash: self.hash, 
+            beatmap_type: BeatmapType::Tja, 
+            mode: "taiko".to_owned(), 
+            artist: self.subtitle.clone(), 
+            title: self.title.clone(), 
+            artist_unicode: self.subtitle_unicode.clone(), 
+            title_unicode: self.title_unicode.clone(), 
+            creator: self.course_creator.clone(), 
+            version: self.course_name.clone(), 
+            audio_filename: format!("{}/{}", self.directory, self.audio_path), 
+            image_filename: format!("{}/{}", self.directory, self.image_path), 
+            audio_preview: self.preview_time, 
+            duration, 
+            bpm_min: 60_000.0 / bl_min, 
+            bpm_max: 60_000.0 / bl_max,
+
+            ..Default::default()
+        })
+    }
+
+
+    fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
 }
 
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum NoteType {
-    None , //= "0",
-    Don , //= "1",
-    Ka , //= "2",
-    DaiDon , //= "3",
-    DaiKa , //= "4",
-    Drumroll , //= "5",
-    DaiDrumroll , //= "6",
-    Balloon , //= "7",
+#[derive(Copy, Clone, Debug)]
+pub struct TjaCourseEvent {
+    pub time: f32,
+    pub event: TjaCourseEventType,
 }
-impl Default for NoteType {
-    fn default() -> Self {Self::None}
+
+#[derive(Copy, Clone, Debug)]
+pub enum TjaCourseEventType {
+    /// bpm changed
+    Bpm(f32),
+    /// scroll changed
+    Scroll(f32),
+    /// kiai changed
+    Kiai(bool),
+    /// measure changed
+    Measure(u8),
+    /// bar line visibility changed
+    BarLine(bool),
+
+    /// section start
+    Section,
+    /// branch start
+    Branch,
+}
+
+
+
+#[test]
+fn test() {
+    let path = "C:/Users/Eve/Desktop/tja/The Magician/The Magician.tja";
+    
+    let res = TjaBeatmap::load_multiple(path);
+    println!("{res:?}");
 }

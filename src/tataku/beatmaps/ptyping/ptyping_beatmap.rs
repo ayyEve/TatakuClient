@@ -73,7 +73,17 @@ impl TatakuBeatmap for PTypingBeatmap {
     fn playmode(&self, _incoming:String) -> String { "utyping".to_owned() }
 
     fn get_timing_points(&self) -> Vec<TimingPoint> {
-        vec![self.control_point_at(0.0)]
+        let point = self.def.timing_points.first().unwrap();
+        vec![TimingPoint {
+            time: point.time as f32,
+            beat_length: point.tempo as f32,
+            volume: 100,
+            meter: point.time_signature as u8,
+            kiai: false,
+            skip_first_barline: false,
+            sample_set: 0,
+            sample_index: 0,
+        }]
     }
 
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
@@ -105,26 +115,6 @@ impl TatakuBeatmap for PTypingBeatmap {
             bpm_min: bpm, 
             bpm_max: bpm, 
         })
-    }
-
-    fn slider_velocity_at(&self, _time:f32) -> f32 { 0.0 }
-
-    fn beat_length_at(&self, time:f32, _allow_multiplier:bool) -> f32 {
-        self.control_point_at(time).beat_length
-    }
-
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        let point = self.def.timing_points.iter().find(|tp|tp.time >= time as f64).unwrap_or_else(||self.def.timing_points.first().unwrap());
-        TimingPoint {
-            time: point.time as f32,
-            beat_length: point.tempo as f32,
-            volume: 100,
-            meter: point.time_signature as u8,
-            kiai: false,
-            skip_first_barline: false,
-            sample_set: 0,
-            sample_index: 0,
-        }
     }
 }
 

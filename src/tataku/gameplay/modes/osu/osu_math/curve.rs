@@ -34,21 +34,17 @@ pub struct Curve {
 }
 #[allow(dead_code)]
 impl Curve {
-    fn new(slider: SliderDef, path: Vec<CurveSegment>, beatmap: &Beatmap) -> Self {
-        let mut slider_multiplier = 1.0;
-        if let Beatmap::Osu(map) = beatmap {
-            slider_multiplier = map.slider_multiplier;
-        }
-
+    fn new(slider: SliderDef, path: Vec<CurveSegment>, timing_points: &TimingPointHelper) -> Self {
+        let slider_multiplier = timing_points.slider_velocity_base;
 
         let l = slider.length * 1.4 * slider.slides as f32;
         let v2 = 100.0 * slider_multiplier * 1.4;
         // let l = slider.length * slider.slides as f32;
         // let v2 = 100.0 * beatmap.metadata.slider_multiplier;
-        let bl = beatmap.beat_length_at(slider.time, true);
+        let bl = timing_points.beat_length_at(slider.time, true);
         let end_time = slider.time + (l / v2 * bl) - 1.0;
 
-        let velocity = beatmap.slider_velocity_at(slider.time);
+        let velocity = timing_points.slider_velocity_at(slider.time);
         Self {
             segments: path,
             slider,
@@ -156,7 +152,7 @@ impl CurveSegment {
 
 
 
-pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
+pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap, timing_points: &TimingPointHelper) -> Curve {
     let mut points = slider.curve_points.clone();
     points.insert(0, slider.pos);
 
@@ -236,13 +232,13 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
             if points.len() < 3 {
                 let mut slider = slider.clone();
                 slider.curve_type = CurveType::Linear;
-                return get_curve(&slider, beatmap);
+                return get_curve(&slider, beatmap, timing_points);
             }
             // more than 3 -> ignore them.
             if points.len() > 3 {
                 let mut slider = slider.clone();
                 slider.curve_type = CurveType::Bézier;
-                return get_curve(&slider, beatmap);
+                return get_curve(&slider, beatmap, timing_points);
             }
             let a = points[0];
             let b = points[1];
@@ -252,7 +248,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
             if is_straight_line(a,b,c) {
                 let mut slider = slider.clone();
                 slider.curve_type = CurveType::Linear;
-                return get_curve(&slider, beatmap);
+                return get_curve(&slider, beatmap, timing_points);
             }
 
             let (center, radius, t_initial, t_final) = circle_through_points(a,b,c);
@@ -300,7 +296,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
     }
 
 
-    let mut curve = Curve::new(slider.clone(), path, beatmap);
+    let mut curve = Curve::new(slider.clone(), path, timing_points);
 
     let path_count = curve.segments.len();
     let mut total = 0.0;
@@ -319,7 +315,7 @@ pub fn get_curve(slider:&SliderDef, beatmap: &Beatmap) -> Curve {
 
     if path_count < 1 {return curve}
 
-    let ms_between_ticks = beatmap.beat_length_at(curve.slider.time, false) / slider_tick_rate;
+    let ms_between_ticks = timing_points.beat_length_at(curve.slider.time, false) / slider_tick_rate;
     let mut t = curve.slider.time + ms_between_ticks;
     while t < curve.end_time {
         curve.score_times.push(t);

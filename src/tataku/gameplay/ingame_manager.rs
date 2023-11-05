@@ -174,7 +174,7 @@ impl IngameManager {
 
         Self {
             metadata,
-            timing_points: TimingPointHelper::new(timing_points),
+            timing_points: TimingPointHelper::new(timing_points, beatmap.slider_velocity()),
             // hitsound_cache,
             current_mods,
             health,

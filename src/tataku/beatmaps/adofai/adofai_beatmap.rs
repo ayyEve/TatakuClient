@@ -164,51 +164,7 @@ impl TatakuBeatmap for AdofaiBeatmap {
         "taiko".to_owned()
     }
 
-    fn slider_velocity_at(&self, time:f32) -> f32 {
-        let bl = self.beat_length_at(time, true);
-        100.0 * 1.4 * if bl > 0.0 {1000.0 / bl} else {1.0}
-    }
-
-    fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
-        if self.timing_points.len() == 0 {return 0.0}
-
-        let mut point: Option<TimingPoint> = Some(self.timing_points.as_slice()[0].clone());
-        let mut inherited_point: Option<TimingPoint> = None;
-
-        for tp in self.timing_points.as_slice() {
-            if tp.time <= time {
-                if tp.is_inherited() {
-                    inherited_point = Some(tp.clone());
-                } else {
-                    point = Some(tp.clone());
-                }
-            }
-        }
-
-        let mut mult = 1.0;
-        let p = point.unwrap();
-
-        if allow_multiplier && inherited_point.is_some() {
-            let ip = inherited_point.unwrap();
-
-            if p.time <= ip.time && ip.beat_length < 0.0 {
-                mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
-            }
-        }
-
-        p.beat_length * mult
-    }
-
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        if self.timing_points.len() == 0 {panic!("beatmap has no timing points!")}
-
-        let mut point = self.timing_points[0];
-        for tp in self.timing_points.iter() {
-            if tp.time <= time {point = *tp}
-        }
-        
-        point
-    }
+    fn slider_velocity(&self) -> f32 { 1.0 }
 }
 
 fn char2beat(c:char) -> f32 {

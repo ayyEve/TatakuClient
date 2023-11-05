@@ -192,10 +192,6 @@ impl TatakuBeatmap for UTypingBeatmap {
     fn hash(&self) -> Md5Hash {self.hash}
     fn playmode(&self, _incoming:String) -> String {"utyping".to_owned()}
 
-    fn get_timing_points(&self) -> Vec<TimingPoint> {
-        vec![self.control_point_at(0.0)]
-    }
-
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta> {
         let bpm = 60_000.0 / self.beat_length;
         Arc::new(BeatmapMeta { 
@@ -222,14 +218,8 @@ impl TatakuBeatmap for UTypingBeatmap {
         })
     }
 
-    fn slider_velocity_at(&self, _time:f32) -> f32 {0.0}
-
-    fn beat_length_at(&self, _time:f32, _allow_multiplier:bool) -> f32 {
-        self.beat_length
-    }
-
-    fn control_point_at(&self, _time:f32) -> TimingPoint {
-        TimingPoint {
+    fn get_timing_points(&self) -> Vec<TimingPoint> {
+        vec![TimingPoint {
             time: self.start_time,
             beat_length: self.beat_length,
             volume: 100,
@@ -238,7 +228,7 @@ impl TatakuBeatmap for UTypingBeatmap {
             skip_first_barline: false,
             sample_set: 0,
             sample_index: 0,
-        }
+        }]
     }
 }
 

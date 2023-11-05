@@ -411,9 +411,9 @@ impl OsuBeatmap {
         b
     }
 
-    pub fn bpm_multiplier_at(&self, time:f32) -> f32 {
-        self.control_point_at(time).bpm_multiplier()
-    }
+    // pub fn bpm_multiplier_at(&self, time:f32) -> f32 {
+    //     self.control_point_at(time).bpm_multiplier()
+    // }
 
 }
 #[async_trait]
@@ -436,50 +436,10 @@ impl TatakuBeatmap for OsuBeatmap {
         }
     }
 
-
-    fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32 {
-        if self.timing_points.len() == 0 { return 0.0 }
-
-        // this isnt always a control point, need to find the first non-inherited point
-        let mut point = self.timing_points.iter().find(|t|!t.is_inherited());
-        let mut inherited_point = None;
-
-        for tp in self.timing_points.iter() {
-            if tp.time <= time {
-                if tp.is_inherited() {
-                    inherited_point = Some(tp);
-                } else {
-                    point = Some(tp);
-                }
-            }
-        }
-
-        let mut mult = 1.0;
-        let Some(p) = point else { return 0.0 };
-
-        if let Some(ip) = inherited_point.filter(|_| allow_multiplier) {
-            if p.time <= ip.time && ip.beat_length < 0.0 {
-                mult = (-ip.beat_length).clamp(10.0, 1000.0) / 100.0;
-            }
-        }
-
-        p.beat_length * mult
+    fn slider_velocity(&self) -> f32 {
+        self.slider_multiplier
     }
-    fn slider_velocity_at(&self, time:f32) -> f32 {
-        let bl = self.beat_length_at(time, true);
-        100.0 * (self.slider_multiplier * 1.4) * if bl > 0.0 {1000.0 / bl} else {1.0}
-    }
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        // panic as this should be dealt with earlier in the code
-        if self.timing_points.len() == 0 { panic!("beatmap has no timing points!"); }
 
-        let mut point = self.timing_points[0];
-        for tp in self.timing_points.iter() {
-            if tp.time <= time {point = *tp}
-        }
-
-        point.into()
-    }
 
     
     fn get_events(&self) -> Vec<InGameEvent> {

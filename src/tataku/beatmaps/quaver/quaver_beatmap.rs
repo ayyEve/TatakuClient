@@ -164,29 +164,6 @@ impl TatakuBeatmap for QuaverBeatmap {
         Arc::new(meta)
     }
 
-    fn slider_velocity_at(&self, time:f32) -> f32 {
-        let bl = self.beat_length_at(time, true);
-        100.0 * 1.4 * if bl > 0.0 {1000.0 / bl} else {1.0}
-    }
-
-    fn beat_length_at(&self, time:f32, _allow_multiplier:bool) -> f32 {
-        for qtp in self.timing_points.iter() {
-            if qtp.start_time >= time {
-                return 60_000.0 / qtp.bpm
-            }
-        }
-        60_000.0 / self.timing_points[0].bpm
-    }
-
-    fn control_point_at(&self, time:f32) -> TimingPoint {
-        for qtp in self.timing_points.iter() {
-            if qtp.start_time >= time {
-                return (*qtp).into()
-            }
-        }
-
-        self.timing_points[0].into()
-    }
 }
 
 

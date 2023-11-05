@@ -305,7 +305,7 @@ impl GameMode for OsuGame {
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
         let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
-        let timing_points = map.get_timing_points();
+        let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
         let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0).await;
 
         let mut s = match map {
@@ -318,7 +318,7 @@ impl GameMode for OsuGame {
                 }
                 
                 let get_hitsounds = |time, hitsound, hitsamples| {
-                    let tp = timing_points.timing_point_at(time);
+                    let tp = timing_points.timing_point_at(time, true);
                     Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
 
@@ -366,7 +366,7 @@ impl GameMode for OsuGame {
                     if slider.curve_points.len() == 0 || slider.length == 0.0 {
                         s.end_time = s.end_time.max(slider.time);
                     } else {
-                        let curve = get_curve(slider, &map);
+                        let curve = get_curve(slider, &map, &timing_points);
                         s.end_time = s.end_time.max(curve.end_time);
                     }
                 }
@@ -449,8 +449,7 @@ impl GameMode for OsuGame {
                                 hitsounds,
                             ).await));
                         } else {
-
-                            let curve = get_curve(slider, &map);
+                            let curve = get_curve(slider, &map, &timing_points);
                             s.notes.push(Box::new(OsuSlider::new(
                                 slider.clone(),
                                 curve,
@@ -460,7 +459,7 @@ impl GameMode for OsuGame {
                                 scaling_helper.clone(),
                                 std_settings.clone(),
                                 get_hitsounds,
-                                beatmap.slider_velocity_at(slider.time)
+                                timing_points.slider_velocity_at(slider.time)
                             ).await))
                         }
                         

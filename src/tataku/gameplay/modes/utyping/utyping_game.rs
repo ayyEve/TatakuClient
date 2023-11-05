@@ -296,6 +296,8 @@ impl GameMode for UTypingGame {
 
 
     async fn reset(&mut self, beatmap:&Beatmap) {
+        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+        
         for note in self.notes.iter_mut() {
             note.reset().await;
 
@@ -318,22 +320,21 @@ impl GameMode for UTypingGame {
         // setup timing bars
         //TODO: it would be cool if we didnt actually need timing bar objects, and could just draw them
         if self.timing_bars.len() == 0 {
-            let tps = beatmap.get_timing_points();
             // load timing bars
-            let parent_tps = tps.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
+            let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv; // = self.game_settings.sv_multiplier;
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
-            let step = beatmap.beat_length_at(time, false);
+            let step = timing_points.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             loop {
                 // if !self.game_settings.static_sv {
-                    sv = (beatmap.slider_velocity_at(time) / SV_FACTOR) * self.game_settings.sv_multiplier;
+                    sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) * self.game_settings.sv_multiplier;
                 // }
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = beatmap.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
+                let next_bar_time = timing_points.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 {

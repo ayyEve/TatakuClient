@@ -133,13 +133,8 @@ impl BeatmapManager {
             let Some(file) = file.to_str() else { continue };
             // info!("checking {file}");
 
-            if file.ends_with(".osu") 
-            || file.ends_with(".qua") 
-            || file.ends_with(".adofai") 
-            || file.ends_with(".ssc") 
-            || file.ends_with(".sm") 
-            || file.ends_with("info.txt")
-            || file.ends_with("song") {
+
+            if AVAILABLE_MAP_EXTENSIONS.iter().find(|e|file.ends_with(**e)).is_some() {
                 // check file paths first
                 if ignore_paths.contains(file) {
                     continue
