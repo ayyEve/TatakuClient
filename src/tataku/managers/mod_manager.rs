@@ -96,8 +96,8 @@ impl ModManager {
     pub fn get_speed(&self) -> f32 {
         self.speed.as_f32()
     }
-    pub fn set_speed(&mut self, speed: f32) {
-        self.speed = GameSpeed::from_f32(speed);
+    pub fn set_speed(&mut self, speed: impl Into<GameSpeed>) {
+        self.speed = speed.into();
         // error!("set speed: {speed} -> {}", self.speed);
     }
 
@@ -117,8 +117,8 @@ impl ModManager {
             .map(|m|m.short_name.to_owned())
             .collect::<Vec<_>>();
 
-        let speed = self.get_speed();
-        if include_speed && speed != 1.0 { list.push(format!("({:.2}x)", speed)) }
+
+        if include_speed && !self.speed.is_default() { list.push(format!("({:.2}x)", self.get_speed())) }
 
         list.join(" ")
     }
@@ -130,27 +130,32 @@ impl ModManager {
         self.mods_list(false, mode)
     }
 
-    // inline helper
+    // inline helpers
+    /// add a single mod
     pub fn with_mod(mut self, m: impl AsRef<str>) -> Self {
         self.add_mod(m);
         self
     }
-    pub fn with_speed(mut self, speed: u16) -> Self {
-        self.speed = GameSpeed::from_u16(speed);
+    /// set all mods
+    pub fn with_mods(mut self, mods: HashSet<String>) -> Self {
+        self.mods = mods;
         self
     }
-    pub fn with_speed_f32(mut self, speed: f32) -> Self {
+    /// set the speed
+    pub fn with_speed(mut self, speed: impl Into<GameSpeed>) -> Self {
         self.set_speed(speed);
         self
     }
 
-
+    /// add a mod, returns if the mod was already added
     pub fn add_mod(&mut self, m: impl AsRef<str>) -> bool {
         self.mods.insert(m.as_ref().to_owned())
     }
+    /// remove a mod
     pub fn remove_mod(&mut self, m: impl AsRef<str>) {
         self.mods.remove(&m.as_ref().to_owned());
     }
+    // toggle a mod, returns if the mod is now enabled or not
     pub fn toggle_mod(&mut self, m: impl AsRef<str>) -> bool {
         let m = m.as_ref().to_owned();
         if self.has_mod(&m) {
@@ -162,21 +167,26 @@ impl ModManager {
         }
     }
     
+    /// returns if a mod is enabled
     pub fn has_mod(&self, m: impl AsRef<str>) -> bool {
         self.mods.contains(m.as_ref())
     }
 
 
     // common mods
+    /// is nofail enabled
     pub fn has_nofail(&self) -> bool {
         self.has_mod(NoFail)
     }
+    /// is sudden death enabled
     pub fn has_sudden_death(&self) -> bool {
         self.has_mod(SuddenDeath)
     }
+    /// is perfect enabled
     pub fn has_perfect(&self) -> bool {
         self.has_mod(Perfect)
     }
+    /// is autoplay enabled
     pub fn has_autoplay(&self) -> bool {
         self.has_mod(Autoplay)
     }
@@ -196,18 +206,4 @@ impl Hash for ModManager {
         mods.sort();
         mods.hash(state);
     }
-}
-
-
-
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct OldModManager {
-    /// use get/set_speed instead of direct access to this
-    pub speed: Option<u16>,
-    
-    pub easy: bool,
-    pub hard_rock: bool,
-    pub autoplay: bool,
-    pub nofail: bool,
 }
