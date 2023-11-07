@@ -376,6 +376,19 @@ impl OsuBeatmap {
             }
         }
 
+
+        // verify we have a valid beatmap
+        if beatmap.notes.is_empty() && beatmap.sliders.is_empty() && beatmap.spinners.is_empty() {
+            // no notes
+            return Err(BeatmapError::NoNotes)?;
+        }
+        if beatmap.timing_points.is_empty() {
+            // no timing points
+            return Err(BeatmapError::NoTimingPoints)?;
+        }
+
+
+
         // metadata bpm
         let mut bpm_min = 9999999999.9;
         let mut bpm_max = 0.0;

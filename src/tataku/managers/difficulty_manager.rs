@@ -168,13 +168,13 @@ fn save_all_diffs() -> TatakuResult<()> {
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DifficultyEntry {
     pub map_hash: Md5Hash,
-    pub mods: u128, // ModManager
+    pub mods: Md5Hash,
 }
 
 impl DifficultyEntry {
     pub fn new(map_hash: Md5Hash, mods: &ModManager) -> Self {
         // let map_hash = Md5Hash::try_from(map_).unwrap();//u128::from_str_radix(&map_hash, 16).unwrap();
-        let mods = mods.as_md5_u128();
+        let mods = mods.as_md5();
         Self {
             map_hash,
             mods
@@ -184,11 +184,8 @@ impl DifficultyEntry {
 
 impl Serializable for DifficultyEntry {
     fn read(sr:&mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
-        let map_hash = sr.read()?;
-        
-        // let mut mods = ModManager::default();
-        // mods.speed = sr.read()?;
-        let mods = sr.read()?;
+        let map_hash = sr.read_u128()?.into();
+        let mods = sr.read_u128()?.into();
 
         Ok(Self {
             map_hash,
@@ -197,8 +194,10 @@ impl Serializable for DifficultyEntry {
     }
 
     fn write(&self, sw:&mut SerializationWriter) {
-        sw.write(&self.map_hash);
-        sw.write(&self.mods);
+        let map_hash = self.map_hash.as_ref();
+        let mods = self.mods.as_ref();
+        sw.write(map_hash);
+        sw.write(mods);
         // sw.write(self.mods.speed);
         // sw.write(self.mods.mods.clone());
     }

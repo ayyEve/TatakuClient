@@ -123,6 +123,12 @@ impl ModManager {
         list.join(" ")
     }
 
+    fn mods_sorted(&self) -> Vec<String> {
+        let mut mods = self.mods.clone().into_iter().collect::<Vec<_>>();
+        mods.sort();
+        mods
+    }
+
     pub fn mods_list_string(&self, mode: &String) -> String {
         self.mods_list(true, mode)
     }
@@ -191,10 +197,11 @@ impl ModManager {
         self.has_mod(Autoplay)
     }
 
-    pub fn as_md5_u128(&self) -> u128 {
-        let mut mods = self.mods.clone().into_iter().collect::<Vec<_>>();
-        mods.sort();
-        u128::from_str_radix(&md5(mods.join("") + &self.speed.to_string()).to_string(), 16).unwrap_or_default()
+    pub fn as_md5(&self) -> Md5Hash {
+        let mods = self.mods_sorted();
+        let mods_str = format!("{}{}", mods.join(""), self.speed.as_u16().to_string());
+        md5(mods_str)
+        // u128::from_str_radix(&md5(mods_str).to_string(), 16).unwrap_or_default()
     }
 }
 
@@ -202,8 +209,7 @@ impl ModManager {
 impl Hash for ModManager {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.speed.hash(state);
-        let mut mods = self.mods.clone().into_iter().collect::<Vec<_>>();
-        mods.sort();
+        let mods = self.mods_sorted();
         mods.hash(state);
     }
 }

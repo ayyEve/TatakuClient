@@ -6,5 +6,6 @@ pub enum BeatmapError {
     UnsupportedMode,
     UnsupportedBeatmap,
     NoTimingPoints,
+    NoNotes,
     NotFoundInSet,
 }
