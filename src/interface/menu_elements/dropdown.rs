@@ -13,6 +13,9 @@ const ITEM_Y_PADDING:f32 = 5.0;
 pub struct Dropdown<E:Dropdownable> {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -33,14 +36,20 @@ pub struct Dropdown<E:Dropdownable> {
     pub on_change: Arc<dyn Fn(&mut Self, Option<E>) + Send + Sync>,
 }
 impl<E:Dropdownable> Dropdown<E> {
-    pub fn new(pos: Vector2, width: f32, font_size: f32, text:&str, value:Option<E>, font: Font) -> Self {
+    pub fn new(style: Style, font_size: f32, text:&str, value:Option<E>, layout_manager: &LayoutManager, font: Font) -> Self {
         let item_height = font_size + ITEM_Y_PADDING * 2.0;
-        let size = Vector2::new(width, font_size + Y_PADDING * 2.0);
+        // let size = Vector2::new(width, font_size + Y_PADDING * 2.0);
         let text = text.to_owned() + ": ";
+
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
 
         Self {
             pos,
             size,
+            style, 
+            node,
+
             hover: false,
             selected: false,
             tag: String::new(),
@@ -61,6 +70,11 @@ impl<E:Dropdownable> Dropdown<E> {
             
             on_change: Arc::new(|_,_|{}),
         }
+    }
+
+    pub fn with_on_change(mut self, onchange: impl Fn(&mut Self, Option<E>) + 'static + Send + Sync) -> Self {
+        self.on_change = Arc::new(onchange);
+        self
     }
 }
 
@@ -83,6 +97,14 @@ impl<E:Dropdownable> ScrollableItemGettersSetters for Dropdown<E> {
 }
 
 impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn window_size_changed(&mut self, _new_window_size: Vector2) {}
 
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.value.clone()) }

@@ -6,6 +6,9 @@ const FONT_SIZE: f32 = 32.0;
 pub struct BeatmapSelectButton {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -19,11 +22,26 @@ pub struct BeatmapSelectButton {
     lines: Vec<String>
 }
 impl BeatmapSelectButton {
-    pub fn new(width: f32) -> Self {
-        let size = Vector2::new(width, LINE_HEIGHT * 4.0);
+    pub fn new(layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(0.5),
+                height: Dimension::Percent(0.5),
+            },
+            ..Default::default()
+        };
+
+
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
+        // let size = Vector2::new(width, LINE_HEIGHT * 4.0);
         Self {
-            pos: Vector2::ZERO,
+            pos,
             size,
+            style,
+            node,
+
             base_size: size,
             hover: false,
             tag: "beatmap_select".to_owned(),
@@ -39,6 +57,14 @@ impl BeatmapSelectButton {
 }
 
 impl ScrollableItem for BeatmapSelectButton {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = self.base_size * scale;

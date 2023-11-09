@@ -7,6 +7,8 @@ const TITLE_STRING_Y:f32 = 20.0;
 const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 
 pub struct ScoreMenu {
+    layout_manager: LayoutManager,
+
     score: IngameScore,
     pub replay: Option<Replay>,
 
@@ -36,6 +38,8 @@ pub struct ScoreMenu {
 }
 impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
+        let layout_manager = LayoutManager::new();
+
         let window_size = WindowSize::get();
         let hit_error = score.hit_error();
 
@@ -61,18 +65,18 @@ impl ScoreMenu {
 
         let mut buttons = Vec::new();
 
-        let mut back_button = MenuButton::back_button(window_size.0, Font::Main);
-        back_button.set_tag("back");
+        let style = Style {
+            size: LayoutManager::small_button(),
+            ..Default::default()
+        };
 
-        let mut replay_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", Font::Main);
-        replay_button.set_tag("replay");
-        
         if allow_retry {
-            let mut retry_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0)*2.0, back_button.size(), "Retry", Font::Main);
-            retry_button.set_tag("retry");
+            let retry_button = MenuButton::new(style.clone(), "Retry", &layout_manager, Font::Main).with_tag("retry");
             buttons.push(retry_button);
         }
 
+        let back_button = MenuButton::back_button(Font::Main, &layout_manager).with_tag("back");
+        let replay_button = MenuButton::new(style.clone(), "Replay", &layout_manager, Font::Main).with_tag("replay");
         buttons.push(replay_button);
         buttons.push(back_button);
 
@@ -87,10 +91,31 @@ impl ScoreMenu {
             stats.extend(gamemode_info.stats_from_groups(&data));
         }
 
-        let ws = window_size.0;
+        // let ws = window_size.0;
+        let lobby_scrollable = ScrollableArea::new(
+            Style {
+                position: taffy::style::Position::Absolute,
+                inset: taffy::geometry::Rect {
+                    top: LengthPercentageAuto::Percent(0.5),
+                    left: LengthPercentageAuto::Auto,
+                    bottom: LengthPercentageAuto::Auto,
+                    right: LengthPercentageAuto::Points(0.0),
+                },
+                // display: taffy::style::Display::Flex,
+                size: Size {
+                    width: Dimension::Percent(0.5),
+                    height: Dimension::Percent(0.5),
+                },
+                ..Default::default()
+            }, 
+            ListMode::VerticalList, 
+            &layout_manager
+        );
+
         ScoreMenu {
             score: score.clone(),
             score_mods,
+            layout_manager,
             replay: None,
             beatmap,
             hit_error,
@@ -111,7 +136,7 @@ impl ScoreMenu {
 
             is_lobby: false,
             lobby_helper: CurrentLobbyDataHelper::new(),
-            lobby_scrollable: ScrollableArea::new(ws - Vector2::new(250.0, ws.y/2.0), Vector2::new(200.0, ws.y/2.0), ListMode::VerticalList),
+            lobby_scrollable,
             close_sender: None,
         }
     }
@@ -202,9 +227,15 @@ impl ScoreMenu {
             let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
             scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
 
+            let layout_manager = self.lobby_scrollable.layout_manager.clone();
+            let style = Style {
+                size: LayoutManager::full_width(),
+                ..Default::default()
+            };
+
             for (user_id, score) in scores {
-                info!("added score");
-                self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
+                trace!("added score");
+                self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(style.clone(), IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false), &layout_manager)))
             }
         }
     }
@@ -270,8 +301,14 @@ impl AsyncMenu<Game> for ScoreMenu {
                     let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
                     scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
 
+                    let layout_manager = self.lobby_scrollable.layout_manager.clone();
+                    let style = Style {
+                        size: LayoutManager::full_width(),
+                        ..Default::default()
+                    };
+
                     for (user_id, score) in scores {
-                        self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
+                        self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(style.clone(), IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false), &layout_manager)))
                     }
                 }
                 self.lobby_scrollable.update();

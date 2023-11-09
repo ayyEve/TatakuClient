@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 pub struct DirectDownloadDialog {
     list: ScrollableArea,
+    layout_manager: LayoutManager,
 
     queue_helper: GlobalValue<DirectDownloadQueue>,
     
@@ -10,17 +11,34 @@ pub struct DirectDownloadDialog {
 }
 impl DirectDownloadDialog {
     pub fn new() -> Self {
+        let layout_manager = LayoutManager::new();
+
         let window_size = WindowSize::get();
-        let bounds = Self::get_bounds(&window_size);
-        let mut list = ScrollableArea::new(bounds.pos, bounds.size, ListMode::VerticalList);
+        let bounds = Self::get_bounds(window_size.0);
+        let mut list = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.2),
+                    height: Dimension::Percent(0.33),
+                },
+                ..Default::default()
+            }, 
+            ListMode::VerticalList,
+            &layout_manager
+        );
 
         let queue = GlobalValueManager::get::<DirectDownloadQueue>().unwrap();
+        let style = Style {
+            size: LayoutManager::full_width(),
+            ..Default::default()
+        };
         for i in queue.iter() {
-            list.add_item(Box::new(DirectItem::new(i.clone(), true)));
+            list.add_item(Box::new(DirectItem::new(style.clone(), &list.layout_manager, i.clone(), true)));
         }
 
         Self {
             list,
+            layout_manager,
             
             bounds,
             queue_helper: GlobalValue::new(),
@@ -28,11 +46,11 @@ impl DirectDownloadDialog {
         }
     }
 
-    fn get_bounds(window_size: &Arc<WindowSize>) -> Rectangle {
-        let width = window_size.x / 5.0;
-        let height = window_size.y / 3.0;
+    fn get_bounds(size: Vector2) -> Rectangle {
+        let width = size.x / 5.0;
+        let height = size.y / 3.0;
         Rectangle::new(
-            Vector2::new(window_size.x - width, height / 2.0),
+            Vector2::new(size.x - width, height / 2.0),
             Vector2::new(width, height),
             Color::BLACK.alpha(0.7),
             Some(Border::new(
@@ -50,11 +68,13 @@ impl Dialog<Game> for DirectDownloadDialog {
     fn get_bounds(&self) -> Bounds { *self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.bounds = Self::get_bounds(&window_size);
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.bounds = Self::get_bounds(size);
+        self.layout_manager.apply_layout(size);
+        self.list.apply_layout(&self.layout_manager, Vector2::ZERO);
 
-        self.list.set_pos(self.bounds.pos);
-        self.list.set_size(self.bounds.size);
+        // self.list.set_pos(self.bounds.pos);
+        // self.list.set_size(self.bounds.size);
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
@@ -81,8 +101,13 @@ impl Dialog<Game> for DirectDownloadDialog {
     async fn update(&mut self, _game:&mut Game) {
         if self.queue_helper.update() {
             self.list.clear();
+            let style = Style {
+                size: LayoutManager::full_width(),
+                ..Default::default()
+            };
+
             for i in self.queue_helper.iter() {
-                self.list.add_item(Box::new(DirectItem::new(i.clone(), true)));
+                self.list.add_item(Box::new(DirectItem::new(style.clone(), &self.list.layout_manager, i.clone(), true)));
             }
         }
     }

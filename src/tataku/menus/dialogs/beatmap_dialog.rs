@@ -6,6 +6,7 @@ const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
 pub struct BeatmapDialog {
     bounds: Rectangle,
+    layout_manager: LayoutManager,
     target_map: Md5Hash,
     delete_map: MenuButton,
     copy_hash: MenuButton,
@@ -13,39 +14,51 @@ pub struct BeatmapDialog {
 }
 impl BeatmapDialog {
     pub fn new(map_hash: Md5Hash) -> Self {
-        let window = WindowSize::get();
+        let mut layout_manager = LayoutManager::new();
+        layout_manager.set_style(Style {
+            align_items: Some(taffy::style::AlignItems::Center),
+            ..Default::default()
+        });
 
-        let offset = 100.0;
-        let mut count = 0;
+        let button_style = Style {
+            size: Size {
+                width: Dimension::Percent(0.1),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
 
         let delete_map = MenuButton::new(
-            Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
-            BUTTON_SIZE,
+            button_style.clone(),
             "Delete Map",
+            &layout_manager,
             Font::Main,
         );
-        count += 1;
 
         let copy_hash = MenuButton::new(
-            Vector2::new((window.x - BUTTON_SIZE.x) / 2.0, offset + (count as f32 * (BUTTON_SIZE.y + Y_PADDING))),
-            BUTTON_SIZE,
+            button_style.clone(),
             "Copy Hash",
+            &layout_manager,
             Font::Main,
         );
 
 
+        let window_size = WindowSize::get().0;
+        layout_manager.apply_layout(window_size);
+        
         let bounds = Rectangle::new(
             Vector2::ZERO,
-            window.0,
+            window_size,
             Color::BLACK.alpha(0.7),
             Some(Border::new(
                 Color::BLACK, 
                 1.5
             ))
         );
-        
+
         Self {
             bounds,
+            layout_manager,
             delete_map,
             copy_hash,
 
@@ -54,6 +67,7 @@ impl BeatmapDialog {
             should_close: false
         }
     }
+
 }
 
 #[async_trait]
@@ -62,9 +76,12 @@ impl Dialog<Game> for BeatmapDialog {
     fn get_bounds(&self) -> Bounds { *self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    fn container_size_changed(&mut self, size: Vector2) {
         // self.window_size = window_size;
-        self.bounds.size = window_size.0;
+        // self.bounds.size = window_size.0;
+        self.layout_manager.apply_layout(size);
+        self.delete_map.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.copy_hash.apply_layout(&self.layout_manager, Vector2::ZERO);
     }
 
 

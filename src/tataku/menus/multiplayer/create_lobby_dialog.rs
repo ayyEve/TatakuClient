@@ -2,33 +2,67 @@ use crate::prelude::*;
 
 pub struct CreateLobbyDialog {
     scrollable: ScrollableArea,
+    layout_manager: LayoutManager,
     should_close: bool,
 }
 impl CreateLobbyDialog {
     pub fn new() -> Self {
+        let layout_manager = LayoutManager::new();
+
         const WIDTH:f32 = 500.0; 
-        let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
+
+        let mut scrollable = ScrollableArea::new(
+            Style {
+                min_size: Size {
+                    width: Dimension::Points(500.0),
+                    height: Dimension::Auto,
+                },
+                ..Default::default()
+            }, 
+            ListMode::VerticalList, 
+            &layout_manager
+        );
+
+        
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Points(50.0)
+            },
+            ..Default::default()
+        };
 
         // name
-        scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Lobby Name", "", Font::Main).with_tag("name")));
+        scrollable.add_item(Box::new(TextInput::new(style.clone(), "Lobby Name", "", &layout_manager, Font::Main).with_tag("name")));
 
         // password
-        scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
+        scrollable.add_item(Box::new(TextInput::new(style.clone(), "Password", "", &layout_manager, Font::Main).with_tag("password")));
 
         // private
-        scrollable.add_item(Box::new(Checkbox::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Private", false, Font::Main).with_tag("private")));
+        scrollable.add_item(Box::new(Checkbox::new(style.clone(), "Private", false, &layout_manager, Font::Main).with_tag("private")));
 
         // done and close buttons 
         {
-            let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
+            let mut button_scrollable = ScrollableArea::new(
+                style.clone(), 
+                ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)),
+                &layout_manager
+            );
+            
+            let style = Style {
+                size: LayoutManager::small_button(),
+                ..Default::default()
+            };
+
+            button_scrollable.add_item(Box::new(MenuButton::new(style.clone(), "Done", &button_scrollable.layout_manager, Font::Main).with_tag("done")));
+            button_scrollable.add_item(Box::new(MenuButton::new(style.clone(), "Close", &button_scrollable.layout_manager, Font::Main).with_tag("close")));
             scrollable.add_item(Box::new(button_scrollable));
         }
-        scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
+        // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
 
         Self {
             scrollable,
+            layout_manager,
             should_close: false,
         }
     }

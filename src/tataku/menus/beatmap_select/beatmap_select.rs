@@ -1,19 +1,30 @@
-use crate::prelude::*;
+use crate::{prelude::*, create_value_helper};
 
 // constants
-const INFO_BAR_HEIGHT:f32 = 60.0;
+// const INFO_BAR_HEIGHT:f32 = 60.0;
 const DRAG_THRESHOLD:f32 = 50.0;
 const DRAG_FACTOR:f32 = 10.0;
 
-const DEFAULT_WIDTH: f32 = 1270.0;
-const DEFAULT_HEIGHT: f32 = 768.0;
+// const DEFAULT_WIDTH: f32 = 1270.0;
+// const DEFAULT_HEIGHT: f32 = 768.0;
+
+create_value_helper!(CurrentSortBy, SortBy, SortByHelper);
+create_value_helper!(CurrentScoreMethod, ScoreRetreivalMethod, ScoreMethodHelper);
+create_value_helper!(FilterText, String, FilterTextHelper);
+
+create_value_helper!(PlayRequest, (), PlayRequestHelper);
+
 
 
 pub struct BeatmapSelectMenu {
     current_scores: HashMap<String, IngameScore>,
+
+    top_bar: ScrollableArea,
     beatmap_scroll: ScrollableArea,
     leaderboard_scroll: ScrollableArea,
     back_button: MenuButton,
+
+    layout_manager: LayoutManager,
     // pending_refresh: bool,
 
     score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
@@ -24,23 +35,25 @@ pub struct BeatmapSelectMenu {
     // drag: Option<DragData>,
     // mouse_down: bool
 
-    /// internal search box
-    search_text: TextInput,
+    // /// internal search box
+    // search_text: TextInput,
 
-    sort_method: SortBy,
-    mode: String,
+    sort_method: SortByHelper,
+    mode: CurrentPlaymodeHelper,
+    leaderboard_method: ScoreMethodHelper,
+    filter_text: FilterTextHelper,
+    play_request: PlayRequestHelper,
 
-    sort_by_dropdown: Dropdown<SortBy>,
-    playmode_dropdown: Dropdown<PlayModeDropdown>,
-
-    leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod>,
+    // sort_by_dropdown: Dropdown<SortBy>,
+    // playmode_dropdown: Dropdown<PlayModeDropdown>,
+    // leaderboard_method_dropdown: Dropdown<ScoreRetreivalMethod>,
 
     /// drag_start, confirmed_drag, last_checked, mods_when_clicked
     /// drag_start is where the original click occurred
     /// confirmed_drag is if the drag as passed a certain threshhold. important if the drag returns to below the threshhold
     mouse_down: Option<(Vector2, bool, MouseButton, Vector2, KeyModifiers)>,
 
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
     settings: SettingsHelper,
     mods: ModManagerHelper,
     current_skin: CurrentSkinHelper,
@@ -54,77 +67,182 @@ pub struct BeatmapSelectMenu {
     pub select_action: BeatmapSelectAction
 }
 impl BeatmapSelectMenu {
-    pub async fn new() -> BeatmapSelectMenu {
-        let window_size = WindowSize::get();
+    pub async fn new() -> Self {
+        // let window_size = WindowSize::get();
         let settings = SettingsHelper::new();
-        let scale = window_size.y / DEFAULT_HEIGHT;
+        // let scale = window_size.y / DEFAULT_HEIGHT;
 
-        let sort_by = settings.last_sort_by;
-        let sort_by_dropdown = Dropdown::new(
-            Vector2::new(0.0, 5.0),
-            200.0,
-            15.0,
-            "Sort",
-            Some(sort_by),
-            Font::Main
-        );
-
+    
         let mode = settings.last_played_mode.clone();
-        GlobalValueManager::update(Arc::new(CurrentPlaymode(mode.clone())));
-        
-        let playmode_dropdown = Dropdown::new(
-            Vector2::new(205.0, 5.0),
-            200.0,
-            15.0,
-            "Mode",
-            Some(PlayModeDropdown::Mode(mode.clone())),
-            Font::Main
-        );
-        
-        
-        let leaderboard_method = SCORE_HELPER.read().await.current_method;
-        let leaderboard_method_dropdown = Dropdown::new(
-            Vector2::new(410.0, 5.0),
-            200.0, 
-            15.0,
-            "Leaderboard",
-            Some(leaderboard_method),
-            Font::Main
-        );
+        let sort_by = settings.last_sort_by;
 
+        let layout_manager = LayoutManager::new();
+        layout_manager.set_style(Style {
+            size: LayoutManager::full_size(),
+            display: taffy::style::Display::Flex,
+            // flex_direction: taffy::style::FlexDirection::Column,
+            flex_wrap: taffy::style::FlexWrap::Wrap,
+            
+            ..Default::default()
+        });
+
+        let mut top_bar = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(1.0),
+                    height: Dimension::Percent(0.1),
+                },
+                display: taffy::style::Display::Flex,
+                flex_direction: taffy::style::FlexDirection::Row,
+                
+                ..Default::default()
+            }, 
+            ListMode::None, 
+            &layout_manager
+        );
+        top_bar.set_tag("top_bar");
+        top_bar.draw_rect = Some((Color::WHITE, Some(Border::new(Color::BLACK, 1.2))));
+
+        // add items to the top bar
+        {
+            let dropdown_style = Style {
+                size: Size {
+                    width: Dimension::Percent(0.5 * 0.33),
+                    height: Dimension::Auto,
+                },
+                ..Default::default()
+            };
+
+            GlobalValueManager::update(Arc::new(CurrentSortBy(sort_by)));
+            let sort_by_dropdown = Dropdown::new(
+                dropdown_style.clone(),
+                15.0,
+                "Sort",
+                Some(sort_by),
+                &top_bar.layout_manager,
+                Font::Main
+            ).with_on_change(move|_, b| if let Some(sortby) = b {GlobalValueManager::update(Arc::new(CurrentSortBy(sortby))); });
+            top_bar.add_item(Box::new(sort_by_dropdown));
+
+            
+            GlobalValueManager::update(Arc::new(CurrentPlaymode(mode.clone())));
+            let playmode_dropdown = Dropdown::new(
+                dropdown_style.clone(),
+                15.0,
+                "Mode",
+                Some(PlayModeDropdown::Mode(mode.clone())),
+                &top_bar.layout_manager,
+                Font::Main
+            );
+            //TODO: add playmode dropdown sender
+            top_bar.add_item(Box::new(playmode_dropdown));
+
+            
+            let leaderboard_method = SCORE_HELPER.read().await.current_method;
+            GlobalValueManager::update(Arc::new(CurrentScoreMethod(leaderboard_method)));
+            let leaderboard_method_dropdown = Dropdown::new(
+                dropdown_style.clone(),
+                15.0,
+                "Leaderboard",
+                Some(leaderboard_method),
+                &top_bar.layout_manager,
+                Font::Main
+            )
+            .with_on_change(|_, b|if let Some(sortby) = b {GlobalValueManager::update(Arc::new(CurrentScoreMethod(sortby))); });
+            top_bar.add_item(Box::new(leaderboard_method_dropdown));
+
+            // search input
+            GlobalValueManager::update(Arc::new(FilterText(String::new())));
+            let mut search_text = TextInput::new(Style {
+                size: Size {
+                    width: Dimension::Percent(0.5 * 0.33),
+                    height: Dimension::Auto,
+                },
+                ..Default::default()
+            }, "Search", "", &top_bar.layout_manager, Font::Main);
+            search_text.on_change = Arc::new(|_,s|GlobalValueManager::update(Arc::new(FilterText(s))));
+            top_bar.add_item(Box::new(search_text));
+        }
+        
+
+        // [leaderboard] [gameplay preview] [beatmap list]
+        // [10%] [40%] [50%]
+
+        let mut leaderboard_scroll = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.1),
+                    height: Dimension::Percent(1.0),
+                },
+                display: taffy::style::Display::Flex,
+                flex_direction: taffy::style::FlexDirection::Column,
+                ..Default::default()
+            }, 
+            ListMode::VerticalList,
+            &layout_manager
+        );
+        leaderboard_scroll.set_tag("leaderboard_scroll");
+        leaderboard_scroll.draw_rect = Some((Color::LIME.alpha(0.7), None));
+
+        let gameplay_node = GenericNode::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.4),
+                    height: Dimension::Percent(1.0),
+                },
+                ..Default::default()
+            }, 
+            &layout_manager
+        );
 
         let mut beatmap_scroll = ScrollableArea::new(
-            Vector2::new(window_size.x - BEATMAPSET_ITEM_SIZE.x, INFO_BAR_HEIGHT), 
-            Vector2::new(window_size.x - LEADERBOARD_ITEM_SIZE.x, window_size.y - INFO_BAR_HEIGHT), 
-            ListMode::VerticalList
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.5),
+                    height: Dimension::Percent(1.0),
+                },
+                display: taffy::style::Display::Flex,
+                flex_direction: taffy::style::FlexDirection::Column,
+                ..Default::default()
+            },
+            ListMode::VerticalList,
+            &layout_manager,
         );
+        beatmap_scroll.set_tag("beatmap_scroll");
         beatmap_scroll.dragger = DraggerSide::Right(10.0, true);
-        beatmap_scroll.set_item_margin(7.0);
-        beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
+        beatmap_scroll.draw_rect = Some((Color::RED.alpha(0.7), None));
+        // beatmap_scroll.set_item_margin(7.0);
+        // beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
 
-        let mut m = BeatmapSelectMenu {
+        GlobalValueManager::update(Arc::new(PlayRequest(())));
+        Self {
             // pending_refresh: false,
             map_changing: (false, false, 0),
             current_scores: HashMap::new(),
-            back_button: MenuButton::back_button(window_size.0, Font::Main),
+            back_button: MenuButton::back_button(Font::Main, &layout_manager),
+            layout_manager,
 
+            top_bar,
             beatmap_scroll,
-            leaderboard_scroll: ScrollableArea::new(LEADERBOARD_POS, Vector2::new(LEADERBOARD_ITEM_SIZE.x, window_size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)), ListMode::VerticalList),
-            search_text: TextInput::new(Vector2::new(window_size.x - (window_size.x / 4.0), 0.0), Vector2::new(window_size.x / 4.0, INFO_BAR_HEIGHT), "Search", "", Font::Main),
+            leaderboard_scroll,
+            // search_text,
 
-            mode,
+            mode: GlobalValue::new(),
             mods: ModManagerHelper::new(),
-            sort_method: sort_by,
+            sort_method: SortByHelper::new(),
+            leaderboard_method: ScoreMethodHelper::new(),
+            filter_text: FilterTextHelper::new(),
+            play_request: PlayRequestHelper::new(),
 
             score_loader: None,
 
-            playmode_dropdown,
-            sort_by_dropdown,
-            leaderboard_method_dropdown,
+            // playmode_dropdown,
+            // sort_by_dropdown,
+            // leaderboard_method_dropdown,
 
             mouse_down: None,
             // diff_calc_start_helper: MultiBomb::new()
-            window_size: window_size.clone(),
+            // window_size: window_size.clone(),
             menu_game: MenuGameHelper::new(true, true, Box::new(|s|s.background_game_settings.beatmap_select_enabled)),
             settings,
             cached_maps: Vec::new(),
@@ -133,45 +251,16 @@ impl BeatmapSelectMenu {
             new_beatmap_helper: LatestBeatmapHelper::new(),
             current_skin: CurrentSkinHelper::new(),
             select_action: BeatmapSelectAction::PlayMap
-        };
-
-        // reposition things
-        m.window_size_changed(window_size).await;
-        m
-    }
-
-    async fn set_selected_mode(&mut self, new_mode: String) {
-        // update values
-        self.mode = new_mode.clone();
-        GlobalValueManager::update(Arc::new(CurrentPlaymode(new_mode.clone())));
-
-        self.playmode_dropdown.value = Some(PlayModeDropdown::Mode(new_mode.clone()));
-        Settings::get_mut().last_played_mode = new_mode.clone();
-
-        // // recalc diffs
-        // self.apply_filter(&mut *BEATMAP_MANAGER.write().await).await;
-
-        // // set modes and update diffs
-        // self.beatmap_scroll.on_text(new_mode.clone());
-
-        // change manager
-        self.menu_game.setup().await;
+        }
     }
 
 
     pub async fn refresh_maps(&mut self) {
         //TODO: allow grouping by not just map set
         let sets = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Title);
-        // let diff_calc_helper = beatmap_manager.on_diffcalc_completed.1.clone();
 
         self.cached_maps = sets;
         self.apply_filter().await;
-
-        // update diffs
-        // let mode_clone = self.mode.clone();
-        // tokio::spawn(async {
-        //     BEATMAP_MANAGER.write().await.update_diffs(mode_clone, &*ModManager::get().await);
-        // });
     }
 
 
@@ -180,20 +269,19 @@ impl BeatmapSelectMenu {
         let current_beatmap = self.menu_game.current_beatmap.0.clone();
 
         self.beatmap_scroll.clear();
-        let filter_text = self.search_text.get_text().to_ascii_lowercase();
+        let filter_text = self.filter_text.0.to_ascii_lowercase();
         let mods = self.mods.clone();
-        let mode = Arc::new(self.mode.clone());
+        let mode = self.mode.0.clone();
         let mut modes_needing_diffcalc = HashSet::new();
 
         // temp list which will need to be sorted before adding to the scrollable
         let mut full_list = Vec::new();
         
         // used to select the current map in the list
-        let current_hash = current_beatmap.map(|m|m.beatmap_hash.clone()).unwrap_or_default();
-
+        let current_hash = current_beatmap.map(|m|m.beatmap_hash).unwrap_or_default();
         for maps in self.cached_maps.iter() {
             let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| {
-                let mode = m.check_mode_override((*mode).clone());
+                let mode = m.check_mode_override(mode.clone());
                 let diff = get_diff(&m, &mode, &mods);
                 if diff.is_none() { modes_needing_diffcalc.insert(mode); }
                 
@@ -212,7 +300,7 @@ impl BeatmapSelectMenu {
 
             let meta = &maps[0];
             let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
-            let mut i = BeatmapsetItem::new(maps, display_text).await;
+            let mut i = BeatmapsetItem::new(maps, display_text, &self.beatmap_scroll.layout_manager).await;
             i.check_selected(current_hash);
             full_list.push(Box::new(i));
         }
@@ -226,7 +314,7 @@ impl BeatmapSelectMenu {
                 full_list.sort_by(|a, b| a.beatmaps[0].$property.partial_cmp(&b.beatmaps[0].$property).unwrap())
             }
         }
-        match self.sort_method {
+        match self.sort_method.0 {
             SortBy::Title => sort!(title, String),
             SortBy::Artist => sort!(artist, String),
             SortBy::Creator => sort!(creator, String),
@@ -270,7 +358,7 @@ impl BeatmapSelectMenu {
     pub async fn load_scores(&mut self) {
         // if nothing is selected, leave
         if let Some(map) = &BEATMAP_MANAGER.read().await.current_beatmap {
-            self.score_loader = Some(SCORE_HELPER.read().await.get_scores(map.beatmap_hash, &map.check_mode_override(self.mode.clone())).await);
+            self.score_loader = Some(SCORE_HELPER.read().await.get_scores(map.beatmap_hash, &map.check_mode_override(self.mode.0.clone())).await);
 
             // clear lists
             self.leaderboard_scroll.clear();
@@ -282,7 +370,7 @@ impl BeatmapSelectMenu {
         match &self.select_action {
             BeatmapSelectAction::PlayMap => {
                 // Audio::stop_song();
-                match manager_from_playmode(self.mode.clone(), map).await {
+                match manager_from_playmode(self.mode.0.clone(), map).await {
                     Ok(mut manager) => {
                         let mods = ModManager::get();
                         manager.apply_mods(mods.deref().clone()).await;
@@ -293,7 +381,7 @@ impl BeatmapSelectMenu {
             }
 
             BeatmapSelectAction::OnComplete(sender) => {
-                sender.send(Some((map.clone(), self.mode.clone()))).await.unwrap();
+                sender.send(Some((map.clone(), self.mode.0.clone()))).await.unwrap();
             }
         }
     }
@@ -340,15 +428,6 @@ impl BeatmapSelectMenu {
         self.load_scores().await;
     }
 
-    fn interactables(&mut self) -> Vec<&mut dyn ScrollableItem> {
-        vec![
-            &mut self.leaderboard_method_dropdown,
-            &mut self.sort_by_dropdown,
-            &mut self.playmode_dropdown,
-            &mut self.search_text,
-        ]
-    }
-
     async fn actual_on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
         if self.back_button.on_click(pos, button, mods) {
             match &self.select_action {
@@ -358,50 +437,25 @@ impl BeatmapSelectMenu {
             return;
         }
 
-        let mut dropdown_clicked = false;
-        for i in self.interactables() {
-            if i.on_click(pos, button, mods) {
-                dropdown_clicked = true;
-                break;
-            }
-        }
-
-
-        // check if selected mode changed
-        let mut new_mode = None;
-        if let Some(PlayModeDropdown::Mode(selected_mode)) = &self.playmode_dropdown.value {
-            if selected_mode != &self.mode {
-                new_mode = Some(selected_mode.clone());
-            }
-        }
-        if let Some(new_mode) = new_mode {
-            self.set_selected_mode(new_mode).await;
-        }
+        let dropdown_clicked = self.top_bar.on_click(pos, button, mods);
+        // for i in self.interactables() {
+        //     if i.on_click(pos, button, mods) {
+        //         dropdown_clicked = true;
+        //         break;
+        //     }
+        // }
+        
 
         // check sort by dropdown
-        let mut map_refresh = false;
-        if let Some(sort_by) = self.sort_by_dropdown.value {
-            if sort_by != self.sort_method {
-                self.sort_method = sort_by;
-                map_refresh = true;
-                Settings::get_mut().last_sort_by = sort_by;
-            }
-        }
-        if map_refresh {
+        if self.sort_method.update() {
+            Settings::get_mut().last_sort_by = self.sort_method.0;
             self.refresh_maps().await
         }
 
         // check score dropdown
-        let mut score_method_changed = false;
-        if let Some(leaderboard_method) = self.leaderboard_method_dropdown.value {
-            if SCORE_HELPER.read().await.current_method != leaderboard_method {
-                SCORE_HELPER.write().await.current_method = leaderboard_method;
-                score_method_changed = true;
-                Settings::get_mut().last_score_retreival_method = leaderboard_method;
-            }
-
-        }
-        if score_method_changed {
+        if self.leaderboard_method.update() {
+            SCORE_HELPER.write().await.current_method = self.leaderboard_method.0;
+            Settings::get_mut().last_score_retreival_method = self.leaderboard_method.0;
             self.load_scores().await
         }
 
@@ -457,16 +511,15 @@ impl BeatmapSelectMenu {
             self.beatmap_scroll.refresh_layout();
         }
         
-        for i in self.interactables() {
-            i.on_click_release(pos, button) 
-        }
+        self.top_bar.on_click_release(pos, button);
     }
 
     async fn reload_leaderboard(&mut self) {
         self.leaderboard_scroll.clear();
+        let layout_manager = self.leaderboard_scroll.layout_manager.clone();
         
         for (_, s) in self.current_scores.iter() {
-            self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.clone()).load_image().await));
+            self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(Style::default(), s.clone(), &layout_manager).load_image().await));
         }
     }
 }
@@ -474,51 +527,54 @@ impl BeatmapSelectMenu {
 #[async_trait]
 impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size.clone();
-        let size = self.window_size.0;
-        let scale = size.x / DEFAULT_WIDTH;
-        let scale2 = size.y / DEFAULT_HEIGHT;
-        let scale = scale.min(scale2);
+        self.layout_manager.apply_layout(window_size.0);
+
+        self.top_bar.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.beatmap_scroll.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.leaderboard_scroll.apply_layout(&self.layout_manager, Vector2::ZERO);
+
+        // self.window_size = window_size.clone();
+        // let size = self.window_size.0;
+        // let scale = size.x / DEFAULT_WIDTH;
+        // let scale2 = size.y / DEFAULT_HEIGHT;
+        // let scale = scale.min(scale2);
         
-        self.beatmap_scroll.set_pos(Vector2::new(self.window_size.x - BEATMAPSET_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT));
-        self.beatmap_scroll.set_size(Vector2::new(self.window_size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
-        self.beatmap_scroll.window_size_changed(size);
-        self.beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
-        self.beatmap_scroll.scroll_to_selection();
+        // self.beatmap_scroll.set_pos(Vector2::new(self.window_size.x - BEATMAPSET_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT));
+        // self.beatmap_scroll.set_size(Vector2::new(self.window_size.x - LEADERBOARD_ITEM_SIZE.x * scale, size.y - INFO_BAR_HEIGHT));
+        // self.beatmap_scroll.window_size_changed(size);
+        // self.beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
+        // self.beatmap_scroll.scroll_to_selection();
 
         
-        self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
-        self.leaderboard_scroll.window_size_changed(size);
-        self.leaderboard_scroll.ui_scale_changed(Vector2::ONE * scale);
+        // self.leaderboard_scroll.set_size(Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, size.y - (LEADERBOARD_PADDING + INFO_BAR_HEIGHT)));
+        // self.leaderboard_scroll.window_size_changed(size);
+        // self.leaderboard_scroll.ui_scale_changed(Vector2::ONE * scale);
 
 
-        self.search_text.set_pos(Vector2::new(size.x - (size.x / 4.0), 0.0));
-        self.search_text.set_size(Vector2::new(size.x / 4.0, INFO_BAR_HEIGHT));
+        // self.search_text.set_pos(Vector2::new(size.x - (size.x / 4.0), 0.0));
+        // self.search_text.set_size(Vector2::new(size.x / 4.0, INFO_BAR_HEIGHT));
 
-        self.back_button.set_pos(Vector2::new(10.0, size.y - (50.0 + 10.0)));
+        // self.back_button.set_pos(Vector2::new(10.0, size.y - (50.0 + 10.0)));
 
 
-        self.menu_game.window_size_changed(window_size).await;
-        self.menu_game.fit_to_area(Bounds::new(
-            Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
-            self.window_size.0 - Vector2::new(
-                (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
-                INFO_BAR_HEIGHT
-            )
-        )).await;
+        // self.menu_game.window_size_changed(window_size).await;
+        // self.menu_game.fit_to_area(Bounds::new(
+        //     Vector2::new(LEADERBOARD_ITEM_SIZE.x * scale, INFO_BAR_HEIGHT), 
+        //     self.window_size.0 - Vector2::new(
+        //         (LEADERBOARD_ITEM_SIZE.x + BEATMAPSET_ITEM_SIZE.x) * scale,
+        //         INFO_BAR_HEIGHT
+        //     )
+        // )).await;
     }
 
     async fn update(&mut self, game:&mut Game) {
-        self.search_text.set_selected(true); // always have it selected
-        let old_text = self.search_text.get_text();
+        // self.search_text.set_selected(true); // always have it selected
+        // let old_text = self.search_text.get_text();
+        self.top_bar.update();
         self.beatmap_scroll.update();
         self.leaderboard_scroll.update();
         self.settings.update();
         self.mods.update();
-        
-        for i in self.interactables() {
-            i.update();
-        }
 
         // update bg game
         self.menu_game.update().await;
@@ -544,7 +600,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             self.menu_game.setup().await;
         }
 
-        if old_text != self.search_text.get_text() {
+        if self.filter_text.update() {
             refresh_pending = true;
         }
 
@@ -552,13 +608,15 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             self.refresh_maps().await;
         } else if filter_pending {
             self.apply_filter().await;
-        }
+        } else {
+            // check if selected mode changed
+            if self.mode.update() {
+                GlobalValueManager::update(Arc::new(CurrentPlaymode(self.mode.0.clone())));
+                Settings::get_mut().last_played_mode = self.mode.0.clone();
 
-        {
-            // if lock.force_beatmap_list_refresh {
-            //     lock.force_beatmap_list_refresh = false;
-            //     self.refresh_maps().await;
-            // }
+                // change manager
+                self.menu_game.setup().await;
+            }
         }
 
         // check load score 
@@ -571,11 +629,13 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 // load scores
                 let mut scores = helper.scores.clone();
                 scores.sort_by(|a, b| b.score.score.cmp(&a.score.score));
+                
+                let layout_manager = self.leaderboard_scroll.layout_manager.clone();
 
                 // add scores to list
                 for s in scores.iter() {
                     self.current_scores.insert(s.hash(), s.clone());
-                    self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(s.to_owned()).load_image().await));
+                    self.leaderboard_scroll.add_item(Box::new(LeaderboardItem::new(Style::default(), s.to_owned(), &layout_manager).load_image().await));
                 }
             }
         }
@@ -583,14 +643,6 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     }
 
     async fn draw(&mut self, items: &mut RenderableCollection) {
-        // draw a bar on the top for the info
-        let bar_rect = Rectangle::new(
-            Vector2::ZERO,
-            Vector2::new(self.window_size.x, INFO_BAR_HEIGHT),
-            Color::WHITE,
-            Some(Border::new(Color::BLACK, 1.2))
-        );
-        items.push(bar_rect);
 
         // draw bg game
         self.menu_game.draw(items).await;
@@ -618,6 +670,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         //     )));
         // }
 
+        // top bar
+        self.top_bar.draw(Vector2::ZERO, items);
+
         // beatmap scroll
         self.beatmap_scroll.draw(Vector2::ZERO, items);
 
@@ -626,11 +681,6 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         // back button
         self.back_button.draw(Vector2::ZERO, items);
-
-        // everything else
-        for i in self.interactables() {
-            i.draw(Vector2::ZERO, items);
-        }
 
     }
 
@@ -665,13 +715,16 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     }
 
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
-        // search text relies on this event, so if it consumed the event, ignore drag
-        self.search_text.check_hover(pos);
-        if self.search_text.get_hover() {
-            if self.search_text.on_click(pos, button, mods) {
-                // note: we shouldnt need to store mods, as search text in this instance doesnt care about it
-                return;
-            }
+        // // search text relies on this event, so if it consumed the event, ignore drag
+        // self.search_text.check_hover(pos);
+        // if self.search_text.get_hover() {
+        //     if self.search_text.on_click(pos, button, mods) {
+        //         // note: we shouldnt need to store mods, as search text in this instance doesnt care about it
+        //         return;
+        //     }
+        // }
+        if self.top_bar.get_hover() {
+            return;
         }
 
         self.mouse_down = Some((pos, false, button, pos, mods));
@@ -684,7 +737,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         // the search input absorbed the on_click.
         // therefor, perform the on_release only for the search input
         if self.mouse_down.is_none() {
-            self.search_text.on_click_release(pos, button);
+            self.top_bar.on_click_release(pos, button);
             return
         }
 
@@ -733,9 +786,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
             self.on_scroll(scroll_pos, game).await
         }
 
-        for i in self.interactables() {
-            i.on_mouse_move(pos) 
-        }
+        self.top_bar.on_mouse_move(pos);
         self.back_button.on_mouse_move(pos);
         self.beatmap_scroll.on_mouse_move(pos);
         self.leaderboard_scroll.on_mouse_move(pos);
@@ -743,12 +794,9 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
     async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {
         let mut h = false;
 
+        h |= self.top_bar.on_scroll(delta);
         h |= self.beatmap_scroll.on_scroll(delta);
         h |= self.leaderboard_scroll.on_scroll(delta);
-
-        for i in self.interactables() {
-            h |= i.on_scroll(delta);
-        }
 
         if !h {
             // make the scroll think its hovered
@@ -772,12 +820,12 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
             if !found {
                 let mut groups = Vec::new();
-                let mut playmode = self.mode.clone();
+                let mut playmode = self.mode.0.clone();
 
                 if let Some(man) = &self.menu_game.manager {
                     playmode = man.gamemode.playmode();
                 } else if let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() {
-                    playmode = map.check_mode_override(self.mode.clone());
+                    playmode = map.check_mode_override(self.mode.0.clone());
                 }
 
                 if let Some(info) = get_gamemode_info(&playmode) {
@@ -802,7 +850,7 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
 
         if key == F7 && mods.ctrl {
-            self.run_diffcalc(vec![self.mode.clone()].into_iter(), true);
+            self.run_diffcalc(vec![self.mode.0.clone()].into_iter(), true);
         }
 
         if key == Escape {
@@ -827,20 +875,12 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
 
         // mode change
         if mods.alt {
-            let new_mode = match key {
-                Key1 => Some("osu".to_owned()),
-                Key2 => Some("taiko".to_owned()),
+            match key {
+                Key1 => GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned()))),
+                Key2 => GlobalValueManager::update(Arc::new(CurrentPlaymode("taiko".to_owned()))),
                 // Key3 => Some("catch".to_owned()),
-                Key4 => Some("mania".to_owned()),
-                _ => None
-            };
-
-            if let Some(new_mode) = new_mode {
-                self.set_selected_mode(new_mode.clone()).await;
-                let display = gamemode_display_name(&new_mode);
-                NotificationManager::add_text_notification(&format!("Mode changed to {}", display), 1000.0, Color::BLUE).await;
-                self.mode = new_mode;
-                self.load_scores().await;
+                Key4 => GlobalValueManager::update(Arc::new(CurrentPlaymode("mania".to_owned()))),
+                _ => {}
             }
         }
 
@@ -882,7 +922,8 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
                 }
 
                 // force diff recalc
-                self.set_selected_mode(self.mode.clone()).await;
+                self.refresh_maps().await;
+                // self.set_selected_mode(self.mode.clone()).await;
 
                 NotificationManager::add_text_notification(&format!("Map speed: {:.2}x", speed), 2000.0, Color::BLUE).await;
             }
@@ -899,32 +940,16 @@ impl AsyncMenu<Game> for BeatmapSelectMenu {
         }
         
 
-        // only refresh if the text changed
-        let old_text = self.search_text.get_text();
-
-        for i in self.interactables() {
-            i.on_key_press(key, mods);
-        }
-
-        if self.search_text.get_text() != old_text {
-            self.apply_filter().await;
-        }
+        self.top_bar.on_key_press(key, mods);
     }
 
     async fn on_key_release(&mut self, key:Key, _game:&mut Game) {
-        for i in self.interactables() {
-            i.on_key_release(key);
-        }
+        self.top_bar.on_key_release(key);
     }
 
     async fn on_text(&mut self, text:String) {
-        // DO NOT ACTIVATE FOR BEATMAP ITEMS!!
-        // on_text is used to change the playmode lol
-        for i in self.interactables() {
-            i.on_text(text.clone());
-        }
-
-        self.apply_filter().await;
+        self.top_bar.on_text(text.clone());
+        // self.apply_filter().await;
     }
 
 
@@ -960,3 +985,4 @@ pub enum BeatmapSelectAction {
     PlayMap,
     OnComplete(tokio::sync::mpsc::Sender<Option<(Arc<BeatmapMeta>, String)>>)
 }
+

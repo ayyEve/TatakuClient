@@ -6,6 +6,9 @@ const SIZE: Vector2 = Vector2::new(150.0, 50.0);
 pub struct LobbyReadyButton {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -17,10 +20,22 @@ pub struct LobbyReadyButton {
 }
 
 impl LobbyReadyButton {
-    pub fn new() -> Self {
+    pub fn new(layout_manager: &LayoutManager) -> Self {
+
+        let style = Style {
+            size: LayoutManager::small_button(),
+            ..Default::default()
+        };
+        
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self {
-            pos: Vector2::ZERO,
-            size: SIZE,
+            pos,
+            size,
+            style,
+            node,
+
             hover: false,
             tag: "ready".to_owned(),
             ui_scale: Vector2::ONE,
@@ -33,6 +48,14 @@ impl LobbyReadyButton {
 }
 
 impl ScrollableItem for LobbyReadyButton {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+    
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = SIZE * scale;

@@ -11,6 +11,8 @@ const RESIZE_LENIENCE:f32 = 3.0;
 
 
 pub struct Chat {
+    layout_manager: LayoutManager,
+
     // messages
     messages: HashMap<ChatChannel, Vec<ChatMessage>>,
     // if the chat is visible or not
@@ -35,11 +37,19 @@ pub struct Chat {
     width_resize_hover: bool,
     height_resize_hover: bool,
 
-    window_size: Arc<WindowSize>,
+    size: Vector2,
+    // window_size: Arc<WindowSize>,
 }
 impl Chat {
     pub fn new() -> Self {
         let window_size = WindowSize::get();
+        let layout_manager = LayoutManager::new();
+        layout_manager.set_style(Style {
+            size: LayoutManager::full_size(),
+            display: taffy::style::Display::Flex,
+            flex_direction: taffy::style::FlexDirection::Row,
+            ..Default::default()
+        });
 
         let chat_height = window_size.y / 3.0 - INPUT_HEIGHT;
         let channel_list_width = window_size.x / 5.0;
@@ -50,21 +60,51 @@ impl Chat {
         let channel_list_size = Vector2::new(channel_list_width, chat_size.y);
 
         let mut input = TextInput::new(
-            Vector2::new(channel_list_width, window_size.y - INPUT_HEIGHT), 
-            Vector2::new(chat_size.x, INPUT_HEIGHT), 
+            Style {
+                size: LayoutManager::full_width(),
+                ..Default::default()
+            },
+            // Vector2::new(channel_list_width, window_size.y - INPUT_HEIGHT), 
+            // Vector2::new(chat_size.x, INPUT_HEIGHT), 
             "Chat: ", 
             "",
+            &layout_manager,
             Font::Main,
+        );
+
+        let channel_scroll = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.2),
+                    height: Dimension::Percent(0.33),
+                },
+                ..Default::default()
+            }, 
+            ListMode::VerticalList, 
+            &layout_manager
+        );
+        // chat_size - Vector2::new(0.0, INPUT_HEIGHT)
+        let message_scroll = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.8),
+                    height: Dimension::Percent(0.33),
+                },
+                ..Default::default()
+            },
+            ListMode::VerticalList,
+            &layout_manager,
         );
         
         Self {
+            layout_manager,
             // [channels][messages]
-            messages:HashMap::new(),
+            messages: HashMap::new(),
             selected_channel: None,
             should_close: false,
 
-            channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
-            message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),
+            channel_scroll,
+            message_scroll,
             input,
 
             // positions/sizes
@@ -75,7 +115,7 @@ impl Chat {
             height_resize: false,
             width_resize_hover:  false,
             height_resize_hover: false,
-            window_size
+            size: window_size.0
         }
     }
 
@@ -94,18 +134,22 @@ impl Dialog<Game> for Chat {
     async fn force_close(&mut self) { self.should_close = true; }
     
     fn get_bounds(&self) -> Bounds {
-        let window_size = &self.window_size;
         Bounds::new(
-            Vector2::new(0.0, window_size.y - (self.chat_height + RESIZE_LENIENCE)), 
+            Vector2::new(0.0, self.size.y - (self.chat_height + RESIZE_LENIENCE)), 
             Vector2::new(
-                window_size.x,
+                self.size.x,
                 self.chat_height + RESIZE_LENIENCE
             )
         )
     }
     
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
+    fn container_size_changed(&mut self, size: Vector2) {
+        // self.window_size = window_size;
+        self.size = size;
+        self.layout_manager.apply_layout(size);
+
+        self.channel_scroll.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.message_scroll.apply_layout(&self.layout_manager, Vector2::ZERO);
     }
 
 
@@ -155,8 +199,8 @@ impl Dialog<Game> for Chat {
                 for m in message_list.iter() {
                     self.message_scroll.add_item(Box::new(MessageScroll::new(
                         m.clone(),
-                        self.window_size.x - self.channel_list_width,
-                        30.0
+                        30.0,
+                        &self.message_scroll.layout_manager
                     )));
                 }
             }
@@ -191,16 +235,16 @@ impl Dialog<Game> for Chat {
         self.channel_scroll.on_mouse_move(pos);
         self.message_scroll.on_mouse_move(pos);
 
-        let window_size = self.window_size.0;
+        let size = self.size;
         // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
-        self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
+        self.height_resize_hover = (pos.y - (size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
 
         if self.height_resize {
-            self.chat_height = window_size.y - pos.y;
+            self.chat_height = size.y - pos.y;
 
             self.channel_scroll.set_pos(Vector2::new(
                 self.channel_scroll.get_pos().x,
-                window_size.y - self.chat_height
+                size.y - self.chat_height
             ));
             self.channel_scroll.set_size(Vector2::new(
                 self.channel_scroll.size().x,
@@ -209,7 +253,7 @@ impl Dialog<Game> for Chat {
 
             self.message_scroll.set_pos(Vector2::new(
                 self.message_scroll.get_pos().x,
-                window_size.y - self.chat_height
+                size.y - self.chat_height
             ));
             self.message_scroll.set_size(Vector2::new(
                 self.message_scroll.size().x,
@@ -233,7 +277,7 @@ impl Dialog<Game> for Chat {
                 self.message_scroll.get_pos().y
             ));
             self.message_scroll.set_size(Vector2::new(
-                window_size.x - self.channel_list_width,
+                size.x - self.channel_list_width,
                 self.message_scroll.size().x
             ));
         }
@@ -275,8 +319,8 @@ impl Dialog<Game> for Chat {
                     self.messages.insert(channel.clone(), messages.clone());
                     self.channel_scroll.add_item(Box::new(ChannelScroll::new(
                         channel.clone(), 
-                        self.channel_list_width, 
-                        30.0
+                        30.0,
+                        &self.channel_scroll.layout_manager
                     )));
                     continue;
                 }
@@ -286,14 +330,14 @@ impl Dialog<Game> for Chat {
                     if channel.get_name() == current_channel.get_name() {
                         let cached_messages = self.messages.get_mut(channel).unwrap();
 
-                        let window_size = self.window_size.0;
+                        let size = self.size;
                         for message in online_manager.chat_messages.get(channel).unwrap() {
                             if !cached_messages.contains(message) {
                                 // cached_messages.push(message.clone())
                                 self.message_scroll.add_item(Box::new(MessageScroll::new(
                                     message.clone(),
-                                    window_size.x - self.channel_list_width,
-                                    30.0
+                                    30.0,
+                                    &self.message_scroll.layout_manager
                                 )));
                                 scroll_pending = true;
                             }
@@ -316,7 +360,7 @@ impl Dialog<Game> for Chat {
     }
 
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-        let window_size = self.window_size.0;
+        let size = self.size;
 
         // draw backgrounds
         list.push(Rectangle::new(
@@ -335,8 +379,8 @@ impl Dialog<Game> for Chat {
         if self.width_resize_hover {
             // red line at width
             list.push(Line::new(
-                Vector2::new(self.channel_list_width, window_size.y) + offset,
-                Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
+                Vector2::new(self.channel_list_width, size.y) + offset,
+                Vector2::new(self.channel_list_width, size.y - self.chat_height) + offset,
                 2.0,
                 Color::RED
             ))
@@ -344,8 +388,8 @@ impl Dialog<Game> for Chat {
         if self.height_resize_hover {
             // red line at height
             list.push(Line::new(
-                Vector2::new(0.0, window_size.y - self.chat_height) + offset,
-                Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
+                Vector2::new(0.0, size.y - self.chat_height) + offset,
+                Vector2::new(size.x, size.y - self.chat_height) + offset,
                 2.0,
                 Color::RED
             ))
@@ -430,6 +474,9 @@ impl ChatChannel {
 struct ChannelScroll {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -439,21 +486,41 @@ struct ChannelScroll {
     font: Font,
 }
 impl ChannelScroll {
-    fn new(channel: ChatChannel, width: f32, font_size: f32) -> Self {
+    fn new(channel: ChatChannel, font_size: f32, layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Points(font_size),
+            },
+            ..Default::default()
+        };
+        let node = layout_manager.create_node(&style);
+        
         Self {
+            pos: Vector2::ZERO,
+            size: Vector2::ZERO, //: Vector2::new(width, font_size),
+            style, 
+            node,
+
             tag: channel.get_name(),
             channel,
             font_size,
 
             hover: false,
             selected: false,
-            pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size),
             font: Font::Main,
         }
     }
 }
 impl ScrollableItem for ChannelScroll {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
 
         let text = Text::new(
@@ -472,26 +539,48 @@ impl ScrollableItem for ChannelScroll {
 struct MessageScroll {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+    
     hover: bool,
-
     message: ChatMessage,
     font_size: f32,
     font: Font,
 }
 impl MessageScroll {
-    fn new(message: ChatMessage, width: f32, font_size: f32) -> Self {
+    fn new(message: ChatMessage, font_size: f32, layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Points(font_size),
+            },
+            ..Default::default()
+        };
+        let node = layout_manager.create_node(&style);
+        
         Self {
+            pos: Vector2::ZERO,
+            size: Vector2::ZERO,
+            style,
+            node,
+
             message,
             font_size,
 
             hover: false,
-            pos: Vector2::ZERO,
-            size: Vector2::new(width, font_size),
             font: Font::Main,
         }
     }
 }
 impl ScrollableItem for MessageScroll {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+    
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let text = Text::new(
             self.pos + pos_offset,

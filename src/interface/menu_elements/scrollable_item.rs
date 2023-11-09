@@ -5,6 +5,10 @@ pub trait ScrollableItem: ScrollableItemGettersSetters + Any {
     fn window_size_changed(&mut self, _new_window_size: Vector2) {}
     fn ui_scale_changed(&mut self, _scale: Vector2) {}
 
+    fn get_style(&self) -> Style;
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2);
+    fn update_layout(&self, _layout: &LayoutManager) {}
+
     /// fallback for when the item is not in a ScrollableArea
     fn check_hover(&mut self, p:Vector2) {
         let pos = self.get_pos();

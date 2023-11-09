@@ -3,13 +3,16 @@ use crate::prelude::*;
 pub struct ModDialog {
     should_close: bool,
     scroll: ScrollableArea,
+    layout_manager: LayoutManager,
 
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
+    bounds: Bounds,
 
-    selected_index: usize
+    selected_index: usize,
 }
 impl ModDialog {
     pub async fn new(groups: Vec<GameplayModGroup>) -> Self {
+        let mut layout_manager = LayoutManager::new();
         let mut new_groups = default_mod_groups();
 
         // see if any groups are named the same and merge them
@@ -25,24 +28,53 @@ impl ModDialog {
         }
 
         // create the scrollable and add the mod buttons to it
-        let window_size = WindowSize::get();
-        let mut scroll = ScrollableArea::new(Vector2::with_y(20.0), window_size.0, ListMode::VerticalList);
-        let pos = Vector2::new(50.0, 0.0);
+        // let window_size = WindowSize::get();
+        let mut scroll = ScrollableArea::new(Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Percent(1.0),
+            },
+            display: taffy::style::Display::Flex,
+            flex_direction: taffy::style::FlexDirection::Column,
+            ..Default::default()
+        }, ListMode::VerticalList, &layout_manager);
+        
+        let layout_manager2 = scroll.layout_manager.clone();
 
+
+        let section_style = Style {
+            size: Size {
+                width: Dimension::Percent(0.8),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
+        let btn_style = Style {
+            size: Size {
+                width: Dimension::Percent(0.8),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
         let manager = ModManager::get();
         for group in new_groups {
-            scroll.add_item(Box::new(MenuSection::new(pos, 50.0, &group.name, Color::WHITE, Font::Main)));
+            scroll.add_item(Box::new(MenuSection::new(section_style.clone(), &group.name, Color::WHITE, &layout_manager2, Font::Main)));
             
             for m in group.mods {
-                scroll.add_item(Box::new(ModButton::new(pos, m, &manager)));
+                scroll.add_item(Box::new(ModButton::new(btn_style.clone(), m, &manager, &layout_manager2)));
             }
         }
 
+        let window_size = WindowSize::get().0;
+        layout_manager.apply_layout(window_size);
+
         Self {
-            should_close: false,
             scroll,
-            window_size,
-            selected_index: 0
+            layout_manager,
+            bounds: Bounds::new(Vector2::ZERO, window_size),
+            // window_size,
+            should_close: false,
+            selected_index: 0,
         }
     }
 
@@ -75,7 +107,7 @@ impl ModDialog {
 impl Dialog<Game> for ModDialog {
     fn name(&self) -> &'static str { "mod_menu" }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    fn get_bounds(&self) -> Bounds { self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
 
     async fn update(&mut self, _g: &mut Game) {
@@ -125,8 +157,10 @@ impl Dialog<Game> for ModDialog {
         true
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.bounds.size = size;
+        self.layout_manager.apply_layout(size);
+        self.scroll.apply_layout(&self.layout_manager, Vector2::ZERO);
     }
 
 
@@ -151,8 +185,14 @@ impl Dialog<Game> for ModDialog {
 struct ModButton {
     size: Vector2,
     pos: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
+
+    checkbox: Checkbox,
+    text: SimpleText,
 
     gameplay_mod: GameplayMod,
     mod_name: String,
@@ -161,13 +201,41 @@ struct ModButton {
     mods: ModManagerHelper
 }
 impl ModButton {
-    fn new(pos: Vector2, gameplay_mod: GameplayMod, current_mods: &ModManager) -> Self {
+    fn new(style: Style, gameplay_mod: GameplayMod, current_mods: &ModManager, layout_manager: &LayoutManager) -> Self {
         let enabled = current_mods.has_mod(gameplay_mod.name);
         let mod_name = gameplay_mod.display_name.to_owned();
 
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
+        // create a node to align the checkbox and description text
+        let subnode = layout_manager.clone().with_parent(node);
+        subnode.set_style(Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Auto,
+            },
+            display: taffy::style::Display::Flex,
+            flex_direction: taffy::style::FlexDirection::Row,
+
+            ..Default::default()
+        });
+
+        let checkbox = Checkbox::new(Style {
+            ..Default::default()
+        }, &mod_name, enabled, &subnode, Font::Main);
+
+        let text = SimpleText::new(Style::default(), 30.0, gameplay_mod.description, &subnode);
+
         Self {
-            size: Vector2::new(500.0, 50.0),
+            size,
             pos, 
+            style,
+            node,
+
+            checkbox,
+            text,
+
             hover: false,
             selected: false,
 
@@ -190,32 +258,41 @@ impl ModButton {
     }
 }
 impl ScrollableItem for ModButton {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout_manager: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout_manager.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+
+        self.checkbox.apply_layout(layout_manager, self.pos);
+        self.text.apply_layout(layout_manager, self.pos);
+    }
+
     fn update(&mut self) {
         if self.mods.update() {
-            self.enabled = self.mods.has_mod(self.gameplay_mod)
+            self.enabled = self.mods.has_mod(self.gameplay_mod);
         }
+        self.checkbox.set_hover(self.hover);
+        self.checkbox.set_selected(self.selected);
     }
 
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let pos_offset = self.pos + pos_offset;
-        let cb_size = Vector2::new(200.0, 50.0);
 
-        let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, Font::Main);
-        checkbox.set_hover(self.hover);
-        checkbox.set_selected(self.selected);
+        // let font_size = 30.0;
+        // let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
+        // let desc_text = Text::new(
+        //     desc_pos, 
+        //     font_size, 
+        //     self.gameplay_mod.description, 
+        //     Color::WHITE, 
+        //     Font::Main
+        // );
 
-        let font_size = 30.0;
-        let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
-        let desc_text = Text::new(
-            desc_pos, 
-            font_size, 
-            self.gameplay_mod.description, 
-            Color::WHITE, 
-            Font::Main
-        );
-
-        checkbox.draw(pos_offset, list);
-        list.push(desc_text);
+        self.checkbox.draw(pos_offset, list);
+        self.text.draw(pos_offset, list);
+        // list.push(desc_text);
     }
 
     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {

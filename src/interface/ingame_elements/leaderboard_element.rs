@@ -39,12 +39,13 @@ impl InnerUIElement for LeaderboardElement {
         //     window_size: [0.0, 0.0],
         //     draw_size: [0, 0],
         // };
+        let layout_manager = LayoutManager::new();
 
         let mut is_pb = true;
 
         let mut base_pos = pos_offset;
         for score in self.scores.iter() {
-            let mut l = LeaderboardItem::new(score.clone());
+            let mut l = LeaderboardItem::new(Style::default(), score.clone(), &layout_manager);
             l.image = self.image.clone();
             l.ui_scale_changed(scale);
 

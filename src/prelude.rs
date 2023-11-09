@@ -11,6 +11,13 @@ pub use std::sync::{ Arc, Weak };
 pub use std::sync::atomic::{ *, Ordering::SeqCst };
 pub use std::sync::mpsc::{ Sender, SyncSender, Receiver, sync_channel, channel };
 
+// taffy imports
+pub use taffy::node::Node;
+pub use taffy::style::Style;
+pub use taffy::geometry::Size;
+pub use taffy::style::Dimension;
+pub use taffy::style::LengthPercentageAuto;
+
 // bomb imports
 pub use bombs::*;
 

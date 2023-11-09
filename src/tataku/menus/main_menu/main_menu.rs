@@ -12,6 +12,8 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
+    layout_manager: LayoutManager,
+
     // index 0
     pub play_button: MainMenuButton,
     // // index 1
@@ -46,6 +48,7 @@ impl MainMenu {
         let window_size = WindowSize::get();
         let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
         let mut counter = 1.0;
+        let layout_manager = LayoutManager::new();
         
         let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play", "menu-button-play").await;
         // counter += 1.0;
@@ -76,8 +79,9 @@ impl MainMenu {
             menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
             menu_visible: false,
-            music_box: MusicBox::new(event_sender.clone()).await,
+            music_box: MusicBox::new(&layout_manager, event_sender.clone()).await,
             media_controls: MediaControlHelper::new(event_sender.clone()),
+            layout_manager,
 
             event_sender, 
             event_receiver,
@@ -506,7 +510,7 @@ impl AsyncMenu<Game> for MainMenu {
         self.exit_button.window_size_changed(&window_size);
 
         self.window_size = window_size.clone();
-        self.music_box = MusicBox::new(self.event_sender.clone()).await;
+        self.music_box = MusicBox::new(&self.layout_manager, self.event_sender.clone()).await;
 
         self.menu_game.window_size_changed(window_size).await;
     }

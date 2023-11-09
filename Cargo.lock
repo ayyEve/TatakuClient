@@ -1293,6 +1293,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "grid"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eec1c01eb1de97451ee0d60de7d81cf1e72aabefb021616027f3d1c3ec1c723c"
+
+[[package]]
 name = "guillotiere"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2100,6 +2106,12 @@ dependencies = [
  "quote",
  "syn 2.0.37",
 ]
+
+[[package]]
+name = "obfstr"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ba2979b86cc910a6d13837ef97fef0c6b68fa807c5e014d622449db18351dc"
 
 [[package]]
 name = "objc"
@@ -2994,6 +3006,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "taffy"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c2287b6d7f721ada4cddf61ade5e760b2c6207df041cac9bfaa192897362fd3"
+dependencies = [
+ "arrayvec",
+ "grid",
+ "num-traits",
+ "slotmap",
+]
+
+[[package]]
 name = "tataku-client"
 version = "0.1.0"
 dependencies = [
@@ -3022,6 +3046,7 @@ dependencies = [
  "md5",
  "native-tls",
  "num-format",
+ "obfstr",
  "parking_lot",
  "png",
  "rand",
@@ -3033,6 +3058,7 @@ dependencies = [
  "serde_yaml",
  "sha2",
  "souvlaki",
+ "taffy",
  "tataku-client-proc-macros",
  "tataku-common",
  "tataku-logging",

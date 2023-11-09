@@ -1,19 +1,27 @@
 use crate::prelude::*;
 
-
 const BEATMAP_ITEM_Y_PADDING:f32 = 5.0;
 pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x() * 0.8, 50.0);
 
+/// size as percentage of parent
+const BASE_SIZE:Vector2 = Vector2::new(1.0, 0.05);
 
 
 pub struct BeatmapsetItem {
     pos: Vector2,
+    size: Vector2,
+    style: Style,
+    node: Node,
+
+    layout_manager: LayoutManager,
+    beatmap_items: (Node, Style),
+
     hover: bool,
     selected: bool,
     scale: Vector2,
     
-    pub beatmaps: Vec<BeatmapMetaWithDiff>,
+    pub beatmaps: Vec<BeatmapItem>,
     selected_index: usize,
     mouse_pos: Vector2,
     // playmode: String,
@@ -29,22 +37,66 @@ pub struct BeatmapsetItem {
     skin: CurrentSkinHelper,
 }
 impl BeatmapsetItem {
-    pub async fn new(beatmaps: Vec<BeatmapMetaWithDiff>, display_text: String) -> BeatmapsetItem {
+    pub async fn new(
+        beatmaps: Vec<BeatmapMetaWithDiff>, 
+        display_text: String,
+        layout_manager: &LayoutManager,
+    ) -> BeatmapsetItem {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(BASE_SIZE.x),
+                height: Dimension::Percent(BASE_SIZE.y),
+            },
+            // min_size: Size {
+            //     width: Dimension::Points(100.0),
+            //     height: Dimension::Points(50.0),
+            // },
+            margin: taffy::geometry::Rect {
+                top: LengthPercentageAuto::Points(3.5),
+                left: LengthPercentageAuto::Auto,
+                bottom: LengthPercentageAuto::Points(3.5),
+                right: LengthPercentageAuto::Auto,
+            },
+            ..Default::default()
+        };
+
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
+        let layout_manager = layout_manager.clone().with_parent(node);
+        let beatmap_list_style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Auto,
+            },
+            display: taffy::style::Display::None,
+            justify_items: Some(taffy::style::AlignItems::End), // justify items to the left
+            ..Default::default()
+        };
+        let beatmap_list_node = layout_manager.create_node(&beatmap_list_style);
+        let layout_manager = layout_manager.clone().with_parent(beatmap_list_node);
+
         let mut button_image = SkinManager::get_texture("menu-button-background", true).await; //GenericButtonImage::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE).await,
-        if let Some(image) = &mut button_image {
-            image.origin = Vector2::ZERO;
-        }
+        button_image.ok_do_mut(|i|i.origin = Vector2::ZERO);
+
+        let beatmaps = beatmaps.into_iter().map(|b|BeatmapItem::new(b, &layout_manager)).collect();
 
         let skin = CurrentSkinHelper::new();
-
         BeatmapsetItem {
-            beatmaps, 
-            pos: Vector2::ZERO,
+            pos,
+            size,
+            style,
+            node,
+            
+            layout_manager,
+            beatmap_items: (beatmap_list_node, beatmap_list_style),
+
             hover: false,
             selected: false,
             display_text,
             scale: Vector2::ONE,
-
+            
+            beatmaps, 
             theme: ThemeHelper::new(),
             selected_index: 0,
             mouse_pos: Vector2::ZERO,
@@ -145,9 +197,36 @@ impl ScrollableItemGettersSetters for BeatmapsetItem {
     fn get_hover(&self) -> bool { self.hover }
     fn set_hover(&mut self, hover:bool) { self.hover = hover }
     fn get_selected(&self) -> bool { self.selected }
-    fn set_selected(&mut self, selected:bool) { self.selected = selected }
+    fn set_selected(&mut self, selected:bool) { 
+        self.selected = selected;
+
+        if selected {
+            self.beatmap_items.1.size.height = Dimension::Auto;
+        } else {
+            self.beatmap_items.1.size.height = Dimension::Points(0.0);
+            // self.beatmap_items.1.display = taffy::style::Display::None;
+        }
+
+    }
 }
+
 impl ScrollableItem for BeatmapsetItem {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+
+        self.beatmaps.iter_mut().for_each(|b|b.apply_layout(&self.layout_manager, self.pos));
+        // info!("item got pos {}", self.pos);
+    }
+
+    fn update_layout(&self, _layout: &LayoutManager) {
+        self.layout_manager.set_child_style(self.beatmap_items.0, self.beatmap_items.1.clone());
+        // layout.set_child_style(self.node, self.style.clone());
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.double_clicked) }
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.scale = scale;
@@ -174,7 +253,16 @@ impl ScrollableItem for BeatmapsetItem {
     }
     fn on_mouse_move(&mut self, pos:Vector2) {
         self.mouse_pos = pos;
+        let old_hover = self.hover;
         self.check_hover(pos);
+
+        if old_hover != self.hover {
+            let scale = self.get_scale();
+            self.style.size = Size {
+                width: Dimension::Percent(BASE_SIZE.x * scale.x),
+                height: Dimension::Percent(BASE_SIZE.y * scale.y),
+            };
+        }
     }
 
     fn on_key_press(&mut self, key:Key, mods:KeyModifiers) -> bool {
@@ -248,7 +336,7 @@ impl ScrollableItem for BeatmapsetItem {
 
             button_image.pos = pos;
             button_image.color = color;
-            button_image.set_size(BEATMAPSET_ITEM_SIZE * scale);
+            button_image.set_size(self.size); //(BEATMAPSET_ITEM_SIZE * scale);
             list.push(button_image);
         } else {
             list.push(Rectangle::new(
@@ -272,7 +360,7 @@ impl ScrollableItem for BeatmapsetItem {
             pos + Vector2::new(20.0, 10.0) * scale,
             15.0 * scale.y,
             self.display_text.clone(),
-            if self.selected { selected_text_color } else if self.hover {hovered_text_color} else { text_color },
+            if self.selected { selected_text_color } else if self.hover { hovered_text_color} else { text_color },
             Font::Main
         ));
 
@@ -317,19 +405,21 @@ impl ScrollableItem for BeatmapsetItem {
             let meta = &mut self.beatmaps[i];
             let hover = i == index;
             let selected = i == self.selected_index;
+            let pos = self.pos + meta.pos + pos_offset;
 
             let color = if hover { btn_hover_color } else if selected { btn_select_color } else { btn_color };
             let btn_scale = if hover { btn_hover_scale } else if selected { btn_selected_scale } else { btn_scale };
             let mut btn_pos = pos + if hover { btn_hover_offset } else if selected { btn_selected_offset } else { btn_offset } * btn_scale;
-            // maintain right alignment
-            btn_pos.x -= BEATMAP_ITEM_SIZE.x * btn_scale.x;
+            // // maintain right alignment
+            // btn_pos.x -= BEATMAP_ITEM_SIZE.x * btn_scale.x;
 
             // bounding rect
             if let Some(mut btn) = btn_base.clone() {
                 btn.color = color;
                 btn.pos = btn_pos;
 
-                btn.set_size(BEATMAP_ITEM_SIZE * btn_scale);
+                btn.set_size(meta.size);
+                // btn.set_size(BEATMAP_ITEM_SIZE * btn_scale);
                 list.push(btn)
                 // btn.draw(args, parent_depth + 5.0, Vector2::ZERO, list);
             } else {
@@ -375,10 +465,67 @@ impl ScrollableItem for BeatmapsetItem {
             };
 
 
-            pos.y += (BEATMAP_ITEM_SIZE.y * btn_scale.y) + padding;
+            // pos.y += (BEATMAP_ITEM_SIZE.y * btn_scale.y) + padding;
         }
         
     
     }
 
+}
+
+
+pub struct BeatmapItem {
+    pos: Vector2,
+    size: Vector2,
+
+    node: Node,
+
+    beatmap: BeatmapMetaWithDiff,
+
+    hover: bool,
+    selected: bool,
+    // visible: bool,
+    // layout_manager: LayoutManager,
+}
+impl BeatmapItem {
+    fn new(beatmap: BeatmapMetaWithDiff, layout_manager: &LayoutManager) -> Self {
+        let node = layout_manager.create_node(&Style {
+            size: Size {
+                width: Dimension::Percent(0.8),
+                height: Dimension::Percent(BASE_SIZE.y),
+            },
+            ..Default::default()
+        });
+
+        Self {
+            pos: Vector2::ZERO,
+            size: Vector2::ZERO,
+            node,
+            
+            beatmap,
+
+            hover: false,
+            selected: false,
+        }
+    }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+}
+
+
+
+impl Deref for BeatmapItem {
+    type Target = BeatmapMetaWithDiff;
+    fn deref(&self) -> &Self::Target {
+        &self.beatmap
+    }
+}
+impl DerefMut for BeatmapItem {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.beatmap
+    }
 }

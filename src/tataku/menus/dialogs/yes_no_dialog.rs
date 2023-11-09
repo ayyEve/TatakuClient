@@ -13,61 +13,69 @@ pub struct YesNoDialog {
     should_close: bool,
     title: &'static str,
     prompt: String,
+    layout_manager: LayoutManager,
 
     yes_button: MenuButton,
     no_button: MenuButton,
     cancel_button: Option<MenuButton>,
 
     sender: Sender<YesNoResult>,
-
+    
     prompt_size: Vector2,
 }
 impl YesNoDialog {
     pub fn new(title: &'static str, prompt: impl ToString, show_cancel: bool) -> (Receiver<YesNoResult>, Self) {
+        let mut layout_manager = LayoutManager::new();
         let prompt = prompt.to_string();
-        let zero = Vector2::ZERO;
+        let style = Style {
+            size: LayoutManager::small_button(),
+            ..Default::default()
+        };
 
         // create buttons
-        let mut yes_button = MenuButton::new(zero, BUTTON_SIZE, "Yes", Font::Main);
-        let mut no_button = MenuButton::new(zero, BUTTON_SIZE, "No", Font::Main);
-        let mut cancel_button = if show_cancel { Some(MenuButton::new(zero, BUTTON_SIZE, "Cancel", Font::Main)) } else { None };
+        let mut yes_button = MenuButton::new(style.clone(), "Yes", &layout_manager, Font::Main);
+        let mut no_button = MenuButton::new(style.clone(), "No", &layout_manager, Font::Main);
+        let mut cancel_button = if show_cancel { Some(MenuButton::new(style.clone(), "Cancel", &layout_manager, Font::Main)) } else { None };
         
-        // how many buttons do we have (since it can be 2 or 3 depending if the cancel button is included or not)
-        let button_count =  if cancel_button.is_some() { 3 } else { 2 };
-        // how much width the buttons need
-        let button_widths = BUTTON_MARGIN.x + (BUTTON_SIZE.x + BUTTON_MARGIN.x) * button_count as f32;
+        // // how many buttons do we have (since it can be 2 or 3 depending if the cancel button is included or not)
+        // let button_count =  if cancel_button.is_some() { 3 } else { 2 };
+        // // how much width the buttons need
+        // let button_widths = BUTTON_MARGIN.x + (BUTTON_SIZE.x + BUTTON_MARGIN.x) * button_count as f32;
 
-        // create prompt text and measure it
-        let prompt_size = Text::new(zero, FONT_SIZE, prompt.clone(), Color::BLACK, Font::Main).measure_text();
+        // // create prompt text and measure it
+        // let prompt_size = Text::new(zero, FONT_SIZE, prompt.clone(), Color::BLACK, Font::Main).measure_text();
 
-        // get the total width of the dialog
-        // it must be at least the width of all the buttons, but at most MAX_WIDTH
-        let total_width = prompt_size.x.clamp(button_widths, MAX_WIDTH);
+        // // get the total width of the dialog
+        // // it must be at least the width of all the buttons, but at most MAX_WIDTH
+        // let total_width = prompt_size.x.clamp(button_widths, MAX_WIDTH);
 
-        // reposition buttons
+        // // reposition buttons
 
-        // space between buttons
-        let x_margin = (total_width - button_widths) / button_count as f32;
+        // // space between buttons
+        // let x_margin = (total_width - button_widths) / button_count as f32;
 
-        let mut pos = Vector2::new(x_margin + BUTTON_MARGIN.x, prompt_size.y + BUTTON_MARGIN.y * 2.0);
-        for mut btn in [Some(&mut yes_button), Some(&mut no_button), cancel_button.as_mut()] {
-            btn.ok_do_mut(|b|b.set_pos(pos));
-            pos.x += x_margin + BUTTON_SIZE.x + BUTTON_MARGIN.x;
-        }
+        // let mut pos = Vector2::new(x_margin + BUTTON_MARGIN.x, prompt_size.y + BUTTON_MARGIN.y * 2.0);
+        // for mut btn in [Some(&mut yes_button), Some(&mut no_button), cancel_button.as_mut()] {
+        //     btn.ok_do_mut(|b|b.set_pos(pos));
+        //     pos.x += x_margin + BUTTON_SIZE.x + BUTTON_MARGIN.x;
+        // }
 
         // create the sender and receiver to send the result of this dialog
         let (sender, receiver) = channel(1);
+        layout_manager.apply_layout(WindowSize::get().0);
+        let size = layout_manager.get_own_layout().size;
 
         // create the dialog
         (receiver, Self {
             should_close: false,
+            layout_manager,
             title,
             prompt,
             yes_button,
             no_button,
             cancel_button,
             sender,
-            prompt_size: Vector2::new(total_width, prompt_size.y)
+            prompt_size: size.into(), //Vector2::new(total_width, prompt_size.y)
         })
     }
 }
@@ -76,7 +84,12 @@ impl YesNoDialog {
 impl Dialog<Game> for YesNoDialog {
     fn name(&self) -> &'static str { "yes_no_dialog" }
     fn title(&self) -> &'static str { self.title }
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {}
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.layout_manager.apply_layout(size);
+        self.yes_button.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.no_button.apply_layout(&self.layout_manager, Vector2::ZERO);
+        self.cancel_button.ok_do_mut(|b|b.apply_layout(&self.layout_manager, Vector2::ZERO));
+    }
 
     fn should_close(&self) -> bool { self.should_close }
     fn get_bounds(&self) -> Bounds {

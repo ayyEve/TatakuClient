@@ -37,7 +37,7 @@ pub struct ManiaSettings {
     pub keys: Vec<Vec<Key>>,
 }
 impl ManiaSettings {
-    pub fn get_key_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
+    pub fn get_key_items(&self, style: &Style, layout_manager: &LayoutManager, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
 
         let info = CollapsibleSettings { 
             header_text: "Key Config".to_string(), 
@@ -53,20 +53,20 @@ impl ManiaSettings {
             first_item_margin: Some(10.0),
             initially_expanded: false
         };
-        let mut list = ScrollableArea::new(p, Vector2::new(WIDTH, 0.0), ListMode::Collapsible(info.clone()));
+        let mut list = ScrollableArea::new(style.clone(), ListMode::Collapsible(info.clone()), layout_manager);
 
-        let size = Vector2::new(WIDTH2 - OFFSET2*2.0, 50.0);
+        // let size = Vector2::new(WIDTH2 - OFFSET2*2.0, 50.0);
 
         // add per-key configs
         for i in 0..self.playfield_settings.len() {
             let mut info = info.clone();
             info.header_text = (i+1).to_string() + "K";
             info.initially_expanded = false;
-            let mut list2 = ScrollableArea::new(Vector2::with_x(OFFSET), Vector2::with_x(WIDTH2), ListMode::Collapsible(info));
+            let mut list2 = ScrollableArea::new(style.clone(), ListMode::Collapsible(info), layout_manager);
 
             // "<prefix>|<playfield_setting_index>key<key_index>"
             for (n, key) in self.keys[i].iter().enumerate() {
-                let mut kb = KeyButton::new(Vector2::with_x(OFFSET2), size, *key, "Key ".to_owned() + &(n+1).to_string(), Font::Main).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
+                let mut kb = KeyButton::new(style.clone(), *key, "Key ".to_owned() + &(n+1).to_string(), layout_manager, Font::Main).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
                 let s = sender.clone();
                 kb.on_change = Arc::new(move |_,_|{let _ = s.send(());});
                 list2.add_item(Box::new(kb));

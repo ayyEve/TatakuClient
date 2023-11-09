@@ -2,28 +2,57 @@ use crate::prelude::*;
 
 pub struct JoinLobbyDialog {
     lobby_id: u32,
+    layout_manager: LayoutManager, 
     scrollable: ScrollableArea,
     should_close: bool,
 }
 impl JoinLobbyDialog {
     pub fn new(lobby_id: u32) -> Self {
-        const WIDTH:f32 = 500.0; 
-        let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
+        let layout_manager = LayoutManager::new();
 
+        const WIDTH:f32 = 500.0; 
+        let mut scrollable = ScrollableArea::new(
+            Style {
+                min_size: Size {
+                    width: Dimension::Points(500.0),
+                    height: Dimension::Auto,
+                },
+                ..Default::default()
+            }, 
+            ListMode::VerticalList, 
+            &layout_manager
+        );
+
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Points(50.0)
+            },
+            ..Default::default()
+        };
         // password
-        scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
+        scrollable.add_item(Box::new(TextInput::new(style.clone(), "Password", "", &layout_manager, Font::Main).with_tag("password")));
 
         // done and close buttons 
         {
-            let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
+            let mut button_scrollable = ScrollableArea::new(
+                style.clone(), 
+                ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)),
+                &layout_manager 
+            );
+            let style = Style {
+                size: LayoutManager::small_button(),
+                ..Default::default()
+            };
+            button_scrollable.add_item(Box::new(MenuButton::new(style.clone(), "Done", &button_scrollable.layout_manager, Font::Main).with_tag("done")));
+            button_scrollable.add_item(Box::new(MenuButton::new(style.clone(), "Close", &button_scrollable.layout_manager, Font::Main).with_tag("close")));
             scrollable.add_item(Box::new(button_scrollable));
         }
-        scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
+        // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
 
         Self {
             lobby_id,
+            layout_manager,
             scrollable,
             should_close: false,
         }

@@ -31,18 +31,36 @@ pub struct DirectMenu {
 }
 impl DirectMenu {
     pub async fn new(mode: String) -> DirectMenu {
+        let mut layout_manager = LayoutManager::new();
+
+        let search_bar = TextInput::new(Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Percent(0.1),
+            },
+            ..Default::default()
+        }, "Search", "", &layout_manager, Font::Main);
+
+        let scroll_area = ScrollableArea::new(
+            Style {
+                size: Size {
+                    width: Dimension::Percent(0.5),
+                    height: Dimension::Percent(0.9)
+                },
+                ..Default::default()
+            },
+            ListMode::VerticalList,
+            &layout_manager
+        );
+        
         let window_size = WindowSize::get();
 
         let mut x = DirectMenu {
-            scroll_area: ScrollableArea::new(
-                Vector2::new(0.0, SEARCH_BAR_HEIGHT+5.0), 
-                Vector2::new(DIRECT_ITEM_SIZE.x, window_size.y - SEARCH_BAR_HEIGHT+5.0), 
-                ListMode::VerticalList,
-            ),
+            scroll_area,
             // items: HashMap::new(),
             old_audio: None,
 
-            search_bar: TextInput::new(Vector2::ZERO, Vector2::new(window_size.x , SEARCH_BAR_HEIGHT), "Search", "", Font::Main),
+            search_bar,
             current_api: Box::new(OsuDirect),
 
             mode,
@@ -76,10 +94,19 @@ impl DirectMenu {
             .map(|i|(i.filename(), i.clone()))
             .collect::<HashMap<_, _>>();
 
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
+        
+        let layout_manager = self.scroll_area.layout_manager.clone();
         for mut item in items {
             queue.get(&item.filename()).ok_do(|i|item = (*i).clone());
             
-            self.scroll_area.add_item(Box::new(DirectItem::new(item, false)));
+            self.scroll_area.add_item(Box::new(DirectItem::new(style.clone(), &layout_manager, item, false)));
         }
 
     }

@@ -321,7 +321,7 @@ impl Game {
             self.resize_bg(); 
             let window_size = WindowSize::get();
             for i in self.dialogs.iter_mut() {
-                i.window_size_changed(window_size.clone()).await;
+                i.container_size_changed(window_size.0);
             }
         }
 
@@ -670,8 +670,8 @@ impl Game {
 
                 // TODO: this is temp
                 if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
-                // TODO: this too
-                if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
+                // // TODO: this too
+                // if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
 
                 // check keys down
                 for key in keys_down {menu.on_key_press(key, self, mods).await}
@@ -774,7 +774,10 @@ impl Game {
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));
                     }
-                    GameState::InMenu(_) => {
+                    GameState::InMenu(menu) => {
+                        // make sure the menu has applied its layout
+                        menu.window_size_changed(WindowSize::get()).await;
+
                         if let GameState::InMenu(menu) = &self.current_state {
                             if menu.get_name() == "pause" {
                                 if let Some(song) = AudioManager::get_song().await {
@@ -983,13 +986,15 @@ impl Game {
         }
     }
 
-    pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>, allow_duplicates: bool) {
+    pub fn add_dialog(&mut self, mut dialog: Box<dyn Dialog<Self>>, allow_duplicates: bool) {
         if !allow_duplicates {
             // check if said dialog already exists, if so, dont add it
             let name = dialog.name();
             if let Some(_) = self.dialogs.iter().find(|n|n.name() == name) { return }
         }
-
+        
+        // TODO:!!!! make sure the dialog has applied its layout
+        // dialog.window_size_changed(WindowSize::get());
         self.dialogs.push(dialog)
     }
 

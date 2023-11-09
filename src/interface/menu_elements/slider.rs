@@ -8,6 +8,9 @@ const TRACKBAR_WIDTH:f32 = 1.0;
 pub struct Slider {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -26,12 +29,18 @@ pub struct Slider {
     pub on_change: Arc<dyn Fn(&mut Self, f64) + Send + Sync>,
 }
 impl Slider {
-    pub fn new(pos: Vector2, size: Vector2, text:&str, value:f64, range:Option<Range<f64>>, snapping:Option<f64>, font:Font) -> Self {
+    pub fn new(style: Style, text:&str, value:f64, range:Option<Range<f64>>, snapping:Option<f64>, layout_manager: &LayoutManager, font:Font) -> Self {
         let range = if let Some(r) = range{r} else {0.0..100.0};
+
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
 
         Self {
             pos, 
             size, 
+            style, 
+            node,
+
             hover: false,
             selected: false,
             tag: String::new(),
@@ -101,6 +110,14 @@ impl Slider {
 }
 
 impl ScrollableItem for Slider {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.value)}
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 

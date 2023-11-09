@@ -59,7 +59,9 @@ impl<G:Send+Sync> Dialog<G> for DraggableDialog<G> {
     }
 
     async fn force_close(&mut self) { self.inner.force_close().await; }
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) { self.inner.window_size_changed(window_size).await; }
+    fn container_size_changed(&mut self, size: Vector2) { 
+        self.inner.container_size_changed(size); 
+    }
 
     async fn resized(&mut self, new_size: Vector2) {
         self.toolbar_bounds.size.x = new_size.x;

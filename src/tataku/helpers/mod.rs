@@ -50,6 +50,9 @@ pub fn visibility_bg(pos:Vector2, size:Vector2) -> impl TatakuRenderable {
 
 
 #[macro_export]
+/// struct $struct(pub $type);
+/// 
+/// pub type $helper_name = GlobalValue<$struct>
 macro_rules! create_value_helper {
     ($struct: ident, $type: ty, $helper_name: ident) => {
         #[derive(Default)]

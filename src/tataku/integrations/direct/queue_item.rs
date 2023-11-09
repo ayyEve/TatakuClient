@@ -11,6 +11,9 @@ const DIALOG_ITEM_SIZE:Vector2 = Vector2::new(300.0, 40.0);
 pub struct DirectItem {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -20,13 +23,19 @@ pub struct DirectItem {
     last_progress: f32,
 }
 impl DirectItem {
-    pub fn new(item: Arc<dyn DirectDownloadable>, in_dialog: bool) -> DirectItem {
+    pub fn new(style: Style, layout_manager: &LayoutManager, item: Arc<dyn DirectDownloadable>, in_dialog: bool) -> DirectItem {
         let size = if in_dialog {DIALOG_ITEM_SIZE} else {DIRECT_ITEM_SIZE};
         let tag = format!("{}|{}|false", item.filename(), item.audio_preview().unwrap_or_default());
+        
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
 
         DirectItem {
-            pos: Vector2::ZERO,
+            pos,
             size,
+            style,
+            node,
+
             item,
             tag,
 
@@ -39,6 +48,14 @@ impl DirectItem {
 }
 
 impl ScrollableItem for DirectItem {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.item.clone()) }
     fn update(&mut self) {
         self.downloading = self.item.is_downloading();

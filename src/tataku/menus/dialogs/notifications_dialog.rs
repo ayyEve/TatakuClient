@@ -1,10 +1,12 @@
 use crate::prelude::*;
 
 pub struct NotificationsDialog {
+    layout_manager: LayoutManager,
+
     notifications: HashMap<usize, Arc<Notification>>,
     list: ScrollableArea,
 
-    window_size: Vector2,
+    // window_size: Vector2,
 
     bounds: Bounds,
     should_close: bool,
@@ -12,20 +14,41 @@ pub struct NotificationsDialog {
 impl NotificationsDialog {
     pub async fn new() -> Self {
         let notifications = NOTIFICATION_MANAGER.read().await.all_notifs.clone();
+
+        let mut layout_manager = LayoutManager::new();
+        layout_manager.set_style(Style {
+            inset: taffy::geometry::Rect {
+                top: LengthPercentageAuto::Auto,
+                left: LengthPercentageAuto::Auto,
+                bottom: LengthPercentageAuto::Auto,
+                right: LengthPercentageAuto::Auto,
+            },
+            ..Default::default()
+        });
+        
         let window_size = WindowSize::get().0;
         let bounds = Bounds::new(Vector2::new(window_size.x / 2.0, 0.0), Vector2::new(window_size.x / 2.0, window_size.y));
 
-        let mut list = ScrollableArea::new(bounds.pos, bounds.size, ListMode::VerticalList);
+        let mut list = ScrollableArea::new(Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Percent(1.0)
+            },
+            ..Default::default()
+        }, ListMode::VerticalList, &layout_manager);
 
         for notification in notifications.iter().rev().cloned() {
-            list.add_item(Box::new(NotificationItem::new(notification, bounds.size.x, false)));
+            list.add_item(Box::new(NotificationItem::new(notification, false, &layout_manager)));
         }
 
+        layout_manager.apply_layout(bounds.size);
+
         Self {
+            layout_manager,
             notifications: notifications.into_iter().map(|n|(n.id, n)).collect(),
             list,
 
-            window_size,
+            // window_size,
 
             bounds,
             should_close: false,
@@ -41,17 +64,21 @@ impl Dialog<Game> for NotificationsDialog {
     fn get_bounds(&self) -> Bounds { self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size.0;
-        self.bounds = Bounds::new(Vector2::new(window_size.x / 2.0, 0.0), Vector2::new(window_size.x / 2.0, window_size.y));
-        self.list.set_pos(self.bounds.pos);
-        self.list.set_size(self.bounds.size);
+    fn container_size_changed(&mut self, size: Vector2) {
+        // self.window_size = size;
+        self.bounds = Bounds::new(Vector2::new(size.x / 2.0, 0.0), Vector2::new(size.x / 2.0, size.y));
 
-        let width = self.bounds.size.x;
-        for item in self.list.items.iter_mut() {
-            let size = item.size();
-            if size != Vector2::ZERO { item.set_size(Vector2::new(width, size.y))}
-        }
+        self.layout_manager.apply_layout(size);
+        self.list.apply_layout(&self.layout_manager, self.bounds.pos);
+
+        // self.list.set_pos(self.bounds.pos);
+        // self.list.set_size(self.bounds.size);
+
+        // let width = self.bounds.size.x;
+        // for item in self.list.items.iter_mut() {
+        //     let size = item.size();
+        //     if size != Vector2::ZERO { item.set_size(Vector2::new(width, size.y))}
+        // }
     }
 
     // input handlers
@@ -89,13 +116,13 @@ impl Dialog<Game> for NotificationsDialog {
 
             if !to_add.is_empty() {
                 info!("adding new notifs {to_add:?}");
-                let width = self.bounds.size.x;
+                // let width = self.bounds.size.x;
                 let last_items = std::mem::take(&mut self.list.items);
                 self.list.clear();
 
                 for i in to_add.into_iter().rev() {
                     self.notifications.insert(i.id, i.clone());
-                    self.list.add_item(Box::new(NotificationItem::new(i.clone(), width, true)));
+                    self.list.add_item(Box::new(NotificationItem::new(i.clone(), true, &self.layout_manager)));
                 }
 
                 for mut i in last_items {
@@ -137,6 +164,9 @@ const SQUARE:f32 = FONT_SIZE / 2.0;
 struct NotificationItem {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     tag: String,
     // ui_scale: Vector2,
     hover: bool,
@@ -148,10 +178,24 @@ struct NotificationItem {
     delete_time: Option<Instant>,
 }
 impl NotificationItem {
-    fn new(notification: Arc<Notification>, width: f32, is_new: bool) -> Self {
+    fn new(notification: Arc<Notification>, is_new: bool, layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
+        
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self {
-            pos: Vector2::ZERO,
-            size: Vector2::new(width, notification.text.lines().count() as f32 * FONT_SIZE) + Vector2::ONE * PADDING * 2.0,
+            pos,
+            size,
+            style, 
+            node,
+
             tag: notification.id.to_string(),
             hover: false,
             // ui_scale: Vector2::ONE,
@@ -165,6 +209,14 @@ impl NotificationItem {
     }
 }
 impl ScrollableItem for NotificationItem {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn on_mouse_move(&mut self, p:Vector2) {
         self.check_hover(p);
 

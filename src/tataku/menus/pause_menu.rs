@@ -5,6 +5,8 @@ const Y_MARGIN:f32 = 20.0;
 const Y_OFFSET:f32 = 10.0;
 
 pub struct PauseMenu {
+    layout_manager: LayoutManager,
+
     // beatmap: Arc<Mutex<Beatmap>>,
     manager: Box<IngameManager>,
     continue_button: MenuButton,
@@ -21,15 +23,24 @@ pub struct PauseMenu {
 impl PauseMenu {
     pub async fn new(manager: Box<IngameManager>, is_fail_menu: bool) -> PauseMenu {
         let window_size = WindowSize::get();
-        let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
+        // let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
 
-        let mut n = 0.0;
-        let continue_button = MenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Continue", Font::Main);
-        if !is_fail_menu {n += 1.0}
-        let retry_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Retry", Font::Main);
-        n += 1.0;
-        let exit_button = MenuButton::new(Vector2::new(middle,(BUTTON_SIZE.y + Y_MARGIN) * n + Y_OFFSET), BUTTON_SIZE, "Exit", Font::Main);
+        let layout_manager = LayoutManager::new();
 
+        let style = Style {
+            size: BUTTON_SIZE.into(),
+            margin: taffy::geometry::Rect {
+                left: taffy::style::LengthPercentageAuto::Auto,
+                right: taffy::style::LengthPercentageAuto::Auto,
+                top: taffy::style::LengthPercentageAuto::Auto,
+                bottom: taffy::style::LengthPercentageAuto::Auto,
+            },
+            ..Default::default()
+        };
+
+        let continue_button = MenuButton::new(style.clone(), "Continue", &layout_manager, Font::Main);
+        let retry_button = MenuButton::new(style.clone(), "Retry", &layout_manager, Font::Main);
+        let exit_button = MenuButton::new(style.clone(), "Exit", &layout_manager, Font::Main);
         let mut bg = if is_fail_menu {
             SkinManager::get_texture("fail-background", true).await
         } else {
@@ -41,6 +52,8 @@ impl PauseMenu {
         }
 
         PauseMenu {
+            layout_manager,
+            
             manager,
             is_fail_menu,
             continue_button,

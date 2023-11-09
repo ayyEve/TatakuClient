@@ -4,6 +4,9 @@ use crate::prelude::*;
 pub struct LobbySlotDisplay {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -12,16 +15,30 @@ pub struct LobbySlotDisplay {
     items: ScrollableArea,
 }
 impl LobbySlotDisplay {
-    pub fn new(width: f32, slot: u8, state_receiver: AsyncReceiver<(LobbySlot, bool)>, player_receiver: AsyncReceiver<Option<LobbyPlayerInfo>>) -> Self {
-        let size = Vector2::new(width, 50.0);
+    pub fn new(slot: u8, state_receiver: AsyncReceiver<(LobbySlot, bool)>, player_receiver: AsyncReceiver<Option<LobbyPlayerInfo>>, layout_manager: &LayoutManager) -> Self {
+        // let size = Vector2::new(width, 50.0);
+        let style = Style {
+            size: LayoutManager::full_width(),
+            display: taffy::style::Display::Flex,
+            flex_direction: taffy::style::FlexDirection::Row,
+            ..Default::default()
+        };
+
+        let node = layout_manager.create_node(&style);
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+
         
-        let mut items = ScrollableArea::new(Vector2::ZERO, size, ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Left)));
-        items.add_item(Box::new(LobbySlotStatus::new(size.y * 0.8, slot, state_receiver)));
-        items.add_item(Box::new(LobbySlotUser::new(Vector2::new(size.x - (size.y * 0.8 + 5.0 * 3.0), size.y * 0.8), slot, player_receiver)));
+        let mut items = ScrollableArea::new(style.clone(), ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Left)), layout_manager);
+        let layout_manager = items.layout_manager.clone();
+        items.add_item(Box::new(LobbySlotStatus::new( slot, state_receiver, &layout_manager)));
+        items.add_item(Box::new(LobbySlotUser::new(slot, player_receiver, &layout_manager)));
 
         Self {
-            pos: Vector2::ZERO,
+            pos,
             size,
+            style,
+            node,
+
             base_size: size,
             hover: false,
             tag: String::new(),
@@ -33,6 +50,14 @@ impl LobbySlotDisplay {
 }
 
 impl ScrollableItem for LobbySlotDisplay {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = self.base_size * scale;

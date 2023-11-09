@@ -42,6 +42,8 @@ bombs = "0.1.5"
 triple_buffer = "6.0"
 crossbeam = "*"
 global_value_manager = "*"
+obfstr = "*"
+taffy = "0.3"
 
 # image stuff
 png = "*"

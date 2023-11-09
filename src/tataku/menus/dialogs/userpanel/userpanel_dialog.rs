@@ -16,16 +16,31 @@ pub struct UserPanel {
     /// user_id, user
     users: HashMap<u32, PanelUser>,
 
+    // user_scroll: ScrollableArea,
+    layout_manager: LayoutManager,
+
     should_close: bool,
-    window_size: Arc<WindowSize>
+    size: Vector2,
+    // window_size: Arc<WindowSize>
 }
 impl UserPanel {
     pub fn new() -> Self {
+        let layout_manager = LayoutManager::new();
+        // let user_scroll = ScrollableArea::new(
+        //     Style {
+        //         ..Default::default()
+        //     }, 
+        //     ListMode::None, 
+        //     &layout_manager
+        // );
+
         Self {
             chat: Chat::new(),
+            // user_scroll,
+            layout_manager,
             users: HashMap::new(),
             should_close: false,
-            window_size: WindowSize::get(),
+            size: WindowSize::get().0,
         }
     }
 }
@@ -34,11 +49,13 @@ impl UserPanel {
 impl Dialog<Game> for UserPanel {
     fn name(&self) -> &'static str { "UserPanel" }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.size) }
     async fn force_close(&mut self) { self.should_close = true; }
     
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.size = size;
+        self.chat.container_size_changed(size);
+        // self.window_size = window_size;
     }
     
     async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
@@ -55,6 +72,9 @@ impl Dialog<Game> for UserPanel {
 
     async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
         self.chat.on_mouse_down(pos, button, mods, game).await;
+
+        // self.user_scroll.on_click(pos, button, mods);
+
         for (_, i) in self.users.iter_mut() {
             if i.on_click(pos, button, *mods) {
                 let user_id = i.user.user_id;
@@ -143,7 +163,7 @@ impl Dialog<Game> for UserPanel {
             for (_, user) in &om.users {
                 if let Ok(u) = user.try_lock() {
                     if !self.users.contains_key(&u.user_id) {
-                        self.users.insert(u.user_id, PanelUser::new(u.clone()));
+                        self.users.insert(u.user_id, PanelUser::new(u.clone(), &self.layout_manager));
                     } else {
                         self.users.get_mut(&u.user_id).unwrap().user = u.clone()
                     }

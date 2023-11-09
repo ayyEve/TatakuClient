@@ -17,7 +17,7 @@ pub trait Dialog<G:Send+Sync>:Send+Sync {
     async fn force_close(&mut self) {}
     /// if in a draggable dialog, and it was resized
     async fn resized(&mut self, _new_size: Vector2) {}
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {}
+    fn container_size_changed(&mut self, _size: Vector2) {}
 
     async fn update(&mut self, _g:&mut G) {}
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection);

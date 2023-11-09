@@ -12,6 +12,10 @@ const SELECTION_COLOR_ALPHA:f32 = 0.8;
 pub struct TextInput {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -39,10 +43,16 @@ pub struct TextInput {
     pub on_change: Arc<dyn Fn(&mut Self, String) + Send + Sync>,
 }
 impl TextInput { 
-    pub fn new(pos:Vector2, size: Vector2, placeholder:&str, value:&str, font:Font) -> Self {
+    pub fn new(style: Style, placeholder:&str, value:&str, layout_manager: &LayoutManager, font:Font) -> Self {
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self {
             pos, 
             size, 
+            style, 
+            node,
+
             keywords: placeholder.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
             placeholder: placeholder.to_owned(),
 
@@ -138,6 +148,15 @@ impl ScrollableItemGettersSetters for TextInput {
     fn set_selected(&mut self, selected:bool) {self.selected = selected}
 }
 impl ScrollableItem for TextInput {
+
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.text.clone()) }
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 

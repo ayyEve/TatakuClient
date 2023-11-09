@@ -8,12 +8,14 @@ const WIDTH:f32 = 600.0;
 const SEARCH_HEIGHT:f32 = 50.0;
 
 pub struct SettingsMenu {
+    layout_manager: LayoutManager,
+
     scroll_area: ScrollableArea,
     search_text: TextInput,
 
     old_settings: Settings,
 
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
     change_receiver: AsyncMutex<Receiver<()>>,
     mouse_pos: Vector2,
 
@@ -24,16 +26,23 @@ pub struct SettingsMenu {
 impl SettingsMenu {
     pub async fn new() -> SettingsMenu {
         let settings = Settings::get().clone();
-        let p = Vector2::with_x(SECTION_XOFFSET - 10.0); // scroll area edits the y
-        let window_size = WindowSize::get();
+        let layout_manager = LayoutManager::new();
+
+        let style = Style {
+            size: LayoutManager::full_width(),
+            ..Default::default()
+        };
+
+        // let p = Vector2::with_x(SECTION_XOFFSET - 10.0); // scroll area edits the y
+        // let window_size = WindowSize::get();
 
         let (sender, change_receiver) = std::sync::mpsc::sync_channel(100);
 
         // setup items
-        let search_text = TextInput::new(p + Vector2::with_y(SCROLLABLE_YOFFSET + 5.0), Vector2::new(WIDTH - SECTION_XOFFSET, SEARCH_HEIGHT), "Search", "", Font::Main);
-        let mut scroll_area = ScrollableArea::new(Vector2::new(10.0, SCROLLABLE_YOFFSET + SEARCH_HEIGHT + 10.0), Vector2::new(WIDTH + SECTION_XOFFSET+1.0, window_size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)), ListMode::VerticalList);
+        let search_text = TextInput::new(style.clone(), "Search", "", &layout_manager, Font::Main);
+        let mut scroll_area = ScrollableArea::new(style.clone(), ListMode::VerticalList, &layout_manager);
         
-        let items = settings.get_menu_items(p, String::new(), Arc::new(sender));
+        let items = settings.get_menu_items(&style, &scroll_area.layout_manager, String::new(), Arc::new(sender));
         for i in items {
             scroll_area.add_item(i);
         }
@@ -42,17 +51,18 @@ impl SettingsMenu {
         //TODO: make these not part of the scrollable?!?!
 
         // revert button
-        scroll_area.add_item(Box::new(MenuButton::new(p, BUTTON_SIZE, "Revert", Font::Main).with_tag("revert")));
+        scroll_area.add_item(Box::new(MenuButton::new(style.clone(), "Revert", &layout_manager, Font::Main).with_tag("revert")));
 
         // done button
-        scroll_area.add_item(Box::new(MenuButton::new(p, BUTTON_SIZE, "Done", Font::Main).with_tag("done")));
+        scroll_area.add_item(Box::new(MenuButton::new(style.clone(), "Done", &layout_manager, Font::Main).with_tag("done")));
 
         SettingsMenu {
+            layout_manager,
             scroll_area,
             search_text,
 
             old_settings: settings.as_ref().clone(),
-            window_size,
+            // window_size,
             change_receiver: AsyncMutex::new(change_receiver),
             should_close: false,
             mouse_pos: Vector2::ZERO,
@@ -110,13 +120,16 @@ impl Dialog<Game> for SettingsMenu {
     fn get_bounds(&self) -> Bounds {
         Bounds::new(
             Vector2::ZERO, 
-            Vector2::new(WIDTH + SECTION_XOFFSET * 2.0, self.window_size.y)
+            self.scroll_area.size(), //Vector2::new(WIDTH + SECTION_XOFFSET * 2.0, self.scroll_area.size().y)
         )
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.scroll_area.set_size(Vector2::new(WIDTH + SECTION_XOFFSET+1.0, window_size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)));
-        self.window_size = window_size.clone();
+    fn container_size_changed(&mut self, size: Vector2) {
+        // self.scroll_area.set_size(Vector2::new(WIDTH + SECTION_XOFFSET+1.0, size.y - (SEARCH_HEIGHT + SCROLLABLE_YOFFSET*2.0)));
+        // self.window_size = window_size.clone();
+        
+        self.layout_manager.apply_layout(size);
+        self.scroll_area.apply_layout(&self.layout_manager, Vector2::ZERO);
     }
     
     async fn update(&mut self, _game: &mut Game) {

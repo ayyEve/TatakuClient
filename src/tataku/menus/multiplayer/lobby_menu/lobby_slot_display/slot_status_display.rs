@@ -4,6 +4,9 @@ use crate::prelude::*;
 pub struct LobbySlotStatus {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -14,12 +17,26 @@ pub struct LobbySlotStatus {
     is_host: bool,
 }
 impl LobbySlotStatus {
-    pub fn new(size: f32, slot_id: u8, status_receiver: AsyncReceiver<(LobbySlot, bool)>) -> Self {
-        let size = Vector2::ONE * size;
+    pub fn new(slot_id: u8, status_receiver: AsyncReceiver<(LobbySlot, bool)>, layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            padding: taffy::geometry::Rect {
+                top: taffy::style::LengthPercentage::Percent(0.2),
+                left: taffy::style::LengthPercentage::Percent(0.2),
+                bottom: taffy::style::LengthPercentage::Percent(0.2),
+                right: taffy::style::LengthPercentage::Percent(0.2),
+            },
+            ..Default::default()
+        };
+
+        let node = layout_manager.create_node(&style);
+        let (pos, size) = LayoutManager::get_pos_size(&style);
 
         Self {
             pos: Vector2::ZERO,
             size,
+            style,
+            node,
+
             hover: false,
             tag: "slot_status_".to_owned() + &slot_id.to_string(),
             ui_scale: Vector2::ONE,
@@ -33,6 +50,14 @@ impl LobbySlotStatus {
 }
 
 impl ScrollableItem for LobbySlotStatus {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
     }

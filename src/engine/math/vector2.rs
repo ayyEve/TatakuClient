@@ -98,6 +98,45 @@ impl Default for Vector2 {
     fn default() -> Self { Self::new(0.0, 0.0) }
 }
 
+
+impl From<taffy::geometry::Point<taffy::style::Dimension>> for Vector2 {
+    fn from(value: taffy::geometry::Point<taffy::style::Dimension>) -> Self {
+        Self::new(
+            value.x.into_option().unwrap_or_default(),
+            value.y.into_option().unwrap_or_default(),
+        )
+    }
+}
+impl From<taffy::geometry::Size<taffy::style::Dimension>> for Vector2 {
+    fn from(value: taffy::geometry::Size<taffy::style::Dimension>) -> Self {
+        Self::new(
+            value.width.into_option().unwrap_or_default(),
+            value.height.into_option().unwrap_or_default(),
+        )
+    }
+}
+
+impl From<taffy::geometry::Point<f32>> for Vector2 {
+    fn from(value: taffy::geometry::Point<f32>) -> Self {
+        Self::new(value.x, value.y)
+    }
+}
+impl From<taffy::geometry::Size<f32>> for Vector2 {
+    fn from(value: taffy::geometry::Size<f32>) -> Self {
+        Self::new(value.width, value.height)
+    }
+}
+impl Into<taffy::geometry::Size<taffy::style::Dimension>> for Vector2 {
+    fn into(self) -> taffy::geometry::Size<taffy::style::Dimension> {
+        taffy::geometry::Size {
+            width: taffy::style::Dimension::Points(self.x),
+            height: taffy::style::Dimension::Points(self.y),
+        }
+    }
+}
+
+
+
 impl std::fmt::Display for Vector2 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "x: {}, y: {}", self.x, self.y)

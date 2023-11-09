@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
 pub struct LobbySelect {
+    layout_manager: LayoutManager,
+
     scrollable: ScrollableArea,
     lobbies: HashMap<u32, LobbyInfo>,
     needs_init: bool,
@@ -10,15 +12,22 @@ pub struct LobbySelect {
 impl LobbySelect {
     pub async fn new() -> Self {
         let multiplayer_data = MultiplayerDataHelper::new();
-        let window_size = WindowSizeHelper::new();
+        // let window_size = WindowSizeHelper::new();
+        let layout_manager = LayoutManager::new();
 
         let scrollable = ScrollableArea::new(
-            Vector2::ZERO, 
-            window_size.0, 
-            ListMode::Grid(GridSettings::new(Vector2::new(5.0, 5.0), HorizontalAlign::Center)
-        ));
+            Style {
+                size: LayoutManager::full_size(),
+                ..Default::default()
+            },
+            ListMode::Grid(GridSettings::new(Vector2::new(5.0, 5.0), HorizontalAlign::Center)),
+            &layout_manager,
+        );
+
+
         Self {
             lobbies: multiplayer_data.lobbies.clone(),
+            layout_manager,
             scrollable,
             multiplayer_data,
             needs_init: true
@@ -38,7 +47,7 @@ impl AsyncMenu<Game> for LobbySelect {
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.scrollable.set_size(window_size.0);
+        // self.scrollable.set_size(window_size.0);
         self.needs_init = true;
     }
     async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
@@ -95,19 +104,24 @@ impl AsyncMenu<Game> for LobbySelect {
                 let window_size = WindowSizeHelper::new();
                 
                 let mut lobby_scrollable = ScrollableArea::new(
-                    Vector2::ZERO, 
-                    window_size.0 - Vector2::new(10.0, 100.0), 
-                    ListMode::Grid(GridSettings::new(Vector2::new(5.0, 5.0), HorizontalAlign::Left)
-                )); 
+                    Style {
+                        ..Default::default()
+                    },
+                    // window_size.0 - Vector2::new(10.0, 100.0), 
+                    ListMode::Grid(GridSettings::new(Vector2::new(5.0, 5.0), HorizontalAlign::Left)),
+                    &self.layout_manager
+                ); 
+
+                let layout_manager2 = lobby_scrollable.layout_manager.clone();
 
                 for i in lobbies {
-                    lobby_scrollable.add_item(Box::new(LobbyDisplay::new(i.clone())));
+                    lobby_scrollable.add_item(Box::new(LobbyDisplay::new(i.clone(), &layout_manager2)));
                 }
 
                 self.scrollable.clear();
                 self.scrollable.add_item(Box::new(lobby_scrollable));
-                self.scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Create Lobby", Font::Main).with_tag("create_lobby")));
-                self.scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Back", Font::Main).with_tag("back")));
+                self.scrollable.add_item(Box::new(MenuButton::new(Style {size: LayoutManager::small_button(), ..Default::default()}, "Create Lobby", &self.layout_manager, Font::Main).with_tag("create_lobby")));
+                self.scrollable.add_item(Box::new(MenuButton::new(Style {size: LayoutManager::small_button(), ..Default::default()}, "Back", &self.layout_manager, Font::Main).with_tag("back")));
             }
         }
 
@@ -134,6 +148,9 @@ const LOBBY_DISPLAY_SIZE:Vector2 = Vector2::new(200.0, 50.0);
 pub struct LobbyDisplay {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -141,10 +158,23 @@ pub struct LobbyDisplay {
     info: LobbyInfo,
 }
 impl LobbyDisplay {
-    pub fn new(info: LobbyInfo) -> Self {
+    pub fn new(info: LobbyInfo, layout_manager: &LayoutManager) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(0.8),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
+        let node = layout_manager.create_node(&style);
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+
         Self {
-            pos: Vector2::ZERO,
-            size: LOBBY_DISPLAY_SIZE,
+            pos,
+            size,
+            style, 
+            node,
+
             hover: false,
             tag: info.id.to_string(),
             ui_scale: Vector2::ONE,
@@ -153,6 +183,14 @@ impl LobbyDisplay {
     }
 }
 impl ScrollableItem for LobbyDisplay {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = LOBBY_DISPLAY_SIZE * scale;

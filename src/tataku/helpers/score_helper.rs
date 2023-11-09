@@ -115,10 +115,11 @@ impl ScoreLoaderHelper {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Dropdown, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Dropdown, Serialize, Deserialize)]
 pub enum ScoreRetreivalMethod {
     Local,
     LocalMods,
+    #[default]
     Global,
     GlobalMods,
 

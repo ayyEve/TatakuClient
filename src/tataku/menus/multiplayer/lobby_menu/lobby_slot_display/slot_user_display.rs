@@ -4,6 +4,9 @@ use crate::prelude::*;
 pub struct LobbySlotUser {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     tag: String,
     ui_scale: Vector2,
@@ -15,10 +18,25 @@ pub struct LobbySlotUser {
     text: String,
 }
 impl LobbySlotUser {
-    pub fn new(size: Vector2, slot_id: u8, player_receiver: AsyncReceiver<Option<LobbyPlayerInfo>>) -> Self {
+    pub fn new(slot_id: u8, player_receiver: AsyncReceiver<Option<LobbyPlayerInfo>>, layout_manager: &LayoutManager) -> Self {
+        // size: Vector2::new(size.x - (size.y * 0.8 + 5.0 * 3.0), size.y * 0.8)
+        let style = Style {
+            // size: Size {
+
+            // },
+            ..Default::default()
+        };
+        
+        let node = layout_manager.create_node(&style);
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+
+
         Self {
-            pos: Vector2::ZERO,
+            pos,
             size,
+            style,
+            node,
+
             hover: false,
             tag: "slot_".to_owned() + &slot_id.to_string(),
             ui_scale: Vector2::ONE,
@@ -32,6 +50,14 @@ impl LobbySlotUser {
 }
 
 impl ScrollableItem for LobbySlotUser {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
     }

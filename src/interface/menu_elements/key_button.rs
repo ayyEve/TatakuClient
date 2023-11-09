@@ -4,6 +4,10 @@ use crate::prelude::*;
 pub struct KeyButton {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
+
     selected: bool,
     hover: bool,
     tag: String,
@@ -17,16 +21,23 @@ pub struct KeyButton {
     pub on_change: Arc<dyn Fn(&mut Self, Key) + Send + Sync>,
 }
 impl KeyButton {
-    pub fn new(pos: Vector2, size: Vector2, key:Key, prefix: impl ToString, font:Font) -> Self {
+    pub fn new(style: Style, key:Key, prefix: impl ToString, layout_manager: &LayoutManager, font:Font) -> Self {
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self {
-            key,
             pos, 
             size, 
-            prefix: prefix.to_string(),
-
+            style,
+            node,
+            
             hover: false,
             selected: false,
             tag: String::new(),
+
+
+            key,
+            prefix: prefix.to_string(),
 
             font,
             font_size: 32.0,
@@ -44,6 +55,14 @@ impl KeyButton {
     }
 }
 impl ScrollableItem for KeyButton {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.key.clone())}
     fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
         let border = Rectangle::new(

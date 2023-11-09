@@ -1,6 +1,12 @@
 use crate::prelude::*;
 
+
+
 pub struct ScrollableArea {
+    style: Style,
+    node: Node,
+    pub layout_manager: LayoutManager,
+
     pub items: Vec<Box<dyn ScrollableItem>>,
 
     /// key is index of the original array
@@ -9,7 +15,6 @@ pub struct ScrollableArea {
     // layout helpers
     original_positions: Vec<Vector2>,
     elements_height: f32,
-
 
     /// if list mode, item positions will be modified based on how many items there are (ie, a list)
     list_mode: ListMode,
@@ -21,7 +26,7 @@ pub struct ScrollableArea {
     /// how many pixels should be between items when in list mode?
     item_margin: f32,
     /// how much should a scroll unit be worth?
-    /// 8.0 is good for my laptop's touchpad, but on a mouse wheel its nowwhere near enough
+    /// 8.0 is good for my laptop's touchpad, but on a mouse wheel its nowhere near enough
     pub scroll_factor: f32,
     pub scroll_pos: f32,
 
@@ -48,13 +53,28 @@ pub struct ScrollableArea {
 
     // scrollable item properties
     pos: Vector2,
+    parent_pos: Vector2,
     size: Vector2,
     hover: bool,
     tag: String,
     ui_scale: Vector2,
+
+    /// do we want to draw a rectangle for this scrollable item? if so, what color and border to use
+    pub draw_rect: Option<(Color, Option<Border>)>,
 }
 impl ScrollableArea {
-    pub fn new(pos: Vector2, mut size: Vector2, list_mode: ListMode) -> ScrollableArea {
+    pub fn new(style: Style, list_mode: ListMode, layout_manager: &LayoutManager) -> ScrollableArea {
+        let (pos, mut size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
+        let layout_manager = layout_manager.clone().with_parent(node);
+        // layout_manager.set_style(Style {
+        //     size: LayoutManager::full_size(),
+        //     display: taffy::style::Display::Flex,
+        //     flex_direction: taffy::style::FlexDirection::Column,
+        //     ..Default::default()
+        // });
+    
         let mut expanded = false; 
         let mut elements_height = 0.0;
         let item_margin = 5.0;
@@ -70,6 +90,10 @@ impl ScrollableArea {
 
 
         ScrollableArea {
+            style, 
+            node,
+            layout_manager,
+
             items: Vec::new(),
             original_positions: Vec::new(),
             filtered_out_items: HashMap::new(), 
@@ -85,6 +109,7 @@ impl ScrollableArea {
             dragger: DraggerSide::None,
             dragger_dragging: false,
             pos,
+            parent_pos: Vector2::ZERO,
             tag: String::new(),
             size,
             hover: false,
@@ -98,6 +123,7 @@ impl ScrollableArea {
             drag_threshold: 50.0,
 
             ui_scale: Vector2::ONE,
+            draw_rect: None
         }
     }
 
@@ -106,7 +132,7 @@ impl ScrollableArea {
         self.refresh_layout();
     }
 
-    /// returns index
+    /// returns index 
     pub fn add_item(&mut self, mut item:Box<dyn ScrollableItem>) {
         // immediately update the ui scale for every item being added
         item.ui_scale_changed(self.ui_scale);
@@ -120,125 +146,128 @@ impl ScrollableArea {
             }
         }
         
-        match &mut self.list_mode {
-            ListMode::None => {},
-            ListMode::Collapsible(_) | ListMode::VerticalList => {
-                let margin = match (&self.list_mode, self.items.is_empty()) {
-                    (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
-                    _ => self.item_margin
-                };
+        // match &mut self.list_mode {
+        //     ListMode::None => {},
+        //     ListMode::Collapsible(_) | ListMode::VerticalList => {
+        //         let margin = match (&self.list_mode, self.items.is_empty()) {
+        //             (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
+        //             _ => self.item_margin
+        //         };
 
-                let ipos = item.get_pos();
-                self.original_positions.push(ipos);
-                item.set_pos(self.pos + Vector2::new(ipos.x, self.elements_height));
-                self.elements_height += item.size().y + margin * self.ui_scale.y;
+        //         let ipos = item.get_pos();
+        //         self.original_positions.push(ipos);
+        //         item.set_pos(self.pos + Vector2::new(ipos.x, self.elements_height));
+        //         self.elements_height += item.size().y + margin * self.ui_scale.y;
 
-                if let ListMode::Collapsible(info) = &self.list_mode {
-                    if info.auto_height {
-                        self.size.y = self.elements_height;
-                    }
-                }
-            }
-            ListMode::Grid(info) => {
-                let ipos = item.get_pos();
-                self.original_positions.push(ipos);
+        //         if let ListMode::Collapsible(info) = &self.list_mode {
+        //             if info.auto_height {
+        //                 self.size.y = self.elements_height;
+        //             }
+        //         }
+        //     }
+        //     ListMode::Grid(info) => {
+        //         let ipos = item.get_pos();
+        //         self.original_positions.push(ipos);
 
-                // find a position it could fit
-                let item_width = item.size().x + info.item_margin.x;
+        //         // find a position it could fit
+        //         let item_width = item.size().x + info.item_margin.x;
 
-                // includes y margins
-                let mut current_y = info.item_margin.y;
+        //         // includes y margins
+        //         let mut current_y = info.item_margin.y;
                 
-                // did we find a spot for the item?
-                let mut found = false;
+        //         // did we find a spot for the item?
+        //         let mut found = false;
 
-                // TODO:!!!! to keep things simple, we're assuming all items are the same height
-                for row in info.grid.iter_mut() {
-                    let mut row_size = Vector2::with_x(info.item_margin.x);
-                    for (_, size) in row.iter_mut() {
-                        row_size.x += size.x;
-                        row_size.y = row_size.y.max(size.y);
-                    }
-                    row_size.x += info.item_margin.x;
+        //         // TODO:!!!! to keep things simple, we're assuming all items are the same height
+        //         for row in info.grid.iter_mut() {
+        //             let mut row_size = Vector2::with_x(info.item_margin.x);
+        //             for (_, size) in row.iter_mut() {
+        //                 row_size.x += size.x;
+        //                 row_size.y = row_size.y.max(size.y);
+        //             }
+        //             row_size.x += info.item_margin.x;
 
-                    // if there's room in this row
-                    if row_size.x + item_width <= self.size.x {
-                        // add the item to the row
-                        // NOTE TO SELF!!! since the item has not been added yet, we cannot unwrap when getting by index from the row indices
-                        row.push((self.items.len(), item.size()));
+        //             // if there's room in this row
+        //             if row_size.x + item_width <= self.size.x {
+        //                 // add the item to the row
+        //                 // NOTE TO SELF!!! since the item has not been added yet, we cannot unwrap when getting by index from the row indices
+        //                 row.push((self.items.len(), item.size()));
 
-                        // re-layout the items in the row
-                        match info.row_alignment {
-                            HorizontalAlign::Left => {
-                                // everything is already left aligned, we just need to put this item to the right of the farthest right item
-                                if let Some((pos, size)) = row.iter().filter_map(|(i, _)|self.items.get(*i)).max_by(|a, b|a.get_pos().x.partial_cmp(&b.get_pos().x).unwrap_or(std::cmp::Ordering::Equal)).map(|i|(i.get_pos(), i.size())) {
-                                    item.set_pos(pos + Vector2::with_x(size.x + info.item_margin.x));
-                                } else {
-                                    // if we're here, this is the first item in the list
-                                    item.set_pos(self.pos + info.item_margin);
-                                }
-                            }
-                            HorizontalAlign::Center => {
-                                // here we'll need to rearrange everything 
+        //                 // re-layout the items in the row
+        //                 match info.row_alignment {
+        //                     HorizontalAlign::Left => {
+        //                         // everything is already left aligned, we just need to put this item to the right of the farthest right item
+        //                         if let Some((pos, size)) = row.iter().filter_map(|(i, _)|self.items.get(*i)).max_by(|a, b|a.get_pos().x.partial_cmp(&b.get_pos().x).unwrap_or(std::cmp::Ordering::Equal)).map(|i|(i.get_pos(), i.size())) {
+        //                             item.set_pos(pos + Vector2::with_x(size.x + info.item_margin.x));
+        //                         } else {
+        //                             // if we're here, this is the first item in the list
+        //                             item.set_pos(self.pos + info.item_margin);
+        //                         }
+        //                     }
+        //                     HorizontalAlign::Center => {
+        //                         // here we'll need to rearrange everything 
 
-                                // empty space between the bounds of the list and the items within
-                                // [<> (i)(i)(i) <>]
-                                let x_margin = (self.size.x - (row_size.x + item_width + info.item_margin.x)) / 2.0;
-                                let mut current_pos = self.pos + Vector2::new(x_margin, current_y);
+        //                         // empty space between the bounds of the list and the items within
+        //                         // [<> (i)(i)(i) <>]
+        //                         let x_margin = (self.size.x - (row_size.x + item_width + info.item_margin.x)) / 2.0;
+        //                         let mut current_pos = self.pos + Vector2::new(x_margin, current_y);
 
-                                for (i, size) in row.iter() {
-                                    if let Some(i) = self.items.get_mut(*i) {
-                                        i.set_pos(current_pos);
-                                        current_pos.x += size.x + info.item_margin.x;
-                                    }
-                                }
-                                // need to set manually since its not in the above list
-                                item.set_pos(current_pos);
-                            }
-                            HorizontalAlign::Right => {
-                                row_size.x += item_width;
-                                let mut pos = self.pos + Vector2::new(self.size.x - row_size.x, current_y);
+        //                         for (i, size) in row.iter() {
+        //                             if let Some(i) = self.items.get_mut(*i) {
+        //                                 i.set_pos(current_pos);
+        //                                 current_pos.x += size.x + info.item_margin.x;
+        //                             }
+        //                         }
+        //                         // need to set manually since its not in the above list
+        //                         item.set_pos(current_pos);
+        //                     }
+        //                     HorizontalAlign::Right => {
+        //                         row_size.x += item_width;
+        //                         let mut pos = self.pos + Vector2::new(self.size.x - row_size.x, current_y);
                                 
-                                // push everything over
-                                for (i, size) in row.iter() {
-                                    if let Some(i) = self.items.get_mut(*i) {
-                                        i.set_pos(pos);
-                                        pos.x += size.x + info.item_margin.x;
-                                    }
-                                }
-                                item.set_pos(pos);
-                            }
-                        }
+        //                         // push everything over
+        //                         for (i, size) in row.iter() {
+        //                             if let Some(i) = self.items.get_mut(*i) {
+        //                                 i.set_pos(pos);
+        //                                 pos.x += size.x + info.item_margin.x;
+        //                             }
+        //                         }
+        //                         item.set_pos(pos);
+        //                     }
+        //                 }
 
-                        found = true;
-                        break;
-                    }
+        //                 found = true;
+        //                 break;
+        //             }
 
-                    // no room, keep looking
-                    current_y += row_size.y + info.item_margin.y;
-                }
+        //             // no room, keep looking
+        //             current_y += row_size.y + info.item_margin.y;
+        //         }
 
-                if !found {
-                    // need to add a new row
-                    info.grid.push(vec![(self.items.len(), item.size())]);
-                    let mut pos = self.pos + Vector2::with_y(current_y);
-                    match info.row_alignment {
-                        HorizontalAlign::Left => pos.x += info.item_margin.x,
-                        HorizontalAlign::Center => pos.x += (self.size.x - item_width) / 2.0,
-                        HorizontalAlign::Right => pos.x += self.size.x - item_width,
-                    }
+        //         if !found {
+        //             // need to add a new row
+        //             info.grid.push(vec![(self.items.len(), item.size())]);
+        //             let mut pos = self.pos + Vector2::with_y(current_y);
+        //             match info.row_alignment {
+        //                 HorizontalAlign::Left => pos.x += info.item_margin.x,
+        //                 HorizontalAlign::Center => pos.x += (self.size.x - item_width) / 2.0,
+        //                 HorizontalAlign::Right => pos.x += self.size.x - item_width,
+        //             }
 
-                    item.set_pos(pos);
-                }
+        //             item.set_pos(pos);
+        //         }
 
-                self.elements_height = current_y + item.size().y + info.item_margin.y;
-            }
-        }
+        //         self.elements_height = current_y + item.size().y + info.item_margin.y;
+        //     }
+        // }
 
-        self.items.push(item)
+        self.items.push(item);
+
+        self.refresh_layout();
     }
     pub fn clear(&mut self) {
         self.items.clear();
+        self.layout_manager.clear();
         self.original_positions.clear();
         self.elements_height = 0.0;
         self.scroll_pos = 0.0;
@@ -263,88 +292,11 @@ impl ScrollableArea {
 
     /// completely refresh the positions for all items in the list (only effective when using a list mode other than None)
     pub fn refresh_layout(&mut self) {
-        match &mut self.list_mode {
-            ListMode::None => return,
-            mode @ (ListMode::Collapsible(_) | ListMode::VerticalList) => {
-                self.elements_height = 0.0;
-
-                if let ListMode::Collapsible(info) = &mode {
-                    self.elements_height += info.header_height + info.first_item_margin.unwrap_or(self.item_margin);
-                }
-
-                for (i, item) in self.items.iter_mut().enumerate() {
-                    let ipos = self.original_positions[i];
-                    item.set_pos(self.pos + Vector2::new(ipos.x, self.elements_height));
-                    self.elements_height += item.size().y + self.item_margin * self.ui_scale.y;
-                }
-
-                if let ListMode::Collapsible(info) = &mode {
-                    if info.auto_height {
-                        self.size.y = self.elements_height;
-                    }
-                }
-            }
-
-            ListMode::Grid(info) => {
-                info.grid.clear();
-                let mut current_row_size = info.item_margin;
-                let mut current_row = Vec::new();
-
-                for (n, item) in self.items.iter_mut().enumerate() {
-                    // if there's no room in the row, add the row to the grid
-                    let item_size = item.size();
-                    if current_row_size.x + item_size.x > self.size.x - info.item_margin.x {
-                        // add the row to the grid, resetting it in the process
-                        info.grid.push(std::mem::take(&mut current_row));
-
-                        // reset row size for next row
-                        current_row_size = info.item_margin;
-                    }
-                    
-                    current_row_size.x += item_size.x + info.item_margin.x;
-                    current_row_size.y = current_row_size.y.max(item_size.y);
-                    current_row.push((n, item_size));
-                }
-                // add the final row if its got anything in it
-                if !current_row.is_empty() { info.grid.push(current_row); }
-
-                // apply the layouts for each row (needs to be separate since we need mutable references to items (if in above loop, would double mut reference and rust angry))
-                let mut current_pos = info.item_margin;
-                for row in info.grid.iter() {
-                    let current_row_size = row.iter().fold(info.item_margin, |i, (_, size)|Vector2::new(i.x + size.x + info.item_margin.x, i.y.max(size.y)));
-
-                    match info.row_alignment {
-                        HorizontalAlign::Left => {
-                            for (i, size) in row.iter() {
-                                self.items.get_mut(*i).ok_do_mut(|i|i.set_pos(self.pos + current_pos));
-                                current_pos.x += size.x + info.item_margin.x;
-                            }
-                        }
-                        HorizontalAlign::Center => {
-                            let x_padding = (self.size.x - current_row_size.x) / 2.0;
-                            current_pos.x += x_padding;
-                            
-                            for (i, size) in row.iter() {
-                                self.items.get_mut(*i).ok_do_mut(|i|i.set_pos(self.pos + current_pos));
-                                current_pos.x += size.x + info.item_margin.x;
-                            }
-                        }
-                        HorizontalAlign::Right => {
-                            current_pos.x += self.size.x - current_row_size.x;
-
-                            for (i, size) in row.iter() {
-                                self.items.get_mut(*i).ok_do_mut(|i|i.set_pos(self.pos + current_pos));
-                                current_pos.x += size.x + info.item_margin.x;
-                            }
-                        }
-                    }
-                    
-                    current_pos.x = info.item_margin.x;
-                    current_pos.y += current_row_size.y;
-                }
-
-                self.elements_height = current_pos.y;
-            }
+        let a = self.layout_manager.clone();
+        self.update_layout(&a);
+        
+        if a.needs_refresh() {
+            self.apply_layout(&a, self.parent_pos);
         }
     }
 
@@ -359,10 +311,11 @@ impl ScrollableArea {
             let mut y = 0.0;
             for (n, i) in self.items.iter().enumerate() {
                 if i.get_selected() { break }
-                let margin = match (&self.list_mode, n==0) {
-                    (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
-                    _ => self.item_margin
-                };
+                let margin = 0.0;
+                // match (&self.list_mode, n==0) {
+                //     (ListMode::Collapsible(info), true) => info.first_item_margin.unwrap_or(self.item_margin),
+                //     _ => self.item_margin
+                // };
 
                 y = i.get_pos().y - margin * self.ui_scale.y * 2.0;
             }
@@ -590,6 +543,27 @@ impl ScrollableItemGettersSetters for ScrollableArea {
 }
 
 impl ScrollableItem for ScrollableArea {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn update_layout(&self, _layout: &LayoutManager) {
+        self.items.iter().for_each(|i|i.update_layout(&self.layout_manager));
+    }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.parent_pos = parent_pos;
+        self.size = layout.size.into();
+        info!("got pos: {:?} for {}", self.pos, self.tag);
+        info!("got size: {:?} for {}", self.size, self.tag);
+        
+        // apply to all children
+        self.items.iter_mut().for_each(|i| {
+            self.elements_height = self.elements_height.max((i.get_pos().y - self.pos.y) + i.size().y);
+            i.apply_layout(&self.layout_manager, self.pos);
+        });
+    }
+
+
     fn window_size_changed(&mut self, new_window_size: Vector2) {
         for i in self.items.iter_mut() {
             i.window_size_changed(new_window_size)
@@ -764,6 +738,7 @@ impl ScrollableItem for ScrollableArea {
     }
 
     fn on_scroll(&mut self, delta:f32) -> bool {
+        info!("scroll: {delta}, {}, {}, {}", self.elements_height, self.size.x, self.scroll_pos);
         if self.list_mode.is_collapsible() && !self.expanded { return false; }
 
         if self.hover {
@@ -775,7 +750,7 @@ impl ScrollableItem for ScrollableArea {
 
             let min = -self.elements_height + self.size.y;
             let max = 0.0;
-            self.scroll_pos = if min<=max { self.scroll_pos.clamp(min, max) } else {0.0};
+            self.scroll_pos = if min <= max { self.scroll_pos.clamp(min, max) } else {0.0};
 
             self.on_mouse_move(self.mouse_pos);
         }
@@ -818,13 +793,17 @@ impl ScrollableItem for ScrollableArea {
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         // // helpful for debugging positions
         // if self.hover {
-        //     list.push(Rectangle::new(self.pos, self.size, Color::TRANSPARENT_WHITE,  Some(Border::new(if self.hover{Color::RED} else {Color::BLACK}, 2.0))));
+        //     list.push(Rectangle::new(self.pos, self.size, Color::RED.alpha(0.7),  Some(Border::new(if self.hover{Color::RED} else {Color::BLACK}, 2.0))));
         //     // mouse
         //     list.push(Circle::new(self.mouse_pos, 5.0, Color::RED));
         //     // mouse relative to scroll pos
         //     list.push(Circle::new(self.mouse_pos + offset, 5.0, Color::BLUE));
         // }
         let offset = pos_offset + Vector2::with_y(self.scroll_pos);
+        if let Some((bg_color, border)) = self.draw_rect {
+            list.push(Rectangle::new(self.pos, self.size, bg_color, border));
+        }
+
 
         // if this is a collapsible menu, draw the header
         if let ListMode::Collapsible(info) = &self.list_mode {
@@ -855,7 +834,9 @@ impl ScrollableItem for ScrollableArea {
         // setup a clipping context. 
         // this ensures items arent being drawn outside the bounds of the scrollable
         let pos = self.pos + pos_offset;
-        list.push_scissor([ pos.x, pos.y, self.size.x, self.size.y ]);
+
+        //TODO: read scissor
+        // list.push_scissor([ pos.x, pos.y, self.size.x, self.size.y ]);
         for item in self.items.iter_mut() {
             // check if item will even be drawn
             let size = item.size();
@@ -865,7 +846,7 @@ impl ScrollableItem for ScrollableArea {
             // should be good, draw it
             item.draw(offset, list);
         }
-        list.pop_scissor();
+        // list.pop_scissor();
 
 
         // draw dragger

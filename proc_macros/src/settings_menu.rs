@@ -130,7 +130,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     let struct_name = ast.ident.to_string();
     let mut get_menu_items_lines = Vec::new();
     get_menu_items_lines.push(format!("impl {struct_name} {{"));
-    get_menu_items_lines.push("pub fn get_menu_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
+    get_menu_items_lines.push("pub fn get_menu_items(&self, style: &Style, layout_manager: &LayoutManager, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
     get_menu_items_lines.push("let mut list:Vec<Box<dyn ScrollableItem>> = Vec::new();".to_owned());
     get_menu_items_lines.push("let font = Font::Main;".to_owned());
     
@@ -144,7 +144,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         let mut add = true;
 
         if let Some(category) = setting.category {
-            get_menu_items_lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", Color::BLACK, Font::Main)));"));
+            get_menu_items_lines.push(format!("list.push(Box::new(MenuSection::new(style.clone(), \"{category}\", Color::BLACK, layout_manager, Font::Main)));"));
         }
 
         // comment what this item is
@@ -154,9 +154,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         match setting.setting_type {
             // checkbox
             SettingsType::Bool => {
-                let w = float(setting.width.unwrap_or(600.0));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = Checkbox::new(p, {size}, \"{text}\", self.{property}, Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = Checkbox::new(style.clone(), \"{text}\", self.{property}, layout_manager, Font::Main);"));
 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
@@ -174,9 +172,6 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             | SettingsType::Usize 
             | SettingsType::F64) => {
                 let t = f.to_str();
-                
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
 
                 let range = if let Some((min, max)) = setting.range_min.zip(setting.range_max) {
                     let min = float(min);
@@ -187,7 +182,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 };
 
                 // TODO: snapping?
-                get_menu_items_lines.push(format!("let mut i = Slider::new(p, {size}, \"{text}\", self.{property} as f64, {range}, None, Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = Slider::new(style.clone(), \"{text}\", self.{property} as f64, {range}, None, layout_manager, Font::Main);"));
 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
@@ -199,10 +194,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // text input
             SettingsType::String => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
-                
-                get_menu_items_lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{property}, Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = TextInput::new(style.clone(), \"{text}\", &self.{property}, layout_manager, Font::Main);"));
                     
                 if setting.password_input == Some(true) {
                     get_menu_items_lines.push("i.is_password = true;".to_owned());
@@ -217,9 +209,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // color input
             SettingsType::Color => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let s:String = self.{property}.into(); let mut i = TextInput::new(p, {size}, \"{text}\", &s, Font::Main);"));
+                get_menu_items_lines.push(format!("let s:String = self.{property}.into(); let mut i = TextInput::new(style.clone(), \"{text}\", &s, layout_manager, Font::Main);"));
 
                 from_menu_lines.push(format!("
                 {{
@@ -233,9 +223,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             }
             // 
             SettingsType::Key => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{property}, \"{text}\", Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = KeyButton::new(style.clone(), self.{property}, \"{text}\", layout_manager, Font::Main);"));
 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
@@ -246,7 +234,6 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // dropdown menu (obviously)
             SettingsType::Dropdown(enum_name) => {
-                let width = float(setting.width.unwrap_or(WIDTH));
                 let font_size = "20.0";
             
                 let e = if let Some(s) = setting.dropdown_value.clone() {
@@ -255,7 +242,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                     format!("self.{property}.clone()")
                 };
 
-                get_menu_items_lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(p, {width}, {font_size}, \"{text}\", Some({e}), Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(style.clone(), {font_size}, \"{text}\", Some({e}), layout_manager, Font::Main);"));
 
                 if let Some(override_) = setting.dropdown_value {
                     from_menu_lines.push(format!("
@@ -280,7 +267,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
-                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(p, \"{property}\".to_owned() + &prefix, sender.clone()));"));
+                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(style, layout_manager, \"{property}\".to_owned() + &prefix, sender.clone()));"));
                 add = false;
 
                 from_menu_lines.push(format!("self.{property}.from_menu(\"{property}\".to_owned() + &prefix, list);"));
@@ -288,9 +275,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // button that performs an action
             SettingsType::Button => {
-                let w = float(setting.width.unwrap_or(600.0));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = MenuButton::new(p, {size}, \"{text}\", Font::Main);"));
+                get_menu_items_lines.push(format!("let mut i = MenuButton::new(style.clone(), \"{text}\", layout_manager, Font::Main);"));
                 if let Some(action) = setting.action {
                     get_menu_items_lines.push(format!("i.on_click = Arc::new({action});"));
                 }
@@ -314,7 +299,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         }
     }
 
-    if let Some(extra) = get_items_extra { get_menu_items_lines.push("list.extend(self.".to_owned() + &extra + "(p, prefix, sender));"); }
+    if let Some(extra) = get_items_extra { get_menu_items_lines.push("list.extend(self.".to_owned() + &extra + "(style, layout_manager, prefix, sender));"); }
 
     get_menu_items_lines.push("list".to_owned());
     get_menu_items_lines.push("}".to_owned());
@@ -328,7 +313,8 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
     let all_lines = get_menu_items_lines.join("\n");
 
-    #[cfg(feature="extra_debugging")] {
+    // #[cfg(feature="extra_debugging")] 
+    {
         std::fs::create_dir_all("./debug").unwrap();
         std::fs::write(format!("./debug/{struct_name}.rs", ), &all_lines).unwrap();
     }

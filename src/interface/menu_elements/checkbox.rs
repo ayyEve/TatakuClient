@@ -6,6 +6,9 @@ const INNER_BOX_PADDING:f32 = 8.0;
 pub struct Checkbox {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -19,10 +22,16 @@ pub struct Checkbox {
     pub on_change: Arc<dyn Fn(&mut Self, bool) + Send + Sync>,
 }
 impl Checkbox {
-    pub fn new(pos: Vector2, size: Vector2, text:&str, value:bool, font: Font) -> Self {
+    pub fn new(style: Style, text:&str, value:bool, layout_manager: &LayoutManager, font: Font) -> Self {
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self {
             pos, 
             size, 
+            style, 
+            node,
+
             text: text.to_owned(),
             keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
@@ -39,6 +48,15 @@ impl Checkbox {
 }
 
 impl ScrollableItem for Checkbox {
+    
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_value(&self) -> Box<dyn std::any::Any> {Box::new(self.checked)}
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
 

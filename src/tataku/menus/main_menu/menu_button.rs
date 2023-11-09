@@ -278,6 +278,12 @@ impl ScrollableItemGettersSetters for MainMenuButton {
     fn get_selectable(&self) -> bool {false}
 }
 impl ScrollableItem for MainMenuButton {
+    //TODO:!!!!!!!
+    fn get_style(&self) -> Style { todo!() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        todo!()
+    }
+    
     fn update(&mut self) {
         if self.shapes.items.len() == 0 {
             let scale = self.window_size.y / 1080.0;

@@ -8,6 +8,9 @@ const UNDERLINE_PAD:f32 = 10.0;
 pub struct MenuSection {
     size: Vector2,
     pos: Vector2,
+    style: Style,
+    node: Node,
+
     pub text: String,
     pub font: Font,
     pub font_size: f32,
@@ -16,10 +19,16 @@ pub struct MenuSection {
 }
 
 impl MenuSection {
-    pub fn new(pos:Vector2, height:f32, text:&str, color: Color, font:Font) -> Self {
+    pub fn new(style: Style, text:&str, color: Color, layout_manager: &LayoutManager, font:Font) -> Self {
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+        
         Self {
             pos, 
-            size: Vector2::new(300.0, height),
+            size,
+            style, 
+            node,
+
             text: text.to_owned(),
             color,
             font,
@@ -30,6 +39,14 @@ impl MenuSection {
 }
 
 impl ScrollableItem for MenuSection {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
     fn get_keywords(&self) -> Vec<String> { self.keywords.clone() }
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {false} //{self.hover}
 

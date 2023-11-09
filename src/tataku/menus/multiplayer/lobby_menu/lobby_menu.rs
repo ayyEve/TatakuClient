@@ -5,11 +5,15 @@ const SCORE_SEND_TIME:f32 = 1_000.0;
 const CHANNEL_COUNT:usize = 2;
 
 pub struct LobbyMenu {
+    layout_manager: LayoutManager,
+
     init_pending: bool,
     lobby_info: CurrentLobbyDataHelper,
 
     left_scrollable: ScrollableArea,
     right_scrollable: ScrollableArea,
+
+    game_area_node: GenericNode,
 
     selected_beatmap: Option<Arc<BeatmapMeta>>,
     selected_mode: Option<String>,
@@ -34,19 +38,59 @@ pub struct LobbyMenu {
 impl LobbyMenu {
     pub async fn new() -> Self {
         let lobby_info = CurrentLobbyDataHelper::new();
-        let window_size = WindowSize::get().0;
-        let left_size = Vector2::new(window_size.x / 3.0, window_size.y);
-        let mut right_size = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
+        let mut layout_manager = LayoutManager::new();
+        // let window_size = WindowSize::get().0;
+        // let left_size = Vector2::new(window_size.x / 3.0, window_size.y);
+        // let mut right_size = Vector2::new(window_size.x * (2.0/3.0) - 10.0, window_size.y);
 
-        let mut left_scrollable = ScrollableArea::new(Vector2::ZERO, left_size, ListMode::VerticalList);
-        let mut right_scrollable = ScrollableArea::new(left_size.x_portion() + 10.0, right_size, ListMode::VerticalList);
-        right_scrollable.add_item(Box::new(BeatmapSelectButton::new(right_size.x)));
+        let mut left_scrollable = ScrollableArea::new(Style {
+            size: Size {
+                width: Dimension::Percent(0.33),
+                height: Dimension::Percent(1.0),
+            },
+            margin: taffy::geometry::Rect {
+                left: LengthPercentageAuto::Auto,
+                right: LengthPercentageAuto::Points(10.0),
+                top: LengthPercentageAuto::Auto,
+                bottom: LengthPercentageAuto::Auto,
+            },
+            ..Default::default()
+        }, ListMode::VerticalList, &layout_manager);
 
+        let mut right_scrollable = ScrollableArea::new(Style {
+            size: Size {
+                width: Dimension::Percent(0.66),
+                height: Dimension::Percent(1.0),
+            },
+            ..Default::default()
+        }, ListMode::VerticalList, &layout_manager);
+        right_scrollable.add_item(Box::new(BeatmapSelectButton::new(&layout_manager)));
 
         {
-            let mut buttons = ScrollableArea::new(Vector2::ZERO, Vector2::new(right_size.x - 10.0, 50.0), ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Center)));
-            buttons.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Leave", Font::Main).with_tag("leave")));
-            buttons.add_item(Box::new(LobbyReadyButton::new()));
+            let mut buttons = ScrollableArea::new(
+                Style {
+                    size: Size {
+                        width: Dimension::Percent(0.66),
+                        height: Dimension::Percent(1.0),
+                    },
+                    display: taffy::style::Display::Grid,
+                    ..Default::default()
+                }, 
+                ListMode::Grid(GridSettings::new(Vector2::new(5.0, 0.0), HorizontalAlign::Center)),
+                &layout_manager
+            );
+            
+            buttons.add_item(Box::new(MenuButton::new(Style {
+                size: LayoutManager::small_button(),
+                margin: taffy::geometry::Rect {
+                    top: LengthPercentageAuto::Points(0.0),
+                    left: LengthPercentageAuto::Points(2.5),
+                    bottom: LengthPercentageAuto::Points(0.0),
+                    right: LengthPercentageAuto::Points(2.0),
+                },
+                ..Default::default()
+            }, "Leave", &layout_manager, Font::Main).with_tag("leave")));
+            buttons.add_item(Box::new(LobbyReadyButton::new(&layout_manager)));
             // buttons.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Start", Font::Main).with_tag("start")));
             right_scrollable.add_item(Box::new(buttons));
         }
@@ -56,20 +100,33 @@ impl LobbyMenu {
             let (state_sender, state_receiver) = async_channel(CHANNEL_COUNT);
             let (player_sender, player_receiver) = async_channel(CHANNEL_COUNT);
             
-            left_scrollable.add_item(Box::new(LobbySlotDisplay::new(left_size.x, slot, state_receiver, player_receiver)));
+            left_scrollable.add_item(Box::new(LobbySlotDisplay::new(slot, state_receiver, player_receiver, &layout_manager)));
             slot_senders.insert(slot, (state_sender, player_sender));
         }
 
-        right_size.y = right_scrollable.get_elements_height();
+        let mut game_area_node = GenericNode::new(
+            Style {
+                ..Default::default()
+            },
+            &right_scrollable.layout_manager
+        );
+
+        layout_manager.apply_layout(WindowSize::get().0);
+        game_area_node.apply_layout(&right_scrollable.layout_manager, Vector2::ZERO);
+
+        // right_size.y = right_scrollable.get_elements_height();
         let menu_game_bounds = Bounds::new(
-            Vector2::new(left_size.x, right_size.y) + Vector2::ONE * 10.0, 
-            Vector2::new(right_size.x, window_size.y / 2.0) - Vector2::ONE * 10.0
+            game_area_node.get_pos(), // Vector2::new(left_size.x, right_size.y) + Vector2::ONE * 10.0, 
+            game_area_node.size(), // Vector2::new(right_size.x, window_size.y / 2.0) - Vector2::ONE * 10.0
         );
         let mut menu_game = MenuGameHelper::new(true, true, Box::new(|s|s.background_game_settings.multiplayer_menu_enabled));
         menu_game.fit_to_area(menu_game_bounds).await;
+
+
         Self {
             init_pending: true,
             slot_senders,
+            layout_manager,
 
             lobby_info,
             left_scrollable,
@@ -78,6 +135,7 @@ impl LobbyMenu {
             selected_mode: Some(CurrentPlaymodeHelper::new().0.clone()),
             
             latest_beatmap_helper: LatestBeatmapHelper::new(),
+            game_area_node,
             menu_game,
             since_last_escape: Instant::now(),
 

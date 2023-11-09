@@ -10,6 +10,10 @@ pub const LEADERBOARD_ITEM_SIZE:Vector2 = Vector2::new(200.0, 50.0);
 pub struct LeaderboardItem {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
+
+
     hover: bool,
     selected: bool,
     tag: String,
@@ -27,9 +31,9 @@ pub struct LeaderboardItem {
     pub theme: ThemeHelper,
 }
 impl LeaderboardItem {
-    pub fn new(score:IngameScore) -> LeaderboardItem {
-        let pos = Vector2::ZERO;
-        let size = LEADERBOARD_ITEM_SIZE;
+    pub fn new(style:Style, score:IngameScore, layout_manager: &LayoutManager) -> LeaderboardItem {
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
 
         let tag = score.hash(); //username.clone();
         let font = Font::Main;
@@ -38,6 +42,9 @@ impl LeaderboardItem {
         LeaderboardItem {
             pos,
             size,
+            style,
+            node,
+
             score,
             tag,
             hover: false,
@@ -58,6 +65,15 @@ impl LeaderboardItem {
     }
 }
 impl ScrollableItem for LeaderboardItem {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
+    
     fn ui_scale_changed(&mut self, scale: Vector2) {
         self.ui_scale = scale;
         self.size = LEADERBOARD_ITEM_SIZE * scale;

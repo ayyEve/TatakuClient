@@ -34,6 +34,9 @@ const SECONDARY_COLOR:Color = Color::new(1.0, 1.0, 1.0, 0.1);
 pub struct MusicBox {
     pos: Vector2, // should be bottom right
     size: Vector2,
+    style: Style,
+    node: Node,
+
     hover: bool,
     mouse_pos: Vector2,
 
@@ -47,11 +50,14 @@ pub struct MusicBox {
     event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,
 }
 impl MusicBox {
-    pub async fn new(event_sender: AsyncUnboundedSender<MediaControlHelperEvent>,) -> Self {
+    pub async fn new(layout_manager: &LayoutManager, event_sender: AsyncUnboundedSender<MediaControlHelperEvent>) -> Self {
         // this is a big mess
         let window_size = WindowSize::get();
         let mut size = Vector2::ZERO;
         let mut pos = Vector2::new(X_PADDING, window_size.y);
+
+        let style = Style::default();
+        let node = layout_manager.create_node(&style);
 
         // setup buttons
         let mut texts = Vec::new();
@@ -96,6 +102,9 @@ impl MusicBox {
         Self {
             pos, 
             size, 
+            style,
+            node,
+
             hover: false, 
             mouse_pos: Vector2::ZERO, 
             actions, 
@@ -139,6 +148,14 @@ impl MusicBox {
     }
 }
 impl ScrollableItem for MusicBox {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+    
     fn on_mouse_move(&mut self, p:Vector2) {
         self.check_hover(p);
         self.mouse_pos = p;

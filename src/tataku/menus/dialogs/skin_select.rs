@@ -3,21 +3,24 @@ use crate::prelude::*;
 
 pub struct SkinSelect {
     should_close: bool,
+    layout_manager: LayoutManager,
     dropdown: Dropdown<SkinDropdownable>,
     current_skin: String
 }
 impl SkinSelect {
     pub async fn new() -> Self {
         let current_skin = Settings::get().current_skin.clone();
+        let layout_manager = LayoutManager::new();
         Self {
             dropdown: Dropdown::new(
-                Vector2::new(300.0, 200.0),
-                500.0,
+                Style::default(),
                 20.0,
                 "Skin",
                 Some(SkinDropdownable::Skin(current_skin.clone())),
+                &layout_manager,
                 Font::Main
             ),
+            layout_manager,
             current_skin,
             should_close: false,
         }
@@ -83,7 +86,8 @@ impl Dialog<Game> for SkinSelect {
     }
 
     
-    async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.layout_manager.apply_layout(size);
         
     }
 }

@@ -5,13 +5,14 @@ const TEXT_SIZE:f32 = 30.0;
 pub struct GameUIEditorDialog {
     pub should_close: bool,
     pub elements: Vec<UIElement>,
+    layout_manager: LayoutManager,
 
     mouse_pos: Vector2,
 
     /// selected_item_index, original_pos, mouse_start
     mouse_down: Option<(usize, Vector2, Vector2)>,
 
-    window_size: Arc<WindowSize>,
+    size: Vector2,
 
     #[allow(unused)]
     event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>,
@@ -25,16 +26,23 @@ impl GameUIEditorDialog {
     pub fn new(elements: Vec<UIElement>) -> Self {
         let (event_sender, event_receiver) = MultiBomb::new();
         let event_sender = Arc::new(Mutex::new(event_sender));
+        // let window_size = WindowSize::get();
 
-        let window_size = WindowSize::get();
+        let layout_manager = LayoutManager::new();
 
-        let mut sidebar = ScrollableArea::new(Vector2::ZERO, Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), ListMode::VerticalList);
+        let mut sidebar = ScrollableArea::new(Style {
+            size: Size {
+                width: Dimension::Percent(0.33),
+                height: Dimension::Percent(0.66),
+            },
+            ..Default::default()
+        }, ListMode::VerticalList, &layout_manager);
 
         for i in elements.iter() {
-            sidebar.add_item(Box::new(UISideBarElement::new(i.element_name.clone(), i.inner.display_name(), event_sender.clone())));
+            sidebar.add_item(Box::new(UISideBarElement::new(i.element_name.clone(), i.inner.display_name(), &layout_manager, event_sender.clone())));
         }
 
-        sidebar.set_pos(Vector2::new(0.0, (window_size.y - sidebar.size().y) / 3.0));
+        // sidebar.set_pos(Vector2::new(0.0, (window_size.y - sidebar.size().y) / 3.0));
         sidebar.refresh_layout();
 
         Self {
@@ -42,8 +50,9 @@ impl GameUIEditorDialog {
             elements,
             mouse_pos: Vector2::ZERO,
             mouse_down: None,
+            layout_manager,
 
-            window_size: WindowSize::get(),
+            size: WindowSize::get().0,
 
             event_sender,
             event_receiver,
@@ -73,10 +82,12 @@ impl GameUIEditorDialog {
 #[async_trait]
 impl Dialog<()> for GameUIEditorDialog {
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.size) }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
+    fn container_size_changed(&mut self, size: Vector2) {
+        self.size = size;
+        self.layout_manager.apply_layout(size);
+        self.sidebar.apply_layout(&self.layout_manager, Vector2::ZERO);
     }
 
     async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut ()) {
@@ -158,10 +169,10 @@ impl Dialog<()> for GameUIEditorDialog {
             if self.mouse_down.is_none() {
                 let y = self.sidebar.get_pos().y;
 
-                if self.sidebar.get_pos().x < -self.window_size.x {
+                if self.sidebar.get_pos().x < -self.size.x {
                     self.sidebar.set_pos(Vector2::new(0.0, y));
                 } else {
-                    self.sidebar.set_pos(Vector2::new(-self.window_size.x * 5.0, y));
+                    self.sidebar.set_pos(Vector2::new(-self.size.x * 5.0, y));
                 }
 
                 self.sidebar.refresh_layout();
@@ -235,6 +246,8 @@ async fn reset_element(ele: &mut UIElement) {
 pub struct UISideBarElement {
     pos: Vector2,
     size: Vector2,
+    style: Style,
+    node: Node,
     hover: bool,
 
     element_name: String,
@@ -264,10 +277,24 @@ impl ScrollableItemGettersSetters for UISideBarElement {
 }
 
 impl UISideBarElement {
-    fn new(element_name: String, display_name:&str, event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>) -> Self {
+    fn new(element_name: String, display_name:&str, layout_manager: &LayoutManager, event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>) -> Self {
+        let style = Style {
+            size: Size {
+                width: Dimension::Percent(1.0),
+                height: Dimension::Auto,
+            },
+            ..Default::default()
+        };
+
+        let (pos, size) = LayoutManager::get_pos_size(&style);
+        let node = layout_manager.create_node(&style);
+
         Self { 
-            pos: Vector2::ZERO, 
-            size: Vector2::new(WindowSize::get().x/3.0, TEXT_SIZE), 
+            pos, 
+            size, 
+            style,
+            node,
+
             hover: false, 
             element_name, 
             event_sender, 
@@ -276,6 +303,15 @@ impl UISideBarElement {
     }
 }
 impl ScrollableItem for UISideBarElement {
+    fn get_style(&self) -> Style { self.style.clone() }
+    fn apply_layout(&mut self, layout: &LayoutManager, parent_pos: Vector2) {
+        let layout = layout.get_layout(self.node);
+        self.pos = layout.location.into();
+        self.pos += parent_pos;
+        self.size = layout.size.into();
+    }
+
+
     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
         let text = Text::new(
             self.pos + pos_offset, 
