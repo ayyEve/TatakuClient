@@ -67,10 +67,10 @@ impl GameImportDialog {
 }
 
 #[async_trait]
-impl Dialog<Game> for GameImportDialog {
+impl Dialog for GameImportDialog {
     fn name(&self) -> &'static str { "game_import" }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, BASE_SIZE) }
+    // fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, BASE_SIZE) }
     async fn force_close(&mut self) { self.should_close = true; }
     
     async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {

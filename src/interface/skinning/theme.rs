@@ -228,27 +228,38 @@ pub enum SelectedTheme {
 }
 
 
-impl Dropdownable for SelectedTheme {
-    fn variants() -> Vec<Self> {
+impl Dropdownable2 for SelectedTheme {
+    type T = Self;
+    fn variants() -> Vec<Self::T> {
         [Self::Tataku, Self::Osu].into_iter().chain(THEMES.clone().into_iter().map(|t|Self::Custom(t.0, t.1))).collect()
     }
 
-    fn display_text(&self) -> String {
-        match self {
-            Self::Tataku => "Tataku".to_owned(),
-            Self::Osu => "Osu".to_owned(),
-            Self::Custom(_, name) => name.clone()
-        }
-    }
+    // fn display_text(&self) -> String {
+    //     match self {
+    //         Self::Tataku => "Tataku".to_owned(),
+    //         Self::Osu => "Osu".to_owned(),
+    //         Self::Custom(_, name) => name.clone()
+    //     }
+    // }
 
-    fn from_string(s:String) -> Self {
-        match &*s {
-            "Tataku" => Self::Tataku,
-            "Osu" => Self::Osu,
-            _ => {
-                let t = THEMES.iter().find(|t|t.1 == s).unwrap().clone();
-                Self::Custom(t.0, t.1)
-            }
+    // fn from_string(s:String) -> Self {
+    //     match &*s {
+    //         "Tataku" => Self::Tataku,
+    //         "Osu" => Self::Osu,
+    //         _ => {
+    //             let t = THEMES.iter().find(|t|t.1 == s).unwrap().clone();
+    //             Self::Custom(t.0, t.1)
+    //         }
+    //     }
+    // }
+}
+
+impl Display for SelectedTheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Tataku => write!(f, "Tataku"),
+            Self::Osu => write!(f, "Osu"),
+            Self::Custom(_, name) => write!(f, "{name}"),
         }
     }
 }

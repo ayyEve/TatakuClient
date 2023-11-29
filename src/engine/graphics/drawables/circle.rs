@@ -32,6 +32,7 @@ impl Circle {
 
 impl TatakuRenderable for Circle {
     fn get_name(&self) -> String { "Circle".to_owned() }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, Vector2::ONE * self.radius) }
 
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}

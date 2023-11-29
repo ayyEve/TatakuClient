@@ -2,86 +2,66 @@ use crate::prelude::*;
 const BUTTON_SIZE:Vector2 = Vector2::new(300.0, 50.0);
 
 pub struct LobbyPlayerDialog {
+    num: usize,
+
     user_id: u32,
     should_close: bool,
-    window_size: Vector2,
-
-    list: ScrollableArea,
+    is_self: bool,
+    we_are_host: bool,
 }
 impl LobbyPlayerDialog {
     pub fn new(user_id: u32, is_self: bool, we_are_host: bool) -> Self {
-        let window_size = WindowSize::get().0;
-        let mut list = ScrollableArea::new(Vector2::with_x((window_size.x - BUTTON_SIZE.x) / 2.0), Vector2::new(BUTTON_SIZE.x, window_size.y), ListMode::VerticalList);
-
-        if we_are_host && !is_self {
-            // make host
-            list.add_item(Box::new(MenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Transfer Host", Font::Main).with_tag("make_host")));
-            
-            // kick
-            list.add_item(Box::new(MenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Kick", Font::Main).with_tag("kick")));
-        }
-
-        // close
-        list.add_item(Box::new(MenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Close", Font::Main).with_tag("close")));
-
         Self {
+            num: 0,
             user_id,
             should_close: false,
-            window_size,
-            list
+
+            is_self,
+            we_are_host,
         }
     }
 }
 
 #[async_trait]
-impl Dialog<Game> for LobbyPlayerDialog {
+impl Dialog for LobbyPlayerDialog {
     fn name(&self) -> &'static str { "lobby_player_dialog" }
+    fn get_num(&self) -> usize { self.num }
+    fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(self.list.get_pos(), self.list.size()) }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.list.set_size(Vector2::new(BUTTON_SIZE.x, window_size.y));
-        self.list.set_pos(Vector2::with_x((window_size.x - BUTTON_SIZE.x) / 2.0));
-        self.window_size = window_size.0;
-    }
-    
-    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-        self.list.on_mouse_move(pos);
-    }
-    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
-        self.list.on_scroll(delta)
-    }
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if let Some(tag) = self.list.on_click_tagged(pos, button, *mods) {
-            match &*tag {
-                "close" => self.should_close = true,
-                "make_host" => {
-                    tokio::spawn(OnlineManager::lobby_change_host(self.user_id));
-                    self.should_close = true;
-                }
-                "kick" => {
-                    tokio::spawn(OnlineManager::lobby_kick_user(self.user_id));
-                    self.should_close = true;
-                }
 
-                _ => {}
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return }; 
+
+        match &*tag {
+            "close" => self.should_close = true,
+            "make_host" => {
+                tokio::spawn(OnlineManager::lobby_change_host(self.user_id));
+                self.should_close = true;
+            }
+            "kick" => {
+                tokio::spawn(OnlineManager::lobby_kick_user(self.user_id));
+                self.should_close = true;
             }
 
-            true
-        } else {
-            false
+            _ => {}
         }
     }
-    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.list.on_click_release(pos, button);
-
-        self.list.get_hover()
-    }
-
     
-    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-        list.push(visibility_bg(Vector2::ZERO, self.window_size));
-        self.list.draw(offset, list);
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
+
+        col!(
+            // make host
+            (self.we_are_host && !self.is_self).then(||Button::new(Text::new("Transfer Host")).on_press(Message::new_dialog(self, "make_host", MessageType::Click)).into_element())
+                .unwrap_or_else(||EmptyElement.into_element()),
+            // kick
+            (self.we_are_host && !self.is_self).then(||Button::new(Text::new("Kick")).on_press(Message::new_dialog(self, "kick", MessageType::Click)).into_element())
+                .unwrap_or_else(||EmptyElement.into_element()),
+            // close
+            Button::new(Text::new("Close")).on_press(Message::new_dialog(self, "close", MessageType::Click));
+        )
+
     }
 }

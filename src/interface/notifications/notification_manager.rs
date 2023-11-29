@@ -34,6 +34,8 @@ pub struct NotificationManager {
     current_skin: CurrentSkinHelper,
     window_size: WindowSizeHelper,
     notification_image: Option<Image>,
+
+    queued_actions: Vec<NotificationOnClick>
 }
 impl NotificationManager {
     fn new() -> Self { // technically static but i dont care
@@ -44,7 +46,8 @@ impl NotificationManager {
             
             current_skin: CurrentSkinHelper::new(),
             window_size: WindowSizeHelper::new(),
-            notification_image: None
+            notification_image: None,
+            queued_actions: Vec::new(),
         }
     }
 
@@ -74,7 +77,7 @@ impl NotificationManager {
     }
 
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self, game: &mut Game) {
         self.window_size.update();
         if self.current_skin.update() {
             self.notification_image = SkinManager::get_texture("notification", true).await;
@@ -89,6 +92,10 @@ impl NotificationManager {
         }
 
         self.processed_notifs.retain(|n| n.check_time());
+
+        for i in self.queued_actions.take() {
+            i.do_action(game).await;
+        }
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {
@@ -119,6 +126,15 @@ impl NotificationManager {
         false
     }
 
+
+    pub async fn activate_notification(notif_id: usize) {
+        let mut manager = NOTIFICATION_MANAGER.write().await;
+
+        if let Some((n, _)) = manager.all_notifs.iter().enumerate().find(|(_, n)|n.id == notif_id) {
+            let notif = manager.all_notifs.remove(n);
+            manager.queued_actions.push(notif.onclick.clone());
+        }
+    }
 }
 
 

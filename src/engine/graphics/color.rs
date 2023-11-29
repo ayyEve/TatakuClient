@@ -31,52 +31,56 @@ impl Color {
 
     pub fn from_hex(hex:impl AsRef<str>) -> Self {
         let hex = hex.as_ref();
+        Self::try_from_hex(hex).unwrap_or_else(|| {
+            println!("malformed hex: '{hex}'"); 
+            Color::new(0.0, 0.0, 0.0, 0.0)
+        })
+    }
+
+    pub fn try_from_hex(hex:impl AsRef<str>) -> Option<Color> {
+        let hex = hex.as_ref();
         let chars = hex.trim_matches('#').chars().collect::<Vec<char>>();
-        fn parse(c1:char, c2:char) -> f32 {
-            let n = u8::from_str_radix(&format!("{}{}", c1, c2), 16).unwrap_or(0);
-            n as f32 / 255.0
+        fn parse(c1:char, c2:char) -> Option<f32> {
+            let n = u8::from_str_radix(&format!("{c1}{c2}"), 16).ok()?;
+            Some(n as f32 / 255.0)
         }
 
         match chars.len() {
             3 => { // rgb
-                let r = parse(chars[0], chars[0]);
-                let g = parse(chars[1], chars[1]);
-                let b = parse(chars[2], chars[2]);
+                let r = parse(chars[0], chars[0])?;
+                let g = parse(chars[1], chars[1])?;
+                let b = parse(chars[2], chars[2])?;
                 let a = 1.0;
 
-                Color::new(r, g, b, a)
+                Some(Self::new(r, g, b, a))
             }
             4 => { // rgba
-                let r = parse(chars[0], chars[0]);
-                let g = parse(chars[1], chars[1]);
-                let b = parse(chars[2], chars[2]);
-                let a = parse(chars[3], chars[3]);
+                let r = parse(chars[0], chars[0])?;
+                let g = parse(chars[1], chars[1])?;
+                let b = parse(chars[2], chars[2])?;
+                let a = parse(chars[3], chars[3])?;
 
-                Color::new(r, g, b, a)
+                Some(Color::new(r, g, b, a))
             }
-            6 => {//rrggbb
-                let r = parse(chars[0], chars[1]);
-                let g = parse(chars[2], chars[3]);
-                let b = parse(chars[4], chars[5]);
+            6 => { //rrggbb
+                let r = parse(chars[0], chars[1])?;
+                let g = parse(chars[2], chars[3])?;
+                let b = parse(chars[4], chars[5])?;
                 let a = 1.0;
 
-                Color::new(r, g, b, a)
+                Some(Color::new(r, g, b, a))
             }
-            8 => {//rrggbbaa
-                let r = parse(chars[0], chars[1]);
-                let g = parse(chars[2], chars[3]);
-                let b = parse(chars[4], chars[5]);
-                let a = parse(chars[6], chars[7]);
+            8 => { //rrggbbaa
+                let r = parse(chars[0], chars[1])?;
+                let g = parse(chars[2], chars[3])?;
+                let b = parse(chars[4], chars[5])?;
+                let a = parse(chars[6], chars[7])?;
 
-                Color::new(r, g, b, a)
+                Some(Color::new(r, g, b, a))
             }
 
-            _ => {
-                println!("malformed hex: {}", hex);
-                Color::new(0.0, 0.0, 0.0, 0.0)
-            }
+            _ => None
         }
-    
     }
 
     pub fn from_rgb_bytes(r:u8, g:u8, b:u8) -> Color {
@@ -707,6 +711,23 @@ impl Into<String> for Color {
         self.to_hex()
     }
 }
+
+impl From<iced::Color> for Color {
+    fn from(value: iced::Color) -> Self {
+        Self::new(value.r, value.g, value.b, value.a)
+    }
+}
+impl From<&iced::Color> for Color {
+    fn from(value: &iced::Color) -> Self {
+        Self::new(value.r, value.g, value.b, value.a)
+    }
+}
+impl Into<iced::Color> for Color {
+    fn into(self) -> iced::Color {
+        iced::Color::from_rgba(self.r, self.g, self.b, self.a)
+    }
+}
+
 
 impl Into<[f32;4]> for Color {
     fn into(self) -> [f32;4] {

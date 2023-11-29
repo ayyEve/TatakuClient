@@ -10,6 +10,7 @@ pub struct TransformGroup {
     pub border_alpha: InitialCurrent<f32>,
 
     pub origin: Vector2,
+    
 
     pub items: Vec<Arc<dyn TatakuRenderable>>,
     pub transforms: Vec<Transformation>,
@@ -18,7 +19,10 @@ pub struct TransformGroup {
     pub image_flip_vertical: bool,
 
     pub scissor: Scissor,
-    pub blend_mode: BlendMode
+    pub blend_mode: BlendMode,
+
+
+    size: Vector2,
 }
 impl TransformGroup {
     pub fn new(pos: Vector2) -> Self {
@@ -37,7 +41,8 @@ impl TransformGroup {
             image_flip_vertical: false,
 
             scissor: None,
-            blend_mode: BlendMode::AlphaBlending
+            blend_mode: BlendMode::AlphaBlending,
+            size: Vector2::ZERO,
         }
     }
 
@@ -58,6 +63,15 @@ impl TransformGroup {
         self
     }
     
+
+    pub fn recalc_size(&mut self) {
+        self.size = Vector2::ZERO;
+        for i in self.items.iter() {
+            let b = i.get_bounds();
+            self.size.x = self.size.x.max(b.pos.x + b.size.x);
+            self.size.y = self.size.y.max(b.pos.y + b.size.y);
+        }
+    }
 
 
     pub fn update(&mut self, game_time: f32) {
@@ -141,6 +155,11 @@ impl TransformGroup {
 
     pub fn push(&mut self, r: impl TatakuRenderable + 'static) {
         self.items.push(Arc::new(r));
+        // self.recalc_size();
+    }
+    pub fn push_arced(&mut self, r: Arc<dyn TatakuRenderable>) {
+        self.items.push(r);
+        // self.recalc_size();
     }
 }
 
@@ -278,6 +297,12 @@ impl TransformGroup {
 
 
 impl TatakuRenderable for TransformGroup {
+    fn get_bounds(&self) -> Bounds { 
+        // for when i inevitebly forget
+        error!("TransformGroup::Bounds needs work!!!!!");
+        Bounds::new(self.pos.current, self.size * self.scale.current) 
+    }
+
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s; }
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

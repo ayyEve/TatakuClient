@@ -312,10 +312,10 @@ impl CustomCursor for OsuCursor {
             list.push(Circle::new(
                 self.pos,
                 radius * self.settings.cursor_scale,
-                self.settings.cursor_color,
+                *self.settings.cursor_color,
                 if self.settings.cursor_border > 0.0 {
                     Some(Border::new(
-                        self.settings.cursor_border_color,
+                        *self.settings.cursor_border_color,
                         self.settings.cursor_border
                     ))
                 } else { None }

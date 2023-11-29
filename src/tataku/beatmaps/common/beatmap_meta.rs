@@ -75,6 +75,11 @@ impl BeatmapMeta {
             self.mode.clone()
         }
     }
+
+    /// helper function for checking hashes
+    pub fn comp_hash(&self, other: Md5Hash) -> bool {
+        self.beatmap_hash == other
+    }
 }
 
 // getter helpers
@@ -95,9 +100,9 @@ impl BeatmapMeta {
 
 }
 
-
+#[derive(Clone)]
 pub struct BeatmapMetaWithDiff {
-    meta: Arc<BeatmapMeta>,
+    pub meta: Arc<BeatmapMeta>,
     pub sort_pending: bool,
     
     pub diff: Option<f32>,

@@ -13,7 +13,11 @@ pub struct Game {
     game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
     render_queue_sender: TripleBufferSender<RenderData>,
 
-    pub dialogs: Vec<Box<dyn Dialog<Self>>>,
+    /// if some, will handle spectator stuff
+    spectator_manager: Option<Box<SpectatorManager>>,
+    multiplayer_manager: Option<Box<MultiplayerManager>>,
+
+    // pub dialogs: Vec<Box<dyn Dialog>>,
 
     // fps
     fps_display: FpsDisplay,
@@ -41,6 +45,8 @@ pub struct Game {
     background_loader: Option<AsyncLoader<Option<Image>>>,
 
     spec_watch_action: SpectatorWatchAction,
+
+    ui_manager: UiManager,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -52,11 +58,13 @@ impl Game {
             // engine
             input_manager: InputManager::new(),
             volume_controller: VolumeControl::new().await,
-            dialogs: Vec::new(),
+            // dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
             settings: SettingsHelper::new(),
             window_size: WindowSizeHelper::new(),
+            spectator_manager: None,
+            multiplayer_manager: None,
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -81,7 +89,9 @@ impl Game {
             render_queue_sender,
             cursor_manager: CursorManager::new().await,
             last_skin: String::new(),
-            background_loader: None
+            background_loader: None,
+
+            ui_manager: UiManager::new(),
         };
 
         g.init().await;
@@ -237,10 +247,10 @@ impl Game {
                         if skin_changed { igm.reload_skin().await; }
                         igm.force_update_settings().await;
                     }
-                    GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager { 
-                        if skin_changed { igm.reload_skin().await; }
-                        igm.force_update_settings().await;
-                    }
+                    // GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager { 
+                    //     if skin_changed { igm.reload_skin().await; }
+                    //     igm.force_update_settings().await;
+                    // }
                     _ => {}
                 }
             }
@@ -319,10 +329,10 @@ impl Game {
         let window_size_updated = self.window_size.update();
         if window_size_updated { 
             self.resize_bg(); 
-            let window_size = WindowSize::get();
-            for i in self.dialogs.iter_mut() {
-                i.window_size_changed(window_size.clone()).await;
-            }
+            // let window_size = WindowSize::get();
+            // for i in self.dialogs.iter_mut() {
+            //     i.window_size_changed(window_size.clone()).await;
+            // }
         }
 
         // let timer = Instant::now();
@@ -338,22 +348,21 @@ impl Game {
         // read input events
         let mouse_pos = self.input_manager.mouse_pos;
         let mut mouse_down = self.input_manager.get_mouse_down();
-        let mut mouse_up = self.input_manager.get_mouse_up();
+        let mouse_up = self.input_manager.get_mouse_up();
         let mouse_moved = self.input_manager.get_mouse_moved();
         // TODO: do we want this here or only in menus?
         let mut scroll_delta = self.input_manager.get_scroll_delta() * self.settings.scroll_sensitivity;
 
         let mut keys_down = self.input_manager.get_keys_down();
-        let mut keys_up = self.input_manager.get_keys_up();
+        let keys_up = self.input_manager.get_keys_up();
         let mods = self.input_manager.get_key_mods();
-        let mut text = self.input_manager.get_text();
+        let text = self.input_manager.get_text();
         let window_focus_changed = self.input_manager.get_changed_focus();
 
         let controller_down = self.input_manager.get_controller_down();
         let controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
         
-
         self.cursor_manager.update(elapsed, self.input_manager.mouse_pos).await;
         
         // update cursor
@@ -397,34 +406,7 @@ impl Game {
         
         // check user panel
         if keys_down.contains(&self.settings.key_user_panel) {
-            let mut user_panel_exists = false;
-            let mut chat_exists = false;
-            for i in self.dialogs.iter() {
-                if i.name() == "UserPanel" {
-                    user_panel_exists = true;
-                }
-                if i.name() == "Chat" {
-                    chat_exists = true;
-                }
-                // if both exist, no need to continue looping
-                if user_panel_exists && chat_exists {break}
-            }
-
-            if !user_panel_exists {
-                // close existing chat window
-                if chat_exists {
-                    self.dialogs.retain(|d|d.name() != "Chat");
-                }
-                
-                self.add_dialog(Box::new(UserPanel::new()), false);
-            } else {
-                self.dialogs.retain(|d|d.name() != "UserPanel");
-            }
-
-            // if let Some(chat) = Chat::new() {
-            //     self.add_dialog(Box::new(chat));
-            // }
-            // trace!("Show user list: {}", self.show_user_list);
+            self.ui_manager.application().handle_make_userpanel().await;
         }
 
         // screenshot
@@ -533,60 +515,40 @@ impl Game {
         }
 
         // update any dialogs
-        use crate::async_retain;
-
-        let mut dialog_list = std::mem::take(&mut self.dialogs);
-
-        // if escape was pressed, force close the most recent dialog
-        if let Some(dialog) = dialog_list.last_mut() {
-            if keys_down.contains(&Key::Escape) {
-                dialog.force_close().await;
-                keys_down.remove_item(Key::Escape);
-            }
+        if keys_down.contains(&Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
+            keys_down.remove_item(Key::Escape)
         }
 
-        for d in dialog_list.iter_mut().rev() {
-            if d.should_close() { continue }
 
-            // kb events
-            async_retain!(keys_down, k, !d.on_key_press(*k, &mods, self).await);
-            async_retain!(keys_up, k, !d.on_key_release(*k, &mods, self).await);
+        let mut menu_actions = self.ui_manager.update(CurrentInputState {
+            mouse_pos,
+            mouse_moved,
+            scroll_delta,
+            mouse_down: &mouse_down,
+            mouse_up: &mouse_up,
+            keys_down: &keys_down,
+            keys_up: &keys_up,
+            text: &text,
+            mods,
+        }).await;
 
-            // TODO: this
-            // async_retain!(controller_down, k, !d.on_controller_press(&k.0, &k.1).await);
-            // async_retain!(controller_up, k, !d.on_controller_release(&k.0, &k.1).await);
-
-            for (c, b) in controller_axis.iter() {
-                d.on_controller_axis(c, b).await;
-            }
-
-            if !text.is_empty() && d.on_text(&text).await {text = String::new()}
-
-            // mouse events
-            if mouse_moved { d.on_mouse_move(mouse_pos, self).await }
-            
-            // mouse up is outside the bounds check because for things that require a mouse-up event to "release" its state, 
-            // if the mouse is pressed in the bounds, then released outside the bounds, the thing will never be "released"
-            // an example of this is sliders in the settings menu
-            async_retain!(mouse_up, button, !d.on_mouse_up(mouse_pos, *button, &mods, self).await);
-            
-            if d.get_bounds().contains(mouse_pos) {
-                async_retain!(mouse_down, button, !d.on_mouse_down(mouse_pos, *button, &mods, self).await);
-                if scroll_delta != 0.0 && d.on_mouse_scroll(scroll_delta, self).await {scroll_delta = 0.0}
-
-                mouse_down.clear();
-                mouse_up.clear();
-            }
-
-            d.update(self).await
+        // update spec and multi managers
+        if let Some(spec) = &mut self.spectator_manager { 
+            let manager = match &mut current_state {
+                GameState::Ingame(manager) => Some(manager),
+                _ => None
+            };
+            menu_actions.extend(spec.update(manager).await);
         }
-        // remove any dialogs which should be closed
-        dialog_list.retain(|d|!d.should_close());
-        // add any new dialogs to the end of the list
-        dialog_list.extend(std::mem::take(&mut self.dialogs));
-        self.dialogs = dialog_list;
+        if let Some(multi) = &mut self.multiplayer_manager { 
+            let manager = match &mut current_state {
+                GameState::Ingame(manager) => Some(manager),
+                _ => None
+            };
+            menu_actions.extend(multi.update(manager).await);
+        }
 
-
+        self.handle_menu_actions(menu_actions).await;
 
         // run update on current state
         match &mut current_state {
@@ -649,74 +611,77 @@ impl Game {
             
             GameState::InMenu(menu) => {
 
-                // menu input events
-                if window_size_updated {
-                    menu.window_size_changed((*self.window_size).clone()).await;
-                }
-
-                // clicks
-                for b in mouse_down { 
-                    menu.on_click(mouse_pos, b, mods, self).await;
-                }
-                for b in mouse_up { 
-                    menu.on_click_release(mouse_pos, b, self).await;
-                }
-
-                // mouse move
-                if mouse_moved {menu.on_mouse_move(mouse_pos, self).await}
-                // mouse scroll
-                if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self).await}
+                // // menu input events
+                // if window_size_updated {
+                //     menu.window_size_changed((*self.window_size).clone()).await;
+                // }
+                    // let events = Events
 
 
-                // TODO: this is temp
-                if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
-                // TODO: this too
-                if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
+                // // clicks
+                // for b in mouse_down { 
+                //     menu.on_click(mouse_pos, b, mods, self).await;
+                // }
+                // for b in mouse_up { 
+                //     menu.on_click_release(mouse_pos, b, self).await;
+                // }
 
-                // check keys down
-                for key in keys_down {menu.on_key_press(key, self, mods).await}
-                // check keys up
-                for key in keys_up {menu.on_key_release(key, self).await}
-
-
-                // controller
-                for (c, buttons) in controller_down {
-                    for b in buttons {
-                        menu.controller_down(self, &c, b).await;
-                    }
-                }
-                for (c, buttons) in controller_up {
-                    for b in buttons {
-                        menu.controller_up(self, &c, b).await;
-                    }
-                }
-                for (c, ad) in controller_axis {
-                    menu.controller_axis(self, &c, ad).await;
-                }
+                // // mouse move
+                // if mouse_moved {menu.on_mouse_move(mouse_pos, self).await}
+                // // mouse scroll
+                // if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self).await}
 
 
-                // check text
-                if text.len() > 0 { menu.on_text(text).await }
+                // // TODO: this is temp
+                // if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
+                // // TODO: this too
+                // if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
 
-                // window focus change
-                if let Some(has_focus) = window_focus_changed {
-                    menu.on_focus_change(has_focus, self).await;
-                }
+                // // check keys down
+                // for key in keys_down {menu.on_key_press(key, self, mods).await}
+                // // check keys up
+                // for key in keys_up {menu.on_key_release(key, self).await}
 
-                menu.update(self).await;
+
+                // // controller
+                // for (c, buttons) in controller_down {
+                //     for b in buttons {
+                //         menu.controller_down(self, &c, b).await;
+                //     }
+                // }
+                // for (c, buttons) in controller_up {
+                //     for b in buttons {
+                //         menu.controller_up(self, &c, b).await;
+                //     }
+                // }
+                // for (c, ad) in controller_axis {
+                //     menu.controller_axis(self, &c, ad).await;
+                // }
+
+
+                // // check text
+                // if text.len() > 0 { menu.on_text(text).await }
+
+                // // window focus change
+                // if let Some(has_focus) = window_focus_changed {
+                //     menu.on_focus_change(has_focus, self).await;
+                // }
+                
+                // menu.update(self).await;
             }
 
-            GameState::Spectating(manager) => {   
-                manager.update(self).await;
+            // GameState::Spectating(manager) => {   
+            //     let actions = manager.update().await;
+            //     self.handle_menu_actions(actions).await;
 
-                if mouse_moved {manager.mouse_move(mouse_pos, self).await}
-                for btn in mouse_down {manager.mouse_down(mouse_pos, btn, mods, self).await}
-                for btn in mouse_up {manager.mouse_up(mouse_pos, btn, mods, self).await}
-                if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta, self).await}
+            //     if mouse_moved {manager.mouse_move(mouse_pos, self).await}
+            //     for btn in mouse_down {manager.mouse_down(mouse_pos, btn, mods, self).await}
+            //     for btn in mouse_up {manager.mouse_up(mouse_pos, btn, mods, self).await}
+            //     if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta, self).await}
 
-                for k in keys_down.iter() {manager.key_down(*k, mods, self).await}
-                for k in keys_up.iter() {manager.key_up(*k, mods, self).await}
-            }
+            //     for k in keys_down.iter() {manager.key_down(*k, mods, self).await}
+            //     for k in keys_up.iter() {manager.key_up(*k, mods, self).await}
+            // }
 
             GameState::None => {
                 // might be transitioning
@@ -743,15 +708,16 @@ impl Game {
 
             _ => {
                 // force close all dialogs
-                for i in self.dialogs.iter_mut() {
-                    i.force_close().await;
-                }
-                self.dialogs.clear();
+                self.ui_manager.application().dialog_manager.force_close_all().await;
+                // for i in self.dialogs.iter_mut() {
+                //     i.force_close().await;
+                // }
+                // self.dialogs.clear();
 
                 // handle cleaup of the old state
                 match &mut current_state {
                     GameState::InMenu(menu) => menu.on_change(false).await,
-                    GameState::Spectating(spectator_manager) => spectator_manager.stop(),
+                    // GameState::Spectating(spectator_manager) => spectator_manager.stop(),
 
                     _ => {}
                 }
@@ -763,14 +729,26 @@ impl Game {
                         let start_time = manager.start_time;
 
                         self.set_background_beatmap(&m).await;
-                        let action = SetAction::Playing { 
-                            artist: m.artist.clone(),
-                            title: m.title.clone(),
-                            version: m.version.clone(),
-                            creator: m.creator.clone(),
-                            multiplayer_lobby_name: None,
-                            start_time
-                        };
+                        let action;
+                        if let Some(manager) = &self.spectator_manager {
+                            action = SetAction::Spectating { 
+                                artist: m.artist.clone(),
+                                title: m.title.clone(),
+                                version: m.version.clone(),
+                                creator: m.creator.clone(),
+                                player: manager.host_username.clone(),
+                            }
+                        } else {
+                            action = SetAction::Playing { 
+                                artist: m.artist.clone(),
+                                title: m.title.clone(),
+                                version: m.version.clone(),
+                                creator: m.creator.clone(),
+                                multiplayer_lobby_name: None,
+                                start_time
+                            };
+                        }
+
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));
                     }
@@ -788,22 +766,6 @@ impl Game {
                     GameState::Closing => {
                         // send logoff
                         OnlineManager::set_action(SetAction::Closing, None);
-                    }
-                    GameState::Spectating(manager) => {
-                        if let Some(gm) = &manager.game_manager {
-                            let m = gm.beatmap.get_beatmap_meta();
-                            let action = SetAction::Spectating { 
-                                artist: m.artist.clone(),
-                                title: m.title.clone(),
-                                version: m.version.clone(),
-                                creator: m.creator.clone(),
-                                player: String::new()
-                            };
-
-                            OnlineManager::set_action(action, None);
-                        } else {
-                            OnlineManager::set_action(SetAction::Idle, None);
-                        }
                     }
                     _ => {}
                 }
@@ -836,7 +798,7 @@ impl Game {
         }
 
         // update the notification manager
-        NOTIFICATION_MANAGER.write().await.update().await;
+        NOTIFICATION_MANAGER.write().await.update(self).await;
 
         if let Some(mut manager) = OnlineManager::try_get_mut() {
             for host_id in std::mem::take(&mut manager.spectator_info.spectate_pending) {
@@ -856,8 +818,9 @@ impl Game {
                         } else {
                             "Host".to_owned()
                         };
+                        self.spectator_manager = Some(Box::new(SpectatorManager::new(host_id, username).await));
 
-                        self.queue_state_change(GameState::Spectating(Box::new(SpectatorManager::new(host_id, username).await)));
+                        // self.queue_state_change(GameState::Spectating(Box::new()));
                     },
                     _ => {}
                 };
@@ -893,10 +856,11 @@ impl Game {
         
 
         // mode
+        self.ui_manager.draw(&mut render_queue).await;
         match &mut self.current_state {
             GameState::Ingame(manager) => manager.draw(&mut render_queue).await,
-            GameState::InMenu(menu) => menu.draw(&mut render_queue).await,
-            GameState::Spectating(manager) => manager.draw(&mut render_queue).await,
+            // GameState::InMenu(menu) => menu.draw(&mut render_queue).await,
+            // GameState::Spectating(manager) => manager.draw(&mut render_queue).await,
             _ => {}
         }
 
@@ -906,7 +870,7 @@ impl Game {
 
             // draw old mode
             match (&self.current_state, &mut self.transition_last) {
-                (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
+                // (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
                 _ => {}
             }
             
@@ -925,12 +889,12 @@ impl Game {
 
         }
 
-        // draw any dialogs
-        let mut dialog_list = std::mem::take(&mut self.dialogs);
-        for d in dialog_list.iter_mut() { //.rev() {
-            d.draw(Vector2::ZERO, &mut render_queue).await;
-        }
-        self.dialogs = dialog_list;
+        // // draw any dialogs
+        // let mut dialog_list = std::mem::take(&mut self.dialogs);
+        // for d in dialog_list.iter_mut() { //.rev() {
+        //     d.draw(Vector2::ZERO, &mut render_queue).await;
+        // }
+        // self.dialogs = dialog_list;
 
         // draw fps's
         self.fps_display.draw(&mut render_queue);
@@ -961,7 +925,135 @@ impl Game {
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
     }
     
-    pub fn queue_state_change(&mut self, state:GameState) { self.queued_state = state; }
+    async fn handle_previous_menu(&mut self, current_menu: &str) -> Option<Box<dyn AsyncMenu>> {
+        let in_multi = self.multiplayer_manager.is_some();
+        let in_spec = self.spectator_manager.is_some();
+
+        if in_multi { return Some(Box::new(LobbyMenu::new().await)) }
+        if in_spec { return Some(Box::new(SpectatorMenu::new())) }
+
+        match current_menu {
+            // score menu with no multi or spec is the beatmap select menu
+            "score" => return Some(Box::new(BeatmapSelectMenu::new().await)),
+
+            // beatmap menu with no multi or spec is the main menu
+            "beatmap_select" => return Some(Box::new(MainMenu::new().await)),
+
+            _ => { 
+                error!("unhandled previous menu request for menu {current_menu}")
+            }
+        }
+        None
+    }
+
+    async fn handle_menu_actions(&mut self, actions: Vec<MenuAction>) {
+        for action in actions {
+            match action {
+                MenuAction::SetMenu(menu) => self.queue_state_change(GameState::InMenu(menu)),
+                MenuAction::PreviousMenu(current_menu) => if let Some(menu) = self.handle_previous_menu(current_menu).await {
+                    self.queue_state_change(GameState::InMenu(menu))
+                }
+                
+                
+                MenuAction::AddDialog(dialog, allow_duplicates) => self.add_dialog(dialog, allow_duplicates),
+                MenuAction::SetBeatmap(beatmap, use_preview_time) => {
+                    BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time).await;
+                    // warn!("setting beatmap: {}", beatmap.version_string());
+                }
+                MenuAction::RemoveBeatmap => {
+                    BEATMAP_MANAGER.write().await.remove_current_beatmap(self).await;
+                    // warn!("removeing beatmap");
+                }
+
+                MenuAction::DeleteBeatmap(hash) => {
+                    BEATMAP_MANAGER.write().await.delete_beatmap(hash, self).await;
+                }
+
+                MenuAction::PlayMap(map, mode) => {
+                    match manager_from_playmode(mode, &map).await {
+                        Ok(mut manager) => {
+                            let mods = ModManager::get();
+                            manager.apply_mods(mods.deref().clone()).await;
+                            self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                        }
+                        Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                    }
+                }
+                MenuAction::ResumeMap(manager) => {
+                    self.queue_state_change(GameState::Ingame(manager));
+                }
+                MenuAction::StartGame(mut manager) => {
+                    manager.start().await;
+                    self.queue_state_change(GameState::Ingame(manager));
+                }
+
+
+                MenuAction::WatchReplay(replay) => {
+                    let Some((map, mode)) = replay.score_data.as_ref().map(|s|(s.beatmap_hash, s.playmode.clone())) else {
+                        NotificationManager::add_text_notification("Replay has no score data", 5000.0, Color::RED).await;
+                        return;
+                    };
+
+                    let Some(beatmap) = BEATMAP_MANAGER.read().await.get_by_hash(&map) else {
+                        NotificationManager::add_text_notification("You don't have that map!", 5000.0, Color::RED).await;
+                        return;
+                    };
+                    
+                    match manager_from_playmode(mode, &beatmap).await {
+                        Ok(mut manager) => {
+                            manager.set_replay(*replay);
+                            self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                        }
+                        Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                    }
+                }
+
+                MenuAction::PerformOperation(op) => {
+                    self.ui_manager.add_operation(op)
+                }
+
+                MenuAction::MultiplayerAction(action) => {
+                    match action {
+                        MultiplayerManagerAction::QuitMulti => {
+                            tokio::spawn(OnlineManager::leave_lobby());
+                            self.multiplayer_manager = None;
+                            // TODO: check if ingame, and if yes, dont change state
+                            self.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+                        }
+                        MultiplayerManagerAction::JoinMulti => {
+                            self.multiplayer_manager = Some(Box::new(MultiplayerManager::new()));
+                            self.queue_state_change(GameState::InMenu(Box::new(LobbyMenu::new().await)));
+                        }
+                    }
+                }
+
+
+                MenuAction::Quit => {
+                    self.queue_state_change(GameState::Closing);
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn queue_state_change(&mut self, state:GameState) { 
+        match state {
+            GameState::InMenu(menu) => {
+                self.set_menu(Some(menu));
+                self.queued_state = GameState::InMenu2;
+            }
+            GameState::InMenu2 => {}
+            state => {
+                self.set_menu(None);
+                self.queued_state = state;
+            }
+        }
+    }
+    pub fn set_menu(&mut self, menu: Option<Box<dyn AsyncMenu>>) {
+        let menu = menu.unwrap_or_else(||Box::new(EmptyMenu::new()));
+        debug!("Changing menu to: {}", menu.get_name());
+        self.ui_manager.set_menu(menu);
+    }
 
     /// shortcut for setting the game's background texture to a beatmap's image
     pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
@@ -978,19 +1070,21 @@ impl Game {
     }
 
     fn resize_bg(&mut self) {
-        if let Some(bg) = &mut self.background_image {
-            bg.fit_to_bg_size(self.window_size.0, false);
-        }
+        let Some(bg) = &mut self.background_image else { return };
+        bg.fit_to_bg_size(self.window_size.0, false);
     }
 
-    pub fn add_dialog(&mut self, dialog: Box<dyn Dialog<Self>>, allow_duplicates: bool) {
+    pub fn add_dialog(&mut self, dialog: Box<dyn Dialog>, allow_duplicates: bool) {
+        let dialog_manager = &mut self.ui_manager.application().dialog_manager;
+
         if !allow_duplicates {
             // check if said dialog already exists, if so, dont add it
             let name = dialog.name();
-            if let Some(_) = self.dialogs.iter().find(|n|n.name() == name) { return }
+            if dialog_manager.dialogs.iter().find(|n|n.name() == name).is_some() { return }
         }
 
-        self.dialogs.push(dialog)
+        debug!("adding dialog: {}", dialog.name());
+        dialog_manager.add_dialog(dialog)
     }
 
     pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
@@ -1013,9 +1107,7 @@ impl Game {
                                 GameState::InMenu(menu) => {
                                     if menu.get_name() == "main_menu" { use_preview_time = false; }
                                     true
-                                },
-                                // spec should handle this itself
-                                GameState::Spectating(_) => false,
+                                }
                                 _ => false,
                             };
                             if change_map {
@@ -1089,7 +1181,7 @@ impl Game {
 
         if manager.failed {
             trace!("player failed");
-            if !manager.multiplayer {
+            if !manager.get_mode().is_multi() {
                 let manager2 = std::mem::take(manager);
                 self.queue_state_change(GameState::InMenu(Box::new(PauseMenu::new(manager2, true).await)));
             }
@@ -1117,14 +1209,15 @@ impl Game {
                 score_submit = Some(submit);
             }
 
-            if !manager.multiplayer {
-                // used to indicate user stopped watching a replay
-                if manager.replaying && !manager.started {
-                    // go back to beatmap select
-                    // let menu = self.menus.get("beatmap").unwrap();
+            match manager.get_mode() {
+                // go back to beatmap select
+                GameplayMode::Replaying {..} => {
                     let menu = BeatmapSelectMenu::new().await; 
                     self.queue_state_change(GameState::InMenu(Box::new(menu)));
-                } else {
+                }
+                GameplayMode::Multiplayer { .. } => {}
+
+                _ => {
                     // show score menu
                     let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
                     menu.replay = Some(replay.clone());
@@ -1205,16 +1298,17 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(Box<IngameManager>),
-    InMenu(Box<dyn AsyncMenu<Game>>),
+    InMenu(Box<dyn AsyncMenu>),
+    InMenu2,
 
-    Spectating(Box<SpectatorManager>),
+    // Spectating(Box<SpectatorManager>),
 }
 impl GameState {
     /// spec_check means if we're spectator, check the inner game
     fn is_ingame(&self, spec_check: bool, multi_check: bool) -> bool {
         match self {
             Self::Ingame(_) => true,
-            Self::Spectating(s) if spec_check => s.game_manager.is_some(),
+            // Self::Spectating(s) if spec_check => s.game_manager.is_some(),
             Self::InMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
             
             _ => false
@@ -1228,3 +1322,5 @@ pub enum SpectatorWatchAction {
     OpenDialog,
     MultiSpec,
 }
+
+

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Clone)]
 pub struct BarGraph {
     min: f32,
     max: f32,
@@ -39,17 +40,14 @@ impl BarGraph {
         data.iter().map(|x| (self.max - x.clamp(self.min, self.max)) * size.y / (self.max - self.min).abs()).collect()
     }
 
-
-}
-
-impl StatsGraph for BarGraph {
-    fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
-        let pos = bounds.pos;
+    
+    pub fn draw(&self, bounds: &Bounds) -> TransformGroup {
+        let mut group = TransformGroup::new(bounds.pos);
         let size = bounds.size;
 
         // background
-        list.push(Rectangle::new(
-            pos,
+        group.push(Rectangle::new(
+            Vector2::ZERO,
             size,
             Color::new(0.2, 0.2, 0.2, 0.7),
             Some(Border::new(Color::RED, 1.5))
@@ -69,9 +67,9 @@ impl StatsGraph for BarGraph {
                 MenuStatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    list.push(Line::new(
-                        pos + Vector2::with_y(v),
-                        pos + size.x_portion() + Vector2::with_y(v),
+                    group.push(Line::new(
+                        Vector2::with_y(v),
+                        size.x_portion() + Vector2::with_y(v),
                         2.0,
                         i.color,
                     ))
@@ -84,9 +82,9 @@ impl StatsGraph for BarGraph {
 
                     for n in 1..mapped_points.len() {
                         let new_y = mapped_points[n];
-                        list.push(Line::new(
-                            pos + Vector2::new(x_step * (n-1) as f32, prev_y),
-                            pos + Vector2::new(x_step * n as f32, new_y),
+                        group.push(Line::new(
+                            Vector2::new(x_step * (n-1) as f32, prev_y),
+                            Vector2::new(x_step * n as f32, new_y),
                             2.0,
                             i.color
                         ));
@@ -99,6 +97,7 @@ impl StatsGraph for BarGraph {
             
         }
 
+        group
     }
 
 }

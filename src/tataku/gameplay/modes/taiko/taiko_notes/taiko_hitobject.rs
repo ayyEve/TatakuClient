@@ -65,8 +65,8 @@ pub struct HitCircleImageHelper {
 impl HitCircleImageHelper {
     pub async fn new(settings: &Arc<TaikoSettings>, hit_type: HitType, finisher: bool) -> Option<Self> {
         let color = match hit_type {
-            HitType::Don => settings.don_color,
-            HitType::Kat => settings.kat_color,
+            HitType::Don => settings.don_color.color,
+            HitType::Kat => settings.kat_color.color,
         };
 
         let (radius, hitcircle) = if finisher {

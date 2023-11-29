@@ -12,6 +12,8 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
+    queued_actions: Vec<MenuAction>,
+
     // index 0
     pub play_button: MainMenuButton,
     // // index 1
@@ -24,6 +26,8 @@ pub struct MainMenu {
     pub exit_button: MainMenuButton,
 
     visualization: MenuVisualization,
+    gameplay_preview: GameplayPreview,
+
     menu_game: MenuGameHelper,
 
     selected_index: usize,
@@ -66,6 +70,8 @@ impl MainMenu {
         let (event_sender, event_receiver) = async_unbounded_channel();
 
         MainMenu {
+            queued_actions: Vec::new(),
+
             play_button,
             multiplayer_button,
             // direct_button,
@@ -73,9 +79,11 @@ impl MainMenu {
             exit_button,
 
             visualization: MenuVisualization::new().await,
+            gameplay_preview: GameplayPreview::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
+
             menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
-            menu_visible: false,
+            menu_visible: true,
             music_box: MusicBox::new(event_sender.clone()).await,
             media_controls: MediaControlHelper::new(event_sender.clone()),
 
@@ -186,36 +194,57 @@ impl MainMenu {
         });
     }
 
-    async fn next(&mut self, game: &mut Game) -> bool {
-        let mut manager = BEATMAP_MANAGER.write().await;
+    async fn next(&mut self, actions: &mut Vec<MenuAction>) -> bool {
+        // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        if manager.next_beatmap(game).await {
-            Self::update_online();
-            true
-        } else {
-            trace!("no next");
-            false
-        }
+        // let mut manager = BEATMAP_MANAGER.write().await;
+
+        // if manager.next_beatmap(game).await {
+        //     Self::update_online();
+        //     true
+        // } else {
+        //     trace!("no next");
+        //     false
+        // }
+        false
     }
-    async fn previous(&mut self, game: &mut Game) -> bool {
-        let mut manager = BEATMAP_MANAGER.write().await;
+    async fn previous(&mut self, actions: &mut Vec<MenuAction>) -> bool {
+        // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        // let mut manager = BEATMAP_MANAGER.write().await;
         
-        if manager.previous_beatmap(game).await {
-            Self::update_online();
-            true
-        } else {
-            trace!("no prev");
-            false
-        }
+        // if manager.previous_beatmap(game).await {
+        //     Self::update_online();
+        //     true
+        // } else {
+        //     trace!("no prev");
+        //     false
+        // }
+        false
     }
 
     fn reset_timer(&mut self) {
         self.last_input = Instant::now()
     }
+
+    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+        self.play_button.window_size_changed(&window_size);
+        self.multiplayer_button.window_size_changed(&window_size);
+        // self.direct_button.window_size_changed(&window_size);
+        self.settings_button.window_size_changed(&window_size);
+        self.exit_button.window_size_changed(&window_size);
+
+        self.window_size = window_size.clone();
+        self.music_box = MusicBox::new(self.event_sender.clone()).await;
+
+        self.menu_game.window_size_changed(window_size).await;
+    }
+
 }
+
 #[async_trait]
-impl AsyncMenu<Game> for MainMenu {
-    fn get_name(&self) -> &str {"main_menu"}
+impl AsyncMenu for MainMenu {
+    fn get_name(&self) -> &'static str {"main_menu"}
 
     async fn on_change(&mut self, into:bool) {
         if into {
@@ -244,7 +273,9 @@ impl AsyncMenu<Game> for MainMenu {
         }
     }
 
-    async fn update(&mut self, g:&mut Game) {
+    async fn update(&mut self) -> Vec<MenuAction> {
+        let mut actions = std::mem::take(&mut self.queued_actions);
+
         self.settings.update();
         self.song_display.update();
 
@@ -308,8 +339,8 @@ impl AsyncMenu<Game> for MainMenu {
                                 song.play(false);
                             }
                         }
-                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next(g).await,
-                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous(g).await,
+                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next(&mut actions).await,
+                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous(&mut actions).await,
                         MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
                         MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
                         MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
@@ -323,7 +354,7 @@ impl AsyncMenu<Game> for MainMenu {
                     
                     if needs_manager_setup {
                         self.setup_manager("media event").await;
-                        return;
+                        return actions;
                     }
                 }
 
@@ -341,7 +372,8 @@ impl AsyncMenu<Game> for MainMenu {
 
             // it should?
             if let Some(map) = map {
-                BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
+                actions.push(MenuAction::SetBeatmap(map, false));
+                // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
                 self.setup_manager("update song done").await;
                 Self::update_online();
             }
@@ -349,12 +381,14 @@ impl AsyncMenu<Game> for MainMenu {
 
         
         if self.new_map_helper.update() {
-            BEATMAP_MANAGER.write().await.set_current_beatmap(g, &self.new_map_helper.0, false).await;
+            actions.push(MenuAction::SetBeatmap(self.new_map_helper.0.clone(), false));
+            // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &self.new_map_helper.0, false).await;
             self.setup_manager("update new map").await;
         }
 
         self.visualization.update(&mut self.menu_game.manager).await;
-        self.menu_game.update().await;
+        // self.menu_game.update().await;
+        self.gameplay_preview.update().await;
     
         // check last input timer
         let last_input = self.last_input.as_millis();
@@ -364,210 +398,279 @@ impl AsyncMenu<Game> for MainMenu {
             }
         }
 
-    }
-
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        // background game
-        self.menu_game.draw(list).await;
-
-        // draw visualization
-        let mid = self.window_size.0 / 2.0;
-        self.visualization.draw(mid, list).await;
-
-        // draw interactables
-        for i in self.interactables(true) {
-            i.draw(Vector2::ZERO, list)
-        }
-        
-        // visualization cookie
-        self.visualization.draw_cookie(mid, list);
-
-        // song info
-        self.song_display.draw(list);
-    }
-
-    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
-        self.reset_timer();
-        if self.visualization.on_click(pos) {
-            self.show_menu();
-        }
-
-        // switch to beatmap selection
-        if self.play_button.on_click(pos, button, mods) {
-            // let menu = game.menus.get("beatmap").unwrap().clone();
-            game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
-            return;
-        }
-
-        // switch to multiplayer menu (if logged in)
-        if self.multiplayer_button.on_click(pos, button, mods) {
-            if OnlineManager::get().await.logged_in {
-                game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
-            } else {
-                NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;
-            }
-            return;
-        }
-
-        // // open direct menu
-        // if self.direct_button.on_click(pos, button, mods) {
-        //     let mode = self.settings.background_game_settings.mode.clone();
-        //     let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode).await));
-        //     game.queue_state_change(GameState::InMenu(menu));
-        //     return;
-        // }
-
-        // open settings menu
-        if self.settings_button.on_click(pos, button, mods) {
-            // let menu = Arc::new(Mutex::new());
-            game.add_dialog(Box::new(SettingsMenu::new().await), false);
-            // game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
-            return;
-        }
-
-        // quit game
-        if self.exit_button.on_click(pos, button, mods) {
-            game.queue_state_change(GameState::Closing);
-            return;
-        }
-
-        // anything else
-        for i in self.interactables(false) {
-            if i.on_click(pos, button, mods) {
-                break
-            }
-        }
-
-        // if self.music_box.get_next_pending() {
-        //     self.next(game).await;
-        //     self.setup_manager("on_click next_pending").await
-        // }
-        // if self.music_box.get_prev_pending() {
-        //     self.previous(game).await;
-        //     self.setup_manager("on_click prev_pending").await
-        // }
-
-    }
-
-    async fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
-        self.reset_timer();
-        for i in self.interactables(true) {
-            i.on_mouse_move(pos)
-        }
-    }
-
-    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
-        self.reset_timer();
-
-        let mut needs_manager_setup = false;
-        
-        // check offset keys
-        self.menu_game.key_down(key, mods).await;
-
-        if !mods.alt {
-            match key {
-                Key::Left => needs_manager_setup |= self.previous(game).await,
-                Key::Right => needs_manager_setup |= self.next(game).await,
-                _ => {}
-            }
-        }
-        
-        if mods.alt {
-            let new_mode = match key {
-                Key::Key1 => Some("osu".to_owned()),
-                Key::Key2 => Some("taiko".to_owned()),
-                Key::Key3 => Some("catch".to_owned()),
-                Key::Key4 => Some("mania".to_owned()),
-                _ => None
-            };
-
-            if let Some(new_mode) = new_mode {
-                let mut settings = Settings::get_mut();
-                if settings.background_game_settings.mode != new_mode {
-                    NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE).await;
-                    needs_manager_setup = true;
-                    settings.background_game_settings.mode = new_mode;
-                }
-            }
-        }
-
-        if needs_manager_setup {
-            self.setup_manager("key press").await;
-        }
-
+        actions
     }
 
     
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.play_button.window_size_changed(&window_size);
-        self.multiplayer_button.window_size_changed(&window_size);
-        // self.direct_button.window_size_changed(&window_size);
-        self.settings_button.window_size_changed(&window_size);
-        self.exit_button.window_size_changed(&window_size);
+    fn view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
 
-        self.window_size = window_size.clone();
-        self.music_box = MusicBox::new(self.event_sender.clone()).await;
+        col!(
+            // song info
+            row!(
+                self.song_display.view();
+                width = Fill,
+                align_items = Alignment::End
+            ),
 
-        self.menu_game.window_size_changed(window_size).await;
+            // game preview and 
+            row!(
+                // gameplay preview
+                col!(
+                    self.gameplay_preview.widget();
+                    width = FillPortion(4),
+                    height = Fill
+                ),
+
+                // list
+                col!(
+                    Button::new(Text::new("Play")).on_press(Message::new_menu(self, "play", MessageType::Click)),
+                    Button::new(Text::new("Multiplayer")).on_press(Message::new_menu(self, "multiplayer", MessageType::Click)),
+                    Button::new(Text::new("Settings")).on_press(Message::new_menu(self, "settings", MessageType::Click)),
+                    Button::new(Text::new("Exit")).on_press(Message::new_menu(self, "exit", MessageType::Click));
+
+                    width = Fill,
+                    height = Fill,
+                    spacing = 5.0
+                );
+
+                width = Fill,
+                height = Fill
+            ),
+            
+            // music box
+            row!(
+                ;
+                width = Fill
+            )
+            ;
+            
+            width = Fill,
+            height = Fill
+        )
+        
     }
-
     
-    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
-        self.reset_timer();
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return };
 
-        if !self.menu_visible {
-            if button == ControllerButton::South {
-                self.show_menu();
-                return true;
-            }
-            return false;
-        }
-
-        let mut changed = false;
-
-        match button {
-            ControllerButton::DPadDown => {
-                self.selected_index += 1;
-                if self.selected_index >= 4 {
-                    self.selected_index = 0;
-                }
-
-                changed = true;
-            }
-
-            ControllerButton::DPadUp => {
-                if self.selected_index == 0 {
-                    self.selected_index = 3;
-                } else if self.selected_index >= 4 { // original value is 99
-                    self.selected_index = 0;
-                } else {
-                    self.selected_index -= 1;
-                }
-                changed = true;
-            }
-
-            ControllerButton::South => {
-                match self.selected_index {
-                    0 => game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
-                    1 => game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await))),
-                    2 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
-                    3 => game.add_dialog(Box::new(SettingsMenu::new().await), false), //game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
-                    4 => game.queue_state_change(GameState::Closing),
-                    _ => {}
-                }
-            }
-
+        match &*tag {
+            "play" => self.queued_actions.push(MenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
+            "multiplayer" => self.queued_actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::JoinMulti)),
+            "settings" => self.queued_actions.push(MenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
+            "exit" => self.queued_actions.push(MenuAction::Quit),
             _ => {}
         }
+    }
 
-        if changed {
-            self.play_button.set_selected(self.selected_index == 0);
-            self.multiplayer_button.set_selected(self.selected_index == 1);
-            // self.direct_button.set_selected(self.selected_index == 1);
-            self.settings_button.set_selected(self.selected_index == 2);
-            self.exit_button.set_selected(self.selected_index == 3);
+    // async fn draw(&mut self, list: &mut RenderableCollection) {
+    //     // background game
+    //     self.menu_game.draw(list).await;
+
+    //     // draw visualization
+    //     let mid = self.window_size.0 / 2.0;
+    //     self.visualization.draw(mid, list).await;
+
+    //     // draw interactables
+    //     for i in self.interactables(true) {
+    //         i.draw(Vector2::ZERO, list)
+    //     }
+        
+    //     // visualization cookie
+    //     self.visualization.draw_cookie(mid, list);
+
+    //     // song info
+    //     self.song_display.draw(list);
+    // }
+
+    // async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    //     self.reset_timer();
+    //     if self.visualization.on_click(pos) {
+    //         self.show_menu();
+    //     }
+
+    //     // switch to beatmap selection
+    //     if self.play_button.on_click(pos, button, mods) {
+    //         // let menu = game.menus.get("beatmap").unwrap().clone();
+    //         game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
+    //         return;
+    //     }
+
+    //     // switch to multiplayer menu (if logged in)
+    //     if self.multiplayer_button.on_click(pos, button, mods) {
+    //         if OnlineManager::get().await.logged_in {
+    //             game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await)));
+    //         } else {
+    //             NotificationManager::add_text_notification("You must be logged in to play multiplayer!", 1000.0, Color::RED).await;
+    //         }
+    //         return;
+    //     }
+
+    //     // // open direct menu
+    //     // if self.direct_button.on_click(pos, button, mods) {
+    //     //     let mode = self.settings.background_game_settings.mode.clone();
+    //     //     let menu:Arc<tokio::sync::Mutex<dyn ControllerInputMenu<Game>>> = Arc::new(Mutex::new(DirectMenu::new(mode).await));
+    //     //     game.queue_state_change(GameState::InMenu(menu));
+    //     //     return;
+    //     // }
+
+    //     // open settings menu
+    //     if self.settings_button.on_click(pos, button, mods) {
+    //         // let menu = Arc::new(Mutex::new());
+    //         game.add_dialog(Box::new(SettingsMenu::new().await), false);
+    //         // game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await)));
+    //         return;
+    //     }
+
+    //     // quit game
+    //     if self.exit_button.on_click(pos, button, mods) {
+    //         game.queue_state_change(GameState::Closing);
+    //         return;
+    //     }
+
+    //     // anything else
+    //     for i in self.interactables(false) {
+    //         if i.on_click(pos, button, mods) {
+    //             break
+    //         }
+    //     }
+
+    //     // if self.music_box.get_next_pending() {
+    //     //     self.next(game).await;
+    //     //     self.setup_manager("on_click next_pending").await
+    //     // }
+    //     // if self.music_box.get_prev_pending() {
+    //     //     self.previous(game).await;
+    //     //     self.setup_manager("on_click prev_pending").await
+    //     // }
+
+    // }
+
+    // async fn on_mouse_move(&mut self, pos:Vector2, _game: &mut Game) {
+    //     self.reset_timer();
+    //     for i in self.interactables(true) {
+    //         i.on_mouse_move(pos)
+    //     }
+    // }
+
+    // async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
+    //     self.reset_timer();
+
+    //     let mut needs_manager_setup = false;
+        
+    //     // check offset keys
+    //     self.menu_game.key_down(key, mods).await;
+
+    //     if !mods.alt {
+    //         match key {
+    //             Key::Left => needs_manager_setup |= self.previous(game).await,
+    //             Key::Right => needs_manager_setup |= self.next(game).await,
+    //             _ => {}
+    //         }
+    //     }
+        
+    //     if mods.alt {
+    //         let new_mode = match key {
+    //             Key::Key1 => Some("osu".to_owned()),
+    //             Key::Key2 => Some("taiko".to_owned()),
+    //             Key::Key3 => Some("catch".to_owned()),
+    //             Key::Key4 => Some("mania".to_owned()),
+    //             _ => None
+    //         };
+
+    //         if let Some(new_mode) = new_mode {
+    //             let mut settings = Settings::get_mut();
+    //             if settings.background_game_settings.mode != new_mode {
+    //                 NotificationManager::add_text_notification(&format!("Menu mode changed to {:?}", new_mode), 1000.0, Color::BLUE).await;
+    //                 needs_manager_setup = true;
+    //                 settings.background_game_settings.mode = new_mode;
+    //             }
+    //         }
+    //     }
+
+    //     if needs_manager_setup {
+    //         self.setup_manager("key press").await;
+    //     }
+
+    // }
+
+    
+    
+    // async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
+    //     self.reset_timer();
+
+    //     if !self.menu_visible {
+    //         if button == ControllerButton::South {
+    //             self.show_menu();
+    //             return true;
+    //         }
+    //         return false;
+    //     }
+
+    //     let mut changed = false;
+
+    //     match button {
+    //         ControllerButton::DPadDown => {
+    //             self.selected_index += 1;
+    //             if self.selected_index >= 4 {
+    //                 self.selected_index = 0;
+    //             }
+
+    //             changed = true;
+    //         }
+
+    //         ControllerButton::DPadUp => {
+    //             if self.selected_index == 0 {
+    //                 self.selected_index = 3;
+    //             } else if self.selected_index >= 4 { // original value is 99
+    //                 self.selected_index = 0;
+    //             } else {
+    //                 self.selected_index -= 1;
+    //             }
+    //             changed = true;
+    //         }
+
+    //         ControllerButton::South => {
+    //             match self.selected_index {
+    //                 0 => game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
+    //                 1 => game.queue_state_change(GameState::InMenu(Box::new(LobbySelect::new().await))),
+    //                 2 => game.queue_state_change(GameState::InMenu(Box::new(DirectMenu::new(self.settings.background_game_settings.mode.clone()).await))),
+    //                 3 => game.add_dialog(Box::new(SettingsMenu::new().await), false), //game.queue_state_change(GameState::InMenu(Box::new(SettingsMenu::new().await))),
+    //                 4 => game.queue_state_change(GameState::Closing),
+    //                 _ => {}
+    //             }
+    //         }
+
+    //         _ => {}
+    //     }
+
+    //     if changed {
+    //         self.play_button.set_selected(self.selected_index == 0);
+    //         self.multiplayer_button.set_selected(self.selected_index == 1);
+    //         // self.direct_button.set_selected(self.selected_index == 1);
+    //         self.settings_button.set_selected(self.selected_index == 2);
+    //         self.exit_button.set_selected(self.selected_index == 3);
+    //     }
+
+    //     true
+    // }
+}
+
+
+
+
+pub enum MainMenuKeys {
+    NextSong,
+    PrevSong,
+    PlayPause,
+}
+impl KeyMap for MainMenuKeys {
+    fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
+        match key {
+            iced::keyboard::KeyCode::Left => Some(Self::PrevSong),
+            iced::keyboard::KeyCode::Right => Some(Self::NextSong),
+
+            _ => None,
         }
-
-        true
     }
 }

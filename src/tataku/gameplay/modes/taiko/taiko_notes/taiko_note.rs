@@ -48,8 +48,8 @@ impl TaikoNote {
 
     fn get_color(&mut self) -> Color {
         match self.hit_type {
-            HitType::Don => self.settings.don_color,
-            HitType::Kat => self.settings.kat_color,
+            HitType::Don => self.settings.don_color.color,
+            HitType::Kat => self.settings.kat_color.color,
         }
     }
 }

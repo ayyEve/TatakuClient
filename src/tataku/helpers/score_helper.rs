@@ -143,6 +143,12 @@ impl ScoreRetreivalMethod {
         }
     }
 }
+impl Display for ScoreRetreivalMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 
 
 //TODO: use the api crates?

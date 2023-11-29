@@ -633,7 +633,7 @@ impl GameMode for OsuGame {
 
         // disable the cursor particle emitter if this is a menu game
         // the emitter nukes perf so its best to keep it off unless needed
-        if manager.menu_background && self.cursor.emitter_enabled {
+        if manager.get_mode().is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
         self.cursor.update(time).await;
@@ -787,7 +787,7 @@ impl GameMode for OsuGame {
     async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
 
         // draw the playfield
-        if !manager.menu_background {
+        if !manager.get_mode().is_preview() {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
             playfield.color.a = alpha;

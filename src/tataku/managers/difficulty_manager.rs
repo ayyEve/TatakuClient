@@ -7,9 +7,9 @@ lazy_static::lazy_static! {
 }
 
 
-pub async fn init_diffs(status: Option<Arc<AsyncRwLock<LoadingStatus>>>) {
+pub async fn init_diffs(status: Option<Arc<RwLock<LoadingStatus>>>) {
     if let Some(status) = &status {
-        status.write().await.custom_message = "Reading file...".to_owned();
+        status.write().custom_message = "Reading file...".to_owned();
     }
 
     info!("loading diffs");
@@ -22,7 +22,7 @@ pub async fn init_diffs(status: Option<Arc<AsyncRwLock<LoadingStatus>>>) {
         }
     };
     if let Some(status) = &status {
-        let mut status = status.write().await;
+        let mut status = status.write();
         status.custom_message.clear();
         
         for i in all_diffs.values() {
@@ -43,7 +43,7 @@ pub async fn init_diffs(status: Option<Arc<AsyncRwLock<LoadingStatus>>>) {
             *diffs.write().unwrap() = loaded_diffs;
                 
             if let Some(status) = &status {
-                status.write().await.items_complete += len;
+                status.write().items_complete += len;
             }
         }
 

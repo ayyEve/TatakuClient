@@ -38,6 +38,8 @@ impl Sector {
 
 impl TatakuRenderable for Sector {
     fn get_name(&self) -> String { "Sector".to_owned() }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, Vector2::ONE * self.radius) }
+
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s: Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

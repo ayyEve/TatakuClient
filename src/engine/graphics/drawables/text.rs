@@ -109,6 +109,9 @@ impl Text {
 }
 impl TatakuRenderable for Text {
     fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size) }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
+    
+    
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

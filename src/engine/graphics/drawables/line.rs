@@ -24,6 +24,8 @@ impl Line {
 }
 impl TatakuRenderable for Line {
     fn get_name(&self) -> String { "Line".to_owned() }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.p1, self.p2 - self.p1) }
+
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

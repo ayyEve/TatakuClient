@@ -151,6 +151,9 @@ impl SkinnedNumber {
 
 impl TatakuRenderable for SkinnedNumber {
     fn get_name(&self) -> String { "Skinned number".to_owned() }
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
+
+
     fn get_scissor(&self) -> Scissor { self.scissor }
     fn set_scissor(&mut self, s:Scissor) { self.scissor = s }
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

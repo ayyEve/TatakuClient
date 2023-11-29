@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
 pub struct DirectDownloadDialog {
+    num: usize, 
+
     list: ScrollableArea,
 
     queue_helper: GlobalValue<DirectDownloadQueue>,
@@ -20,6 +22,7 @@ impl DirectDownloadDialog {
         }
 
         Self {
+            num: 0,
             list,
             
             bounds,
@@ -45,55 +48,73 @@ impl DirectDownloadDialog {
 }
 
 #[async_trait]
-impl Dialog<Game> for DirectDownloadDialog {
+impl Dialog for DirectDownloadDialog {
+    fn name(&self) -> &'static str { "direct_download" }
+    fn get_num(&self) -> usize { self.num }
+    fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { *self.bounds }
+    // fn get_bounds(&self) -> Bounds { *self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.bounds = Self::get_bounds(&window_size);
+    
 
-        self.list.set_pos(self.bounds.pos);
-        self.list.set_size(self.bounds.size);
+
+
+    // async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }
+    
+    async fn handle_message(&mut self, message: Message) {
+        // let Some(tag) = message.tag.as_string() else { return }; 
+    }
+    
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
+        EmptyElement.into_element()
     }
 
-    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-        self.list.on_mouse_move(pos)
-    }
+    // async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    //     self.bounds = Self::get_bounds(&window_size);
 
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {
-        let hovered = self.list.get_hover();
-        let Some(tag) = self.list.on_click_tagged(pos, button, *mods) else { return hovered };
-        let items = self.list.get_tagged(tag);
-        let Some(item) = items.first() else { return hovered };
-        let value = item.get_value();
+    //     self.list.set_pos(self.bounds.pos);
+    //     self.list.set_size(self.bounds.size);
+    // }
 
-        let Some(downloadable) = value.downcast_ref::<Arc<dyn DirectDownloadable>>() else { 
-            warn!("failed direct downloadable downcast");
-            return hovered 
-        };
+    // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+    //     self.list.on_mouse_move(pos)
+    // }
 
-        info!("clicked: {}", downloadable.filename());
+    // async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {
+    //     let hovered = self.list.get_hover();
+    //     let Some(tag) = self.list.on_click_tagged(pos, button, *mods) else { return hovered };
+    //     let items = self.list.get_tagged(tag);
+    //     let Some(item) = items.first() else { return hovered };
+    //     let value = item.get_value();
 
-        true
-    }
+    //     let Some(downloadable) = value.downcast_ref::<Arc<dyn DirectDownloadable>>() else { 
+    //         warn!("failed direct downloadable downcast");
+    //         return hovered 
+    //     };
 
-    async fn update(&mut self, _game:&mut Game) {
-        if self.queue_helper.update() {
-            self.list.clear();
-            for i in self.queue_helper.iter() {
-                self.list.add_item(Box::new(DirectItem::new(i.clone(), true)));
-            }
-        }
-    }
+    //     info!("clicked: {}", downloadable.filename());
 
-    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-        // background and border
-        let mut bounds = self.bounds;
-        bounds.pos += offset;
-        list.push(bounds);
+    //     true
+    // }
 
-        // draw items in the list
-        self.list.draw(offset, list);
-    }
+    // async fn update(&mut self, _game:&mut Game) {
+    //     if self.queue_helper.update() {
+    //         self.list.clear();
+    //         for i in self.queue_helper.iter() {
+    //             self.list.add_item(Box::new(DirectItem::new(i.clone(), true)));
+    //         }
+    //     }
+    // }
+
+    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+    //     // background and border
+    //     let mut bounds = self.bounds;
+    //     bounds.pos += offset;
+    //     list.push(bounds);
+
+    //     // draw items in the list
+    //     self.list.draw(offset, list);
+    // }
 }

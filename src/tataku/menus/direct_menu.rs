@@ -142,14 +142,10 @@ impl DirectMenu {
 }
 
 #[async_trait]
-impl AsyncMenu<Game> for DirectMenu {
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-        
-    }
+impl AsyncMenu for DirectMenu {
 
     
-    async fn update(&mut self, _game:&mut Game) {
+    async fn update(&mut self) -> Vec<MenuAction> {
         self.scroll_area.update();
         self.search_bar.update();
 
@@ -163,146 +159,167 @@ impl AsyncMenu<Game> for DirectMenu {
 
         // TODO: move this to a thread
         check_direct_download_queue();
+        Vec::new()
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.scroll_area.draw(Vector2::ZERO, list);
-        self.search_bar.draw(Vector2::ZERO, list);
+    
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
 
-        // // draw download items
-        // let x = self.window_size.x - (DOWNLOAD_ITEM_SIZE.x + DOWNLOAD_ITEM_XOFFSET);
-
-        // // side bar background and border if hover
-        // list.push(Rectangle::new(
-        //     Vector2::new(x, DOWNLOAD_ITEM_YOFFSET),
-        //     Vector2::new(DOWNLOAD_ITEM_SIZE.x, self.window_size.y - DOWNLOAD_ITEM_YOFFSET * 2.0),
-        //     Color::WHITE,
-        //     Some(Border::new(Color::BLACK, 1.8))
-        // ));
-        
-        // let mut counter = 0.0;
-
-        // // downloading
-        // for i in self.downloading.iter() {
-        //     let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
-        //     // bounding box
-        //     list.push(Rectangle::new(
-        //         pos,
-        //         DOWNLOAD_ITEM_SIZE,
-        //         Color::WHITE,
-        //         Some(Border::new(Color::BLUE, 1.5))
-        //     ));
-        //     // map text
-        //     list.push(Text::new(
-        //         pos + Vector2::new(0.0, 15.0),
-        //         15.0, 
-        //         format!("{} (Downloading)", i.title()),
-        //         Color::BLACK,
-        //         Font::Main
-        //     ));
-
-        //     counter += 1.0;
-        // }
-            
-        // // queued
-        // for i in self.queue.iter() {
-        //     let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
-        //     // bounding box
-        //     list.push(Rectangle::new(
-        //         pos,
-        //         DOWNLOAD_ITEM_SIZE,
-        //         Color::WHITE,
-        //         Some(Border::new(Color::BLACK, 1.5))
-        //     ));
-        //     // map text
-        //     list.push(Text::new(
-        //         pos + Vector2::new(0.0, 15.0),
-        //         15.0,
-        //         format!("{} (Waiting...)", i.title()),
-        //         Color::BLACK,
-        //         Font::Main
-        //     ));
-
-        //     counter += 1.0;
-        // }
+        col!(
+            ;
+        )
     }
     
-    async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {
-        self.scroll_area.on_scroll(delta);
+    async fn handle_message(&mut self, message: Message) {
+        info!("got message {message:?}");
     }
 
-    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
-        self.search_bar.on_click(pos, button, mods);
 
-        // check if item was clicked
-        if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, mods) {
-            if self.last_clicked_tag == tag {
-                // item will add itself to the download queue
+    // async fn draw(&mut self, list: &mut RenderableCollection) {
+    //     self.scroll_area.draw(Vector2::ZERO, list);
+    //     self.search_bar.draw(Vector2::ZERO, list);
 
-            } else {
-               self.do_preview_audio(tag.clone()).await;
-            }
-        }
-    }
+    //     // // draw download items
+    //     // let x = self.window_size.x - (DOWNLOAD_ITEM_SIZE.x + DOWNLOAD_ITEM_XOFFSET);
 
-    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
-        self.search_bar.on_mouse_move(pos);
-        self.scroll_area.on_mouse_move(pos);
-    }
+    //     // // side bar background and border if hover
+    //     // list.push(Rectangle::new(
+    //     //     Vector2::new(x, DOWNLOAD_ITEM_YOFFSET),
+    //     //     Vector2::new(DOWNLOAD_ITEM_SIZE.x, self.window_size.y - DOWNLOAD_ITEM_YOFFSET * 2.0),
+    //     //     Color::WHITE,
+    //     //     Some(Border::new(Color::BLACK, 1.8))
+    //     // ));
+        
+    //     // let mut counter = 0.0;
 
-    async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
-        use Key::*;
-        self.search_bar.on_key_press(key, mods);
-        if key == Escape {return self.back(game).await}
+    //     // // downloading
+    //     // for i in self.downloading.iter() {
+    //     //     let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
+    //     //     // bounding box
+    //     //     list.push(Rectangle::new(
+    //     //         pos,
+    //     //         DOWNLOAD_ITEM_SIZE,
+    //     //         Color::WHITE,
+    //     //         Some(Border::new(Color::BLUE, 1.5))
+    //     //     ));
+    //     //     // map text
+    //     //     list.push(Text::new(
+    //     //         pos + Vector2::new(0.0, 15.0),
+    //     //         15.0, 
+    //     //         format!("{} (Downloading)", i.title()),
+    //     //         Color::BLACK,
+    //     //         Font::Main
+    //     //     ));
+
+    //     //     counter += 1.0;
+    //     // }
+            
+    //     // // queued
+    //     // for i in self.queue.iter() {
+    //     //     let pos = Vector2::new(x, DOWNLOAD_ITEM_YOFFSET + (DOWNLOAD_ITEM_SIZE.y + DOWNLOAD_ITEM_YMARGIN) * counter);
+    //     //     // bounding box
+    //     //     list.push(Rectangle::new(
+    //     //         pos,
+    //     //         DOWNLOAD_ITEM_SIZE,
+    //     //         Color::WHITE,
+    //     //         Some(Border::new(Color::BLACK, 1.5))
+    //     //     ));
+    //     //     // map text
+    //     //     list.push(Text::new(
+    //     //         pos + Vector2::new(0.0, 15.0),
+    //     //         15.0,
+    //     //         format!("{} (Waiting...)", i.title()),
+    //     //         Color::BLACK,
+    //     //         Font::Main
+    //     //     ));
+
+    //     //     counter += 1.0;
+    //     // }
+    // }
+    
+
+    // async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    //     self.window_size = window_size;
+        
+    // }
+
+    // async fn on_scroll(&mut self, delta:f32, _game:&mut Game) {
+    //     self.scroll_area.on_scroll(delta);
+    // }
+
+    // async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, _game:&mut Game) {
+    //     self.search_bar.on_click(pos, button, mods);
+
+    //     // check if item was clicked
+    //     if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, mods) {
+    //         if self.last_clicked_tag == tag {
+    //             // item will add itself to the download queue
+
+    //         } else {
+    //            self.do_preview_audio(tag.clone()).await;
+    //         }
+    //     }
+    // }
+
+    // async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
+    //     self.search_bar.on_mouse_move(pos);
+    //     self.scroll_area.on_mouse_move(pos);
+    // }
+
+    // async fn on_key_press(&mut self, key:Key, game:&mut Game, mods:KeyModifiers) {
+    //     use Key::*;
+    //     self.search_bar.on_key_press(key, mods);
+    //     if key == Escape {return self.back(game).await}
 
 
-        if mods.alt {
-            let new_mode = match key {
-                Key1 => Some("osu".to_owned()),
-                Key2 => Some("taiko".to_owned()),
-                Key3 => Some("catch".to_owned()),
-                Key4 => Some("mania".to_owned()),
-                _ => None
-            };
+    //     if mods.alt {
+    //         let new_mode = match key {
+    //             Key1 => Some("osu".to_owned()),
+    //             Key2 => Some("taiko".to_owned()),
+    //             Key3 => Some("catch".to_owned()),
+    //             Key4 => Some("mania".to_owned()),
+    //             _ => None
+    //         };
 
-            if let Some(new_mode) = new_mode {
-                if self.mode != new_mode {
-                    NotificationManager::add_text_notification(&format!("Searching for {} maps", new_mode), 1000.0, Color::BLUE).await;
-                    self.mode = new_mode;
-                    self.do_search().await;
-                }
-            }
-        }
-        // if mods.ctrl {
-        //     let new_status = match key {
-        //         D1 => Some(MapStatus::Graveyarded),
-        //         D2 => Some(MapStatus::Ranked),
-        //         D3 => Some(MapStatus::Approved),
-        //         D4 => Some(MapStatus::Pending),
-        //         D5 => Some(MapStatus::Loved),
-        //         D6 => Some(MapStatus::All),
-        //         _ => None
-        //     };
+    //         if let Some(new_mode) = new_mode {
+    //             if self.mode != new_mode {
+    //                 NotificationManager::add_text_notification(&format!("Searching for {} maps", new_mode), 1000.0, Color::BLUE).await;
+    //                 self.mode = new_mode;
+    //                 self.do_search().await;
+    //             }
+    //         }
+    //     }
+    //     // if mods.ctrl {
+    //     //     let new_status = match key {
+    //     //         D1 => Some(MapStatus::Graveyarded),
+    //     //         D2 => Some(MapStatus::Ranked),
+    //     //         D3 => Some(MapStatus::Approved),
+    //     //         D4 => Some(MapStatus::Pending),
+    //     //         D5 => Some(MapStatus::Loved),
+    //     //         D6 => Some(MapStatus::All),
+    //     //         _ => None
+    //     //     };
 
-        //     if let Some(new_status) = new_status {
-        //         if self.status != new_status {
-        //             self.status = new_status;
-        //             self.do_search();
-        //             NotificationManager::add_text_notification(&format!("Searching for {:?} maps", new_status), 1000.0, Color::BLUE);
-        //         }
-        //     }
-        // }
+    //     //     if let Some(new_status) = new_status {
+    //     //         if self.status != new_status {
+    //     //             self.status = new_status;
+    //     //             self.do_search();
+    //     //             NotificationManager::add_text_notification(&format!("Searching for {:?} maps", new_status), 1000.0, Color::BLUE);
+    //     //         }
+    //     //     }
+    //     // }
 
 
 
-        if key == Return {
-            self.do_search().await;
-        }
-    }
+    //     if key == Return {
+    //         self.do_search().await;
+    //     }
+    // }
 
-    async fn on_text(&mut self, text:String) {
-        self.search_bar.on_text(text);
-    }
+    // async fn on_text(&mut self, text:String) {
+    //     self.search_bar.on_text(text);
+    // }
 }
 
 

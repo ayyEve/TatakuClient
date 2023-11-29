@@ -47,9 +47,9 @@ pub struct TaikoSettings {
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
 
     #[Setting(text="Don Color")]
-    pub don_color: Color,
+    pub don_color: SettingsColor,
     #[Setting(text="Kat Color")]
-    pub kat_color: Color,
+    pub kat_color: SettingsColor,
 
     #[Setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
@@ -97,8 +97,8 @@ impl Default for TaikoSettings {
             playfield_x_offset: 200.0,
             playfield_y_offset: 0.0,
         
-            don_color: Color::from_hex("#E74721"),
-            kat_color: Color::from_hex("#3797CA"),
+            don_color: Color::from_hex("#E74721").into(),
+            kat_color: Color::from_hex("#3797CA").into(),
             
             judgement_indicator_offset: 0.0,
             use_skin_judgments: true

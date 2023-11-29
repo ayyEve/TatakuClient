@@ -6,6 +6,48 @@ pub const LEADERBOARD_POS:Vector2 = Vector2::new(10.0, LEADERBOARD_PADDING);
 pub const LEADERBOARD_ITEM_SIZE:Vector2 = Vector2::new(200.0, 50.0);
 
 
+#[derive(Clone)]
+pub struct LeaderboardComponent {
+    pub num: usize,
+    pub score: IngameScore,
+}
+impl LeaderboardComponent {
+    pub fn new(num: usize, score: IngameScore) -> Self {
+        Self {
+            num,
+            score,
+        }
+    }
+    pub fn view(&self, menu: &'static str) -> IcedElement {
+        use crate::prelude::iced_elements::*;
+
+        let score_mods = ModManager::short_mods_string(self.score.mods(), false, &self.score.playmode);
+
+        let now = chrono::Utc::now().timestamp() as u64;
+        let time_diff = now as i64 - self.score.time as i64;
+        let time_diff_str = if time_diff < 60 * 5 {
+            format!(" | {time_diff}s")
+        } else {
+            String::new()
+        };
+
+        
+        Button::new(col!(
+            Text::new(format!("{}: {}", self.score.username, format_number(self.score.score.score)))
+                .width(Fill)
+                .size(16.0),
+            Text::new(format!("{}x, {:.2}%, {}{time_diff_str}", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, score_mods))
+                .width(Fill)
+                .size(16.0);
+        ))
+            .width(Fill)
+            .on_press(Message::new_menu_raw(menu, "score", MessageType::Number(self.num)))
+            .into_element()
+    }
+}
+
+
+
 #[derive(ScrollableGettersSetters)]
 pub struct LeaderboardItem {
     pos: Vector2,

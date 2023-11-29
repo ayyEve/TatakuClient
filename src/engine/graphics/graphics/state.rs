@@ -1386,7 +1386,6 @@ impl GraphicsState {
         reserved.copy_in(&vertices, flashlight_data);
     }
 
-
     fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
@@ -1498,6 +1497,11 @@ impl<'a> RenderableSurface<'a> {
 pub enum PerformanceMode {
     PowerSaver,
     HighPerformance,
+}
+impl Display for PerformanceMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 

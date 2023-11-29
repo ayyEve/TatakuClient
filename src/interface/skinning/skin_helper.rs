@@ -6,7 +6,7 @@ lazy_static::lazy_static! {
     static ref SKIN_MANAGER: Arc<AsyncRwLock<SkinManager>> = Arc::new(AsyncRwLock::new(SkinManager::new()));
     
     // TODO: change this to skin meta
-    static ref SKINS:Arc<RwLock<Vec<String>>> = {
+    pub static ref AVAILABLE_SKINS:Arc<RwLock<Vec<String>>> = {
         let mut list = vec!["None".to_owned()];
         if let Ok(folder) = std::fs::read_dir(SKINS_FOLDER) {
             for f in folder.filter_map(|f|f.ok()) {
@@ -98,7 +98,7 @@ impl SkinManager {
             list.push(f.unwrap().file_name().to_string_lossy().to_string())
         }
 
-        *SKINS.write() = list
+        *AVAILABLE_SKINS.write() = list
     }
 }
 
@@ -161,22 +161,29 @@ impl SkinManager {
 crate::create_value_helper!(CurrentSkin, Arc<SkinSettings>, CurrentSkinHelper);
 
 
-
-#[derive(Clone)]
-pub enum SkinDropdownable {
-    Skin(String)
-}
-impl Dropdownable for SkinDropdownable {
-    fn variants() -> Vec<Self> {
-        SKINS.read().iter().map(|s|Self::Skin(s.clone())).collect()
-    }
-
-    fn display_text(&self) -> String {
-        let Self::Skin(s) = self;
-        s.clone()
-    }
-
-    fn from_string(s:String) -> Self {
-        Self::Skin(s)
+pub struct SkinDropdownable;
+impl Dropdownable2 for SkinDropdownable {
+    type T = String;
+    fn variants() -> Vec<String> {
+        AVAILABLE_SKINS.read().clone() //.iter().map(|s|Self::Skin(s.clone())).collect()
     }
 }
+
+// #[derive(Clone)]
+// pub enum SkinDropdownable {
+//     Skin(String)
+// }
+// impl Dropdownable for SkinDropdownable {
+//     fn variants() -> Vec<Self> {
+//         AVAILABLE_SKINS.read().iter().map(|s|Self::Skin(s.clone())).collect()
+//     }
+
+//     fn display_text(&self) -> String {
+//         let Self::Skin(s) = self;
+//         s.clone()
+//     }
+
+//     fn from_string(s:String) -> Self {
+//         Self::Skin(s)
+//     }
+// }

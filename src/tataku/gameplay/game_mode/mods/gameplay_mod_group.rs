@@ -5,6 +5,7 @@ pub struct GameplayModGroupStatic {
     pub mods: &'static [GameplayMod],
 }
 
+#[derive(Clone)]
 pub struct GameplayModGroup {
     pub name: String,
     pub mods: Vec<GameplayMod>

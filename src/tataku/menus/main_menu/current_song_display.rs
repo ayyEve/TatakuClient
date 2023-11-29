@@ -7,7 +7,7 @@ const SECONDARY_COLOR:Color = Color::new(1.0, 1.0, 1.0, 0.1);
 
 pub struct CurrentSongDisplay {
     current_song: CurrentBeatmapHelper,
-    window_size: WindowSizeHelper,
+    // window_size: WindowSizeHelper,
 
     song_text: String,
     text_size: Vector2,
@@ -16,7 +16,7 @@ impl CurrentSongDisplay {
     pub fn new() -> Self {
         Self {
             current_song: CurrentBeatmapHelper::new(),
-            window_size: WindowSizeHelper::new(),
+            // window_size: WindowSizeHelper::new(),
 
             song_text: String::new(),
             text_size: Vector2::ZERO,
@@ -24,7 +24,7 @@ impl CurrentSongDisplay {
     }
 
     pub fn update(&mut self) {
-        self.window_size.update();
+        // self.window_size.update();
         if self.current_song.update() {
             self.song_text = self.current_song.0.as_ref().map(|s|format!("{} - {}", s.artist, s.title)).unwrap_or_default();
             
@@ -33,22 +33,27 @@ impl CurrentSongDisplay {
         }
     }
 
-    pub fn draw(&self, list: &mut RenderableCollection) {
-        let mut text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
-
-        // (window width - text width) - 2 padding, with y padding
-        let pos = self.window_size.x_portion() - self.text_size.x_portion() - Vector2::with_x(OUTER_PADDING * 2.0) + Vector2::with_y(OUTER_PADDING);
-        
-        let rect = Rectangle::new(
-            pos,
-            self.text_size + INNER_PADDING * 2.0,
-            SECONDARY_COLOR, 
-            None
-        ).shape(Shape::Round(5.0));
-        text.center_text(&rect);
-        text.pos.y -= INNER_PADDING;
-
-        list.push(rect);
-        list.push(text);
+    pub fn view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
+        Text::new(self.song_text.clone()).size(30).into_element()
     }
+
+    // pub fn draw(&self, list: &mut RenderableCollection) {
+    //     let mut text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
+
+    //     // (window width - text width) - 2 padding, with y padding
+    //     let pos = self.window_size.x_portion() - self.text_size.x_portion() - Vector2::with_x(OUTER_PADDING * 2.0) + Vector2::with_y(OUTER_PADDING);
+        
+    //     let rect = Rectangle::new(
+    //         pos,
+    //         self.text_size + INNER_PADDING * 2.0,
+    //         SECONDARY_COLOR, 
+    //         None
+    //     ).shape(Shape::Round(5.0));
+    //     text.center_text(&rect);
+    //     text.pos.y -= INNER_PADDING;
+
+    //     list.push(rect);
+    //     list.push(text);
+    // }
 }

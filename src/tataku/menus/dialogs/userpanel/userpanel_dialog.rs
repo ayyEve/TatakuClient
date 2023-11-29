@@ -11,118 +11,121 @@ lazy_static::lazy_static! {
 }
 
 pub struct UserPanel {
+    num: usize,
+    actions: Vec<MenuAction>,
+
     chat: Chat,
 
     /// user_id, user
     users: HashMap<u32, PanelUser>,
 
     should_close: bool,
-    window_size: Arc<WindowSize>
+    // window_size: Arc<WindowSize>
 }
 impl UserPanel {
     pub fn new() -> Self {
         Self {
+            num: 0,
+            actions: Vec::new(),
+
             chat: Chat::new(),
             users: HashMap::new(),
             should_close: false,
-            window_size: WindowSize::get(),
+            // window_size: WindowSize::get(),
         }
     }
 }
 
 #[async_trait]
-impl Dialog<Game> for UserPanel {
+impl Dialog for UserPanel {
     fn name(&self) -> &'static str { "UserPanel" }
+    fn get_num(&self) -> usize { self.num }
+    fn set_num(&mut self, num: usize) { self.num = num }
+
     fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+    // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
     async fn force_close(&mut self) { self.should_close = true; }
     
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
-    
-    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_key_press(key, mods, game).await;
-        true
-    }
-    async fn on_key_release(&mut self, key:Key, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_key_release(key, mods, game).await;
-        true
-    }
-    async fn on_text(&mut self, text:&String) -> bool {
-        self.chat.on_text(text).await
-    }
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return }; 
 
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_mouse_down(pos, button, mods, game).await;
-        for (_, i) in self.users.iter_mut() {
-            if i.on_click(pos, button, *mods) {
-                let user_id = i.user.user_id;
-                let username = i.user.username.clone();
+
+        match &*tag {
+            "user" => {
+                let user = message.message_type.downcast::<OnlineUser>();
+
+                let user_id = user.user_id;
+                let username = user.username.clone();
 
                 // user menu dialog
                 let mut user_menu_dialog = GenericDialog::new("User Options");
 
                 // spectate
-                if i.user.game.starts_with("Tataku") {
-                    user_menu_dialog.add_button("Spectate", Box::new(move |dialog, _game| {
+                if user.game.starts_with("Tataku") {
+                    user_menu_dialog.add_button("Spectate", Arc::new(move |dialog| {
                         OnlineManager::start_spectating(user_id);
                         dialog.should_close = true;
+                        None
                     }));
                 }
 
                 // message
-                user_menu_dialog.add_button("Send Message", Box::new(move |dialog, _game| {
+                user_menu_dialog.add_button("Send Message", Arc::new(move |dialog| {
                     PANEL_QUEUE.0.lock().ignite(UserPanelEvent::OpenChat(username.clone()));
                     dialog.should_close = true;
+                    None
                 }));
 
                 // add/remove friend
                 let is_friend = OnlineManager::get().await.friends.contains(&user_id);
                 let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
-                user_menu_dialog.add_button(friend_txt, Box::new(move |dialog, _game| {
+                user_menu_dialog.add_button(friend_txt, Arc::new(move |dialog| {
                     PANEL_QUEUE.0.lock().ignite(UserPanelEvent::AddRemoveFriend(user_id));
                     dialog.should_close = true;
+                    None
                 }));
 
                 // invite to lobby
                 if let Some(_lobby) = &*CurrentLobbyInfo::get() {
-                    user_menu_dialog.add_button("Invite to Lobby", Box::new(move |dialog, _game| {
+                    user_menu_dialog.add_button("Invite to Lobby", Arc::new(move |dialog| {
                         tokio::spawn(OnlineManager::invite_user(user_id));
                         dialog.should_close = true;
+                        None
                     }));
                 }
 
 
                 // close menu
-                user_menu_dialog.add_button("Close", Box::new(|dialog, _game| {
+                user_menu_dialog.add_button("Close", Arc::new(|dialog| {
                     dialog.should_close = true;
+                    None
                 }));
 
-                game.add_dialog(Box::new(user_menu_dialog), false);
+                self.actions.push(MenuAction::AddDialog(Box::new(user_menu_dialog), false));
             }
+
+            _ => {}
         }
-        true
-    }
-    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, game:&mut Game) -> bool {
-        self.chat.on_mouse_up(pos, button, mods, game).await;
-        true
-    }
-    async fn on_mouse_scroll(&mut self, delta:f32, game:&mut Game) -> bool {
-        self.chat.on_mouse_scroll(delta, game).await
+
     }
 
-    async fn on_mouse_move(&mut self, pos:Vector2, game:&mut Game) {
-        self.chat.on_mouse_move(pos, game).await;
 
-        for (_, i) in self.users.iter_mut() {
-            i.on_mouse_move(pos)
-        }
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
+        
+        col!(
+            //TODO:!!!!!!!!!!!!!!!!!!!!!! add panel
+
+            self.chat.view();
+
+            width = Fill, 
+            height = Fill
+        )
     }
-
-    async fn update(&mut self, game:&mut Game) {
-        self.chat.update(game).await;
-
+    
+    async fn update(&mut self) -> Vec<MenuAction> { 
+        self.chat.update().await;
+        
         let mut bomb = PANEL_QUEUE.1.lock().await;
         while let Some(event) = bomb.exploded() {
             match event {
@@ -150,23 +153,25 @@ impl Dialog<Game> for UserPanel {
                 }
             }
         }
+
+        self.actions.take() 
     }
 
-    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-        self.chat.draw(offset, list).await;
-        //TODO: move the set_pos code to update or smth
-        let mut counter = 0;
+    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+    //     self.chat.draw(offset, list).await;
+    //     //TODO: move the set_pos code to update or smth
+    //     let mut counter = 0;
         
-        for (_, u) in self.users.iter_mut() {
-            let users_per_col = 2;
-            let x = USER_ITEM_SIZE.x * (counter % users_per_col) as f32;
-            let y = USER_ITEM_SIZE.y * (counter / users_per_col) as f32;
-            u.set_pos(Vector2::new(x, y));
+    //     for (_, u) in self.users.iter_mut() {
+    //         let users_per_col = 2;
+    //         let x = USER_ITEM_SIZE.x * (counter % users_per_col) as f32;
+    //         let y = USER_ITEM_SIZE.y * (counter / users_per_col) as f32;
+    //         u.set_pos(Vector2::new(x, y));
 
-            counter += 1;
-            u.draw(offset, list);
-        }
-    }
+    //         counter += 1;
+    //         u.draw(offset, list);
+    //     }
+    // }
     
 }
 

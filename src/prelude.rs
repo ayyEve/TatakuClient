@@ -4,7 +4,7 @@ pub use std::time::Duration;
 pub use std::f32::consts::PI;
 pub use std::path::{ Path, PathBuf };
 pub use std::ops::{ Range, Deref, DerefMut };
-pub use std::collections::{ HashMap, HashSet };
+pub use std::collections::{ HashMap, HashSet, VecDeque };
 
 // sync imports
 pub use std::sync::{ Arc, Weak };
@@ -60,3 +60,32 @@ pub use tataku_client_proc_macros::*;
 // online imports
 pub use tataku_common::packets::*;
 pub use tataku_common::serialization::*;
+
+
+
+// iced imports, in its own mod since it has some comflicting names
+pub mod iced_elements {
+    // macro imports
+    pub use crate::row;
+    pub use crate::col;
+
+    // common structs/enums used by iced
+    pub use iced::Length;
+    pub use iced::Length::{Fill, FillPortion, Shrink, Fixed};
+    pub use iced::Alignment;
+    pub use iced::Rectangle;
+    pub use iced::alignment::Horizontal;
+    pub use iced::alignment::Vertical;
+
+    // widgets
+    pub use iced::widget::Row;
+    pub use iced::widget::Text;
+    pub use iced::widget::Space;
+    pub use iced::widget::Button;
+    pub use iced::widget::Column;
+    pub use iced::widget::Checkbox;
+    pub use iced::widget::TextInput;
+    pub use iced::widget::Container;
+    pub use iced::widget::Slider;
+    pub use iced::widget::PickList as Dropdown;
+}

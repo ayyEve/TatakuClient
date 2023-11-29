@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Bounds {
     pub pos: Vector2,
     pub size: Vector2,
@@ -32,5 +32,15 @@ impl Bounds {
             self.pos.x, self.pos.y,
             self.size.x, self.size.y
         ]
+    }
+}
+
+
+impl From<iced::Rectangle> for Bounds {
+    fn from(value: iced::Rectangle) -> Self {
+        Self::new(
+            Vector2::new(value.x, value.y),
+            Vector2::new(value.width, value.height)
+        )
     }
 }

@@ -98,7 +98,7 @@ impl TextInput {
         self.selection_end = 0;
     }
 
-    fn index_at_x(&self, x: f32) -> usize {
+    pub fn index_at_x(&self, x: f32) -> usize {
         if self.pos.x > x { return 0; }
         let rel_x = x - self.pos.x;
 
@@ -112,7 +112,7 @@ impl TextInput {
         // cumulative width
         let mut width = 0.0;
 
-        for (counter, char) in text.chars().enumerate() {
+        for (counter, char) in text.char_indices() {
             // get the font character
             let Some(c) = self.font.get_character(self.font_size, char) else { continue };
             

@@ -41,29 +41,22 @@ impl Vsync {
     }
 }
 
-impl Dropdownable for Vsync {
+impl Dropdownable2 for Vsync {
+    type T = Self;
     fn variants() -> Vec<Self> {
         AVAILABLE_PRESENT_MODES.get().unwrap().clone()
     }
-    fn display_text(&self) -> String {
+}
+
+impl Display for Vsync {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AutoVsync => "Auto On".to_owned(),
-            Self::AutoNoVsync => "Auto Off".to_owned(),
-            Self::Fifo => "Fifo".to_owned(),
-            Self::FifoRelaxed => "Fifo Relaxed".to_owned(),
-            Self::Immediate => "Immediate".to_owned(),
-            Self::Mailbox => "Mailbox".to_owned(),
-        }
-    }
-    fn from_string(s:String) -> Self {
-        match &*s {
-            "Auto On" => Self::AutoVsync,
-            "Auto Off" => Self::AutoNoVsync,
-            "Fifo" => Self::Fifo,
-            "Fifo Relaxed" => Self::FifoRelaxed,
-            "Immediate" => Self::Immediate,
-            "Mailbox" => Self::Mailbox,
-            _ => unimplemented!()
+            Self::AutoVsync => write!(f, "Auto On"),
+            Self::AutoNoVsync => write!(f, "Auto Off"),
+            Self::Fifo => write!(f, "Fifo"),
+            Self::FifoRelaxed => write!(f, "Fifo Relaxed"),
+            Self::Immediate => write!(f, "Immediate"),
+            Self::Mailbox => write!(f, "Mailbox"),
         }
     }
 }

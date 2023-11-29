@@ -1,9 +1,10 @@
 use crate::prelude::*;
 
+#[derive(Clone)]
 pub struct ScatterGraph {
     min: f32,
     max: f32,
-    data: Arc<Vec<MenuStatsEntry>>
+    data: Arc<Vec<MenuStatsEntry>>,
 }
 impl ScatterGraph {
     pub fn new(data: Arc<Vec<MenuStatsEntry>>) -> Self {
@@ -40,17 +41,13 @@ impl ScatterGraph {
     }
 
 
-}
-
-
-impl StatsGraph for ScatterGraph {
-    fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
-        let pos = bounds.pos;
+    pub fn draw(&self, bounds: &Bounds) -> TransformGroup {
+        let mut group = TransformGroup::new(bounds.pos);
         let size = bounds.size;
 
         // background
-        list.push(Rectangle::new(
-            pos,
+        group.push(Rectangle::new(
+            Vector2::ZERO,
             size,
             Color::new(0.2, 0.2, 0.2, 0.7),
             Some(Border::new(Color::RED, 1.5))
@@ -58,9 +55,9 @@ impl StatsGraph for ScatterGraph {
         
         // 0 line
         let zero_pos = Vector2::with_y(self.map_point(0.0, size));
-        list.push(Line::new(
-            pos + zero_pos,
-            pos + size.x_portion() + zero_pos,
+        group.push(Line::new(
+            zero_pos,
+            size.x_portion() + zero_pos,
             1.5,
             Color::WHITE,
         ));
@@ -70,9 +67,9 @@ impl StatsGraph for ScatterGraph {
                 MenuStatsValue::Single(v) => {
                     let v = self.map_point(*v, size);
 
-                    list.push(Line::new(
-                        pos + Vector2::with_y(v),
-                        pos + size.x_portion() + Vector2::with_y(v),
+                    group.push(Line::new(
+                        Vector2::with_y(v),
+                        size.x_portion() + Vector2::with_y(v),
                         1.5,
                         i.color,
                     ))
@@ -83,13 +80,13 @@ impl StatsGraph for ScatterGraph {
 
                     for (n, &y) in mapped_points.iter().enumerate() {
                         let mut c = Circle::new(
-                            pos + Vector2::new(x_step * n as f32, y),
+                            Vector2::new(x_step * n as f32, y),
                             2.0,
                             i.color,
                             None
                         );
                         c.resolution = 32;
-                        list.push(c);
+                        group.push(c);
                     }
                     
                 }
@@ -97,6 +94,7 @@ impl StatsGraph for ScatterGraph {
             
         }
 
+        group
     }
 
 }

@@ -5,6 +5,186 @@ const BEATMAP_ITEM_Y_PADDING:f32 = 5.0;
 pub const BEATMAPSET_ITEM_SIZE:Vector2 = Vector2::new(800.0, 50.0);
 const BEATMAP_ITEM_SIZE:Vector2 = Vector2::new(BEATMAPSET_ITEM_SIZE.x() * 0.8, 50.0);
 
+#[derive(Clone)]
+pub struct BeatmapSetComponent {
+    pub num: usize,
+    pub name: String,
+    pub maps: Vec<BeatmapMetaWithDiff>,
+    map_strings: Vec<(String, String)>,
+
+    pub selected: bool,
+    skin: Arc<CurrentSkin>,
+    theme: Arc<CurrentTheme>,
+
+    image: Option<Image>,
+}
+impl BeatmapSetComponent {
+    pub async fn new(name: String, num: usize, mut maps: Vec<BeatmapMetaWithDiff>) -> Self {
+        let image = SkinManager::get_texture("menu-button-background", true).await; //GenericButtonImage::new(Vector2::ZERO, BEATMAPSET_ITEM_SIZE).await,
+        let skin = GlobalValueManager::get::<CurrentSkin>().unwrap();
+        let theme = GlobalValueManager::get::<CurrentTheme>().unwrap();
+        let playmode = CurrentPlaymodeHelper::new().0.clone();
+        let mods = ModManager::get();
+
+        // sort maps
+        maps.sort_by(|a, b| a.diff.partial_cmp(&b.diff).unwrap());
+
+        // pre-generate the strings
+        let map_strings = maps.iter().map(|meta|{
+            let text1 = format!("{} - {}", gamemode_display_name(&meta.mode), meta.version);
+            let mut text2 = String::new();
+            if let Some(info) = get_gamemode_info(&meta.check_mode_override(playmode.clone())) { 
+                text2 = info.get_diff_string(meta, &mods);
+            }
+
+            (text1, text2)
+        }).collect();
+
+        Self {
+            name,
+            num,
+            maps,
+            map_strings,
+            selected: false,
+
+            skin,
+            theme,
+            image,
+        }
+    }
+    pub fn check_selected(&mut self, hash: Md5Hash) -> Option<usize> {
+        for (n, i) in self.maps.iter().enumerate() {
+            if i.beatmap_hash == hash {
+                self.selected = true;
+                return Some(n);
+            }
+        }
+        None
+    }
+
+    pub fn view(&self, menu: &'static str) -> IcedElement {
+        use crate::prelude::iced_elements::*;
+
+        let name = self.name.clone();
+        let set_item = SkinnedButton::new(move|params|col!(
+                Text::new(name.clone())
+                    .size(26.0 * params.scale.y)
+                    .width(Fill)
+                    .color(params.text)
+                ;
+                width = Fill,
+                padding = 10.0 * params.scale.y
+            ))
+            .width(Fill)
+            .selected(self.selected)
+            .image(self.image.clone())
+            .base_params(self.base_params(true))
+            .hover_params(self.hover_params(true))
+            .selected_params(self.selected_params(true))
+            .on_press(Message::new_menu_raw(menu, MessageTag::Number(self.num), MessageType::Click))
+            .build()
+            .into_element()
+        ;
+        
+        // let set_item = Button::new(Text::new(self.name.clone()).width(Length::Fill).size(28.0))
+        //     .width(Length::Fill)
+        //     .on_press(Message::new_menu_name(menu.clone(), MessageTag::Number(self.num), MessageType::Click)).into_element();
+        let selected_hash = CurrentBeatmapHelper::new().0.as_ref().map(|b|b.beatmap_hash);
+
+        if self.selected {
+            col!(
+                // set item
+                [set_item].into_iter().chain(
+                    // beatmap items
+                    self.map_strings.clone().into_iter().zip(&self.maps).map(|((l1, l2), b)|row!(
+                        Space::new(Fill, Shrink),
+                        SkinnedButton::new(move|params|col!(
+                            Text::new(l1.clone()).size(23.0 * params.scale.y).width(Fill).color(params.text),
+                            Text::new(l2.clone()).size(23.0 * params.scale.y).width(Fill).color(params.text);
+                            width = Fill,
+                            padding = 10.0 * params.scale.y
+                        ))
+                        .width(FillPortion(20))
+                        .image(self.image.clone())
+                        .base_params(self.base_params(false))
+                        .hover_params(self.hover_params(false))
+                        .selected_params(self.selected_params(false))
+                        .selected(selected_hash == Some(b.beatmap_hash))
+                        .on_press(Message::new_menu_raw(menu, b.meta.clone(), MessageType::Click))
+                        .build()
+                        ;
+                        width = Fill
+                    ))
+                ).collect(),
+                
+                spacing = 5.0,
+                align_items = Alignment::End
+            )
+        } else {
+            set_item
+        }
+    }
+
+
+    fn base_params(&self, for_set: bool) -> SkinParams {
+        let text = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectText).unwrap_or_else(||Color::WHITE));
+        if for_set {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectSetBg).unwrap_or_else(||Color::BLUE),
+                self.theme.get_pos(ThemePosition::BeatmapSelectSetOffset).unwrap_or(Vector2::ZERO),
+                self.theme.get_scale(ThemeScale::BeatmapSelectSetScale).unwrap_or(Vector2::ONE),
+            )
+        } else {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectMapBg).unwrap_or_else(||Color::BLUE),
+                self.theme.get_pos(ThemePosition::BeatmapSelectMapOffset).unwrap_or(Vector2::ZERO),
+                self.theme.get_scale(ThemeScale::BeatmapSelectMapScale).unwrap_or(Vector2::ONE),
+            )
+        }
+    }
+    fn hover_params(&self, for_set: bool) -> SkinParams {
+        let base = self.base_params(for_set);
+        let text = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectTextHovered).unwrap_or_else(||base.text));
+
+        if for_set {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectSetHover).unwrap_or_else(||base.background),
+                self.theme.get_pos(ThemePosition::BeatmapSelectSetHoveredOffset).unwrap_or_else(||base.offset),
+                self.theme.get_scale(ThemeScale::BeatmapSelectSetHoveredScale).unwrap_or_else(||base.scale),
+            )
+        } else {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectMapHover).unwrap_or_else(||base.background),
+                self.theme.get_pos(ThemePosition::BeatmapSelectMapHoveredOffset).unwrap_or_else(||base.offset),
+                self.theme.get_scale(ThemeScale::BeatmapSelectMapHoveredScale).unwrap_or_else(||base.scale),
+            )
+        }
+    }
+    fn selected_params(&self, for_set: bool) -> SkinParams {
+        let base = self.base_params(for_set);
+        let text = self.skin.song_select_inactive_text.unwrap_or_else(||self.theme.get_color(ThemeColor::BeatmapSelectTextSelected).unwrap_or_else(||base.text));
+        if for_set {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectSetSelect).unwrap_or_else(||base.background),
+                self.theme.get_pos(ThemePosition::BeatmapSelectSetSelectedOffset).unwrap_or_else(||base.offset),
+                self.theme.get_scale(ThemeScale::BeatmapSelectSetSelectedScale).unwrap_or_else(||base.scale),
+            )
+        } else {
+            SkinParams::new(
+                text,
+                self.theme.get_color(ThemeColor::BeatmapSelectMapSelect).unwrap_or_else(||base.background),
+                self.theme.get_pos(ThemePosition::BeatmapSelectMapSelectedOffset).unwrap_or_else(||base.offset),
+                self.theme.get_scale(ThemeScale::BeatmapSelectMapSelectedScale).unwrap_or_else(||base.scale),
+            )
+        }
+    }
+}
+
 
 
 pub struct BeatmapsetItem {

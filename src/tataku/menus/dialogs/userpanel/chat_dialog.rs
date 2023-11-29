@@ -6,20 +6,28 @@ use crate::prelude::*;
 
 const INPUT_HEIGHT:f32 = 45.0;
 
+const INPUT_FONT_SIZE: f32 = INPUT_HEIGHT * 0.8;
+
 /// how many pixels away from the thing can it be to resize?
 const RESIZE_LENIENCE:f32 = 3.0;
 
 
 pub struct Chat {
+    num: usize,
+
+    current_message: String,
+    key_handler: KeyPressHandlerGroup<ChatDialogKeys>,
+
+
     // messages
     messages: HashMap<ChatChannel, Vec<ChatMessage>>,
     // if the chat is visible or not
     should_close: bool,
 
-    // scrollables
-    channel_scroll: ScrollableArea,
-    message_scroll: ScrollableArea,
-    input: TextInput,
+    // // scrollables
+    // channel_scroll: ScrollableArea,
+    // message_scroll: ScrollableArea,
+    // input: TextInput,
 
     pub selected_channel: Option<ChatChannel>,
 
@@ -49,23 +57,28 @@ impl Chat {
         let chat_pos  = Vector2::new(channel_list_width, window_size.y - chat_height);
         let channel_list_size = Vector2::new(channel_list_width, chat_size.y);
 
-        let mut input = TextInput::new(
-            Vector2::new(channel_list_width, window_size.y - INPUT_HEIGHT), 
-            Vector2::new(chat_size.x, INPUT_HEIGHT), 
-            "Chat: ", 
-            "",
-            Font::Main,
-        );
+        // let mut input = TextInput::new(
+        //     Vector2::new(channel_list_width, window_size.y - INPUT_HEIGHT), 
+        //     Vector2::new(chat_size.x, INPUT_HEIGHT), 
+        //     "Chat: ", 
+        //     "",
+        //     Font::Main,
+        // );
         
         Self {
+            num: 0,
+
             // [channels][messages]
             messages:HashMap::new(),
             selected_channel: None,
             should_close: false,
+            current_message: String::new(),
+            
+            key_handler: KeyPressHandlerGroup::new(),
 
-            channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
-            message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),
-            input,
+            // channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
+            // message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),
+            // input,
 
             // positions/sizes
             chat_height,
@@ -80,173 +93,60 @@ impl Chat {
     }
 
     pub fn scroll_to_new_message(&mut self) {
-        // make the message scroll think the mouse is on it
-        self.message_scroll.on_mouse_move(self.message_scroll.get_pos() + Vector2::ONE);
+        // // make the message scroll think the mouse is on it
+        // self.message_scroll.on_mouse_move(self.message_scroll.get_pos() + Vector2::ONE);
 
-        // do a negative max scroll
-        self.message_scroll.on_scroll(-f32::MAX);
+        // // do a negative max scroll
+        // self.message_scroll.on_scroll(-f32::MAX);
     }
 }
 
 #[async_trait]
-impl Dialog<Game> for Chat {
+impl Dialog for Chat {
+    fn name(&self) -> &'static str { "chat_dialog" }
+    fn get_num(&self) -> usize { self.num }
+    fn set_num(&mut self, num: usize) { self.num = num }
+
+
     fn should_close(&self) -> bool { self.should_close }
     async fn force_close(&mut self) { self.should_close = true; }
+
     
-    fn get_bounds(&self) -> Bounds {
-        let window_size = &self.window_size;
-        Bounds::new(
-            Vector2::new(0.0, window_size.y - (self.chat_height + RESIZE_LENIENCE)), 
-            Vector2::new(
-                window_size.x,
-                self.chat_height + RESIZE_LENIENCE
-            )
-        )
-    }
-    
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return }; 
 
+        match &*tag {
+            // a channel was clicked
+            "channel" => {
+                let Some(channel_name) = message.message_type.as_text() else { return }; 
+                
+                // find the channel name in the list
+                for (channel, message_list) in self.messages.iter() {
+                    if channel.get_name() != channel_name { continue }
 
-    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        if key == Key::Return {
-            let send_text = self.input.get_text();
-            self.input.set_text(String::new());
+                    // set our current channel
+                    self.selected_channel = Some(channel.clone());
 
-            if let Some(channel) = self.selected_channel.clone() {
-                tokio::spawn(async move {
-                    OnlineManager::get().await.send_packet(ChatPacket::Client_SendMessage {
-                        channel: channel.get_name(),
-                        message: send_text
-                    });
-                });
-            }
-            return true;
-        }
+                    // // clear old messages
+                    // self.message_scroll.clear();
 
-        self.input.on_key_press(key, *mods);
-
-        true
-    }
-    async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.input.on_key_release(key);
-        true
-    }
-    async fn on_text(&mut self, text:&String) -> bool {
-        self.input.on_text(text.to_owned());
-        true
-    }
-
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        // check if a channel was clicked
-        if let Some(channel_name) = self.channel_scroll.on_click_tagged(pos, button, *mods) {
-
-            // find the channel name in the list
-            for (channel, message_list) in self.messages.iter() {
-                if channel.get_name() != channel_name {continue}
-
-                // set our current channel
-                self.selected_channel = Some(channel.clone());
-
-                // clear old messages
-                self.message_scroll.clear();
-
-                for m in message_list.iter() {
-                    self.message_scroll.add_item(Box::new(MessageScroll::new(
-                        m.clone(),
-                        self.window_size.x - self.channel_list_width,
-                        30.0
-                    )));
+                    // for m in message_list.iter() {
+                    //     self.message_scroll.add_item(Box::new(MessageScroll::new(
+                    //         m.clone(),
+                    //         self.window_size.x - self.channel_list_width,
+                    //         30.0
+                    //     )));
+                    // }
                 }
             }
-
-            // scroll to the bottom
-            self.scroll_to_new_message();
-
-            return true;
-        }
-
-        self.input.on_click(pos, button, *mods);
-        //TODO: check messages click?
-
-        if self.height_resize_hover {
-            self.height_resize = true;
-        }
-        if self.width_resize_hover {
-            self.width_resize = true;
-        }
-
-        true
-    }
-    async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.height_resize = false;
-        self.width_resize = false;
-        self.width_resize_hover = false;
-        self.height_resize_hover = false;
-        true
-    }
-
-    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-        self.channel_scroll.on_mouse_move(pos);
-        self.message_scroll.on_mouse_move(pos);
-
-        let window_size = self.window_size.0;
-        // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
-        self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
-
-        if self.height_resize {
-            self.chat_height = window_size.y - pos.y;
-
-            self.channel_scroll.set_pos(Vector2::new(
-                self.channel_scroll.get_pos().x,
-                window_size.y - self.chat_height
-            ));
-            self.channel_scroll.set_size(Vector2::new(
-                self.channel_scroll.size().x,
-                self.chat_height
-            ));
-
-            self.message_scroll.set_pos(Vector2::new(
-                self.message_scroll.get_pos().x,
-                window_size.y - self.chat_height
-            ));
-            self.message_scroll.set_size(Vector2::new(
-                self.message_scroll.size().x,
-                self.chat_height - INPUT_HEIGHT
-            ));
-        }
-        if self.width_resize {
-            self.channel_list_width = pos.x;
-
-            self.channel_scroll.set_size(Vector2::new(
-                self.channel_list_width,
-                self.channel_scroll.size().y
-            ));
-
-            self.input.set_pos(Vector2::new(
-                self.channel_list_width,
-                self.input.get_pos().y
-            ));
-            self.message_scroll.set_pos(Vector2::new(
-                self.channel_list_width,
-                self.message_scroll.get_pos().y
-            ));
-            self.message_scroll.set_size(Vector2::new(
-                window_size.x - self.channel_list_width,
-                self.message_scroll.size().x
-            ));
+            
+            _ => {}
         }
     }
 
-    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
-        self.channel_scroll.on_scroll(delta);
-        self.message_scroll.on_scroll(delta);
-
-        true
-    }
-
-    async fn update(&mut self, _g:&mut Game) {
+    
+    async fn update(&mut self) -> Vec<MenuAction> { 
+        // get new messages
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             let mut scroll_pending = false;
 
@@ -257,15 +157,15 @@ impl Dialog<Game> for Chat {
 
                 // ensure the selected channel is actually selected
                 let selected_name = selected_channel.get_name();
-                for i in self.channel_scroll.items.iter_mut() {
-                    if i.get_selected() && i.get_tag() != selected_name {
-                        i.set_selected(false)
-                    }
+                // for i in self.channel_scroll.items.iter_mut() {
+                //     if i.get_selected() && i.get_tag() != selected_name {
+                //         i.set_selected(false)
+                //     }
 
-                    if !i.get_selected() && i.get_tag() == selected_name {
-                        i.set_selected(true)
-                    }
-                }
+                //     if !i.get_selected() && i.get_tag() == selected_name {
+                //         i.set_selected(true)
+                //     }
+                // }
 
             }
 
@@ -273,11 +173,11 @@ impl Dialog<Game> for Chat {
             for (channel, messages) in online_manager.chat_messages.iter() {
                 if !self.messages.contains_key(channel) {
                     self.messages.insert(channel.clone(), messages.clone());
-                    self.channel_scroll.add_item(Box::new(ChannelScroll::new(
-                        channel.clone(), 
-                        self.channel_list_width, 
-                        30.0
-                    )));
+                    // self.channel_scroll.add_item(Box::new(ChannelScroll::new(
+                    //     channel.clone(), 
+                    //     self.channel_list_width, 
+                    //     30.0
+                    // )));
                     continue;
                 }
 
@@ -290,11 +190,11 @@ impl Dialog<Game> for Chat {
                         for message in online_manager.chat_messages.get(channel).unwrap() {
                             if !cached_messages.contains(message) {
                                 // cached_messages.push(message.clone())
-                                self.message_scroll.add_item(Box::new(MessageScroll::new(
-                                    message.clone(),
-                                    window_size.x - self.channel_list_width,
-                                    30.0
-                                )));
+                                // self.message_scroll.add_item(Box::new(MessageScroll::new(
+                                //     message.clone(),
+                                //     window_size.x - self.channel_list_width,
+                                //     30.0
+                                // )));
                                 scroll_pending = true;
                             }
                         }
@@ -311,50 +211,155 @@ impl Dialog<Game> for Chat {
             self.messages = online_manager.chat_messages.clone();
         }
 
-        // ensure input is always accepting input
-        self.input.set_selected(true);
-    }
+        // handle key presses
+        while let Some(key_event) = self.key_handler.check_events() {
+            match key_event {
+                KeyEvent::Char(c) => self.current_message.push(c),
 
-    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-        let window_size = self.window_size.0;
+                KeyEvent::Press(ChatDialogKeys::SendMessage) => {
+                    let send_text = self.current_message.take();
 
-        // draw backgrounds
-        list.push(Rectangle::new(
-            self.channel_scroll.get_pos() + offset,
-            self.channel_scroll.size(),
-            Color::WHITE.alpha(0.85),
-            Some(Border::new(Color::BLACK, 2.0))
-        ));
-        list.push(Rectangle::new(
-            self.message_scroll.get_pos() + offset,
-            self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
-            Color::WHITE.alpha(0.85),
-            Some(Border::new(Color::BLACK, 2.0))
-        ));
+                    if let Some(channel) = self.selected_channel.clone() {
+                        tokio::spawn(async move {
+                            OnlineManager::get().await.send_packet(ChatPacket::Client_SendMessage {
+                                channel: channel.get_name(),
+                                message: send_text
+                            });
+                        });
+                    }
+                }
 
-        if self.width_resize_hover {
-            // red line at width
-            list.push(Line::new(
-                Vector2::new(self.channel_list_width, window_size.y) + offset,
-                Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
-                2.0,
-                Color::RED
-            ))
-        }
-        if self.height_resize_hover {
-            // red line at height
-            list.push(Line::new(
-                Vector2::new(0.0, window_size.y - self.chat_height) + offset,
-                Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
-                2.0,
-                Color::RED
-            ))
+                _ => {}
+            }
         }
 
-        self.channel_scroll.draw(offset, list);
-        self.message_scroll.draw(offset, list);
-        self.input.draw(offset, list);
+
+        Vec::new()
     }
+
+
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
+        
+        col!(
+            
+            // channel scroll
+            make_scrollable(
+                self.messages.keys().map(|c|Text::new(c.get_name()).size(30.0).width(Fill).into_element()).collect(),
+                "channel_scroll"
+            ),
+
+            // message scroll
+            self.selected_channel.as_ref().map(|c|make_scrollable(
+                self.messages.get(c).unwrap().iter().map(|c|Text::new(c.text.clone()).size(30.0).width(Fill).into_element()).collect(),
+                "message_scroll"
+            ).into_element()).unwrap_or_else(||EmptyElement.into_element()),
+
+            // message text input
+            TextInput::new("Chat:", &self.current_message).size(INPUT_FONT_SIZE),
+
+            // key input
+            self.key_handler.handler();
+
+            width = Fill
+        )
+    }
+
+
+
+
+    // async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
+    //     self.channel_scroll.on_mouse_move(pos);
+    //     self.message_scroll.on_mouse_move(pos);
+
+    //     let window_size = self.window_size.0;
+    //     // self.width_resize_hover = (pos.x - (self.channel_list_width)).powi(2) < RESIZE_LENIENCE.powi(2);
+    //     self.height_resize_hover = (pos.y - (window_size.y - self.chat_height)).powi(2) < RESIZE_LENIENCE.powi(2);
+
+    //     if self.height_resize {
+    //         self.chat_height = window_size.y - pos.y;
+
+    //         self.channel_scroll.set_pos(Vector2::new(
+    //             self.channel_scroll.get_pos().x,
+    //             window_size.y - self.chat_height
+    //         ));
+    //         self.channel_scroll.set_size(Vector2::new(
+    //             self.channel_scroll.size().x,
+    //             self.chat_height
+    //         ));
+
+    //         self.message_scroll.set_pos(Vector2::new(
+    //             self.message_scroll.get_pos().x,
+    //             window_size.y - self.chat_height
+    //         ));
+    //         self.message_scroll.set_size(Vector2::new(
+    //             self.message_scroll.size().x,
+    //             self.chat_height - INPUT_HEIGHT
+    //         ));
+    //     }
+    //     if self.width_resize {
+    //         self.channel_list_width = pos.x;
+
+    //         self.channel_scroll.set_size(Vector2::new(
+    //             self.channel_list_width,
+    //             self.channel_scroll.size().y
+    //         ));
+
+    //         self.input.set_pos(Vector2::new(
+    //             self.channel_list_width,
+    //             self.input.get_pos().y
+    //         ));
+    //         self.message_scroll.set_pos(Vector2::new(
+    //             self.channel_list_width,
+    //             self.message_scroll.get_pos().y
+    //         ));
+    //         self.message_scroll.set_size(Vector2::new(
+    //             window_size.x - self.channel_list_width,
+    //             self.message_scroll.size().x
+    //         ));
+    //     }
+    // }
+
+    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+    //     let window_size = self.window_size.0;
+
+    //     // draw backgrounds
+    //     list.push(Rectangle::new(
+    //         self.channel_scroll.get_pos() + offset,
+    //         self.channel_scroll.size(),
+    //         Color::WHITE.alpha(0.85),
+    //         Some(Border::new(Color::BLACK, 2.0))
+    //     ));
+    //     list.push(Rectangle::new(
+    //         self.message_scroll.get_pos() + offset,
+    //         self.message_scroll.size(), //+ Vector2::new(0.0, INPUT_HEIGHT),
+    //         Color::WHITE.alpha(0.85),
+    //         Some(Border::new(Color::BLACK, 2.0))
+    //     ));
+
+    //     if self.width_resize_hover {
+    //         // red line at width
+    //         list.push(Line::new(
+    //             Vector2::new(self.channel_list_width, window_size.y) + offset,
+    //             Vector2::new(self.channel_list_width, window_size.y - self.chat_height) + offset,
+    //             2.0,
+    //             Color::RED
+    //         ))
+    //     }
+    //     if self.height_resize_hover {
+    //         // red line at height
+    //         list.push(Line::new(
+    //             Vector2::new(0.0, window_size.y - self.chat_height) + offset,
+    //             Vector2::new(window_size.x, window_size.y - self.chat_height) + offset,
+    //             2.0,
+    //             Color::RED
+    //         ))
+    //     }
+
+    //     self.channel_scroll.draw(offset, list);
+    //     self.message_scroll.draw(offset, list);
+    //     self.input.draw(offset, list);
+    // }
 }
 
 
@@ -423,6 +428,31 @@ impl ChatChannel {
         }
     }
 }
+
+
+
+#[derive(Copy, Clone, Debug)]
+pub enum ChatDialogKeys {
+    SendMessage,
+}
+
+impl KeyMap for ChatDialogKeys {
+    fn handle_chars() -> bool { true }
+
+    fn from_key(key: iced::keyboard::KeyCode, mods: iced::keyboard::Modifiers) -> Option<Self> {
+        use iced::keyboard::KeyCode;
+
+        match key {
+            KeyCode::Enter => Some(Self::SendMessage),
+
+            _ => None
+        }
+    }
+}
+
+
+
+
 
 
 #[derive(ScrollableGettersSetters)]
@@ -503,3 +533,6 @@ impl ScrollableItem for MessageScroll {
         list.push(text);
     }
 }
+
+
+

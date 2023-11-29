@@ -64,6 +64,10 @@ gilrs = { version = "0.10", features = ["serde-serialize"] }
 souvlaki = { version = "0.6", default-features = false, features = ["use_zbus"], git = "https://github.com/ayyEve/souvlaki.git" }
 raw-window-handle = "*"
 
+# gui
+iced = {version = "*", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy"], default-features = false}
+iced_runtime = "*"
+
 # bass audio
 bass-rs = { version="0.2", optional = true }
 
@@ -75,7 +79,7 @@ bass-rs = { version="0.2", optional = true }
 # networking
 sha2 = "0.10"
 tokio-tungstenite = { version = "0.17", features = ["rustls-tls-native-roots"] }
-reqwest = { version = "0.11.4", features = ["blocking"] }
+reqwest = { version = "0.11.4", features = ["blocking", "json"] }
 discord-rich-presence = "0.2.0"
 
 # serde

@@ -141,6 +141,30 @@ pub enum Font {
     #[allow(unused)]
     Custom(Box<ActualFont>)
 }
+impl Font {
+    pub fn to_iced(&self) -> iced::Font {
+        match self {
+            Self::Main => iced::Font::with_name("main"),
+            Self::Fallback => iced::Font::with_name("fallback"),
+            Self::FontAwesome => iced::Font::with_name("font_awesome"),
+            Self::Custom(_) => iced::Font::with_name("custom"),
+        }
+    }
+
+    pub fn from_iced(f: iced::Font) -> Self {
+        let iced::font::Family::Name(name) = f.family else { return Self::Main };
+
+        match name {
+            "main" => Self::Main,
+            "fallback" => Self::Fallback,
+            "font_awesome" => Self::FontAwesome,
+            "custom" => unimplemented!("custom fonts are not working yet"),
+
+            _ => Self::Main
+        }
+    }
+}
+
 impl std::fmt::Debug for Font {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {

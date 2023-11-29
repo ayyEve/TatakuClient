@@ -95,6 +95,8 @@ impl Animation {
 }
 
 impl TatakuRenderable for Animation {
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.size()) }
+
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

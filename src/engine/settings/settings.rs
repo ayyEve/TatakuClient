@@ -93,32 +93,32 @@ pub struct Settings {
     pub performance_mode: PerformanceMode,
     
     #[serde(skip)]
-    #[Setting(text="Refresh Monitors", action="|_|GameWindow::refresh_monitors()")]
+    #[Setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()")]
     refresh_monitors_button: (),
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
-    pub cursor_color: Color,
+    pub cursor_color: SettingsColor,
     #[Setting(text="Cursor Scale", min=0.1, max=10.0)]
     pub cursor_scale: f32,
     #[Setting(text="Cursor Border", min=0.1, max=5.0)]
     pub cursor_border: f32,
     #[Setting(text="Cursor Border Color")]
-    pub cursor_border_color: Color,
+    pub cursor_border_color: SettingsColor,
 
     #[Setting(text="Cursor Ripples")]
     pub cursor_ripples: bool,
     #[Setting(text="Cursor Ripple Color")]
-    pub cursor_ripple_color: Color,
+    pub cursor_ripple_color: SettingsColor,
     #[Setting(text="Cursor Ripple Scale")]
     pub cursor_ripple_final_scale: f32,
 
     // skin settings
-    #[Setting(text="Skin", dropdown="SkinDropdownable", dropdown_value="Skin", category="Skin Settings")]
+    #[Setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings")]
     pub current_skin: String,
 
     #[serde(skip)]
-    #[Setting(text="Refresh Skins", action="|_|SkinManager::refresh_skins()")]
+    #[Setting(text="Refresh Skins", action="SkinManager::refresh_skins()")]
     refresh_skins_button: (),
 
     #[Setting(text="Theme", dropdown="SelectedTheme")]
@@ -284,10 +284,10 @@ impl Default for Settings {
             // cursor
             cursor_scale: 1.0,
             cursor_border: 1.5,
-            cursor_color: Color::from_hex("#ffff32".to_owned()),
-            cursor_border_color: Color::from_hex("#000".to_owned()),
+            cursor_color: Color::from_hex("#ffff32".to_owned()).into(),
+            cursor_border_color: Color::from_hex("#000".to_owned()).into(),
             cursor_ripples: true,
-            cursor_ripple_color: Color::from_hex("#000".to_owned()),
+            cursor_ripple_color: Color::from_hex("#000".to_owned()).into(),
             cursor_ripple_final_scale: 1.5,
             
             // keybinds
@@ -311,5 +311,55 @@ impl Default for Settings {
             skip_autosaveing: false,
             theme: SelectedTheme::Tataku
         }
+    }
+}
+
+
+
+/// helper for colors inside settings
+#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize)]
+#[serde(from="Color", into="Color")]
+pub struct SettingsColor {
+    pub string: String,
+    pub color: Color,
+    pub valid: bool,
+}
+impl SettingsColor {
+    pub fn update(&mut self, s: String) {
+        if let Some(color) = Color::try_from_hex(&s) {
+            self.color = color;
+            self.valid = true;
+        } else {
+            self.valid = false;
+        }
+
+        self.string = s;
+    }
+}
+impl PartialEq for SettingsColor {
+    fn eq(&self, other: &Self) -> bool {
+        self.color == other.color
+    }
+}
+
+impl From<Color> for SettingsColor {
+    fn from(color: Color) -> Self {
+        Self {
+            string: color.to_hex(),
+            color,
+            valid: true,
+        }
+    }
+}
+impl From<SettingsColor> for Color {
+    fn from(value: SettingsColor) -> Self {
+        value.color
+    }
+}
+impl Deref for SettingsColor {
+    type Target = Color; 
+    fn deref(&self) -> &Self::Target {
+        &self.color
     }
 }

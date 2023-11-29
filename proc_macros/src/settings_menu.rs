@@ -1,8 +1,6 @@
 use quote::*;
 use syn::*;
 
-const WIDTH:f64 = 600.0;
-
 pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let mut settings:Vec<SettingsItem> = Vec::new();
     // let mut categories = HashMap::new();
@@ -85,7 +83,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                                 // check!(val, setting_path, "path");
                                 check!(val, category, "category");
                                 check!(val, setting_text, "text");
-                                check!(val, dropdown_value, "dropdown_value");
+                                // check!(val, dropdown_value, "dropdown_value");
                                 check!(val, action, "action");
 
                                 if name_value.path.is_ident("dropdown") {
@@ -126,177 +124,262 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         panic!("tf you doin")
     }
 
-    // TODO: !!!!! categories !!!!!
+
     let struct_name = ast.ident.to_string();
-    let mut get_menu_items_lines = Vec::new();
-    get_menu_items_lines.push(format!("impl {struct_name} {{"));
-    get_menu_items_lines.push("pub fn get_menu_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
-    get_menu_items_lines.push("let mut list:Vec<Box<dyn ScrollableItem>> = Vec::new();".to_owned());
-    get_menu_items_lines.push("let font = Font::Main;".to_owned());
+    let mut into_elements_lines = vec!["
+        pub fn into_elements(
+            &self, 
+            prefix: String,
+            filter: &ItemFilter, 
+            owner: MessageOwner, 
+            builder: &mut SettingsBuilder,
+        ) {
+            use crate::prelude::iced_elements::*;
+            const FONT_SIZE:f32 = 30.0;
+    ".to_owned()];
     
     // pulling vals back from the menu
-    let mut from_menu_lines = Vec::new();
-    from_menu_lines.push("pub fn from_menu(&mut self, prefix: String, list: &ScrollableArea) {".to_owned());
+    let mut from_elements_lines = vec!["
+        pub fn from_elements<'a>(
+            &mut self,
+            // tags of the current property, with all previous prefixes removed 
+            tags: &mut impl Iterator<Item = &'a str>,
+            // message that contains the data
+            message: Message,
+        ) {
+            let Some(tag) = tags.next() else { return };
+            match tag {
+    ".to_owned()];
 
     for setting in settings {
         let text = setting.setting_text.unwrap_or_default();
         let property = setting.setting_name.clone();
-        let mut add = true;
 
         if let Some(category) = setting.category {
-            get_menu_items_lines.push(format!("list.push(Box::new(MenuSection::new(p, 80.0, \"{category}\", Color::BLACK, Font::Main)));"));
+            into_elements_lines.push(format!(r#"builder.add_category("{category}");"#));
         }
 
         // comment what this item is
-        get_menu_items_lines.push(format!("\n// {property}"));
-        from_menu_lines.push(format!("\n// {property}"));
+        into_elements_lines.push(format!("\n// {property}"));
+        from_elements_lines.push(format!("\n// {property}"));
 
         match setting.setting_type {
             // checkbox
             SettingsType::Bool => {
-                let w = float(setting.width.unwrap_or(600.0));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = Checkbox::new(p, {size}, \"{text}\", self.{property}, Font::Main);"));
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
 
-                from_menu_lines.push(format!("
-                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                    let val = val.downcast_ref::<bool>().expect(&format!(\"error downcasting for {property}\"));
-                    
-                    self.{property} = val.clone(); 
-                }}"))
+                        builder.add_item(
+                            // Text::new("{text}").size(FONT_SIZE).into_element(),
+                            Checkbox::new(
+                                "{text}",
+                                self.{property},
+                                move|b| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Toggle(b))
+                            )
+                            .text_size(FONT_SIZE)
+                            .into_element(),
+                            Space::new(Shrink, Shrink).into_element(),
+                        );
+                    }}
+                "#));
+                
+                from_elements_lines.push(format!(r#"
+                    "{property}" => if let Some(b) = message.message_type.as_toggle() {{ self.{property} = b }},
+                "#));
             }
 
             // slider
             f 
             @(SettingsType::U32 
             | SettingsType::U64 
-            | SettingsType::F32 
             | SettingsType::Usize 
+            | SettingsType::F32 
             | SettingsType::F64) => {
-                let t = f.to_str();
+                let ty = f.to_str();
+
+                let min = setting.range_min.unwrap_or(0.0);
+                let max = setting.range_max.unwrap_or(100.0);
                 
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
+                let step = if f.is_float() {"0.01"} else {"1.0"};
 
-                let range = if let Some((min, max)) = setting.range_min.zip(setting.range_max) {
-                    let min = float(min);
-                    let max = float(max);
-                    format!("Some({min}..{max})")
-                } else {
-                    "None".to_owned()
-                };
 
-                // TODO: snapping?
-                get_menu_items_lines.push(format!("let mut i = Slider::new(p, {size}, \"{text}\", self.{property} as f64, {range}, None, Font::Main);"));
-
-                from_menu_lines.push(format!("
-                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                    let val = val.downcast_ref::<f64>().expect(&format!(\"error downcasting for {property}\"));
-                    
-                    self.{property} = (*val) as {t}; 
-                }}"))
+                // TODO: step?
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        
+                        builder.add_item(
+                            Text::new(format!("{text} ({{:.2}})", self.{property})).size(FONT_SIZE).into_element(),
+                            Slider::new(
+                                ({min}f32)..=({max}f32),
+                                self.{property} as f32,
+                                move|v| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Float(v))
+                            )
+                            .step({step})
+                            .into_element()
+                        );
+                    }}
+                "#));
+                
+                from_elements_lines.push(format!(r#"
+                    "{property}" => if let Some(n) = message.message_type.as_float() {{ self.{property} = n as {ty} }},
+                "#));
             }
 
             // text input
             SettingsType::String => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
+                let do_password = if setting.password_input == Some(true) {".password()"} else {""};
                 
-                get_menu_items_lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{property}, Font::Main);"));
-                    
-                if setting.password_input == Some(true) {
-                    get_menu_items_lines.push("i.is_password = true;".to_owned());
-                }
-
-                from_menu_lines.push(format!("
-                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                    let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for {property}\"));
-                    self.{property} = val.clone(); 
-                }}"))
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        
+                        builder.add_item(
+                            Text::new("{text}").size(FONT_SIZE).into_element(),
+                            TextInput::new(
+                                "  ", // no placeholder
+                                &self.{property},
+                            )
+                            .size(FONT_SIZE)
+                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
+                            {do_password}
+                            .into_element()
+                        );
+                    }}
+                "#));
+                
+                from_elements_lines.push(format!(r#"
+                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property} = t }},
+                "#));
             }
 
             // color input
             SettingsType::Color => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let s:String = self.{property}.into(); let mut i = TextInput::new(p, {size}, \"{text}\", &s, Font::Main);"));
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        let color:String = self.{property}.into();
 
-                from_menu_lines.push(format!("
-                {{
-                    let val = list.get_tagged(prefix.clone() + \"{property}\"); // get item from list
-                    let val = val.first().expect(\"error getting tagged\"); // unwrap
-                    let val = val.get_value(); // get the value from the item
-                    let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for Color (String)\"));
-                    
-                    self.{property} = val.clone().into(); 
-                }}"));
+                        builder.add_item(
+                            Text::new("{text}").size(FONT_SIZE).into_element(),
+                            TextInput::new(
+                                "  ", // no placeholder
+                                &color,
+                            )
+                            .size(FONT_SIZE)
+                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
+                            .into_element()
+                        );
+                    }}
+                "#));
+
+                from_elements_lines.push(format!(r#"
+                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property} = Color::from_hex(t) }},
+                "#));
             }
+            SettingsType::SettingsColor => {
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        
+                        builder.add_item(
+                            Text::new("{text}").size(FONT_SIZE).into_element(),
+                            TextInput::new(
+                                "  ", // no placeholder
+                                &self.{property}.string,
+                            )
+                            .size(FONT_SIZE)
+                            .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
+                            .into_element()
+                        );
+                    }}
+                "#));
+
+                from_elements_lines.push(format!(r#"
+                    "{property}" => if let Some(t) = message.message_type.as_text() {{ self.{property}.update(t) }},
+                "#));
+            }
+
             // 
             SettingsType::Key => {
-                let w = float(setting.width.unwrap_or(WIDTH));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{property}, \"{text}\", Font::Main);"));
+                //TODO: !!!!!!!!!!!!!
 
-                from_menu_lines.push(format!("
-                if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                    let val = val.downcast_ref::<Key>().expect(&format!(\"error downcasting for {property}\"));
-                    self.{property} = val.clone(); 
-                }}"))
+                // get_menu_items_lines.push(format!("let mut i = KeyButton::new(p, {size}, self.{property}, \"{text}\", Font::Main);"));
+
+                // from_menu_lines.push(format!("
+                // if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
+                //     let val = val.downcast_ref::<Key>().expect(&format!(\"error downcasting for {property}\"));
+                //     self.{property} = val.clone(); 
+                // }}"))
             }
 
-            // dropdown menu (obviously)
+            // dropdown menu
             SettingsType::Dropdown(enum_name) => {
-                let width = float(setting.width.unwrap_or(WIDTH));
-                let font_size = "20.0";
-            
-                let e = if let Some(s) = setting.dropdown_value.clone() {
-                    format!("{enum_name}::{s}(self.{property}.clone())")
-                } else {
-                    format!("self.{property}.clone()")
-                };
+                // let enum_name = setting.dropdown_value.unwrap_or(enum_name);
 
-                get_menu_items_lines.push(format!("let mut i = Dropdown::<{enum_name}>::new(p, {width}, {font_size}, \"{text}\", Some({e}), Font::Main);"));
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        
+                        builder.add_item(
+                            Text::new("{text}").size(FONT_SIZE).into_element(),
+                            Dropdown::new(
+                                {enum_name}::variants(),
+                                Some(self.{property}.clone()),
+                                move|v| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Custom(Arc::new(v)))
+                            )
+                            .text_size(FONT_SIZE)
+                            .into_element()
+                        );
+                    }}
+                "#));
 
-                if let Some(override_) = setting.dropdown_value {
-                    from_menu_lines.push(format!("
-                    if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                        let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
-                        
-                        if let Some({enum_name}::{override_}(val)) = val {{
-                            self.{property} = val.to_owned(); 
-                        }}
-                    }}"))
-                } else {
-                    from_menu_lines.push(format!("
-                    if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
-                        let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
-                        
-                        if let Some(val) = val {{
-                            self.{property} = val.to_owned(); 
-                        }}
-                    }}"))
-                }
+                from_elements_lines.push(format!(r#"
+                    "{property}" => {{
+                        let v = message.message_type.downcast::<<{enum_name} as Dropdownable2>::T>();
+                        self.{property} = (*v).clone();
+                    }}
+                "#));
             }
 
             // sub settings, ie mania or taiko settings
             SettingsType::SubSetting => {
-                get_menu_items_lines.push(format!("list.extend(self.{property}.get_menu_items(p, \"{property}\".to_owned() + &prefix, sender.clone()));"));
-                add = false;
+                into_elements_lines.push(format!(r#"
+                    self.{property}.into_elements(
+                        format!("{{prefix}}.{property}"),
+                        filter,
+                        owner,
+                        builder,
+                    );
+                "#));
 
-                from_menu_lines.push(format!("self.{property}.from_menu(\"{property}\".to_owned() + &prefix, list);"));
+                from_elements_lines.push(format!(r#"
+                    "{property}" => self.{property}.from_elements(tags, message),
+                "#));
             }
 
             // button that performs an action
             SettingsType::Button => {
-                let w = float(setting.width.unwrap_or(600.0));
-                let size = format!("Vector2::new({w}, 50.0)");
-                get_menu_items_lines.push(format!("let mut i = MenuButton::new(p, {size}, \"{text}\", Font::Main);"));
-                if let Some(action) = setting.action {
-                    get_menu_items_lines.push(format!("i.on_click = Arc::new({action});"));
-                }
-                get_menu_items_lines.push(format!("list.push(Box::new(i));"));
+                into_elements_lines.push(format!(r#"
+                    if filter.check("{text}") {{
+                        let prefix = prefix.clone();
+                        
+                        builder.add_item(
+                            Text::new(" ").size(FONT_SIZE).into_element(),
+                            Button::new(Text::new("{text}").size(FONT_SIZE))
+                            .on_press(Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Click))
+                            .into_element()
+                        );
+                    }}
+                "#));
 
-                add = false;
+                if let Some(action) = setting.action {
+                    from_elements_lines.push(format!(r#"
+                        "{property}" => {{ {action}; }},
+                    "#));
+                }
+
             }
 
             // shrug
@@ -304,29 +387,33 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::Unknown => {},
         }
 
-        if add {
-            get_menu_items_lines.push(format!("i.set_tag(&(prefix.clone() + \"{property}\"));"));
-
-            get_menu_items_lines.push(format!("let c = sender.clone();"));
-            get_menu_items_lines.push(format!("i.on_change = Arc::new(move|_,_|{{c.send(()).unwrap()}});"));
-
-            get_menu_items_lines.push(format!("list.push(Box::new(i));"));
-        }
     }
 
-    if let Some(extra) = get_items_extra { get_menu_items_lines.push("list.extend(self.".to_owned() + &extra + "(p, prefix, sender));"); }
+    // if let Some(extra) = get_items_extra { get_menu_items_lines.push("list.extend(self.".to_owned() + &extra + "(p, prefix, sender));"); }
+    // if let Some(extra) = from_menu_extra { from_menu_lines.push("self.".to_owned() + &extra + "(prefix, list);"); }
 
-    get_menu_items_lines.push("list".to_owned());
-    get_menu_items_lines.push("}".to_owned());
+    into_elements_lines.push("}".to_owned());
+    let into_elements_lines = into_elements_lines.join("\n");
 
+
+    from_elements_lines.push(" _ => {}".to_owned());
+    from_elements_lines.push("}".to_owned());
+    from_elements_lines.push("}".to_owned());
+    let from_elements_lines = from_elements_lines.join("\n");
     
-    if let Some(extra) = from_menu_extra { from_menu_lines.push("self.".to_owned() + &extra + "(prefix, list);"); }
-    from_menu_lines.push("}".to_owned());
-    get_menu_items_lines.extend(from_menu_lines);
+    // from_menu_lines.push("}".to_owned());
+    // get_menu_items_lines.extend(from_menu_lines);
 
-    get_menu_items_lines.push("}".to_owned());
+    // get_menu_items_lines.push("}".to_owned());
+    // let all_lines = get_menu_items_lines.join("\n");
 
-    let all_lines = get_menu_items_lines.join("\n");
+    let all_lines = format!(r#"
+        impl {struct_name} {{
+            {into_elements_lines}
+            
+            {from_elements_lines}
+        }}
+    "#);
 
     #[cfg(feature="extra_debugging")] {
         std::fs::create_dir_all("./debug").unwrap();
@@ -335,13 +422,6 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
     let impl_tokens = all_lines.parse::<proc_macro2::TokenStream>().unwrap();
     quote! { #impl_tokens }
-}
-
-
-fn float(n:f64) -> String {
-    let mut n = n.to_string(); 
-    if !n.contains(".") { n += ".0" }
-    n
 }
 
 
@@ -359,8 +439,8 @@ struct SettingsItem {
     /// does this setting belong to a category?
     category: Option<String>,
 
-    /// what dropdown value to use if this is not a default dropdown value
-    dropdown_value: Option<String>,
+    // /// what dropdown value to use if this is not a default dropdown value
+    // dropdown_value: Option<String>,
 
     /// if this is a text input, should it be a password?
     password_input: Option<bool>,
@@ -375,7 +455,7 @@ struct SettingsItem {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 enum SettingsType {
     Bool,
     U32,
@@ -389,10 +469,13 @@ enum SettingsType {
     Key,
     Dropdown(String),
     SubSetting,
+
+    SettingsColor,
     Color,
 
     Button,
 
+    #[default]
     Unknown
 }
 impl SettingsType {
@@ -408,6 +491,7 @@ impl SettingsType {
             "usize" => Self::Usize,
             "String" => Self::String,
             "Color" => Self::Color,
+            "SettingsColor" => Self::SettingsColor,
             "Key" => Self::Key,
             _ => Self::Unknown
         }
@@ -423,13 +507,15 @@ impl SettingsType {
             _ => ""
         }
     }
-}
 
-impl Default for SettingsType {
-    fn default() -> Self {
-        Self::Unknown
+    fn is_float(&self) -> bool {
+        match self {
+            Self::F32 | Self::F64 => true,
+            _ => false,
+        }
     }
 }
+
 
 
 fn recurse_meta(meta: MetaList) -> Vec<MetaNameValue> {

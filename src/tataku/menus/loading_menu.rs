@@ -1,13 +1,10 @@
 use crate::prelude::*;
 
-const STATUS_HEIGHT:f32 = 50.0;
-const STATUS_MARGIN:f32 = 5.0;
-
 /// helper for when starting the game. will load beatmaps, settings, etc from storage
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
-    pub statuses: Vec<Arc<AsyncRwLock<LoadingStatus>>>,
-    window_size: Arc<WindowSize>,
+    pub statuses: Vec<Arc<RwLock<LoadingStatus>>>,
+    // window_size: Arc<WindowSize>,
 }
 
 impl LoadingMenu {
@@ -15,13 +12,13 @@ impl LoadingMenu {
         Self {
             statuses: Vec::new(),
             
-            window_size: WindowSize::get(),
+            // window_size: WindowSize::get(),
         }
     }
     pub async fn load(&mut self) {
         macro_rules! add {
             ($fn: ident, $stage: ident) => {{
-                let status = Arc::new(AsyncRwLock::new(LoadingStatus::new(LoadingStage::$stage)));
+                let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::$stage)));
                 self.statuses.push(status.clone());
                 tokio::spawn(Self::$fn(status));
             }}
@@ -41,17 +38,17 @@ impl LoadingMenu {
     }
 
     // loaders
-    async fn load_difficulties(status: Arc<AsyncRwLock<LoadingStatus>>) {
+    async fn load_difficulties(status: Arc<RwLock<LoadingStatus>>) {
         // trace!("loading difficulties");
         // status.lock().await.stage = LoadingStage::Difficulties;
         
         // init diff manager
         init_diffs(Some(status.clone())).await;
 
-        status.write().await.complete = true;
+        status.write().complete = true;
     }
 
-    async fn load_beatmaps(status: Arc<AsyncRwLock<LoadingStatus>>) {
+    async fn load_beatmaps(status: Arc<RwLock<LoadingStatus>>) {
         // trace!("loading beatmaps");
         // status.lock().await.stage = LoadingStage::Beatmaps;
         // set the count and reset the counter
@@ -68,7 +65,7 @@ impl LoadingMenu {
             existing_len = existing_maps.len();
             trace!("loading {existing_len} from the db");
             
-            status.write().await.item_count = existing_len;
+            status.write().item_count = existing_len;
             // load from db
             let mut lock = BEATMAP_MANAGER.write().await;
             lock.ignore_beatmaps = ignored.into_iter().collect();
@@ -81,7 +78,7 @@ impl LoadingMenu {
                 }
 
                 lock.add_beatmap(&meta);
-                status.write().await.items_complete += 1;
+                status.write().items_complete += 1;
             }
             trace!("done beatmap manager init");
             lock.initialized = true;
@@ -102,7 +99,7 @@ impl LoadingMenu {
             let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
 
             {
-                let mut lock = status.write().await;
+                let mut lock = status.write();
                 lock.items_complete = 0;
                 lock.item_count = folders.len();
                 lock.custom_message = "Checking folders...".to_owned();
@@ -114,7 +111,7 @@ impl LoadingMenu {
             // this should probably be delegated to the background
             for f in folders.iter() {
                 manager.check_folder(f, true).await;
-                status.write().await.items_complete += 1;
+                status.write().items_complete += 1;
             }
 
             let nlen = manager.beatmaps.len();
@@ -144,94 +141,95 @@ impl LoadingMenu {
         //     println!("meta took {meta_elapsed:.4}")
         // }
 
-        status.write().await.complete = true;
+        status.write().complete = true;
     }
 
-    async fn init_integrations(status: Arc<AsyncRwLock<LoadingStatus>>) {
+    async fn init_integrations(status: Arc<RwLock<LoadingStatus>>) {
         let settings = Settings::get();
-        status.write().await.item_count = 2;
+        status.write().item_count = 2;
 
         if settings.integrations.lastfm {
             LastFmIntegration::check(&settings).await;
         }
-        status.write().await.items_complete += 1;
+        status.write().items_complete += 1;
 
         if settings.integrations.discord {
             OnlineManager::init_discord().await;
         }
 
-        status.write().await.complete = true;
+        status.write().complete = true;
     }
 
-    async fn init_fonts(status: Arc<AsyncRwLock<LoadingStatus>>) {
-        status.write().await.item_count = 3;
+    async fn init_fonts(status: Arc<RwLock<LoadingStatus>>) {
+        status.write().item_count = 3;
 
         #[cfg(feature="graphics")]
         preload_fonts();
 
-        status.write().await.complete = true;
+        status.write().complete = true;
     }
 }
 
 #[async_trait]
-impl AsyncMenu<Game> for LoadingMenu {
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
+impl AsyncMenu for LoadingMenu {
+    fn get_name(&self) -> &'static str { "loading_menu" }
 
-    async fn update(&mut self, game:&mut Game) {
+    async fn update(&mut self) -> Vec<MenuAction> {
         for status in self.statuses.iter() {
-            let status = status.read().await;
-            if !status.complete { return }
+            let status = status.read();
+            if !status.complete { return Vec::new() }
         }
 
-        // let menu = game.menus.get("main").unwrap().clone();
-
-        // select a map to load bg and intro audio from (TODO! add our own?)
-        // let mut manager = BEATMAP_MANAGER.write().await;
-
-        // if let Some(map) = manager.random_beatmap() {
-        //     manager.set_current_beatmap(game, &map, false, false);
-        // }
-        game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+        // loading complete, move to the main menu
+        vec![MenuAction::SetMenu(Box::new(MainMenu::new().await))]
     }
 
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        let count = self.statuses.len() as f32;
-        let mut y = (self.window_size.y - (STATUS_HEIGHT + STATUS_MARGIN) * count) / 2.0;
+    
+    fn view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
+        row!(
+            Space::new(Fill, Fill),
 
-        for status in self.statuses.iter() {
-            let bounds = Bounds::new(Vector2::with_y(y), Vector2::new(self.window_size.x, STATUS_HEIGHT));
-            y += STATUS_HEIGHT + STATUS_MARGIN;
+            col!(
+                self.statuses.iter().map(|status| {
+                    let status = status.read();
+
+                    let text;
+                    let mut color = Color::BLUE;
+
+                    if let Some(error) = &status.error {
+                        text = "Error: ".to_owned() + error;
+                        color = Color::RED;
+                    } else if status.complete {
+                        text = "Done".to_owned();
+                        color = Color::LIME;
+                    } else if !status.custom_message.is_empty() {
+                        text = status.custom_message.clone();
+                    } else {
+                        text = format!("{}/{}", status.items_complete, status.item_count);
+                    }
+                    
+                    row!(
+                        Text::new(status.stage.name().to_owned() + ": ").color(Color::WHITE),
+                        Text::new(text).color(color).width(Fill);
+                        width = Fill
+                    )
+                }).collect(),
+                width = Fill,
+                height = Fill,
+                spacing = 5.0
+            ),
+
+            Space::new(Fill, Fill);
             
-            
-            let status = status.read().await;
-
-            let mut text = status.stage.name().to_owned() + ": ";
-            let stage_text_len = text.len();
-            let mut status_text_color = Color::BLUE;
-
-            if let Some(error) = &status.error {
-                text += &("Error: ".to_owned() + error);
-                status_text_color = Color::RED;
-            } else if status.complete {
-                text += "Done";
-                status_text_color = Color::LIME;
-            } else if !status.custom_message.is_empty() {
-                text += &status.custom_message;
-            } else {
-                text += &format!("{}/{}", status.items_complete, status.item_count);
-            }
-
-            let mut text = Text::new(Vector2::ZERO, STATUS_HEIGHT * 0.8, text, Color::WHITE, Font::Main);
-            text.set_text_colors(
-                (0..stage_text_len).into_iter().map(|_|Color::WHITE).chain(
-                (stage_text_len..text.text.len()).into_iter().map(|_|status_text_color)
-                ).collect()
-            );
-            text.center_text(&bounds);
-            list.push(text);
-        }
+            width = Fill,
+            height = Fill,
+            align_items = Alignment::Center
+        )
+    }
+    
+    async fn handle_message(&mut self, _message: Message) {
+        // nothing really to do here
     }
 }
 

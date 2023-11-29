@@ -165,7 +165,7 @@ impl CursorManager {
                 CursorMode::Text => (FontAwesome::ICursor, Align::CenterMiddle),
             };
 
-            let mut text = Text::new(self.pos, 32.0, c, self.settings.cursor_color, Font::FontAwesome);
+            let mut text = Text::new(self.pos, 32.0, c, self.settings.cursor_color.color, Font::FontAwesome);
             text.rotation = self.cursor_rotation;
 
             if align == Align::CenterMiddle {

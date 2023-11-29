@@ -1,102 +1,85 @@
 use crate::prelude::*;
 
 pub struct JoinLobbyDialog {
+    num: usize,
     lobby_id: u32,
-    scrollable: ScrollableArea,
+    // scrollable: ScrollableArea,
     should_close: bool,
+
+    password: String,
 }
 impl JoinLobbyDialog {
     pub fn new(lobby_id: u32) -> Self {
-        const WIDTH:f32 = 500.0; 
-        let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
+        // const WIDTH:f32 = 500.0; 
+        // let mut scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::ZERO, ListMode::VerticalList);
 
-        // password
-        scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
+        // // password
+        // scrollable.add_item(Box::new(TextInput::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), "Password", "", Font::Main).with_tag("password")));
 
-        // done and close buttons 
-        {
-            let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
-            button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
-            scrollable.add_item(Box::new(button_scrollable));
-        }
-        scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
+        // // done and close buttons 
+        // {
+        //     let mut button_scrollable = ScrollableArea::new(Vector2::ZERO, Vector2::new(WIDTH, 50.0), ListMode::Grid(GridSettings::new(Vector2::ZERO, HorizontalAlign::Center)));
+        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Done", Font::Main).with_tag("done")));
+        //     button_scrollable.add_item(Box::new(MenuButton::new(Vector2::ZERO, Vector2::new(100.0, 50.0), "Close", Font::Main).with_tag("close")));
+        //     scrollable.add_item(Box::new(button_scrollable));
+        // }
+        // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
 
         Self {
+            num: 0,
             lobby_id,
-            scrollable,
+            // scrollable,
+            password: String::new(),
             should_close: false,
         }
     }
 
-    fn get_value<T: 'static + Clone>(&self, tag: impl ToString) -> T {
-        self.scrollable
-            .get_tagged(tag.to_string())
-            .first()
-            .unwrap()
-            .get_value()
-            .downcast_ref::<T>()
-            .unwrap()
-            .clone()
-    }
 }
 
 #[async_trait]
-impl Dialog<Game> for JoinLobbyDialog {
+impl Dialog for JoinLobbyDialog {
     fn name(&self) -> &'static str { "join_lobby_dialog" }
     fn title(&self) -> &'static str { "Join Lobby" }
+    fn get_num(&self) -> usize { self.num }
+    fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
     async fn force_close(&mut self) { self.should_close = true; }
 
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.scrollable.size()) }
 
-    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut Game) {
-        self.scrollable.on_mouse_move(pos);
-    }
-    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut Game) -> bool {
-        self.scrollable.on_scroll(delta)
-    }
-    async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {
-        if let Some(tagged) = self.scrollable.on_click_tagged(pos, button, *mods) {
-            info!("tagged: {tagged}");
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return }; 
 
-            match &*tagged {
-                "done" => {
-                    let id = self.lobby_id;
-                    let password = self.get_value::<String>("password");
-                    tokio::spawn(async move { OnlineManager::join_lobby(id, password).await; });
-                    self.should_close = true;
-                }
-                "close" => {
-                    self.should_close = true;
-                }
-
-                _ => {}
+        match &*tag {
+            "done" => {
+                let id = self.lobby_id;
+                let password = self.password.clone(); //get_value::<String>("password");
+                tokio::spawn(async move { OnlineManager::join_lobby(id, password).await; });
+                self.should_close = true;
             }
 
-            return true;
+            "close" => self.should_close = true,
+
+            _ => {}
         }
-
-        false
-    }
-    async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.scrollable.on_click_release(pos, button);
-        self.scrollable.get_hover()
     }
 
-    async fn on_text(&mut self, text:&String) -> bool {
-        self.scrollable.on_text(text.clone());
-        self.scrollable.get_selected_index().is_some()
-    }
-    async fn on_key_press(&mut self, key:Key, mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.scrollable.on_key_press(key, *mods)
-    }
-    async fn on_key_release(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut Game) -> bool {
-        self.scrollable.on_key_release(key);
-        self.scrollable.get_selected_index().is_some()
-    }
+    
+    
+    fn view(&self) -> IcedElement {
+        use iced_elements::*;
+        
+        let owner = MessageOwner::new_dialog(self);
+        col!(
+            Text::new("Enter Password:"),
 
-    async fn draw(&mut self, offset:Vector2, list: &mut RenderableCollection) {
-        self.scrollable.draw(offset, list);
+            TextInput::new("Password:", &self.password).on_input(move|t|Message::new(owner, "password", MessageType::Text(t))),
+
+            row!(
+                Button::new(Text::new("Join")).on_press(Message::new_dialog(self, "done", MessageType::Click)),
+                Button::new(Text::new("Cancel")).on_press(Message::new_dialog(self, "close", MessageType::Click));
+                width = Fill
+            );
+
+        )
     }
 }

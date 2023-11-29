@@ -17,6 +17,8 @@ pub struct SliderDrawable {
     pub line_segments: Vec<LineSegment>,
 }
 impl TatakuRenderable for SliderDrawable {
+    fn get_bounds(&self) -> Bounds { Bounds::new(self.slider_data.grid_origin.into(), self.size) }
+
     fn get_blend_mode(&self) -> BlendMode { BlendMode::Slider }
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
 

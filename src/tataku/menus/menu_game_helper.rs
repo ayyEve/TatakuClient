@@ -118,7 +118,7 @@ impl MenuGameHelper {
                 
                 match result {
                     Ok(mut manager) => {
-                        manager.make_menu_background();
+                        manager.set_mode(GameplayMode::Preview);
 
                         if let Some(bounds) = self.fit_to {
                             manager.fit_to_area(bounds).await

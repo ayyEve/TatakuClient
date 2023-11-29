@@ -41,6 +41,8 @@ impl Rectangle {
 
 impl TatakuRenderable for Rectangle {
     fn get_name(&self) -> String { "Rectangle".to_owned() }
+    fn get_bounds(&self) -> Bounds { self.inner }
+
     fn get_scissor(&self) -> Scissor {self.scissor}
     fn set_scissor(&mut self, s:Scissor) {self.scissor = s}
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }

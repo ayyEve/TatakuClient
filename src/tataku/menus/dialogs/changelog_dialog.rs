@@ -12,7 +12,7 @@ pub struct ChangelogDialog {
     items: Vec<String>,
     bounds: Rectangle,
 
-    should_close: bool
+    should_close: bool,
 }
 impl ChangelogDialog {
     pub async fn new() -> Self {
@@ -63,7 +63,7 @@ impl ChangelogDialog {
 }
 
 #[async_trait]
-impl Dialog<Game> for ChangelogDialog {
+impl Dialog for ChangelogDialog {
     fn get_bounds(&self) -> Rectangle { self.bounds }
     fn should_close(&self) -> bool { self.should_close }
     async fn force_close(&mut self) { self.should_close = true; }

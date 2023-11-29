@@ -5,16 +5,16 @@ pub struct MenuStatsInfo {
     pub graph_type: GraphType,
     pub data: Arc<Vec<MenuStatsEntry>>,
 
-    graph: Box<dyn StatsGraph>
+    graph: StatsGraph
 }
 impl MenuStatsInfo {
     pub fn new(display_name: impl ToString, graph_type: GraphType, data: Vec<MenuStatsEntry>) -> Self {
         let data = Arc::new(data);
 
-        let graph:Box<dyn StatsGraph> = match graph_type {
-            GraphType::Pie => Box::new(PieGraph::new(data.clone())),
-            GraphType::Bar => Box::new(BarGraph::new(data.clone())),
-            GraphType::Scatter => Box::new(ScatterGraph::new(data.clone())),
+        let graph = match graph_type {
+            GraphType::Pie => StatsGraph::Pie(Box::new(PieGraph::new(data.clone()))),
+            GraphType::Bar => StatsGraph::Bar(Box::new(BarGraph::new(data.clone()))),
+            GraphType::Scatter => StatsGraph::Scatter(Box::new(ScatterGraph::new(data.clone()))),
         };
 
         Self {
@@ -25,33 +25,33 @@ impl MenuStatsInfo {
         }
     }
 
-    pub fn draw(&self, bounds: &Bounds, list: &mut RenderableCollection) {
-        // display name should be at the top with some margin above and below
-        let display_text = Text::new(bounds.pos, 30.0, self.display_name.clone(), Color::BLACK, Font::Main);
-        // display_text.center_text(bounds);
-        // display_text.current_pos.y = 0.0;
-        list.push(display_text);
-        
-        // ~half the remaining vertical should be for listing the values 
-        let mut current_pos = bounds.pos + Vector2::with_y(30.0 + 5.0);
-        for i in self.data.iter() {
-            if i.show_in_list {
-                let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
-                list.push(Text::new(current_pos, 20.0, text, i.color, Font::Main));
-            }
-            current_pos += Vector2::with_y(20.0 + 5.0);
-        }
+    pub fn view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
 
-        // there should be some margin between the list and the graph
-        current_pos += Vector2::with_y(20.0);
+        col!(
+            // display name should be at the top (TODO: with some margin above and below )
+            Text::new(self.display_name.clone()).size(30.0).color(Color::BLACK).width(Fill),
 
-        // the remaining space should be used for the graph
-        let mut size = bounds.size - current_pos.y_portion();
-        if size.x < size.y { size.y = size.x; } else { size.x = size.y; }
+            // ~half the remaining vertical should be for listing the values 
+            col!(
+                self.data.iter().filter(|i|i.show_in_list).map(|i|{
+                    let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
+                    Text::new(text).size(20.0).color(i.color).width(Fill).into_element()
+                }).collect(),
 
-        let y = bounds.pos.y + bounds.size.y - size.y;
+                width = Fill,
+                spacing = 5.0
+            ),
 
-        self.graph.draw(&Bounds::new(Vector2::new(current_pos.x, y), size), list);
+            // there should be some margin between the list and the graph
+            Space::new(Fill, Fixed(20.0)),
+            
+            // the remaining space should be used for the graph
+            self.graph.view().width(Fill).height(Fill);
+
+            width = Fill,
+            height = Fill
+        )
     }
 }
 

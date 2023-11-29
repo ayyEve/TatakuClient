@@ -104,34 +104,37 @@ pub fn dropdown(input: TokenStream) -> TokenStream {
     let t = "    ";
 
     for variant in entries {
-        to_string += &format!("{t}{t}{t}{t}Self::{} => \"{}\".to_owned(), \n", variant.name, variant.display);
-        from_string += &format!("{t}{t}{t}{t}\"{}\" => Self::{}, \n", variant.display, variant.name);
-        variants += &format!("{t}{t}{t}{t}Self::{},\n", variant.name);
+        to_string += &format!("//{t}{t}{t}{t}Self::{} => \"{}\".to_owned(), \n", variant.name, variant.display);
+        from_string += &format!("//{t}{t}{t}{t}\"{}\" => Self::{}, \n", variant.display, variant.name);
+        variants += &format!("//{t}{t}{t}{t}Self::{},\n", variant.name);
     }
     let variants = variants.trim();
     let to_string = to_string.trim();
     let from_string = from_string.trim();
 
     let gen = format!(r#"
-    impl Dropdownable for {enum_name} {{
-        fn variants() -> Vec<Self> {{
+    impl Dropdownable2 for {enum_name} {{
+        type T = {enum_name};
+        fn variants() -> Vec<Self::T> {{
             vec![
                 {variants}
             ]
         }}
-        fn display_text(&self) -> String {{
-            match self {{
-                {to_string}
-                other => panic!("variant {{:?}} was ignored", other)
-            }}
-        }}
-        fn from_string(string: String) -> Self {{
-            match &*string {{
-                {from_string}
-                other => panic!("variant does not exist for enum {enum_name} and string {{}}", other)
-            }}
-        }}
-    }}"#);
+        // fn display_text(&self) -> String {{
+        //     match self {{
+        //         {to_string}
+        //         other => panic!("variant {{:?}} was ignored", other)
+        //     }}
+        // }}
+        // fn from_string(string: String) -> Self {{
+        //     match &*string {{
+        //         {from_string}
+        //         other => panic!("variant does not exist for enum {enum_name} and string {{}}", other)
+        //     }}
+        // }}
+    }}
+    
+    "#);
 
     if debug {println!("generated: \n{}", gen)}
     

@@ -24,8 +24,8 @@ pub struct TaikoSpinner {
 }
 impl TaikoSpinner {
     pub async fn new(time: f32, end_time: f32, hits_required:u16, settings:Arc<TaikoSettings>, playfield: Arc<TaikoPlayfield>) -> Self {
-        let don_color = settings.don_color;
-        let kat_color = settings.kat_color;
+        let don_color = settings.don_color.color;
+        let kat_color = settings.kat_color.color;
 
         Self {
             time, 

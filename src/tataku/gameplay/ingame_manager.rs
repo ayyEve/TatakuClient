@@ -25,11 +25,17 @@ macro_rules! add_timing {
 }
 
 pub struct IngameManager {
+    actions: Vec<MenuAction>,
+
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
     pub current_mods: Arc<ModManager>,
     pub beatmap_preferences: BeatmapPreferences,
+    
+    pub gameplay_mode: Box<GameplayMode>,
+    gameplay_actions: Vec<GameplayAction>,
+
 
     pub score: IngameScore,
     pub replay: Replay,
@@ -47,7 +53,6 @@ pub struct IngameManager {
 
     pub started: bool,
     pub completed: bool,
-    pub replaying: bool,
     pub failed: bool,
     pub failed_time: f32,
 
@@ -61,10 +66,6 @@ pub struct IngameManager {
     /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
     pause_pending: bool,
     pause_start: Option<i64>,
-
-    /// is this playing in the background of the main menu?
-    pub menu_background: bool,
-    pub multiplayer: bool,
 
     pub end_time: f32,
     pub lead_in_time: f32,
@@ -308,7 +309,7 @@ impl IngameManager {
     }
 
     pub async fn apply_mods(&mut self, mut mods: ModManager) {
-        if self.menu_background {
+        if self.gameplay_mode.is_preview() {
             mods.add_mod(Autoplay);
         }
 
@@ -353,7 +354,7 @@ impl IngameManager {
 
 
         // update ui elements
-        if !self.menu_background {
+        if !self.gameplay_mode.is_preview() {
             let mut ui_elements = std::mem::take(&mut self.ui_elements);
             ui_elements.iter_mut().for_each(|ui|ui.update(self));
             self.ui_elements = ui_elements;
@@ -363,7 +364,7 @@ impl IngameManager {
         let mut ui_editor = std::mem::take(&mut self.ui_editor);
         let mut should_close = false;
         if let Some(ui_editor) = &mut ui_editor {
-            ui_editor.update(&mut ()).await;
+            ui_editor.update().await;
             ui_editor.update_elements(self);
 
             if ui_editor.should_close() {
@@ -416,23 +417,6 @@ impl IngameManager {
 
         let mut pending_frames = Vec::new();
 
-        // read inputs from replay if replaying
-        if self.replaying && !self.current_mods.has_autoplay() {
-
-            // read any frames that need to be read
-            loop {
-                if self.replay_frame as usize >= self.replay.frames.len() { break }
-                
-                let ReplayFrame {time:frame_time, action} = self.replay.frames[self.replay_frame as usize];
-                if frame_time > time { break }
-
-                pending_frames.push((action, frame_time));
-                // gamemode.handle_replay_frame(frame, frame_time, self).await;
-                
-                self.replay_frame += 1;
-            }
-        }
-
         // update hit timings bar
         self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
         
@@ -440,7 +424,7 @@ impl IngameManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        let update_frames = gamemode.update(self, time).await.into_iter().map(|f|(f, time));
+        let update_frames = gamemode.update(self, time).await.into_iter().map(|f|ReplayFrame::new(time, f));
         pending_frames.extend(update_frames);
 
         if self.song.is_stopped() {
@@ -455,7 +439,7 @@ impl IngameManager {
 
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
-        if self.failed && !self.multiplayer {
+        if self.failed && !self.gameplay_mode.is_multi() {
             let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
             if new_rate <= 0.05 {
@@ -484,8 +468,174 @@ impl IngameManager {
             }
         }
 
-        // update our spectator list if we can
+
+        // update according to our gameplay mode
+        match &mut *self.gameplay_mode {
+            // read inputs from replay if replaying
+            GameplayMode::Replaying { 
+                replay, 
+                current_frame 
+            } /* if !self.current_mods.has_autoplay() */ => {
+                // read any frames that need to be read
+                loop {
+                    if *current_frame >= replay.frames.len() { break }
+                    
+                    let frame = replay.frames[*current_frame];
+                    if frame.time > time { break }
+
+                    pending_frames.push(frame);
+                    
+                    *current_frame += 1;
+                }
+            }
+
+            GameplayMode::Spectator { 
+                state, 
+                frames, 
+                
+                replay_frames,
+                current_frame,
+
+                host_id, 
+                // host_username, 
+                good_until,
+                // spectators, 
+                buffered_score_frames ,
+
+                ..
+            } => {
+                // buffer twice as long as we need
+                let buffer_duration = (time + SPECTATOR_BUFFER_OK_DURATION * 2.0).clamp(0.0, self.end_time);
+
+                // try to read new frames from the online manager
+                if let Some(mut online_manager) = OnlineManager::try_get_mut() {
+                    frames.extend(online_manager.get_pending_spec_frames(*host_id));
+                }
+
+                // handle pending frames
+                while let Some(SpectatorFrame { time:frame_time, action }) = frames.pop_front() {
+                    *good_until = good_until.max(frame_time);
+
+                    // debug!("Packet: {action:?}");
+                    match action {
+                        SpectatorAction::Pause => {
+                            trace!("Spec pause");
+                            *state = SpectatorState::Paused;
+                            self.gameplay_actions.push(GameplayAction::Pause);
+                        }
+                        SpectatorAction::UnPause => {
+                            trace!("Spec unpause");
+                            *state = SpectatorState::Watching;
+                            self.gameplay_actions.push(GameplayAction::Resume);
+                        }
+                        SpectatorAction::Buffer => { /*nothing to handle here*/ },
+                        SpectatorAction::SpectatingOther { .. } => {
+                            NotificationManager::add_text_notification("Host speccing someone", 2000.0, Color::BLUE).await;
+                        }
+                        SpectatorAction::ReplayAction { action } => replay_frames.push(ReplayFrame::new(frame_time, action)),
+                        
+                        SpectatorAction::ScoreSync { score } => {
+                            // received score update
+                            trace!("Got score update");
+                            buffered_score_frames.push((frame_time, score));
+                        }
+
+                        SpectatorAction::ChangingMap => {
+                            trace!("Host changing maps");
+                            *state = SpectatorState::MapChanging;
+                            // should return back to the spectator manager menu
+                            // self.pause();
+                        }
+
+                        SpectatorAction::TimeJump { time } => self.gameplay_actions.push(GameplayAction::JumpToTime{time, skip_intro: true}), //self.jump_to_time(time, true),
+
+                        other => warn!("ingame manager told to handle unexpected spec action: {other:?}"),
+                    }
+                }
+
+
+                // handle current state
+                match state {
+                    SpectatorState::Buffering => {
+                        if *good_until >= buffer_duration {
+                            *state = SpectatorState::Watching;
+                            trace!("No longer buffering");
+                            self.gameplay_actions.push(GameplayAction::Resume);
+                        }
+                    }
+
+                    // currently watching someone
+                    SpectatorState::Watching => {
+                        // check for buffered score frames
+                        buffered_score_frames.retain(|(frame_time, score)| {
+                            if time <= *frame_time {
+                                let mut other_score = score.clone();
+                                other_score.hit_timings = self.score.hit_timings.clone();
+                                self.score.score = other_score;
+                                false
+                            } else {
+                                true
+                            }
+                        });
+
+                        if *good_until >= buffer_duration {
+                            loop {
+                                if *current_frame >= replay_frames.len() { break }
+                                
+                                let frame = replay_frames[*current_frame];
+                                if frame.time > time { break }
+
+                                pending_frames.push(frame);
+                                
+                                *current_frame += 1;
+                            }
+
+                        } else {
+                            *state = SpectatorState::Buffering;
+                            trace!("Starting buffer");
+                            self.gameplay_actions.push(GameplayAction::Pause);
+                        }
+                        
+                    }
+
+                    _ => {}
+
+                }
+
+            }
+
+            GameplayMode::Multiplayer { 
+                last_escape_press: _,
+                score_send_timer,
+            } => {
+                if score_send_timer.as_millis() >= SCORE_SEND_TIME {
+                    score_send_timer.elapsed_and_reset();
+                    let score = self.score.score.clone();
+                    tokio::spawn(OnlineManager::lobby_update_score(score));
+                }
+            }
+
+
+            _ => {
+
+            }
+        }
+
+        for a in self.gameplay_actions.take() {
+            match a {
+                GameplayAction::Pause => self.pause(),
+                GameplayAction::Resume => self.start().await,
+                GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
+
+                GameplayAction::AddReplayAction { action, should_save } => {
+                    self.handle_frame(action, true, Some(time), should_save, &mut gamemode).await;
+                }
+            }
+        }
+
+
         if let Some(mut manager) = OnlineManager::try_get_mut() {
+            // update our spectator list if we can
             if let Some(our_list) = manager.spectator_info.our_spectator_list() {
                 if our_list.updated || self.spectator_info.spectators.list.len() != our_list.list.len() {
                     info!("updated ingame spectator list");
@@ -505,8 +655,8 @@ impl IngameManager {
         }
 
         // handle any frames
-        for (frame, time) in pending_frames {
-            self.handle_frame(frame, true, Some(time), &mut gamemode).await;
+        for ReplayFrame { time, action } in pending_frames {
+            self.handle_frame(action, true, Some(time), true, &mut gamemode).await;
         }
 
         // put it back
@@ -536,7 +686,7 @@ impl IngameManager {
 
 
         // dont draw score, combo, etc if this is a menu bg
-        if self.menu_background { return }
+        if self.gameplay_mode.is_preview() { return }
 
 
         // judgement indicators
@@ -579,7 +729,7 @@ impl IngameManager {
 
         // get volume
         let mut vol = self.settings.get_effect_vol();
-        if self.menu_background { vol *= self.settings.background_game_settings.hitsound_volume };
+        if self.gameplay_mode.is_preview() { vol *= self.settings.background_game_settings.hitsound_volume };
 
         self.hitsound_manager.play_sound(hitsounds, vol);
     }
@@ -745,19 +895,20 @@ impl IngameManager {
     }
 
     pub fn should_save_score(&self) -> bool {
-        let should = !(self.replaying || self.current_mods.has_autoplay() || self.ui_changed);
+        let should = !(self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() || self.ui_changed);
         should
     }
 
     // is this game pausable
     pub fn can_pause(&mut self) -> bool {
-        if self.multiplayer { return false; }
-        self.should_pause || !(self.current_mods.has_autoplay() || self.replaying || self.failed)
+        // never allow pausing in multi
+        if self.gameplay_mode.is_multi() { return false; }
+        self.should_pause || !(self.current_mods.has_autoplay() || self.gameplay_mode.is_replay() || self.failed)
     }
 
     #[inline]
     pub fn game_speed(&self) -> f32 {
-        if self.menu_background {
+        if self.gameplay_mode.is_preview() {
             1.0 // TODO: 
         } else {
             self.current_mods.get_speed()
@@ -780,7 +931,7 @@ impl IngameManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
 
-        if self.gamemode.show_cursor() || self.menu_background {
+        if self.gamemode.show_cursor() || self.gameplay_mode.is_preview() {
             CursorManager::set_visible(true)
         } else {
             CursorManager::set_visible(false)
@@ -792,7 +943,7 @@ impl IngameManager {
         //     } else {
         //         CursorManager::set_visible(true);
         //     }
-        // } else if self.replaying || self.current_mods.has_autoplay() {
+        // } else if self.gameplay_mode.is_replay() || self.current_mods.has_autoplay() {
         //     CursorManager::show_system_cursor(true)
         // } else {
         //     CursorManager::set_visible(true);
@@ -814,7 +965,8 @@ impl IngameManager {
         if !self.started {
             self.reset().await;
 
-            if !self.replaying {
+            //TODO: probably want to skip other things as well
+            if !self.gameplay_mode.is_replay() {
                 self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
@@ -831,7 +983,7 @@ impl IngameManager {
                 // }));
             }
 
-            if self.menu_background {
+            if self.gameplay_mode.is_preview() {
                 // dont reset the song, and dont do lead in
                 self.lead_in_time = 0.0;
             } else {
@@ -854,7 +1006,7 @@ impl IngameManager {
 
         } else if self.lead_in_time <= 0.0 {
             // if this is the menu, dont do anything
-            if self.menu_background {return}
+            if self.gameplay_mode.is_preview() { return }
             
             let frame = SpectatorAction::UnPause;
             let time = self.time();
@@ -894,7 +1046,7 @@ impl IngameManager {
         self.judgement_indicators.clear();
         self.restart_key_hold_start = None;
 
-        if self.menu_background {
+        if self.gameplay_mode.is_preview() {
             self.gamemode.apply_mods(self.current_mods.clone()).await;
         } else {
             // reset song
@@ -935,7 +1087,7 @@ impl IngameManager {
 
 
         self.replay_frame = 0;
-        if !self.replaying {
+        if !self.gameplay_mode.is_replay() {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
@@ -956,14 +1108,14 @@ impl IngameManager {
         
     }
     pub fn fail(&mut self) {
-        if self.failed || self.current_mods.has_nofail() || self.current_mods.has_autoplay() || self.menu_background { return }
+        if self.failed || self.current_mods.has_nofail() || self.current_mods.has_autoplay() || self.gameplay_mode.is_preview() { return }
         self.failed = true;
         self.failed_time = self.time();
     }
 
     pub async fn combo_break(&mut self) {
         // play hitsound
-        if self.score.combo >= 20 && !self.menu_background {
+        if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
             let combobreak = Hitsound::new_simple("combobreak");
             // index of 1 because we want to try beatmap sounds
             self.hitsound_manager.play_sound_single(&combobreak, None, self.settings.get_effect_vol());
@@ -990,25 +1142,81 @@ impl IngameManager {
         // undo any cursor override
         CursorManager::set_ripple_override(None);
 
-        // let info = get_gamemode_info(&self.score.playmode).unwrap();
-        // let groups = self.score.stats.into_groups(&info.get_stat_groups());
-        // println!("{groups:#?}")
+        match &mut *self.gameplay_mode {
+            GameplayMode::Spectator {
+                buffered_score_frames,
+                ..
+            } => {
+                // if we have a score frame we havent dealt with yet, its most likely the score frame sent once the map has ended
+                if !buffered_score_frames.is_empty() {
+                    self.score.score = buffered_score_frames.last().cloned().unwrap().1;
+                }
+
+
+                // let mut score_menu = ScoreMenu::new(&manager.score, manager.metadata.clone(), false);
+                // score_menu.dont_close_on_back = true;
+                // self.score_menu = Some(score_menu);
+            }
+            
+            _ => {}
+        }
     }
     
-    pub fn make_menu_background(&mut self) {
-        self.menu_background = true;
 
-        self.lead_in_time = 0.0;
-        self.pending_time_jump = Some(self.time());
-
-        let mut mods = self.current_mods.as_ref().clone();
-        mods.add_mod(Autoplay);
-        self.current_mods = Arc::new(mods);
+    /// using a getter for this since we dont want anything to directly change it
+    pub fn get_mode(&self) -> &GameplayMode {
+        &self.gameplay_mode
     }
+    pub fn set_mode(&mut self, mode: GameplayMode) {
+        match &mode {
+            GameplayMode::Normal => {
+                // dont think there's anything to do for this one, since its the default
+            }
+            
+            GameplayMode::Replaying { replay, .. } => {
+                // load speed from score
+                if let Some(score) = &replay.score_data {
+                    let mods = ModManager {
+                        mods: score.mods(),
+                        speed: score.speed,
+                    };
+        
+                    self.current_mods = Arc::new(mods);
+                    *self.score.mods_mut() = self.current_mods.mods.clone();
+        
+                    self.score.username = score.username.clone()
+                } else {
+                    self.score.username = "Unknown user".to_owned();
+                }
+            }
 
-    pub fn make_multiplayer(&mut self) {
-        self.multiplayer = true;
-        self.score_loader = None;
+            GameplayMode::Preview => {
+                self.lead_in_time = 0.0;
+                self.pending_time_jump = Some(self.time());
+
+                let mut mods = self.current_mods.as_ref().clone();
+                mods.add_mod(Autoplay);
+                self.current_mods = Arc::new(mods);
+            }
+
+            // in a multi match
+            GameplayMode::Multiplayer { .. } => {
+                self.score_loader = None;
+
+            }
+
+            // handling spec
+            GameplayMode::Spectator { host_username, .. } => {
+                self.replay.score_data.as_mut().unwrap().username = host_username.clone();
+            }
+        }
+
+        self.gameplay_mode = Box::new(mode);
+    }
+    
+    pub fn set_replay(&mut self, replay: Replay) {
+        error!("remove IngameManager::set_replay!");
+        self.set_mode(GameplayMode::replay(replay));
     }
 
     pub async fn fit_to_area(&mut self, bounds: Bounds) {
@@ -1019,7 +1227,14 @@ impl IngameManager {
 
 // Input Handlers
 impl IngameManager {
-    async fn handle_frame(&mut self, frame: ReplayAction, force: bool, force_time: Option<f32>, gamemode: &mut Box<dyn GameMode>) {
+    async fn handle_frame(
+        &mut self, 
+        frame: ReplayAction, 
+        force: bool, 
+        force_time: Option<f32>, 
+        should_add: bool,
+        gamemode: &mut Box<dyn GameMode>,
+    ) {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             gamemode.skip_intro(self);
@@ -1027,9 +1242,9 @@ impl IngameManager {
             return;
         }
         
-        let add_frames = !(self.current_mods.has_autoplay() || self.replaying);
+        let add_frames = !(self.current_mods.has_autoplay() || self.gameplay_mode.is_replay());
 
-        if force || add_frames {
+        if force || add_frames{
             match frame {
                 ReplayAction::Press(k) => self.key_counter.key_down(k),
                 ReplayAction::Release(k) => self.key_counter.key_up(k),
@@ -1039,7 +1254,7 @@ impl IngameManager {
             let time = force_time.unwrap_or_else(||self.time());
             gamemode.handle_replay_frame(frame, time, self).await;
 
-            if add_frames {
+            if add_frames && should_add {
                 self.replay.frames.push(ReplayFrame::new(time, frame));
                 self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction{ action: frame }));
             }
@@ -1050,12 +1265,12 @@ impl IngameManager {
         let Some(frame) = frame else { return };
 
         let mut gamemode = std::mem::take(&mut self.gamemode);
-        self.handle_frame(frame, false, None, &mut gamemode).await;
+        self.handle_frame(frame, false, None, true, &mut gamemode).await;
         self.gamemode = gamemode;
     }
 
     pub async fn key_down(&mut self, key:Key, mods: KeyModifiers) {
-        if (self.replaying || self.current_mods.has_autoplay()) && !self.menu_background {
+        if (self.gameplay_mode.is_replay() || self.current_mods.has_autoplay()) && !self.gameplay_mode.is_preview() {
             // check replay-only keys
             if key == Key::Escape {
                 self.started = false;
@@ -1074,11 +1289,20 @@ impl IngameManager {
             // set the failed time to negative, so it triggers the end
             self.failed_time = -1000.0;
         }
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         
 
-        if key == Key::Escape && self.can_pause() {
-            self.should_pause = true;
+        if key == Key::Escape {
+            if self.can_pause() {
+                self.should_pause = true;
+            } else if let GameplayMode::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_mode {
+                if last_escape_press.elapsed_and_reset() < 1_000.0 {
+                    self.actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::QuitMulti));
+                    return;
+                } else {
+                    NotificationManager::add_text_notification("Press escape again to quit the lobby", 3_000.0, Color::BLUE).await;
+                }
+            }
         }
 
 
@@ -1095,10 +1319,8 @@ impl IngameManager {
             self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
             self.ui_changed = true;
 
-            if !self.replaying {
-                // start autoplay
-                self.replaying = true;
-
+            // start autoplay
+            if !self.current_mods.has_autoplay() {
                 let mut new_mods = self.current_mods.as_ref().clone();
                 new_mods.add_mod(Autoplay);
                 self.current_mods = Arc::new(new_mods);
@@ -1132,7 +1354,7 @@ impl IngameManager {
         self.handle_input(frame).await;
     }
     pub async fn key_up(&mut self, key:Key) {
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         
         // check map restart key
         if key == self.common_game_settings.map_restart_key {
@@ -1144,7 +1366,7 @@ impl IngameManager {
         self.handle_input(frame).await;
     }
     pub async fn on_text(&mut self, text:&String, mods: &KeyModifiers) {
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.on_text(text, mods).await;
         self.handle_input(frame).await;
     }
@@ -1155,7 +1377,7 @@ impl IngameManager {
             ui_editor.on_mouse_move(pos, &mut ()).await;
         }
 
-        // if self.failed && !self.multiplayer { return }
+        // !self.should_handle_input() { return }
 
         let frame = self.gamemode.mouse_move(pos).await;
         self.handle_input(frame).await;
@@ -1166,7 +1388,7 @@ impl IngameManager {
             return
         }
 
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.mouse_down(btn).await;
         self.handle_input(frame).await;
     }
@@ -1176,7 +1398,7 @@ impl IngameManager {
             return
         }
 
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.mouse_up(btn).await;
         self.handle_input(frame).await;
     }
@@ -1185,24 +1407,24 @@ impl IngameManager {
             ui_editor.on_mouse_scroll(delta, &mut ()).await;
         } 
 
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.mouse_scroll(delta).await;
         self.handle_input(frame).await;
     }
 
 
     pub async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) {
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.controller_press(c, btn).await;
         self.handle_input(frame).await;
     }
     pub async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) {
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.controller_release(c, btn).await;
         self.handle_input(frame).await;
     }
     pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) {
-        if self.failed && !self.multiplayer { return }
+        if self.should_skip_input() { return }
         let frame = self.gamemode.controller_axis(c, axis_data).await;
         self.handle_input(frame).await;
     }
@@ -1238,25 +1460,10 @@ impl IngameManager {
 
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl IngameManager {
-    pub fn set_replay(&mut self, replay: Replay) {
-        self.replaying = true;
-        self.replay = replay;
-        
-        // load speed from score
-        if let Some(score) = &self.replay.score_data {
-            let mods = ModManager {
-                mods: score.mods(),
-                speed: score.speed,
-            };
-
-            self.current_mods = Arc::new(mods);
-            *self.score.mods_mut() = self.current_mods.mods.clone();
-
-            self.score.username = score.username.clone()
-
-        } else {
-            self.score.username = "User".to_owned();
-        }
+    fn should_skip_input(&self) -> bool {
+        // never skip input for multi, because you can keep playing if you failed
+        if self.gameplay_mode.is_multi() { return false }
+        self.failed || self.gameplay_mode.skip_input()
     }
     
     pub async fn increment_offset(&mut self, delta:f32) {
@@ -1307,11 +1514,11 @@ impl IngameManager {
 // Spectator Stuff
 impl IngameManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
-        if self.menu_background || self.replaying { return }
+        if !self.gameplay_mode.should_send_spec_frames() { return }
         OnlineManager::send_spec_frames(vec![frame], false)
     }
     pub fn outgoing_spectator_frame_force(&mut self, frame: SpectatorFrame) {
-        if self.menu_background || self.replaying { return }
+        if !self.gameplay_mode.should_send_spec_frames() { return }
         OnlineManager::send_spec_frames(vec![frame], true);
     }
 }
@@ -1320,9 +1527,12 @@ impl IngameManager {
 impl Default for IngameManager {
     fn default() -> Self {
         Self { 
+            actions: Vec::new(),
             song: AudioManager::empty_stream(),
             judgement_indicators: Vec::new(),
             hitsound_manager: HitsoundManager::new(String::new()),
+            gameplay_mode: Box::new(GameplayMode::Normal),
+            gameplay_actions: Vec::new(),
 
             failed: false,
             failed_time: 0.0,
@@ -1336,9 +1546,6 @@ impl Default for IngameManager {
             replay: Default::default(),
             started: Default::default(),
             completed: Default::default(),
-            replaying: Default::default(),
-            menu_background: Default::default(),
-            multiplayer: false,
             end_time: Default::default(),
             lead_in_time: Default::default(),
             lead_in_timer: Instant::now(),
@@ -1394,4 +1601,157 @@ pub struct IngameSpectatorInfo {
 
     /// who is currently spectating us?
     pub spectators: SpectatorList
+}
+
+
+/// What gameplay method should we use for this gameplay manager?
+#[derive(Debug, Default)]
+pub enum GameplayMode {
+    /// Just regular gameplay
+    #[default]
+    Normal,
+
+    /// This manager is handling gameplay preview
+    Preview,
+
+    /// This manager is watching a replay
+    Replaying {
+        /// What replay are we watching?
+        replay: Replay,
+
+        /// What frame index are we at?
+        current_frame: usize,
+    },
+
+    /// We're handling spectating someone
+    Spectator {
+        /// What is the current spec state
+        state: SpectatorState,
+        /// List of buffered spectator frames
+        frames: VecDeque<SpectatorFrame>,
+
+        host_id: u32,
+        host_username: String,
+
+        /// list of buffered replay frames
+        replay_frames: Vec<ReplayFrame>,
+        /// what replay frame are we on
+        current_frame: usize,
+        
+        /// Up to what time do we have data for?
+        /// 
+        /// ie, up to what time we can show gameplay
+        good_until: f32,
+        
+        /// List of (id,username) for other spectators
+        spectators: HashMap<u32, String>,
+
+        /// List of score frames to help sync the host score with our score
+        /// 
+        /// TODO: ideally this wouldnt be necessary though
+        buffered_score_frames: Vec<(f32, Score)>,
+    },
+
+    /// The player is in a multiplayer match
+    Multiplayer {
+        /// when was escape pressed last
+        last_escape_press: Instant,
+        score_send_timer: Instant,
+    },
+}
+impl GameplayMode {
+    // new fns
+    pub fn normal() -> Self {
+        Self::Normal
+    }
+    pub fn replay(replay: Replay) -> Self {
+        Self::Replaying { 
+            replay, 
+            current_frame: 0,
+        }
+    }
+    pub fn spectator(
+        host_id: u32,
+        host_username: String,
+
+        pending_frames: VecDeque<SpectatorFrame>,
+        spectators: HashMap<u32, String>,
+    ) -> Self {
+        Self::Spectator { 
+            state: SpectatorState::Watching,
+            frames: pending_frames,
+            replay_frames: Vec::new(),
+            current_frame: 0,
+            good_until: 0.0,
+            
+            host_id,
+            host_username,
+            
+            spectators,
+            buffered_score_frames: Vec::new(),
+        }
+    }
+
+    pub fn multi() -> Self {
+        Self::Multiplayer { 
+            last_escape_press: Instant::now(), 
+            score_send_timer: Instant::now() 
+        }
+    }
+
+    // convenience fns
+    pub fn is_preview(&self) -> bool { if let &Self::Preview = self { true } else { false } }
+    pub fn is_multi(&self) -> bool { if let &Self::Multiplayer {..} = self { true } else { false } }
+    pub fn is_replay(&self) -> bool { if let &Self::Replaying {..} = self { true } else { false } }
+
+    fn should_load_scores(&self) -> bool {
+        match self {
+            Self::Normal | Self::Spectator {..} | Self::Replaying {..} => true,
+            Self::Multiplayer {..} | Self::Preview {..} => false,
+        }
+    }
+
+    fn should_send_spec_frames(&self) -> bool {
+        match self {
+            // send spec frames for normal gameplay and multi, not for anything else
+            Self::Normal | Self::Multiplayer {..} => true,
+            Self::Replaying {..} | Self::Spectator {..} | Self::Preview {..} => false,
+        }
+    }
+
+    fn skip_input(&self) -> bool {
+        match self {
+            Self::Replaying { .. } | Self::Preview { .. } | Self::Spectator { .. } => true,
+            _ => false,
+        }
+    }
+}
+
+
+
+pub enum GameplayAction {
+    /// Pause the game
+    Pause,
+
+    /// Resume the game
+    Resume,
+
+    /// Jump to a certain time
+    JumpToTime {
+        time: f32,
+        skip_intro: bool,
+    },
+
+    /// Add a replay action
+    AddReplayAction {
+        /// Action to add
+        action: ReplayAction,
+
+        /// Should this action be saved to the replay?
+        /// 
+        /// Helpful for spammy actions to keep filesize low (ie cursor position)
+        should_save: bool,
+    },
+
+
 }

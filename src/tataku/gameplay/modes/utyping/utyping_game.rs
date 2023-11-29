@@ -142,10 +142,10 @@ impl GameMode for UTypingGame {
     }
 
     async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
-        if !manager.replaying {
-            manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
-            manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
-        }
+        // if !manager.replaying {
+        //     manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
+        //     manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
+        // }
 
         let input_char;
         // utyping uses chars for input, so we encode it in the mouse pos

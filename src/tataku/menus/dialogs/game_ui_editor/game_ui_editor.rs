@@ -68,18 +68,17 @@ impl GameUIEditorDialog {
         }
         None
     }
-}
 
-#[async_trait]
-impl Dialog<()> for GameUIEditorDialog {
-    fn should_close(&self) -> bool { self.should_close }
-    fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+
+    pub fn should_close(&self) -> bool { self.should_close }
+    pub fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
+
+    pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
     }
 
-    async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut ()) {
+    pub async fn on_mouse_move(&mut self, pos:Vector2, _g:&mut ()) {
         self.mouse_pos = pos;
         self.sidebar.on_mouse_move(self.mouse_pos);
 
@@ -92,7 +91,7 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn on_mouse_down(&mut self, _pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut ()) -> bool {
+    pub async fn on_mouse_down(&mut self, _pos:Vector2, button:MouseButton, mods:&KeyModifiers, _g:&mut ()) -> bool {
         let pos = self.mouse_pos;
 
         if !self.sidebar.on_click(pos, button, *mods) {
@@ -107,7 +106,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    pub async fn on_mouse_up(&mut self, _pos:Vector2, _button:MouseButton, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         // let pos = self.mouse_pos;
 
         if let Some((i, _, _)) = self.mouse_down {
@@ -120,7 +119,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut ()) -> bool {
+    pub async fn on_mouse_scroll(&mut self, delta:f32, _g:&mut ()) -> bool {
 
         if PAIN {
             let delta = delta / 5.0;
@@ -144,7 +143,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+    pub async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
         if key == Key::V {
             if self.mouse_down.is_none() {
                 if let Some((_, ele)) = self.find_ele_under_mouse() {
@@ -171,7 +170,7 @@ impl Dialog<()> for GameUIEditorDialog {
         true
     }
 
-    async fn update(&mut self, _g:&mut ()) {
+    pub async fn update(&mut self) {
         self.sidebar.update();
 
         if let Some(UIElementEvent(name, action)) = self.event_receiver.exploded() {
@@ -192,7 +191,7 @@ impl Dialog<()> for GameUIEditorDialog {
         }
     }
 
-    async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+    pub async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
         self.sidebar.draw(offset, list);
         list.push(Rectangle::new(
             self.sidebar.get_pos() + offset,
@@ -222,7 +221,13 @@ impl Dialog<()> for GameUIEditorDialog {
         }
         
     }
+
+
 }
+
+// #[async_trait]
+// impl Dialog for GameUIEditorDialog {
+// }
 
 async fn reset_element(ele: &mut UIElement) {
     ele.pos_offset = ele.default_pos;

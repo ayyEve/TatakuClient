@@ -2,16 +2,23 @@ use crate::prelude::*;
 use crate::REPLAY_EXPORTS_DIR;
 use chrono::{ NaiveDateTime, Local };
 
-const MENU_ITEM_COUNT:usize = 2;
-const TITLE_STRING_Y:f32 = 20.0;
-const TITLE_STRING_FONT_SIZE:f32 = 30.0;
+// const MENU_ITEM_COUNT:usize = 2;
+// const TITLE_STRING_Y:f32 = 20.0;
+// const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 
 pub struct ScoreMenu {
+    actions: Vec<MenuAction>,
+    key_handler: KeyPressHandlerGroup<ScoreMenuKeys>,
+
     score: IngameScore,
+    beatmap: Arc<BeatmapMeta>,
     pub replay: Option<Replay>,
 
-    beatmap: Arc<BeatmapMeta>,
-    buttons: Vec<MenuButton>,
+    menu_type: Box<ScoreMenuType>,
+
+
+    /// can the user retry?
+    allow_retry: bool,
 
     // cached
     score_mods: String,
@@ -19,24 +26,29 @@ pub struct ScoreMenu {
     hit_counts: Vec<(String, u32, Color)>,
     stats: Vec<MenuStatsInfo>,
 
-    pub dont_do_menu: bool,
-    pub should_close: bool,
+    // pub dont_close_on_back: bool,
+    // pub should_close: bool,
 
+    /// what stat is selected?
     selected_stat: usize,
-    selected_index: usize,
-    window_size: Arc<WindowSize>,
 
+
+
+
+    // score submit stuff
     pub score_submit: Option<Arc<ScoreSubmitHelper>>,
     score_submit_response: Option<SubmitResponse>,
 
-    pub is_lobby: bool,
-    lobby_helper: CurrentLobbyDataHelper,
-    lobby_scrollable: ScrollableArea, 
-    close_sender: Option<AsyncSender<()>>
+
+    // lobby stuff
+    // /// is this score menu being shown in a lobby?
+    // is_lobby: bool,
+    // lobby_helper: CurrentLobbyDataHelper,
+    // lobby_items: Vec<LeaderboardComponent>,
+    // close_sender: Option<AsyncSender<()>>,
 }
 impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
-        let window_size = WindowSize::get();
         let hit_error = score.hit_error();
 
         let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
@@ -59,24 +71,6 @@ impl ScoreMenu {
         let mut score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
         if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
 
-        let mut buttons = Vec::new();
-
-        let mut back_button = MenuButton::back_button(window_size.0, Font::Main);
-        back_button.set_tag("back");
-
-        let mut replay_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0), back_button.size(), "Replay", Font::Main);
-        replay_button.set_tag("replay");
-        
-        if allow_retry {
-            let mut retry_button = MenuButton::new(back_button.get_pos() - Vector2::new(0.0, back_button.size().y+5.0)*2.0, back_button.size(), "Retry", Font::Main);
-            retry_button.set_tag("retry");
-            buttons.push(retry_button);
-        }
-
-        buttons.push(replay_button);
-        buttons.push(back_button);
-
-
         let mut stats = Vec::new();
         if let Some(gamemode_info) = get_gamemode_info(&score.playmode) {
             let mut groups = gamemode_info.get_stat_groups();
@@ -87,72 +81,80 @@ impl ScoreMenu {
             stats.extend(gamemode_info.stats_from_groups(&data));
         }
 
-        let ws = window_size.0;
         ScoreMenu {
+            actions: Vec::new(),
+            key_handler: KeyPressHandlerGroup::new(),
+            menu_type: Box::new(ScoreMenuType::Normal),
+                
             score: score.clone(),
             score_mods,
             replay: None,
             beatmap,
             hit_error,
-            // graph,
-            buttons,
 
-            dont_do_menu: false,
-            should_close: false,
+            // dont_close_on_back: false,
+            // should_close: false,
+            allow_retry,
 
-            selected_index: 99,
             hit_counts,
-            window_size,
             score_submit: None,
             score_submit_response: None,
 
             selected_stat: 0,
             stats,
 
-            is_lobby: false,
-            lobby_helper: CurrentLobbyDataHelper::new(),
-            lobby_scrollable: ScrollableArea::new(ws - Vector2::new(250.0, ws.y/2.0), Vector2::new(200.0, ws.y/2.0), ListMode::VerticalList),
-            close_sender: None,
+            // is_lobby: false,
+            // lobby_helper: CurrentLobbyDataHelper::new(),
+            // lobby_items: Vec::new(),
+            // close_sender: None,
         }
     }
 
-    async fn close(&mut self, game: &mut Game) {
-        if self.dont_do_menu {
-            self.should_close = true;
-            return;
-        }
+    async fn close(&mut self) {
+        self.actions.push(MenuAction::PreviousMenu(self.get_name()));
 
-        game.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await)));
+        // let menu: Box<dyn AsyncMenu>;
+        // match &*self.menu_type {
+        //     ScoreMenuType::Normal => menu = Box::new(BeatmapSelectMenu::new().await),
+        //     ScoreMenuType::Multiplayer { .. } => menu = Box::new(LobbyMenu::new().await),
+        //     ScoreMenuType::Spectator { .. } => menu = Box::new(SpectatorMenu::new()),
+        // }
+        // self.actions.push(MenuAction::SetMenu(menu));
+
+        // if self.dont_close_on_back {
+        //     self.should_close = true;
+        //     return;
+        // }
     }
 
-    async fn replay(&mut self, game: &mut Game) {
+    async fn replay(&mut self) {
         if let Some(replay) = self.replay.clone() {
-            self.do_replay(game, replay).await;
+            self.do_replay(replay).await;
         } else if let Some(replay) = self.score.get_replay().await {
-            self.do_replay(game, replay).await;
+            self.do_replay(replay).await;
         } else {
             warn!("no replay")
         }
     }
 
-    async fn do_replay(&mut self, game: &mut Game, mut replay: Replay) {
-        match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-            Ok(mut manager) => {
-                if replay.score_data.is_none() {
-                    replay.score_data = Some(self.score.score.clone());
-                }
-                manager.set_replay(replay);
-                game.queue_state_change(GameState::Ingame(Box::new(manager)));
-            },
-            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+    async fn do_replay(&mut self, mut replay: Replay) {
+        // make sure the replay has score data
+        // i dont think it should ever not, but just in case
+        if replay.score_data.is_none() {
+            replay.score_data = Some(self.score.score.clone());
         }
+
+        self.actions.push(MenuAction::WatchReplay(Box::new(replay)));
+        // match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
+        //     Ok(mut manager) => {
+        //         manager.set_replay(replay);
+        //     }
+        //     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+        // }
     }
 
-    async fn retry(&mut self, game: &mut Game) {
-        match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
-            Ok(manager) => game.queue_state_change(GameState::Ingame(Box::new(manager))),
-            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
-        }
+    async fn retry(&mut self) {
+        self.actions.push(MenuAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
     }
     
     async fn change_score(&mut self, score: IngameScore) {
@@ -191,24 +193,37 @@ impl ScoreMenu {
         self.score = score;
     }
 
-    pub fn make_lobby(&mut self, close_sender: AsyncSender<()>) {
-        self.buttons.remove(0);
-        self.is_lobby = true;
-        self.dont_do_menu = true;
-        self.close_sender = Some(close_sender);
+    pub fn make_lobby(&mut self) {
+        // self.is_lobby = true;
+        // self.dont_close_on_back = true;
+        // self.close_sender = Some(close_sender);
+        self.menu_type = Box::new(ScoreMenuType::Multiplayer { 
+            lobby_helper: CurrentLobbyDataHelper::new(),
+            lobby_items: Vec::new(),
+        });
 
-        if let Some(lobby) = &**self.lobby_helper {
-            self.lobby_scrollable.clear();
-            let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
-            scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
-
-            for (user_id, score) in scores {
-                info!("added score");
-                self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
-            }
-        }
+        self.update_lobby();
     }
+    fn update_lobby(&mut self) {
+        let ScoreMenuType::Multiplayer { 
+            lobby_helper, 
+            lobby_items 
+        } = &mut *self.menu_type else { return };
 
+        let Some(lobby) = lobby_helper.as_ref() else { return };
+
+        lobby_items.clear();
+        let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
+        scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
+
+        for (n, (user_id, score)) in scores.iter().enumerate() {
+            let score = IngameScore::new((*score).clone(), user_id == &&lobby.our_user_id, false);
+            lobby_items.push(LeaderboardComponent::new(n, score));
+            // self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new()))
+        }
+        
+    }
+  
     async fn save_replay(&mut self) {
         let Some(replay) = &self.replay else { 
             NotificationManager::add_text_notification("There is no replay to save!", 5_000.0, Color::RED).await;
@@ -249,84 +264,40 @@ impl ScoreMenu {
             Err(e) => NotificationManager::add_error_notification("Error saving replay", e).await,
         };
     }
-}
 
-#[async_trait]
-impl AsyncMenu<Game> for ScoreMenu {
-    async fn update(&mut self, _game:&mut Game) {
-        if self.score_submit_response.is_none() {
-            if let Some(t) = &self.score_submit {
-                if let Some(r) = t.response.read().await.as_ref() {
-                    self.score_submit_response = Some(r.clone());
-                }
+
+
+    fn score_lines(&self) -> Vec<IcedElement> {
+        use crate::prelude::iced_elements::*;
+
+        let mut lines = Vec::with_capacity(20);
+        let font_size = 30.0;
+
+        macro_rules! add {
+            ($s: expr, $color: expr) => {
+                lines.push(
+                    Text::new($s)
+                        .color($color)
+                        .size(font_size)
+                        .width(Fill)
+                        .into_element()
+                )
+            };
+
+            ($s: expr) => {
+                lines.push(Space::new(Fill, Fixed($s)).into_element());
             }
         }
 
-        if self.is_lobby {
-            // update lobby scores
-            if self.lobby_helper.update() {
-                if let Some(lobby) = &**self.lobby_helper {
-                    self.lobby_scrollable.clear();
-                    let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
-                    scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
-
-                    for (user_id, score) in scores {
-                        self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new(IngameScore::new(score.clone(), user_id == &lobby.our_user_id, false))))
-                    }
-                }
-                self.lobby_scrollable.update();
-            }
-
-            if self.should_close {
-                if let Some(sender) = &self.close_sender {
-                    sender.try_send(()).unwrap()
-                }
-            }
-        }
-    }
-
-    async fn draw(&mut self, list: &mut RenderableCollection) {
-        // draw background so score info is readable
-        list.push(visibility_bg(
-            Vector2::ONE * 5.0, 
-            Vector2::new(self.window_size.x * 2.0/3.0, self.window_size.y - 5.0)
-        ));
-        
-        // draw beatmap title string
-        list.push(Text::new(
-            Vector2::new(10.0, TITLE_STRING_Y),
-            TITLE_STRING_FONT_SIZE,
-            format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed),
-            Color::BLACK,
-            Font::Main
-        ));
-
-        let mut current_pos = Vector2::new(25.0, 80.0);
-        let size = Vector2::new(0.0, 35.0);
-
-        // draw score info
-        list.push(Text::new(
-            current_pos,
-            30.0,
-            format!("Score: {}", format_number(self.score.score.score)),
-            Color::BLACK,
-            Font::Main
-        ));
-        current_pos += size;
+        add!(format!("Score: {}", format_number(self.score.score.score)), Color::BLACK);
 
         // draw hit counts
         for (str, count, color) in self.hit_counts.iter() {
-            list.push(Text::new(
-                current_pos,
-                30.0,
-                format!("{str}: {}", format_number(*count)),
-                *color,
-                Font::Main
-            ));
-            current_pos += size;
+            add!(format!("{str}: {}", format_number(*count)), *color);
         }
 
-        current_pos += size / 2.0;
+        add!(font_size / 2.0);
+
         for str in [
             format!("Combo: {}x, {:.2}%", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0),
             String::new(),
@@ -339,33 +310,21 @@ impl AsyncMenu<Game> for ScoreMenu {
         ] {
             if !str.is_empty() {
                 if !str.contains("NaN") {
-                    list.push(Text::new(
-                        current_pos,
-                        30.0,
-                        str,
-                        Color::BLACK,
-                        Font::Main
-                    ));
+                    add!(str, Color::BLACK);
+                } else {
+                    add!(font_size);
                 }
-
-                current_pos += size;
             } else {
-                current_pos += size / 2.0;
+                add!(font_size / 2.0);
             }
         }
 
         if let Some(sub) = &self.score_submit_response {
-            current_pos += size / 2.0;
+            add!(font_size / 2.0);
 
             match sub {
                 SubmitResponse::NotSubmitted(_, str) => {
-                    list.push(Text::new(
-                        current_pos,
-                        30.0,
-                        format!("Score not submitted: {str}"),
-                        Color::BLACK,
-                        Font::Main
-                    ));
+                    add!(format!("Score not submitted: {str}"), Color::BLACK);
                 }
 
                 SubmitResponse::Submitted { score_id:_, placing, performance_rating } => {
@@ -373,147 +332,216 @@ impl AsyncMenu<Game> for ScoreMenu {
                         format!("Map Ranking: #{}", format_number(*placing)),
                         format!("Performance: {}pr", format_float(*performance_rating, 2)),
                     ] {
-                        list.push(Text::new(
-                            current_pos,
-                            30.0,
-                            str,
-                            Color::BLACK,
-                            Font::Main
-                        ));
-                        current_pos += size;
+                        add!(str, Color::BLACK);
+                        add!(font_size);
                     }
                 }
             }
         }
 
+        lines
+    }
 
-        // draw buttons
-        for b in self.buttons.iter_mut() {
-            b.draw(Vector2::ZERO, list)
-        }
+    fn get_stats_view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
 
         // draw stats graphs
         if let Some(stat) = self.stats.get(self.selected_stat) {
-            const PAD:f32 = 20.0;
-            let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
-            let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
+            // const PAD:f32 = 20.0;
+            // let pos = Vector2::new(self.window_size.x / 2.0, TITLE_STRING_Y + TITLE_STRING_FONT_SIZE + PAD);
+            // let size = Vector2::new(self.window_size.x * 2.0/3.0 - pos.x, self.window_size.y - (pos.y + PAD * 2.0));
 
-            let bounds = Bounds::new(pos, size);
-            stat.draw(&bounds, list)
-        }
-    
-        
-        // draw other player's scores
-        if self.is_lobby {
-            self.lobby_scrollable.draw(Vector2::ZERO, list);
+            // let bounds = Bounds::new(pos, size);
+            // stat.draw(&bounds, list)
+            stat.view()
+        } else {
+            Column::new().width(Fill).height(Fill).into_element()
         }
     }
 
-    async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
-        for b in self.buttons.iter_mut() {
-            if b.on_click(pos, button, mods) {
-                match &*b.get_tag() {
-                    "back" => self.close(game).await,
-                    "replay" => self.replay(game).await,
-                    "retry" => self.retry(game).await,
-                    _ => {}
-                }
+    fn get_buttons(&self) -> Vec<IcedElement> {
+        use iced::widget::Text;
+        use iced::widget::Button;
+        let mut buttons = Vec::with_capacity(2);
+        
+        // retry button
+        if self.allow_retry {
+            buttons.push(
+                Button::new(Text::new("Retry"))
+                    .on_press(Message::menu_click(self, "retry"))
+                    .into_element()
+            );
+        }
 
-                break;
+        // replay button
+        if !self.menu_type.is_lobby() {
+            buttons.push(
+                Button::new(Text::new("Replay"))
+                    .on_press(Message::menu_click(self, "replay"))
+                    .into_element()
+            );
+        }
+
+        buttons.push(
+            Button::new(Text::new("Back"))
+                .on_press(Message::new_menu(self, "back", MessageType::Click))
+                .into_element()
+        );
+
+        buttons
+    }
+}
+
+#[async_trait]
+impl AsyncMenu for ScoreMenu {
+    async fn update(&mut self) -> Vec<MenuAction> {
+        if self.score_submit_response.is_none() {
+            if let Some(t) = &self.score_submit {
+                if let Some(r) = t.response.read().await.as_ref() {
+                    self.score_submit_response = Some(r.clone());
+                }
             }
         }
+
+        // update lobby scores
+        self.update_lobby();
         
-        #[cfg(feature="graphics")]
-        if let Some(score_hash) = self.lobby_scrollable.on_click_tagged(pos, button, mods) {
-            let Some(lobby) = &**self.lobby_helper else { return };
-            let Some(score) = lobby.player_scores.values().find(|s|s.hash() == score_hash) else { return };
-            self.change_score(IngameScore::new(score.clone(), false, false)).await;
-        }
-    }
+        while let Some(event) = self.key_handler.check_events() {
+            match event {
+                KeyEvent::Press(ScoreMenuKeys::Back) => self.close().await,
+                KeyEvent::Press(ScoreMenuKeys::SaveReplay) => self.save_replay().await,
 
-    async fn on_mouse_move(&mut self, pos:Vector2, _game:&mut Game) {
-        self.lobby_scrollable.on_mouse_move(pos);
-        for b in self.buttons.iter_mut() {
-            b.on_mouse_move(pos);
-        }
-    }
-
-    async fn on_key_press(&mut self, key:Key, game: &mut Game, _mods:KeyModifiers) {
-        if key == Key::Escape {
-            self.close(game).await
-        }
-
-        if key == Key::F2 {
-            self.save_replay().await;
-        }
-    
-        if key == Key::Left && self.stats.len() > 0 {
-            if self.selected_stat == 0 { self.selected_stat = self.stats.len() - 1 }
-            else { self.selected_stat -= 1 }
-        }
-
-        if key == Key::Right && self.stats.len() > 0 {
-            self.selected_stat += 1;
-            if self.selected_stat >= self.stats.len() { self.selected_stat = 0 }
-        }
-    }
-
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.window_size = window_size;
-    }
-    
-    async fn controller_down(&mut self, game:&mut Game, _controller: &GamepadInfo, button: ControllerButton) -> bool {
-
-        let mut changed = false;
-
-        match button {
-            ControllerButton::DPadDown => {
-                self.selected_index += 1;
-                if self.selected_index >= MENU_ITEM_COUNT {
-                    self.selected_index = 0;
-                }
-
-                changed = true;
+                KeyEvent::Press(ScoreMenuKeys::PrevStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_sub_1(self.stats.len()),
+                KeyEvent::Press(ScoreMenuKeys::NextStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_add_1(self.stats.len()),
+                _ => {}
             }
+        }
 
-            ControllerButton::DPadUp => {
-                if self.selected_index == 0 {
-                    self.selected_index = 3;
-                } else if self.selected_index >= MENU_ITEM_COUNT { // original value is 99
-                    self.selected_index = 0;
+        self.actions.take()
+    }
+
+    
+    fn view(&self) -> IcedElement {
+        use crate::prelude::iced_elements::*;
+
+        // score info
+        let beatmap_label = format!("{} ({}) (x{:.2})", self.beatmap.version_string(), gamemode_display_name(&self.score.playmode), self.score.speed);
+        col!(
+            // beatmap label
+            Text::new(beatmap_label).width(Fill),
+            
+            // data
+            row!(
+                // score info
+                row!(
+                    // score values
+                    col!(
+                        self.score_lines(),
+                        width = FillPortion(2),
+                        height = Fill
+                    ),
+
+                    // stats
+                    self.get_stats_view();
+
+                    width = FillPortion(2),
+                    height = Fill
+                ),
+
+                // multi scores
+                if let ScoreMenuType::Multiplayer {lobby_items, ..} = &*self.menu_type {
+                    col!(
+                        lobby_items.iter().map(|l|l.view(self.get_name())).collect(),
+                        width = FillPortion(1),
+                        height = Fill,
+                        align_items = Alignment::End
+                    )
                 } else {
-                    self.selected_index -= 1;
+                    EmptyElement.into_element()
+                };
+
+                width = Fill,
+                height = Fill
+            ),
+
+            // buttons
+            col!(
+                self.get_buttons(),
+                width = Fill,
+                height = Shrink
+            ),
+
+            // key event helper
+            self.key_handler.handler();
+
+            width = Fill,
+            height = Fill
+        )
+    }
+    
+    async fn handle_message(&mut self, message: Message) {
+        let Some(tag) = message.tag.as_string() else { return };
+        match &*tag {
+            "retry" => self.retry().await,
+            "replay" => self.replay().await,
+            "back" => self.close().await,
+            "score" => if let MessageType::Number(num) = message.message_type {
+                if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {
+                    if let Some(score) = lobby_items.get(num) {
+                        self.change_score(score.score.clone()).await;
+                    }
                 }
-
-                changed = true;
             }
-
-            ControllerButton::South => {
-                match self.selected_index {
-                    // replay
-                    0 => self.replay(game).await,
-
-                    // back
-                    1 => self.close(game).await,
-                    
-                    // retry
-                    2 => self.retry(game).await,
-                    
-                    _ => {}
-                }
-            }
-
             _ => {}
         }
-    
-        if changed {
-            for (n, button) in self.buttons.iter_mut().enumerate() {
-                button.set_selected(self.selected_index == n);
-            }
-        }
-
-
-        true
     }
 
+    // async fn on_click(&mut self, pos:Vector2, button:MouseButton, mods:KeyModifiers, game:&mut Game) {
+    //     #[cfg(feature="graphics")]
+    //     if let Some(score_hash) = self.lobby_scrollable.on_click_tagged(pos, button, mods) {
+    //         let Some(lobby) = &**self.lobby_helper else { return };
+    //         let Some(score) = lobby.player_scores.values().find(|s|s.hash() == score_hash) else { return };
+    //         self.change_score(IngameScore::new(score.clone(), false, false)).await;
+    //     }
+    // }
+
+}
+
+
+
+pub enum ScoreMenuKeys {
+    Back,
+
+    SaveReplay,
+
+    NextStat,
+    PrevStat,
+}
+impl KeyMap for ScoreMenuKeys {
+    fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
+        match key {
+            iced::keyboard::KeyCode::F2 => Some(Self::SaveReplay),
+            iced::keyboard::KeyCode::Escape => Some(Self::Back),
+
+            iced::keyboard::KeyCode::Left => Some(Self::PrevStat),
+            iced::keyboard::KeyCode::Right => Some(Self::NextStat),
+
+            _ => None,
+        }
+    }
+}
+
+
+
+enum ScoreMenuType {
+    Normal,
+    Multiplayer {
+        lobby_helper: CurrentLobbyDataHelper,
+        lobby_items: Vec<LeaderboardComponent>,
+    },
+}
+impl ScoreMenuType {
+    fn is_lobby(&self) -> bool {
+        if let Self::Multiplayer { .. } = self { true } else { false }
+    }
 }
