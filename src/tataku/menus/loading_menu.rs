@@ -181,11 +181,15 @@ impl AsyncMenu for LoadingMenu {
         }
 
         // loading complete, move to the main menu
-        vec![MenuAction::SetMenu(Box::new(MainMenu::new().await))]
+        vec![
+            MenuAction::Beatmap(BeatmapMenuAction::Next),
+            MenuAction::Menu(MenuMenuAction::SetMenuCustom("main_menu".to_owned()))
+        ]
+        // vec![MenuAction::SetMenu(Box::new(MainMenu::new().await))]
     }
 
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         row!(
             Space::new(Fill, Fill),

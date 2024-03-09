@@ -39,7 +39,7 @@ impl TatakuRenderable for Line {
         let transform = transform * Matrix::identity().trans(self.p1);
 
         let d = self.p2 - self.p1;
-        g.draw_line([0.0, 0.0, d.x, d.y], self.thickness, self.color.alpha(alpha), transform, self.scissor, self.blend_mode);
+        g.draw_line([0.0, 0.0, d.x, d.y], self.thickness, self.color.alpha(alpha), transform, self.blend_mode);
 
         // graphics::Line::new(
         //     self.color.alpha(alpha).into(), 

@@ -7,8 +7,8 @@ use chrono::{ NaiveDateTime, Local };
 // const TITLE_STRING_FONT_SIZE:f32 = 30.0;
 
 pub struct ScoreMenu {
-    actions: Vec<MenuAction>,
-    key_handler: KeyPressHandlerGroup<ScoreMenuKeys>,
+    actions: ActionQueue,
+    key_handler: KeyEventsHandlerGroup<ScoreMenuKeys>,
 
     score: IngameScore,
     beatmap: Arc<BeatmapMeta>,
@@ -82,8 +82,8 @@ impl ScoreMenu {
         }
 
         ScoreMenu {
-            actions: Vec::new(),
-            key_handler: KeyPressHandlerGroup::new(),
+            actions: ActionQueue::new(),
+            key_handler: KeyEventsHandlerGroup::new(),
             menu_type: Box::new(ScoreMenuType::Normal),
                 
             score: score.clone(),
@@ -111,7 +111,7 @@ impl ScoreMenu {
     }
 
     async fn close(&mut self) {
-        self.actions.push(MenuAction::PreviousMenu(self.get_name()));
+        self.actions.push(MenuMenuAction::PreviousMenu(self.get_name()));
 
         // let menu: Box<dyn AsyncMenu>;
         // match &*self.menu_type {
@@ -144,7 +144,7 @@ impl ScoreMenu {
             replay.score_data = Some(self.score.score.clone());
         }
 
-        self.actions.push(MenuAction::WatchReplay(Box::new(replay)));
+        self.actions.push(GameMenuAction::WatchReplay(Box::new(replay)));
         // match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
         //     Ok(mut manager) => {
         //         manager.set_replay(replay);
@@ -154,7 +154,7 @@ impl ScoreMenu {
     }
 
     async fn retry(&mut self) {
-        self.actions.push(MenuAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
+        self.actions.push(BeatmapMenuAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
     }
     
     async fn change_score(&mut self, score: IngameScore) {
@@ -363,12 +363,13 @@ impl ScoreMenu {
         use iced::widget::Text;
         use iced::widget::Button;
         let mut buttons = Vec::with_capacity(2);
+        let owner = MessageOwner::new_menu(self);
         
         // retry button
         if self.allow_retry {
             buttons.push(
                 Button::new(Text::new("Retry"))
-                    .on_press(Message::menu_click(self, "retry"))
+                    .on_press(Message::click(owner, "retry"))
                     .into_element()
             );
         }
@@ -377,7 +378,7 @@ impl ScoreMenu {
         if !self.menu_type.is_lobby() {
             buttons.push(
                 Button::new(Text::new("Replay"))
-                    .on_press(Message::menu_click(self, "replay"))
+                    .on_press(Message::click(owner, "replay"))
                     .into_element()
             );
         }
@@ -394,6 +395,8 @@ impl ScoreMenu {
 
 #[async_trait]
 impl AsyncMenu for ScoreMenu {
+    fn get_name(&self) -> &'static str { "score" }
+
     async fn update(&mut self) -> Vec<MenuAction> {
         if self.score_submit_response.is_none() {
             if let Some(t) = &self.score_submit {
@@ -421,7 +424,7 @@ impl AsyncMenu for ScoreMenu {
     }
 
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         // score info

@@ -5,7 +5,7 @@ const BANNER_WPADDING:f32 = 5.0;
 pub const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
 
 pub struct SpectatorManager {
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
 
     pub frames: VecDeque<SpectatorFrame>, 
     pub state: SpectatorState, 
@@ -24,7 +24,7 @@ pub struct SpectatorManager {
 impl SpectatorManager {
     pub async fn new(host_id: u32, host_username: String) -> Self {
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
 
             frames: VecDeque::new(),
             state: SpectatorState::None,
@@ -45,7 +45,7 @@ impl SpectatorManager {
         } = manager.get_mode() else { panic!("trying to make a spectator manager from an ingame manager which isnt in spectating mode") };
 
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             state: SpectatorState::None,
 
             frames: frames.clone(),
@@ -69,7 +69,7 @@ impl SpectatorManager {
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
                 // beatmap_manager.set_current_beatmap(game, &map, false).await;
-                self.actions.push(MenuAction::SetBeatmap(map.clone(), false));
+                self.actions.push(BeatmapMenuAction::Set(map.clone(), false));
 
                 match manager_from_playmode(mode.clone(), &map).await {
                     Ok(mut manager) => {
@@ -87,7 +87,7 @@ impl SpectatorManager {
                             manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                         });
                         
-                        self.actions.push(MenuAction::StartGame(Box::new(manager)));
+                        self.actions.push(GameMenuAction::StartGame(Box::new(manager)));
                     }
                     Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
                 }

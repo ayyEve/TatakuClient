@@ -116,7 +116,7 @@ impl TatakuRenderable for Animation {
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.scissor, self.blend_mode);
+        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.blend_mode);
     }
 }
 

@@ -204,8 +204,8 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn delete_beatmap(&mut self, beatmap:Md5Hash, game: &mut Game) {
-        // delete beatmap
+    pub async fn delete_beatmap(&mut self, beatmap:Md5Hash, game: &mut Game, post_delete: PostDelete) {
+        // remove beatmap from ourselves
         self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
 
         if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
@@ -226,8 +226,16 @@ impl BeatmapManager {
 
         self.force_beatmap_list_refresh = true;
 
-        // select next beatmap
-        self.next_beatmap(game).await;
+        if self.current_beatmap.as_ref().filter(|b|b.beatmap_hash == beatmap).is_some() {
+            match post_delete {
+                // select next beatmap
+                PostDelete::Next => { self.next_beatmap(game).await; },
+                PostDelete::Previous => { self.previous_beatmap(game).await; },
+                PostDelete::Random => if let Some(map) = self.random_beatmap() {
+                    self.set_current_beatmap(game, &map, true).await
+                }
+            }
+        }
     }
 
 

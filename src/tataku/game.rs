@@ -47,12 +47,19 @@ pub struct Game {
     spec_watch_action: SpectatorWatchAction,
 
     ui_manager: UiManager,
+
+    custom_menus: Vec<CustomMenu>,
+
+    shunting_yard_values: Arc<Mutex<ShuntingYardValues>>
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
+
+        let mut parser = CustomMenuParser::new();
+        parser.load("../custom_menus/main_menu.lua").unwrap();
 
         let mut g = Game {
             // engine
@@ -92,6 +99,9 @@ impl Game {
             background_loader: None,
 
             ui_manager: UiManager::new(),
+            custom_menus: parser.get_menus(),
+
+            shunting_yard_values: Arc::new(Mutex::new(ShuntingYardValues::default())),
         };
 
         g.init().await;
@@ -303,7 +313,6 @@ impl Game {
 
     async fn update(&mut self) {
         let elapsed = self.game_start.as_millis();
-        // update the cursor
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -363,6 +372,7 @@ impl Game {
         let controller_up = self.input_manager.get_controller_up();
         let controller_axis = self.input_manager.get_controller_axis();
         
+        // update the cursor
         self.cursor_manager.update(elapsed, self.input_manager.mouse_pos).await;
         
         // update cursor
@@ -377,13 +387,7 @@ impl Game {
             self.cursor_manager.right_pressed(false);
         }
 
-        let mut controller_pause = false;
-        for (_c, b) in controller_down.iter() {
-            if b.contains(&ControllerButton::Start) {
-                controller_pause = true;
-                break;
-            }
-        }
+        let controller_pause = controller_down.iter().find(|(_,a)|a.contains(&ControllerButton::Start)).is_some();
 
         // prevent the list from building up and just wasting memory.
         // not nuking the code because it might be a useful stat in the future
@@ -400,8 +404,8 @@ impl Game {
         }
 
         // check for volume change
-        if mouse_moved {self.volume_controller.on_mouse_move(mouse_pos)}
-        if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await {scroll_delta = 0.0}
+        if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos) }
+        if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await { scroll_delta = 0.0 }
         self.volume_controller.on_key_press(&mut keys_down, mods).await;
         
         // check user panel
@@ -411,67 +415,13 @@ impl Game {
 
         // screenshot
         if keys_down.contains(&Key::F12) {
-            let (f, b) = Bomb::new();
+            let (f, b) = tokio::sync::oneshot::channel();
             GameWindow::send_event(Game2WindowEvent::TakeScreenshot(f));
 
             tokio::spawn(async move {
-                macro_rules! check {
-                    ($e:expr) => {
-                        match $e {
-                            Ok(e) => e,
-                            Err(e) => {
-                                NotificationManager::add_error_notification("Error saving screenshot", e).await;
-                                break;
-                            }
-                        }
-                    };
+                if let Err(e) = Self::await_screenshot(b, mods).await {
+                    NotificationManager::add_error_notification("Error saving screenshot", e).await;
                 }
-
-                loop {
-                    if let Some((data, width, height)) = b.exploded() {
-                        // create file
-                        let date = chrono::Local::now();
-                        let year = date.year();
-                        let month = date.month();
-                        let day = date.day();
-                        let hour = date.hour();
-                        let minute = date.minute();
-                        let second = date.second();
-
-                        let file = format!("../Screenshots/{year}-{month}-{day}--{hour}-{minute}-{second}.png");
-                        let path = Path::new(&file);
-
-                        check!(std::fs::create_dir_all(path.parent().unwrap()));
-                        let file = check!(std::fs::File::create(path));
-
-                        // save as png
-                        let w = &mut std::io::BufWriter::new(file);
-                        let mut encoder = png::Encoder::new(w, *width, *height);
-                        encoder.set_color(png::ColorType::Rgba);
-
-                        let mut writer = check!(encoder.write_header().map_err(|e|TatakuError::String(format!("{e}"))));
-                        check!(writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}"))));
-
-                        // notify user
-                        let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
-                        NotificationManager::add_notification(Notification::new(
-                            format!("Screenshot saved to {full_path}"), 
-                            Color::BLUE, 
-                            5000.0, 
-                            NotificationOnClick::File(full_path.clone())
-                        )).await;
-
-                        // if shift is pressed, upload to server, and get link
-                        if mods.shift {
-                            if let Some((s, err)) = Self::upload_screenshot(full_path).await {
-                                NotificationManager::add_error_notification(s, err).await
-                            }
-                        }
-
-                        break;
-                    }
-                }
-            
             });
 
         }
@@ -520,17 +470,20 @@ impl Game {
         }
 
 
-        let mut menu_actions = self.ui_manager.update(CurrentInputState {
-            mouse_pos,
-            mouse_moved,
-            scroll_delta,
-            mouse_down: &mouse_down,
-            mouse_up: &mouse_up,
-            keys_down: &keys_down,
-            keys_up: &keys_up,
-            text: &text,
-            mods,
-        }).await;
+        let mut menu_actions = self.ui_manager.update(
+            CurrentInputState {
+                mouse_pos,
+                mouse_moved,
+                scroll_delta,
+                mouse_down: &mouse_down,
+                mouse_up: &mouse_up,
+                keys_down: &keys_down,
+                keys_up: &keys_up,
+                text: &text,
+                mods,
+            }, 
+            self.shunting_yard_values.clone()
+        ).await;
 
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager { 
@@ -548,6 +501,7 @@ impl Game {
             menu_actions.extend(multi.update(manager).await);
         }
 
+        // handle menu actions
         self.handle_menu_actions(menu_actions).await;
 
         // run update on current state
@@ -687,7 +641,7 @@ impl Game {
                 // might be transitioning
                 if self.transition.is_some() && elapsed - self.transition_timer > TRANSITION_TIME / 2.0 {
 
-                    let trans = std::mem::take(&mut self.transition);
+                    let trans = self.transition.take();
                     self.queue_state_change(trans.unwrap());
                     self.transition_timer = elapsed;
                 }
@@ -831,6 +785,7 @@ impl Game {
         // if elapsed > 1.0 {warn!("update took a while: {elapsed}");}
     }
 
+
     #[cfg(feature="graphics")]
     async fn draw(&mut self) {
         // let timer = Instant::now();
@@ -868,11 +823,11 @@ impl Game {
         if self.transition_timer > 0.0 && elapsed - self.transition_timer < TRANSITION_TIME {
             // probably transitioning
 
-            // draw old mode
-            match (&self.current_state, &mut self.transition_last) {
-                // (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
-                _ => {}
-            }
+            // // draw old mode
+            // match (&self.current_state, &mut self.transition_last) {
+            //     // (GameState::None, Some(GameState::InMenu(menu))) => menu.draw(&mut render_queue).await,
+            //     _ => {}
+            // }
             
             // draw fade in rect
             let diff = elapsed - self.transition_timer;
@@ -911,12 +866,8 @@ impl Game {
         // draw cursor
         self.cursor_manager.draw(&mut render_queue);
 
-        // sort the queue here (so it only needs to be sorted once per frame, instead of every time a shape is added)
-        let render_queue = render_queue.take();
-        // render_queue.sort_by(|a, b| b.get_depth().partial_cmp(&a.get_depth()).unwrap());
-
         // toss the items to the window to render
-        self.render_queue_sender.write(render_queue);
+        self.render_queue_sender.write(render_queue.take());
         NEW_RENDER_DATA_AVAILABLE.store(true, Ordering::Release);
         
         self.fps_display.increment();
@@ -949,27 +900,39 @@ impl Game {
     async fn handle_menu_actions(&mut self, actions: Vec<MenuAction>) {
         for action in actions {
             match action {
-                MenuAction::SetMenu(menu) => self.queue_state_change(GameState::InMenu(menu)),
-                MenuAction::PreviousMenu(current_menu) => if let Some(menu) = self.handle_previous_menu(current_menu).await {
+                MenuAction::None => continue,
+                
+                // menu actions
+                MenuAction::Menu(MenuMenuAction::SetMenu(menu))=> self.queue_state_change(GameState::InMenu(menu)),
+                MenuAction::Menu(MenuMenuAction::SetMenuCustom(id)) => {
+                    let menu = self.custom_menus.iter().rev().find(|cm|cm.id == id);
+                    if let Some(menu) = menu {
+                        self.queue_state_change(GameState::InMenu(Box::new(menu.build().await)))
+                    } else {
+                        match &*id {
+                            "beatmap_select_menu" => self.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
+                            _ => {}
+                        }
+
+                        error!("custom menu not found! {id}")
+                    }
+                }
+
+                MenuAction::Menu(MenuMenuAction::PreviousMenu(current_menu)) => if let Some(menu) = self.handle_previous_menu(current_menu).await {
                     self.queue_state_change(GameState::InMenu(menu))
                 }
                 
+                MenuAction::Menu(MenuMenuAction::AddDialog(dialog, allow_duplicates)) => self.add_dialog(dialog, allow_duplicates),
+
+                MenuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, _allow_duplicates)) => {
+                    match &*dialog {
+                        "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
+                        other => warn!("unknown dialog '{other}'")
+                    }
+                }
                 
-                MenuAction::AddDialog(dialog, allow_duplicates) => self.add_dialog(dialog, allow_duplicates),
-                MenuAction::SetBeatmap(beatmap, use_preview_time) => {
-                    BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time).await;
-                    // warn!("setting beatmap: {}", beatmap.version_string());
-                }
-                MenuAction::RemoveBeatmap => {
-                    BEATMAP_MANAGER.write().await.remove_current_beatmap(self).await;
-                    // warn!("removeing beatmap");
-                }
-
-                MenuAction::DeleteBeatmap(hash) => {
-                    BEATMAP_MANAGER.write().await.delete_beatmap(hash, self).await;
-                }
-
-                MenuAction::PlayMap(map, mode) => {
+                // beatmap actions
+                MenuAction::Beatmap(BeatmapMenuAction::PlayMap(map, mode)) => {
                     match manager_from_playmode(mode, &map).await {
                         Ok(mut manager) => {
                             let mods = ModManager::get();
@@ -979,16 +942,70 @@ impl Game {
                         Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
                     }
                 }
-                MenuAction::ResumeMap(manager) => {
+                MenuAction::Beatmap(BeatmapMenuAction::PlaySelected) => {
+                    let Some(map) = CurrentBeatmapHelper::new().0.clone() else { continue };
+                    let mode = CurrentPlaymodeHelper::new().0.clone();
+                    
+                    match manager_from_playmode(mode, &map).await {
+                        Ok(mut manager) => {
+                            let mods = ModManager::get();
+                            manager.apply_mods(mods.deref().clone()).await;
+                            self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                        }
+                        Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                    }
+                }
+
+                MenuAction::Beatmap(BeatmapMenuAction::Set(beatmap, use_preview_time)) => {
+                    BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time).await;
+                    // warn!("setting beatmap: {}", beatmap.version_string());
+                }
+                MenuAction::Beatmap(BeatmapMenuAction::Random(use_preview)) => {
+                    let mut manager = BEATMAP_MANAGER.write().await;
+                    let Some(random) = manager.random_beatmap() else { continue };
+                    manager.set_current_beatmap(self, &random, use_preview).await;
+                }
+                MenuAction::Beatmap(BeatmapMenuAction::Remove) => {
+                    BEATMAP_MANAGER.write().await.remove_current_beatmap(self).await;
+                    // warn!("removeing beatmap");
+                }
+
+                MenuAction::Beatmap(BeatmapMenuAction::Delete(hash)) => {
+                    BEATMAP_MANAGER.write().await.delete_beatmap(hash, self, PostDelete::Next).await;
+                }
+                MenuAction::Beatmap(BeatmapMenuAction::DeleteCurrent(post_delete)) => {
+                    let Some(map) = CurrentBeatmapHelper::new().0.clone() else { continue };
+                    let mut manager = BEATMAP_MANAGER.write().await;
+
+                    manager.delete_beatmap(map.beatmap_hash, self, post_delete).await;
+                }
+                MenuAction::Beatmap(BeatmapMenuAction::Next) => {
+                    BEATMAP_MANAGER.write().await.next_beatmap(self).await;
+                }
+                MenuAction::Beatmap(BeatmapMenuAction::Previous(if_none)) => {
+                    let mut manager = BEATMAP_MANAGER.write().await;
+                    if manager.previous_beatmap(self).await { continue }
+                    
+                    // no previous map availble, handle accordingly
+                    match if_none {
+                        MapActionIfNone::ContinueCurrent => continue,
+                        MapActionIfNone::Random(use_preview) => {
+                            let Some(random) = manager.random_beatmap() else { continue };
+                            manager.set_current_beatmap(self, &random, use_preview).await;
+                        }
+                    }
+                }
+
+                
+                // game actions
+                MenuAction::Game(GameMenuAction::ResumeMap(manager)) => {
                     self.queue_state_change(GameState::Ingame(manager));
                 }
-                MenuAction::StartGame(mut manager) => {
+                MenuAction::Game(GameMenuAction::StartGame(mut manager)) => {
                     manager.start().await;
                     self.queue_state_change(GameState::Ingame(manager));
                 }
-
-
-                MenuAction::WatchReplay(replay) => {
+                MenuAction::Game(GameMenuAction::WatchReplay(replay)) => {
                     let Some((map, mode)) = replay.score_data.as_ref().map(|s|(s.beatmap_hash, s.playmode.clone())) else {
                         NotificationManager::add_text_notification("Replay has no score data", 5000.0, Color::RED).await;
                         return;
@@ -1008,25 +1025,38 @@ impl Game {
                     }
                 }
 
-                MenuAction::PerformOperation(op) => {
-                    self.ui_manager.add_operation(op)
-                }
 
-                MenuAction::MultiplayerAction(action) => {
-                    match action {
-                        MultiplayerManagerAction::QuitMulti => {
-                            tokio::spawn(OnlineManager::leave_lobby());
-                            self.multiplayer_manager = None;
-                            // TODO: check if ingame, and if yes, dont change state
-                            self.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
-                        }
-                        MultiplayerManagerAction::JoinMulti => {
-                            self.multiplayer_manager = Some(Box::new(MultiplayerManager::new()));
-                            self.queue_state_change(GameState::InMenu(Box::new(LobbyMenu::new().await)));
-                        }
+                // song actions
+                MenuAction::Song(song_action) => {
+                    let Some(audio) = AudioManager::get_song().await else { continue };
+
+                    match song_action {
+                        SongMenuAction::Play => audio.play(false),
+                        SongMenuAction::Restart => audio.play(true),
+                        SongMenuAction::Pause => audio.pause(),
+                        SongMenuAction::Stop => audio.stop(),
+                        SongMenuAction::Toggle if audio.is_playing() => audio.pause(),
+                        SongMenuAction::Toggle => audio.play(false),
+                        SongMenuAction::SeekBy(seek) => audio.set_position(audio.get_position() + seek),
+                        SongMenuAction::SetPosition(pos) => audio.set_position(pos),
                     }
                 }
 
+                // multiplayer actions
+                MenuAction::MultiplayerAction(MultiplayerManagerAction::QuitMulti) => {
+                    tokio::spawn(OnlineManager::leave_lobby());
+                    self.multiplayer_manager = None;
+                    // TODO: check if ingame, and if yes, dont change state
+                    self.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+                }
+                MenuAction::MultiplayerAction(MultiplayerManagerAction::JoinMulti) => {
+                    self.multiplayer_manager = Some(Box::new(MultiplayerManager::new()));
+                    self.queue_state_change(GameState::InMenu(Box::new(LobbyMenu::new().await)));
+                }
+
+
+                MenuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
+                
 
                 MenuAction::Quit => {
                     self.queue_state_change(GameState::Closing);
@@ -1240,55 +1270,93 @@ impl Game {
     }
 
 
-    async fn upload_screenshot(full_path: String) -> Option<(&'static str, TatakuError)> {
-        NotificationManager::add_text_notification("Uploading screenshot...", 5000.0, Color::YELLOW).await;
+    async fn await_screenshot(b: tokio::sync::oneshot::Receiver<(Vec<u8>, u32, u32)>, mods: KeyModifiers) -> TatakuResult {
+        let Ok((data, width, height)) = b.await else { return Ok(()) };
 
-        let settings = SettingsHelper::new();
-        let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
+        // create file
+        let date = chrono::Local::now();
+        let year = date.year();
+        let month = date.month();
+        let day = date.day();
+        let hour = date.hour();
+        let minute = date.minute();
+        let second = date.second();
 
-        let data = match Io::read_file_async(full_path).await {
-            Err(e) => return Some(("Error loading screenshot to send to server", TatakuError::String(e.to_string()))),
-            Ok(data) => data,
-        };
+        let file = format!("../Screenshots/{year}-{month}-{day}--{hour}-{minute}-{second}.png");
+        let path = Path::new(&file);
 
-        let r = match reqwest::Client::new().post(url).body(data).send().await {
-            Err(e) => return Some(("Error sending screenshot request", TatakuError::String(e.to_string()))),
-            Ok(r) => r,
-        };
-        let b = match r.bytes().await {
-            Err(e) => return Some(("Error reading screenshot response", TatakuError::String(e.to_string()))),
-            Ok(b) => b, 
-        };
-        let s = match String::from_utf8(b.to_vec()) {
-            Err(e) => return Some(("Error parsing screenshot response", TatakuError::String(e.to_string()))),
-            Ok(s) => s,
-        };
-        let id = match s.parse::<i64>() {
-            Err(e) => return Some(("Error parsing screenshot id", TatakuError::String(e.to_string()))),
-            Ok(id) => id,
-        };
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        let file = std::fs::File::create(path)?;
 
-        // copy to clipboard
-        let url = format!("{}/screenshots/{id}", settings.score_url);
-        if let Err(e) = GameWindow::set_clipboard(url.clone()) {
-            warn!("Error copying to clipboard: {e}");
-            NotificationManager::add_notification(Notification::new(
-                format!("Screenshot uploaded {url}"), 
-                Color::BLUE, 
-                5000.0, 
-                NotificationOnClick::Url(url)
-            )).await;
-        } else {
-            NotificationManager::add_notification(Notification::new(
-                format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
-                Color::BLUE, 
-                5000.0, 
-                NotificationOnClick::Url(url)
-            )).await;
+        // save as png
+        let w = &mut std::io::BufWriter::new(file);
+        let mut encoder = png::Encoder::new(w, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+
+        let mut writer = encoder.write_header().map_err(|e|TatakuError::String(format!("{e}")))?;
+        writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}")))?;
+
+        // notify user
+        let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
+        NotificationManager::add_notification(Notification::new(
+            format!("Screenshot saved to {full_path}"), 
+            Color::BLUE, 
+            5000.0, 
+            NotificationOnClick::File(full_path.clone())
+        )).await;
+
+        // if shift is pressed, upload to server, and get link
+        if mods.shift {
+            NotificationManager::add_text_notification("Uploading screenshot...", 5000.0, Color::YELLOW).await;
+
+            let settings = SettingsHelper::new();
+            let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
+
+            let data = match Io::read_file_async(full_path).await {
+                Err(e) => { NotificationManager::add_error_notification("Error loading screenshot to send to server", TatakuError::String(e.to_string())).await; return Ok(())},
+                Ok(data) => data,
+            };
+
+            let r = match reqwest::Client::new().post(url).body(data).send().await {
+                Err(e) => { NotificationManager::add_error_notification("Error sending screenshot request", TatakuError::String(e.to_string())).await; return Ok(())},
+                Ok(r) => r,
+            };
+            let b = match r.bytes().await {
+                Err(e) => { NotificationManager::add_error_notification("Error reading screenshot response", TatakuError::String(e.to_string())).await; return Ok(())},
+                Ok(b) => b, 
+            };
+            let s = match String::from_utf8(b.to_vec()) {
+                Err(e) => { NotificationManager::add_error_notification("Error parsing screenshot response", TatakuError::String(e.to_string())).await; return Ok(())},
+                Ok(s) => s,
+            };
+            let id = match s.parse::<i64>() {
+                Err(e) => { NotificationManager::add_error_notification("Error parsing screenshot id", TatakuError::String(e.to_string())).await; return Ok(())},
+                Ok(id) => id,
+            };
+
+            // copy to clipboard
+            let url = format!("{}/screenshots/{id}", settings.score_url);
+            if let Err(e) = GameWindow::set_clipboard(url.clone()) {
+                warn!("Error copying to clipboard: {e}");
+                NotificationManager::add_notification(Notification::new(
+                    format!("Screenshot uploaded {url}"), 
+                    Color::BLUE, 
+                    5000.0, 
+                    NotificationOnClick::Url(url)
+                )).await;
+            } else {
+                NotificationManager::add_notification(Notification::new(
+                    format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
+                    Color::BLUE, 
+                    5000.0, 
+                    NotificationOnClick::Url(url)
+                )).await;
+            }
         }
 
-        None
+        Ok(())
     }
+
 }
 
 
@@ -1322,5 +1390,3 @@ pub enum SpectatorWatchAction {
     OpenDialog,
     MultiSpec,
 }
-
-

@@ -41,7 +41,6 @@ impl TatakuRenderable for SliderDrawable {
         g.draw_slider(
             quad,
             transform,
-            None,
             slider_data,
             self.slider_grids.clone(),
             self.grid_cells.clone(),

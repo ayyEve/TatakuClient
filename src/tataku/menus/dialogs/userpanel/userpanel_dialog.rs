@@ -12,7 +12,7 @@ lazy_static::lazy_static! {
 
 pub struct UserPanel {
     num: usize,
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
 
     chat: Chat,
 
@@ -26,7 +26,7 @@ impl UserPanel {
     pub fn new() -> Self {
         Self {
             num: 0,
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
 
             chat: Chat::new(),
             users: HashMap::new(),
@@ -101,7 +101,7 @@ impl Dialog for UserPanel {
                     None
                 }));
 
-                self.actions.push(MenuAction::AddDialog(Box::new(user_menu_dialog), false));
+                self.actions.push(MenuMenuAction::AddDialog(Box::new(user_menu_dialog), false));
             }
 
             _ => {}

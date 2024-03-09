@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub trait AsyncMenu:Send+Sync {
     fn get_name(&self) -> &'static str { "none" }
 
-    fn view(&self) -> IcedElement;
+    fn view(&self, values: &ShuntingYardValues) -> IcedElement;
     
     async fn handle_message(&mut self, message: Message);
     async fn update(&mut self) -> Vec<MenuAction> { Vec::new() }

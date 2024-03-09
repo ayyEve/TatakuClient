@@ -3,24 +3,27 @@ use crate::prelude::*;
 
 #[derive(Clone)]
 pub struct TransformGroup {
-    pub pos: InitialCurrent<Vector2>,
-    pub scale: InitialCurrent<Vector2>,
-    pub rotation: InitialCurrent<f32>,
-    pub alpha: InitialCurrent<f32>,
-    pub border_alpha: InitialCurrent<f32>,
+    // pub pos: InitialCurrent<Vector2>,
+    // pub scale: InitialCurrent<Vector2>,
+    // pub rotation: InitialCurrent<f32>,
+    // pub alpha: InitialCurrent<f32>,
+    // pub border_alpha: InitialCurrent<f32>,
 
-    pub origin: Vector2,
+    // pub origin: Vector2,
     
+    // pub image_flip_horizonal: bool,
+    // pub image_flip_vertical: bool,
+
+    // pub transforms: Vec<Transformation>,
+
+    transform_manager: TransformManager,
 
     pub items: Vec<Arc<dyn TatakuRenderable>>,
-    pub transforms: Vec<Transformation>,
     
-    pub image_flip_horizonal: bool,
-    pub image_flip_vertical: bool,
-
     pub scissor: Scissor,
     pub blend_mode: BlendMode,
 
+    pub raw_draw: bool,
 
     size: Vector2,
 }
@@ -28,38 +31,63 @@ impl TransformGroup {
     pub fn new(pos: Vector2) -> Self {
         Self {
             items: Vec::new(),
-            transforms: Vec::new(),
-            origin: Vector2::ZERO,
+            transform_manager: TransformManager::new(pos),
+            // transforms: Vec::new(),
+            // origin: Vector2::ZERO,
 
-            pos: InitialCurrent::new(pos),
-            scale: InitialCurrent::new(Vector2::ONE),
-            rotation: InitialCurrent::new(0.0),
-            alpha: InitialCurrent::new(1.0),
-            border_alpha: InitialCurrent::new(1.0),
+            // pos: InitialCurrent::new(pos),
+            // scale: InitialCurrent::new(Vector2::ONE),
+            // rotation: InitialCurrent::new(0.0),
+            // alpha: InitialCurrent::new(1.0),
+            // border_alpha: InitialCurrent::new(1.0),
 
-            image_flip_horizonal: false,
-            image_flip_vertical: false,
+            // image_flip_horizonal: false,
+            // image_flip_vertical: false,
 
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
             size: Vector2::ZERO,
+            raw_draw: false,
+        }
+    }
+
+    pub fn from_collection(pos: Vector2, list: RenderableCollection) -> Self {
+        Self {
+            items: list.take(),
+            transform_manager: TransformManager::new(pos),
+            // transforms: Vec::new(),
+            // origin: Vector2::ZERO,
+
+            // pos: InitialCurrent::new(pos),
+            // scale: InitialCurrent::new(Vector2::ONE),
+            // rotation: InitialCurrent::new(0.0),
+            // alpha: InitialCurrent::new(1.0),
+            // border_alpha: InitialCurrent::new(1.0),
+
+            // image_flip_horizonal: false,
+            // image_flip_vertical: false,
+
+            scissor: None,
+            blend_mode: BlendMode::AlphaBlending,
+            size: Vector2::ZERO,
+            raw_draw: true,
         }
     }
 
     pub fn scale(mut self, scale: Vector2) -> Self {
-        self.scale.both(scale);
+        self.transform_manager.scale.both(scale);
         self
     }
     pub fn rotation(mut self, rotation: f32) -> Self {
-        self.rotation.both(rotation);
+        self.transform_manager.rotation.both(rotation);
         self
     }
     pub fn alpha(mut self, alpha: f32) -> Self {
-        self.alpha.both(alpha);
+        self.transform_manager.alpha.both(alpha);
         self
     }
     pub fn border_alpha(mut self, alpha: f32) -> Self {
-        self.border_alpha.both(alpha);
+        self.transform_manager.border_alpha.both(alpha);
         self
     }
     
@@ -74,84 +102,84 @@ impl TransformGroup {
     }
 
 
-    pub fn update(&mut self, game_time: f32) {
-        let mut transforms = std::mem::take(&mut self.transforms);
-        transforms.retain(|transform| {
-            let start_time = transform.start_time();
-            let end_time = start_time + transform.duration;
+    // pub fn update(&mut self, game_time: f32) {
+    //     let mut transforms = std::mem::take(&mut self.transforms);
+    //     transforms.retain(|transform| {
+    //         let start_time = transform.start_time();
+    //         let end_time = start_time + transform.duration;
 
-            // if the transform hasnt started, ignore
-            if game_time >= end_time {
-                let trans_val = transform.get_value(end_time);
-                self.apply_transform(transform, trans_val);
-            } else if game_time >= start_time {
-                let trans_val = transform.get_value(game_time);
-                self.apply_transform(transform, trans_val);
-            }
+    //         // if the transform hasnt started, ignore
+    //         if game_time >= end_time {
+    //             let trans_val = transform.get_value(end_time);
+    //             self.apply_transform(transform, trans_val);
+    //         } else if game_time >= start_time {
+    //             let trans_val = transform.get_value(game_time);
+    //             self.apply_transform(transform, trans_val);
+    //         }
 
-            game_time < end_time
-        });
+    //         game_time < end_time
+    //     });
 
-        self.transforms = transforms;
-    }
+    //     self.transforms = transforms;
+    // }
 
-    fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
-        match transform.trans_type {
-            TransformType::Position { .. } => {
-                let val:Vector2 = val.into();
-                self.pos.current = self.pos.initial + val;
-            }
-            TransformType::PositionX { .. } => {
-                let val:f64 = val.into();
-                self.pos.current.x = self.pos.initial.x + val as f32;
-            }
-            TransformType::PositionY { .. } => {
-                let val:f64 = val.into();
-                self.pos.current.y = self.pos.initial.y + val as f32;
-            }
-            TransformType::Scale { .. } => {
-                let val:f64 = val.into();
-                self.scale.current = Vector2::ONE * val as f32;
+    // fn apply_transform(&mut self, transform: &Transformation, val: TransformValueResult) {
+    //     match transform.trans_type {
+    //         TransformType::Position { .. } => {
+    //             let val:Vector2 = val.into();
+    //             self.pos.current = self.pos.initial + val;
+    //         }
+    //         TransformType::PositionX { .. } => {
+    //             let val:f64 = val.into();
+    //             self.pos.current.x = self.pos.initial.x + val as f32;
+    //         }
+    //         TransformType::PositionY { .. } => {
+    //             let val:f64 = val.into();
+    //             self.pos.current.y = self.pos.initial.y + val as f32;
+    //         }
+    //         TransformType::Scale { .. } => {
+    //             let val:f64 = val.into();
+    //             self.scale.current = Vector2::ONE * val as f32;
 
-                if self.image_flip_horizonal {
-                    self.scale.current.x *= -1.0;
-                }
-                if self.image_flip_vertical {
-                    self.scale.current.y *= -1.0;
-                }
-            }
-            TransformType::VectorScale { .. } => {
-                let val:Vector2 = val.into();
-                self.scale.current = val;
+    //             if self.image_flip_horizonal {
+    //                 self.scale.current.x *= -1.0;
+    //             }
+    //             if self.image_flip_vertical {
+    //                 self.scale.current.y *= -1.0;
+    //             }
+    //         }
+    //         TransformType::VectorScale { .. } => {
+    //             let val:Vector2 = val.into();
+    //             self.scale.current = val;
 
-                if self.image_flip_horizonal {
-                    self.scale.current.x *= -1.0;
-                }
-                if self.image_flip_vertical {
-                    self.scale.current.y *= -1.0;
-                }
-            }
-            TransformType::Rotation { .. } => {
-                let val:f64 = val.into();
-                self.rotation.current = self.rotation.initial + val as f32;
-            }
+    //             if self.image_flip_horizonal {
+    //                 self.scale.current.x *= -1.0;
+    //             }
+    //             if self.image_flip_vertical {
+    //                 self.scale.current.y *= -1.0;
+    //             }
+    //         }
+    //         TransformType::Rotation { .. } => {
+    //             let val:f64 = val.into();
+    //             self.rotation.current = self.rotation.initial + val as f32;
+    //         }
 
-            TransformType::Transparency { .. } => {
-                let val:f64 = val.into();
-                self.alpha.current = val as f32;
-            }
-            TransformType::BorderTransparency { .. } => {
-                let val:f64 = val.into();
-                self.border_alpha.current = val as f32;
-            }
+    //         TransformType::Transparency { .. } => {
+    //             let val:f64 = val.into();
+    //             self.alpha.current = val as f32;
+    //         }
+    //         TransformType::BorderTransparency { .. } => {
+    //             let val:f64 = val.into();
+    //             self.border_alpha.current = val as f32;
+    //         }
 
-            _ => {}
-        }
-    }
+    //         _ => {}
+    //     }
+    // }
 
-    pub fn visible(&self) -> bool {
-        self.scale.length_squared() != 0.0 && (*self.alpha > 0.0 || *self.border_alpha > 0.0)
-    }
+    // pub fn visible(&self) -> bool {
+    //     self.scale.length_squared() != 0.0 && (*self.alpha > 0.0 || *self.border_alpha > 0.0)
+    // }
 
     pub fn push(&mut self, r: impl TatakuRenderable + 'static) {
         self.items.push(Arc::new(r));
@@ -163,137 +191,137 @@ impl TransformGroup {
     }
 }
 
-// premade transforms
-impl TransformGroup {
-    pub fn ripple(&mut self, offset:f32, duration:f32, time: f32, end_scale: f32, do_border_size: bool, do_transparency: Option<f32>) {
+// // premade transforms
+// impl TransformGroup {
+//     pub fn ripple(&mut self, offset:f32, duration:f32, time: f32, end_scale: f32, do_border_size: bool, do_transparency: Option<f32>) {
         
-        // transparency
-        if let Some(start_a) = do_transparency {
-            self.transforms.push(Transformation::new(
-                offset,
-                duration,
-                TransformType::Transparency {start: start_a, end: 0.0},
-                Easing::EaseOutSine,
-                time
-            ));
-        }
+//         // transparency
+//         if let Some(start_a) = do_transparency {
+//             self.transforms.push(Transformation::new(
+//                 offset,
+//                 duration,
+//                 TransformType::Transparency {start: start_a, end: 0.0},
+//                 Easing::EaseOutSine,
+//                 time
+//             ));
+//         }
         
-        // border transparency
-        self.transforms.push(Transformation::new(
-            offset,
-            duration,
-            TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-            Easing::EaseOutSine,
-            time
-        ));
+//         // border transparency
+//         self.transforms.push(Transformation::new(
+//             offset,
+//             duration,
+//             TransformType::BorderTransparency { start: 1.0, end: 0.0 },
+//             Easing::EaseOutSine,
+//             time
+//         ));
 
-        // scale
-        self.transforms.push(Transformation::new(
-            offset,
-            duration * 1.1,
-            TransformType::Scale {start: 1.0, end: end_scale},
-            Easing::Linear,
-            time
-        ));
+//         // scale
+//         self.transforms.push(Transformation::new(
+//             offset,
+//             duration * 1.1,
+//             TransformType::Scale {start: 1.0, end: end_scale},
+//             Easing::Linear,
+//             time
+//         ));
 
-        // border size
-        if do_border_size {
-            self.transforms.push(Transformation::new(
-                offset,
-                duration * 1.1,
-                TransformType::BorderSize {start: 2.0, end: 0.0},
-                Easing::EaseInSine,
-                time
-            ));
-        }
-    }
+//         // border size
+//         if do_border_size {
+//             self.transforms.push(Transformation::new(
+//                 offset,
+//                 duration * 1.1,
+//                 TransformType::BorderSize {start: 2.0, end: 0.0},
+//                 Easing::EaseInSine,
+//                 time
+//             ));
+//         }
+//     }
 
-    pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
-        // transparency
-        if let Some(start_a) = do_transparency {
-            self.transforms.push(Transformation::new(
-                offset,
-                duration,
-                TransformType::Transparency { start: start_a, end: 0.0 },
-                Easing::EaseOutSine,
-                time
-            ));
-        }
+//     pub fn ripple_scale_range(&mut self, offset:f32, duration:f32, time: f32, scale: Range<f32>, border_size: Option<Range<f32>>, do_transparency: Option<f32>) {
+//         // transparency
+//         if let Some(start_a) = do_transparency {
+//             self.transforms.push(Transformation::new(
+//                 offset,
+//                 duration,
+//                 TransformType::Transparency { start: start_a, end: 0.0 },
+//                 Easing::EaseOutSine,
+//                 time
+//             ));
+//         }
 
-        // border transparency
-        self.transforms.push(Transformation::new(
-            offset,
-            duration,
-            TransformType::BorderTransparency { start: 1.0, end: 0.0 },
-            Easing::EaseOutSine,
-            time
-        ));
+//         // border transparency
+//         self.transforms.push(Transformation::new(
+//             offset,
+//             duration,
+//             TransformType::BorderTransparency { start: 1.0, end: 0.0 },
+//             Easing::EaseOutSine,
+//             time
+//         ));
 
-        // scale
-        self.transforms.push(Transformation::new(
-            offset,
-            duration * 1.1,
-            TransformType::Scale { start: scale.start, end: scale.end },
-            Easing::EaseOutQuadratic,
-            time
-        ));
+//         // scale
+//         self.transforms.push(Transformation::new(
+//             offset,
+//             duration * 1.1,
+//             TransformType::Scale { start: scale.start, end: scale.end },
+//             Easing::EaseOutQuadratic,
+//             time
+//         ));
 
-        // border size
-        if let Some(b) = border_size {
-            self.transforms.push(Transformation::new(
-                offset,
-                duration * 1.1,
-                TransformType::BorderSize { start: b.start, end: b.end },
-                Easing::EaseInSine,
-                time
-            ));
-        }
-    }
+//         // border size
+//         if let Some(b) = border_size {
+//             self.transforms.push(Transformation::new(
+//                 offset,
+//                 duration * 1.1,
+//                 TransformType::BorderSize { start: b.start, end: b.end },
+//                 Easing::EaseInSine,
+//                 time
+//             ));
+//         }
+//     }
 
-    pub fn shake(&mut self, offset:f32, time: f32, shake_amount: Vector2, time_between_shakes: f32, shake_count: usize) {
-        self.transforms.reserve(shake_count);
+//     pub fn shake(&mut self, offset:f32, time: f32, shake_amount: Vector2, time_between_shakes: f32, shake_count: usize) {
+//         self.transforms.reserve(shake_count);
         
-        self.transforms.push(Transformation::new(
-            offset,
-            time_between_shakes,
-            TransformType::Position { start: Vector2::ZERO, end: shake_amount },
-            Easing::Linear,
-            time
-        ));
+//         self.transforms.push(Transformation::new(
+//             offset,
+//             time_between_shakes,
+//             TransformType::Position { start: Vector2::ZERO, end: shake_amount },
+//             Easing::Linear,
+//             time
+//         ));
 
-        if shake_count > 2 {
-            for i in 0..shake_count-2 {
-                let pos = if i % 2 == 0 { 
-                    TransformType::Position { start: shake_amount, end: -shake_amount }
-                } else { 
-                    TransformType::Position { start: -shake_amount, end: shake_amount }
-                };
+//         if shake_count > 2 {
+//             for i in 0..shake_count-2 {
+//                 let pos = if i % 2 == 0 { 
+//                     TransformType::Position { start: shake_amount, end: -shake_amount }
+//                 } else { 
+//                     TransformType::Position { start: -shake_amount, end: shake_amount }
+//                 };
 
-                self.transforms.push(Transformation::new(
-                    offset + (time_between_shakes * (i+1) as f32),
-                    time_between_shakes,
-                    pos,
-                    Easing::Linear,
-                    time
-                ));
-            }
-        }
+//                 self.transforms.push(Transformation::new(
+//                     offset + (time_between_shakes * (i+1) as f32),
+//                     time_between_shakes,
+//                     pos,
+//                     Easing::Linear,
+//                     time
+//                 ));
+//             }
+//         }
 
-        let end_pos = if shake_count % 2 == 0 { 
-            TransformType::Position { start: -shake_amount, end: Vector2::ZERO }
-        } else { 
-            TransformType::Position { start: shake_amount, end: Vector2::ZERO }
-        };
+//         let end_pos = if shake_count % 2 == 0 { 
+//             TransformType::Position { start: -shake_amount, end: Vector2::ZERO }
+//         } else { 
+//             TransformType::Position { start: shake_amount, end: Vector2::ZERO }
+//         };
 
-        self.transforms.push(Transformation::new(
-            offset + (time_between_shakes * (shake_count+2) as f32),
-            time_between_shakes,
-            end_pos,
-            Easing::Linear,
-            time
-        ));
-    }
-}
+//         self.transforms.push(Transformation::new(
+//             offset + (time_between_shakes * (shake_count+2) as f32),
+//             time_between_shakes,
+//             end_pos,
+//             Easing::Linear,
+//             time
+//         ));
+//     }
+// }
 
 
 impl TatakuRenderable for TransformGroup {
@@ -310,22 +338,38 @@ impl TatakuRenderable for TransformGroup {
 
 
     fn draw(&self, mut transform: Matrix, g: &mut GraphicsState) {
-        transform = transform
-            * Matrix::identity()
-            .trans(-self.origin) // apply origin
-            .rot(*self.rotation) // rotate
-            .scale(*self.scale) // scale
-            .trans(*self.pos) // move to pos
-        ;
+        // transform = transform
+        //     * Matrix::identity()
+        //     .trans(-self.origin) // apply origin
+        //     .rot(*self.rotation) // rotate
+        //     .scale(*self.scale) // scale
+        //     .trans(*self.pos) // move to pos
+        // ;
+        transform = transform * self.transform_manager.matrix();
 
-        
-        for i in self.items.iter() {
-            i.draw_with_transparency(*self.alpha, *self.border_alpha, transform, g)
+        if self.raw_draw {
+            self.items.iter().for_each(|i| i.draw(transform, g));
+        } else {
+            self.items.iter().for_each(|i| i.draw_with_transparency(*self.alpha, *self.border_alpha, transform, g));
         }
     }
 
     fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
         self.draw(transform, g)
+    }
+}
+
+
+impl Deref for TransformGroup {
+    type Target = TransformManager;
+
+    fn deref(&self) -> &Self::Target {
+        &self.transform_manager
+    }
+}
+impl DerefMut for TransformGroup {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.transform_manager
     }
 }
 

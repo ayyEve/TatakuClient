@@ -42,6 +42,8 @@ pub struct GraphicsState {
     screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static>>,
 
     particle_system: ParticleSystem,
+
+    scissors: ScissorManager
 }
 impl GraphicsState {
 
@@ -334,6 +336,7 @@ impl GraphicsState {
             projection_matrix_bind_group,
             screenshot_pending: None,
             particle_system,
+            scissors: ScissorManager::default()
         };
         s
     }
@@ -936,14 +939,23 @@ impl GraphicsState {
         self.current_render_buffer = Some(self.buffer_queues.remove(&to_draw).expect(&format!("buffer queue did not have a queue for type {to_draw:?}. Did you forget to create a buffer queue for it?")));
     }
 
+
+
+    pub fn push_scissor(&mut self, scissor: [f32; 4]) {
+        self.scissors.push_scissor(scissor)
+    }
+    pub fn pop_scissor(&mut self) {
+        self.scissors.pop_scissor()
+    }
+
     /// returns reserve data
     fn reserve_vertex(
         &mut self,
         vtx_count: u64,
         idx_count: u64,
-        scissor: Scissor,
         blend_mode: BlendMode
     ) -> Option<VertexReserveData> {
+        let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastDrawn::Vertex);
 
         let vertex_buffer_queue = get_render_buffer!(self, Vertex);
@@ -995,10 +1007,10 @@ impl GraphicsState {
         h_flip: bool,
         v_flip: bool,
         transform: Matrix,
-        scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
+        // let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_vertex(4, 6, blend_mode) else { return };
 
         let [x, y, w, h] = rect;
         let color = color.into();
@@ -1063,10 +1075,10 @@ impl GraphicsState {
         quad: [Vector2; 4],
         color: Color,
         transform: Matrix,
-        scissor: Scissor,
         blend_mode: BlendMode,
     ) {
-        let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
+        // let Some(mut reserved) = self.reserve_vertex(4, 6, scissor, blend_mode) else { return };
+        let Some(mut reserved) = self.reserve_vertex(4, 6, blend_mode) else { return };
         let color = color.into();
 
         let vertices = quad.into_iter().map(|p: Vector2|Vertex {
@@ -1089,12 +1101,12 @@ impl GraphicsState {
 
     fn reserve_slider(
         &mut self,
-        scissor: Scissor,
 
         slider_grid_count: u64,
         grid_cell_count: u64,
         line_segment_count: u64,
     ) -> Option<SliderReserveData> {
+        let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastDrawn::Slider);
 
         let slider_buffer_queue = get_render_buffer!(self, Slider);
@@ -1164,8 +1176,8 @@ impl GraphicsState {
 
     fn reserve_flashlight(
         &mut self,
-        scissor: Scissor,
     ) -> Option<FlashlightReserveData> {
+        let scissor = self.scissors.current_scissor();
         self.check_dump_and_next(LastDrawn::Flashlight);
 
         let buffer_queue = get_render_buffer!(self, Flashlight);
@@ -1217,7 +1229,7 @@ impl GraphicsState {
 impl GraphicsState {
 
     /// draw an arc with the center at 0,0
-    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
         let n = resolution;
 
         // minor optimization
@@ -1240,10 +1252,10 @@ impl GraphicsState {
         path.end(false);
         let path = path.build();
 
-        self.tessellate_path(&path, color, None, transform, scissor, blend_mode);
+        self.tessellate_path(&path, color, None, transform, blend_mode);
     }
 
-    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
         let n = resolution;
 
         let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
@@ -1256,7 +1268,7 @@ impl GraphicsState {
 
         // fill
         if color.a > 0.0 {
-            self.tessellate_polygon(&points, color, None, transform, scissor, blend_mode);
+            self.tessellate_polygon(&points, color, None, transform, blend_mode);
         }
 
         // border
@@ -1270,12 +1282,12 @@ impl GraphicsState {
             //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
             // });
 
-            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, scissor, blend_mode);
+            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, blend_mode);
         }
 
     }
 
-    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, blend_mode: BlendMode) {
         let p1 = Vector2::new(line[0], line[1]);
         let p2 = Vector2::new(line[2], line[3]);
 
@@ -1288,11 +1300,11 @@ impl GraphicsState {
         let n3 = p2 - n;
 
         let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, color, transform, scissor, blend_mode);
+        self.reserve_quad(quad, color, transform, blend_mode);
     }
 
     /// rect is [x,y,w,h]
-    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode) {
         // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
         if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
 
@@ -1302,24 +1314,27 @@ impl GraphicsState {
         let mut path = lyon_tessellation::path::Path::builder();
         match shape {
             Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
-            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive)
+            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive),
+            Shape::RoundSep([top_left, top_right, bottom_left, bottom_right]) => path.add_rounded_rectangle(&rect, &BorderRadii {
+                top_left, top_right, bottom_left, bottom_right
+            }, lyon_tessellation::path::Winding::Positive)
         }
         let path = path.build();
 
         // fill
         if color.a > 0.0 {
-            self.tessellate_path(&path, color, None, transform, scissor, blend_mode)
+            self.tessellate_path(&path, color, None, transform, blend_mode)
         }
 
         // border
         if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            self.tessellate_path(&path, border.color, Some(border.radius), transform, scissor, blend_mode)
+            self.tessellate_path(&path, border.color, Some(border.radius), transform, blend_mode)
         }
     }
 
-    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
         let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, scissor, blend_mode);
+        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, blend_mode);
     }
 
     
@@ -1327,7 +1342,6 @@ impl GraphicsState {
         &mut self,
         quad: [Vector2; 4],
         transform: Matrix,
-        scissor: Scissor,
 
         mut slider_data: SliderData,
         slider_grids: Vec<GridCell>,
@@ -1335,7 +1349,6 @@ impl GraphicsState {
         line_segments: Vec<LineSegment>
     ) {
         let Some(mut reserved) = self.reserve_slider(
-            scissor,
             slider_grids.len() as u64,
             grid_cells.len() as u64,
             line_segments.len() as u64
@@ -1373,10 +1386,9 @@ impl GraphicsState {
         &mut self,
         quad: [Vector2; 4],
         transform: Matrix,
-        scissor: Scissor,
         flashlight_data: FlashlightData
     ) {
-        let Some(mut reserved) = self.reserve_flashlight(scissor) else { return };
+        let Some(mut reserved) = self.reserve_flashlight() else { return };
         
         let vertices = quad.into_iter().map(|p|FlashlightVertex {
             position: transform.mul_v2(p).into(),
@@ -1386,7 +1398,7 @@ impl GraphicsState {
         reserved.copy_in(&vertices, flashlight_data);
     }
 
-    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
         let mut path = lyon_tessellation::path::Path::builder();
         path.begin(polygon.next().map(|p|Point::new(p.x, p.y)).unwrap());
@@ -1397,10 +1409,10 @@ impl GraphicsState {
         path.end(true);
         let path = path.build();
 
-        self.tessellate_path(&path, color, border, transform, scissor, blend_mode)
+        self.tessellate_path(&path, color, border, transform, blend_mode)
     }
 
-    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, scissor: Scissor, blend_mode: BlendMode) {
+    fn tessellate_path(&mut self, path: &lyon_tessellation::path::Path, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
         // Create the destination vertex and index buffers.
         let mut buffers: lyon_tessellation::VertexBuffers<Point<f32>, u16> = lyon_tessellation::VertexBuffers::new();
 
@@ -1435,7 +1447,8 @@ impl GraphicsState {
 
         }
 
-        let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
+        // let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, scissor, blend_mode).expect("nope");
+        let mut reserved = self.reserve_vertex(buffers.vertices.len() as u64, buffers.indices.len() as u64, blend_mode).expect("nope");
 
         // convert vertices and indices to their proper values
         let mut vertices = buffers.vertices.into_iter().map(|n| Vertex {

@@ -47,7 +47,6 @@ impl TatakuRenderable for HalfCircle {
             self.color.alpha(alpha), 
             20, 
             transform.trans(self.pos), 
-            self.scissor,
             self.blend_mode
         )
 

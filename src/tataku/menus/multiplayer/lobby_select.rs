@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub struct LobbySelect {
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
     // scrollable: ScrollableArea,
     lobbies: HashMap<u32, LobbyInfo>,
     needs_init: bool,
@@ -12,7 +12,7 @@ impl LobbySelect {
     pub async fn new() -> Self {
         let multiplayer_data = MultiplayerDataHelper::new();
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             lobbies: multiplayer_data.lobbies.clone(),
             // scrollable,
             multiplayer_data,
@@ -45,19 +45,19 @@ impl AsyncMenu for LobbySelect {
 
         if (self.multiplayer_data.lobby_creation_pending || self.multiplayer_data.lobby_join_pending) && CurrentLobbyInfo::get().is_some() {
             // joined lobby
-            self.actions.push(MenuAction::SetMenu(Box::new(LobbyMenu::new().await)));
+            self.actions.push(MenuMenuAction::SetMenu(Box::new(LobbyMenu::new().await)));
         }
 
         // lost connection
         if !OnlineManager::get().await.logged_in {
-            self.actions.push(MenuAction::SetMenu(Box::new(MainMenu::new().await)));
+            self.actions.push(MenuMenuAction::SetMenu(Box::new(MainMenu::new().await)));
         }
 
         self.actions.take()
     }
     
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
         let cols = 5;
         let rows = 5;
@@ -94,13 +94,13 @@ impl AsyncMenu for LobbySelect {
         let Some(tag) = message.tag.as_string() else { return };
 
         match &*tag {
-            "create_lobby" => self.actions.push(MenuAction::AddDialog(Box::new(CreateLobbyDialog::new()), false)),
-            "back" => self.actions.push(MenuAction::SetMenu(Box::new(MainMenu::new().await))),
+            "create_lobby" => self.actions.push(MenuMenuAction::AddDialog(Box::new(CreateLobbyDialog::new()), false)),
+            "back" => self.actions.push(MenuMenuAction::SetMenu(Box::new(MainMenu::new().await))),
 
             _ => if let Some(id) = message.message_type.as_number() {
                 let id = id  as u32;
                 if self.lobbies.get(&id).unwrap().has_password {
-                    MenuAction::AddDialog(Box::new(DraggableDialog::new(DraggablePosition::CenterMiddle, Box::new(JoinLobbyDialog::new(id)))), false);
+                    MenuMenuAction::AddDialog(Box::new(DraggableDialog::new(DraggablePosition::CenterMiddle, Box::new(JoinLobbyDialog::new(id)))), false);
                 } else {
                     tokio::spawn(OnlineManager::join_lobby(id, String::new()));
                 }

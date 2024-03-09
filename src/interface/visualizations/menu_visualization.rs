@@ -29,7 +29,7 @@ pub struct MenuVisualization {
     ripples: Vec<TransformGroup>,
     // current_timing_point: TimingPoint,
 
-    window_size: WindowSizeHelper,
+    bounds: Bounds,
 
     other_timer: Instant, // internal use only
     last_bass: f32, // last bass value. if current is less than this and we havent created a new ripple since, we should do that now
@@ -53,8 +53,7 @@ impl MenuVisualization {
             cookie = load_image("./resources/icon.png", false, Vector2::ONE).await;
         }
 
-        let mut cookie = cookie.expect("no cookie image?");
-        cookie.set_size(Vector2::ONE * initial_inner_radius);
+        let cookie = cookie.expect("no cookie image?");
 
         Self {
             rotation: 0.0,
@@ -71,7 +70,7 @@ impl MenuVisualization {
             // ripple things
             ripples: Vec::new(),
             // current_timing_point: TimingPoint::default(),
-            window_size,
+            bounds: Bounds::default(),
 
             last_bass: 0.0,
             last_ripple: 0.0,
@@ -82,8 +81,16 @@ impl MenuVisualization {
         }
     }
 
+    // TODO: make sure this is correct for the new bounds
+    fn inner_radius(&self) -> f32 {
+        self.bounds.size.y / 6.0
+    }
+    fn bounds_center(&self) -> Vector2 {
+        self.bounds.pos + self.bounds.size / 2.0
+    }
+
     fn add_ripple(&mut self) {
-        let mut group = TransformGroup::new(self.window_size.0 / 2.0).alpha(1.0).border_alpha(1.0);
+        let mut group = TransformGroup::new(self.bounds_center()).alpha(1.0).border_alpha(1.0);
         let duration = 1000.0;
         let time = self.other_timer.as_millis();
 
@@ -100,19 +107,106 @@ impl MenuVisualization {
         self.ripples.push(group);
     }
 
-    pub fn song_changed(&mut self, _new_manager: &mut Option<IngameManager>) {
-        self.ripples.clear();
-        self.last_bass = 0.0;
-        self.last_ripple = 0.0;
-        self.created_ripple = false;
+    pub fn on_click(&self, pos:Vector2) -> bool {
+        let circle_pos = self.bounds_center();
+
+        let dist = (pos.x - circle_pos.x).powi(2) + (pos.y - circle_pos.y).powi(2);
+        let radius = self.current_inner_radius.powi(2);
+
+        dist <= radius
     }
 
-    pub async fn update(&mut self, _manager: &mut Option<IngameManager>) {
-        if self.window_size.update() {
-            self.initial_inner_radius = self.window_size.y / 6.0;
-            
-            self.cookie.set_size(Vector2::ONE * self.initial_inner_radius);
+    pub fn draw_cookie(&mut self, list: &mut RenderableCollection) {
+        let pos = self.bounds_center();
+        let inner_radius = self.inner_radius();
+
+        let mut cookie = self.cookie.clone();
+        cookie.pos = pos;
+        cookie.rotation = self.rotation * 2.0;
+        // cookie.set_size(Vector2::ONE * self.initial_inner_radius);
+        cookie.set_size(Vector2::ONE * inner_radius * 2.05 * if self.unload_cookie {1.0} else {1.2});
+        list.push(cookie);
+    }
+
+    pub async fn draw_vis(&mut self, list: &mut RenderableCollection) {
+        let pos = self.bounds_center();
+        let inner_radius = self.inner_radius();
+
+        // draw ripples
+        self.ripples.iter().for_each(|r|list.push(r.clone()));
+
+        let since_last = self.timer.elapsed().as_secs_f32(); // not ms
+        self.update_data().await;
+        if self.data.len() < 3 { return }
+    
+
+        let min = inner_radius / VISUALIZATION_SIZE_FACTOR;
+        let max = inner_radius * VISUALIZATION_SIZE_FACTOR;
+        let val = self.data[self.index].amplitude() / 500.0;
+        let inner_radius = f32::lerp(min, max, val).clamp(min, max);
+
+        let rotation_increment = 0.2;
+        self.rotation += rotation_increment * since_last;
+
+        // bars
+        let a = (2.0 * PI) / self.data.len() as f32;
+        let n = (2.0 * PI * inner_radius) / self.data.len() as f32 / 2.0;
+        const BAR_MULT:f32 = 1.5;
+
+        for i in 1..self.data.len() {
+            let val = self.data[i].amplitude();
+            if val <= CUTOFF { continue }
+
+            let factor = (i as f32 + 2.0).log10();
+            let l = inner_radius + val * factor * self.bar_height * BAR_MULT;
+
+            let theta = self.rotation + a * i as f32;
+            let theta_vector = Vector2::from_angle(theta);
+
+            let p1 = pos + theta_vector * inner_radius;
+            let p2 = pos + theta_vector * l;
+
+            // let cos = theta.cos();
+            // let sin = theta.sin();
+            // let p1 = pos + Vector2::new(
+            //     cos * inner_radius,
+            //     sin * inner_radius
+            // );
+
+            // let p2 = pos + Vector2::new(
+            //     cos * l,
+            //     sin * l
+            // );
+
+            list.push(Line::new(
+                p1,
+                p2,
+                n,
+                // COLORS[i % COLORS.len()]
+                if i == self.index { Color::RED } else { *BAR_COLOR }
+            ));
         }
+        
+    }
+}
+
+#[async_trait]
+impl Visualization for MenuVisualization {
+    fn lerp_factor(&self) -> f32 { 10.0 } // 15
+    fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
+    fn timer(&mut self) -> &mut Instant { &mut self.timer }
+
+    async fn draw(&mut self, bounds: Bounds, list: &mut RenderableCollection) {
+        self.bounds = bounds;
+
+        self.draw_vis(list).await;
+        self.draw_cookie(list);
+    }
+
+    async fn update(&mut self) {
+        // if self.bounds.update() {
+        //     self.initial_inner_radius = self.bounds.size.y / 6.0;
+        // }
 
 
         // see if we should add a ripple
@@ -157,16 +251,7 @@ impl MenuVisualization {
         });
     }
 
-    pub fn on_click(&self, pos:Vector2) -> bool {
-        let circle_pos = self.window_size.0 / 2.0;
-
-        let dist = (pos.x - circle_pos.x).powi(2) + (pos.y - circle_pos.y).powi(2);
-        let radius = self.current_inner_radius.powi(2);
-
-        dist <= radius
-    }
-
-    pub async fn reload_skin(&mut self) {
+    async fn reload_skin(&mut self) {
         if self.unload_cookie {
             GameWindow::free_texture(self.cookie.tex);
         }
@@ -178,79 +263,15 @@ impl MenuVisualization {
             self.cookie = load_image("./resources/icon.png", false, Vector2::ONE).await.unwrap();
             self.unload_cookie = true;
         }
-        self.cookie.set_size(Vector2::ONE * self.initial_inner_radius);
     }
 
-    pub fn draw_cookie(&self, pos: Vector2, list: &mut RenderableCollection) {
-        let mut cookie = self.cookie.clone();
-        cookie.pos = pos;
-        cookie.rotation = self.rotation * 2.0;
-        cookie.set_size(Vector2::ONE * self.current_inner_radius * 2.05 * if self.unload_cookie {1.0} else {1.2});
-        list.push(cookie);
+    fn song_changed(&mut self) {
+        self.ripples.clear();
+        self.last_bass = 0.0;
+        self.last_ripple = 0.0;
+        self.created_ripple = false;
     }
-}
 
-#[async_trait]
-impl Visualization for MenuVisualization {
-    fn lerp_factor(&self) -> f32 {10.0} // 15
-    fn data(&mut self) -> &mut Vec<FFTData> { &mut self.data }
-    fn timer(&mut self) -> &mut Instant { &mut self.timer }
-
-    async fn draw(&mut self, pos:Vector2, list: &mut RenderableCollection) {
-        // draw ripples
-        for ripple in self.ripples.iter() {
-            list.push(ripple.clone());
-        }
-
-        let since_last = self.timer.elapsed().as_secs_f32(); // not ms
-        self.update_data().await;
-        if self.data.len() < 3 { return }
-    
-
-        let min = self.initial_inner_radius / VISUALIZATION_SIZE_FACTOR;
-        let max = self.initial_inner_radius * VISUALIZATION_SIZE_FACTOR;
-        let val = self.data[self.index].amplitude() / 500.0;
-        self.current_inner_radius = f32::lerp(min, max, val).clamp(min, max);
-
-        let rotation_increment = 0.2;
-        self.rotation += rotation_increment * since_last;
-
-        // bars
-        let a = (2.0 * PI) / self.data.len() as f32;
-        let n = (2.0 * PI * self.current_inner_radius) / self.data.len() as f32 / 2.0;
-        const BAR_MULT:f32 = 1.5;
-
-        for i in 1..self.data.len() {
-            let val = self.data[i].amplitude();
-
-            if val <= CUTOFF { continue }
-
-            let factor = (i as f32 + 2.0).log10();
-            let l = self.current_inner_radius + val as f32 * factor * self.bar_height * BAR_MULT;
-
-            let theta = self.rotation + a * i as f32;
-            let cos = theta.cos();
-            let sin = theta.sin();
-            let p1 = pos + Vector2::new(
-                cos * self.current_inner_radius,
-                sin * self.current_inner_radius
-            );
-
-            let p2 = pos + Vector2::new(
-                cos * l,
-                sin * l
-            );
-
-            list.push(Line::new(
-                p1,
-                p2,
-                n,
-                // COLORS[i % COLORS.len()]
-                if i == self.index { Color::RED } else { *BAR_COLOR }
-            ));
-        }
-   
-    }
 
     fn reset(&mut self) {
         self.data.clear();

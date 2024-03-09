@@ -33,9 +33,9 @@ pub struct ContentBackground {
 
 impl ContentBackground {
     /// Creates a new [`ContentWithImage`] with the given content
-    pub fn new(content: IcedElement) -> Self {
+    pub fn new(content: impl IntoElement) -> Self {
         Self {
-            content,
+            content: content.into_element(),
             image: None,
             rect: None,
 

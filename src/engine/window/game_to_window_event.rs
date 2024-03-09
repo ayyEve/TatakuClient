@@ -1,6 +1,7 @@
 use image::RgbaImage;
 use crate::prelude::*;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::oneshot::Sender;
 
 #[allow(unused)]
 pub enum Game2WindowEvent {
@@ -8,7 +9,7 @@ pub enum Game2WindowEvent {
     HideCursor,
     RequestAttention,
     CloseGame,
-    TakeScreenshot(Fuze<(Vec<u8>, u32, u32)>),
+    TakeScreenshot(Sender<(Vec<u8>, u32, u32)>),
     LoadImage(LoadImage),
 
     RefreshMonitors,

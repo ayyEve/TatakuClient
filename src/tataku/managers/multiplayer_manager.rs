@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 pub struct MultiplayerManager {
     /// list of actions to send back to the game object
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
     
     /// lobby data
     lobby: CurrentLobbyDataHelper,
@@ -33,7 +33,7 @@ pub struct MultiplayerManager {
 impl MultiplayerManager {
     pub fn new() -> Self {
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             lobby: CurrentLobbyDataHelper::new(),
             selected_beatmap: None,
             current_beatmap: CurrentBeatmapHelper::new(),
@@ -75,9 +75,9 @@ impl MultiplayerManager {
                     GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                     if let Some(beatmap) = &self.selected_beatmap {
-                        self.actions.push(MenuAction::SetBeatmap(beatmap.clone(), true));
+                        self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
                     } else {
-                        self.actions.push(MenuAction::RemoveBeatmap);
+                        self.actions.push(BeatmapMenuAction::Remove);
                     }
 
                     let new_state = match self.selected_beatmap {
@@ -86,7 +86,7 @@ impl MultiplayerManager {
                     };
                     tokio::spawn(OnlineManager::update_lobby_state(new_state));
                 } else {
-                    self.actions.push(MenuAction::RemoveBeatmap);
+                    self.actions.push(BeatmapMenuAction::Remove);
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
                 }
             }
@@ -111,7 +111,7 @@ impl MultiplayerManager {
                 if let Some(loader) = &self.beatmap_loader {
                     if let Some(Ok(mut manager)) = loader.check().await {
                         manager.set_mode(GameplayMode::multi());
-                        self.actions.push(MenuAction::StartGame(Box::new(manager)));
+                        self.actions.push(GameMenuAction::StartGame(Box::new(manager)));
 
                         // self.manager = Some(Box::new(manager));
                         tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::InGame));
@@ -141,7 +141,7 @@ impl MultiplayerManager {
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map.clone(), mode));
             } else if let Some(beatmap) = &previous_map.0 {
                 // if nothing was selected, make sure we revert back to the previous beatmap
-                self.actions.push(MenuAction::SetBeatmap(beatmap.clone(), true));
+                self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
             }
         }
         
@@ -168,7 +168,7 @@ impl MultiplayerManager {
 
                 let beatmap_manager = BEATMAP_MANAGER.read().await;
                 if let Some(beatmap) = beatmap_manager.get_by_hash(&beatmap.hash) {
-                    self.actions.push(MenuAction::SetBeatmap(beatmap.clone(), true));
+                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
                     self.selected_beatmap = Some(beatmap);
                     
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));

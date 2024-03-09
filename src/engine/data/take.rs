@@ -1,6 +1,7 @@
 
 
 pub trait Take: Sized {
+    /// shorthand for std::mem::take
     fn take(&mut self) -> Self;
 }
 

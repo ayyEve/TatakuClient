@@ -5,7 +5,7 @@ pub const SCORE_SEND_TIME:f32 = 1_000.0;
 // const CHANNEL_COUNT:usize = 2;
 
 pub struct LobbyMenu {
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
     slots: Vec<LobbySlotComponent>,
 
     init_pending: bool,
@@ -54,7 +54,7 @@ impl LobbyMenu {
         }
 
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             slots,
             init_pending: true,
             // slot_senders,
@@ -63,7 +63,7 @@ impl LobbyMenu {
             selected_beatmap: None,
             selected_mode: Some(CurrentPlaymodeHelper::new().0.clone()),
 
-            gameplay_preview: GameplayPreview::new(true, true, Box::new(|s|s.background_game_settings.multiplayer_menu_enabled)),
+            gameplay_preview: GameplayPreview::new(true, true, Arc::new(|s|s.background_game_settings.multiplayer_menu_enabled)),
             
             current_mods: ModManagerHelper::new(),
         }
@@ -103,10 +103,10 @@ impl LobbyMenu {
                 GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                 if let Some(beatmap) = &self.selected_beatmap {
-                    self.actions.push(MenuAction::SetBeatmap(beatmap.clone(), true));
+                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
                     // BEATMAP_MANAGER.write().await.set_current_beatmap(game, beatmap, true).await;
                 } else {
-                    self.actions.push(MenuAction::RemoveBeatmap);
+                    self.actions.push(BeatmapMenuAction::Remove);
                     // BEATMAP_MANAGER.write().await.remove_current_beatmap(game).await;
                 }
 
@@ -116,7 +116,7 @@ impl LobbyMenu {
                 };
                 tokio::spawn(OnlineManager::update_lobby_state(new_state));
             } else {
-                self.actions.push(MenuAction::RemoveBeatmap);
+                self.actions.push(BeatmapMenuAction::Remove);
                 // BEATMAP_MANAGER.write().await.remove_current_beatmap(game).await;
                 tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
             }
@@ -172,7 +172,7 @@ impl LobbyMenu {
             .map(|info|info.get_mods())
             .unwrap_or_default();
 
-        self.actions.push(MenuAction::AddDialog(Box::new(ModDialog::new(groups).await), false))
+        self.actions.push(MenuMenuAction::AddDialog(Box::new(ModDialog::new(groups).await), false))
     }
 
     fn get_beatmap_button(&self, font_size: f32) -> IcedElement {
@@ -241,7 +241,7 @@ impl AsyncMenu for LobbyMenu {
         self.actions.take()
     }
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
         
         row!(
@@ -282,7 +282,7 @@ impl AsyncMenu for LobbyMenu {
                 if self.is_host() {
                     let mut menu = BeatmapSelectMenu::new().await;
                     menu.select_action = BeatmapSelectAction::Back;
-                    self.actions.push(MenuAction::SetMenu(Box::new(menu)));
+                    self.actions.push(MenuMenuAction::SetMenu(Box::new(menu)));
                 } else {
                     // player, cant change map. check if we have it, and if not, open a page to download it
                     let hash = self.lobby_info().current_beatmap.as_ref().map(|b|&b.hash);
@@ -349,7 +349,7 @@ impl AsyncMenu for LobbyMenu {
                 
                 if let Some(LobbySlot::Filled { user }) = lobby_info.slots.get(&slot) {
                     let dialog = LobbyPlayerDialog::new(*user, *user == lobby_info.our_user_id, self.is_host());
-                    self.actions.push(MenuAction::AddDialog(Box::new(dialog), false));
+                    self.actions.push(MenuMenuAction::AddDialog(Box::new(dialog), false));
                 }
             }
 

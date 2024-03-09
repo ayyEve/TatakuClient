@@ -16,7 +16,7 @@ pub struct Chat {
     num: usize,
 
     current_message: String,
-    key_handler: KeyPressHandlerGroup<ChatDialogKeys>,
+    key_handler: KeyEventsHandlerGroup<ChatDialogKeys>,
 
 
     // messages
@@ -74,7 +74,7 @@ impl Chat {
             should_close: false,
             current_message: String::new(),
             
-            key_handler: KeyPressHandlerGroup::new(),
+            key_handler: KeyEventsHandlerGroup::new(),
 
             // channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
             // message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),

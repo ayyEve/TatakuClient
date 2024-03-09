@@ -37,7 +37,6 @@ impl TatakuRenderable for FlashlightDrawable {
         g.draw_flashlight(
             self.bounds.into_quad(), 
             transform, 
-            self.scissor, 
             FlashlightData {
                 cursor_pos: self.pos.into(),
                 flashlight_radius: self.radius,

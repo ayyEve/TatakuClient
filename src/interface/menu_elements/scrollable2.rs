@@ -35,7 +35,7 @@ pub fn make_panel_scroll(children: Vec<IcedElement>, id: &'static str) -> PanelS
 }
 
 /// a scrollable area which culls items outside of bounds (i dont know why iced doesnt do this already :///)
-struct CullingColumn {
+pub struct CullingColumn {
     width: Length,
     height: Length,
     max_width: f32,
@@ -231,6 +231,8 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
         cursor: mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
+        let old = renderer.start_layer();
+
         for ((child, state), layout) in 
             self.children.iter()
             .zip(&tree.children)
@@ -242,6 +244,8 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
                 .as_widget()
                 .draw(state, renderer, theme, style, layout, cursor, viewport);
         }
+
+        renderer.end_layer(old, layout.bounds());
     }
 
     fn overlay<'b>(

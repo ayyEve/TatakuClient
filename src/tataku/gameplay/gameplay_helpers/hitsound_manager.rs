@@ -11,7 +11,7 @@ async fn load_sound(path: impl AsRef<str>, filename: String, sounds_list: &mut H
             Ok(sound) => {
                 sounds_list.insert(filename, sound); 
                 return true;
-            },
+            }
             Err(TatakuError::Audio(AudioError::Empty)) => {
                 // ignore these errors, just means the file provided was empty (probably)
             }

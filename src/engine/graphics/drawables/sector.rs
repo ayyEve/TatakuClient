@@ -57,7 +57,6 @@ impl TatakuRenderable for Sector {
             self.color.alpha(alpha),
             20,
             transform * Matrix::identity().scale(self.scale).trans(self.pos),
-            self.scissor,
             self.blend_mode
         )
 

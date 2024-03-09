@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub struct BeatmapDialog {
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
     num: usize,
     target_map: Md5Hash,
     should_close: bool,
@@ -9,7 +9,7 @@ pub struct BeatmapDialog {
 impl BeatmapDialog {
     pub fn new(target_map: Md5Hash) -> Self {
         Self {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             num: 0,
             
             target_map,
@@ -47,7 +47,7 @@ impl Dialog for BeatmapDialog {
 
         match &*tag {
             "delete" => {
-                self.actions.push(MenuAction::DeleteBeatmap(self.target_map));
+                self.actions.push(BeatmapMenuAction::Delete(self.target_map));
                 self.should_close = true;
             }
 
@@ -65,5 +65,5 @@ impl Dialog for BeatmapDialog {
         }
     }
     
-    async fn update(&mut self) -> Vec<MenuAction> { std::mem::take(&mut self.actions) }
+    async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }
 }

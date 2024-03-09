@@ -163,7 +163,7 @@ impl AsyncMenu for DirectMenu {
     }
 
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
 
         col!(

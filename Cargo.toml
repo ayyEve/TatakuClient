@@ -20,6 +20,7 @@ bass_audio = ["bass-rs"]
 debug_sliders = []
 debug_hitsounds = []
 debug_perf_rating = []
+debug_custom_menus = []
 storyboards = []
 texture_arrays = []
 no_media_control = []
@@ -27,7 +28,7 @@ no_media_control = []
 graphics = ["wgpu", "bytemuck", "lyon_tessellation"]
 
 [dependencies]
-tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
+tataku-common = { git="https://gitlab.ayyeve.dev/tataku/tataku-common" }
 # tataku-common = { path="../tataku-common" }
 tataku-client-proc-macros = { path = "./proc_macros" }
 
@@ -38,6 +39,7 @@ tokio = { version = "1.16", features = ["full"] }
 rusqlite = { version = "0.27", features = ["bundled"] }
 futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 async-trait = "0.1"
+async-recursion = "1.0"
 bombs = "0.1.5"
 triple_buffer = "6.0"
 crossbeam = "*"
@@ -102,14 +104,16 @@ rand = "0.8.4"
 chrono = "0.4"
 fs_extra = "1.2.0"
 
+rlua = "*"
 
 
 # logging
-tataku-logging = { git = "https://gitlab.ayyeve.xyz/tataku/tataku-logging" }
+tataku-logging = { git = "https://gitlab.ayyeve.dev/tataku/tataku-logging" }
 log = "0.4.16"
 num-format = "0.4.4"
+strfmt = "0.2.4"
 
-# battery_level = { git = "https://gitlab.ayyeve.xyz/ayyEve/battery-level-rs" }
+# battery_level = { git = "https://gitlab.ayyeve.dev/ayyEve/battery-level-rs" }
 
 
 [build-dependencies]
@@ -117,5 +121,5 @@ reqwest = { version = "0.11.4", features = ["blocking"] }
 serde = { version="1.0.180", features=["derive"] }
 serde_json = "1.0"
 
-tataku-common = { git="https://gitlab.ayyeve.xyz/tataku/tataku-common" }
+tataku-common = { git="https://gitlab.ayyeve.dev/tataku/tataku-common" }
 # tataku-common = { path="../tataku-common" }

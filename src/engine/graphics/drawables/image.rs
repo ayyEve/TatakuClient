@@ -121,6 +121,6 @@ impl TatakuRenderable for Image {
             .trans(self.pos) // move to pos
         ;
 
-        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.scissor, self.blend_mode);
+        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.blend_mode);
     }
 }

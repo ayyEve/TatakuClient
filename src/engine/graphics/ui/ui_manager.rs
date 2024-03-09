@@ -67,15 +67,17 @@ impl UiManager {
 
         while let Ok(ui_action) = ui_receiver.recv() {
             match ui_action {
-                UiAction::Update { application, callback, mut messages, events, operations } => {
+                UiAction::Update { application, callback, mut messages, events, operations, values } => {
                     // rebuild ui with the new application
                     if rebuild_next || application.menu.get_name() != last_menu {
                         last_menu = application.menu.get_name().to_owned();
                         rebuild_next = false;
                         needs_render = true;
 
+                        let values = values.lock();
+
                         ui = user_interface::UserInterface::build(
-                            application.view(),
+                            application.view(&values),
                             iced::Size::new(window_size.x, window_size.y),
                             ui.into_cache(), //std::mem::take(&mut cache),
                             &mut renderer,
@@ -122,6 +124,7 @@ impl UiManager {
                         let mut group = TransformGroup::new(Vector2::ZERO);
                         renderer.with_primitives(|_b, p| p.iter().for_each(|p|group.push_arced(into_renderable(p))));
                         last_draw = group;
+                        last_draw.raw_draw = true;
                     }
 
                     let _ = callback.send(UiDrawData {
@@ -133,7 +136,7 @@ impl UiManager {
         }
     }
 
-    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>) -> Vec<MenuAction> {
+    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: Arc<Mutex<ShuntingYardValues>>) -> Vec<MenuAction> {
         while let Ok(e) = self.message_channel.1.try_recv() {
             info!("adding message: {e:?}");
             self.messages.push(e);
@@ -146,7 +149,8 @@ impl UiManager {
             callback: sender,
             messages: std::mem::take(&mut self.messages),
             events: state.into_events(),
-            operations: self.queued_operations.take()
+            operations: self.queued_operations.take(),
+            values,
         }) else { return Vec::new(); };
 
         let Ok(UiUpdateData { application, messages }) = callback.await else { return Vec::new(); };
@@ -189,28 +193,35 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
             content,
             bounds,
             color,
-            size,
+            size: font_size,
             line_height,
-            font: _,
+            font,
             horizontal_alignment,
             vertical_alignment,
             shaping: _
         } => {
-            let mut pos = Vector2::new(bounds.x, bounds.y);
-
-            match vertical_alignment {
-                iced::alignment::Vertical::Bottom => pos.y -= size,
-                iced::alignment::Vertical::Center => pos.y -= size / 2.0,
-                iced::alignment::Vertical::Top => {} //pos.y -= size / 2.0,
-            }
-
-            Arc::new(Text::new(
-                pos,
-                *size,
+            let height = line_height.to_absolute(iced::Pixels(*font_size)).0;
+            
+            let mut text = Text::new(
+                Vector2::new(bounds.x, bounds.y),
+                *font_size,
                 content,
                 Color::new(color.r, color.g, color.b, color.a),
-                Font::Main
-            ))
+                Font::from_iced(font)
+            );
+
+            match vertical_alignment {
+                iced::alignment::Vertical::Bottom => text.pos.y -= height,
+                iced::alignment::Vertical::Center => text.pos.y -= height / 2.0,
+                iced::alignment::Vertical::Top => {}
+            }
+            match horizontal_alignment {
+                iced::alignment::Horizontal::Left => {}
+                iced::alignment::Horizontal::Center => text.pos.x += bounds.x - text.measure_text().x / 2.0,
+                iced::alignment::Horizontal::Right => text.pos.x += bounds.x - text.measure_text().x,
+            }
+            
+            Arc::new(text)
         }
         iced::advanced::graphics::Primitive::Quad { bounds, background, border_radius, border_width, border_color } => {
             Arc::new(Rectangle::new(
@@ -218,10 +229,10 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
                 Vector2::new(bounds.width, bounds.height),
                 match background {
                     iced::Background::Color(color) => color.into(),
-                    _ => Color::BLACK,
+                    _ => Color::TRANSPARENT_WHITE,
                 },
                 Some(Border::new(border_color.into(), *border_width))
-            ).shape(Shape::Round(border_radius[0])))
+            ).shape(Shape::RoundSep(*border_radius)))
         }
         iced::advanced::graphics::Primitive::Group { primitives } => {
             let mut group = TransformGroup::new(Vector2::ZERO);
@@ -266,6 +277,8 @@ enum UiAction {
         messages: Vec<Message>,
         events: SendEvents,
         operations: Vec<IcedOperation>,
+
+        values: Arc<Mutex<ShuntingYardValues>>
     },
     Draw {
         application: UiApplication,

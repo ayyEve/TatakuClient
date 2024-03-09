@@ -36,8 +36,8 @@ impl Message {
     }
 
     /// helper to make a click message for the given menu and item tag
-    pub fn menu_click(menu: &impl AsyncMenu, item_tag: impl Into<MessageTag>) -> Self {
-        Self::new_menu(menu, item_tag, MessageType::Click)
+    pub fn click(owner: MessageOwner, item_tag: impl Into<MessageTag>) -> Self {
+        Self::new(owner, item_tag, MessageType::Click)
     }
 
 
@@ -105,6 +105,20 @@ impl From<GameplayMod> for MessageTag {
 }
 
 
+macro_rules! message_type {
+    ($a1:ident, $a2:ident, $t:ident, $t2:ty) => {
+        pub fn $a1(self) -> Option<$t2> {
+            let Self::$t(v) = self else { return None };
+            Some(v)
+        }
+
+        pub fn $a2(&self) -> Option<&$t2> {
+            let Self::$t(v) = self else { return None };
+            Some(v)
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum MessageType {
     Click,
@@ -115,39 +129,26 @@ pub enum MessageType {
     Toggle(bool),
     Dropdown(String),
 
-    Custom(Arc<dyn std::any::Any + Send + Sync>)
+    Custom(Arc<dyn std::any::Any + Send + Sync>),
+    CustomMenuAction(CustomMenuAction),
 }
+#[allow(unused)]
 impl MessageType {
-    pub fn as_text(self) -> Option<String> {
-        let Self::Text(t) = self else { return None };
-        Some(t)
-    }
-    pub fn as_key(self) -> Option<Key> {
-        let Self::Key(k) = self else { return None };
-        Some(k)
-    }
-    pub fn as_number(self) -> Option<usize> {
-        let Self::Number(n) = self else { return None };
-        Some(n)
-    }
-    pub fn as_float(self) -> Option<f32> {
-        let Self::Float(n) = self else { return None };
-        Some(n)
-    }
-    pub fn as_toggle(self) -> Option<bool> {
-        let Self::Toggle(b) = self else { return None };
-        Some(b)
-    }
-    pub fn as_dropdown(self) -> Option<String> {
-        let Self::Dropdown(s) = self else { return None };
-        Some(s)
-    }
+    message_type!(as_text, as_text_ref, Text, String);
+    message_type!(as_key, as_key_ref, Key, Key);
+    message_type!(as_number, as_number_ref, Number, usize);
+    message_type!(as_float, as_float_ref, Float, f32);
+    message_type!(as_toggle, as_toggle_ref, Toggle, bool);
+    message_type!(as_dropdown, as_dropdown_ref, Dropdown, String);
 
     pub fn downcast<T:Send+Sync+'static>(self) -> Arc<T> {
         let Self::Custom(t) = self else { panic!("nope") };
         t.downcast().unwrap()
     }
-    
+    pub fn try_downcast<T:Send+Sync+'static>(self) -> Option<Arc<T>> {
+        let Self::Custom(t) = self else { return None };
+        t.downcast().ok()
+    }
 }
 
 
@@ -172,5 +173,14 @@ impl MessageOwner {
     pub fn check_dialog(&self, dialog: &Box<dyn Dialog>) -> bool {
         let Self::Dialog(name, number) = self else { return false };
         name == &dialog.name() && number == &dialog.get_num()
+    }
+
+    /// Click message helper
+    pub fn click(self, tag: impl Into<MessageTag>) -> Message {
+        Message::click(self, tag)
+    }
+    /// Float message helper
+    pub fn float(self, tag: impl Into<MessageTag>, val: f32) -> Message {
+        Message::new(self, tag, MessageType::Float(val))
     }
 }

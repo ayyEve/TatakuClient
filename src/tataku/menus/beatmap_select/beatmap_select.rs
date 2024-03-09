@@ -11,7 +11,7 @@ use crate::prelude::*;
 const SPEED_DIFF:f32 = 0.05;
 
 pub struct BeatmapSelectMenu {
-    action_queue: Vec<MenuAction>,
+    action_queue: ActionQueue,
     
     current_scores: HashMap<String, IngameScore>,
 
@@ -44,7 +44,7 @@ pub struct BeatmapSelectMenu {
     current_skin: CurrentSkinHelper,
     new_beatmap_helper: LatestBeatmapHelper,
     diffcalc_complete: Option<Bomb<()>>,
-    key_events: KeyPressHandlerGroup<BeatmapSelectKeyEvent>,
+    key_events: KeyEventsHandlerGroup<BeatmapSelectKeyEvent>,
 
     menu_game: GameplayPreview,
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
@@ -84,7 +84,7 @@ impl BeatmapSelectMenu {
         // beatmap_scroll.ui_scale_changed(Vector2::ONE * scale);
 
         let mut b = BeatmapSelectMenu {
-            action_queue: Vec::new(),
+            action_queue: ActionQueue::new(),
 
             // pending_refresh: false,
             // map_changing: (false, false, 0),
@@ -106,10 +106,10 @@ impl BeatmapSelectMenu {
             new_beatmap_helper: LatestBeatmapHelper::new(),
             current_skin: CurrentSkinHelper::new(),
             select_action: BeatmapSelectAction::PlayMap,
-            key_events: KeyPressHandlerGroup::new(),
+            key_events: KeyEventsHandlerGroup::new(),
 
             // mouse_down: None,
-            menu_game: GameplayPreview::new(true, true, Box::new(|s|s.background_game_settings.beatmap_select_enabled)),
+            menu_game: GameplayPreview::new(true, true, Arc::new(|s|s.background_game_settings.beatmap_select_enabled)),
             settings,
             cached_maps: Vec::new(),
             updates: 0,
@@ -440,7 +440,7 @@ impl BeatmapSelectMenu {
 
         let Some(set) = self.visible_sets.get(self.selected_set) else { return };
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.action_queue.push(MenuAction::SetBeatmap(map.meta.clone(), true))
+            self.action_queue.push(BeatmapMenuAction::Set(map.meta.clone(), true))
         }
     }
     fn next_map(&mut self) {
@@ -457,8 +457,8 @@ impl BeatmapSelectMenu {
         let Some(map) = self.get_beatmap() else { return };
 
         match &self.select_action {
-            BeatmapSelectAction::PlayMap => self.action_queue.push(MenuAction::PlayMap(map, mode)),
-            BeatmapSelectAction::Back => self.action_queue.push(MenuAction::PreviousMenu(self.get_name())),
+            BeatmapSelectAction::PlayMap => self.action_queue.push(BeatmapMenuAction::PlayMap(map, mode)),
+            BeatmapSelectAction::Back => self.action_queue.push(MenuMenuAction::PreviousMenu(self.get_name())),
         }
     }
     
@@ -496,7 +496,7 @@ impl BeatmapSelectMenu {
 impl AsyncMenu for BeatmapSelectMenu {
     fn get_name(&self) -> &'static str {"beatmap_select"}
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
         let gamemodes = AVAILABLE_PLAYMODES.iter().map(|s|s.to_string()).collect::<Vec<_>>();
         let sort_bys = SortBy::list().iter().map(SortBy::to_string).collect::<Vec<_>>();
@@ -557,7 +557,7 @@ impl AsyncMenu for BeatmapSelectMenu {
                 if self.menu_game.current_beatmap.0.as_ref().unwrap().beatmap_hash == b.beatmap_hash {
                     self.play_map().await;
                 } else {
-                    self.action_queue.push(MenuAction::SetBeatmap(b, true));
+                    self.action_queue.push(BeatmapMenuAction::Set(b, true));
                 }
             }
 
@@ -608,9 +608,9 @@ impl AsyncMenu for BeatmapSelectMenu {
                 KeyEvent::Press(BeatmapSelectKeyEvent::PrevSet) => self.prev_set(),
 
                 KeyEvent::Press(BeatmapSelectKeyEvent::Enter) => self.play_map().await,
-                KeyEvent::Press(BeatmapSelectKeyEvent::Back) => self.action_queue.push(MenuAction::PreviousMenu(self.get_name())),
+                KeyEvent::Press(BeatmapSelectKeyEvent::Back) => self.action_queue.push(MenuMenuAction::PreviousMenu(self.get_name())),
 
-                KeyEvent::Press(BeatmapSelectKeyEvent::ModsDialog) => self.action_queue.push(MenuAction::AddDialog(self.make_mods_dialog().await, false)),
+                KeyEvent::Press(BeatmapSelectKeyEvent::ModsDialog) => self.action_queue.push(MenuMenuAction::AddDialog(self.make_mods_dialog().await, false)),
                 
                 KeyEvent::Press(BeatmapSelectKeyEvent::SpeedUp) => self.speed_step(SPEED_DIFF).await,
                 KeyEvent::Press(BeatmapSelectKeyEvent::SpeedDown) => self.speed_step(-SPEED_DIFF).await,
@@ -623,10 +623,6 @@ impl AsyncMenu for BeatmapSelectMenu {
                 _ => {}
             };
         }
-
-        // do this after the above because the above modifies self.action_queue
-        let mut actions = std::mem::take(&mut self.action_queue);
-
 
         // check for diffcalc update
         let mut filter_pending = false;
@@ -644,7 +640,7 @@ impl AsyncMenu for BeatmapSelectMenu {
         }
 
         if self.new_beatmap_helper.update() {
-            actions.push(MenuAction::SetBeatmap(self.new_beatmap_helper.0.clone(), true));
+            self.action_queue.push(BeatmapMenuAction::Set(self.new_beatmap_helper.0.clone(), true));
             // BEATMAP_MANAGER.write().await.set_current_beatmap(game, &self.new_beatmap_helper.0, true).await;
             refresh_pending = true;
             self.menu_game.setup().await;
@@ -679,7 +675,7 @@ impl AsyncMenu for BeatmapSelectMenu {
             }
         }
 
-        actions
+        self.action_queue.take()
     }
 
     // async fn draw(&mut self, items: &mut RenderableCollection) {

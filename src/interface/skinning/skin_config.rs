@@ -254,7 +254,7 @@ impl Default for SkinSettings {
             
             sliderball_frames: 10,
             hit_circle_overlay_above_number: false,
-            /// ??
+            // ??
             slider_style: 2, 
             sliderball_flip: false,
             allow_sliderball_tint: false,
@@ -269,7 +269,7 @@ impl Default for SkinSettings {
             ],
             slider_border: None,
             slider_track_override: None,
-            /// ???
+            // ???
             spinner_approach_circle: None,
             song_select_active_text: None,
             song_select_inactive_text: None,

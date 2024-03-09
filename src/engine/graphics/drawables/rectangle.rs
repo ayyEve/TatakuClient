@@ -15,7 +15,7 @@ pub struct Rectangle {
     pub border: Option<Border>,
 }
 impl Rectangle {
-    pub fn new(pos: Vector2, size: Vector2, color: Color, border: Option<Border>) -> Rectangle {
+    pub fn new(pos: Vector2, size: Vector2, color: Color, border: Option<Border>) -> Self {
         Rectangle {
             inner: Bounds {pos, size, scale: Vector2::ONE},
 
@@ -28,6 +28,11 @@ impl Rectangle {
             border,
             origin: size / 2.0,
         }
+    }
+
+    /// used when a rect is only used for style info
+    pub fn style_only(color: Color, border: Option<Border>, shape: Shape) -> Self {
+        Self::new(Vector2::ZERO, Vector2::ZERO, color, border).shape(shape)
     }
 }
 
@@ -66,7 +71,7 @@ impl TatakuRenderable for Rectangle {
             .trans(self.inner.pos) // move to pos
         ;
 
-        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.scissor, self.blend_mode)
+        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.blend_mode)
     }
 }
 
@@ -96,6 +101,16 @@ impl DerefMut for Rectangle {
 pub enum Shape {
     /// Square corners
     Square,
+
     /// Round corners
     Round(f32),
+
+    /// Round corners with separate vals
+    RoundSep([f32;4]),
+}
+
+impl From<[f32;4]> for Shape {
+    fn from(value: [f32;4]) -> Self {
+        Self::RoundSep(value)
+    }
 }

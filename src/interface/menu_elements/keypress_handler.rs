@@ -2,20 +2,20 @@ use crate::prelude::*;
 use iced::event::Status;
 use iced::keyboard::Event;
 
-pub struct KeyPressHandlerGroup<T:KeyMap> {
+pub struct KeyEventsHandlerGroup<T:KeyMap> {
     receiver: AsyncReceiver<KeyEvent<T>>,
-    handler: KeyPressHandler<T>,
+    handler: KeyEventsHandler<T>,
 }
-impl<T:KeyMap> KeyPressHandlerGroup<T> {
+impl<T:KeyMap> KeyEventsHandlerGroup<T> {
     pub fn new() -> Self {
-        let (handler, receiver) = KeyPressHandler::new();
+        let (handler, receiver) = KeyEventsHandler::new();
         Self {
             handler,
             receiver,
         }
     }
 
-    pub fn handler(&self) -> KeyPressHandler<T> {
+    pub fn handler(&self) -> KeyEventsHandler<T> {
         self.handler.clone()
     }
 
@@ -25,8 +25,8 @@ impl<T:KeyMap> KeyPressHandlerGroup<T> {
 }
 
 
-pub struct KeyPressHandler<T: KeyMap>(AsyncSender<KeyEvent<T>>);
-impl<T:KeyMap> KeyPressHandler<T> {
+pub struct KeyEventsHandler<T: KeyMap>(AsyncSender<KeyEvent<T>>);
+impl<T:KeyMap> KeyEventsHandler<T> {
     pub fn new() -> (Self, AsyncReceiver<KeyEvent<T>>) {
         let (sender, receiver) = async_channel(10);
 
@@ -34,13 +34,13 @@ impl<T:KeyMap> KeyPressHandler<T> {
     }
 }
 // derive macro requires all generic arguments to be clone
-impl<T: KeyMap> Clone for KeyPressHandler<T> {
+impl<T: KeyMap> Clone for KeyEventsHandler<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<T:KeyMap> iced::advanced::Widget<Message, IcedRenderer> for KeyPressHandler<T> {
+impl<T:KeyMap> iced::advanced::Widget<Message, IcedRenderer> for KeyEventsHandler<T> {
     fn width(&self) -> iced::Length { iced::Length::Fixed(0.0) }
     fn height(&self) -> iced::Length { iced::Length::Fixed(0.0) }
 
@@ -98,8 +98,8 @@ impl<T:KeyMap> iced::advanced::Widget<Message, IcedRenderer> for KeyPressHandler
     ) {}
 }
 
-impl<T:KeyMap + 'static> From<KeyPressHandler<T>> for IcedElement {
-    fn from(value: KeyPressHandler<T>) -> Self {
+impl<T:KeyMap + 'static> From<KeyEventsHandler<T>> for IcedElement {
+    fn from(value: KeyEventsHandler<T>) -> Self {
         Self::new(value)
     }
 }

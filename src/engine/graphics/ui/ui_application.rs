@@ -59,9 +59,9 @@ impl UiApplication {
     }
 
 
-    pub fn view(&self) -> IcedElement {
+    pub fn view(&self, values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
-        let content:IcedElement = self.menu.view();
+        let content:IcedElement = self.menu.view(values);
         let dialogs = self.dialog_manager.view();
 
         Container::new(col!(

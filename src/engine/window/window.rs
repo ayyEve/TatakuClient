@@ -310,7 +310,7 @@ impl GameWindow {
                     let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
                 }
 
-                Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { fuze.ignite((window_data, width, height)); }),
+                Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(move |(window_data, width, height)| { let _ = fuze.send((window_data, width, height)); }),
                 Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
                 Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
@@ -424,7 +424,18 @@ impl GameWindow {
         let transform = Matrix::identity();
         
         self.graphics.begin();
-        data.iter().for_each(|d|d.draw(transform, &mut self.graphics));
+        data.iter().for_each(|d| {
+            let scissor = d.get_scissor();
+            if let Some(scissor) = scissor {
+                self.graphics.push_scissor(scissor);
+            }
+            
+            d.draw(transform, &mut self.graphics);
+
+            if scissor.is_some() {
+                self.graphics.pop_scissor();
+            }
+        });
 
         self.graphics.end();
 

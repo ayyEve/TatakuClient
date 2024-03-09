@@ -24,11 +24,11 @@ impl backend::Text for IcedBackend {
         contents: &str,
         size: f32,
         _line_height: iced::advanced::text::LineHeight,
-        _font: iced::Font,
+        font: iced::Font,
         _bounds: iced::Size,
         _shaping: iced::advanced::text::Shaping,
     ) -> iced::Size {
-        let s = Text::new(Vector2::ZERO, size, contents, Color::WHITE, Font::Main).measure_text();
+        let s = Text::new(Vector2::ZERO, size, contents, Color::WHITE, Font::from_iced(&font)).measure_text();
         iced::Size::new(s.x, s.y)
     }
 
@@ -44,7 +44,7 @@ impl backend::Text for IcedBackend {
         nearest_only: bool,
     ) -> Option<iced::advanced::text::Hit> {
         let bounds = Vector2::new(bounds.width, bounds.height);
-        let mut ti = TextInput::new(Vector2::ZERO, bounds, "", contents, Font::from_iced(font));
+        let mut ti = TextInput::new(Vector2::ZERO, bounds, "", contents, Font::from_iced(&font));
         ti.font_size = size;
 
         //TODO: not always return the thing

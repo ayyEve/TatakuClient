@@ -16,7 +16,7 @@ impl SpectatorMenu {
 impl AsyncMenu for SpectatorMenu {
     fn get_name(&self) -> &'static str { "spectator_menu" }
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
     
         EmptyElement.into_element()

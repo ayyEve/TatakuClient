@@ -163,7 +163,6 @@ impl TatakuRenderable for Text {
                         [&mut x, &mut y], 
                         scale,
                         color, 
-                        self.scissor,
                         self.blend_mode,
                         transform, 
                         g

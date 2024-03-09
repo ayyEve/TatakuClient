@@ -101,7 +101,7 @@ impl Into<Color> for TransformValueResult {
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum TransformType {
     None, // default
     VectorScale { start: Vector2, end: Vector2 },

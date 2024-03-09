@@ -378,7 +378,7 @@ impl OsuBeatmap {
 
 
         // verify we have a valid beatmap
-        if beatmap.notes.is_empty() && beatmap.sliders.is_empty() && beatmap.spinners.is_empty() {
+        if !metadata_only && beatmap.notes.is_empty() && beatmap.sliders.is_empty() && beatmap.spinners.is_empty() {
             // no notes
             return Err(BeatmapError::NoNotes)?;
         }

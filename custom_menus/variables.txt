@@ -1,0 +1,17 @@
+volume.master: Float -> The master volume (0-1)
+volume.music: Float -> The music volume (0-1)
+volume.sound: Float -> The sound effect volume (0-1)
+
+song.position: Float -> Position of the song in ms
+
+map.artist: String -> Artist of the current map
+map.title: String -> Title of the current map
+map.creator: String -> Creator of the current map
+map.version: String -> Version name of the current map
+map.playmode: String -> The playmode id this map was made for (ie "osu")
+map.game: String -> The game this map was made for (ie: "quaver")
+map.diff_rating: Float -> What difficulty rating (star rating) this map has
+map.hash: String -> Hash of the current beatmap
+
+current.playmode -> The currently selected playmode id (ie: "osu")
+current.playmode_display -> Same as above but the display name instead (ie: "Osu")

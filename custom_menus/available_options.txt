@@ -1,0 +1,134 @@
+Notes:
+    - Unless otherwise specified, the default value of a property is nil (non-existant)
+    - If a property cant be nil, and has no value provided, the item will fail to load, and an error will be printed to the console
+
+Pre-built Elements
+    - "row" and "column" -> A row/column of elements. Mainly used for alignment and layout
+        - elements: Array<Element> -> The elements contained in the row
+        - width: Length -> How wide is the space? (Default "fill")
+        - height: Length -> How tall is the space? (Default "fill")
+
+    - "space" -> Empty space, helpful for alignment
+        - width: Length -> How wide is the space? (Default "shrink")
+        - height: Length -> How tall is the space? (Default "shrink")
+    
+    - "button -> A simple button which performs an action
+        - text: String (Required) -> text to display. 
+            - Can use locale(<path>) to specify a locale json identifier path (ie menu.main_menu.singleplayer) (once locale is implemented anyways)
+        - action: ButtonAction -> Action to perform when clicked
+            - NOTE: If no action is provided, the button will do nothing! (A warning will be logged when this is parsed)
+
+    - "song-display" -> Displays the name of the current song
+
+    - "gameplay-preview" -> A preview of the gameplay
+        - visualization: Visualization|Nil -> What visualization to show on top of the gameplay?
+
+    - "animatable" -> An animatable Element
+        - triggers: Array<TriggerDef>
+        - actions: Table<String, Array<TriggerAction>> -> List of available actions for the triggers. The table's key is the action's name
+        - element: Element -> The ui element to animate
+
+    - "text" -> Some text
+        - text: String|Param -> The text to display
+        - width: Length -> How much with should the text take up? (Default "shrink")
+        - height: Length -> How much height should the text take up? (Default "shrink")
+
+    - "text-input" -> A text-input field
+        - placeholder: String|Param -> The text to show when no text is input
+        - variable: String -> The name of the variable to store the text in
+        - width: Length -> How much with should the text take up? (Default "shrink")
+        - height: Length -> How much height should the text take up? (Default "shrink")
+
+Helper element functions
+    - row(Array<Element>) -> Creates a row with the default properties and the provided elements
+    - col(Array<Element>) -> Creates a column with the default properties and the provided elements
+
+Default Menus
+    - "main_menu" -> The main menu
+    - "beatmap_select" -> The beatmap select menu
+
+Default Dialogs
+    - "settings" -> The settings "menu" dialog
+
+Default Button Actions
+    - start_singleplayer -> Start singleplayer mode
+        - Currently just enters the beatmap select menu, but may do more in the future
+    - start_multiplayer -> Start multiplayer mode
+        - Currently just enters the multiplayer_lobby menu, but may do more in the future
+    - exit_game -> quits the game
+
+Events
+    - "song.start"
+    - "song.end"
+    - "key.press"
+    - "key.release"
+
+
+Type Definitions:
+    - Menu: Table -> A menu definition
+        - id: String -> What is the identifier of this menu?
+        - type: String|Nil -> What kind of menu is this? Gives access to menu-specific properties
+        - elements: Array<Element> -> Elements in the menu
+
+    - Element: Table -> A UI element
+        - id: String -> Identifier of the element to create
+        - type: ElementType|Nil -> Overriding type of this element. Helpful if you want to override some special object (like a beatmap_set element)
+        - <other> -> Other properties that are element-specific. Refer to the element list to see these
+
+    - Length: Enum<String>
+        - Variants:
+            - "fill" -> Fill all remaining space (equiv to "fill_portion(1)), 
+            - "fill_portion(<integer>)" -> Fill up <integer> units of available space
+                - If you had an object with fill_portion(2), and an object with fill_portion(4), the total unit size would be 6, and the 2nd unit would be twice the size of the first
+            - "shrink" -> Take up as little space as possible
+            - "fixed(<float>)" -> Take up a fixed amount of space 
+                - NOT RECOMMENDED! This value will not scale with the ui (unless you tell it to). I only enable it for completeness
+
+    - ButtonAction: Table -> A button action.
+        - dialog: String|Nil -> Open the provided dialog (either a default menu, or a user-defined menu)
+        - menu: String|Nil -> Open the provided menu
+        TODO: - function: Table|Nil -> Run a function (NOTE: NOT CURRENTLY SUPPORTED YET!!)
+            - name: String -> Name of the function to run
+            - arguments: Array<Any>|Nil -> Arguments to the function
+        - context: Object|Array<String>|Nil -> Context data for the menu. See the menu specific context options for specific properties
+
+    - TriggerDef: Table -> A trigger definition
+        - trigger: Trigger -> What is the trigger for this def?
+        - action: String -> What action to run when this is trigger?
+        - duration: float|nil -> Duration before this can be triggered. See Triggers for specific info.
+
+    - Trigger: Enum<String>
+        - "input" -> Any global input is received (keyboard, mouse, controller, touch), 
+        - "no_input" -> No global input is received (keyboard, mouse, controller, touch)
+            - duration -> How long should there be no input for this to trigger?
+        - "hover" -> Item has been hovered
+        - "unhover" -> Item is no longer being hovered
+        - "click" -> Item has been clicked
+        - "click_hold" -> Click has been held
+            - duration -> How long does the click need to be held for this to trigger?
+        - "unclick" -> Click has been released
+
+    - TriggerAction: Table
+        - action: Transform -> What action to perform
+        - start: (Float|TransformValue) -> Starting value of the transform
+        - stop: (Float|TransformValue) -> Ending value of the transform
+        - duration: Float -> How long this transform should take to complete
+
+    - Transform: Enum<String>
+        - "translate_x" -> Translate the element in the x direction (left/right)
+        - "translate_y" -> Translate the element in the y direction (up/down)
+        - "opacity" -> Change the opacity of the elements
+
+    - TransformValue: Enum<String> 
+        - "current" -> The current value of the property
+        - "parent_width" -> The width of the parent
+        - "parent_height" -> The height of the parent
+
+
+    - Visualization: Enum<String>
+        - "menu_visualization" -> The regular menu visualization with the cookie.
+
+
+    - CreateElement 
+        - id: String -> The identifier for this element
+        - elements: Array<Element>

@@ -7,6 +7,6 @@ impl EmptyMenu {
 
 #[async_trait]
 impl AsyncMenu for EmptyMenu {
-    fn view(&self) -> IcedElement { EmptyElement.into_element() }
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement { EmptyElement.into_element() }
     async fn handle_message(&mut self, _message: Message) {}
 }

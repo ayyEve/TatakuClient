@@ -180,7 +180,7 @@ impl StupidDialog {
 
         Self {
             num: 0,
-            manager: GameplayPreview::new(true, true, Box::new(|_|true)),
+            manager: GameplayPreview::new(true, true, Arc::new(|_|true)),
             should_close: false,
             // last_offset: Vector2::ZERO,
             // size,

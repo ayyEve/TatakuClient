@@ -5,7 +5,7 @@ use crate::prelude::*;
 // const Y_OFFSET:f32 = 10.0;
 
 pub struct PauseMenu {
-    actions: Vec<MenuAction>,
+    actions: ActionQueue,
 
     // beatmap: Arc<Mutex<Beatmap>>,
     manager: Box<IngameManager>,
@@ -27,7 +27,7 @@ impl PauseMenu {
         }
 
         PauseMenu {
-            actions: Vec::new(),
+            actions: ActionQueue::new(),
             manager,
             is_fail_menu,
             bg
@@ -36,7 +36,7 @@ impl PauseMenu {
 
     pub fn unpause(&mut self) {
         let manager = std::mem::take(&mut self.manager);
-        self.actions.push(MenuAction::ResumeMap(manager));
+        self.actions.push(GameMenuAction::ResumeMap(manager));
     }
 
     async fn retry(&mut self) {
@@ -45,7 +45,7 @@ impl PauseMenu {
     }
 
     async fn exit(&mut self) {
-        self.actions.push(MenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await)));
+        self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await)));
     }
 }
 
@@ -53,7 +53,7 @@ impl PauseMenu {
 impl AsyncMenu for PauseMenu {
     fn get_name(&self) -> &'static str { if self.is_fail_menu {"fail"} else {"pause"} }
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         let menu = row!(
@@ -102,7 +102,7 @@ impl AsyncMenu for PauseMenu {
     }
     
     async fn update(&mut self) -> Vec<MenuAction> {
-        std::mem::take(&mut self.actions)
+        self.actions.take()
     }
     
     // async fn draw(&mut self, list: &mut RenderableCollection) {

@@ -295,8 +295,7 @@ impl CustomCursor for OsuCursor {
         
 
         // draw cursor itself
-        if let Some(cursor) = &self.cursor_image {
-            let mut cursor = cursor.clone();
+        if let Some(mut cursor) = self.cursor_image.clone() {
             cursor.pos = self.pos;
             cursor.rotation = self.cursor_rotation;
             // cursor.current_color = self.color;
@@ -307,7 +306,7 @@ impl CustomCursor for OsuCursor {
                 cursor.scale = Vector2::ONE * self.settings.cursor_scale;
             }
             
-            list.push(cursor.clone());
+            list.push(cursor);
         } else {
             list.push(Circle::new(
                 self.pos,
@@ -323,16 +322,14 @@ impl CustomCursor for OsuCursor {
         }
     
         
-        if let Some(cursor) = &self.cursor_middle_image {
-            let mut cursor = cursor.clone();
+        if let Some(mut cursor) = self.cursor_middle_image.clone() {
             cursor.pos = self.pos;
             cursor.scale = Vector2::ONE * self.settings.cursor_scale;
             
-            list.push(cursor.clone());
+            list.push(cursor);
         }
     }
     async fn draw_below(&mut self, list: &mut RenderableCollection) {
-
         // draw ripples
         for ripple in self.ripples.iter() {
             list.push(ripple.clone())

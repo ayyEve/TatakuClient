@@ -5,7 +5,7 @@ pub struct RenderableCollection {
     pub list: Vec<Arc<dyn TatakuRenderable>>,
     pub do_before_add: Option<Box<dyn FnMut(&mut dyn TatakuRenderable) + Send + Sync>>,
 
-    scissors: ScissorManager
+    // scissors: ScissorManager
 }
 impl RenderableCollection {
     pub fn new() -> Self { Self::default() }
@@ -15,15 +15,15 @@ impl RenderableCollection {
             (do_before)(&mut r);
         }
 
-        r.set_scissor(self.scissors.current_scissor());
+        // r.set_scissor(self.scissors.current_scissor());
         self.list.push(Arc::new(r));
     }
 
     pub fn push_scissor(&mut self, scissor: [f32; 4]) {
-        self.scissors.push_scissor(scissor);
+        // self.scissors.push_scissor(scissor);
     }
     pub fn pop_scissor(&mut self) {
-        self.scissors.pop_scissor();
+        // self.scissors.pop_scissor();
     }
 
     pub fn take(self) -> Vec<Arc<dyn TatakuRenderable>> {
@@ -36,13 +36,17 @@ impl RenderableCollection {
 #[derive(Default)]
 pub struct ScissorManager {
     scissors: Vec<[f32; 4]>,
-    current_scissor: Scissor
+    current_scissor: Scissor,
 }
 impl ScissorManager {
+
+    /// returns if the scissor has changed
     pub fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.scissors.push(scissor);
         self.recalc_current_scissor();
     }
+
+    /// returns if the scissor has changed
     pub fn pop_scissor(&mut self) {
         self.scissors.pop();
         self.recalc_current_scissor();
@@ -52,6 +56,7 @@ impl ScissorManager {
         self.current_scissor
     }
 
+    /// returns if the scissor has changed
     fn recalc_current_scissor(&mut self) {
         if self.scissors.is_empty() {
             self.current_scissor = None;
@@ -66,6 +71,7 @@ impl ScissorManager {
                 i[3].min(n[3]),
             ]
         });
+        
         self.current_scissor = Some(s);
     }
 }

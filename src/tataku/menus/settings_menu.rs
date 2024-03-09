@@ -111,20 +111,12 @@ impl Dialog for SettingsMenu {
                 // category name
                 row!( Text::new(name).size(40.0); ),
                 // settings
-                col!(
+                CullingColumn::with_children(
                     props.into_iter()
                         .zip(vals.into_iter())
                         .map(|(p,v)|row!(p,v; align_items = Alignment::Center, spacing = 5.0))
-                        .collect(),
-                    spacing = 5.0
-                )
-                // row!(
-                    
-                //     // properties
-                //     col!(props,),
-                //     // values
-                //     col!(vals,);
-                // )
+                        .collect()
+                ).spacing(5.0).into_element()
             ]
         ).flatten().collect();
 

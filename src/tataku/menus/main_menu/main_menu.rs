@@ -12,33 +12,35 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
-    queued_actions: Vec<MenuAction>,
+    queued_actions: ActionQueue,
 
-    // index 0
-    pub play_button: MainMenuButton,
-    // // index 1
-    // pub direct_button: MainMenuButton,
-    // index 2
-    pub multiplayer_button: MainMenuButton,
-    // index 3
-    pub settings_button: MainMenuButton,
-    // index 4
-    pub exit_button: MainMenuButton,
+    // // index 0
+    // pub play_button: MainMenuButton,
+    // // // index 1
+    // // pub direct_button: MainMenuButton,
+    // // index 2
+    // pub multiplayer_button: MainMenuButton,
+    // // index 3
+    // pub settings_button: MainMenuButton,
+    // // index 4
+    // pub exit_button: MainMenuButton,
 
-    visualization: MenuVisualization,
+    // visualization: MenuVisualization,
     gameplay_preview: GameplayPreview,
+    key_events: KeyEventsHandlerGroup<MainMenuKeys>,
 
-    menu_game: MenuGameHelper,
+    // menu_game: MenuGameHelper,
 
     selected_index: usize,
     menu_visible: bool,
     last_input: Instant,
 
     settings: SettingsHelper,
-    window_size: Arc<WindowSize>,
+    // window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
     new_map_helper: LatestBeatmapHelper,
     current_skin: CurrentSkinHelper,
+    current_beatmap: CurrentBeatmapHelper,
 
     music_box: MusicBox,
     media_controls: MediaControlHelper,
@@ -46,53 +48,59 @@ pub struct MainMenu {
     event_receiver: AsyncUnboundedReceiver<MediaControlHelperEvent>,
 }
 impl MainMenu {
-    pub async fn new() -> MainMenu {
-        let window_size = WindowSize::get();
-        let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
-        let mut counter = 1.0;
+    pub async fn new() -> Self {
+        // let window_size = WindowSize::get();
+        // let middle = window_size.x /2.0 - BUTTON_SIZE.x/2.0;
+        // let mut counter = 1.0;
         
-        let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play", "menu-button-play").await;
+        // let mut play_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Play", "menu-button-play").await;
+        // // counter += 1.0;
+        // // let mut direct_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "osu!Direct").await;
         // counter += 1.0;
-        // let mut direct_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "osu!Direct").await;
-        counter += 1.0;
-        let mut multiplayer_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Multiplayer", "menu-button-multiplayer").await;
-        counter += 1.0;
-        let mut settings_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Settings", "menu-button-options").await;
-        counter += 1.0;
-        let mut exit_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Exit", "menu-button-exit").await;
+        // let mut multiplayer_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Multiplayer", "menu-button-multiplayer").await;
+        // counter += 1.0;
+        // let mut settings_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Settings", "menu-button-options").await;
+        // counter += 1.0;
+        // let mut exit_button = MainMenuButton::new(Vector2::new(middle, (BUTTON_SIZE.y + Y_MARGIN) * counter + Y_OFFSET), BUTTON_SIZE, "Exit", "menu-button-exit").await;
 
-        play_button.visible = false;
-        multiplayer_button.visible = false;
-        // direct_button.visible = false;
-        settings_button.visible = false;
-        exit_button.visible = false;
+        // play_button.visible = false;
+        // multiplayer_button.visible = false;
+        // // direct_button.visible = false;
+        // settings_button.visible = false;
+        // exit_button.visible = false;
 
         let (event_sender, event_receiver) = async_unbounded_channel();
 
-        MainMenu {
-            queued_actions: Vec::new(),
+        let mut gameplay_preview = GameplayPreview::new(false, false, Arc::new(|s|s.background_game_settings.main_menu_enabled));
+        gameplay_preview.handle_song_restart = false;
+        gameplay_preview.visualization = Some(Box::new(MenuVisualization::new().await));
 
-            play_button,
-            multiplayer_button,
-            // direct_button,
-            settings_button,
-            exit_button,
+        Self {
+            queued_actions: ActionQueue::new(),
 
-            visualization: MenuVisualization::new().await,
-            gameplay_preview: GameplayPreview::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
+            // play_button,
+            // multiplayer_button,
+            // // direct_button,
+            // settings_button,
+            // exit_button,
 
-            menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
+            // visualization: ,
+            gameplay_preview,
+            key_events: KeyEventsHandlerGroup::new(),
+
+            // menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
             menu_visible: true,
             music_box: MusicBox::new(event_sender.clone()).await,
             media_controls: MediaControlHelper::new(event_sender.clone()),
+            current_beatmap: CurrentBeatmapHelper::new(),
 
             event_sender, 
             event_receiver,
 
 
             settings: SettingsHelper::new(),
-            window_size,
+            // window_size,
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
             new_map_helper: LatestBeatmapHelper::new(),
@@ -108,15 +116,14 @@ impl MainMenu {
             let duration = song.get_duration();
             self.music_box.update_song_duration(duration);
 
-            let map = &CurrentBeatmapHelper::new().0;
-            self.media_controls.update_info(map, duration);
+            self.media_controls.update_info(&self.current_beatmap.0, duration);
         }
 
         let settings = self.settings.background_game_settings.clone();
         if !settings.main_menu_enabled { return }
 
-        self.menu_game.setup().await;
-        self.visualization.song_changed(&mut self.menu_game.manager);
+        // // self.menu_game.setup().await;
+        // self.visualization.song_changed();
 
         trace!("manager setup");
     }
@@ -124,61 +131,43 @@ impl MainMenu {
     fn show_menu(&mut self) {
         self.menu_visible = true;
 
-        // ensure they have the latest window size
-        self.play_button.window_size = self.window_size.0;
-        self.multiplayer_button.window_size = self.window_size.0;
-        // self.direct_button.window_size = self.window_size.0;
-        self.settings_button.window_size = self.window_size.0;
-        self.exit_button.window_size = self.window_size.0;
+        // // ensure they have the latest window size
+        // self.play_button.window_size = self.window_size.0;
+        // self.multiplayer_button.window_size = self.window_size.0;
+        // // self.direct_button.window_size = self.window_size.0;
+        // self.settings_button.window_size = self.window_size.0;
+        // self.exit_button.window_size = self.window_size.0;
 
-        // show
-        let count = BUTTON_COUNT;
-        let mut counter = 0;
-        self.play_button.show(counter, count, true); counter += 1;
-        self.multiplayer_button.show(counter, count, true); counter += 1;
-        // self.direct_button.show(counter, count, true); counter += 1;
-        self.settings_button.show(counter, count, true); counter += 1;
-        self.exit_button.show(counter, count, true); // counter += 1;
+        // // show
+        // let count = BUTTON_COUNT;
+        // let mut counter = 0;
+        // self.play_button.show(counter, count, true); counter += 1;
+        // self.multiplayer_button.show(counter, count, true); counter += 1;
+        // // self.direct_button.show(counter, count, true); counter += 1;
+        // self.settings_button.show(counter, count, true); counter += 1;
+        // self.exit_button.show(counter, count, true); // counter += 1;
     }
 
     fn hide_menu(&mut self) {
         self.menu_visible = false;
 
-        // ensure they have the latest window size
-        self.play_button.window_size = self.window_size.0;
-        self.multiplayer_button.window_size = self.window_size.0;
-        // self.direct_button.window_size = self.window_size.0;
-        self.settings_button.window_size = self.window_size.0;
-        self.exit_button.window_size = self.window_size.0;
+        // // ensure they have the latest window size
+        // self.play_button.window_size = self.window_size.0;
+        // self.multiplayer_button.window_size = self.window_size.0;
+        // // self.direct_button.window_size = self.window_size.0;
+        // self.settings_button.window_size = self.window_size.0;
+        // self.exit_button.window_size = self.window_size.0;
 
-        // hide
-        let count = BUTTON_COUNT;
-        let mut counter = 0;
-        self.play_button.hide(counter, count, true); counter += 1;
-        self.multiplayer_button.hide(counter, count, true); counter += 1;
-        // self.direct_button.hide(1, 4, true); counter += 1;
-        self.settings_button.hide(counter, count, true); counter += 1;
-        self.exit_button.hide(counter, count, true); // counter += 1;
+        // // hide
+        // let count = BUTTON_COUNT;
+        // let mut counter = 0;
+        // self.play_button.hide(counter, count, true); counter += 1;
+        // self.multiplayer_button.hide(counter, count, true); counter += 1;
+        // // self.direct_button.hide(1, 4, true); counter += 1;
+        // self.settings_button.hide(counter, count, true); counter += 1;
+        // self.exit_button.hide(counter, count, true); // counter += 1;
     }
     
-
-    fn interactables(&mut self, include_buttons: bool) -> Vec<&mut dyn ScrollableItem> {
-        if include_buttons {
-            vec![
-                &mut self.music_box,
-                &mut self.play_button,
-                &mut self.multiplayer_button,
-                // &mut self.direct_button,
-                &mut self.settings_button,
-                &mut self.exit_button,
-            ]
-        } else {
-            vec![
-                &mut self.music_box,
-            ]
-        }
-    }
-
     fn update_online() {
         tokio::spawn(async move {
             let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
@@ -194,8 +183,9 @@ impl MainMenu {
         });
     }
 
-    async fn next(&mut self, actions: &mut Vec<MenuAction>) -> bool {
+    async fn next(&mut self) -> bool {
         // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.queued_actions.push(BeatmapMenuAction::Next);
 
         // let mut manager = BEATMAP_MANAGER.write().await;
 
@@ -208,8 +198,9 @@ impl MainMenu {
         // }
         false
     }
-    async fn previous(&mut self, actions: &mut Vec<MenuAction>) -> bool {
+    async fn previous(&mut self) -> bool {
         // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.queued_actions.push(BeatmapMenuAction::Previous(MapActionIfNone::ContinueCurrent));
 
         // let mut manager = BEATMAP_MANAGER.write().await;
         
@@ -227,32 +218,32 @@ impl MainMenu {
         self.last_input = Instant::now()
     }
 
-    async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        self.play_button.window_size_changed(&window_size);
-        self.multiplayer_button.window_size_changed(&window_size);
-        // self.direct_button.window_size_changed(&window_size);
-        self.settings_button.window_size_changed(&window_size);
-        self.exit_button.window_size_changed(&window_size);
+    // async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    //     // self.play_button.window_size_changed(&window_size);
+    //     // self.multiplayer_button.window_size_changed(&window_size);
+    //     // // self.direct_button.window_size_changed(&window_size);
+    //     // self.settings_button.window_size_changed(&window_size);
+    //     // self.exit_button.window_size_changed(&window_size);
 
-        self.window_size = window_size.clone();
-        self.music_box = MusicBox::new(self.event_sender.clone()).await;
+    //     // self.window_size = window_size.clone();
+    //     self.music_box = MusicBox::new(self.event_sender.clone()).await;
 
-        self.menu_game.window_size_changed(window_size).await;
-    }
+    //     // self.menu_game.window_size_changed(window_size).await;
+    // }
 
 }
 
 #[async_trait]
 impl AsyncMenu for MainMenu {
-    fn get_name(&self) -> &'static str {"main_menu"}
+    fn get_name(&self) -> &'static str { "main_menu" }
 
     async fn on_change(&mut self, into:bool) {
         if into {
             // update our window size
-            self.window_size_changed(WindowSize::get()).await;
+            // self.window_size_changed(WindowSize::get()).await;
             self.new_map_helper.update();
 
-            self.visualization.reset();
+            // self.visualization.reset();
 
             // play song if it exists
             if let Some(song) = AudioManager::get_song().await {
@@ -274,21 +265,21 @@ impl AsyncMenu for MainMenu {
     }
 
     async fn update(&mut self) -> Vec<MenuAction> {
-        let mut actions = std::mem::take(&mut self.queued_actions);
-
         self.settings.update();
         self.song_display.update();
 
         if self.current_skin.update() {
-            self.visualization.reload_skin().await;
+            // self.visualization.reload_skin().await;
 
-            self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
-            self.multiplayer_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-multiplayer").await;
-            // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
-            self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
-            self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
+            // self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
+            // self.multiplayer_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-multiplayer").await;
+            // // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
+            // self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
+            // self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
 
-            self.window_size_changed(self.window_size.clone()).await;
+            // self.window_size_changed(self.window_size.clone()).await;
+            self.gameplay_preview.skin_changed().await;
+            // self.music_box = MusicBox::new(self.event_sender.clone()).await;
 
             if self.menu_visible {
                 self.show_menu();
@@ -299,12 +290,6 @@ impl AsyncMenu for MainMenu {
         }
 
         let mut song_done = false;
-
-        // run updates on the interactables
-        for i in self.interactables(true) {
-            i.update()
-        }
-
 
         match AudioManager::get_song().await {
             Some(song) => {
@@ -339,8 +324,8 @@ impl AsyncMenu for MainMenu {
                                 song.play(false);
                             }
                         }
-                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next(&mut actions).await,
-                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous(&mut actions).await,
+                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next().await,
+                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous().await,
                         MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
                         MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
                         MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
@@ -354,7 +339,7 @@ impl AsyncMenu for MainMenu {
                     
                     if needs_manager_setup {
                         self.setup_manager("media event").await;
-                        return actions;
+                        return self.queued_actions.take();
                     }
                 }
 
@@ -367,53 +352,70 @@ impl AsyncMenu for MainMenu {
 
         if song_done {
             trace!("song done");
-            // this needs to be separate or it double locks for some reason
-            let map = BEATMAP_MANAGER.read().await.random_beatmap();
+            self.queued_actions.push(BeatmapMenuAction::Next);
+            
+            // // this needs to be separate or it double locks for some reason
+            // let map = BEATMAP_MANAGER.read().await.random_beatmap();
 
-            // it should?
-            if let Some(map) = map {
-                actions.push(MenuAction::SetBeatmap(map, false));
-                // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
-                self.setup_manager("update song done").await;
-                Self::update_online();
-            }
+            // // it should?
+            // if let Some(map) = map {
+            //     self.queued_actions.push(MenuAction::SetBeatmap(map, false));
+            //     // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
+            //     Self::update_online();
+            // }
         }
 
-        
+        // check if current map changed
+        if self.current_beatmap.update() {
+            self.setup_manager("update song done").await;
+            Self::update_online();
+        }
+
+        // check if there are any new maps
         if self.new_map_helper.update() {
-            actions.push(MenuAction::SetBeatmap(self.new_map_helper.0.clone(), false));
-            // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &self.new_map_helper.0, false).await;
-            self.setup_manager("update new map").await;
+            self.queued_actions.push(BeatmapMenuAction::Set(self.new_map_helper.0.clone(), false));
         }
 
-        self.visualization.update(&mut self.menu_game.manager).await;
+        // update the gameplay preview (includes drawing it)
+        // self.visualization.update().await;
         // self.menu_game.update().await;
         self.gameplay_preview.update().await;
+
+        // check key events
+        while let Some(event) = self.key_events.check_events() {
+            match event {
+                KeyEvent::Press(MainMenuKeys::NextSong) => self.queued_actions.push(BeatmapMenuAction::Next),
+                KeyEvent::Press(MainMenuKeys::PrevSong) => self.queued_actions.push(BeatmapMenuAction::Previous(MapActionIfNone::ContinueCurrent)),
+                KeyEvent::Press(MainMenuKeys::PlayPause) => {
+
+                }
+                _ => {}
+            }
+        }
     
         // check last input timer
         let last_input = self.last_input.as_millis();
-        if last_input > MENU_HIDE_TIMER {
-            if self.menu_visible {
-                self.hide_menu();
-            }
+        if last_input > MENU_HIDE_TIMER && self.menu_visible {
+            self.hide_menu();
         }
 
-        actions
+        self.queued_actions.take()
     }
 
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
+        let owner = MessageOwner::new_menu(self);
 
         col!(
             // song info
             row!(
                 self.song_display.view();
                 width = Fill,
-                align_items = Alignment::End
+                height = Fill
             ),
 
-            // game preview and 
+            // game preview and menu buttons
             row!(
                 // gameplay preview
                 col!(
@@ -424,10 +426,10 @@ impl AsyncMenu for MainMenu {
 
                 // list
                 col!(
-                    Button::new(Text::new("Play")).on_press(Message::new_menu(self, "play", MessageType::Click)),
-                    Button::new(Text::new("Multiplayer")).on_press(Message::new_menu(self, "multiplayer", MessageType::Click)),
-                    Button::new(Text::new("Settings")).on_press(Message::new_menu(self, "settings", MessageType::Click)),
-                    Button::new(Text::new("Exit")).on_press(Message::new_menu(self, "exit", MessageType::Click));
+                    Button::new(Text::new("Play")).on_press(owner.click("play")),
+                    Button::new(Text::new("Multiplayer")).on_press(owner.click("multiplayer")),
+                    Button::new(Text::new("Settings")).on_press(owner.click("settings")),
+                    Button::new(Text::new("Exit")).on_press(owner.click("exit"));
 
                     width = Fill,
                     height = Fill,
@@ -435,16 +437,20 @@ impl AsyncMenu for MainMenu {
                 );
 
                 width = Fill,
-                height = Fill
+                height = FillPortion(10)
             ),
             
             // music box
             row!(
+                self.music_box.view(owner),
+                Space::new(FillPortion(4), Fill)
                 ;
-                width = Fill
-            )
-            ;
-            
+                width = Fill,
+                height = Fill
+            ),
+
+            // key input
+            self.key_events.handler();
             width = Fill,
             height = Fill
         )
@@ -453,12 +459,28 @@ impl AsyncMenu for MainMenu {
     
     async fn handle_message(&mut self, message: Message) {
         let Some(tag) = message.tag.as_string() else { return };
+        let val = message.message_type.as_float().unwrap_or_default();
 
         match &*tag {
-            "play" => self.queued_actions.push(MenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
+            "play" => self.queued_actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
             "multiplayer" => self.queued_actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::JoinMulti)),
-            "settings" => self.queued_actions.push(MenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
+            "settings" => self.queued_actions.push(MenuMenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
             "exit" => self.queued_actions.push(MenuAction::Quit),
+
+            
+            // music box controls
+            //TODO: not send events to self lol
+            "musicbox-forward" => self.event_sender.send(MediaControlHelperEvent::Next).unwrap(),
+            "musicbox-backward" => self.event_sender.send(MediaControlHelperEvent::Previous).unwrap(),
+
+            "musicbox-play" => self.event_sender.send(MediaControlHelperEvent::Play).unwrap(),
+            "musicbox-pause" => self.event_sender.send(MediaControlHelperEvent::Pause).unwrap(),
+            
+            "musicbox-backwardstep" => self.event_sender.send(MediaControlHelperEvent::SeekBackwardBy(val)).unwrap(),
+            "musicbox-forwardstep" => self.event_sender.send(MediaControlHelperEvent::SeekForwardBy(val)).unwrap(),
+            
+            "musicbox-progress" => self.event_sender.send(MediaControlHelperEvent::SetPosition(val)).unwrap(),
+
             _ => {}
         }
     }

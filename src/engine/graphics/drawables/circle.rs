@@ -53,7 +53,7 @@ impl TatakuRenderable for Circle {
         ;
 
 
-        g.draw_circle(self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.scissor, self.blend_mode);
+        g.draw_circle(self.radius, self.color.alpha(alpha), border, self.resolution, transform, self.blend_mode);
 
         // graphics::ellipse::Ellipse {
         //     color: self.color.alpha(alpha).into(),
