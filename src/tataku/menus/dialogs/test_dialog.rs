@@ -55,7 +55,7 @@ impl Dialog for TestDialog {
 
         Vec::new()
     }
-    async fn handle_message(&mut self, _message: Message) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
     }
     fn view(&self) -> IcedElement {
         // use iced_elements::*;
@@ -220,7 +220,7 @@ impl Dialog for StupidDialog {
 
 
     
-    async fn handle_message(&mut self, _message: Message) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
     }
 
     // async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }

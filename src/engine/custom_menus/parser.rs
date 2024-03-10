@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use rlua::{ Error, Lua };
 
+#[cfg(not(feature="debug_custom_menus"))]
 const LUA_INIT:&'static str = include_str!("../../../custom_menus/init.lua");
 
 pub struct CustomMenuParser {
@@ -10,7 +11,9 @@ impl CustomMenuParser {
     pub fn new() -> Self {
         let lua =  Lua::new();
         let res:Result<(), Error> = lua.context(|lua| {
-            #[cfg(feature="debug_custom_menus")] info!("");
+            #[cfg(feature="debug_custom_menus")] 
+            lua.load(LUA_INIT).set_name("lua_init")?.exec()?;
+            #[cfg(not(feature="debug_custom_menus"))]
             lua.load(LUA_INIT).set_name("lua_init")?.exec()?;
             Ok(())
         });
@@ -31,7 +34,10 @@ impl CustomMenuParser {
             // println!("got menu count: {menu_count}");
 
             // run the file
-            lua.load(&file_data).set_name(&path.to_string_lossy().to_string())?.exec()?;
+            lua
+                .load(&file_data)
+                .set_name(&path.to_string_lossy().to_string())?
+                .exec()?;
 
             let menu_count2:usize = lua.globals().get("menu_count")?;
             if menu_count2 == menu_count { warn!("No menu was loaded from the file {path:?}") }
@@ -59,6 +65,16 @@ impl CustomMenuParser {
         menus_maybe.unwrap_or_default()
     }
 
+    // pub fn clear_menus(&mut self) {
+    //     let ok:rlua::Result<()> = self.lua.context(|lua| {
+    //         let clear = lua.globals().get::<_, rlua::Function>("clear_menus")?;
+    //         let _ = clear.call::<(), ()>(())?;
+    //         Ok(())
+    //     });
+    //     if let Err(e) = ok {
+    //         error!("error clearing menus: {e}")
+    //     }
+    // }
 
     pub fn parse_length(s: Option<String>) -> Option<iced::Length> {
         let s = s?;

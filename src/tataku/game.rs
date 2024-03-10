@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use chrono::{ Datelike, Timelike };
 
-/// how long do transitions between gamemodes last?
+/// how long transitions between states should last
 const TRANSITION_TIME:f32 = 500.0;
 
 pub struct Game {
@@ -50,16 +50,13 @@ pub struct Game {
 
     custom_menus: Vec<CustomMenu>,
 
-    pub shunting_yard_values: Arc<Mutex<ShuntingYardValues>>
+    pub shunting_yard_values: Arc<AsyncMutex<ShuntingYardValues>>
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
         GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
         GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
-
-        let mut parser = CustomMenuParser::new();
-        parser.load("../custom_menus/main_menu.lua").unwrap();
 
         let mut g = Game {
             // engine
@@ -99,14 +96,27 @@ impl Game {
             background_loader: None,
 
             ui_manager: UiManager::new(),
-            custom_menus: parser.get_menus(),
+            custom_menus: Vec::new(),
 
-            shunting_yard_values: Arc::new(Mutex::new(ShuntingYardValues::default())),
+            shunting_yard_values: Arc::new(AsyncMutex::new(ShuntingYardValues::default())),
         };
+        g.load_custom_menus();
 
         g.init().await;
 
         g
+    }
+
+    fn load_custom_menus(&mut self) {
+        if !self.custom_menus.is_empty() {
+            debug!("Reloading custom menus")
+        }
+
+        let mut parser = CustomMenuParser::new();
+        parser.load("../custom_menus/main_menu.lua").unwrap();
+        self.custom_menus = parser.get_menus();
+
+        debug!("Done loading custom menus");
     }
 
     pub async fn init(&mut self) {
@@ -167,7 +177,7 @@ impl Game {
 
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
-        self.queue_state_change(GameState::InMenu(Box::new(loading_menu)));
+        self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
     }
     
     pub async fn game_loop(mut self) {
@@ -338,10 +348,6 @@ impl Game {
         let window_size_updated = self.window_size.update();
         if window_size_updated { 
             self.resize_bg(); 
-            // let window_size = WindowSize::get();
-            // for i in self.dialogs.iter_mut() {
-            //     i.window_size_changed(window_size.clone()).await;
-            // }
         }
 
         // let timer = Instant::now();
@@ -469,10 +475,20 @@ impl Game {
             keys_down.remove_item(Key::Escape)
         }
 
+
+
+        // reload custom menus
+        if keys_down.contains(&Key::R) && mods.ctrl {
+            self.load_custom_menus();
+            if let MenuType::Custom(name) = self.ui_manager.get_menu() {
+                debug!("Reloading current menu");
+                self.handle_custom_menu(name).await;
+            }
+        }
         
         // update our global values
         // {
-        //     let mut values = self.shunting_yard_values.lock();
+        //     let mut values = self.shunting_yard_values.lock().await;
 
         // }
 
@@ -529,7 +545,7 @@ impl Game {
                     manager.pause();
                     let manager2 = std::mem::take(manager);
                     let menu = PauseMenu::new(manager2, false).await;
-                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
+                    self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                 } else {
 
                     // inputs
@@ -570,66 +586,66 @@ impl Game {
                 }
             }
             
-            GameState::InMenu(menu) => {
+            // GameState::SetMenu(menu) => {
 
-                // // menu input events
-                // if window_size_updated {
-                //     menu.window_size_changed((*self.window_size).clone()).await;
-                // }
-                    // let events = Events
-
-
-                // // clicks
-                // for b in mouse_down { 
-                //     menu.on_click(mouse_pos, b, mods, self).await;
-                // }
-                // for b in mouse_up { 
-                //     menu.on_click_release(mouse_pos, b, self).await;
-                // }
-
-                // // mouse move
-                // if mouse_moved {menu.on_mouse_move(mouse_pos, self).await}
-                // // mouse scroll
-                // if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self).await}
+            //     // // menu input events
+            //     // if window_size_updated {
+            //     //     menu.window_size_changed((*self.window_size).clone()).await;
+            //     // }
+            //         // let events = Events
 
 
-                // // TODO: this is temp
-                // if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
-                // // TODO: this too
-                // if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
+            //     // // clicks
+            //     // for b in mouse_down { 
+            //     //     menu.on_click(mouse_pos, b, mods, self).await;
+            //     // }
+            //     // for b in mouse_up { 
+            //     //     menu.on_click_release(mouse_pos, b, self).await;
+            //     // }
 
-                // // check keys down
-                // for key in keys_down {menu.on_key_press(key, self, mods).await}
-                // // check keys up
-                // for key in keys_up {menu.on_key_release(key, self).await}
-
-
-                // // controller
-                // for (c, buttons) in controller_down {
-                //     for b in buttons {
-                //         menu.controller_down(self, &c, b).await;
-                //     }
-                // }
-                // for (c, buttons) in controller_up {
-                //     for b in buttons {
-                //         menu.controller_up(self, &c, b).await;
-                //     }
-                // }
-                // for (c, ad) in controller_axis {
-                //     menu.controller_axis(self, &c, ad).await;
-                // }
+            //     // // mouse move
+            //     // if mouse_moved {menu.on_mouse_move(mouse_pos, self).await}
+            //     // // mouse scroll
+            //     // if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self).await}
 
 
-                // // check text
-                // if text.len() > 0 { menu.on_text(text).await }
+            //     // // TODO: this is temp
+            //     // if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
+            //     // // TODO: this too
+            //     // if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
 
-                // // window focus change
-                // if let Some(has_focus) = window_focus_changed {
-                //     menu.on_focus_change(has_focus, self).await;
-                // }
+            //     // // check keys down
+            //     // for key in keys_down {menu.on_key_press(key, self, mods).await}
+            //     // // check keys up
+            //     // for key in keys_up {menu.on_key_release(key, self).await}
+
+
+            //     // // controller
+            //     // for (c, buttons) in controller_down {
+            //     //     for b in buttons {
+            //     //         menu.controller_down(self, &c, b).await;
+            //     //     }
+            //     // }
+            //     // for (c, buttons) in controller_up {
+            //     //     for b in buttons {
+            //     //         menu.controller_up(self, &c, b).await;
+            //     //     }
+            //     // }
+            //     // for (c, ad) in controller_axis {
+            //     //     menu.controller_axis(self, &c, ad).await;
+            //     // }
+
+
+            //     // // check text
+            //     // if text.len() > 0 { menu.on_text(text).await }
+
+            //     // // window focus change
+            //     // if let Some(has_focus) = window_focus_changed {
+            //     //     menu.on_focus_change(has_focus, self).await;
+            //     // }
                 
-                // menu.update(self).await;
-            }
+            //     // menu.update(self).await;
+            // }
 
             // GameState::Spectating(manager) => {   
             //     let actions = manager.update().await;
@@ -670,18 +686,13 @@ impl Game {
             _ => {
                 // force close all dialogs
                 self.ui_manager.application().dialog_manager.force_close_all().await;
-                // for i in self.dialogs.iter_mut() {
-                //     i.force_close().await;
+
+                // // handle cleaup of the old state
+                // match &mut current_state {
+                //     GameState::SetMenu(menu) => menu.on_change(false).await,
+                //     // GameState::Spectating(spectator_manager) => spectator_manager.stop(),
+                //     _ => {}
                 // }
-                // self.dialogs.clear();
-
-                // handle cleaup of the old state
-                match &mut current_state {
-                    GameState::InMenu(menu) => menu.on_change(false).await,
-                    // GameState::Spectating(spectator_manager) => spectator_manager.stop(),
-
-                    _ => {}
-                }
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
@@ -713,8 +724,8 @@ impl Game {
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));
                     }
-                    GameState::InMenu(_) => {
-                        if let GameState::InMenu(menu) = &self.current_state {
+                    GameState::SetMenu(_) => {
+                        if let GameState::SetMenu(menu) = &self.current_state {
                             if menu.get_name() == "pause" {
                                 if let Some(song) = AudioManager::get_song().await {
                                     song.play(false);
@@ -734,7 +745,7 @@ impl Game {
                 let mut do_transition = true;
                 match &current_state {
                     GameState::None => do_transition = false,
-                    GameState::InMenu(menu) if menu.get_name() == "pause" => do_transition = false,
+                    GameState::SetMenu(menu) if menu.get_name() == "pause" => do_transition = false,
                     _ => {}
                 }
 
@@ -751,7 +762,7 @@ impl Game {
                     // old mode was none, or was pause menu, transition to new mode
                     std::mem::swap(&mut self.queued_state, &mut self.current_state);
 
-                    if let GameState::InMenu(menu) = &mut self.current_state {
+                    if let GameState::SetMenu(menu) = &mut self.current_state {
                         menu.on_change(true).await;
                     }
                 }
@@ -910,27 +921,14 @@ impl Game {
                 MenuAction::None => continue,
                 
                 // menu actions
-                MenuAction::Menu(MenuMenuAction::SetMenu(menu))=> self.queue_state_change(GameState::InMenu(menu)),
-                MenuAction::Menu(MenuMenuAction::SetMenuCustom(id)) => {
-                    let menu = self.custom_menus.iter().rev().find(|cm|cm.id == id);
-                    if let Some(menu) = menu {
-                        self.queue_state_change(GameState::InMenu(Box::new(menu.build().await)))
-                    } else {
-                        match &*id {
-                            "beatmap_select_menu" => self.queue_state_change(GameState::InMenu(Box::new(BeatmapSelectMenu::new().await))),
-                            _ => {}
-                        }
-
-                        error!("custom menu not found! {id}")
-                    }
-                }
+                MenuAction::Menu(MenuMenuAction::SetMenu(menu)) => self.queue_state_change(GameState::SetMenu(menu)),
+                MenuAction::Menu(MenuMenuAction::SetMenuCustom(id)) => self.handle_custom_menu(id).await,
 
                 MenuAction::Menu(MenuMenuAction::PreviousMenu(current_menu)) => if let Some(menu) = self.handle_previous_menu(current_menu).await {
-                    self.queue_state_change(GameState::InMenu(menu))
+                    self.queue_state_change(GameState::SetMenu(menu))
                 }
                 
                 MenuAction::Menu(MenuMenuAction::AddDialog(dialog, allow_duplicates)) => self.add_dialog(dialog, allow_duplicates),
-
                 MenuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, _allow_duplicates)) => {
                     match &*dialog {
                         "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
@@ -1054,11 +1052,11 @@ impl Game {
                     tokio::spawn(OnlineManager::leave_lobby());
                     self.multiplayer_manager = None;
                     // TODO: check if ingame, and if yes, dont change state
-                    self.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+                    self.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
                 }
                 MenuAction::MultiplayerAction(MultiplayerManagerAction::JoinMulti) => {
                     self.multiplayer_manager = Some(Box::new(MultiplayerManager::new()));
-                    self.queue_state_change(GameState::InMenu(Box::new(LobbyMenu::new().await)));
+                    self.queue_state_change(GameState::SetMenu(Box::new(LobbyMenu::new().await)));
                 }
 
 
@@ -1073,23 +1071,37 @@ impl Game {
         }
     }
 
-    pub fn queue_state_change(&mut self, state:GameState) { 
-        match state {
-            GameState::InMenu(menu) => {
-                self.set_menu(Some(menu));
-                self.queued_state = GameState::InMenu2;
-            }
-            GameState::InMenu2 => {}
-            state => {
-                self.set_menu(None);
-                self.queued_state = state;
+    async fn handle_custom_menu(&mut self, id: String) {
+        let menu = self.custom_menus.iter().rev().find(|cm|cm.id == id);
+        if let Some(menu) = menu {
+            self.queue_state_change(GameState::SetMenu(Box::new(menu.build().await)))
+        } else {
+            match &*id {
+                "none" => {}
+                "beatmap_select_menu" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
+                _ => {
+                    error!("custom menu not found! {id}");
+                    error!("going to main menu instead");
+                    self.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)))
+                }
             }
         }
     }
-    pub fn set_menu(&mut self, menu: Option<Box<dyn AsyncMenu>>) {
-        let menu = menu.unwrap_or_else(||Box::new(EmptyMenu::new()));
-        debug!("Changing menu to: {}", menu.get_name());
-        self.ui_manager.set_menu(menu);
+
+    pub fn queue_state_change(&mut self, state:GameState) { 
+        match state {
+            GameState::SetMenu(menu) => {
+                self.queued_state = GameState::InMenu(MenuType::from_menu(&menu));
+                debug!("Changing menu to: {} ({:?})", menu.get_name(), menu.get_custom_name());
+                self.ui_manager.set_menu(menu);
+            }
+            GameState::InMenu(_) => {}
+            state => {
+                // set the menu to an empty menu, hiding it
+                self.ui_manager.set_menu(Box::new(EmptyMenu::new()));
+                self.queued_state = state;
+            }
+        }
     }
 
     /// shortcut for setting the game's background texture to a beatmap's image
@@ -1141,7 +1153,7 @@ impl Game {
                             // set it as current map if wanted
                             let mut use_preview_time = true;
                             let change_map = match &self.current_state {
-                                GameState::InMenu(menu) => {
+                                GameState::SetMenu(menu) => {
                                     if menu.get_name() == "main_menu" { use_preview_time = false; }
                                     true
                                 }
@@ -1207,7 +1219,7 @@ impl Game {
         let score = IngameScore::new(score.clone(), false, false);
         let mut menu = ScoreMenu::new(&score, map, false);
         menu.replay = Some(replay);
-        self.queued_state = GameState::InMenu(Box::new(menu));
+        self.queued_state = GameState::SetMenu(Box::new(menu));
     }
 
 
@@ -1220,7 +1232,7 @@ impl Game {
             trace!("player failed");
             if !manager.get_mode().is_multi() {
                 let manager2 = std::mem::take(manager);
-                self.queue_state_change(GameState::InMenu(Box::new(PauseMenu::new(manager2, true).await)));
+                self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(manager2, true).await)));
             }
             
         } else {
@@ -1250,7 +1262,7 @@ impl Game {
                 // go back to beatmap select
                 GameplayMode::Replaying {..} => {
                     let menu = BeatmapSelectMenu::new().await; 
-                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
+                    self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                 }
                 GameplayMode::Multiplayer { .. } => {}
 
@@ -1259,7 +1271,7 @@ impl Game {
                     let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
                     menu.replay = Some(replay.clone());
                     menu.score_submit = score_submit;
-                    self.queue_state_change(GameState::InMenu(Box::new(menu)));
+                    self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                 }
             }
         }
@@ -1373,8 +1385,10 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(Box<IngameManager>),
-    InMenu(Box<dyn AsyncMenu>),
-    InMenu2,
+    /// need to transition to the provided menu
+    SetMenu(Box<dyn AsyncMenu>),
+    /// Currently in a menu
+    InMenu(MenuType),
 
     // Spectating(Box<SpectatorManager>),
 }
@@ -1384,9 +1398,20 @@ impl GameState {
         match self {
             Self::Ingame(_) => true,
             // Self::Spectating(s) if spec_check => s.game_manager.is_some(),
-            Self::InMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
+            Self::SetMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
             
             _ => false
+        }
+    }
+
+
+    fn to_string(&self) -> String {
+        match self {
+            Self::None => "None".to_owned(),
+            Self::Closing => "Closing".to_owned(),
+            Self::Ingame(_) => "Ingame".to_owned(),
+            Self::SetMenu(m) => format!("Set Menu: {}", m.get_name()),
+            Self::InMenu(m) => format!("In Menu: {m:?}")
         }
     }
 }
@@ -1396,4 +1421,16 @@ pub enum SpectatorWatchAction {
     FullMenu,
     OpenDialog,
     MultiSpec,
+}
+
+#[derive(Clone, Debug)]
+pub enum MenuType {
+    Internal(&'static str),
+    Custom(String)
+}
+impl MenuType {
+    pub fn from_menu(menu: &Box<dyn AsyncMenu>) -> Self {
+        let Some(custom) = menu.get_custom_name() else { return Self::Internal(menu.get_name()) };
+        Self::Custom(custom.clone())
+    }
 }

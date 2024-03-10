@@ -42,7 +42,7 @@ impl Dialog for BeatmapDialog {
 
     }
 
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {

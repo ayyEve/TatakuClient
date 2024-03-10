@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct RenderableCollection {
     pub list: Vec<Arc<dyn TatakuRenderable>>,
-    pub do_before_add: Option<Box<dyn FnMut(&mut dyn TatakuRenderable) + Send + Sync>>,
+    // pub do_before_add: Option<Box<dyn FnMut(&mut dyn TatakuRenderable) + Send + Sync>>,
 
     // scissors: ScissorManager
 }
@@ -11,9 +11,9 @@ impl RenderableCollection {
     pub fn new() -> Self { Self::default() }
 
     pub fn push<R:TatakuRenderable + 'static>(&mut self, mut r: R) {
-        if let Some(do_before) = &mut self.do_before_add {
-            (do_before)(&mut r);
-        }
+        // if let Some(do_before) = &mut self.do_before_add {
+        //     (do_before)(&mut r);
+        // }
 
         // r.set_scissor(self.scissors.current_scissor());
         self.list.push(Arc::new(r));
@@ -39,14 +39,10 @@ pub struct ScissorManager {
     current_scissor: Scissor,
 }
 impl ScissorManager {
-
-    /// returns if the scissor has changed
     pub fn push_scissor(&mut self, scissor: [f32; 4]) {
         self.scissors.push(scissor);
         self.recalc_current_scissor();
     }
-
-    /// returns if the scissor has changed
     pub fn pop_scissor(&mut self) {
         self.scissors.pop();
         self.recalc_current_scissor();
@@ -56,8 +52,11 @@ impl ScissorManager {
         self.current_scissor
     }
 
-    /// returns if the scissor has changed
     fn recalc_current_scissor(&mut self) {
+        // TODO: this could be improved by comparing the current scissor to the last one in the list.
+        // then we're only comparing two scissors instead of all scissors
+        // would need to account for scissors getting removed though
+
         if self.scissors.is_empty() {
             self.current_scissor = None;
             return;

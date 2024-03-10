@@ -1,18 +1,63 @@
+-- helper for the song controls
+function fa_button(char, action) 
+    return {
+        id = "styled_content",
+        color = color(1.0, 1.0, 1.0, 0.1),
+        shape = { round = 5.0 },
+        width = "shrink",
+        height = "shrink",
+
+        element = button(
+            text(
+                char, -- FA char
+                30.0, -- font size
+                WHITE, -- color
+                "font_awesome" -- font
+            ), -- text
+            action, -- action
+            "shrink", -- width
+            "shrink", -- height
+            15.0 -- padding
+        )
+    }
+end
+
+song_controls = row({ width = "shrink", height = "shrink" }, {
+    -- the actual controls
+    col({ width = "fill", height = "fill", spacing = 2.0 }, {
+        -- buttons
+        row({ width = "fill", height = "fill_portion(10)", spacing = 5.0 }, {
+            fa_button(0xF04A, { map = "previous" }), -- previous song
+            fa_button(0xF048, { song = { seek = -500.0 } }), -- seek backwards
+            space("fill", "shrink"),
+            fa_button(0xF04C, { song = "toggle" }), -- play/pause
+            space("fill", "shrink"),
+            fa_button(0xF051, { song = { seek = 500.0 } }), -- seek forwards
+            fa_button(0xF04E, { map = "next" }), -- next song
+        }),
+
+        -- progress bar (TODO)
+    }),
+
+    -- empty space so the controls arent the whole width
+    space("fill_portion(4)", "fill")
+});
+
+
+
+
 menu = {
     id = "main_menu",
 
-    -- the current main menu is broken into rows
-    element = col({
+    -- the current main menu is broken up into rows
+    element = col({ width = "fill", height = "fill" }, {
         -- the first row contains the song display
-        {
-            id = "row",
-            width = "fill",
-            -- height = "fill", 
-            elements = { song_display }
-        },
+        row({ width = "fill", height = "fill" }, { 
+            song_display 
+        }),
 
         -- the next row is the preview and menu buttons
-        row({
+        row({ width = "fill", height = "fill_portion(10)" }, {
             -- preview
             {
                 id = "gameplay_preview",
@@ -24,6 +69,9 @@ menu = {
             -- buttons, but inside an animatable element (to hide/unhide)
             {
                 id = "animatable", -- not implemented yet because animating iced elements is pain
+                width = "shrink", 
+                height = "shrink",
+
                 triggers = {
                     -- on any input, it will unhide
                     { trigger = "input", action = "unhide" },
@@ -44,23 +92,22 @@ menu = {
                         { action = "opacity", start = "current", stop = 1.0, duration = 1000.0 }
                     }
                 },
-                element = col({
-                    -- context is a table or list of tags to help the game know what was happening before, or to pass arguments into the menu
-                    -- TODO: do we even need context? 
-                    --[[ Singleplayer ]] { id = "button", text = "Play", action = start_singleplayer },
-                    --[[ Multiplayer ]] { id = "button", text = "Multiplayer", action = start_multiplayer },
-                    --[[ Settings ]] { id = "button", text = "Settings", action = { dialog = "settings" } },
-                    --[[ Quit ]] { id = "button", text = "Quit", action = exit_game }
+                element = col({ width = "fill", height = "fill", margin = 5.0 }, {
+                    --[[ Singleplayer ]] button(text("Play"), start_singleplayer), 
+                    --[[ Multiplayer ]] button(text("Multiplayer"), start_multiplayer),
+                    --[[ Settings ]] button(text("Settings"), { dialog = "settings" } ),
+                    --[[ Quit ]] button(text("Quit"), exit_game),
                 })
             }
         }),
         
-        -- the next row is the media controls (unhelpfully named "music_player")
-        row({
-            music_player -- not implemented yet
+        -- the next row is the media controls
+        row({ width = "fill", height = "fill" }, {
+            song_controls
         }),
 
         -- lastly, we have the key handler
+        -- it doesnt actually occupy any space, but is required to handle key input
         key_handler({
             -- previous map
             {

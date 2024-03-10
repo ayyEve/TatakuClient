@@ -189,7 +189,7 @@ impl AsyncMenu for LoadingMenu {
     }
 
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         row!(
             Space::new(Fill, Fill),
@@ -232,7 +232,7 @@ impl AsyncMenu for LoadingMenu {
         )
     }
     
-    async fn handle_message(&mut self, _message: Message) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
         // nothing really to do here
     }
 }

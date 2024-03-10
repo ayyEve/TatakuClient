@@ -10,19 +10,8 @@ impl ButtonAction {
     pub fn into_message(&self, owner: MessageOwner) -> Option<Message> {
         // use CustomMenuAction::*;
         if let CustomMenuAction::None = &self.action { return None };
-
         let message = MessageType::CustomMenuAction(self.action.clone());
         Some(Message::new(owner, "", message))
-
-        // match &self.action {
-        //     CustomMenuAction::None => Option::None,
-        //     SetMenu(name) => Some(owner.click(format!("set-menu-{name}"))),
-        //     AddDialog(name) => Some(owner.click(format!("add-dialog-{name}"))),
-            
-        //     MapNext => Some(owner.click("set-map-next")),
-        //     MapPrevious => Some(owner.click("set-map-prev")),
-        //     SongSeek(amount) => Some(owner.float("set-song-seek", val))
-        // }
     }
 }
 impl<'lua> FromLua<'lua> for ButtonAction {

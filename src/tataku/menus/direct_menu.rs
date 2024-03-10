@@ -137,7 +137,7 @@ impl DirectMenu {
         }
 
         // let menu = game.menus.get("main").unwrap().clone();
-        game.queue_state_change(GameState::InMenu(Box::new(MainMenu::new().await)));
+        game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
     }
 }
 
@@ -163,7 +163,7 @@ impl AsyncMenu for DirectMenu {
     }
 
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
 
         col!(
@@ -171,7 +171,7 @@ impl AsyncMenu for DirectMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         info!("got message {message:?}");
     }
 

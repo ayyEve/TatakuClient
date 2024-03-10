@@ -19,11 +19,11 @@ impl UiApplication {
         self.menu.update().await
     }
 
-    pub async fn handle_message(&mut self, message: Message) {
+    pub async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         if message.owner.check_menu(&self.menu) {
-            self.menu.handle_message(message).await;
+            self.menu.handle_message(message, values).await;
         } else {
-            self.dialog_manager.handle_message(message).await;
+            self.dialog_manager.handle_message(message, values).await;
         }
     }
 
@@ -59,7 +59,7 @@ impl UiApplication {
     }
 
 
-    pub fn view(&self, values: &ShuntingYardValues) -> IcedElement {
+    pub fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let content:IcedElement = self.menu.view(values);
         let dialogs = self.dialog_manager.view();

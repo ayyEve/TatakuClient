@@ -57,7 +57,7 @@ impl AsyncMenu for LobbySelect {
     }
     
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
         let cols = 5;
         let rows = 5;
@@ -90,7 +90,7 @@ impl AsyncMenu for LobbySelect {
         )
     }
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return };
 
         match &*tag {

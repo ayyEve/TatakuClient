@@ -53,7 +53,7 @@ impl PauseMenu {
 impl AsyncMenu for PauseMenu {
     fn get_name(&self) -> &'static str { if self.is_fail_menu {"fail"} else {"pause"} }
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         let menu = row!(
@@ -87,7 +87,7 @@ impl AsyncMenu for PauseMenu {
             .into_element()
     }
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         info!("got message {message:?}");
         let Some(tag) = message.tag.as_string() else { return };
 

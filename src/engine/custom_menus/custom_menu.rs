@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use iced_elements::*;
 
 #[derive(Clone, Debug)]
 pub struct CustomMenu {
@@ -36,8 +35,12 @@ pub struct BuiltCustomMenu {
 #[async_trait]
 impl AsyncMenu for BuiltCustomMenu {
     fn get_name(&self) -> &'static str { "custom_menu" }
-    fn view(&self, values: &ShuntingYardValues) -> IcedElement {
+    fn get_custom_name(&self) -> Option<&String> { Some(&self.id) }
+
+    fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
         self.element.view(MessageOwner::new_menu(self), values)
+            // .explain(Color::TEAL)
+            .into_element()
     }
 
     async fn update(&mut self) -> Vec<MenuAction> {
@@ -45,10 +48,12 @@ impl AsyncMenu for BuiltCustomMenu {
         self.queued_actions.take()
     }
 
-    async fn handle_message(&mut self, message: Message) {
-        // use CustomMenuAction::*;
-
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         match message.message_type {
+            MessageType::Text(incoming) => {
+                let Some(variable) = message.tag.as_string() else { return };
+                values.set(variable, incoming);
+            }
             // MessageType::CustomMenuAction(AddDialog(dialog)) => {}
             // MessageType::CustomMenuAction(SetMenu(menu)) => self.queued_actions.push(MenuMenuAction::SetMenuCustom(menu)),
 
@@ -56,20 +61,6 @@ impl AsyncMenu for BuiltCustomMenu {
 
             _ => {}
         }
-
-        // match message.tag {
-
-        //     MessageTag::String(s) if s.starts_with("btn-menu-") => {
-        //         let menu_name = s.trim_start_matches("btn-menu-");
-        //         if menu_name == "none" {
-        //             self.queued_actions.push(MenuAction::Quit);
-        //         } else {
-        //             self.queued_actions.push(MenuMenuAction::SetMenuCustom(menu_name.to_string()));
-        //         }
-        //     }
-
-        //     _ => {}
-        // }
     }
 }
 

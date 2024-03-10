@@ -65,7 +65,7 @@ impl Dialog for SettingsMenu {
 
 
 
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.clone().as_string() else { return };
         let mut tags = tag.split(".");
         

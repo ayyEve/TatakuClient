@@ -25,7 +25,7 @@ pub struct GameplayPreview {
     widget_sender: TripleBufferSender<Arc<dyn TatakuRenderable>>,
     event_receiver: AsyncReceiver<Bounds>,
 
-    widget: GameplayPreviewWidget
+    pub widget: GameplayPreviewWidget
 }
 impl GameplayPreview {
     pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>) -> Self {
@@ -214,7 +214,9 @@ impl GameplayPreview {
             vis.draw(bounds, &mut list).await;
         }
 
-        self.widget_sender.write(Arc::new(TransformGroup::from_collection(Vector2::ZERO, list)));
+        let mut group = TransformGroup::from_collection(Vector2::ZERO, list);
+        group.set_scissor(self.fit_to.map(|b| b.into_scissor()));
+        self.widget_sender.write(Arc::new(group));
     }
 
     pub async fn key_down(&mut self, key:Key, mods:KeyModifiers) {
@@ -278,6 +280,12 @@ impl GameplayPreviewWidget {
             event_sender,
         }
     }
+    pub fn width(&mut self, width: iced::Length) {
+        self.width = width;
+    }
+    pub fn height(&mut self, height: iced::Length) {
+        self.height = height;
+    }
 }
 
 impl iced::advanced::Widget<Message, IcedRenderer> for GameplayPreviewWidget {
@@ -306,7 +314,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for GameplayPreviewWidget {
         _cursor: iced_runtime::core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {
-        let _  = self.event_sender.try_send(layout.bounds().into());
+        let _ = self.event_sender.try_send(layout.bounds().into());
         renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(self.draw_data.lock().read().clone()));
     }
 }
@@ -322,5 +330,17 @@ impl Into<IcedElement> for GameplayPreviewWidget {
 impl core::fmt::Debug for GameplayPreview {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "GameplayPreview")
+    }
+}
+
+
+#[async_trait]
+impl Widgetable for GameplayPreview {
+    async fn update(&mut self) {
+        GameplayPreview::update(self).await
+        // (self as &mut GameplayPreview).update().await
+    }
+    fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement {
+        self.widget()
     }
 }

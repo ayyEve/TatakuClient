@@ -144,6 +144,9 @@ pub enum CustomMenuSongAction {
     /// Pause the song
     Pause,
 
+    /// Toggle the song (pause if playing, play if paused)
+    Toggle,
+
     /// Restart the song from the beginning
     Restart,
 
@@ -158,6 +161,7 @@ impl Into<SongMenuAction> for CustomMenuSongAction {
         match self {
             Self::Play => SongMenuAction::Play,
             Self::Pause => SongMenuAction::Pause,
+            Self::Toggle => SongMenuAction::Toggle,
             Self::Restart => SongMenuAction::Restart,
             Self::Seek(n) => SongMenuAction::SeekBy(n),
             Self::SetPosition(p) => SongMenuAction::SetPosition(p)
@@ -169,11 +173,31 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         match lua_value {
             Value::Table(table) => {
-                let id:String = table.get("id")?;
-                match &*id {
-                    "seek" => Ok(Self::Seek(table.get::<_, Option<f32>>("seek")?.unwrap_or(500.0))),
-                    "position" => Ok(Self::SetPosition(table.get::<_, f32>("position")?)),
-                    other => Err(FromLuaConversionError { from: "String", to: "CustomMenuSongAction", message: Some(format!("Unknown song action {other}")) }),
+                if let Some(seek) = table.get("seek")? {
+                    Ok(Self::Seek(seek))
+                } else if let Some(pos) = table.get("position")?{
+                    Ok(Self::SetPosition(pos))
+                } else {
+                    Err(FromLuaConversionError { 
+                        from: "table", 
+                        to: "CustomMenuSongAction", 
+                        message: Some(format!("couldn't determine song action")) 
+                    })
+                }
+            }
+
+            Value::String(str) => {
+                match str.to_str()? {
+                    "play" => Ok(Self::Play),
+                    "pause" => Ok(Self::Pause),
+                    "toggle" => Ok(Self::Toggle),
+                    "restart" => Ok(Self::Restart),
+
+                    other => Err(FromLuaConversionError { 
+                        from: "String", 
+                        to: "CustomMenuSongAction", 
+                        message: Some(format!("Unknown song action: {other}")) 
+                    }),
                 }
             }
 

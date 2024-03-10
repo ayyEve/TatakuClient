@@ -10,34 +10,42 @@ pub struct ElementDef {
     pub height: Length,
 }
 impl ElementDef {
-    
     #[async_recursion::async_recursion]
     pub async fn build(&self) -> BuiltElementDef {
         let mut built = BuiltElementDef {
             element: self.clone(),
-            special: BuiltElementData::None,
+            children: Vec::new(),
         };
 
         match &self.id {
             ElementIdentifier::GameplayPreview { visualization } => {
                 let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_|true));
+                gameplay.widget.width(self.width);
+                gameplay.widget.height(self.height);
+                
                 if let Some(vis) = visualization {
                     match &**vis {
                         "menu_visualization" => gameplay.visualization = Some(Box::new(MenuVisualization::new().await)),
                         _ => warn!("Unknown gameplay visualization: {vis}"),
                     }
                 }
-                built.special = BuiltElementData::GameplayPreview(gameplay)
+
+                built.children.push(Box::new(gameplay));
             }
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
-                => built.special = BuiltElementData::Elements(BuiltElementDef::build_elements(elements).await),
+                => for i in elements.iter() {
+                    built.children.push(Box::new(i.build().await))
+                }
 
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
-                => built.special = BuiltElementData::Element(Box::new(element.build().await)),
+                => built.children.push(Box::new(element.build().await)),
 
             ElementIdentifier::StyledContent { element, .. } 
-                => built.special = BuiltElementData::Element(Box::new(element.build().await)),
+                => built.children.push(Box::new(element.build().await)),
+            
+            ElementIdentifier::Button { element, .. } 
+                => built.children.push(Box::new(element.build().await)),
 
             _ => {},
         }
@@ -59,7 +67,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::Row { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
-                    margin: table.get("margin")?,
+                    margin: parse_from_multiple(table, &["margin", "spacing"])?,
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -69,7 +77,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::Column { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
-                    margin: table.get("margin")?,
+                    margin: parse_from_multiple(table, &["margin", "spacing"])?,
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -94,11 +102,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
 
             "button" => Ok(Self {
                 id: ElementIdentifier::Button { 
-                    text: table.get("text")?, 
-                    color: table.get("color")?, 
-                    font_size: table.get("font_size")?,
+                    element: Box::new(table.get("element")?),
                     padding: table.get("padding")?,
-
                     action: table.get("action")?,
                 },
                 width: width.unwrap_or(Length::Shrink),
@@ -208,3 +213,12 @@ impl<'lua> FromLua<'lua> for ElementPadding {
 }
 
 
+
+fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
+    for i in list.iter() {
+        let Some(t) = table.get(*i)? else { continue };
+        return Ok(Some(t))
+    }
+
+    Ok(None)
+}

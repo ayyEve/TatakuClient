@@ -496,7 +496,7 @@ impl BeatmapSelectMenu {
 impl AsyncMenu for BeatmapSelectMenu {
     fn get_name(&self) -> &'static str {"beatmap_select"}
 
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use iced_elements::*;
         let gamemodes = AVAILABLE_PLAYMODES.iter().map(|s|s.to_string()).collect::<Vec<_>>();
         let sort_bys = SortBy::list().iter().map(SortBy::to_string).collect::<Vec<_>>();
@@ -549,7 +549,7 @@ impl AsyncMenu for BeatmapSelectMenu {
         )
     }
 
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         self.updates += 1;
 
         match (message.tag, message.message_type) {

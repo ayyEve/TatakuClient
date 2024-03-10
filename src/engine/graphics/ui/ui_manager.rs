@@ -16,6 +16,7 @@ pub struct UiManager {
 
     application: Option<UiApplication>,
     messages: Vec<Message>,
+    current_menu: MenuType,
 
     queued_operations: Vec<IcedOperation>,
 }
@@ -24,7 +25,7 @@ impl UiManager {
         let (ui_sender, ui_receiver) = channel();
 
         // todo: store handle?
-        std::thread::spawn(move || {
+        tokio::task::spawn_blocking(move || { // std::thread::spawn(move || {
             Self::handle_actions(ui_receiver);
         });
 
@@ -35,13 +36,20 @@ impl UiManager {
 
             application: Some(UiApplication::new()),
             messages: Vec::new(),
+            current_menu: MenuType::Internal("None"),
 
             queued_operations: Vec::new()
         }
     }
     pub fn set_menu(&mut self, menu: Box<dyn AsyncMenu>) {
+        self.current_menu = MenuType::from_menu(&menu);
         self.application.as_mut().unwrap().menu = menu;
     }
+
+    pub fn get_menu(&self) -> MenuType {
+        self.current_menu.clone()
+    }
+
 
     pub fn add_operation(&mut self, operation: IcedOperation) {
         self.queued_operations.push(operation)
@@ -74,10 +82,10 @@ impl UiManager {
                         rebuild_next = false;
                         needs_render = true;
 
-                        let values = values.lock();
+                        let mut values = values.blocking_lock();
 
                         ui = user_interface::UserInterface::build(
-                            application.view(&values),
+                            application.view(&mut values),
                             iced::Size::new(window_size.x, window_size.y),
                             ui.into_cache(), //std::mem::take(&mut cache),
                             &mut renderer,
@@ -136,9 +144,9 @@ impl UiManager {
         }
     }
 
-    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: Arc<Mutex<ShuntingYardValues>>) -> Vec<MenuAction> {
+    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: Arc<AsyncMutex<ShuntingYardValues>>) -> Vec<MenuAction> {
         while let Ok(e) = self.message_channel.1.try_recv() {
-            info!("adding message: {e:?}");
+            // info!("adding message: {e:?}");
             self.messages.push(e);
         }
 
@@ -150,16 +158,17 @@ impl UiManager {
             messages: std::mem::take(&mut self.messages),
             events: state.into_events(),
             operations: self.queued_operations.take(),
-            values,
+            values: values.clone(),
         }) else { return Vec::new(); };
 
         let Ok(UiUpdateData { application, messages }) = callback.await else { return Vec::new(); };
 
         std::mem::swap(&mut self.application, &mut Some(application));
 
+        let mut values = values.lock().await;
         let app = self.application();
         for m in messages {
-            app.handle_message(m).await;
+            app.handle_message(m, &mut values).await;
         }
 
         let mut list = app.update().await;
@@ -278,7 +287,7 @@ enum UiAction {
         events: SendEvents,
         operations: Vec<IcedOperation>,
 
-        values: Arc<Mutex<ShuntingYardValues>>
+        values: Arc<AsyncMutex<ShuntingYardValues>>
     },
     Draw {
         application: UiApplication,

@@ -83,11 +83,6 @@ impl ContentBackground {
         self
     }
 
-    // /// Sets the [`Padding`] of the [`Button`].
-    // pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
-    //     self.padding = padding.into();
-    //     self
-    // }
 
     /// Sets the content alignment for the horizontal axis of the [`Container`].
     pub fn align_x(mut self, alignment: alignment::Horizontal) -> Self {

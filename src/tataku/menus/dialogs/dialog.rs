@@ -24,7 +24,7 @@ pub trait Dialog:Send+Sync {
     async fn force_close(&mut self) {}
 
     fn view(&self) -> IcedElement;
-    async fn handle_message(&mut self, message: Message);
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues);
     async fn update(&mut self) -> Vec<MenuAction> { Vec::new() }
 
 

@@ -83,6 +83,17 @@ impl<'lua> FromLua<'lua> for CustomElementText {
                     Err(FromLuaConversionError { from: "Table", to: "CustomElementText", message: Some("No property to get type".to_owned()) })
                 }
             }
+            Value::Integer(n) => {
+                let Some(char) = char::from_u32(n as u32) else {
+                    return Err(FromLuaConversionError { 
+                        from: "Integer", 
+                        to: "CustomElementText", 
+                        message: Some("Failed to cast int to char".to_owned()) 
+                    })
+                };
+
+                Ok(Self::Text(char.to_string()))
+            }
 
             other => Err(FromLuaConversionError { from: other.type_name(), to: "CustomElementText", message: Some("Invalid type".to_owned()) })
         }

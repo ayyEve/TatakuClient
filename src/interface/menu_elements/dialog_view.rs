@@ -22,10 +22,10 @@ impl DialogManager {
         true
     }
 
-    pub async fn handle_message(&mut self, message: Message) {
+    pub async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         for d in self.dialogs.iter_mut() {
             if message.owner.check_dialog(d) {
-                d.handle_message(message).await;
+                d.handle_message(message, values).await;
                 return
             }
         }

@@ -27,7 +27,7 @@ impl NotificationOnClick {
                 debug!("join lobby {lobby_id}");
                 tokio::spawn(OnlineManager::join_lobby(*lobby_id, String::new()));
                 let menu = LobbySelect::new().await;
-                game.queue_state_change(GameState::InMenu(Box::new(menu)));
+                game.queue_state_change(GameState::SetMenu(Box::new(menu)));
             }
 
             NotificationOnClick::File(file_path) => {

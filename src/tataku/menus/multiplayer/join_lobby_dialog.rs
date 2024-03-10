@@ -46,7 +46,7 @@ impl Dialog for JoinLobbyDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
 
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {

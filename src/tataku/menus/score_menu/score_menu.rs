@@ -424,7 +424,7 @@ impl AsyncMenu for ScoreMenu {
     }
 
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         // score info
@@ -482,7 +482,7 @@ impl AsyncMenu for ScoreMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return };
         match &*tag {
             "retry" => self.retry().await,

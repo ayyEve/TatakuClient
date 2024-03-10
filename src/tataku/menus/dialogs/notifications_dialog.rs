@@ -51,7 +51,7 @@ impl Dialog for NotificationsDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         let Some(id) = message.tag.as_number() else { return };
 
         if let MessageType::Click = &message.message_type {

@@ -248,7 +248,7 @@ impl BeatmapManager {
 
         // update shunting yard values
         {
-            let mut values = game.shunting_yard_values.lock();
+            let mut values = game.shunting_yard_values.lock().await;
             values.set("map.artist", beatmap.artist.clone());
             values.set("map.title", beatmap.title.clone());
             values.set("map.creator", beatmap.creator.clone());

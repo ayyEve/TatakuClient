@@ -1,15 +1,15 @@
 use crate::prelude::*;
 use super::MusicBox;
-use super::menu_button::MainMenuButton;
+// use super::menu_button::MainMenuButton;
 
-const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
-const Y_MARGIN:f32 = 20.0;
-const Y_OFFSET:f32 = 10.0;
+// const BUTTON_SIZE: Vector2 = Vector2::new(100.0, 50.0);
+// const Y_MARGIN:f32 = 20.0;
+// const Y_OFFSET:f32 = 10.0;
 
 const MENU_HIDE_TIMER:f32 = 5_000.0;
 // const COOKIE_HIDE_TIMER:f32 = 10_000.0;
 // const COOKIE_FADE_TIME:f32 = 10_000.0;
-const BUTTON_COUNT: usize = 4;
+// const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
     queued_actions: ActionQueue,
@@ -403,7 +403,7 @@ impl AsyncMenu for MainMenu {
     }
 
     
-    fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let owner = MessageOwner::new_menu(self);
         
@@ -469,7 +469,7 @@ impl AsyncMenu for MainMenu {
         
     }
     
-    async fn handle_message(&mut self, message: Message) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return };
         let val = message.message_type.as_float().unwrap_or_default();
 

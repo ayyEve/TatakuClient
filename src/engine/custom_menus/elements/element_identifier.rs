@@ -14,10 +14,7 @@ pub enum ElementIdentifier {
     },
     Space,
     Button {
-        text: CustomElementText,
-        color: Option<Color>,
-        font_size: Option<f32>,
-
+        element: Box<ElementDef>,
         action: ButtonAction,
         padding: Option<ElementPadding>,
     },
@@ -69,7 +66,6 @@ pub struct KeyHandlerEvent {
     pub mods: KeyModifiers,
     pub action: CustomMenuAction,
 }
-
 use rlua::{Value, Error, FromLua, Table};
 impl<'lua> FromLua<'lua> for KeyHandlerEvent {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
