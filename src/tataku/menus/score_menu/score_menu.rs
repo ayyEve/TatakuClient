@@ -8,7 +8,7 @@ use chrono::{ NaiveDateTime, Local };
 
 pub struct ScoreMenu {
     actions: ActionQueue,
-    key_handler: KeyEventsHandlerGroup<ScoreMenuKeys>,
+    // key_handler: KeyEventsHandlerGroup<ScoreMenuKeys>,
 
     score: IngameScore,
     beatmap: Arc<BeatmapMeta>,
@@ -83,7 +83,7 @@ impl ScoreMenu {
 
         ScoreMenu {
             actions: ActionQueue::new(),
-            key_handler: KeyEventsHandlerGroup::new(),
+            // key_handler: KeyEventsHandlerGroup::new(),
             menu_type: Box::new(ScoreMenuType::Normal),
                 
             score: score.clone(),
@@ -409,16 +409,16 @@ impl AsyncMenu for ScoreMenu {
         // update lobby scores
         self.update_lobby();
         
-        while let Some(event) = self.key_handler.check_events() {
-            match event {
-                KeyEvent::Press(ScoreMenuKeys::Back) => self.close().await,
-                KeyEvent::Press(ScoreMenuKeys::SaveReplay) => self.save_replay().await,
+        // while let Some(event) = self.key_handler.check_events() {
+        //     match event {
+        //         KeyEvent::Press(ScoreMenuKeys::Back) => self.close().await,
+        //         KeyEvent::Press(ScoreMenuKeys::SaveReplay) => self.save_replay().await,
 
-                KeyEvent::Press(ScoreMenuKeys::PrevStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_sub_1(self.stats.len()),
-                KeyEvent::Press(ScoreMenuKeys::NextStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_add_1(self.stats.len()),
-                _ => {}
-            }
-        }
+        //         KeyEvent::Press(ScoreMenuKeys::PrevStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_sub_1(self.stats.len()),
+        //         KeyEvent::Press(ScoreMenuKeys::NextStat) if !self.stats.is_empty() => self.selected_stat = self.selected_stat.wrapping_add_1(self.stats.len()),
+        //         _ => {}
+        //     }
+        // }
 
         self.actions.take()
     }
@@ -472,10 +472,10 @@ impl AsyncMenu for ScoreMenu {
                 self.get_buttons(),
                 width = Fill,
                 height = Shrink
-            ),
+            );
 
-            // key event helper
-            self.key_handler.handler();
+            // // key event helper
+            // self.key_handler.handler();
 
             width = Fill,
             height = Fill
@@ -512,27 +512,27 @@ impl AsyncMenu for ScoreMenu {
 
 
 
-pub enum ScoreMenuKeys {
-    Back,
+// pub enum ScoreMenuKeys {
+//     Back,
 
-    SaveReplay,
+//     SaveReplay,
 
-    NextStat,
-    PrevStat,
-}
-impl KeyMap for ScoreMenuKeys {
-    fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
-        match key {
-            iced::keyboard::KeyCode::F2 => Some(Self::SaveReplay),
-            iced::keyboard::KeyCode::Escape => Some(Self::Back),
+//     NextStat,
+//     PrevStat,
+// }
+// impl KeyMap for ScoreMenuKeys {
+//     fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
+//         match key {
+//             iced::keyboard::KeyCode::F2 => Some(Self::SaveReplay),
+//             iced::keyboard::KeyCode::Escape => Some(Self::Back),
 
-            iced::keyboard::KeyCode::Left => Some(Self::PrevStat),
-            iced::keyboard::KeyCode::Right => Some(Self::NextStat),
+//             iced::keyboard::KeyCode::Left => Some(Self::PrevStat),
+//             iced::keyboard::KeyCode::Right => Some(Self::NextStat),
 
-            _ => None,
-        }
-    }
-}
+//             _ => None,
+//         }
+//     }
+// }
 
 
 

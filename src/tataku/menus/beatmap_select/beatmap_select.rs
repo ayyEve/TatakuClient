@@ -44,7 +44,7 @@ pub struct BeatmapSelectMenu {
     current_skin: CurrentSkinHelper,
     new_beatmap_helper: LatestBeatmapHelper,
     diffcalc_complete: Option<Bomb<()>>,
-    key_events: KeyEventsHandlerGroup<BeatmapSelectKeyEvent>,
+    // key_events: KeyEventsHandlerGroup<BeatmapSelectKeyEvent>,
 
     menu_game: GameplayPreview,
     cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
@@ -106,7 +106,7 @@ impl BeatmapSelectMenu {
             new_beatmap_helper: LatestBeatmapHelper::new(),
             current_skin: CurrentSkinHelper::new(),
             select_action: BeatmapSelectAction::PlayMap,
-            key_events: KeyEventsHandlerGroup::new(),
+            // key_events: KeyEventsHandlerGroup::new(),
 
             // mouse_down: None,
             menu_game: GameplayPreview::new(true, true, Arc::new(|s|s.background_game_settings.beatmap_select_enabled)),
@@ -539,10 +539,10 @@ impl AsyncMenu for BeatmapSelectMenu {
                     // beatmaps
                     self.get_beatmap_list(),
                 ]).width(FillPortion(5));
-            ),
+            );
 
-            // key events
-            self.key_events.handler();
+            // // key events
+            // self.key_events.handler();
 
             width = Fill,
             height = Fill
@@ -598,31 +598,31 @@ impl AsyncMenu for BeatmapSelectMenu {
         // update bg game
         self.menu_game.update().await;
 
-        // check for key events
-        while let Some(event) = self.key_events.check_events() {
-            match event {
-                KeyEvent::Press(BeatmapSelectKeyEvent::NextMap) => self.next_map(),
-                KeyEvent::Press(BeatmapSelectKeyEvent::PrevMap) => self.prev_map(),
+        // // check for key events
+        // while let Some(event) = self.key_events.check_events() {
+        //     match event {
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::NextMap) => self.next_map(),
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::PrevMap) => self.prev_map(),
 
-                KeyEvent::Press(BeatmapSelectKeyEvent::NextSet) => self.next_set(),
-                KeyEvent::Press(BeatmapSelectKeyEvent::PrevSet) => self.prev_set(),
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::NextSet) => self.next_set(),
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::PrevSet) => self.prev_set(),
 
-                KeyEvent::Press(BeatmapSelectKeyEvent::Enter) => self.play_map().await,
-                KeyEvent::Press(BeatmapSelectKeyEvent::Back) => self.action_queue.push(MenuMenuAction::PreviousMenu(self.get_name())),
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::Enter) => self.play_map().await,
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::Back) => self.action_queue.push(MenuMenuAction::PreviousMenu(self.get_name())),
 
-                KeyEvent::Press(BeatmapSelectKeyEvent::ModsDialog) => self.action_queue.push(MenuMenuAction::AddDialog(self.make_mods_dialog().await, false)),
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::ModsDialog) => self.action_queue.push(MenuMenuAction::AddDialog(self.make_mods_dialog().await, false)),
                 
-                KeyEvent::Press(BeatmapSelectKeyEvent::SpeedUp) => self.speed_step(SPEED_DIFF).await,
-                KeyEvent::Press(BeatmapSelectKeyEvent::SpeedDown) => self.speed_step(-SPEED_DIFF).await,
-                KeyEvent::Press(BeatmapSelectKeyEvent::NoFailMod) => self.toggle_mod(NoFail).await,
-                KeyEvent::Press(BeatmapSelectKeyEvent::AutoplayMod) => self.toggle_mod(Autoplay).await,
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::SpeedUp) => self.speed_step(SPEED_DIFF).await,
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::SpeedDown) => self.speed_step(-SPEED_DIFF).await,
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::NoFailMod) => self.toggle_mod(NoFail).await,
+        //         KeyEvent::Press(BeatmapSelectKeyEvent::AutoplayMod) => self.toggle_mod(Autoplay).await,
 
-                #[allow(unreachable_patterns)]
-                KeyEvent::Press(other) => error!("unhandled BeatmapSelectKeyEvent: {other:?}"),
+        //         #[allow(unreachable_patterns)]
+        //         KeyEvent::Press(other) => error!("unhandled BeatmapSelectKeyEvent: {other:?}"),
                 
-                _ => {}
-            };
-        }
+        //         _ => {}
+        //     };
+        // }
 
         // check for diffcalc update
         let mut filter_pending = false;
@@ -964,45 +964,45 @@ impl std::hash::Hash for Helper {
 }
 
 
-#[derive(Debug)]
-enum BeatmapSelectKeyEvent {
-    PrevMap,
-    NextMap,
+// #[derive(Debug)]
+// enum BeatmapSelectKeyEvent {
+//     PrevMap,
+//     NextMap,
 
-    NextSet,
-    PrevSet,
+//     NextSet,
+//     PrevSet,
 
-    Enter,
-    Back,
+//     Enter,
+//     Back,
 
-    SpeedUp,
-    SpeedDown,
+//     SpeedUp,
+//     SpeedDown,
 
-    ModsDialog,
-    NoFailMod,
-    AutoplayMod,
-}
-impl KeyMap for BeatmapSelectKeyEvent {
-    fn from_key(key: iced::keyboard::KeyCode, mods: iced::keyboard::Modifiers) -> Option<Self> {
-        use iced::keyboard::KeyCode;
-        match key {
-            KeyCode::Enter => Some(Self::Enter),
-            KeyCode::Escape => Some(Self::Back),
+//     ModsDialog,
+//     NoFailMod,
+//     AutoplayMod,
+// }
+// impl KeyMap for BeatmapSelectKeyEvent {
+//     fn from_key(key: iced::keyboard::KeyCode, mods: iced::keyboard::Modifiers) -> Option<Self> {
+//         use iced::keyboard::KeyCode;
+//         match key {
+//             KeyCode::Enter => Some(Self::Enter),
+//             KeyCode::Escape => Some(Self::Back),
 
-            KeyCode::Up if mods.alt() => Some(Self::SpeedUp),
-            KeyCode::Down if mods.alt() => Some(Self::SpeedDown),
+//             KeyCode::Up if mods.alt() => Some(Self::SpeedUp),
+//             KeyCode::Down if mods.alt() => Some(Self::SpeedDown),
 
-            KeyCode::Left => Some(Self::PrevSet),
-            KeyCode::Right => Some(Self::NextSet),
+//             KeyCode::Left => Some(Self::PrevSet),
+//             KeyCode::Right => Some(Self::NextSet),
 
-            KeyCode::Up => Some(Self::PrevMap),
-            KeyCode::Down => Some(Self::NextMap),
+//             KeyCode::Up => Some(Self::PrevMap),
+//             KeyCode::Down => Some(Self::NextMap),
 
-            KeyCode::M if mods.control() => Some(Self::ModsDialog),
-            KeyCode::A if mods.control() => Some(Self::AutoplayMod),
-            KeyCode::N if mods.control() => Some(Self::NoFailMod),
+//             KeyCode::M if mods.control() => Some(Self::ModsDialog),
+//             KeyCode::A if mods.control() => Some(Self::AutoplayMod),
+//             KeyCode::N if mods.control() => Some(Self::NoFailMod),
 
-            _ => None,
-        }
-    }
-}
+//             _ => None,
+//         }
+//     }
+// }

@@ -16,16 +16,27 @@ use iced_runtime::core::{
     Alignment
 };
 
+#[derive(ChainableInitializer)]
 pub struct ContentBackground {
     content: IcedElement,
     image: Option<Image>,
-    rect: Option<crate::prelude::Rectangle>,
 
+    #[chain]
+    border: Option<Border>,
+    #[chain]
+    color: Option<Color>,
+    #[chain]
+    shape: Shape,
+
+    #[chain]
     width: Length,
+    #[chain]
     height: Length,
+
     max_width: f32,
     max_height: f32,
 
+    #[chain]
     padding: Padding,
     horizontal_alignment: alignment::Horizontal,
     vertical_alignment: alignment::Vertical,
@@ -37,7 +48,9 @@ impl ContentBackground {
         Self {
             content: content.into_element(),
             image: None,
-            rect: None,
+            color: None,
+            border: None,
+            shape: Shape::Square,
 
             width: Length::Shrink,
             height: Length::Shrink,
@@ -57,26 +70,7 @@ impl ContentBackground {
         self
     }
 
-    /// sets this content's background rectangle
-    pub fn rect(mut self, rect: Option<crate::prelude::Rectangle>) -> Self {
-        self.rect = rect;
-        self
-    }
 
-
-
-    /// Sets the width of the [`Button`].
-    pub fn width(mut self, width: impl Into<Length>) -> Self {
-        self.width = width.into();
-        self
-    }
-
-    /// Sets the height of the [`Button`].
-    pub fn height(mut self, height: impl Into<Length>) -> Self {
-        self.height = height.into();
-        self
-    }
-    
     /// Sets the maximum width of the [`Container`].
     pub fn max_width(mut self, max_width: impl Into<Pixels>) -> Self {
         self.max_width = max_width.into().0;
@@ -89,11 +83,11 @@ impl ContentBackground {
         self
     }
 
-    /// Sets the [`Padding`] of the [`Button`].
-    pub fn padding<P: Into<Padding>>(mut self, padding: P) -> Self {
-        self.padding = padding.into();
-        self
-    }
+    // /// Sets the [`Padding`] of the [`Button`].
+    // pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+    //     self.padding = padding.into();
+    //     self
+    // }
 
     /// Sets the content alignment for the horizontal axis of the [`Container`].
     pub fn align_x(mut self, alignment: alignment::Horizontal) -> Self {
@@ -214,9 +208,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
             image.set_size(bounds.size().into());
 
             renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(image)));
-        } else if let Some(mut rect) = self.rect {
-            rect.pos = bounds.position().into();
-            rect.size = bounds.size().into();
+        } else if self.color.is_some() || self.border.is_some() {
+            let rect = crate::prelude::Rectangle::new(
+                bounds.position().into(), 
+                bounds.size().into(),
+                self.color.unwrap_or(Color::TRANSPARENT_WHITE),
+                self.border
+            ).shape(self.shape);
             renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(rect)));
         }
 

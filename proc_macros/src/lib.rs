@@ -1,5 +1,6 @@
 mod settings_menu;
 mod settings_deserializer;
+
 use proc_macro::TokenStream;
 use quote::*;
 use syn::*;
@@ -249,4 +250,45 @@ pub fn impl_settings_deserializer(input: proc_macro::TokenStream) -> proc_macro:
     
     // Return the generated impl
     proc_macro::TokenStream::from(gen)
+}
+
+
+#[proc_macro_derive(ChainableInitializer, attributes(chain))]
+pub fn impl_chainable_initializer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // Parse the string representation
+    let ast:DeriveInput = syn::parse(input).unwrap();
+
+    // Build the impl
+    let Data::Struct(s) = &ast.data else { panic!("no") };
+    let struct_name = &ast.ident;
+
+    let mut tys = Vec::new();
+    let mut idents = Vec::new();
+    let mut idents_maybe = Vec::new();
+
+    for f in s.fields.iter() {
+        if !f.attrs.iter().find(|a|a.path.is_ident("chain")).is_some() { continue }
+        tys.push(&f.ty);
+        idents.push(f.ident.as_ref().unwrap());
+        idents_maybe.push(format_ident!("{}_maybe", f.ident.as_ref().unwrap()))
+    }
+
+    let tokens = quote! {
+        impl #struct_name { #(
+            pub fn #idents(mut self, val: impl Into<#tys>) -> Self {
+                self.#idents = val.into();
+                self
+            }
+
+            pub fn #idents_maybe(mut self, val: Option<impl Into<#tys>>) -> Self {
+                let Some(val) = val else { return self };
+                self.#idents = val.into();
+                self
+            }
+        )* }
+    };
+
+    // std::fs::write("debug/test.rs", tokens.to_string()).unwrap();
+
+    proc_macro::TokenStream::from(tokens)
 }

@@ -27,7 +27,7 @@ pub struct MainMenu {
 
     // visualization: MenuVisualization,
     gameplay_preview: GameplayPreview,
-    key_events: KeyEventsHandlerGroup<MainMenuKeys>,
+    // key_events: KeyEventsHandlerGroup<MainMenuKeys>,
 
     // menu_game: MenuGameHelper,
 
@@ -86,7 +86,7 @@ impl MainMenu {
 
             // visualization: ,
             gameplay_preview,
-            key_events: KeyEventsHandlerGroup::new(),
+            // key_events: KeyEventsHandlerGroup::new(),
 
             // menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
             selected_index: 99,
@@ -109,7 +109,7 @@ impl MainMenu {
     }
 
     async fn setup_manager(&mut self, called_by: &str) {
-        trace!("setup manager called by {}", called_by);
+        trace!("setup manager called by {called_by}");
         self.settings.update();
 
         if let Some(song) = AudioManager::get_song().await {
@@ -381,17 +381,17 @@ impl AsyncMenu for MainMenu {
         // self.menu_game.update().await;
         self.gameplay_preview.update().await;
 
-        // check key events
-        while let Some(event) = self.key_events.check_events() {
-            match event {
-                KeyEvent::Press(MainMenuKeys::NextSong) => self.queued_actions.push(BeatmapMenuAction::Next),
-                KeyEvent::Press(MainMenuKeys::PrevSong) => self.queued_actions.push(BeatmapMenuAction::Previous(MapActionIfNone::ContinueCurrent)),
-                KeyEvent::Press(MainMenuKeys::PlayPause) => {
+        // // check key events
+        // while let Some(event) = self.key_events.check_events() {
+        //     match event {
+        //         KeyEvent::Press(MainMenuKeys::NextSong) => self.queued_actions.push(BeatmapMenuAction::Next),
+        //         KeyEvent::Press(MainMenuKeys::PrevSong) => self.queued_actions.push(BeatmapMenuAction::Previous(MapActionIfNone::ContinueCurrent)),
+        //         KeyEvent::Press(MainMenuKeys::PlayPause) => {
 
-                }
-                _ => {}
-            }
-        }
+        //         }
+        //         _ => {}
+        //     }
+        // }
     
         // check last input timer
         let last_input = self.last_input.as_millis();
@@ -406,7 +406,7 @@ impl AsyncMenu for MainMenu {
     fn view(&self, _values: &ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let owner = MessageOwner::new_menu(self);
-
+        
         col!(
             // song info
             row!(
@@ -450,7 +450,19 @@ impl AsyncMenu for MainMenu {
             ),
 
             // key input
-            self.key_events.handler();
+            KeyEventsHandler::new(&vec![
+                KeyHandlerEvent {
+                    key: Key::Left,
+                    mods: KeyModifiers::default(),
+                    action: CustomMenuAction::Map(CustomMenuMapAction::Previous(MapActionIfNone::ContinueCurrent))
+                },
+                KeyHandlerEvent {
+                    key: Key::Right,
+                    mods: KeyModifiers::default(),
+                    action: CustomMenuAction::Map(CustomMenuMapAction::Next)
+                },
+            ], owner);
+
             width = Fill,
             height = Fill
         )
@@ -681,18 +693,18 @@ impl AsyncMenu for MainMenu {
 
 
 
-pub enum MainMenuKeys {
-    NextSong,
-    PrevSong,
-    PlayPause,
-}
-impl KeyMap for MainMenuKeys {
-    fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
-        match key {
-            iced::keyboard::KeyCode::Left => Some(Self::PrevSong),
-            iced::keyboard::KeyCode::Right => Some(Self::NextSong),
+// pub enum MainMenuKeys {
+//     NextSong,
+//     PrevSong,
+//     PlayPause,
+// }
+// impl KeyMap for MainMenuKeys {
+//     fn from_key(key: iced::keyboard::KeyCode, _mods: iced::keyboard::Modifiers) -> Option<Self> {
+//         match key {
+//             iced::keyboard::KeyCode::Left => Some(Self::PrevSong),
+//             iced::keyboard::KeyCode::Right => Some(Self::NextSong),
 
-            _ => None,
-        }
-    }
-}
+//             _ => None,
+//         }
+//     }
+// }

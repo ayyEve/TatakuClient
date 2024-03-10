@@ -246,6 +246,19 @@ impl BeatmapManager {
         self.played.push(beatmap.clone());
         self.play_index += 1;
 
+        // update shunting yard values
+        {
+            let mut values = game.shunting_yard_values.lock();
+            values.set("map.artist", beatmap.artist.clone());
+            values.set("map.title", beatmap.title.clone());
+            values.set("map.creator", beatmap.creator.clone());
+            values.set("map.version", beatmap.version.clone());
+            values.set("map.playmode", beatmap.mode.clone());
+            values.set("map.game", format!("{:?}", beatmap.beatmap_type));
+            values.set("map.diff_rating", 0.0f32);
+            values.set("map.hash", beatmap.beatmap_hash.to_string());
+        }
+
         // play song
         let audio_filename = beatmap.audio_filename.clone();
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };

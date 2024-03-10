@@ -1,6 +1,5 @@
 use crate::prelude::*;
-use rlua::{ Error, Lua, FromLua };
-use rlua::Value;
+use rlua::{ Error, Lua };
 
 const LUA_INIT:&'static str = include_str!("../../../custom_menus/init.lua");
 
@@ -82,45 +81,8 @@ impl CustomMenuParser {
         }
 
     }
-
-    fn color_handle_value<'lua>(value: Value<'lua>) -> rlua::Result<f32> {
-        match value {
-            Value::Integer(i) => Ok(i as f32 / 255.0),
-            Value::Number(f) => Ok(f as f32),
-            other => Err(Error::FromLuaConversionError { from: other.type_name(), to: "Color", message: Some("Not a valid number".to_owned()) })
-        }
-    }
 }
 
-
-/// color reader
-impl<'lua> FromLua<'lua> for Color {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::prelude::LuaResult<Self> {
-        match lua_value {
-            Value::String(s) => Color::try_from_hex(s.to_str()?).ok_or_else(||Error::FromLuaConversionError { from: "String", to: "Color", message: Some("Not a table".to_owned()) }),
-            Value::Table(table) => {
-
-                let mut vals = [None; 4];
-                for (n, c) in ["r","g","b","a"].into_iter().enumerate() {
-                    let mut v:Option<Value> = table.get(n+1)?;
-                    if v.is_none() { v = table.get(c)? }
-
-                    vals[n] = v.map(CustomMenuParser::color_handle_value).transpose()?;
-                }
-
-                let [Some(r), Some(g), Some(b), a] = vals else {
-                    return Err(Error::FromLuaConversionError { from: "Table", to: "Color", message: Some("Invalid argument count".to_owned()) })
-                };
-
-                let a = a.unwrap_or(1.0);
-                Ok(Color::new(r,g,b,a))
-            }
-
-            other => Err(Error::FromLuaConversionError { from: other.type_name(), to: "Color", message: Some("Not a table".to_owned()) })
-        }
-
-    }
-}
 
 
 

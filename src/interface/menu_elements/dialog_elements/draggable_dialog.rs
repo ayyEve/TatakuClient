@@ -10,14 +10,11 @@ impl DraggableDialogElement {
         let view = dialog.view();
 
         Self {
-            dialog_content: ContentBackground::new(view).rect(Some(
-                Rectangle::new(
-                    Vector2::ZERO, 
-                    Vector2::ZERO, 
-                    Color::new(0.8, 0.8, 0.8, 0.8), 
-                    Some(Border::new(Color::WHITE, 2.0)))
-                    .shape(Shape::Round(5.0))
-                )).into_element()
+            dialog_content: ContentBackground::new(view)
+                .color(Some(Color::new(0.8, 0.8, 0.8, 0.8)))
+                .border(Some(Border::new(Color::WHITE, 2.0)))
+                .shape(Shape::Round(5.0))
+                .into_element()
         }
     }
 }

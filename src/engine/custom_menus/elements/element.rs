@@ -19,7 +19,6 @@ impl ElementDef {
         };
 
         match &self.id {
-            ElementIdentifier::SongDisplay => built.special = BuiltElementData::SongDisplay(CurrentSongDisplay::new()),
             ElementIdentifier::GameplayPreview { visualization } => {
                 let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_|true));
                 if let Some(vis) = visualization {
@@ -31,10 +30,14 @@ impl ElementDef {
                 built.special = BuiltElementData::GameplayPreview(gameplay)
             }
             ElementIdentifier::Column { elements, .. }
-            | ElementIdentifier::Row { elements, .. } => built.special = BuiltElementData::Elements(BuiltElementDef::build_elements(elements).await),
+            | ElementIdentifier::Row { elements, .. } 
+                => built.special = BuiltElementData::Elements(BuiltElementDef::build_elements(elements).await),
 
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
-             => built.special = BuiltElementData::Element(Box::new(element.build().await)),
+                => built.special = BuiltElementData::Element(Box::new(element.build().await)),
+
+            ElementIdentifier::StyledContent { element, .. } 
+                => built.special = BuiltElementData::Element(Box::new(element.build().await)),
 
             _ => {},
         }
@@ -83,6 +86,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                     text: table.get("text")?, 
                     color: table.get("color")?, 
                     font_size: table.get("font_size")?,
+                    font: table.get("font")?,
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -119,19 +123,35 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
             
 
-            "song_display" => Ok(Self {
-                id: ElementIdentifier::SongDisplay,
-                width: width.unwrap_or(Length::Shrink),
-                height: height.unwrap_or(Length::Shrink),
-            }),
-
             "music_player" => Ok(Self {
                 id: ElementIdentifier::Space, // { display: CurrentSongDisplay::new() },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
             }),
 
+            "styled_content" => Ok(Self {
+                id: ElementIdentifier::StyledContent { 
+                    element: Box::new(table.get("element")?),
+                    padding: table.get("padding")?,
 
+                    color: table.get("color")?,
+                    border: table.get("border")?,
+                    shape: table.get("shape")?,
+                },
+                width: width.unwrap_or(Length::Shrink),
+                height: height.unwrap_or(Length::Shrink),
+            }),
+
+            "key_handler" => {
+                let table = table.get::<_, rlua::Table>("events")?;
+                Ok(Self {
+                    id: ElementIdentifier::KeyHandler { 
+                        events: (0..30).into_iter().filter_map(|i|table.get(i).ok()).collect()
+                    },
+                    width: Length::Fixed(0.0),
+                    height: Length::Fixed(0.0)
+                })
+            }
             
             _ => { todo!("{id}") }
         }
@@ -163,7 +183,6 @@ impl Into<iced::Padding> for ElementPadding {
         }
     }
 }
-
 impl<'lua> FromLua<'lua> for ElementPadding {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
         match lua_value {
@@ -187,3 +206,5 @@ impl<'lua> FromLua<'lua> for ElementPadding {
         }
     }
 }
+
+

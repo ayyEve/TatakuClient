@@ -50,7 +50,7 @@ pub struct Game {
 
     custom_menus: Vec<CustomMenu>,
 
-    shunting_yard_values: Arc<Mutex<ShuntingYardValues>>
+    pub shunting_yard_values: Arc<Mutex<ShuntingYardValues>>
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -468,6 +468,13 @@ impl Game {
         if keys_down.contains(&Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
             keys_down.remove_item(Key::Escape)
         }
+
+        
+        // update our global values
+        // {
+        //     let mut values = self.shunting_yard_values.lock();
+
+        // }
 
 
         let mut menu_actions = self.ui_manager.update(

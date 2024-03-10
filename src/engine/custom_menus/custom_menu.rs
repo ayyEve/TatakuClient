@@ -82,5 +82,5 @@ pub struct CustomMenuEvent {
 
 pub enum CustomMenuEventType {
     SongEnd,
-
+    
 }

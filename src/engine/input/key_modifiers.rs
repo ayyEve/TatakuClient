@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct KeyModifiers {
     pub ctrl: bool,
     pub alt: bool,
@@ -12,5 +12,14 @@ impl Into<Modifiers> for KeyModifiers {
         mods.set(Modifiers::ALT, self.alt);
         mods.set(Modifiers::SHIFT, self.shift);
         mods
+    }
+}
+impl From<Modifiers> for KeyModifiers {
+    fn from(value: Modifiers) -> Self {
+        Self {
+            ctrl: value.control(),
+            alt: value.alt(),
+            shift: value.shift(),
+        }
     }
 }

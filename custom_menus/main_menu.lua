@@ -58,6 +58,22 @@ menu = {
         -- the next row is the media controls (unhelpfully named "music_player")
         row({
             music_player -- not implemented yet
+        }),
+
+        -- lastly, we have the key handler
+        key_handler({
+            -- previous map
+            {
+                key = "Left",
+                action = { map = "previous" },
+            },
+
+            -- next map
+            {
+                key = "Right",
+                action = { map = "next" },
+                mods = { "ctrl" }
+            }
         })
     })
     

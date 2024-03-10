@@ -16,7 +16,7 @@ pub struct Chat {
     num: usize,
 
     current_message: String,
-    key_handler: KeyEventsHandlerGroup<ChatDialogKeys>,
+    // key_handler: KeyEventsHandlerGroup<ChatDialogKeys>,
 
 
     // messages
@@ -74,7 +74,7 @@ impl Chat {
             should_close: false,
             current_message: String::new(),
             
-            key_handler: KeyEventsHandlerGroup::new(),
+            // key_handler: KeyEventsHandlerGroup::new(),
 
             // channel_scroll: ScrollableArea::new(Vector2::new(0.0, chat_pos.y), channel_list_size, ListMode::VerticalList),
             // message_scroll: ScrollableArea::new(chat_pos, chat_size - Vector2::new(0.0, INPUT_HEIGHT), ListMode::VerticalList),
@@ -211,27 +211,27 @@ impl Dialog for Chat {
             self.messages = online_manager.chat_messages.clone();
         }
 
-        // handle key presses
-        while let Some(key_event) = self.key_handler.check_events() {
-            match key_event {
-                KeyEvent::Char(c) => self.current_message.push(c),
+        // // handle key presses
+        // while let Some(key_event) = self.key_handler.check_events() {
+        //     match key_event {
+        //         KeyEvent::Char(c) => self.current_message.push(c),
 
-                KeyEvent::Press(ChatDialogKeys::SendMessage) => {
-                    let send_text = self.current_message.take();
+        //         KeyEvent::Press(ChatDialogKeys::SendMessage) => {
+        //             let send_text = self.current_message.take();
 
-                    if let Some(channel) = self.selected_channel.clone() {
-                        tokio::spawn(async move {
-                            OnlineManager::get().await.send_packet(ChatPacket::Client_SendMessage {
-                                channel: channel.get_name(),
-                                message: send_text
-                            });
-                        });
-                    }
-                }
+        //             if let Some(channel) = self.selected_channel.clone() {
+        //                 tokio::spawn(async move {
+        //                     OnlineManager::get().await.send_packet(ChatPacket::Client_SendMessage {
+        //                         channel: channel.get_name(),
+        //                         message: send_text
+        //                     });
+        //                 });
+        //             }
+        //         }
 
-                _ => {}
-            }
-        }
+        //         _ => {}
+        //     }
+        // }
 
 
         Vec::new()
@@ -256,10 +256,10 @@ impl Dialog for Chat {
             ).into_element()).unwrap_or_else(||EmptyElement.into_element()),
 
             // message text input
-            TextInput::new("Chat:", &self.current_message).size(INPUT_FONT_SIZE),
-
-            // key input
-            self.key_handler.handler();
+            TextInput::new("Chat:", &self.current_message).size(INPUT_FONT_SIZE)
+            ;
+            // // key input
+            // self.key_handler.handler();
 
             width = Fill
         )
@@ -431,24 +431,24 @@ impl ChatChannel {
 
 
 
-#[derive(Copy, Clone, Debug)]
-pub enum ChatDialogKeys {
-    SendMessage,
-}
+// #[derive(Copy, Clone, Debug)]
+// pub enum ChatDialogKeys {
+//     SendMessage,
+// }
 
-impl KeyMap for ChatDialogKeys {
-    fn handle_chars() -> bool { true }
+// impl KeyMap for ChatDialogKeys {
+//     fn handle_chars() -> bool { true }
 
-    fn from_key(key: iced::keyboard::KeyCode, mods: iced::keyboard::Modifiers) -> Option<Self> {
-        use iced::keyboard::KeyCode;
+//     fn from_key(key: iced::keyboard::KeyCode, mods: iced::keyboard::Modifiers) -> Option<Self> {
+//         use iced::keyboard::KeyCode;
 
-        match key {
-            KeyCode::Enter => Some(Self::SendMessage),
+//         match key {
+//             KeyCode::Enter => Some(Self::SendMessage),
 
-            _ => None
-        }
-    }
-}
+//             _ => None
+//         }
+//     }
+// }
 
 
 

@@ -106,6 +106,7 @@ pub enum Shape {
     Round(f32),
 
     /// Round corners with separate vals
+    /// tl,tr, bl,br
     RoundSep([f32;4]),
 }
 

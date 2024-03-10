@@ -87,6 +87,7 @@ Type Definitions:
     - ButtonAction: Table -> A button action.
         - dialog: String|Nil -> Open the provided dialog (either a default menu, or a user-defined menu)
         - menu: String|Nil -> Open the provided menu
+        - map: MapAction|Nil -> Perform a map action
         TODO: - function: Table|Nil -> Run a function (NOTE: NOT CURRENTLY SUPPORTED YET!!)
             - name: String -> Name of the function to run
             - arguments: Array<Any>|Nil -> Arguments to the function

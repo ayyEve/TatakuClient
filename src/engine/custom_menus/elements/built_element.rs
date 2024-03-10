@@ -20,7 +20,6 @@ impl BuiltElementDef {
     pub async fn update(&mut self) {
         match &mut self.special {
             BuiltElementData::None => {}
-            BuiltElementData::SongDisplay(display) => display.update(),
             BuiltElementData::GameplayPreview(gameplay) => gameplay.update().await,
             BuiltElementData::Element(e) => e.update().await,
             BuiltElementData::Elements(e) => for i in e { i.update().await },
@@ -44,11 +43,19 @@ impl BuiltElementDef {
                     .height(self.element.height)
                     .into_element()
             }
-            (ElementIdentifier::Text { text, color, font_size }, _)  => {
+            (ElementIdentifier::Text { text, color, font_size, font }, _)  => {
                 let mut text = iced_elements::Text::new(text.to_string(values))
                     .width(self.element.width)
                     .height(self.element.height);
 
+                if let Some(font) = font {
+                    match &**font {
+                        "main" => text = text.font(iced::Font::with_name("main")),
+                        "fallback" => text = text.font(iced::Font::with_name("fallback")),
+                        "fa"|"font_awesome" => text = text.font(iced::Font::with_name("font_awesome")),
+                        _ => {}
+                    }
+                }
                 if let Some(color) = color { text = text.color(*color) }
                 if let Some(font_size) = font_size { text = text.size(*font_size) }
 
@@ -89,9 +96,22 @@ impl BuiltElementDef {
                 col.into_element()
             }
 
+            (ElementIdentifier::StyledContent { padding, color, border, shape, .. }, BuiltElementData::Element(element)) => {
+                ContentBackground::new(element.view(owner, values))
+                    .width(self.element.width)
+                    .height(self.element.height)
+                    .border(*border)
+                    .color(*color)
+                    .shape_maybe(*shape)
+                    .padding_maybe(*padding)
+                    .into_element()
+            }
+
+            (ElementIdentifier::KeyHandler { events }, _) => {
+                KeyEventsHandler::new(events, owner).into_element()
+            }
             // specials
             (_, BuiltElementData::Element(e)) => e.view(owner, values),
-            (_, BuiltElementData::SongDisplay(display)) => display.view(),
             (_, BuiltElementData::GameplayPreview (gameplay)) => gameplay.widget(),
 
             (ElementIdentifier::Custom {}, _) => {
@@ -108,6 +128,11 @@ pub enum BuiltElementData {
     Element(Box<BuiltElementDef>),
     Elements(Vec<BuiltElementDef>),
 
-    SongDisplay(CurrentSongDisplay),
     GameplayPreview(GameplayPreview),
 }
+
+
+
+// pub trait Widgetable: Send + Sync + iced::widget::Widget<Message, IcedRenderer> {
+//     async fn update(&mut self) {}
+// }

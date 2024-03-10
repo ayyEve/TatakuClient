@@ -140,7 +140,6 @@ impl MusicBox {
 
 
     fn btn(&self, c: &Option<FontAwesome>, owner: MessageOwner) -> IcedElement {
-        use crate::prelude::Rectangle;
         use crate::prelude::iced_elements::*;
         let Some(mut c) = *c else { return Space::new(Fill, Shrink).into_element() };
         
@@ -170,7 +169,8 @@ impl MusicBox {
             .padding(CONTROL_BUTTON_PADDING)
             .width(FillPortion(2))
         )
-        .rect(Some(Rectangle::style_only(SECONDARY_COLOR.alpha(0.1), None, Shape::Round(5.0))))
+        .color(Some(SECONDARY_COLOR.alpha(0.1)))
+        .shape(Shape::Round(5.0))
         .width(FillPortion(2))
 
         .into_element()

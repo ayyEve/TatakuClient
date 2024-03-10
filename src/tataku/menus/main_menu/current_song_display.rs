@@ -40,7 +40,6 @@ impl CurrentSongDisplay {
 
     pub fn view(&self) -> IcedElement {
         use crate::prelude::iced_elements::*;
-        use crate::prelude::Rectangle;
         
         row!(
             Space::new(Fill, Shrink),
@@ -49,7 +48,8 @@ impl CurrentSongDisplay {
                 .color(PRIMARY_COLOR)
                 .size(30)
             )
-            .rect(Some(Rectangle::style_only(SECONDARY_COLOR, None, Shape::Round(5.0))))
+            .color(Some(SECONDARY_COLOR))
+            .shape(Shape::Round(5.0))
             .padding(INNER_PADDING)
             ;
             width = Fill,

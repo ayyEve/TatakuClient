@@ -42,78 +42,13 @@ impl<'lua> FromLua<'lua> for ButtonAction {
         }
 
         // beatmap actions
-        match table.get::<_, Option<Value>>("map")? {
-            Some(Value::Table(table)) => {
-                let id:String = table.get("id")?;
-                match &*id {
-                    "play" => action = CustomMenuAction::Map(CustomMenuMapAction::Play),
-                    "next" => action = CustomMenuAction::Map(CustomMenuMapAction::Next),
-                    "random" => {
-                        let use_preview:Option<bool> = table.get("use_preview")?;
-                        action = CustomMenuAction::Map(CustomMenuMapAction::Random(use_preview.unwrap_or(true)));
-                    }
-                    "previous" | "prev" => {
-                        let use_preview:Option<bool> = table.get("use_preview")?;
-                        let if_none:Option<String> = table.get("if_none")?;
-                        let if_none = match if_none.as_deref() {
-                            None => MapActionIfNone::ContinueCurrent,
-                            Some("continue_current") => MapActionIfNone::ContinueCurrent,
-                            Some("random") => MapActionIfNone::Random(use_preview.unwrap_or(true)),
-
-                            Some(other) => return Err(FromLuaConversionError { from: "String", to: "CustomMenuAction", message: Some(format!("Unknown previous map 'if_none' action {other}")) })
-                        };
-
-                        action = CustomMenuAction::Map(CustomMenuMapAction::Previous(if_none));
-                    }
-
-                    other => return Err(FromLuaConversionError { from: "String", to: "CustomMenuAction", message: Some(format!("Unknown map action {other}")) })
-                }
-            }
-
-            Some(Value::String(action_str)) => {
-                match action_str.to_str()? {
-                    "play" => action = CustomMenuAction::Map(CustomMenuMapAction::Play),
-                    "next" => action = CustomMenuAction::Map(CustomMenuMapAction::Next),
-                    "random" => action = CustomMenuAction::Map(CustomMenuMapAction::Random(true)),
-
-                    other => return Err(FromLuaConversionError { from: "String", to: "CustomMenuAction", message: Some(format!("Unknown map action {other}")) })
-                }
-            }
-
-            Some(other) => return Err(FromLuaConversionError { from: other.type_name(), to: "CustomMenuAction", message: Some(format!("Invalid map action type")) }),
-            
-            None => {}
+        if let Ok(Some(map_action)) = table.get::<_, Option<CustomMenuMapAction>>("map") {
+            action = CustomMenuAction::Map(map_action);
         }
 
         // song actions
-        match table.get::<_, Option<Value>>("song")? {
-            Some(Value::Table(table)) => {
-                let id:String = table.get("id")?;
-                match &*id {
-                    "seek" => {
-                        let seek:Option<f32> = table.get("seek")?;
-                        action = CustomMenuAction::Song(CustomMenuSongAction::Seek(seek.unwrap_or(500.0)));
-                    }
-                    "position" => {
-                        let pos:f32 = table.get("position")?;
-                        action = CustomMenuAction::Song(CustomMenuSongAction::SetPosition(pos));
-                    }
-
-                    _ => {}
-                }
-            }
-            Some(Value::String(action_str)) => {
-                match action_str.to_str()? {
-                    "play" => action = CustomMenuAction::Map(CustomMenuMapAction::Play),
-                    "next" => action = CustomMenuAction::Map(CustomMenuMapAction::Next),
-                    "random" => action = CustomMenuAction::Map(CustomMenuMapAction::Random(true)),
-
-                    other => return Err(FromLuaConversionError { from: "String", to: "CustomMenuAction", message: Some(format!("Unknown song action {other}")) })
-                }
-            }
-
-            Some(other) => return Err(FromLuaConversionError { from: other.type_name(), to: "CustomMenuAction", message: Some(format!("Invalid song action type")) }),
-            None => {}
+        if let Ok(Some(song_action)) = table.get::<_, Option<CustomMenuSongAction>>("song") {
+            action = CustomMenuAction::Song(song_action);
         }
 
         Ok(Self {
@@ -130,4 +65,3 @@ pub enum ButtonActionContext {
     Array(Vec<String>),
     // Other(Box<dyn std::any::Any + Send + Sync>),
 }
-

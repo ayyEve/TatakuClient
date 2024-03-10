@@ -9,6 +9,8 @@ pub enum CustomElementText {
     CalcParsed(Arc<CustomElementCalc>, String),
     Text(String),
     Locale(String),
+
+    List(Vec<Self>, String),
 }
 impl CustomElementText {
     /// Parses Self::Calc into Self::CalcParsed
@@ -21,8 +23,13 @@ impl CustomElementText {
             // because json pointers use '/' and not '.', but '.' is nicer for locale
             // "dialog.confirmation.yes" vs "dialog/confirmation/yes"
             Self::Locale(s) => *s = s.replace('.', "/"),
+
+            Self::List(items, _) => {
+                for i in items { i.parse()? }
+            }
             _ => {}
         }
+
         Ok(())
     }
 
@@ -31,7 +38,7 @@ impl CustomElementText {
         values: &ShuntingYardValues,
     ) -> String {
         match self {
-            Self::Value(t) => values.get_string(t).unwrap_or_else(|_|format!("Invalid property: '{t}'")),
+            Self::Value(t) => values.get_string(t).unwrap_or_else(|_| format!("Invalid property: '{t}'")),
             Self::Text(t) | Self::Locale(t) => t.clone(),
             
             Self::CalcParsed(calc, calc_str) => {
@@ -44,12 +51,21 @@ impl CustomElementText {
                 }
             }
 
-            Self::Calc(t) => panic!("You forgot to parse a calc!"),
+            Self::Calc(_t) => panic!("You forgot to parse a calc!"),
+
+            Self::List(items, join_str) => {
+                items
+                    .iter()
+                    .map(|i|i.to_string(values))
+                    .collect::<Vec<_>>()
+                    .join(&join_str)
+            }
         }
     }
 }
 impl<'lua> FromLua<'lua> for CustomElementText {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+
         match lua_value {
             Value::String(s) => Ok(Self::Text(s.to_str()?.to_owned())),
             Value::Table(table) => {
@@ -61,6 +77,8 @@ impl<'lua> FromLua<'lua> for CustomElementText {
                     Ok(Self::Text(text))
                 } else if let Some(value) = table.get::<_, Option<String>>("value")? {
                     Ok(Self::Value(value))
+                } else if let Some(value) = table.get::<_, Option<Vec<Self>>>("list")? {
+                    Ok(Self::List(value, String::new()))
                 } else {
                     Err(FromLuaConversionError { from: "Table", to: "CustomElementText", message: Some("No property to get type".to_owned()) })
                 }
