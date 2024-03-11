@@ -30,7 +30,11 @@ song_controls = row({ width = "shrink", height = "shrink" }, {
             fa_button(0xF04A, { map = "previous" }), -- previous song
             fa_button(0xF048, { song = { seek = -500.0 } }), -- seek backwards
             space("fill", "shrink"),
-            fa_button(0xF04C, { song = "toggle" }), -- play/pause
+            cond(
+                "song.playing", -- condition
+                fa_button(0xF04C, { song = "pause" }), -- pause
+                fa_button(0xF04B, { song = "play" }) -- play
+            ),
             space("fill", "shrink"),
             fa_button(0xF051, { song = { seek = 500.0 } }), -- seek forwards
             fa_button(0xF04E, { map = "next" }), -- next song

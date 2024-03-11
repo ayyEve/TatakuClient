@@ -10,8 +10,8 @@ pub enum ShuntingYardError {
     InvalidFunction(String),
     EntryDoesntExist(String),
     ValueIsntANumber(String),
-    MissingLeftSide(char),
-    MissingRightSide(char),
+    MissingLeftSide(SYOperator),
+    MissingRightSide(SYOperator),
     MissingFunctionArgument(String),
     /// This should never happpen, but its here to avoid unwraps
     NumberIsntANumber(String),

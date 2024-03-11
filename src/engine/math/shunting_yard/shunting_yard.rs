@@ -7,18 +7,22 @@ impl ShuntingYard {
         let mut operator_stack: Vec<ShuntingYardToken> = Vec::new();
 
         let mut current_thing = CurrentThing::None;
+        let expression = format!("{expression} ").chars().collect::<Vec<_>>();
 
-        for c in expression.chars() {
+        for pair in expression.windows(2) {
+            let &[c, c2] = pair else { continue };
+
             match c {
                 '0'..='9'|'a'..='z'|'.'|'_' => current_thing.push(c),
-                '+' | '-' | '*' | '/' | '^' => {
-                    current_thing.add(&mut output_queue, &mut operator_stack, false)?;
- 
-                    while operator_stack.last().filter(|c2|Self::check_op(c, c2)).is_some() {
-                        output_queue.push(operator_stack.pop().unwrap());
-                    }
-                    operator_stack.push(ShuntingYardToken::Operator(c))
-                }
+
+                // '+' | '-' | '*' | '/' | '^' => {
+                //     current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+                //     while operator_stack.last().filter(|c2| Self::check_op(c, c2)).is_some() {
+                //         output_queue.push(operator_stack.pop().unwrap());
+                //     }
+                //     operator_stack.push(ShuntingYardToken::Operator(c))
+                // }
+
                 '(' => {
                     // if current_thing is a variable, it is actually a function
                     // this is because if there was an operation between it and this, current_thing should be none
@@ -37,8 +41,25 @@ impl ShuntingYard {
                         output_queue.push(operator_stack.pop().unwrap());
                     }
                 }
+                
+                _ => {
+                    match SYOperator::from_chars(c, c2) {
+                        // ignore warnings for space and equals
+                        Err(ShuntingYardError::InvalidOperator(' '))
+                        | Err(ShuntingYardError::InvalidOperator('=')) => {}
 
-                _ => warn!("unknown character {c} in ")
+                        Err(e) => warn!("Error parsing operator {c}: {e:?}"),
+                        Ok(op) => {
+                            current_thing.add(&mut output_queue, &mut operator_stack, false)?;
+        
+                            while operator_stack.last().filter(|c2| Self::check_op(op, c2)).is_some() {
+                                output_queue.push(operator_stack.pop().unwrap());
+                            }
+
+                            operator_stack.push(ShuntingYardToken::Operator(op));
+                        } 
+                    }
+                }
             }
         }
 
@@ -75,16 +96,14 @@ impl ShuntingYard {
                 
                 ShuntingYardToken::Operator(op) => {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
-                    let left = stack.pop().ok_or(ShuntingYardError::MissingLeftSide(*op))?;
-
-                    match *op {
-                        '+' => stack.push(left + right),
-                        '-' => stack.push(left - right),
-                        '*' => stack.push(left * right),
-                        '/' => stack.push(left / right),
-                        '^' => stack.push(left.powf(right)),
-                        _ => return Err(ShuntingYardError::InvalidOperator(*op)),
+                    // "Not" is a special case, we only care about the right side
+                    if let SYOperator::Not = op {
+                        stack.push(op.perform(right, 0.0));
+                        continue;
                     }
+
+                    let left = stack.pop().ok_or(ShuntingYardError::MissingLeftSide(*op))?;
+                    stack.push(op.perform(right, left));
                 }
 
                 _ => return Err(ShuntingYardError::InvalidToken(token.clone())),
@@ -94,28 +113,11 @@ impl ShuntingYard {
         stack.pop().ok_or(ShuntingYardError::NoMath)
     }
 
-    fn check_op(c1: char, c2:& ShuntingYardToken) -> bool {
+    fn check_op(c1: SYOperator, c2: &ShuntingYardToken) -> bool {
         let ShuntingYardToken::Operator(c2) = c2 else { return false };
-        if *c2 == '(' { return false }
-
-        let Some(p1) = Self::precedence(c1) else { return false };
-        let Some(p2) = Self::precedence(*c2) else { return false };
-        (p2 > p1) || (p1 == p2 && Self::is_left_associative(c1))
-    }
-    fn precedence(c: char) -> Option<u8> {
-        match c {
-            '+' | '-' => Some(2),
-            '*' | '/' => Some(3),
-            '^' => Some(4),
-            _ => None
-        }
-    }
-    fn is_left_associative(c: char) -> bool {
-        match c {
-            '+' | '-' | '*' | '/' => true,
-            '^' => false,
-            _ => panic!("u wot m8")
-        }
+        let p1 = c1.precedence();
+        let p2 = c2.precedence();
+        (p2 > p1) || (p1 == p2 && c1.is_left_associative())
     }
 }
 
@@ -165,24 +167,150 @@ impl CurrentThing {
 }
 
 
+#[derive(Copy, Clone, Debug)]
+pub enum SYOperator {
+    // math
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Pow,
 
-#[test]
-fn test() {
-    let expression = "sin(test) + 4 * (2 - 7) / test.1 + 100.5";
-    println!("expression: {expression}");
+    // comparison
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 
-    let tokens = ShuntingYard::parse_expression(expression).unwrap();
-    println!("Tokens: {:?}", tokens);
+    // bool
+    And,
+    Or,
+    Not,
+}
+impl SYOperator {
+    fn from_chars(c1: char, c2: char) -> ShuntingYardResult<Self> {
+        match (c1, c2) {
+            // math
+            ('+', _) => Ok(Self::Add),
+            ('-', _) => Ok(Self::Sub),
+            ('*', _) => Ok(Self::Mul),
+            ('/', _) => Ok(Self::Div),
+            ('^', _) => Ok(Self::Pow),
 
-    let test = -30.0;
-    let test_1 = 50.0;
+            // comparison
+            ('=', '=') => Ok(Self::Eq),
+            ('!', '=') => Ok(Self::NotEq),
+            ('<', '=') => Ok(Self::LessEq),
+            ('<', _) => Ok(Self::Less),
+            ('>', '=') => Ok(Self::GreaterEq),
+            ('>', _) => Ok(Self::Greater),
 
-    let values = ShuntingYardValues::default()
-        .set_chained("test", test)
-        .set_chained("test.1", test_1)
-    ;
+            // bool
+            ('&', '&') => Ok(Self::And),
+            ('|', '|') => Ok(Self::Or),
+            ('!', _) => Ok(Self::Not),
 
-    let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-    println!("Result: {}", result);
-    assert_eq!(result, test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
+            // err
+            _ => Err(ShuntingYardError::InvalidOperator(c1))
+        }
+    }
+
+    fn perform(&self, right: f32, left: f32) -> f32 {
+        match self {
+            // math
+            Self::Add => left + right,
+            Self::Sub => left - right,
+            Self::Mul => left * right,
+            Self::Div => left / right,
+            Self::Pow => left.powf(right),
+
+            // math -> bool
+            Self::Eq => if left == right { 1.0 } else { 0.0 },
+            Self::NotEq => if left != right { 1.0 } else { 0.0 },
+            Self::Less => if left < right { 1.0 } else { 0.0 },
+            Self::LessEq => if left <= right { 1.0 } else { 0.0 },
+            Self::Greater => if left > right { 1.0 } else { 0.0 },
+            Self::GreaterEq => if left >= right { 1.0 } else { 0.0 },
+
+            // bool
+            Self::And => if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
+            Self::Or => if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
+            Self::Not => if right > 0.0 { 0.0 } else { 1.0 },
+        }
+    }
+
+    fn precedence(&self) -> u8 {
+        match self {
+            Self::Add | Self::Sub => 3,
+            Self::Mul | Self::Div => 4,
+            Self::Pow => 5,
+
+            // comparisons should run after math
+            Self::Eq | Self::NotEq 
+            | Self::Less | Self::LessEq 
+            | Self::Greater | Self::GreaterEq => 2,
+
+            // bool logic should run after comparisons
+            Self::Not => 1, // we want Not to run before And and Or
+            Self::And | Self::Or => 0,
+        }
+    }
+
+    fn is_left_associative(&self) -> bool {
+        match self {
+            Self::Pow => false,
+            _ => true
+        }
+    }
+}
+
+
+#[allow(unused)]
+mod shunting_yard_tests {
+    use crate::prelude::*;
+
+    #[test]
+    fn math_test() {
+        let expression = "sin(test) + 4 * (2 - 7) / test.1 + 100.5";
+        println!("expression: {expression}");
+
+        let tokens = ShuntingYard::parse_expression(expression).unwrap();
+        println!("Tokens: {:?}", tokens);
+
+        let test = -30.0;
+        let test_1 = 50.0;
+
+        let values = ShuntingYardValues::default()
+            .set_chained("test", test)
+            .set_chained("test.1", test_1)
+        ;
+
+        let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
+        println!("Result: {}", result);
+        assert_eq!(result, test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
+    }
+    
+
+    #[test]
+    fn bool_tests() {
+        let expression = "100 == 100 && !(test == test.1)";
+        println!("Expression: {expression}");
+
+        let tokens = ShuntingYard::parse_expression(expression).unwrap();
+        println!("Tokens: {:?}", tokens);
+
+        let test = -30.0;
+        let test_1 = 50.0;
+
+        let values = ShuntingYardValues::default()
+            .set_chained("test", test)
+            .set_chained("test.1", test_1)
+        ;
+
+        let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
+        println!("Result: {}", result);
+        assert_eq!(result, 1.0);
+    }
 }

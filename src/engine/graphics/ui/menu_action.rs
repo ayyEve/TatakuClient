@@ -160,4 +160,15 @@ pub enum SongMenuAction {
 
     /// Set the position of the current song (in ms)
     SetPosition(f32),
+
+    // /// change the current song. you probably dont want to touch this in custom code
+    // Set(SongMenuSetAction),
 }
+
+// #[derive(Clone, Debug)]
+// pub enum SongMenuSetAction {
+//     None,
+//     // FromBeatmapHash(Md5Hash),
+//     // FromUrl(String),
+//     FromFile(String),
+// }

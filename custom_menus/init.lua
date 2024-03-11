@@ -78,6 +78,15 @@ function key_handler(events)
     }
 end
 
+function cond(cond, if_true, if_false) 
+    return {
+        id = "conditional",
+        cond = cond,
+        if_true = if_true,
+        if_false = if_false
+    }
+end
+
 
 -- song_display = { id = "song_display" }
 -- music_player = { id = "music_player" }

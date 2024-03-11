@@ -6,6 +6,12 @@ pub struct BuiltElementDef {
     pub children: Vec<Box<dyn Widgetable>>,
 }
 impl BuiltElementDef {
+    /// get the view from the nth child, or an empty view if none exist
+    fn nth_child_view(&self, n:usize, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement {
+        let Some(child) = self.children.get(n) else { return EmptyElement.into_element() };
+        child.view(owner, values)
+    }
+
     /// get the view from the first child, or an empty view if none exist
     fn first_child_view(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement {
         let Some(child) = self.children.first() else { return EmptyElement.into_element() };
@@ -92,11 +98,27 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
 
-            ElementIdentifier::Custom {} => {
-                todo!()
+            ElementIdentifier::Conditional { cond, .. } => {
+                if let ElementCondition::Failed = cond { return EmptyElement.into_element() };
+                let ElementCondition::Built(calc, calc_str) = cond else { panic!("conditional element not built!") };
+
+                match calc.resolve(values).map(|n| n > 0.0) {
+                    // if_true is first child
+                    Ok(true) => self.nth_child_view(0, owner, values),
+                    // if false is second child
+                    Ok(false) => self.nth_child_view(1, owner, values),
+
+                    Err(e) => {
+                        error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
+                        EmptyElement.into_element()
+                    }
+                }
             }
 
 
+            ElementIdentifier::Custom {} => {
+                todo!()
+            }
             _ => {
                 // warn!("missed object? {:?}", self.element.id);
                 self.first_child_view(owner, values)

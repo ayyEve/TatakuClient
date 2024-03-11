@@ -50,7 +50,10 @@ pub struct Game {
 
     custom_menus: Vec<CustomMenu>,
 
-    pub shunting_yard_values: Arc<AsyncMutex<ShuntingYardValues>>
+    pub shunting_yard_values: ShuntingYardValues,
+
+
+    // pub song_manager: SongManager,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -98,7 +101,9 @@ impl Game {
             ui_manager: UiManager::new(),
             custom_menus: Vec::new(),
 
-            shunting_yard_values: Arc::new(AsyncMutex::new(ShuntingYardValues::default())),
+            shunting_yard_values: ShuntingYardValues::new(),
+
+            // song_manager: SongManager::new(),
         };
         g.load_custom_menus();
 
@@ -178,6 +183,11 @@ impl Game {
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
+
+        // TEMP!!
+        self.shunting_yard_values.set("song.playing", true);
+        self.shunting_yard_values.set("song.paused", false);
+        self.shunting_yard_values.set("song.stopped", false);
     }
     
     pub async fn game_loop(mut self) {
@@ -493,7 +503,7 @@ impl Game {
         // }
 
 
-        let mut menu_actions = self.ui_manager.update(
+        let (mut menu_actions, sy_values) = self.ui_manager.update(
             CurrentInputState {
                 mouse_pos,
                 mouse_moved,
@@ -505,8 +515,9 @@ impl Game {
                 text: &text,
                 mods,
             }, 
-            self.shunting_yard_values.clone()
+            self.shunting_yard_values.take()
         ).await;
+        self.shunting_yard_values = sy_values;
 
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager { 
@@ -1044,6 +1055,23 @@ impl Game {
                         SongMenuAction::Toggle => audio.play(false),
                         SongMenuAction::SeekBy(seek) => audio.set_position(audio.get_position() + seek),
                         SongMenuAction::SetPosition(pos) => audio.set_position(pos),
+                        // SongMenuAction::Set(action) => if let Err(e) = self.song_manager.handle_song_set_action(action) {
+                        //     error!("Error handling songSetAction: {e:?}");
+                        // }
+                    }
+
+                    // update song state
+                    self.shunting_yard_values.set_multiple([
+                        ("song.playing", false),
+                        ("song.paused", false),
+                        ("song.stopped", false),
+                    ].into_iter());
+
+                    match audio.get_state() {
+                        AudioState::Playing => self.shunting_yard_values.set("song.playing", true),
+                        AudioState::Paused => self.shunting_yard_values.set("song.paused", true),
+                        AudioState::Stopped => self.shunting_yard_values.set("song.stopped", true),
+                        _ => {}
                     }
                 }
 
@@ -1387,7 +1415,7 @@ pub enum GameState {
     Ingame(Box<IngameManager>),
     /// need to transition to the provided menu
     SetMenu(Box<dyn AsyncMenu>),
-    /// Currently in a menu
+    /// Currently in a menu (this doesnt actually work currently, but it doesnt really matter)
     InMenu(MenuType),
 
     // Spectating(Box<SpectatorManager>),
@@ -1403,17 +1431,15 @@ impl GameState {
             _ => false
         }
     }
-
-
-    fn to_string(&self) -> String {
-        match self {
-            Self::None => "None".to_owned(),
-            Self::Closing => "Closing".to_owned(),
-            Self::Ingame(_) => "Ingame".to_owned(),
-            Self::SetMenu(m) => format!("Set Menu: {}", m.get_name()),
-            Self::InMenu(m) => format!("In Menu: {m:?}")
-        }
-    }
+    // fn to_string(&self) -> String {
+    //     match self {
+    //         Self::None => "None".to_owned(),
+    //         Self::Closing => "Closing".to_owned(),
+    //         Self::Ingame(_) => "Ingame".to_owned(),
+    //         Self::SetMenu(m) => format!("Set Menu: {}", m.get_name()),
+    //         Self::InMenu(m) => format!("In Menu: {m:?}")
+    //     }
+    // }
 }
 
 #[allow(unused)]

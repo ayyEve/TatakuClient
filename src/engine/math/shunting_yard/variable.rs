@@ -8,29 +8,33 @@ pub enum CustomElementValue {
     U64(u64),
 
     F32(f32),
+
+    Bool(bool),
     String(String),
 }
 impl CustomElementValue {
     pub fn as_f32(&self) -> Result<f32, ShuntingYardError> {
         match self {
-            CustomElementValue::I32(i) => Ok(*i as f32),
-            CustomElementValue::I64(i) => Ok(*i as f32),
-            CustomElementValue::U32(i) => Ok(*i as f32),
-            CustomElementValue::U64(i) => Ok(*i as f32),
-            CustomElementValue::F32(f) => Ok(*f),
+            Self::I32(i) => Ok(*i as f32),
+            Self::I64(i) => Ok(*i as f32),
+            Self::U32(i) => Ok(*i as f32),
+            Self::U64(i) => Ok(*i as f32),
+            Self::F32(f) => Ok(*f),
+            Self::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
 
-            CustomElementValue::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone()))
+            Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone()))
         } 
     }
 
     pub fn as_string(&self) -> String {
         match self {
-            CustomElementValue::I32(i) => format!("{i}"),
-            CustomElementValue::I64(i) => format!("{i}"),
-            CustomElementValue::U32(i) => format!("{i}"),
-            CustomElementValue::U64(i) => format!("{i}"),
-            CustomElementValue::F32(f) => format!("{f:.2}"),
-            CustomElementValue::String(s) => s.clone()
+            Self::I32(i) => format!("{i}"),
+            Self::I64(i) => format!("{i}"),
+            Self::U32(i) => format!("{i}"),
+            Self::U64(i) => format!("{i}"),
+            Self::F32(f) => format!("{f:.2}"),
+            Self::Bool(b) => format!("{b}"),
+            Self::String(s) => s.clone()
         } 
     }
 }
@@ -43,6 +47,7 @@ impl strfmt::DisplayStr for CustomElementValue {
             Self::U64(n) => n.display_str(f),
             Self::F32(n) => n.display_str(f),
             Self::String(s) => s.display_str(f),
+            Self::Bool(b) => f.str(if *b {"true"} else {"false"}),
         }
     }
 }
@@ -53,6 +58,9 @@ macro_rules! impl_from {
         impl From<$t> for CustomElementValue {
             fn from(value: $t) -> Self { Self::$e(value) }
         }
+        impl From<&$t> for CustomElementValue {
+            fn from(value: &$t) -> Self { Self::$e(value.clone()) }
+        }
     }
 }
 
@@ -61,4 +69,5 @@ impl_from!(i64, I64);
 impl_from!(u32, U32);
 impl_from!(u64, U64);
 impl_from!(f32, F32);
+impl_from!(bool, Bool);
 impl_from!(String, String);

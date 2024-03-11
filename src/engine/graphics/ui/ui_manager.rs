@@ -75,14 +75,19 @@ impl UiManager {
 
         while let Ok(ui_action) = ui_receiver.recv() {
             match ui_action {
-                UiAction::Update { application, callback, mut messages, events, operations, values } => {
+                UiAction::Update { 
+                    application, 
+                    callback, 
+                    mut messages, 
+                    events, 
+                    operations, 
+                    mut values 
+                } => {
                     // rebuild ui with the new application
                     if rebuild_next || application.menu.get_name() != last_menu {
                         last_menu = application.menu.get_name().to_owned();
                         rebuild_next = false;
                         needs_render = true;
-
-                        let mut values = values.blocking_lock();
 
                         ui = user_interface::UserInterface::build(
                             application.view(&mut values),
@@ -121,6 +126,7 @@ impl UiManager {
                     let _ = callback.send(UiUpdateData {
                         application,
                         messages,
+                        values
                     });
                 }
                 UiAction::Draw { application, callback } => {
@@ -144,7 +150,7 @@ impl UiManager {
         }
     }
 
-    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: Arc<AsyncMutex<ShuntingYardValues>>) -> Vec<MenuAction> {
+    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: ShuntingYardValues) -> (Vec<MenuAction>, ShuntingYardValues) {
         while let Ok(e) = self.message_channel.1.try_recv() {
             // info!("adding message: {e:?}");
             self.messages.push(e);
@@ -158,14 +164,15 @@ impl UiManager {
             messages: std::mem::take(&mut self.messages),
             events: state.into_events(),
             operations: self.queued_operations.take(),
-            values: values.clone(),
-        }) else { return Vec::new(); };
+            values,
+            // we should probably return an error instead
+        }) else { return (Vec::new(), ShuntingYardValues::default()); };
 
-        let Ok(UiUpdateData { application, messages }) = callback.await else { return Vec::new(); };
+        // we should probably return an error instead
+        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { return (Vec::new(), ShuntingYardValues::default()); };
 
         std::mem::swap(&mut self.application, &mut Some(application));
 
-        let mut values = values.lock().await;
         let app = self.application();
         for m in messages {
             app.handle_message(m, &mut values).await;
@@ -173,7 +180,7 @@ impl UiManager {
 
         let mut list = app.update().await;
         list.extend(app.dialog_manager.update().await);
-        list
+        (list, values)
     }
 
     pub async fn draw(&mut self, list: &mut RenderableCollection) {
@@ -287,7 +294,7 @@ enum UiAction {
         events: SendEvents,
         operations: Vec<IcedOperation>,
 
-        values: Arc<AsyncMutex<ShuntingYardValues>>
+        values: ShuntingYardValues
     },
     Draw {
         application: UiApplication,
@@ -298,6 +305,7 @@ enum UiAction {
 struct UiUpdateData {
     application: UiApplication,
     messages: Vec<Message>,
+    values: ShuntingYardValues,
 }
 
 struct UiDrawData {

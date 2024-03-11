@@ -17,7 +17,7 @@ impl ElementDef {
             children: Vec::new(),
         };
 
-        match &self.id {
+        match &mut built.element.id {
             ElementIdentifier::GameplayPreview { visualization } => {
                 let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_|true));
                 gameplay.widget.width(self.width);
@@ -34,7 +34,7 @@ impl ElementDef {
             }
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
-                => for i in elements.iter() {
+                => for i in elements.iter_mut() {
                     built.children.push(Box::new(i.build().await))
                 }
 
@@ -46,6 +46,28 @@ impl ElementDef {
             
             ElementIdentifier::Button { element, .. } 
                 => built.children.push(Box::new(element.build().await)),
+
+            ElementIdentifier::Text { text, .. } => {
+                if let Err(e) = text.parse() {
+                    error!("error building custom text: {e:?}");
+                }
+            }
+
+            ElementIdentifier::Conditional { cond, if_true, if_false } => {
+                let ElementCondition::Unbuilt(s) = cond else { unreachable!() };
+                match CustomElementCalc::parse(format!("{s} == true")) {
+                    Ok(built) => *cond = ElementCondition::Built(Arc::new(built), s.clone()),
+                    Err(e) => {
+                        error!("Error building conditional: {e:?}");
+                        *cond = ElementCondition::Failed;
+                    }
+                }
+
+                built.children.push(Box::new(if_true.build().await));
+                if let Some(if_false) = if_false {
+                    built.children.push(Box::new(if_false.build().await));
+                }
+            }
 
             _ => {},
         }
@@ -67,7 +89,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::Row { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
-                    margin: parse_from_multiple(table, &["margin", "spacing"])?,
+                    margin: parse_from_multiple(&table, &["margin", "spacing"])?,
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -77,7 +99,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::Column { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
-                    margin: parse_from_multiple(table, &["margin", "spacing"])?,
+                    margin: parse_from_multiple(&table, &["margin", "spacing"])?,
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -142,6 +164,16 @@ impl<'lua> FromLua<'lua> for ElementDef {
                     color: table.get("color")?,
                     border: table.get("border")?,
                     shape: table.get("shape")?,
+                },
+                width: width.unwrap_or(Length::Shrink),
+                height: height.unwrap_or(Length::Shrink),
+            }),
+
+            "conditional" => Ok(Self {
+                id: ElementIdentifier::Conditional { 
+                    cond: ElementCondition::Unbuilt(parse_from_multiple(&table, &["cond", "condition"])?.expect("no condition provided for conditional")),
+                    if_true: Box::new(table.get("if_true")?),
+                    if_false: table.get::<_, Option<ElementDef>>("if_false")?.map(Box::new),
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
@@ -214,7 +246,7 @@ impl<'lua> FromLua<'lua> for ElementPadding {
 
 
 
-fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
+fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: &rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
     for i in list.iter() {
         let Some(t) = table.get(*i)? else { continue };
         return Ok(Some(t))

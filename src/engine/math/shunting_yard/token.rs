@@ -1,8 +1,9 @@
+use super::SYOperator;
 
 #[derive(Debug, Clone)]
 pub enum ShuntingYardToken {
     Number(f32),
-    Operator(char),
+    Operator(SYOperator),
     Variable(String),
     Function(String),
     LeftParenthesis,

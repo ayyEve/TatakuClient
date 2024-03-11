@@ -51,6 +51,11 @@ pub enum ElementIdentifier {
         events: Vec<KeyHandlerEvent>,
     },
 
+    Conditional {
+        cond: ElementCondition,
+        if_true: Box<ElementDef>,
+        if_false: Option<Box<ElementDef>>,
+    },
 
     // TODO: !!!
     Custom {
@@ -58,6 +63,13 @@ pub enum ElementIdentifier {
     }
 }
 
+
+#[derive(Clone, Debug)]
+pub enum ElementCondition {
+    Unbuilt(String),
+    Built(Arc<CustomElementCalc>, String),
+    Failed,
+}
 
 
 #[derive(Clone, Debug)]

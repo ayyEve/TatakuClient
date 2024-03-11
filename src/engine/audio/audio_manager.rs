@@ -144,6 +144,8 @@ impl AudioManager {
         CURRENT_SONG.lock().await.clone()
     }
 
+    
+
     pub fn load_song(path: impl AsRef<Path>) -> TatakuResult<Arc<dyn AudioInstance>> {
         CURRENT_API.read().load_stream_path(path.as_ref())
     }
