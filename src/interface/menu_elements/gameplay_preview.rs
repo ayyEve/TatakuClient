@@ -108,7 +108,7 @@ impl GameplayPreview {
 
     }
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
         // check for settings changes
         if self.settings.update() {
             if !self.is_enabled() && self.manager.is_some() {
@@ -139,7 +139,7 @@ impl GameplayPreview {
 
         // update manager
         if let Some(manager) = &mut self.manager {
-            manager.update().await;
+            manager.update(values).await;
             
             if manager.completed {
                 manager.on_complete();
@@ -175,27 +175,57 @@ impl GameplayPreview {
         
         // check for state update
         if self.handle_song_restart {
-            match AudioManager::get_song().await {
-                Some(song) if !song.is_playing() && !song.is_paused() => {
-                    // restart the song at the preview point
-                    if let Some(map) = &self.current_beatmap.clone().0 {
-                        let _ = song.set_position(map.audio_preview);
-                        if self.apply_rate { song.set_rate(self.current_mods.get_speed()); }
-                        
-                        song.play(false);
-                        self.setup().await;
+            let stopped = values.get_bool("song.stopped").unwrap();
+            let playing = values.get_bool("song.playing").unwrap();
+            let paused = values.get_bool("song.paused").unwrap();
+            let exists = stopped || playing || paused;
+
+            if exists {
+                if stopped {
+                    if let Ok(preview) = values.get_f32("map.preview_time") {
+                        actions.push(SongMenuAction::SetPosition(preview));
+                        if self.apply_rate {
+                            actions.push(SongMenuAction::SetRate(self.current_mods.get_speed()));
+                        }
+
+                        actions.push(SongMenuAction::Play);
                     }
+                }
+            } else {
+                if let Ok(path) = values.get_string("map.audio_path") {
+                    actions.push(SongMenuAction::Set(SongMenuSetAction::FromFile(path, SongPlayData {
+                        play: true,
+                        position: values.get_f32("map.preview_time").ok(),
+                        rate: self.apply_rate.then_some(self.current_mods.get_speed()),
+                        volume: Some(self.settings.get_music_vol()),
+
+                        ..Default::default()
+                    })));
                 }
 
-                // no value, try to set it to something
-                None => if let Some(map) = &self.current_beatmap.clone().0 {
-                    match AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await {
-                        Ok(audio) => if self.apply_rate { audio.set_rate(self.current_mods.get_speed()); },
-                        Err(_) => {error!("failed to set audio, crying")},
-                    }
-                }
-                _ => {}
             }
+
+            // match AudioManager::get_song().await {
+            //     Some(song) if !song.is_playing() && !song.is_paused() => {
+            //         // restart the song at the preview point
+            //         if let Some(map) = &self.current_beatmap.clone().0 {
+            //             let _ = song.set_position(map.audio_preview);
+            //             if self.apply_rate { song.set_rate(self.current_mods.get_speed()); }
+                        
+            //             song.play(false);
+            //             self.setup().await;
+            //         }
+            //     }
+
+            //     // no value, try to set it to something
+            //     None => if let Some(map) = &self.current_beatmap.clone().0 {
+            //         match AudioManager::play_song(map.audio_filename.clone(), true, map.audio_preview).await {
+            //             Ok(audio) => if self.apply_rate { audio.set_rate(self.current_mods.get_speed()); },
+            //             Err(_) => {error!("failed to set audio, crying")},
+            //         }
+            //     }
+            //     _ => {}
+            // }
         }
 
         // render to the drawable
@@ -336,8 +366,8 @@ impl core::fmt::Debug for GameplayPreview {
 
 #[async_trait]
 impl Widgetable for GameplayPreview {
-    async fn update(&mut self) {
-        GameplayPreview::update(self).await
+    async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
+        GameplayPreview::update(self, values, actions).await
         // (self as &mut GameplayPreview).update().await
     }
     fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement {

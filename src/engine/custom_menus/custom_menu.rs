@@ -43,8 +43,8 @@ impl AsyncMenu for BuiltCustomMenu {
             .into_element()
     }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
-        self.element.update().await;
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+        self.element.update(values, &mut self.queued_actions).await;
         self.queued_actions.take()
     }
 

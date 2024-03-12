@@ -51,9 +51,7 @@ pub struct Game {
     custom_menus: Vec<CustomMenu>,
 
     pub shunting_yard_values: ShuntingYardValues,
-
-
-    // pub song_manager: SongManager,
+    pub song_manager: SongManager,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -103,7 +101,7 @@ impl Game {
 
             shunting_yard_values: ShuntingYardValues::new(),
 
-            // song_manager: SongManager::new(),
+            song_manager: SongManager::new(),
         };
         g.load_custom_menus();
 
@@ -122,6 +120,38 @@ impl Game {
         self.custom_menus = parser.get_menus();
 
         debug!("Done loading custom menus");
+    }
+
+    /// initialize all the values in our value collection
+    /// doubles as a list of available values because i know i'm going to forget to put them in the doc at some point
+    fn init_value_collection(&mut self) {
+        let values = &mut self.shunting_yard_values;
+
+        // song values
+        values.set("song.exists", false);
+        values.set("song.playing", false);
+        values.set("song.paused", false);
+        values.set("song.stopped", false);
+        values.set("song.position", 0.0);
+
+        // map values
+        values.set("map.artist", String::new());
+        values.set("map.title", String::new());
+        values.set("map.creator", String::new());
+        values.set("map.version", String::new());
+        values.set("map.playmode", String::new());
+        values.set("map.game", String::new());
+        values.set("map.diff_rating", 0.0);
+        values.set("map.hash", String::new());
+        values.set("map.audio_path", String::new());
+        values.set("map.preview_time", 0.0);
+
+        // score values
+        // TODO: actually set these
+        values.set("score.score", 0.0);
+        values.set("score.combo", 0.0);
+        values.set("score.max_combo", 0.0);
+
     }
 
     pub async fn init(&mut self) {
@@ -183,11 +213,6 @@ impl Game {
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
-
-        // TEMP!!
-        self.shunting_yard_values.set("song.playing", true);
-        self.shunting_yard_values.set("song.paused", false);
-        self.shunting_yard_values.set("song.stopped", false);
     }
     
     pub async fn game_loop(mut self) {
@@ -421,7 +446,12 @@ impl Game {
 
         // check for volume change
         if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos) }
-        if scroll_delta != 0.0 && self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await { scroll_delta = 0.0 }
+        if scroll_delta != 0.0 {
+            if let Some(action) = self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await { 
+                scroll_delta = 0.0;
+                self.handle_menu_actions(vec![action.into()]).await;
+            }
+        } 
         self.volume_controller.on_key_press(&mut keys_down, mods).await;
         
         // check user panel
@@ -497,10 +527,24 @@ impl Game {
         }
         
         // update our global values
-        // {
-        //     let mut values = self.shunting_yard_values.lock().await;
+        {
+            let values = &mut self.shunting_yard_values;
+            values.set("song.position", self.song_manager.position());
 
-        // }
+            if let Some(audio) = self.song_manager.instance() {
+                values.set_multiple([
+                    ("song.playing", audio.is_playing()),
+                    ("song.paused", audio.is_paused()),
+                    ("song.stopped", audio.is_stopped()),
+                ].into_iter());
+            } else {
+                values.set_multiple([
+                    ("song.playing", false),
+                    ("song.paused", false),
+                    ("song.stopped", false),
+                ].into_iter());
+            }
+        }
 
 
         let (mut menu_actions, sy_values) = self.ui_manager.update(
@@ -554,9 +598,10 @@ impl Game {
                 
                 if !manager.failed && manager.can_pause() && (manager.should_pause || controller_pause) {
                     manager.pause();
-                    let manager2 = std::mem::take(manager);
-                    let menu = PauseMenu::new(manager2, false).await;
+                    let actions = manager.actions.take();
+                    let menu = PauseMenu::new(manager.take(), false).await;
                     self.queue_state_change(GameState::SetMenu(Box::new(menu)));
+                    self.handle_menu_actions(actions).await;
                 } else {
 
                     // inputs
@@ -590,7 +635,8 @@ impl Game {
 
 
                     // update, then check if complete
-                    manager.update().await;
+                    let actions = manager.update(&mut self.shunting_yard_values).await;
+                    self.handle_menu_actions(actions).await;
                     if manager.completed {
                         self.ingame_complete(manager).await;
                     }
@@ -707,6 +753,14 @@ impl Game {
 
                 match &mut self.queued_state {
                     GameState::Ingame(manager) => {
+                        // reset the song position 
+                        if let Some(song) = self.song_manager.instance() {
+                            song.pause();
+                            if !manager.started {
+                                song.set_position(0.0);
+                            }
+                        }
+
                         manager.start().await;
                         let m = manager.metadata.clone();
                         let start_time = manager.start_time;
@@ -738,9 +792,10 @@ impl Game {
                     GameState::SetMenu(_) => {
                         if let GameState::SetMenu(menu) = &self.current_state {
                             if menu.get_name() == "pause" {
-                                if let Some(song) = AudioManager::get_song().await {
-                                    song.play(false);
-                                }
+                                self.handle_menu_actions(vec![SongMenuAction::Play.into()]).await;
+                                // if let Some(song) = AudioManager::get_song().await {
+                                //     song.play(false);
+                                // }
                             }
                         }
 
@@ -926,7 +981,7 @@ impl Game {
         None
     }
 
-    async fn handle_menu_actions(&mut self, actions: Vec<MenuAction>) {
+    pub async fn handle_menu_actions(&mut self, actions: Vec<MenuAction>) {
         for action in actions {
             match action {
                 MenuAction::None => continue,
@@ -1044,34 +1099,61 @@ impl Game {
 
                 // song actions
                 MenuAction::Song(song_action) => {
-                    let Some(audio) = AudioManager::get_song().await else { continue };
-
                     match song_action {
-                        SongMenuAction::Play => audio.play(false),
-                        SongMenuAction::Restart => audio.play(true),
-                        SongMenuAction::Pause => audio.pause(),
-                        SongMenuAction::Stop => audio.stop(),
-                        SongMenuAction::Toggle if audio.is_playing() => audio.pause(),
-                        SongMenuAction::Toggle => audio.play(false),
-                        SongMenuAction::SeekBy(seek) => audio.set_position(audio.get_position() + seek),
-                        SongMenuAction::SetPosition(pos) => audio.set_position(pos),
-                        // SongMenuAction::Set(action) => if let Err(e) = self.song_manager.handle_song_set_action(action) {
-                        //     error!("Error handling songSetAction: {e:?}");
-                        // }
+                        // needs to be before trying to get the audio because audio might be none when this is run
+                        SongMenuAction::Set(action) => {
+                            if let Err(e) = self.song_manager.handle_song_set_action(action) {
+                                error!("Error handling SongMenuSetAction: {e:?}");
+                            }
+                        }
+
+                        other => {
+                            let Some(audio) = self.song_manager.instance() else { 
+                                continue 
+                            }; 
+
+                            match other {
+                                SongMenuAction::Play => audio.play(false),
+                                SongMenuAction::Restart => audio.play(true),
+                                SongMenuAction::Pause => audio.pause(),
+                                SongMenuAction::Stop => audio.stop(),
+                                SongMenuAction::Toggle if audio.is_playing() => audio.pause(),
+                                SongMenuAction::Toggle => audio.play(false),
+                                SongMenuAction::SeekBy(seek) => audio.set_position(audio.get_position() + seek),
+                                SongMenuAction::SetPosition(pos) => audio.set_position(pos),
+                                SongMenuAction::SetRate(rate) => audio.set_rate(rate),
+                                SongMenuAction::SetVolume(vol) => audio.set_volume(vol),
+                                // handled above
+                                SongMenuAction::Set(_) => {}
+                            }
+                        }
                     }
 
-                    // update song state
-                    self.shunting_yard_values.set_multiple([
-                        ("song.playing", false),
-                        ("song.paused", false),
-                        ("song.stopped", false),
-                    ].into_iter());
+                    // update discord presence
+                    // if let Some(song) = AudioManager::get_song().await {
+                    //     OnlineManager::set_action(SetAction::Listening { 
+                    //         artist: map.artist.clone(), 
+                    //         title: map.title.clone(),
+                    //         elapsed: song.get_position(),
+                    //         duration: song.get_duration()
+                    //     }, None);
+                    // }
 
-                    match audio.get_state() {
-                        AudioState::Playing => self.shunting_yard_values.set("song.playing", true),
-                        AudioState::Paused => self.shunting_yard_values.set("song.paused", true),
-                        AudioState::Stopped => self.shunting_yard_values.set("song.stopped", true),
-                        _ => {}
+                    // update song state
+                    if let Some(audio) = self.song_manager.instance() {
+                        self.shunting_yard_values.set_multiple([
+                            ("song.exists", true),
+                            ("song.playing", audio.is_playing()),
+                            ("song.paused", audio.is_paused()),
+                            ("song.stopped", audio.is_stopped()),
+                        ].into_iter());
+                    } else {
+                        self.shunting_yard_values.set_multiple([
+                            ("song.exists", false),
+                            ("song.playing", false),
+                            ("song.paused", false),
+                            ("song.stopped", false),
+                        ].into_iter());
                     }
                 }
 
@@ -1423,13 +1505,15 @@ pub enum GameState {
 impl GameState {
     /// spec_check means if we're spectator, check the inner game
     fn is_ingame(&self, spec_check: bool, multi_check: bool) -> bool {
-        match self {
-            Self::Ingame(_) => true,
-            // Self::Spectating(s) if spec_check => s.game_manager.is_some(),
-            Self::SetMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
+        let Self::Ingame(_) = self else { return false };
+        true
+        // match self {
+        //     Self::Ingame(_) => true,
+        //     // Self::Spectating(s) if spec_check => s.game_manager.is_some(),
+        //     Self::SetMenu(menu) if menu.get_name() == "multi_lobby" && multi_check => {false},
             
-            _ => false
-        }
+        //     _ => false
+        // }
     }
     // fn to_string(&self) -> String {
     //     match self {

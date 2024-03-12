@@ -52,7 +52,7 @@ impl Dialog for SkinSelect {
     async fn force_close(&mut self) { self.should_close = true; }
     
 
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         Settings::get_mut().current_skin = tag;
@@ -60,7 +60,7 @@ impl Dialog for SkinSelect {
 
 
     
-    async fn update(&mut self) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
         // self.current_skin.update();
 
         Vec::new()

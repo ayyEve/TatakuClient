@@ -1,11 +1,11 @@
 use crate::prelude::*;
 
-const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 50.0);
-const SECTION_XOFFSET:f32 = 30.0;
-const SCROLLABLE_YOFFSET:f32 = 20.0;
-const WIDTH:f32 = 600.0;
+// const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 50.0);
+// const SECTION_XOFFSET:f32 = 30.0;
+// const SCROLLABLE_YOFFSET:f32 = 20.0;
+// const WIDTH:f32 = 600.0;
 
-const SEARCH_HEIGHT:f32 = 50.0;
+// const SEARCH_HEIGHT:f32 = 50.0;
 
 pub struct SettingsMenu {
     num: usize, 

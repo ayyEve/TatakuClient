@@ -87,7 +87,7 @@ impl AsyncMenu for PauseMenu {
             .into_element()
     }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         info!("got message {message:?}");
         let Some(tag) = message.tag.as_string() else { return };
 
@@ -101,7 +101,7 @@ impl AsyncMenu for PauseMenu {
 
     }
     
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         self.actions.take()
     }
     

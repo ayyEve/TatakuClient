@@ -22,9 +22,9 @@ impl BuiltElementDef {
 
 #[async_trait]
 impl Widgetable for BuiltElementDef {
-    async fn update(&mut self) {
+    async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
         for i in self.children.iter_mut() {
-            i.update().await;
+            i.update(values, actions).await;
         }
     }
     
@@ -131,7 +131,7 @@ impl Widgetable for BuiltElementDef {
 // TODO: come up with a better name for this
 #[async_trait]
 pub trait Widgetable: Send + Sync {
-    async fn update(&mut self) {}
+    async fn update(&mut self, _values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {}
     fn view(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement;
 }
 

@@ -14,7 +14,8 @@ pub trait Visualization: Send + Sync {
     fn data(&mut self) -> &mut Vec<FFTData>;
     fn timer(&mut self) -> &mut Instant;
     async fn update_data(&mut self) {
-        let Some(mut audio_data) = AudioManager::get_song().await.map(|f|f.get_data()) else { return };
+        // let Some(mut audio_data) = AudioManager::get_song().await.map(|f|f.get_data()) else { return };
+        let mut audio_data = vec![FFTData::default(); 2048];
 
         let elapsed = self.timer().elapsed_and_reset() / 1000.0;
 

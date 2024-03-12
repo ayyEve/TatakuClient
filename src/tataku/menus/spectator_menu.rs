@@ -25,7 +25,7 @@ impl AsyncMenu for SpectatorMenu {
     async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
 
     }
-    async fn update(&mut self) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
         Vec::new() 
     }
 }

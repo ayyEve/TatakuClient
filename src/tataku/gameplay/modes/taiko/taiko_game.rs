@@ -813,12 +813,12 @@ impl GameMode for TaikoGame {
         self.healthbar_swap_pending = true;
     }
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) {
+    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
         let x_needed = self.playfield.pos.x + self.playfield.size.x;
         let mut time = self.end_time; //manager.time();
         
         for queue in [&self.notes, &self.other_notes] {
-            if queue.index > 0 { return }
+            if queue.index > 0 { return None }
 
             for i in queue.notes.iter().rev() {
                 let time_at = i.time_at(x_needed);
@@ -827,7 +827,7 @@ impl GameMode for TaikoGame {
 
         }
 
-        if manager.time() >= time { return }
+        if manager.time() >= time { return None }
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
@@ -836,8 +836,8 @@ impl GameMode for TaikoGame {
             }
         }
         
-        if time < 0.0 { return }
-        manager.song.set_position(time);
+        if time < 0.0 { return None }
+        Some(time)
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {

@@ -863,9 +863,9 @@ impl GameMode for ManiaGame {
         self.draw_notes(time, list).await;
     }
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) {
+    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
         // make sure we havent hit a note yet
-        for &c in self.column_indices.iter() {if c > 0 {return}}
+        for &c in self.column_indices.iter() {if c > 0 { return None }}
 
         let mut time = self.end_time;
         for col in self.columns.iter() {
@@ -877,8 +877,8 @@ impl GameMode for ManiaGame {
         // allow 2 seconds before the first note.
         time -= 2000.0;
 
-        if time < 0.0 {return}
-        if manager.time() >= time {return}
+        if time < 0.0 { return None }
+        if manager.time() >= time { return None }
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
@@ -887,7 +887,7 @@ impl GameMode for ManiaGame {
             }
         }
 
-        manager.song.set_position(time);
+        Some(time)
     }
 
     async fn reset(&mut self, beatmap:&Beatmap) {

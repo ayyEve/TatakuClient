@@ -15,8 +15,8 @@ impl UiApplication {
         }
     }
 
-    pub async fn update(&mut self) -> Vec<MenuAction> {
-        self.menu.update().await
+    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+        self.menu.update(values).await
     }
 
     pub async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {

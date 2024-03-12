@@ -112,12 +112,13 @@ impl MainMenu {
         trace!("setup manager called by {called_by}");
         self.settings.update();
 
-        if let Some(song) = AudioManager::get_song().await {
-            let duration = song.get_duration();
-            self.music_box.update_song_duration(duration);
+        // TODO: 
+        // if let Some(song) = AudioManager::get_song().await {
+        //     let duration = song.get_duration();
+        //     self.music_box.update_song_duration(duration);
 
-            self.media_controls.update_info(&self.current_beatmap.0, duration);
-        }
+        //     self.media_controls.update_info(&self.current_beatmap.0, duration);
+        // }
 
         let settings = self.settings.background_game_settings.clone();
         if !settings.main_menu_enabled { return }
@@ -172,14 +173,14 @@ impl MainMenu {
         tokio::spawn(async move {
             let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
 
-            if let Some(song) = AudioManager::get_song().await {
-                OnlineManager::set_action(SetAction::Listening { 
-                    artist: map.artist.clone(), 
-                    title: map.title.clone(),
-                    elapsed: song.get_position(),
-                    duration: song.get_duration()
-                }, None);
-            }
+            // if let Some(song) = AudioManager::get_song().await {
+            //     OnlineManager::set_action(SetAction::Listening { 
+            //         artist: map.artist.clone(), 
+            //         title: map.title.clone(),
+            //         elapsed: song.get_position(),
+            //         duration: song.get_duration()
+            //     }, None);
+            // }
         });
     }
 
@@ -246,12 +247,13 @@ impl AsyncMenu for MainMenu {
             // self.visualization.reset();
 
             // play song if it exists
-            if let Some(song) = AudioManager::get_song().await {
-                // reset any time mods
-                song.set_rate(1.0);
-                // // play
-                // song.play(true).unwrap();
-            }
+            self.queued_actions.push(SongMenuAction::SetRate(1.0));
+            // if let Some(song) = AudioManager::get_song().await {
+            //     // reset any time mods
+            //     song.set_rate(1.0);
+            //     // // play
+            //     // song.play(true).unwrap();
+            // }
 
             // update online to what song we're listening to
             Self::update_online();
@@ -264,7 +266,7 @@ impl AsyncMenu for MainMenu {
         }
     }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         self.settings.update();
         self.song_display.update();
 
@@ -291,64 +293,66 @@ impl AsyncMenu for MainMenu {
 
         let mut song_done = false;
 
-        match AudioManager::get_song().await {
-            Some(song) => {
-                let elapsed = song.get_position();
-                let state = if song.is_stopped() {
-                    MediaPlaybackState::Stopped
-                } else if song.is_paused() {
-                    MediaPlaybackState::Paused(elapsed)
-                } else if song.is_playing() {
-                    MediaPlaybackState::Playing(elapsed)
-                } else {
-                    //  ??
-                    unreachable!()
-                };
 
-                self.music_box.update_song_time(elapsed);
-                self.music_box.update_song_paused(song.is_paused());
-                self.media_controls.update(state, self.settings.integrations.media_controls).await;
 
-                let mut needs_manager_setup = false;
-                if let Ok(event) = self.event_receiver.try_recv() {
-                    match event {
-                        MediaControlHelperEvent::Play => song.play(false),
-                        MediaControlHelperEvent::Pause => song.pause(),
-                        MediaControlHelperEvent::Stop => song.stop(),
-                        MediaControlHelperEvent::Toggle => {
-                            if song.is_stopped() { 
-                                song.play(true); 
-                            } else if song.is_playing() {
-                                song.pause()
-                            } else if song.is_paused() {
-                                song.play(false);
-                            }
-                        }
-                        MediaControlHelperEvent::Next     => needs_manager_setup |= self.next().await,
-                        MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous().await,
-                        MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
-                        MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
-                        MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
-                        MediaControlHelperEvent::SeekBackwardBy(amt) => song.set_position(elapsed - amt),
-                        MediaControlHelperEvent::SetPosition(pos) => song.set_position(pos),
-                        // MediaControlHelperEvent::OpenUri(_) => todo!(),
-                        // MediaControlHelperEvent::Raise => todo!(),
-                        // MediaControlHelperEvent::Quit => todo!(),
-                        _ => {}
-                    }
+        // match AudioManager::get_song().await {
+        //     Some(song) => {
+        //         let elapsed = song.get_position();
+        //         let state = if song.is_stopped() {
+        //             MediaPlaybackState::Stopped
+        //         } else if song.is_paused() {
+        //             MediaPlaybackState::Paused(elapsed)
+        //         } else if song.is_playing() {
+        //             MediaPlaybackState::Playing(elapsed)
+        //         } else {
+        //             //  ??
+        //             unreachable!()
+        //         };
+
+        //         self.music_box.update_song_time(elapsed);
+        //         self.music_box.update_song_paused(song.is_paused());
+        //         self.media_controls.update(state, self.settings.integrations.media_controls).await;
+
+        //         let mut needs_manager_setup = false;
+        //         if let Ok(event) = self.event_receiver.try_recv() {
+        //             match event {
+        //                 MediaControlHelperEvent::Play => song.play(false),
+        //                 MediaControlHelperEvent::Pause => song.pause(),
+        //                 MediaControlHelperEvent::Stop => song.stop(),
+        //                 MediaControlHelperEvent::Toggle => {
+        //                     if song.is_stopped() { 
+        //                         song.play(true); 
+        //                     } else if song.is_playing() {
+        //                         song.pause()
+        //                     } else if song.is_paused() {
+        //                         song.play(false);
+        //                     }
+        //                 }
+        //                 MediaControlHelperEvent::Next     => needs_manager_setup |= self.next().await,
+        //                 MediaControlHelperEvent::Previous => needs_manager_setup |= self.previous().await,
+        //                 MediaControlHelperEvent::SeekForward => song.set_position(elapsed + 100.0),
+        //                 MediaControlHelperEvent::SeekBackward => song.set_position(elapsed - 100.0),
+        //                 MediaControlHelperEvent::SeekForwardBy(amt) => song.set_position(elapsed + amt),
+        //                 MediaControlHelperEvent::SeekBackwardBy(amt) => song.set_position(elapsed - amt),
+        //                 MediaControlHelperEvent::SetPosition(pos) => song.set_position(pos),
+        //                 // MediaControlHelperEvent::OpenUri(_) => todo!(),
+        //                 // MediaControlHelperEvent::Raise => todo!(),
+        //                 // MediaControlHelperEvent::Quit => todo!(),
+        //                 _ => {}
+        //             }
                     
-                    if needs_manager_setup {
-                        self.setup_manager("media event").await;
-                        return self.queued_actions.take();
-                    }
-                }
+        //             if needs_manager_setup {
+        //                 self.setup_manager("media event").await;
+        //                 return self.queued_actions.take();
+        //             }
+        //         }
 
-                if !song.is_playing() && !song.is_paused() {
-                    song_done = true;
-                }
-            }
-            _ => song_done = true,
-        }
+        //         if !song.is_playing() && !song.is_paused() {
+        //             song_done = true;
+        //         }
+        //     }
+        //     _ => song_done = true,
+        // }
 
         if song_done {
             trace!("song done");
@@ -379,7 +383,7 @@ impl AsyncMenu for MainMenu {
         // update the gameplay preview (includes drawing it)
         // self.visualization.update().await;
         // self.menu_game.update().await;
-        self.gameplay_preview.update().await;
+        self.gameplay_preview.update(values, &mut self.queued_actions).await;
 
         // // check key events
         // while let Some(event) = self.key_events.check_events() {

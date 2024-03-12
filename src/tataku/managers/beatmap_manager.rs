@@ -238,7 +238,7 @@ impl BeatmapManager {
         }
     }
 
-
+    #[async_recursion::async_recursion]
     pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         GlobalValueManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
@@ -257,27 +257,41 @@ impl BeatmapManager {
             values.set("map.game", format!("{:?}", beatmap.beatmap_type));
             values.set("map.diff_rating", 0.0f32);
             values.set("map.hash", beatmap.beatmap_hash.to_string());
+            values.set("map.audio_path", beatmap.audio_filename.clone());
+            values.set("map.preview_time", beatmap.audio_preview);
         }
 
         // play song
         let audio_filename = beatmap.audio_filename.clone();
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
-        if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
-            error!("Error playing song: {:?}", e);
-            NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
-        }
+        game.handle_menu_actions(vec![
+            SongMenuAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
+                play: true,
+                restart: true,
+                position: Some(time),
+                volume: Some(Settings::get().get_music_vol()),
+                ..Default::default()
+            })).into(),
+        ]).await;
+
+        // if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
+        //     error!("Error playing song: {:?}", e);
+        //     NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
+        // }
 
         // set bg
         game.set_background_beatmap(beatmap).await;
     }
+    #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self, game:&mut Game) {
         trace!("Setting current beatmap to None");
         GlobalValueManager::update(Arc::new(CurrentBeatmap(None)));
         self.current_beatmap = None;
 
         // stop song
-        AudioManager::stop_song().await;
+        game.handle_menu_actions(vec![SongMenuAction::Stop.into()]).await;
+        // AudioManager::stop_song().await;
 
         // set bg
         game.remove_background_beatmap().await;

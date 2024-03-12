@@ -2,9 +2,9 @@ use super::audio::*;
 use crate::prelude::*;
 
 lazy_static::lazy_static!(
-    static ref CURRENT_SONG: Arc<AsyncMutex<Option<(String, Arc<dyn AudioInstance>)>>> = Arc::new(AsyncMutex::new(None));
+    // static ref CURRENT_SONG: Arc<AsyncMutex<Option<(String, Arc<dyn AudioInstance>)>>> = Arc::new(AsyncMutex::new(None));
 
-    static ref PLAY_PENDING: Arc<AsyncMutex<String>> = Arc::new(AsyncMutex::new(String::new()));
+    // static ref PLAY_PENDING: Arc<AsyncMutex<String>> = Arc::new(AsyncMutex::new(String::new()));
 
     static ref CURRENT_API: Arc<RwLock<Arc<dyn AudioApi>>> = Arc::new(RwLock::new(Arc::new(super::null_audio::NullAudio)));
 );
@@ -44,6 +44,8 @@ impl AudioManager {
     pub fn empty_stream() -> Arc<dyn AudioInstance> { CURRENT_API.read().empty_audio() }
     pub fn amplitude_multiplier() -> f32 { CURRENT_API.read().amplitude_multiplier() }
 
+
+    /*
     pub async fn play_song(path: impl AsRef<str>, restart:bool, position: f32) -> TatakuResult<Arc<dyn AudioInstance>> {
         trace!("play_song - playing {}", path.as_ref());
         // check if we're already playing, if restarting is allowed
@@ -144,6 +146,7 @@ impl AudioManager {
         CURRENT_SONG.lock().await.clone()
     }
 
+    */
     
 
     pub fn load_song(path: impl AsRef<Path>) -> TatakuResult<Arc<dyn AudioInstance>> {

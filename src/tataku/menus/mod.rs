@@ -11,8 +11,6 @@ mod settings_menu;
 mod beatmap_select;
 mod spectator_menu;
 
-mod menu_game_helper;
-
 pub use menu::*;
 pub use dialogs::*;
 pub use main_menu::*;
@@ -25,4 +23,3 @@ pub use loading_menu::*;
 pub use settings_menu::*;
 pub use beatmap_select::*;
 pub use spectator_menu::*;
-pub use menu_game_helper::*;

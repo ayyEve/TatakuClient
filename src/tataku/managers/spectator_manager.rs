@@ -232,11 +232,12 @@ impl SpectatorManager {
             game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
             // resume song if paused
 
-            if let Some(song) = AudioManager::get_song().await {
-                if song.is_paused() {
-                    song.play(false);
-                }
-            }
+            //TODO: !!!!!!!1
+            // if let Some(song) = AudioManager::get_song().await {
+            //     if song.is_paused() {
+            //         song.play(false);
+            //     }
+            // }
         }
 
     }

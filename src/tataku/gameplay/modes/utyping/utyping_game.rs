@@ -141,7 +141,7 @@ impl GameMode for UTypingGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, _time:f32, manager:&mut IngameManager) {
         // if !manager.replaying {
         //     manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
         //     manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
@@ -364,7 +364,7 @@ impl GameMode for UTypingGame {
 
 
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) {
+    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
         // if self.note_index > 0 {return}
 
         let x_needed = WindowSize::get().x;
@@ -381,7 +381,7 @@ impl GameMode for UTypingGame {
         //     time += 1.0;
         // }
 
-        if manager.time() >= time { return }
+        if manager.time() >= time { return None }
 
         if manager.lead_in_time > 0.0 {
             if time > manager.lead_in_time {
@@ -390,8 +390,8 @@ impl GameMode for UTypingGame {
             }
         }
         
-        if time < 0.0 { return }
-        manager.song.set_position(time);
+        if time < 0.0 { return None }
+        Some(time)
     }
 
 

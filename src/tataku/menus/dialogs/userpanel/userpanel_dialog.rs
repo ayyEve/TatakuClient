@@ -46,7 +46,7 @@ impl Dialog for UserPanel {
     // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
     async fn force_close(&mut self) { self.should_close = true; }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
 
@@ -123,8 +123,8 @@ impl Dialog for UserPanel {
         )
     }
     
-    async fn update(&mut self) -> Vec<MenuAction> { 
-        self.chat.update().await;
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+        self.chat.update(values).await;
         
         let mut bomb = PANEL_QUEUE.1.lock().await;
         while let Some(event) = bomb.exploded() {

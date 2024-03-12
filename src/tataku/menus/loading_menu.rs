@@ -174,7 +174,7 @@ impl LoadingMenu {
 impl AsyncMenu for LoadingMenu {
     fn get_name(&self) -> &'static str { "loading_menu" }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         for status in self.statuses.iter() {
             let status = status.read();
             if !status.complete { return Vec::new() }

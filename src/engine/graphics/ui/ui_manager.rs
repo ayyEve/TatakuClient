@@ -178,8 +178,8 @@ impl UiManager {
             app.handle_message(m, &mut values).await;
         }
 
-        let mut list = app.update().await;
-        list.extend(app.dialog_manager.update().await);
+        let mut list = app.update(&mut values).await;
+        list.extend(app.dialog_manager.update(&mut values).await);
         (list, values)
     }
 

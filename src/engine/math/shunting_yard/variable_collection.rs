@@ -32,17 +32,25 @@ impl ShuntingYardValues {
         }
     }
 
-    pub fn get_f32(&self, key: &String) -> Result<f32, ShuntingYardError> {
+    pub fn get_f32(&self, key: &str) -> Result<f32, ShuntingYardError> {
         match self.0.get(key) {
-            Some(CustomElementValue::String(_)) => Err(ShuntingYardError::ValueIsntANumber(key.clone())),
+            Some(CustomElementValue::String(_)) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
             Some(other) => other.as_f32(),
-            None => Err(ShuntingYardError::EntryDoesntExist(key.clone()))
+            None => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
     }
-    pub fn get_string(&self, key: &String) -> Result<String, ShuntingYardError> {
+    pub fn get_string(&self, key: &str) -> Result<String, ShuntingYardError> {
         self.0
             .get(key)
             .map(|i| i.as_string())
-            .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.clone()))
+            .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
+    }
+
+    pub fn get_bool<'a>(&self, key: &str) -> Result<bool, ShuntingYardError> {
+        match self.0.get(key) {
+            Some(CustomElementValue::Bool(b)) => Ok(*b),
+            Some(_) => Err(ShuntingYardError::ValueIsntABool),
+            _ => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
+        }
     }
 }

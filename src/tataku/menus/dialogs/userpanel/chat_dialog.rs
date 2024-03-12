@@ -145,7 +145,7 @@ impl Dialog for Chat {
     }
 
     
-    async fn update(&mut self) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
         // get new messages
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             let mut scroll_pending = false;

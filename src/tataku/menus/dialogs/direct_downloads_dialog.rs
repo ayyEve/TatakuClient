@@ -60,9 +60,9 @@ impl Dialog for DirectDownloadDialog {
 
 
 
-    // async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }
+    // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
         // let Some(tag) = message.tag.as_string() else { return }; 
     }
     

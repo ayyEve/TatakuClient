@@ -908,13 +908,13 @@ impl GameMode for OsuGame {
         self.cursor.reset()
     }
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) {
-        if self.notes.len() == 0 { return }
+    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
+        if self.notes.len() == 0 { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
-        if time < manager.time() || time < 0.0 { return }
+        if time < manager.time() || time < 0.0 { return None }
         
-        manager.song.set_position(time);
+        Some(time)
     }
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {

@@ -82,7 +82,7 @@ impl Dialog for GenericDialog {
         }
     }
 
-    async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
 
     fn view(&self) -> IcedElement {
         use iced_elements::*;

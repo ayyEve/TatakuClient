@@ -8,6 +8,6 @@ pub trait AsyncMenu:Send+Sync {
     fn view(&self, values: &mut ShuntingYardValues) -> IcedElement;
     
     async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues);
-    async fn update(&mut self) -> Vec<MenuAction> { Vec::new() }
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { Vec::new() }
     async fn on_change(&mut self, _into:bool) {}// when the menu is "loaded"(into) or "unloaded"(!into)
 }

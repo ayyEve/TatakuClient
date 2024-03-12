@@ -38,10 +38,10 @@ impl DialogManager {
     }
 
 
-    pub async fn update(&mut self) -> Vec<MenuAction> {
+    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         let mut list = Vec::new();
         for i in self.dialogs.iter_mut() {
-            list.extend(i.update().await);
+            list.extend(i.update(values).await);
         }
         self.dialogs.retain(|d|!d.should_close());
         

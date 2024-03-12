@@ -10,6 +10,7 @@ pub enum ShuntingYardError {
     InvalidFunction(String),
     EntryDoesntExist(String),
     ValueIsntANumber(String),
+    ValueIsntABool,
     MissingLeftSide(SYOperator),
     MissingRightSide(SYOperator),
     MissingFunctionArgument(String),

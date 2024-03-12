@@ -25,7 +25,7 @@ macro_rules! add_timing {
 }
 
 pub struct IngameManager {
-    actions: Vec<MenuAction>,
+    pub actions: ActionQueue,
 
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
@@ -76,7 +76,7 @@ pub struct IngameManager {
     // next_beat: f32,
     pub timing_points: TimingPointHelper,
 
-    pub song: Arc<dyn AudioInstance>,
+    // pub song: Arc<dyn AudioInstance>,
     pub hitsound_manager: HitsoundManager,
 
     /// center text helper (ie, for offset and global offset)
@@ -116,6 +116,8 @@ pub struct IngameManager {
 
     // used for discord rich presence
     pub start_time: i64,
+
+    song_time: f32,
 }
 
 impl IngameManager {
@@ -143,7 +145,7 @@ impl IngameManager {
         let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
 
-        let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
+        // let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
 
         let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await;
 
@@ -151,7 +153,6 @@ impl IngameManager {
         let audio_playmode_prefix = match &*playmode {
             "taiko" => "taiko".to_owned(),
             "mania" => "mania".to_owned(),
-            // "taiko" => "taiko".to_owned(),
 
             _ => String::new(),
         };
@@ -190,7 +191,7 @@ impl IngameManager {
             animation,
 
             hitsound_manager,
-            song,
+            // song,
 
             lead_in_time: LEAD_IN_TIME,
             end_time: gamemode.end_time(),
@@ -317,7 +318,9 @@ impl IngameManager {
         self.gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+        self.song_time = values.get_f32("song.position").unwrap_or_default();
+
         // update settings
         self.settings.update();
         if self.skin_helper.update() {
@@ -334,7 +337,7 @@ impl IngameManager {
         if let Some(press_time) = self.restart_key_hold_start {
             if press_time.as_millis() >= self.common_game_settings.map_restart_delay {
                 self.reset().await;
-                return;
+                return self.actions.take();
             }
         }
 
@@ -356,7 +359,7 @@ impl IngameManager {
         // update ui elements
         if !self.gameplay_mode.is_preview() {
             let mut ui_elements = std::mem::take(&mut self.ui_elements);
-            ui_elements.iter_mut().for_each(|ui|ui.update(self));
+            ui_elements.iter_mut().for_each(|ui| ui.update(self));
             self.ui_elements = ui_elements;
         }
 
@@ -376,6 +379,8 @@ impl IngameManager {
             self.ui_editor = ui_editor;
         }
         
+        // get the time with offsets
+        let time = self.time();
 
         // check lead-in time
         if self.lead_in_time > 0.0 {
@@ -384,15 +389,19 @@ impl IngameManager {
             self.lead_in_time -= elapsed * self.game_speed();
 
             if self.lead_in_time <= 0.0 {
-                self.song.set_position(-self.lead_in_time);
-                self.song.set_volume(self.settings.get_music_vol());
-                self.song.set_rate(self.game_speed());
-                self.song.play(true);
+                self.actions.push(SongMenuAction::SetRate(self.game_speed()));
+                self.actions.push(SongMenuAction::SetVolume(self.settings.get_music_vol()));
+                self.actions.push(SongMenuAction::SetPosition(-self.lead_in_time));
+                self.actions.push(SongMenuAction::Play);
+                
+                // self.song.set_position(-self.lead_in_time);
+                // self.song.set_volume(self.settings.get_music_vol());
+                // self.song.set_rate(self.game_speed());
+                // self.song.play(true);
                 
                 self.lead_in_time = 0.0;
             }
         }
-        let time = self.time();
 
         let tp_updates = self.timing_points.update(time);
 
@@ -427,10 +436,11 @@ impl IngameManager {
         let update_frames = gamemode.update(self, time).await.into_iter().map(|f|ReplayFrame::new(time, f));
         pending_frames.extend(update_frames);
 
-        if self.song.is_stopped() {
-            trace!("Song over, saying map is complete");
-            self.completed = true;
-        }
+
+        // if self.lead_in_time == 0.0 && values.get_bool("song.stopped").unwrap_or_default() {
+        //     debug!("Song over, saying map is complete");
+        //     self.completed = true;
+        // }
 
         // update score stuff now that gamemode has been updated
         self.score.accuracy = calc_acc(&self.score);
@@ -443,18 +453,20 @@ impl IngameManager {
             let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
             if new_rate <= 0.05 {
-                self.song.pause();
+                self.actions.push(SongMenuAction::Pause);
+                // self.song.pause();
 
                 self.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorAction::Failed));
                 trace!("show fail menu");
             } else {
-                self.song.set_rate(new_rate);
+                self.actions.push(SongMenuAction::SetRate(new_rate));
+                // self.song.set_rate(new_rate);
             }
 
             // put it back
             self.gamemode = gamemode;
-            return;
+            return self.actions.take();
         }
 
         // send map completed packets
@@ -666,6 +678,8 @@ impl IngameManager {
         let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
         anim.update(time, self).await;
         self.animation = anim;
+
+        self.actions.take()
     }
 
     pub async fn draw(&mut self, list: &mut RenderableCollection) {
@@ -889,9 +903,9 @@ impl IngameManager {
     }
 
     pub fn time(&self) -> f32 {
-        let t = self.song.get_position();
+        //let t = self.song.get_position();
 
-        t - (self.lead_in_time + self.beatmap_preferences.audio_offset + self.settings.global_offset)
+        self.song_time - (self.lead_in_time + self.beatmap_preferences.audio_offset + self.settings.global_offset)
     }
 
     pub fn should_save_score(&self) -> bool {
@@ -987,10 +1001,15 @@ impl IngameManager {
                 // dont reset the song, and dont do lead in
                 self.lead_in_time = 0.0;
             } else {
-                self.song.set_position(0.0);
-                if self.song.is_stopped() { self.song.play(true); }
-                self.song.pause();
-                self.song.set_rate(self.current_mods.get_speed());
+                // self.actions.push(SongMenuAction::Restart);
+                // self.actions.push(SongMenuAction::Pause);
+                // self.actions.push(SongMenuAction::SetPosition(0.0));
+                // self.actions.push(SongMenuAction::SetRate(self.game_speed()));
+
+                // self.song.set_position(0.0);
+                // if self.song.is_stopped() { self.song.play(true); }
+                // self.song.pause();
+                // self.song.set_rate(self.current_mods.get_speed());
                 
                 self.lead_in_timer = Instant::now();
                 self.lead_in_time = LEAD_IN_TIME;
@@ -1011,7 +1030,8 @@ impl IngameManager {
             let frame = SpectatorAction::UnPause;
             let time = self.time();
             self.outgoing_spectator_frame(SpectatorFrame::new(time, frame));
-            self.song.play(false);
+            self.actions.push(SongMenuAction::Play);
+            // self.song.play(false);
 
             let mut gamemode = std::mem::take(&mut self.gamemode);
             gamemode.unpause(self);
@@ -1024,7 +1044,8 @@ impl IngameManager {
         // undo any cursor override
         CursorManager::set_ripple_override(None);
 
-        self.song.pause();
+        // self.song.pause();
+        self.actions.push(SongMenuAction::Pause);
         self.pause_start = Some(chrono::Utc::now().timestamp());
 
         // is there anything else we need to do?
@@ -1034,7 +1055,7 @@ impl IngameManager {
         let time = self.time();
         self.outgoing_spectator_frame_force(SpectatorFrame::new(time, SpectatorAction::Pause));
 
-        let mut gamemode = std::mem::take(&mut self.gamemode);
+        let mut gamemode = self.gamemode.take();
         gamemode.pause(self);
         self.gamemode = gamemode;
     }
@@ -1050,10 +1071,15 @@ impl IngameManager {
             self.gamemode.apply_mods(self.current_mods.clone()).await;
         } else {
             // reset song
-            self.song.set_rate(self.game_speed());
-            self.song.set_position(0.0);
-            if self.song.is_stopped() { self.song.play(true); }
-            self.song.pause();
+            self.actions.push(SongMenuAction::Restart);
+            self.actions.push(SongMenuAction::Pause);
+            self.actions.push(SongMenuAction::SetPosition(0.0));
+            self.actions.push(SongMenuAction::SetRate(self.game_speed()));
+
+            // self.song.set_rate(self.game_speed());
+            // self.song.set_position(0.0);
+            // if self.song.is_stopped() { self.song.play(true); }
+            // self.song.pause();
         }
 
         self.completed = false;
@@ -1111,6 +1137,7 @@ impl IngameManager {
         if self.failed || self.current_mods.has_nofail() || self.current_mods.has_autoplay() || self.gameplay_mode.is_preview() { return }
         self.failed = true;
         self.failed_time = self.time();
+        debug!("failed");
     }
 
     pub async fn combo_break(&mut self) {
@@ -1131,7 +1158,8 @@ impl IngameManager {
             self.lead_in_time = 0.0;
         }
         
-        self.song.set_position(time);
+        self.actions.push(SongMenuAction::SetPosition(time));
+        // self.song.set_position(time);
 
         self.pending_time_jump = Some(time);
     }
@@ -1237,7 +1265,10 @@ impl IngameManager {
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
-            gamemode.skip_intro(self);
+            if let Some(time) = gamemode.skip_intro(self) {
+                self.actions.push(SongMenuAction::SetPosition(time));
+            }
+            
             // more to do?
             return;
         }
@@ -1527,8 +1558,8 @@ impl IngameManager {
 impl Default for IngameManager {
     fn default() -> Self {
         Self { 
-            actions: Vec::new(),
-            song: AudioManager::empty_stream(),
+            actions: ActionQueue::new(),
+            // song: AudioManager::empty_stream(),
             judgement_indicators: Vec::new(),
             hitsound_manager: HitsoundManager::new(String::new()),
             gameplay_mode: Box::new(GameplayMode::Normal),
@@ -1584,6 +1615,7 @@ impl Default for IngameManager {
             map_diff: 0.0,
             start_time: 0,
             pause_start: None,
+            song_time: 0.0,
         }
     }
 }

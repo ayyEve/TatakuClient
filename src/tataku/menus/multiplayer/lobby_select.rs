@@ -32,7 +32,7 @@ impl AsyncMenu for LobbySelect {
         }
     }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         if self.multiplayer_data.update() || self.needs_init {
             if self.multiplayer_data.lobbies != self.lobbies || self.needs_init {
                 self.needs_init = false;
@@ -90,7 +90,7 @@ impl AsyncMenu for LobbySelect {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return };
 
         match &*tag {

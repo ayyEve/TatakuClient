@@ -31,7 +31,7 @@ impl Dialog for LobbyPlayerDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
 
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {

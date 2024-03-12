@@ -9,6 +9,8 @@ pub type DirectDownloadQueue = Vec<Arc<dyn DirectDownloadable>>;
 // type DirectDownloadItem = Arc<dyn DirectDownloadable>;
 
 pub struct DirectMenu {
+    actions: ActionQueue,
+
     scroll_area: ScrollableArea,
 
     /// attempted? succeeded? (path, pos)
@@ -34,6 +36,8 @@ impl DirectMenu {
         let window_size = WindowSize::get();
 
         let mut x = DirectMenu {
+            actions: ActionQueue::new(),
+
             scroll_area: ScrollableArea::new(
                 Vector2::new(0.0, SEARCH_BAR_HEIGHT+5.0), 
                 Vector2::new(DIRECT_ITEM_SIZE.x, window_size.y - SEARCH_BAR_HEIGHT+5.0), 
@@ -89,9 +93,9 @@ impl DirectMenu {
         if url.is_empty() { return }
 
         trace!("Preview audio");
-        let req = reqwest::blocking::get(url);
+        let req = reqwest::get(url).await;
         if let Ok(thing) = req {
-            let data = match thing.bytes() {
+            let data = match thing.bytes().await {
                 Ok(bytes) => bytes,
                 Err(e) => {
                     warn!("Error converting mp3 preview to bytes: {}", e);
@@ -100,22 +104,30 @@ impl DirectMenu {
                 }
             };
             
-            let mut data2 = Vec::new();
-            data.iter().for_each(|e| data2.push(e.clone()));
+            let data = data.iter().copied().collect();
+            // let mut data2 = Vec::new();
+            // data.iter().for_each(|e| data2.push(e.clone()));
 
             // store last playing audio if needed
-            if self.old_audio.is_none() {
-                if let Some((key, a)) = AudioManager::get_song_raw().await {
-                    self.old_audio = Some(Some((key, a.get_position())));
-                }
 
-                // need to store that we made an attempt
-                if let None = self.old_audio {
-                    self.old_audio = Some(None);
-                }
-            }
+            // if self.old_audio.is_none() {
+            //     if let Some((key, a)) = AudioManager::get_song_raw().await {
+            //         self.old_audio = Some(Some((key, a.get_position())));
+            //     }
 
-            AudioManager::play_song_raw(url, data2).await.unwrap();
+            //     // need to store that we made an attempt
+            //     if let None = self.old_audio {
+            //         self.old_audio = Some(None);
+            //     }
+            // }
+            self.actions.push(SongMenuAction::Set(SongMenuSetAction::PushQueue));
+            
+            // AudioManager::play_song_raw(url, data2).await.unwrap();
+            self.actions.push(SongMenuAction::Set(SongMenuSetAction::FromData(data, url.to_owned(), SongPlayData {
+                play: true,
+                volume: Some(Settings::get().get_music_vol()),
+                ..Default::default()
+            })));
             
         } else if let Err(oof) = req {
             warn!("Error with preview: {}", oof);
@@ -125,16 +137,18 @@ impl DirectMenu {
 
     /// go back to the main menu
     async fn back(&mut self, game:&mut Game) {
+        self.actions.push(SongMenuAction::Set(SongMenuSetAction::PopQueue));
+        self.actions.push(SongMenuAction::Play);
 
-        if let Some(old_audio) = &self.old_audio {
-            // stop the song thats playing, because its a preview
-            AudioManager::stop_song().await;
+        // if let Some(old_audio) = &self.old_audio {
+        //     // stop the song thats playing, because its a preview
+        //     AudioManager::stop_song().await;
 
-            // restore previous audio
-            if let Some((path, pos)) = old_audio.clone() {
-                AudioManager::play_song(path, false, pos).await.unwrap();
-            }
-        }
+        //     // restore previous audio
+        //     if let Some((path, pos)) = old_audio.clone() {
+        //         AudioManager::play_song(path, false, pos).await.unwrap();
+        //     }
+        // }
 
         // let menu = game.menus.get("main").unwrap().clone();
         game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
@@ -145,7 +159,7 @@ impl DirectMenu {
 impl AsyncMenu for DirectMenu {
 
     
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         self.scroll_area.update();
         self.search_bar.update();
 
@@ -159,7 +173,7 @@ impl AsyncMenu for DirectMenu {
 
         // TODO: move this to a thread
         check_direct_download_queue();
-        Vec::new()
+        self.actions.take()
     }
 
     

@@ -397,7 +397,7 @@ impl ScoreMenu {
 impl AsyncMenu for ScoreMenu {
     fn get_name(&self) -> &'static str { "score" }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         if self.score_submit_response.is_none() {
             if let Some(t) = &self.score_submit {
                 if let Some(r) = t.response.read().await.as_ref() {
@@ -482,7 +482,7 @@ impl AsyncMenu for ScoreMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return };
         match &*tag {
             "retry" => self.retry().await,

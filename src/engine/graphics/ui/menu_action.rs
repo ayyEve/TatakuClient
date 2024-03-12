@@ -42,6 +42,10 @@ impl From<GameMenuAction> for MenuAction {
 impl From<BeatmapMenuAction> for MenuAction {
     fn from(value: BeatmapMenuAction) -> Self { Self::Beatmap(value) }
 }
+impl From<SongMenuAction> for MenuAction {
+    fn from(value: SongMenuAction) -> Self { Self::Song(value) }
+}
+
 
 
 
@@ -161,14 +165,30 @@ pub enum SongMenuAction {
     /// Set the position of the current song (in ms)
     SetPosition(f32),
 
-    // /// change the current song. you probably dont want to touch this in custom code
-    // Set(SongMenuSetAction),
+    /// set the song volume
+    SetVolume(f32),
+
+    /// set the playback rate of the current song
+    SetRate(f32),
+
+    /// change the current song. you probably dont want to touch this in custom code
+    Set(SongMenuSetAction),
 }
 
-// #[derive(Clone, Debug)]
-// pub enum SongMenuSetAction {
-//     None,
-//     // FromBeatmapHash(Md5Hash),
-//     // FromUrl(String),
-//     FromFile(String),
-// }
+#[derive(Clone, Debug)]
+pub enum SongMenuSetAction {
+    /// Push the current song to the play queue
+    PushQueue,
+    
+    /// Pop the latest song from the play queue and play it
+    PopQueue,
+
+    /// remove the current song, setting it to none
+    Remove,
+
+    /// Play a file from the disk
+    FromFile(String, SongPlayData),
+
+    /// Play from bytes
+    FromData(Vec<u8>, String, SongPlayData),
+}

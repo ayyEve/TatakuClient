@@ -213,7 +213,7 @@ impl LobbyMenu {
 impl AsyncMenu for LobbyMenu {
     fn get_name(&self) -> &'static str { "lobby_menu" }
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         if self.init_pending {
             self.init_pending = false;
             self.refresh_data(&None).await;
@@ -236,7 +236,7 @@ impl AsyncMenu for LobbyMenu {
         // }
 
         // update our menu game
-        self.gameplay_preview.update().await;
+        self.gameplay_preview.update(values, &mut self.actions).await;
 
         self.actions.take()
     }

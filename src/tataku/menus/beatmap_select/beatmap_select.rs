@@ -402,7 +402,9 @@ impl BeatmapSelectMenu {
 
         if speed != old_speed {
             ModManager::get_mut().set_speed(speed);
-            AudioManager::get_song().await.ok_do(|song|song.set_rate(speed));
+            self.action_queue.push(SongMenuAction::SetRate(speed));
+
+            // AudioManager::get_song().await.ok_do(|song|song.set_rate(speed));
             NotificationManager::add_text_notification(format!("Map speed: {speed:.2}x"), 2000.0, Color::BLUE).await;
 
             // force diff recalc
@@ -591,12 +593,12 @@ impl AsyncMenu for BeatmapSelectMenu {
 
 
 
-    async fn update(&mut self) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
         self.settings.update();
         self.mods.update();
 
         // update bg game
-        self.menu_game.update().await;
+        self.menu_game.update(values, &mut self.action_queue).await;
 
         // // check for key events
         // while let Some(event) = self.key_events.check_events() {

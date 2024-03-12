@@ -68,7 +68,7 @@ impl Dialog for DraggableDialog {
         self.inner.handle_message(message, values).await 
     }
     
-    async fn update(&mut self) -> Vec<MenuAction> { self.inner.update().await }
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.inner.update(values).await }
 }
 
 

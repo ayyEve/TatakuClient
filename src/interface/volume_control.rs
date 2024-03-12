@@ -30,27 +30,29 @@ impl VolumeControl {
         let elapsed = self.elapsed();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }
-    async fn change(&mut self, delta:f32) {
+    async fn change(&mut self, delta:f32) -> Option<SongMenuAction> {
         let elapsed = self.elapsed();
         let mut settings = Settings::get_mut();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
-        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 {self.vol_selected_index = 0}
+        if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { self.vol_selected_index = 0 }
 
         // find out what volume to edit, and edit it
         match self.vol_selected_index {
             0 => settings.master_vol = (settings.master_vol + delta).clamp(0.0, 1.0),
             1 => settings.effect_vol = (settings.effect_vol + delta).clamp(0.0, 1.0),
             2 => settings.music_vol = (settings.music_vol + delta).clamp(0.0, 1.0),
-            _ => error!("lock.vol_selected_index out of bounds somehow")
+            _ => unreachable!("lock.vol_selected_index out of bounds somehow")
         }
 
         
-        if let Some(song) = AudioManager::get_song().await {
-            song.set_volume(settings.get_music_vol());
-        }
+        // if let Some(song) = AudioManager::get_song().await {
+        //     song.set_volume(settings.get_music_vol());
+        // }
 
         self.vol_selected_time = elapsed;
+
+        Some(SongMenuAction::SetVolume(settings.get_music_vol()))
     }
 
 
@@ -195,13 +197,12 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> bool {
+    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> Option<SongMenuAction> {
         if mods.alt {
-            self.change(delta / 10.0).await;
-            return true
+            self.change(delta / 10.0).await
+        } else {
+            None
         }
-
-        false
     }
 
     pub async fn on_key_press(&mut self, keys:&mut Vec<Key>, mods:KeyModifiers) -> bool {

@@ -50,7 +50,7 @@ impl Dialog for TestDialog {
     fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
     
-    async fn update(&mut self) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
         // self.manager.update().await;
 
         Vec::new()
@@ -223,7 +223,7 @@ impl Dialog for StupidDialog {
     async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
     }
 
-    // async fn update(&mut self) -> Vec<MenuAction> { self.actions.take() }
+    // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
 
     
     fn view(&self) -> IcedElement {
