@@ -12,7 +12,7 @@ build = "build/mod.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["gameplay", "custom_menu_debugging"]
+default = ["gameplay"]
 as_crate = ["no_media_control"]
 gameplay = ["bass_audio", "graphics"]
 bass_audio = ["bass-rs"]

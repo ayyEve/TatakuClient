@@ -104,10 +104,8 @@ impl LobbyMenu {
 
                 if let Some(beatmap) = &self.selected_beatmap {
                     self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
-                    // BEATMAP_MANAGER.write().await.set_current_beatmap(game, beatmap, true).await;
                 } else {
                     self.actions.push(BeatmapMenuAction::Remove);
-                    // BEATMAP_MANAGER.write().await.remove_current_beatmap(game).await;
                 }
 
                 let new_state = match self.selected_beatmap {
@@ -117,7 +115,6 @@ impl LobbyMenu {
                 tokio::spawn(OnlineManager::update_lobby_state(new_state));
             } else {
                 self.actions.push(BeatmapMenuAction::Remove);
-                // BEATMAP_MANAGER.write().await.remove_current_beatmap(game).await;
                 tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
             }
         }

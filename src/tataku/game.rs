@@ -17,8 +17,6 @@ pub struct Game {
     spectator_manager: Option<Box<SpectatorManager>>,
     multiplayer_manager: Option<Box<MultiplayerManager>>,
 
-    // pub dialogs: Vec<Box<dyn Dialog>>,
-
     // fps
     fps_display: FpsDisplay,
     update_display: FpsDisplay,

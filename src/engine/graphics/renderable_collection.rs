@@ -3,23 +3,17 @@ use crate::prelude::*;
 #[derive(Default)]
 pub struct RenderableCollection {
     pub list: Vec<Arc<dyn TatakuRenderable>>,
-    // pub do_before_add: Option<Box<dyn FnMut(&mut dyn TatakuRenderable) + Send + Sync>>,
-
     // scissors: ScissorManager
 }
 impl RenderableCollection {
     pub fn new() -> Self { Self::default() }
 
-    pub fn push<R:TatakuRenderable + 'static>(&mut self, mut r: R) {
-        // if let Some(do_before) = &mut self.do_before_add {
-        //     (do_before)(&mut r);
-        // }
-
+    pub fn push<R:TatakuRenderable + 'static>(&mut self, r: R) {
         // r.set_scissor(self.scissors.current_scissor());
         self.list.push(Arc::new(r));
     }
 
-    pub fn push_scissor(&mut self, scissor: [f32; 4]) {
+    pub fn push_scissor(&mut self, _scissor: [f32; 4]) {
         // self.scissors.push_scissor(scissor);
     }
     pub fn pop_scissor(&mut self) {

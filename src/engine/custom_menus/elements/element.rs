@@ -42,8 +42,13 @@ impl ElementDef {
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
                 => built.children.push(element.build().await),
 
-            ElementIdentifier::StyledContent { element, .. } 
-                => built.children.push(element.build().await),
+            ElementIdentifier::StyledContent { element, image, built_image, .. } 
+                => {
+                    if let Some(image) = image {
+                        *built_image = SkinManager::get_texture(image, true).await;
+                    }
+                    built.children.push(element.build().await)
+                },
             
             ElementIdentifier::Button { element, action, .. } 
                 => {
@@ -180,6 +185,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::StyledContent { 
                     element: Box::new(table.get("element")?),
                     padding: table.get("padding")?,
+                    image: table.get("image")?,
+                    built_image: None,
 
                     color: table.get("color")?,
                     border: table.get("border")?,

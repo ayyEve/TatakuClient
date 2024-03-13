@@ -44,7 +44,8 @@ pub enum ElementIdentifier {
 
         color: Option<Color>,
         border: Option<Border>,
-        // image: String,
+        image: Option<String>,
+        built_image: Option<Image>,
         shape: Option<Shape>,
     },
 

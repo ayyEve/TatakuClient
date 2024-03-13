@@ -82,12 +82,13 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
 
-            ElementIdentifier::StyledContent { padding, color, border, shape, .. } => {
+            ElementIdentifier::StyledContent { padding, color, border, shape, built_image, .. } => {
                 ContentBackground::new(self.first_child_view(owner, values))
                     .width(self.element.width)
                     .height(self.element.height)
                     .border(*border)
                     .color(*color)
+                    .image(built_image.clone())
                     .shape_maybe(*shape)
                     .padding_maybe(*padding)
                     .into_element()
