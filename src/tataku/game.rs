@@ -117,6 +117,7 @@ impl Game {
 
         let mut parser = CustomMenuParser::new();
         parser.load("../custom_menus/main_menu.lua").unwrap();
+        parser.load("../custom_menus/beatmap_select_menu.lua").unwrap();
         self.custom_menus = parser.get_menus();
 
         debug!("Done loading custom menus");
@@ -126,6 +127,9 @@ impl Game {
     /// doubles as a list of available values because i know i'm going to forget to put them in the doc at some point
     fn init_value_collection(&mut self) {
         let values = &mut self.shunting_yard_values;
+
+        // game values
+        values.set("game.time", 0.0);
 
         // song values
         values.set("song.exists", false);
@@ -147,14 +151,20 @@ impl Game {
         values.set("map.preview_time", 0.0);
 
         // score values
-        // TODO: actually set these
         values.set("score.score", 0.0);
         values.set("score.combo", 0.0);
         values.set("score.max_combo", 0.0);
+        values.set("score.accuracy", 0.0);
+        values.set("score.performance", 0.0);
+        values.set("score.placing", 0);
+        values.set("score.health", 0.0);
 
     }
 
     pub async fn init(&mut self) {
+
+        // init value collection
+        self.init_value_collection();
         
         // init audio
         AudioManager::init_audio().expect("error initializing audio");
@@ -358,6 +368,7 @@ impl Game {
 
     async fn update(&mut self) {
         let elapsed = self.game_start.as_millis();
+        self.shunting_yard_values.set("game.time", elapsed);
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -1031,6 +1042,13 @@ impl Game {
                     BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time).await;
                     // warn!("setting beatmap: {}", beatmap.version_string());
                 }
+                MenuAction::Beatmap(BeatmapMenuAction::SetFromHash(hash, use_preview_time)) => {
+                    let mut manager = BEATMAP_MANAGER.write().await;
+                    if let Some(beatmap) = manager.get_by_hash(&hash) {
+                        manager.set_current_beatmap(self, &beatmap, use_preview_time).await;
+                    }
+                }
+                
                 MenuAction::Beatmap(BeatmapMenuAction::Random(use_preview)) => {
                     let mut manager = BEATMAP_MANAGER.write().await;
                     let Some(random) = manager.random_beatmap() else { continue };
@@ -1095,7 +1113,9 @@ impl Game {
                         Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
                     }
                 }
-
+                MenuAction::Game(GameMenuAction::SetValue(key, value)) => {
+                    self.shunting_yard_values.set(key, value);
+                }
 
                 // song actions
                 MenuAction::Song(song_action) => {
@@ -1228,7 +1248,7 @@ impl Game {
         self.background_image = None;
     }
 
-    fn resize_bg(&mut self) {
+    fn resize_bg(&mut self) {   
         let Some(bg) = &mut self.background_image else { return };
         bg.fit_to_bg_size(self.window_size.0, false);
     }

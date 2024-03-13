@@ -3,6 +3,7 @@ use super::prelude::*;
 /// color reader
 impl<'lua> FromLua<'lua> for Color {
     fn from_lua(lua_value: Value<'lua>, _lua: LuaContext<'lua>) -> LuaResult<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading Color");
         match lua_value {
             Value::String(s) => Color::try_from_hex(s.to_str()?).ok_or_else(||FromLuaConversionError { from: "String", to: "Color", message: Some("Not a table".to_owned()) }),
             Value::Table(table) => {

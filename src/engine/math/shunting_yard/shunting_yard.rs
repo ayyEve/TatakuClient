@@ -73,22 +73,36 @@ impl ShuntingYard {
         Ok(output_queue)
     }
 
-    pub fn evaluate_rpn(rpn: &[ShuntingYardToken], values: &ShuntingYardValues) -> ShuntingYardResult<f32> {
+    pub fn evaluate_rpn(rpn: &[ShuntingYardToken], values: &ShuntingYardValues) -> ShuntingYardResult<SYStackValue> {
         let mut stack = Vec::new();
 
         for token in rpn {
             match token {
-                ShuntingYardToken::Number(num) => stack.push(*num),
-                ShuntingYardToken::Variable(var) => stack.push(values.get_f32(&var)?),
+                ShuntingYardToken::Number(num) => stack.push(SYStackValue::Number(*num)),
+
+                ShuntingYardToken::Variable(var) => stack.push(
+                    // try getting a number first
+                    if let Ok(num) = values.get_f32(&var) {
+                        SYStackValue::Number(num)
+                    } else { 
+                        // otherwise try a bool or string
+                        match values.get_raw(&var) {
+                            Ok(CustomElementValue::Bool(b)) => SYStackValue::Bool(*b),
+                            Ok(CustomElementValue::String(s)) => SYStackValue::String(s.clone()),
+                            _ => return Err(ShuntingYardError::InvalidOperator('\n'))
+                        }
+                    }
+                ),
 
                 ShuntingYardToken::Function(func) => {
                     let n = stack.pop().ok_or(ShuntingYardError::MissingFunctionArgument(func.clone()))?;
-
+                    let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
+                    
                     match &**func {
-                        "abs" => stack.push(n.abs()),
-                        "sin" => stack.push(n.sin()),
-                        "cos" => stack.push(n.cos()),
-                        "tan" => stack.push(n.tan()),
+                        "abs" => stack.push(SYStackValue::Number(n.abs())),
+                        "sin" => stack.push(SYStackValue::Number(n.sin())),
+                        "cos" => stack.push(SYStackValue::Number(n.cos())),
+                        "tan" => stack.push(SYStackValue::Number(n.tan())),
 
                         other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
                     }
@@ -98,7 +112,7 @@ impl ShuntingYard {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
                     // "Not" is a special case, we only care about the right side
                     if let SYOperator::Not = op {
-                        stack.push(op.perform(right, 0.0));
+                        stack.push(op.perform(right, SYStackValue::Number(0.0)));
                         continue;
                     }
 
@@ -217,7 +231,7 @@ impl SYOperator {
         }
     }
 
-    fn perform(&self, right: f32, left: f32) -> f32 {
+    fn perform(&self, right: SYStackValue, left: SYStackValue) -> SYStackValue {
         match self {
             // math
             Self::Add => left + right,
@@ -227,17 +241,17 @@ impl SYOperator {
             Self::Pow => left.powf(right),
 
             // math -> bool
-            Self::Eq => if left == right { 1.0 } else { 0.0 },
-            Self::NotEq => if left != right { 1.0 } else { 0.0 },
-            Self::Less => if left < right { 1.0 } else { 0.0 },
-            Self::LessEq => if left <= right { 1.0 } else { 0.0 },
-            Self::Greater => if left > right { 1.0 } else { 0.0 },
-            Self::GreaterEq => if left >= right { 1.0 } else { 0.0 },
+            Self::Eq => SYStackValue::Bool(left == right), // if left == right { 1.0 } else { 0.0 },
+            Self::NotEq => SYStackValue::Bool(left != right), // if left != right { 1.0 } else { 0.0 },
+            Self::Less => SYStackValue::Bool(left < right), // if left < right { 1.0 } else { 0.0 },
+            Self::LessEq => SYStackValue::Bool(left <= right), // if left <= right { 1.0 } else { 0.0 },
+            Self::Greater => SYStackValue::Bool(left > right), // if left > right { 1.0 } else { 0.0 },
+            Self::GreaterEq => SYStackValue::Bool(left >= right), // if left >= right { 1.0 } else { 0.0 },
 
             // bool
-            Self::And => if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
-            Self::Or => if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
-            Self::Not => if right > 0.0 { 0.0 } else { 1.0 },
+            Self::And => SYStackValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
+            Self::Or => SYStackValue::Bool(left.as_bool() || right.as_bool()), //if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
+            Self::Not => SYStackValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
         }
     }
 
@@ -267,6 +281,99 @@ impl SYOperator {
 }
 
 
+
+use std::ops::{
+    Add,
+    Sub,
+    Mul,
+    Div,
+};
+
+#[derive(Clone, Debug)]
+pub enum SYStackValue {
+    String(String),
+    Number(f32),
+    Bool(bool),
+}
+impl SYStackValue {
+    fn powf(&self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs.powf(rhs)),
+            _ => panic!("nope")
+        }
+    }
+
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Self::String(s) => !s.is_empty(),
+            Self::Number(n) => *n > 0.0,
+            Self::Bool(b) => *b
+        }
+    }
+}
+
+impl Add for SYStackValue {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs+rhs),
+            (Self::String(lhs), Self::String(rhs)) => Self::String(lhs+&rhs),
+            _ => panic!("nope")
+        }
+    }
+}
+impl Sub for SYStackValue {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs-rhs),
+            _ => panic!("nope")
+        }
+    }
+}
+impl Mul for SYStackValue {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs*rhs),
+            _ => panic!("nope")
+        }
+    }
+}
+impl Div for SYStackValue {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs/rhs),
+            _ => panic!("nope")
+        }
+    }
+}
+
+impl PartialEq for SYStackValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Number(lhs), Self::Number(rhs)) => lhs == rhs,
+            (Self::String(lhs), Self::String(rhs)) => lhs == rhs,
+            
+            _ => self.as_bool() == other.as_bool()
+        }
+    }
+}
+impl std::cmp::PartialOrd for SYStackValue {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (Self::Number(lhs), Self::Number(rhs)) => lhs.partial_cmp(rhs),
+            _ => panic!("nope")
+        }
+    }
+}
+
+
+
+
+
+
 #[allow(unused)]
 mod shunting_yard_tests {
     use crate::prelude::*;
@@ -288,8 +395,9 @@ mod shunting_yard_tests {
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-        println!("Result: {}", result);
-        assert_eq!(result, test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
+        println!("Result: {:?}", result);
+        let ok = SYStackValue::Number(test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
+        assert_eq!(result, ok);
     }
     
 
@@ -310,7 +418,7 @@ mod shunting_yard_tests {
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-        println!("Result: {}", result);
-        assert_eq!(result, 1.0);
+        println!("Result: {:?}", result);
+        assert_eq!(result, SYStackValue::Bool(true));
     }
 }

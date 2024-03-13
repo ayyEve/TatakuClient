@@ -10,6 +10,10 @@ function color(r,g,b,a)
 end
 
 WHITE = color(1.0, 1.0, 1.0, 1.0);
+TEAL = color(0.0, 0.5, 0.5, 1.0);
+RED = color(1.0, 0.0, 0.0, 1.0);
+GREEN = color(0.0, 1.0, 0.0, 1.0);
+BLUE = color(0.0, 0.0, 1.0, 1.0);
 
 
 
@@ -58,6 +62,11 @@ function text(txt, font_size, color, font)
         font = font
     }
 end
+function text_list(list)
+    return {
+        list = list
+    }
+end
 
 -- helper for making a button
 function button(ele, action, width, height, padding)
@@ -84,6 +93,15 @@ function cond(cond, if_true, if_false)
         cond = cond,
         if_true = if_true,
         if_false = if_false
+    }
+end
+
+function map_action(action)
+    return {
+        id = "action",
+        action = {
+            map = action
+        }
     }
 end
 
@@ -117,9 +135,9 @@ song_display = {
 }
 
 -- premade button actions
-start_singleplayer = { menu = "beatmap_select_menu", context = { "main_menu", "singleplayer" } }
-start_multiplayer = { menu = "lobby_select_menu", context = { "main_menu" } }
-exit_game = { menu = "none", context = { "main_menu", "quit_game" } }
+start_singleplayer = { id = "action", action = { menu = "beatmap_select_menu" } }
+start_multiplayer = { id = "action", action = { menu = "lobby_select_menu" } }
+exit_game = { id = "action", action = { menu = "none" } }
 
 
 -- menu stuff

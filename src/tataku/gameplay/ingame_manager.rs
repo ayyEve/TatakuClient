@@ -679,6 +679,17 @@ impl IngameManager {
         anim.update(time, self).await;
         self.animation = anim;
 
+        // update value collection
+        {
+            values.set("score.score", self.score.score.score);
+            values.set("score.combo", self.score.score.combo as u32);
+            values.set("score.max_combo", self.score.score.max_combo as u32);
+            values.set("score.accuracy", self.score.score.accuracy as f32);
+            values.set("score.performance", self.score.performance);
+            // values.set("score.placing", self.score.pla);
+            values.set("score.health", self.health.get_ratio());
+        }
+
         self.actions.take()
     }
 

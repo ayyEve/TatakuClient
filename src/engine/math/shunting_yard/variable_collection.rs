@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ShuntingYardValues(HashMap<String, CustomElementValue>);
 impl ShuntingYardValues {
     // initialize with some basic values
@@ -32,24 +32,68 @@ impl ShuntingYardValues {
         }
     }
 
+    pub fn remove(&mut self, key: &str) {
+        self.0.remove(key);
+    }
+
+    pub fn exists(&self, key: &str) -> bool {
+        self.0.contains_key(key)
+    }
+
+    pub fn get_raw(&self, key: &str) -> Result<&CustomElementValue, ShuntingYardError> {
+        // TODO: handle hashmap entries
+        if let Some(v) = self.0.get(key) {
+            return Ok(v)
+        }
+
+        //TODO: optimize this, this is quite bad
+        let mut remaining = key.split(".").collect::<Vec<_>>();
+        // let mut entries = Vec::new();
+
+        if remaining.len() > 1 {
+            let k2 = remaining.pop().unwrap();
+            let key = remaining.join(".");
+
+            if let Some(CustomElementValue::Map(m)) = self.0.get(&key) {
+                if let Some(v) = m.get(k2) {
+                    return Ok(v);
+                }
+            }
+        }
+
+        // while remaining.len() > 0 {
+        //     entries.push(remaining.pop().unwrap());
+        //     let key = remaining.join(".");
+        //     info!("checking key: {key}");
+        //     if let Some(CustomElementValue::Map(m)) = self.0.get(&key) {
+        //         let key2 = entries.join(".");
+        //         info!("checking key2: {}");
+        //         if let Some(v) = m.get(&key) {
+        //             return Ok(v)
+        //         }
+        //     }
+        // }
+
+        Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
+    }
     pub fn get_f32(&self, key: &str) -> Result<f32, ShuntingYardError> {
-        match self.0.get(key) {
-            Some(CustomElementValue::String(_)) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
-            Some(other) => other.as_f32(),
-            None => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
+        match self.get_raw(key) {
+            Ok(CustomElementValue::String(_)) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
+            Ok(other) => other.as_f32(),
+            Err(_) => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
     }
     pub fn get_string(&self, key: &str) -> Result<String, ShuntingYardError> {
-        self.0
-            .get(key)
+        self
+            .get_raw(key)
             .map(|i| i.as_string())
-            .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
+            // .ok_or_else(|| ShuntingYardError::EntryDoesntExist(key.to_owned()))
     }
 
     pub fn get_bool<'a>(&self, key: &str) -> Result<bool, ShuntingYardError> {
-        match self.0.get(key) {
-            Some(CustomElementValue::Bool(b)) => Ok(*b),
-            Some(_) => Err(ShuntingYardError::ValueIsntABool),
+        match self.get_raw(key) {
+            Ok(CustomElementValue::Bool(b)) => Ok(*b),
+            Ok(_) => Err(ShuntingYardError::ValueIsntABool),
             _ => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
     }

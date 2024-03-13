@@ -6,12 +6,13 @@ use rlua::{Value, Error, FromLua};
 #[derive(Clone, Debug)]
 pub struct ElementDef {
     pub id: ElementIdentifier,
+    pub debug_color: Option<Color>,
     pub width: Length,
     pub height: Length,
 }
 impl ElementDef {
     #[async_recursion::async_recursion]
-    pub async fn build(&self) -> BuiltElementDef {
+    pub async fn build(&self) -> Box<BuiltElementDef> {
         let mut built = BuiltElementDef {
             element: self.clone(),
             children: Vec::new(),
@@ -35,17 +36,20 @@ impl ElementDef {
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
                 => for i in elements.iter_mut() {
-                    built.children.push(Box::new(i.build().await))
+                    built.children.push(i.build().await)
                 }
 
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
-                => built.children.push(Box::new(element.build().await)),
+                => built.children.push(element.build().await),
 
             ElementIdentifier::StyledContent { element, .. } 
-                => built.children.push(Box::new(element.build().await)),
+                => built.children.push(element.build().await),
             
-            ElementIdentifier::Button { element, .. } 
-                => built.children.push(Box::new(element.build().await)),
+            ElementIdentifier::Button { element, action, .. } 
+                => {
+                    action.build();
+                    built.children.push(element.build().await)
+                },
 
             ElementIdentifier::Text { text, .. } => {
                 if let Err(e) = text.parse() {
@@ -54,35 +58,43 @@ impl ElementDef {
             }
 
             ElementIdentifier::Conditional { cond, if_true, if_false } => {
-                let ElementCondition::Unbuilt(s) = cond else { unreachable!() };
-                match CustomElementCalc::parse(format!("{s} == true")) {
-                    Ok(built) => *cond = ElementCondition::Built(Arc::new(built), s.clone()),
-                    Err(e) => {
-                        error!("Error building conditional: {e:?}");
-                        *cond = ElementCondition::Failed;
-                    }
-                }
+                cond.build();
 
-                built.children.push(Box::new(if_true.build().await));
+                built.children.push(if_true.build().await);
                 if let Some(if_false) = if_false {
-                    built.children.push(Box::new(if_false.build().await));
+                    built.children.push(if_false.build().await);
                 }
+            }
+
+            ElementIdentifier::List { element, .. } => {
+                built.children.push(element.build().await);
             }
 
             _ => {},
         }
 
-        built
+        Box::new(built)
     }
 }
 
 impl<'lua> FromLua<'lua> for ElementDef {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading ElementDef");
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: lua_value.type_name(), to: "ElementIdentifier", message: Some("Not a table".to_owned()) }) };
-    
+        
+        
+        #[cfg(feature="custom_menu_debugging")] {
+            if let Some(debug_name) = table.get::<_, Option<String>>("debug_name")? {
+                info!("name: {debug_name}");
+            }
+        }
+
+
         let id:String = table.get("id")?;
+        #[cfg(feature="custom_menu_debugging")] info!("Got id: {id:?}");
         let width = CustomMenuParser::parse_length(table.get("width")?);
         let height = CustomMenuParser::parse_length(table.get("height")?);
+        let debug_color = table.get("debug_color")?;
 
         match &*id {
             "row" => Ok(Self {
@@ -93,6 +105,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
             
             "col" | "column" => Ok(Self {
@@ -103,12 +116,14 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
             
             "space" => Ok(Self {
                 id: ElementIdentifier::Space,
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
 
             "text" => Ok(Self {
@@ -120,6 +135,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }), 
 
             "button" => Ok(Self {
@@ -130,6 +146,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
 
             "animatable" => Ok(Self {
@@ -141,12 +158,14 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
 
             "gameplay_preview" => Ok(Self {
                 id: ElementIdentifier::GameplayPreview { visualization: table.get("visualization")? },
                 width: width.unwrap_or(Length::Fill),
                 height: height.unwrap_or(Length::Fill),
+                debug_color,
             }),
             
 
@@ -154,6 +173,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::Space, // { display: CurrentSongDisplay::new() },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
 
             "styled_content" => Ok(Self {
@@ -167,6 +187,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
 
             "conditional" => Ok(Self {
@@ -177,16 +198,32 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 },
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
+                debug_color,
             }),
+
+            "list" => {
+                Ok(Self {
+                    id: ElementIdentifier::List { 
+                        list_var: table.get("list")?,
+                        scrollable: table.get::<_, Option<bool>>("scroll")?.unwrap_or_default(),
+                        element: Box::new(table.get("element")?),
+                        variable: parse_from_multiple(&table, &["var", "variable"])?,
+                    },
+                    width: width.unwrap_or(Length::Fill),
+                    height: height.unwrap_or(Length::Shrink),
+                    debug_color,
+                })
+            }
 
             "key_handler" => {
                 let table = table.get::<_, rlua::Table>("events")?;
                 Ok(Self {
                     id: ElementIdentifier::KeyHandler { 
-                        events: (0..30).into_iter().filter_map(|i|table.get(i).ok()).collect()
+                        events: (0..30).into_iter().filter_map(|i| table.get(i).ok()).collect()
                     },
                     width: Length::Fixed(0.0),
-                    height: Length::Fixed(0.0)
+                    height: Length::Fixed(0.0),
+                    debug_color,
                 })
             }
             
@@ -222,6 +259,7 @@ impl Into<iced::Padding> for ElementPadding {
 }
 impl<'lua> FromLua<'lua> for ElementPadding {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading ElementPadding");
         match lua_value {
             Value::Integer(i) => Ok(Self::Single(i as f32)),
             Value::Number(n) => Ok(Self::Single(n as f32)),
@@ -246,8 +284,9 @@ impl<'lua> FromLua<'lua> for ElementPadding {
 
 
 
-fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: &rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
+pub(super) fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: &rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
     for i in list.iter() {
+        #[cfg(feature="custom_menu_debugging")] info!("Trying to read value {i}");
         let Some(t) = table.get(*i)? else { continue };
         return Ok(Some(t))
     }

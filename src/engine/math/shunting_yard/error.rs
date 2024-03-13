@@ -14,6 +14,5 @@ pub enum ShuntingYardError {
     MissingLeftSide(SYOperator),
     MissingRightSide(SYOperator),
     MissingFunctionArgument(String),
-    /// This should never happpen, but its here to avoid unwraps
     NumberIsntANumber(String),
 }

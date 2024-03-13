@@ -33,7 +33,7 @@ impl Widgetable for BuiltElementDef {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
             ElementIdentifier::Button { padding,  action, ..} => {
                 Button::new(self.first_child_view(owner, values))
-                    .on_press_maybe(action.into_message(owner))
+                    .on_press_maybe(action.resolve(owner, values))
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -93,28 +93,56 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
 
+            ElementIdentifier::Conditional { cond, .. } => {
+                match cond.resolve(values) {
+                    ElementResolve::Failed | ElementResolve::Error(_) => EmptyElement.into_element(),
+                    ElementResolve::Unbuilt(_) => panic!("conditional element not built!"),
+                    ElementResolve::True => self.nth_child_view(0, owner, values),
+                    ElementResolve::False => self.nth_child_view(1, owner, values),
+                }
+            }
+
+            ElementIdentifier::List { list_var, scrollable, variable, .. } => {
+                let Ok(CustomElementValue::List(list)) = values.get_raw(list_var).cloned() else { return EmptyElement.into_element() };
+                
+                let var = if let Some(var) = variable {
+                    var.clone()
+                } else {
+                    let mut i = 0;
+                    loop {
+                        let v = format!("i{i}");
+                        if !values.exists(&v) { break v }
+                        i += 1;
+                    }
+                };
+                // info!("using variable: {var}");
+
+                let ele = self.children.first().unwrap();
+                let mut children = Vec::new();
+
+                for value in list {
+                    values.set(var.clone(), value);
+                    children.push(ele.view(owner, values));
+                }
+                values.remove(&var);
+
+                if *scrollable {
+                    make_scrollable(children, "a")
+                        .width(self.element.width)
+                        .height(self.element.height)
+                        .into_element()
+                } else {
+                    Column::with_children(children)
+                        .width(self.element.width)
+                        .height(self.element.height)
+                        .into_element()
+                }
+            }
+
             ElementIdentifier::KeyHandler { events } => {
                 KeyEventsHandler::new(events, owner)
                     .into_element()
             }
-
-            ElementIdentifier::Conditional { cond, .. } => {
-                if let ElementCondition::Failed = cond { return EmptyElement.into_element() };
-                let ElementCondition::Built(calc, calc_str) = cond else { panic!("conditional element not built!") };
-
-                match calc.resolve(values).map(|n| n > 0.0) {
-                    // if_true is first child
-                    Ok(true) => self.nth_child_view(0, owner, values),
-                    // if false is second child
-                    Ok(false) => self.nth_child_view(1, owner, values),
-
-                    Err(e) => {
-                        error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
-                        EmptyElement.into_element()
-                    }
-                }
-            }
-
 
             ElementIdentifier::Custom {} => {
                 todo!()
@@ -125,6 +153,8 @@ impl Widgetable for BuiltElementDef {
                 // panic!("you missed something")
             }
         }
+        // debug color
+        .chain_maybe(self.element.debug_color, |e, color| e.explain(color).into_element())
     }
 }
 
@@ -132,7 +162,9 @@ impl Widgetable for BuiltElementDef {
 #[async_trait]
 pub trait Widgetable: Send + Sync {
     async fn update(&mut self, _values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {}
-    fn view(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement;
+    fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement { EmptyElement.into_element() }
+
+    async fn handle_message(&mut self, _message: &Message, _values: &mut ShuntingYardValues) -> ActionQueue { ActionQueue::new() }
 }
 
 

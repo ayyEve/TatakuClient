@@ -11,6 +11,9 @@ pub enum CustomElementValue {
 
     Bool(bool),
     String(String),
+
+    List(Vec<CustomElementValue>),
+    Map(HashMap<String, CustomElementValue>),
 }
 impl CustomElementValue {
     pub fn as_f32(&self) -> Result<f32, ShuntingYardError> {
@@ -22,7 +25,9 @@ impl CustomElementValue {
             Self::F32(f) => Ok(*f),
             Self::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
 
-            Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone()))
+            Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone())),
+            Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
+            Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
         } 
     }
 
@@ -34,7 +39,9 @@ impl CustomElementValue {
             Self::U64(i) => format!("{i}"),
             Self::F32(f) => format!("{f:.2}"),
             Self::Bool(b) => format!("{b}"),
-            Self::String(s) => s.clone()
+            Self::String(s) => s.clone(),
+            Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
+            Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
         } 
     }
 }
@@ -48,6 +55,9 @@ impl strfmt::DisplayStr for CustomElementValue {
             Self::F32(n) => n.display_str(f),
             Self::String(s) => s.display_str(f),
             Self::Bool(b) => f.str(if *b {"true"} else {"false"}),
+            _ => f.str(&self.as_string()),
+            // Self::List(list) => f.str(&list.iter().map(|a|a.as_string()).collect::<Vec<_>>().join(" ")),
+            // Self::Map(a) => f.str(&a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" ")),
         }
     }
 }
@@ -71,3 +81,27 @@ impl_from!(u64, U64);
 impl_from!(f32, F32);
 impl_from!(bool, Bool);
 impl_from!(String, String);
+
+impl<T:Into<CustomElementValue>> From<Vec<T>> for CustomElementValue {
+    fn from(value: Vec<T>) -> Self {
+        Self::List(value.into_iter().map(|t|t.into()).collect())
+    }
+}
+
+impl<T:Into<CustomElementValue>> From<HashMap<String, T>> for CustomElementValue {
+    fn from(value: HashMap<String, T>) -> Self {
+        Self::Map(value.into_iter().map(|(k,v)| (k, v.into())).collect())
+        // Self::List(value.into_iter().map(|t|t.into()).collect())
+    }
+}
+
+#[derive(Default)]
+pub struct CustomElementMapHelper(HashMap<String, CustomElementValue>);
+impl CustomElementMapHelper {
+    pub fn set(&mut self, key: impl ToString, val: impl Into<CustomElementValue>) {
+        self.0.insert(key.to_string(), val.into());
+    }
+    pub fn finish(self) -> CustomElementValue {
+        CustomElementValue::Map(self.0)
+    }
+}

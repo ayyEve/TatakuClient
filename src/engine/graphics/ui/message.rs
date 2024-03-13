@@ -116,6 +116,24 @@ macro_rules! message_type {
             let Self::$t(v) = self else { return None };
             Some(v)
         }
+    };
+    
+    ($a1:ident, $a2:ident, $t:ident, $t2:ty, $t3: ident) => {
+        pub fn $a1(self) -> Option<$t2> {
+            let Self::$t(v) = self else { 
+                let Self::Value(CustomElementValue::$t3(v)) = self else { return None };
+                return Some(v);
+            };
+            Some(v)
+        }
+
+        pub fn $a2(&self) -> Option<&$t2> {
+            let Self::$t(v) = self else { 
+                let Self::Value(CustomElementValue::$t3(v)) = self else { return None };
+                return Some(v);
+            };
+            Some(v)
+        }
     }
 }
 
@@ -128,18 +146,21 @@ pub enum MessageType {
     Float(f32),
     Toggle(bool),
     Dropdown(String),
+    
+    Value(CustomElementValue),
 
     Custom(Arc<dyn std::any::Any + Send + Sync>),
     CustomMenuAction(CustomMenuAction),
 }
 #[allow(unused)]
 impl MessageType {
-    message_type!(as_text, as_text_ref, Text, String);
+    message_type!(as_text, as_text_ref, Text, String, String);
     message_type!(as_key, as_key_ref, Key, Key);
     message_type!(as_number, as_number_ref, Number, usize);
-    message_type!(as_float, as_float_ref, Float, f32);
-    message_type!(as_toggle, as_toggle_ref, Toggle, bool);
-    message_type!(as_dropdown, as_dropdown_ref, Dropdown, String);
+    message_type!(as_float, as_float_ref, Float, f32, F32);
+    message_type!(as_toggle, as_toggle_ref, Toggle, bool, Bool);
+    message_type!(as_dropdown, as_dropdown_ref, Dropdown, String, String);
+    message_type!(as_value, as_value_ref, Value, CustomElementValue);
 
     pub fn downcast<T:Send+Sync+'static>(self) -> Arc<T> {
         let Self::Custom(t) = self else { panic!("nope") };
@@ -150,6 +171,7 @@ impl MessageType {
         t.downcast().ok()
     }
 }
+
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

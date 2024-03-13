@@ -79,6 +79,9 @@ pub enum GameMenuAction {
 
     /// Watch a replay
     WatchReplay(Box<Replay>),
+
+    /// update a value 
+    SetValue(String, CustomElementValue)
 }
 
 
@@ -97,6 +100,11 @@ pub enum BeatmapMenuAction {
     /// 
     /// map, use audio preview time
     Set(Arc<BeatmapMeta>, bool),
+
+    /// Set the current beatmap
+    /// 
+    /// map hash, use audio preview time
+    SetFromHash(Md5Hash, bool),
 
     /// Remove the current beatmap
     Remove,

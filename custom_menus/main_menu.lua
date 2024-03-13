@@ -2,6 +2,7 @@
 function fa_button(char, action) 
     return {
         id = "styled_content",
+        debug_name = "fa_button",
         color = color(1.0, 1.0, 1.0, 0.1),
         shape = { round = 5.0 },
         width = "shrink",
@@ -14,7 +15,10 @@ function fa_button(char, action)
                 WHITE, -- color
                 "font_awesome" -- font
             ), -- text
-            action, -- action
+            { 
+                id = "action",
+                action = action,
+            }, -- action
             "shrink", -- width
             "shrink", -- height
             15.0 -- padding
@@ -22,11 +26,11 @@ function fa_button(char, action)
     }
 end
 
-song_controls = row({ width = "shrink", height = "shrink" }, {
+song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_controls"}, {
     -- the actual controls
-    col({ width = "fill", height = "fill", spacing = 2.0 }, {
+    col({ width = "fill", height = "fill", spacing = 2.0, debug_name = "song_controls_col" }, {
         -- buttons
-        row({ width = "fill", height = "fill_portion(10)", spacing = 5.0 }, {
+        row({ width = "fill", height = "fill_portion(10)", spacing = 5.0, debug_name = "song_controls_row" }, {
             fa_button(0xF04A, { map = "previous" }), -- previous song
             fa_button(0xF048, { song = { seek = -500.0 } }), -- seek backwards
             space("fill", "shrink"),
@@ -54,14 +58,14 @@ menu = {
     id = "main_menu",
 
     -- the current main menu is broken up into rows
-    element = col({ width = "fill", height = "fill" }, {
+    element = col({ width = "fill", height = "fill", debug_name = "main_menu" }, {
         -- the first row contains the song display
-        row({ width = "fill", height = "fill" }, { 
+        row({ width = "fill", height = "fill", debug_name = "main_menu_row1" }, { 
             song_display 
         }),
 
         -- the next row is the preview and menu buttons
-        row({ width = "fill", height = "fill_portion(10)" }, {
+        row({ width = "fill", height = "fill_portion(10)", debug_name = "main_menu_row2" }, {
             -- preview
             {
                 id = "gameplay_preview",
@@ -73,6 +77,7 @@ menu = {
             -- buttons, but inside an animatable element (to hide/unhide)
             {
                 id = "animatable", -- not implemented yet because animating iced elements is pain
+                debug_name = "animatable",
                 width = "shrink", 
                 height = "shrink",
 
@@ -96,10 +101,10 @@ menu = {
                         { action = "opacity", start = "current", stop = 1.0, duration = 1000.0 }
                     }
                 },
-                element = col({ width = "fill", height = "fill", margin = 5.0 }, {
+                element = col({ width = "fill", height = "fill", margin = 5.0, debug_name = "main_menu_buttons_list" }, {
                     --[[ Singleplayer ]] button(text("Play"), start_singleplayer), 
                     --[[ Multiplayer ]] button(text("Multiplayer"), start_multiplayer),
-                    --[[ Settings ]] button(text("Settings"), { dialog = "settings" } ),
+                    --[[ Settings ]] button(text("Settings"), { id = "action", action = { dialog = "settings" } } ),
                     --[[ Quit ]] button(text("Quit"), exit_game),
                 })
             }
@@ -116,13 +121,13 @@ menu = {
             -- previous map
             {
                 key = "Left",
-                action = { map = "previous" },
+                action = { id = "action", action = { map = "previous" } },
             },
 
             -- next map
             {
                 key = "Right",
-                action = { map = "next" },
+                action = { id = "action", action = { map = "next" } },
                 mods = { "ctrl" }
             }
         })

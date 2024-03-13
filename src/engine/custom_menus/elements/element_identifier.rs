@@ -47,6 +47,8 @@ pub enum ElementIdentifier {
         // image: String,
         shape: Option<Shape>,
     },
+
+    //TODO: move this to a component
     KeyHandler {
         events: Vec<KeyHandlerEvent>,
     },
@@ -55,6 +57,13 @@ pub enum ElementIdentifier {
         cond: ElementCondition,
         if_true: Box<ElementDef>,
         if_false: Option<Box<ElementDef>>,
+    },
+
+    List {
+        list_var: String,
+        scrollable: bool,
+        element: Box<ElementDef>,
+        variable: Option<String>,
     },
 
     // TODO: !!!
@@ -70,6 +79,42 @@ pub enum ElementCondition {
     Built(Arc<CustomElementCalc>, String),
     Failed,
 }
+impl ElementCondition {
+    pub fn build(&mut self) {
+        let ElementCondition::Unbuilt(s) = self else { unreachable!() };
+        match CustomElementCalc::parse(format!("{s} == true")) {
+            Ok(built) => *self = ElementCondition::Built(Arc::new(built), s.clone()),
+            Err(e) => {
+                error!("Error building conditional: {e:?}");
+                *self = ElementCondition::Failed;
+            }
+        }
+    }
+
+    pub fn resolve<'a>(&'a self, values: &ShuntingYardValues) -> ElementResolve<'a> {
+        match self {
+            Self::Failed => ElementResolve::Failed,
+            Self::Unbuilt(calc_str) => ElementResolve::Unbuilt(calc_str),
+            Self::Built(calc, calc_str) => {
+                match calc.resolve(values).map(|n| n.as_bool()) {
+                    Ok(true) => ElementResolve::True,
+                    Ok(false) => ElementResolve::False,
+                    Err(e) => {
+                        error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
+                        ElementResolve::Error(e)
+                    }
+                }
+            }
+        }
+    }
+}
+pub enum ElementResolve<'a> {
+    Failed,
+    Unbuilt(&'a String),
+    True,
+    False,
+    Error(ShuntingYardError)
+}
 
 
 #[derive(Clone, Debug)]
@@ -81,6 +126,7 @@ pub struct KeyHandlerEvent {
 use rlua::{Value, Error, FromLua, Table};
 impl<'lua> FromLua<'lua> for KeyHandlerEvent {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading KeyhandlerEvent");
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: "not table", to: "KeyHandlerEvent", message: Some("not a table".to_owned()) }) }; 
         
         let key = table.get("key")?;

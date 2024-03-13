@@ -33,9 +33,3 @@ impl From<EmptyElement> for IcedElement {
         Self::new(value)
     }
 }
-
-// impl From<Option<IcedElement>> for IcedElement {
-//     fn from(value: Option<IcedElement>) -> Self {
-//         Self::new(value.unwrap_or_else(||EmptyElement))
-//     }
-// }

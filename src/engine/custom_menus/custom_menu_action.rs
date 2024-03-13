@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rlua::{ Value, FromLua, Error::FromLuaConversionError };
+use rlua::{ Value, FromLua, Error::FromLuaConversionError, Table };
 
 #[derive(Clone, Debug)]
 pub enum CustomMenuAction {
@@ -17,21 +17,30 @@ pub enum CustomMenuAction {
 
     /// Perform a song action
     Song(CustomMenuSongAction),
+
+    /// run a custom action
+    CustomEvent(String, String),
+
+    /// set a value
+    SetValue(String, CustomElementValue)
 }
-impl Into<MenuAction> for CustomMenuAction {
-    fn into(self) -> MenuAction {
+impl CustomMenuAction {
+    pub fn into_action(self, values: &mut ShuntingYardValues) -> MenuAction {
         match self {
             Self::None => MenuAction::None,
             Self::AddDialog(dialog) => MenuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, true)),
             Self::SetMenu(menu) => MenuAction::Menu(MenuMenuAction::SetMenuCustom(menu)),
 
-            Self::Map(action) => MenuAction::Beatmap(action.into()),
-            Self::Song(action) => MenuAction::Song(action.into()),
+            Self::Map(action) => MenuAction::Beatmap(action.into_action(values)),
+            Self::Song(action) => MenuAction::Song(action.into_action(values)),
+            Self::CustomEvent(_, _) => unimplemented!(),
+            Self::SetValue(key, val) => MenuAction::Game(GameMenuAction::SetValue(key, val)),
         }
     }
 }
 impl<'lua> FromLua<'lua> for CustomMenuAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "CustomMenuAction", message: Some("Not a table".to_owned()) }) };
     
         // menu actions
@@ -50,6 +59,15 @@ impl<'lua> FromLua<'lua> for CustomMenuAction {
         else if let Some(song_action) = table.get::<_, Option<CustomMenuSongAction>>("song")? {
             Ok(Self::Song(song_action))
         }
+        // // custom
+        // else if let Some(custom_action) = table.get::<_, Option<Table>>("custom")? {
+            
+        //     Ok(Self::CustomEvent(
+        //         custom_action.get("tag"),
+
+        //     ))
+        // }
+
         // nope
         else {
             Err(FromLuaConversionError { 
@@ -79,8 +97,8 @@ pub enum CustomMenuMapAction {
     /// Change to a random map
     Random(bool),
 }
-impl Into<BeatmapMenuAction> for CustomMenuMapAction {
-    fn into(self) -> BeatmapMenuAction {
+impl CustomMenuMapAction {
+    pub fn into_action(self, _values: &mut ShuntingYardValues) -> BeatmapMenuAction {
         match self {
             Self::Play => BeatmapMenuAction::PlaySelected,
             Self::Next => BeatmapMenuAction::Next,
@@ -91,8 +109,10 @@ impl Into<BeatmapMenuAction> for CustomMenuMapAction {
 }
 impl<'lua> FromLua<'lua> for CustomMenuMapAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuMapAction");
         match lua_value {
             Value::Table(table) => {
+                #[cfg(feature="custom_menu_debugging")] info!("Is table");
                 let id:String = table.get("id")?;
                 match &*id {
                     "play" => Ok(Self::Play),
@@ -117,6 +137,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                 }
             }
             Value::String(action_str) => {
+                #[cfg(feature="custom_menu_debugging")] info!("Is string");
                 match action_str.to_str()? {
                     "play" => Ok(Self::Play),
                     "next" => Ok(Self::Next),
@@ -156,8 +177,8 @@ pub enum CustomMenuSongAction {
     /// Set the song's position
     SetPosition(f32),
 }
-impl Into<SongMenuAction> for CustomMenuSongAction {
-    fn into(self) -> SongMenuAction {
+impl CustomMenuSongAction {
+    pub fn into_action(self, _values: &mut ShuntingYardValues) -> SongMenuAction {
         match self {
             Self::Play => SongMenuAction::Play,
             Self::Pause => SongMenuAction::Pause,
@@ -168,11 +189,12 @@ impl Into<SongMenuAction> for CustomMenuSongAction {
         }
     }
 }
-
 impl<'lua> FromLua<'lua> for CustomMenuSongAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuSongAction");
         match lua_value {
             Value::Table(table) => {
+                #[cfg(feature="custom_menu_debugging")] info!("Is table");
                 if let Some(seek) = table.get("seek")? {
                     Ok(Self::Seek(seek))
                 } else if let Some(pos) = table.get("position")?{
@@ -187,6 +209,7 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
             }
 
             Value::String(str) => {
+                #[cfg(feature="custom_menu_debugging")] info!("Is String");
                 match str.to_str()? {
                     "play" => Ok(Self::Play),
                     "pause" => Ok(Self::Pause),
