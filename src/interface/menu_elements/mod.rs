@@ -1,4 +1,3 @@
-mod components;
 mod scrollable2;
 mod dialog_view;
 mod colored_text;
@@ -13,7 +12,6 @@ mod content_background;
 mod transformable_component;
 
 
-pub use components::*;
 pub use scrollable2::*;
 pub use dialog_view::*;
 pub use colored_text::*;

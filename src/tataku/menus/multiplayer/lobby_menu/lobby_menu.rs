@@ -103,7 +103,7 @@ impl LobbyMenu {
                 GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                 if let Some(beatmap) = &self.selected_beatmap {
-                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
+                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
                     // BEATMAP_MANAGER.write().await.set_current_beatmap(game, beatmap, true).await;
                 } else {
                     self.actions.push(BeatmapMenuAction::Remove);

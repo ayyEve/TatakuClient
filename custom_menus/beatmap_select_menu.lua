@@ -1,16 +1,20 @@
--- TODO!!: lists
 menu = {
-    id = "beatmap_select_menu",
+    id = "beatmap_select",
 
     -- list of components we want to add, to add extra functionality
     components = {
         -- a component which adds beatmap list values
         {
             id = "beatmap_list",
+            filter_var = "beatmap_list.search_text"
+        },
+        -- a component which adds score list values
+        {
+            id = "score_list"
         }
     },
 
-    -- the the beatmap select menu is broken up into rows
+    -- the beatmap select menu is broken up into rows
     element = col({ width = "fill", height = "fill" }, {
         -- the first row contains the dropdowns
         row({ width = "fill", height = "shrink", debug_name="dropdowns" }, {
@@ -20,12 +24,51 @@ menu = {
             --     item = "playmode",
             -- }
             space("fill", "shrink"), --TODO!
+
+            -- filter text input
+            {
+                id = "text_input",
+                width = "fill",
+
+                placeholder = "search",
+                variable = "beatmap_list.search_text",
+            },
         }),
 
         -- the next row has the score list, gameplay preview, and beatmap list
         row({ width = "fill", height = "fill", debug_name = "score list" }, {
             -- score list
-            space("fill", "fill"), --TODO!
+            {
+                id = "styled_content",
+                debug_name = "scores list styled",
+                color = color(1.0, 1.0, 1.0, 0.1),
+                shape = { round = 5.0 },
+                width = "fill",
+                height = "fill",
+        
+                element = {
+                    id = "list",
+                    debug_name = "scores list",
+                    width = "fill",
+                    height = "fill",
+
+                    list = "score_list.scores",
+                    variable = "_score",
+                    scroll = true,
+
+                    element = button(
+                        col({ width = "fill", height = "shrink" }, {
+                            -- username and score
+                            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", variable("_score.score_fmt")}), 16.0, WHITE) }),
+                            -- combo, acc, mods
+                            row({ width = "fill" }, { text(text_list({variable("_score.max_combo_fmt"), "x, ", variable("_score.accuracy_fmt"), " ", variable("_score.mods_short")}), 16.0, WHITE) }),
+                        }),
+                        custom_action("score_list.open_score", variable("_score.id")),
+                        "fill",
+                        "shrink"
+                    )
+                }
+            },
 
             -- preview
             {
@@ -50,13 +93,9 @@ menu = {
                 element = col({ width = "fill", height = "shrink", spacing = 5.0, debug_name = "col" }, {
                     -- set info
                     button(
-                        text({value="_group.name"}, 20.0, WHITE),
+                        text(variable("_group.name"), 20.0, WHITE),
                         -- set this as the selected set
-                        {
-                            id = "custom",
-                            tag = "beatmap_list.set_set",
-                            variable = "_group.id"
-                        },
+                        custom_action("beatmap_list.set_set", variable("_group.id")),
                         "fill",
                         "shrink",
                         5.0
@@ -82,7 +121,7 @@ menu = {
                                 col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
                                     button(
                                         text(
-                                            text_list({ {value="_map.display_mode"}, " - ", {value="_map.version"} }),
+                                            text_list({ variable("_map.display_mode"), " - ", variable("_map.version") }),
                                             20, 
                                             WHITE
                                         ),
@@ -91,11 +130,7 @@ menu = {
                                             -- play it
                                             map_action("play"),
                                             -- otherwise, set it as the selected map
-                                            { 
-                                                id = "custom",
-                                                tag = "beatmap_list.set_beatmap",
-                                                variable = "_map.hash",
-                                            }
+                                            custom_action("beatmap_list.set_beatmap", variable("_map.hash"))
                                         ),
                                         "fill",
                                         "shrink",

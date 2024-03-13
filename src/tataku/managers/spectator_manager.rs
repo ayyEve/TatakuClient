@@ -69,7 +69,7 @@ impl SpectatorManager {
         match beatmap_manager.get_by_hash(&beatmap_hash) {
             Some(map) => {
                 // beatmap_manager.set_current_beatmap(game, &map, false).await;
-                self.actions.push(BeatmapMenuAction::Set(map.clone(), false));
+                self.actions.push(BeatmapMenuAction::Set(map.clone(), false, true));
 
                 match manager_from_playmode(mode.clone(), &map).await {
                     Ok(mut manager) => {

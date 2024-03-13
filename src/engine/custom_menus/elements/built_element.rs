@@ -59,7 +59,7 @@ impl Widgetable for BuiltElementDef {
                 let variable = variable.clone();
 
                 iced_elements::TextInput::new(&placeholder, &value)
-                    .on_input(move |t| Message::new(owner, &variable, MessageType::Text(t)))
+                    .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), CustomElementValue::String(t)))))
                     .width(self.element.width)
                     .chain_bool(*is_password, |s| s.password())
                     .into_element()
@@ -103,7 +103,11 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::List { list_var, scrollable, variable, .. } => {
-                let Ok(CustomElementValue::List(list)) = values.get_raw(list_var).cloned() else { return EmptyElement.into_element() };
+                let Ok(CustomElementValue::List(list)) = values.get_raw(list_var).cloned() else { 
+                    error!("list variable doesnt exist! {list_var}");
+                    return EmptyElement.into_element() 
+                };
+
                 
                 let var = if let Some(var) = variable {
                     var.clone()
@@ -164,7 +168,7 @@ pub trait Widgetable: Send + Sync {
     async fn update(&mut self, _values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {}
     fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement { EmptyElement.into_element() }
 
-    async fn handle_message(&mut self, _message: &Message, _values: &mut ShuntingYardValues) -> ActionQueue { ActionQueue::new() }
+    async fn handle_message(&mut self, _message: &Message, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { Vec::new() }
 }
 
 

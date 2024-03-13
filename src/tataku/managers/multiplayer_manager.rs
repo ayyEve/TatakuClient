@@ -63,7 +63,7 @@ impl MultiplayerManager {
             if let Some(manager) = &mut manager {
                 manager.score_list = info.player_scores.iter()
                     .filter(|(u,_)|u != &&info.our_user_id) // make sure we dont re-add our own score in
-                    .map(|(_,s)|IngameScore::new(s.clone(), false, false)).collect();
+                    .map(|(_,s)| IngameScore::new(s.clone(), false, false)).collect();
                 manager.score_list.sort_by(|a, b|b.score.score.cmp(&a.score.score));
             }
             
@@ -75,7 +75,7 @@ impl MultiplayerManager {
                     GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                     if let Some(beatmap) = &self.selected_beatmap {
-                        self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
+                        self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
                     } else {
                         self.actions.push(BeatmapMenuAction::Remove);
                     }
@@ -141,7 +141,7 @@ impl MultiplayerManager {
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map.clone(), mode));
             } else if let Some(beatmap) = &previous_map.0 {
                 // if nothing was selected, make sure we revert back to the previous beatmap
-                self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
+                self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
             }
         }
         
@@ -168,7 +168,7 @@ impl MultiplayerManager {
 
                 let beatmap_manager = BEATMAP_MANAGER.read().await;
                 if let Some(beatmap) = beatmap_manager.get_by_hash(&beatmap.hash) {
-                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true));
+                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
                     self.selected_beatmap = Some(beatmap);
                     
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));

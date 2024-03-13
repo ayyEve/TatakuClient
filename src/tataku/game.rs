@@ -130,6 +130,15 @@ impl Game {
 
         // game values
         values.set("game.time", 0.0);
+        values.set("global.playmode", "osu".to_owned());
+        values.set("global.playmode_display", "Osu".to_owned());
+        {
+            // load gamemodes
+            let modes = AVAILABLE_PLAYMODES.iter().map(|&s|s.to_owned()).collect::<Vec<String>>();
+            let modes_display = modes.iter().map(gamemode_display_name).map(|s|s.to_owned()).collect::<Vec<String>>();
+            values.set("game.modes", modes);
+            values.set("game.modes_display", modes_display);
+        }
 
         // song values
         values.set("song.exists", false);
@@ -317,6 +326,13 @@ impl Game {
                     //     igm.force_update_settings().await;
                     // }
                     _ => {}
+                }
+
+                {
+                    let values = &mut self.shunting_yard_values;
+                    values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
+                    values.set("global.sort_by", format!("{:?}", self.settings.last_sort_by));
+                    // values.set("global.sort_by", format!("{:?}", self.settings.last_group_by));
                 }
             }
 
@@ -1038,21 +1054,21 @@ impl Game {
                     }
                 }
 
-                MenuAction::Beatmap(BeatmapMenuAction::Set(beatmap, use_preview_time)) => {
-                    BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time).await;
+                MenuAction::Beatmap(BeatmapMenuAction::Set(beatmap, use_preview_time, restart)) => {
+                    BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time, restart).await;
                     // warn!("setting beatmap: {}", beatmap.version_string());
                 }
-                MenuAction::Beatmap(BeatmapMenuAction::SetFromHash(hash, use_preview_time)) => {
+                MenuAction::Beatmap(BeatmapMenuAction::SetFromHash(hash, use_preview_time, restart)) => {
                     let mut manager = BEATMAP_MANAGER.write().await;
                     if let Some(beatmap) = manager.get_by_hash(&hash) {
-                        manager.set_current_beatmap(self, &beatmap, use_preview_time).await;
+                        manager.set_current_beatmap(self, &beatmap, use_preview_time, restart).await;
                     }
                 }
                 
                 MenuAction::Beatmap(BeatmapMenuAction::Random(use_preview)) => {
                     let mut manager = BEATMAP_MANAGER.write().await;
                     let Some(random) = manager.random_beatmap() else { continue };
-                    manager.set_current_beatmap(self, &random, use_preview).await;
+                    manager.set_current_beatmap(self, &random, use_preview, true).await;
                 }
                 MenuAction::Beatmap(BeatmapMenuAction::Remove) => {
                     BEATMAP_MANAGER.write().await.remove_current_beatmap(self).await;
@@ -1080,13 +1096,15 @@ impl Game {
                         MapActionIfNone::ContinueCurrent => continue,
                         MapActionIfNone::Random(use_preview) => {
                             let Some(random) = manager.random_beatmap() else { continue };
-                            manager.set_current_beatmap(self, &random, use_preview).await;
+                            manager.set_current_beatmap(self, &random, use_preview, true).await;
                         }
                     }
                 }
 
                 
                 // game actions
+                MenuAction::Game(GameMenuAction::Quit) => self.close_game(),
+
                 MenuAction::Game(GameMenuAction::ResumeMap(manager)) => {
                     self.queue_state_change(GameState::Ingame(manager));
                 }
@@ -1115,6 +1133,14 @@ impl Game {
                 }
                 MenuAction::Game(GameMenuAction::SetValue(key, value)) => {
                     self.shunting_yard_values.set(key, value);
+                }
+                MenuAction::Game(GameMenuAction::ViewScore(score)) => {
+                    if let Some(beatmap) = BEATMAP_MANAGER.read().await.get_by_hash(&score.beatmap_hash) {
+                        let menu = ScoreMenu::new(&score, beatmap, false);
+                        self.queue_state_change(GameState::SetMenu(Box::new(menu)))
+                    } else {
+                        error!("Could not find map from score!")
+                    }
                 }
 
                 // song actions
@@ -1290,7 +1316,7 @@ impl Game {
                                 _ => false,
                             };
                             if change_map {
-                                beatmap_manager.set_current_beatmap(self, &last, use_preview_time).await;
+                                beatmap_manager.set_current_beatmap(self, &last, use_preview_time, false).await;
                             }
                         }
                     }
@@ -1343,7 +1369,7 @@ impl Game {
             return;
         };
 
-        manager.set_current_beatmap(self, &map, true).await;
+        manager.set_current_beatmap(self, &map, true, true).await;
 
         // move to a score menu with this as the score
         let score = IngameScore::new(score.clone(), false, false);
@@ -1421,7 +1447,7 @@ impl Game {
 
     async fn await_screenshot(b: tokio::sync::oneshot::Receiver<(Vec<u8>, u32, u32)>, mods: KeyModifiers) -> TatakuResult {
         let Ok((data, width, height)) = b.await else { return Ok(()) };
-
+        
         // create file
         let date = chrono::Local::now();
         let year = date.year();

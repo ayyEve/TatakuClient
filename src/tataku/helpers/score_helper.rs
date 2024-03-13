@@ -15,7 +15,7 @@ pub struct ScoreHelper {
 impl ScoreHelper {
     pub fn new() -> Self {
         Self {
-            current_method: ScoreRetreivalMethod::Local,
+            current_method: ScoreRetreivalMethod::Global,
         }
     }
 
@@ -57,8 +57,6 @@ impl ScoreHelper {
                     thing.scores = online_scores;
                     thing.done = true;
                 });
-                
-                // scores.write().await.done = true;
             }
 
             ScoreRetreivalMethod::OgGame
@@ -148,6 +146,42 @@ impl Display for ScoreRetreivalMethod {
         write!(f, "{self:?}")
     }
 }
+impl TryFrom<&CustomElementValue> for ScoreRetreivalMethod {
+    type Error = String;
+    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+        match value {
+            CustomElementValue::String(s) => {
+                match &**s {
+                    "Local" | "local" => Ok(Self::Local),
+                    "LocalMods" | "local_mods" => Ok(Self::LocalMods),
+
+                    "Global" | "global" => Ok(Self::Global),
+                    "GlobalMods" | "global_mods" => Ok(Self::GlobalMods),
+
+                    "OgGame" | "og_game" => Ok(Self::OgGame),
+                    "OgGameMods" | "og_game_mods" => Ok(Self::OgGameMods),
+
+                    other => Err(format!("invalid ScoreRetreivalMethod str: '{other}'"))
+                }
+            }
+            CustomElementValue::U64(n) => {
+                match *n {
+                    0 => Ok(Self::Local),
+                    1 => Ok(Self::LocalMods),
+                    2 => Ok(Self::Global),
+                    3 => Ok(Self::GlobalMods),
+                    4 => Ok(Self::OgGame),
+                    5 => Ok(Self::OgGameMods),
+                    other => Err(format!("Invalid ScoreRetreivalMethod number: {other}")),
+                }
+            }
+
+            other => Err(format!("Invalid ScoreRetreivalMethod value: {other:?}"))
+        }
+    }
+}
+
+
 
 
 

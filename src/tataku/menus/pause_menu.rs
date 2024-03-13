@@ -35,8 +35,7 @@ impl PauseMenu {
     }
 
     pub fn unpause(&mut self) {
-        let manager = std::mem::take(&mut self.manager);
-        self.actions.push(GameMenuAction::ResumeMap(manager));
+        self.actions.push(GameMenuAction::ResumeMap(self.manager.take()));
     }
 
     async fn retry(&mut self) {
@@ -45,7 +44,8 @@ impl PauseMenu {
     }
 
     async fn exit(&mut self) {
-        self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await)));
+        self.actions.push(MenuMenuAction::SetMenuCustom("beatmap_select".to_owned()));
+        // self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await)));
     }
 }
 

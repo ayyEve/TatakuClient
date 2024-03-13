@@ -41,15 +41,12 @@ impl ShuntingYardValues {
     }
 
     pub fn get_raw(&self, key: &str) -> Result<&CustomElementValue, ShuntingYardError> {
-        // TODO: handle hashmap entries
         if let Some(v) = self.0.get(key) {
             return Ok(v)
         }
 
         //TODO: optimize this, this is quite bad
         let mut remaining = key.split(".").collect::<Vec<_>>();
-        // let mut entries = Vec::new();
-
         if remaining.len() > 1 {
             let k2 = remaining.pop().unwrap();
             let key = remaining.join(".");
@@ -60,19 +57,6 @@ impl ShuntingYardValues {
                 }
             }
         }
-
-        // while remaining.len() > 0 {
-        //     entries.push(remaining.pop().unwrap());
-        //     let key = remaining.join(".");
-        //     info!("checking key: {key}");
-        //     if let Some(CustomElementValue::Map(m)) = self.0.get(&key) {
-        //         let key2 = entries.join(".");
-        //         info!("checking key2: {}");
-        //         if let Some(v) = m.get(&key) {
-        //             return Ok(v)
-        //         }
-        //     }
-        // }
 
         Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
     }

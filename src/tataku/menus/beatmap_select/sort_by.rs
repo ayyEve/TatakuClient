@@ -14,6 +14,35 @@ impl Display for SortBy {
     }
 }
 
+impl TryFrom<&CustomElementValue> for SortBy {
+    type Error = String;
+    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+        match value {
+            CustomElementValue::String(s) => {
+                match &**s {
+                    "Title" | "title" => Ok(Self::Title),
+                    "Artist" | "artist" => Ok(Self::Artist),
+                    "Creator" | "creator" => Ok(Self::Creator),
+                    "Difficulty" | "difficulty" => Ok(Self::Difficulty),
+                    other => Err(format!("invalid SortBy str: '{other}'"))
+                }
+            }
+            CustomElementValue::U64(n) => {
+                match *n {
+                    0 => Ok(Self::Title),
+                    1 => Ok(Self::Artist),
+                    2 => Ok(Self::Creator),
+                    3 => Ok(Self::Difficulty),
+                    other => Err(format!("Invalid SortBy number: {other}")),
+                }
+            }
+
+            other => Err(format!("Invalid SortBy value: {other:?}"))
+        }
+    }
+}
+
+
 impl SortBy {
     pub fn list() -> Vec<Self> {
         vec![

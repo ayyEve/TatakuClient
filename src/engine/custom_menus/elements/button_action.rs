@@ -2,59 +2,32 @@ use crate::prelude::*;
 use super::parse_from_multiple;
 use rlua::{ Value, FromLua, Error::FromLuaConversionError, Table };
 
-// #[derive(Clone, Debug)]
-// pub struct ButtonAction {
-//     pub action: CustomMenuAction,
-//     // pub context: ButtonActionContext,
-// }
-// impl ButtonAction {
-//     pub fn into_message(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> Option<Message> {
-//         // use CustomMenuAction::*;
-//         if let CustomMenuAction::None = &self.action { return None };
-//         if let CustomMenuAction::CustomEvent(tag, value) = &self.action {
-//             if let Ok(val) = values.get_raw(value) {
-//                 return Some(Message::new(owner, tag, MessageType::Value(val.clone())));
-//             } else {
-//                return Some(Message::new(owner, tag, MessageType::Text(value.clone())));
-//             };
-//         }
-//         let message = MessageType::CustomMenuAction(self.action.clone());
-//         Some(Message::new(owner, "", message))
-//     }
-// }
-// impl<'lua> FromLua<'lua> for ButtonAction {
-//     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-//         #[cfg(feature="custom_menu_debugging")] info!("Reading ButtonAction");
-//         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "ButtonAction", message: Some("Not a table".to_owned()) }) };
-    
-//         let id:String = table.get("id")?;
-//         match &*id {
-//             "set_value" => Ok(Self::SetValue {
-//                 key: table.get("key")?,
-//                 value: CustomEventValueType::from_lua(&table)?,
-//             }),
-
-//             other => return Err(FromLuaConversionError { from: "table", to: "ButtonAction", message: Some(format!("unknown id: {other}")) }),
-//         }
-//     }
-// }
-
-
-
 #[derive(Clone, Debug)]
 pub enum ButtonAction {
+    /// Set a value
     SetValue {
+        /// What value to set
         key: String,
+        /// What to set it to
         value: CustomEventValueType
     },
+    /// Perform a custom action (to be handled by a component)
     CustomAction {
+        /// Tag of this action
         tag: String,
+        /// Value passed on
         value: CustomEventValueType
     },
+    /// A regular menu action
     MenuAction(CustomMenuAction),
+
+    /// A conditional 
     Conditional {
+        /// The condition to evaluate
         cond: ElementCondition,
+        /// What to do if true
         if_true: Box<Self>,
+        /// What to do if false
         if_false: Option<Box<Self>>,
     }
 }
@@ -90,7 +63,7 @@ impl ButtonAction {
             Self::Conditional { cond, if_true, if_false } => {
                 match cond.resolve(values) {
                     ElementResolve::Failed | ElementResolve::Error(_) => None,
-                    ElementResolve::Unbuilt(_) => panic!("conditional element not built!"),
+                    ElementResolve::Unbuilt(_) => unreachable!("conditional element not built!"),
                     ElementResolve::True => if_true.resolve(owner, values),
                     ElementResolve::False => if_false.as_ref().and_then(|f| f.resolve(owner, values)),
                 }
@@ -113,7 +86,7 @@ impl<'lua> FromLua<'lua> for ButtonAction {
                 key: table.get("key")?,
                 value: CustomEventValueType::from_lua(&table)?,
             }),
-            "action" => Ok(Self::MenuAction(table.get("action")?)),
+            "action" => Ok(Self::MenuAction(CustomMenuAction::from_table(&table)?)),
             "custom" => Ok(Self::CustomAction { 
                 tag: table.get("tag")?,
                 value: CustomEventValueType::from_lua(&table)?

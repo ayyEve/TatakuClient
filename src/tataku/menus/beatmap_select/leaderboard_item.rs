@@ -36,7 +36,7 @@ impl LeaderboardComponent {
             Text::new(format!("{}: {}", self.score.username, format_number(self.score.score.score)))
                 .width(Fill)
                 .size(16.0),
-            Text::new(format!("{}x, {:.2}%, {}{time_diff_str}", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0, score_mods))
+            Text::new(format!("{}x, {:.2}%, {score_mods}{time_diff_str}", format_number(self.score.max_combo), calc_acc(&self.score) * 100.0))
                 .width(Fill)
                 .size(16.0);
         ))

@@ -70,7 +70,7 @@ impl AsyncMenu for BuiltCustomMenu {
     async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
 
         for i in self.components.iter_mut() {
-            let actions = i.handle_message(&message, values).await.take();
+            let actions = i.handle_message(&message, values).await;
             if !actions.is_empty() {
                 self.actions.extend(actions);
                 return;

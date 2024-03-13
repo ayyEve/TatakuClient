@@ -681,13 +681,13 @@ impl IngameManager {
 
         // update value collection
         {
-            values.set("score.score", self.score.score.score);
-            values.set("score.combo", self.score.score.combo as u32);
-            values.set("score.max_combo", self.score.score.max_combo as u32);
-            values.set("score.accuracy", self.score.score.accuracy as f32);
-            values.set("score.performance", self.score.performance);
-            // values.set("score.placing", self.score.pla);
-            values.set("score.health", self.health.get_ratio());
+            let score:CustomElementValue = (&self.score).into();
+            let mut score_data = score.as_map_helper().unwrap();
+
+            score_data.set("health", self.health.get_ratio());
+            // TODO: placing
+
+            values.set("score", score_data.finish());
         }
 
         self.actions.take()

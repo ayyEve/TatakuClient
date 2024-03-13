@@ -14,7 +14,6 @@ pub struct BeatmapSelectMenu {
     action_queue: ActionQueue,
     
     current_scores: HashMap<String, IngameScore>,
-
     score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
     // /// is changing, update loop detected that it was changing, how long since it changed
@@ -47,7 +46,7 @@ pub struct BeatmapSelectMenu {
     // key_events: KeyEventsHandlerGroup<BeatmapSelectKeyEvent>,
 
     menu_game: GameplayPreview,
-    cached_maps: Vec<Vec<Arc<BeatmapMeta>>>,
+    cached_maps: Vec<BeatmapGroup>,
     visible_sets: Vec<BeatmapSetComponent>,
     updates: usize,
 
@@ -125,7 +124,7 @@ impl BeatmapSelectMenu {
 
     pub async fn refresh_maps(&mut self) {
         //TODO: allow grouping by not just map set
-        let sets = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Title);
+        let sets = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Set);
         // let diff_calc_helper = beatmap_manager.on_diffcalc_completed.1.clone();
 
         self.cached_maps = sets;
@@ -158,8 +157,8 @@ impl BeatmapSelectMenu {
         let mut selected_set = 0;
         let mut selected_map = 0;
 
-        for maps in self.cached_maps.iter() {
-            let mut maps:Vec<BeatmapMetaWithDiff> = maps.iter().map(|m| {
+        for group in self.cached_maps.iter() {
+            let mut maps:Vec<BeatmapMetaWithDiff> = group.maps.iter().map(|m| {
                 let mode = m.check_mode_override(mode.clone());
                 let diff = get_diff(&m, &mode, &mods);
                 if diff.is_none() { modes_needing_diffcalc.insert(mode); }
@@ -178,8 +177,9 @@ impl BeatmapSelectMenu {
             }
 
             let n = self.visible_sets.len();
-            let meta = &maps[0];
-            let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
+            let display_text = group.get_name().clone();
+            // let meta = &maps[0];
+            // let display_text = format!("{} // {} - {}", meta.creator, meta.artist, meta.title);
             // let mut i = BeatmapsetItem::new(maps, display_text).await;
             let mut set_item = BeatmapSetComponent::new(display_text, n, maps).await;
             if let Some(map_num) = set_item.check_selected(current_hash) {
@@ -442,7 +442,7 @@ impl BeatmapSelectMenu {
 
         let Some(set) = self.visible_sets.get(self.selected_set) else { return };
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.action_queue.push(BeatmapMenuAction::Set(map.meta.clone(), true))
+            self.action_queue.push(BeatmapMenuAction::Set(map.meta.clone(), true, false))
         }
     }
     fn next_map(&mut self) {
@@ -559,7 +559,7 @@ impl AsyncMenu for BeatmapSelectMenu {
                 if self.menu_game.current_beatmap.0.as_ref().unwrap().beatmap_hash == b.beatmap_hash {
                     self.play_map().await;
                 } else {
-                    self.action_queue.push(BeatmapMenuAction::Set(b, true));
+                    self.action_queue.push(BeatmapMenuAction::Set(b, true, false));
                 }
             }
 
@@ -642,15 +642,11 @@ impl AsyncMenu for BeatmapSelectMenu {
         }
 
         if self.new_beatmap_helper.update() {
-            self.action_queue.push(BeatmapMenuAction::Set(self.new_beatmap_helper.0.clone(), true));
+            self.action_queue.push(BeatmapMenuAction::Set(self.new_beatmap_helper.0.clone(), true, true));
             // BEATMAP_MANAGER.write().await.set_current_beatmap(game, &self.new_beatmap_helper.0, true).await;
             refresh_pending = true;
             self.menu_game.setup().await;
         }
-
-        // if old_text != self.search_text.get_text() {
-        //     refresh_pending = true;
-        // }
 
         if refresh_pending {
             self.refresh_maps().await;

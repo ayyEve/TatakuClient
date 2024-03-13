@@ -15,10 +15,7 @@ function fa_button(char, action)
                 WHITE, -- color
                 "font_awesome" -- font
             ), -- text
-            { 
-                id = "action",
-                action = action,
-            }, -- action
+            action,-- action
             "shrink", -- width
             "shrink", -- height
             15.0 -- padding
@@ -26,22 +23,22 @@ function fa_button(char, action)
     }
 end
 
-song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_controls"}, {
+song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_controls" }, {
     -- the actual controls
     col({ width = "fill", height = "fill", spacing = 2.0, debug_name = "song_controls_col" }, {
         -- buttons
         row({ width = "fill", height = "fill_portion(10)", spacing = 5.0, debug_name = "song_controls_row" }, {
-            fa_button(0xF04A, { map = "previous" }), -- previous song
-            fa_button(0xF048, { song = { seek = -500.0 } }), -- seek backwards
-            space("fill", "shrink"),
+            fa_button(0xF04A, map_action("previous")), -- previous song
+            fa_button(0xF048, song_action({ seek = -500.0 })), -- seek backwards
+            space("fill", "shrink"), -- some padding
             cond(
                 "song.playing", -- condition
-                fa_button(0xF04C, { song = "pause" }), -- pause
-                fa_button(0xF04B, { song = "play" }) -- play
+                fa_button(0xF04C, song_action("pause")), -- pause
+                fa_button(0xF04B, song_action("play")) -- play
             ),
-            space("fill", "shrink"),
-            fa_button(0xF051, { song = { seek = 500.0 } }), -- seek forwards
-            fa_button(0xF04E, { map = "next" }), -- next song
+            space("fill", "shrink"), -- some padding
+            fa_button(0xF051, song_action({ seek = 500.0 })), -- seek forwards
+            fa_button(0xF04E, map_action("next")), -- next song
         }),
 
         -- progress bar (TODO)
@@ -50,8 +47,6 @@ song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_co
     -- empty space so the controls arent the whole width
     space("fill_portion(4)", "fill")
 });
-
-
 
 
 menu = {
@@ -101,10 +96,10 @@ menu = {
                         { action = "opacity", start = "current", stop = 1.0, duration = 1000.0 }
                     }
                 },
-                element = col({ width = "fill", height = "fill", margin = 5.0, debug_name = "main_menu_buttons_list" }, {
+                element = col({ width = "fill", height = "fill", spacing = 5.0, debug_name = "main_menu_buttons_list" }, {
                     --[[ Singleplayer ]] button(text("Play"), start_singleplayer), 
                     --[[ Multiplayer ]] button(text("Multiplayer"), start_multiplayer),
-                    --[[ Settings ]] button(text("Settings"), { id = "action", action = { dialog = "settings" } } ),
+                    --[[ Settings ]] button(text("Settings"), { id = "action", dialog = "settings" } ),
                     --[[ Quit ]] button(text("Quit"), exit_game),
                 })
             }

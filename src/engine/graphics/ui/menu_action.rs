@@ -71,6 +71,9 @@ pub enum MenuMenuAction {
 }
 
 pub enum GameMenuAction {
+    /// Fully quit the game
+    Quit,
+
     /// Start a game with the provided ingame manager
     StartGame(Box<IngameManager>),
 
@@ -80,8 +83,11 @@ pub enum GameMenuAction {
     /// Watch a replay
     WatchReplay(Box<Replay>),
 
-    /// update a value 
-    SetValue(String, CustomElementValue)
+    /// Update a value 
+    SetValue(String, CustomElementValue),
+
+    /// Open a score in the score menu
+    ViewScore(IngameScore),
 }
 
 
@@ -98,13 +104,13 @@ pub enum BeatmapMenuAction {
 
     /// Set the current beatmap
     /// 
-    /// map, use audio preview time
-    Set(Arc<BeatmapMeta>, bool),
+    /// map, use audio preview time, restart song?
+    Set(Arc<BeatmapMeta>, bool, bool),
 
     /// Set the current beatmap
     /// 
-    /// map hash, use audio preview time
-    SetFromHash(Md5Hash, bool),
+    /// map hash, use audio preview time, restart song?
+    SetFromHash(Md5Hash, bool, bool),
 
     /// Remove the current beatmap
     Remove,

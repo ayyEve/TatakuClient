@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CustomElementValue {
     I32(i32),
     I64(i64),
@@ -43,6 +43,11 @@ impl CustomElementValue {
             Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
             Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
         } 
+    }
+
+    pub fn as_map_helper(self) -> Option<CustomElementMapHelper> {
+        let Self::Map(map) = self else { return None };
+        Some(CustomElementMapHelper(map))
     }
 }
 impl strfmt::DisplayStr for CustomElementValue {

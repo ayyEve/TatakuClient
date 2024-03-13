@@ -20,8 +20,6 @@ pub struct BeatmapManager {
     /// current index of previously played maps
     play_index: usize,
 
-    /// helpful when a map is deleted
-    pub force_beatmap_list_refresh: bool,
 }
 impl BeatmapManager {
     pub fn new() -> Self {
@@ -36,8 +34,6 @@ impl BeatmapManager {
 
             played: Vec::new(),
             play_index: 0,
-
-            force_beatmap_list_refresh: false,
         }
     }
 
@@ -224,22 +220,20 @@ impl BeatmapManager {
             }
         }
 
-        self.force_beatmap_list_refresh = true;
-
         if self.current_beatmap.as_ref().filter(|b|b.beatmap_hash == beatmap).is_some() {
             match post_delete {
                 // select next beatmap
                 PostDelete::Next => { self.next_beatmap(game).await; },
                 PostDelete::Previous => { self.previous_beatmap(game).await; },
                 PostDelete::Random => if let Some(map) = self.random_beatmap() {
-                    self.set_current_beatmap(game, &map, true).await
+                    self.set_current_beatmap(game, &map, true, true).await
                 }
             }
         }
     }
 
     #[async_recursion::async_recursion]
-    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool) {
+    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool, restart_song: bool) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         GlobalValueManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
         self.current_beatmap = Some(beatmap.clone());
@@ -266,13 +260,17 @@ impl BeatmapManager {
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
         game.handle_menu_actions(vec![
+            // set the song
             SongMenuAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
                 play: true,
-                restart: true,
+                restart: restart_song,
                 position: Some(time),
                 volume: Some(Settings::get().get_music_vol()),
                 ..Default::default()
             })).into(),
+
+            // make sure the song is playing
+            SongMenuAction::Play.into(),
         ]).await;
 
         // if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
@@ -299,28 +297,30 @@ impl BeatmapManager {
     
 
     // getters
-    pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<Vec<Arc<BeatmapMeta>>> { // list of sets as (list of beatmaps in the set)
-        
-        // match group_by {
-        //     GroupBy::Title => todo!(),
-        //     GroupBy::Artist => todo!(),
-        //     GroupBy::Creator => todo!(),
-        //     GroupBy::Collections => todo!(),
-        // }
-        
-        let mut set_map = HashMap::new();
+    pub fn all_by_sets(&self, _group_by: GroupBy) -> Vec<BeatmapGroup> {
+        let mut set_map: HashMap<BeatmapGroupValue, BeatmapGroup> = HashMap::new();
 
-        for beatmap in self.beatmaps.iter() {
-            let key = format!("{}-{}[{}]", beatmap.artist, beatmap.title, beatmap.creator); // good enough for now
-            if !set_map.contains_key(&key) {set_map.insert(key.clone(), Vec::new());}
-            set_map.get_mut(&key).unwrap().push(beatmap.clone());
+        for beatmap in self.beatmaps.iter().cloned() {
+            let key = format!("[{}] // {}-{}", beatmap.creator, beatmap.artist, beatmap.title);
+            let key = BeatmapGroupValue::Set(key);
+
+            if let Some(list) = set_map.get_mut(&key) {
+                list.maps.push(beatmap);
+            } else {
+                let mut group = BeatmapGroup::new(key.clone());
+                group.maps.push(beatmap);
+                set_map.insert(key, group);
+            }
+
+            // set_map
+            //     .entry(key.clone())
+            //     .or_insert_with(|| BeatmapGroup::default())
+
+            // if !set_map.contains_key(&key) { set_map.insert(key.clone(), Vec::new()) }
+            // set_map.get_mut(&key).unwrap().push(beatmap.clone());
         }
 
-        let mut sets = Vec::new();
-        set_map.values().for_each(|e|sets.push(e.to_owned()));
-        sets
-
-
+        set_map.into_values().collect()
     }
     pub fn get_by_hash(&self, hash:&Md5Hash) -> Option<Arc<BeatmapMeta>> {
         self.beatmaps_by_hash.get(hash).cloned()
@@ -342,7 +342,7 @@ impl BeatmapManager {
 
         match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false).await;
+                self.set_current_beatmap(game, &map, false, true).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
 
@@ -350,7 +350,7 @@ impl BeatmapManager {
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(game, &map, false).await;
+                self.set_current_beatmap(game, &map, false, true).await;
                 true
             } else {
                 false
@@ -371,7 +371,7 @@ impl BeatmapManager {
         
         match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false).await;
+                self.set_current_beatmap(game, &map, false, true).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap
@@ -387,14 +387,38 @@ impl BeatmapManager {
 
 
 #[allow(unused)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 pub enum GroupBy {
-    Title,
-    Artist,
-    Creator,
-    // Difficulty,
+    #[default]
+    Set,
     Collections,
 }
+impl TryFrom<&CustomElementValue> for GroupBy {
+    type Error = String;
+    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+        match value {
+            CustomElementValue::String(s) => {
+                match &**s {
+                    "Set" | "set" => Ok(Self::Set),
+                    "Collections" | "collections" => Ok(Self::Collections),
+                    other => Err(format!("invalid GroupBy str: '{other}'"))
+                }
+            }
+            CustomElementValue::U64(n) => {
+                match *n {
+                    0 => Ok(Self::Set),
+                    1 => Ok(Self::Collections),
+                    other => Err(format!("Invalid GroupBy number: {other}")),
+                }
+            }
+
+            other => Err(format!("Invalid GroupBy value: {other:?}"))
+        }
+    }
+}
+
+
+
 
 
 crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBeatmapHelper);
@@ -410,5 +434,39 @@ pub enum HandleDatabase {
 impl From<bool> for HandleDatabase {
     fn from(value: bool) -> Self {
         if value {Self::Yes} else {Self::No}
+    }
+}
+
+
+/// A group of beatmaps
+pub struct BeatmapGroup {
+    // pub name: String,
+    pub group_value: BeatmapGroupValue,
+    pub maps: Vec<Arc<BeatmapMeta>>,
+}
+impl BeatmapGroup {
+    pub fn new(group: BeatmapGroupValue) -> Self {
+        Self {
+            group_value: group,
+            maps: Vec::new()
+        }
+    }
+
+    pub fn get_name(&self) -> &String {
+        self.group_value.get_name()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BeatmapGroupValue {
+    Set(String),
+    Collection(String),
+}
+impl BeatmapGroupValue {
+    pub fn get_name(&self) -> &String {
+        match self {
+            Self::Set(name) => name,
+            Self::Collection(name) => name,
+        }
     }
 }

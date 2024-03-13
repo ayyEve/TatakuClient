@@ -99,16 +99,31 @@ end
 function map_action(action)
     return {
         id = "action",
-        action = {
-            map = action
-        }
+        map = action
     }
 end
 
+function song_action(action)
+    return {
+        id = "action",
+        song = action
+    }
+end
 
--- song_display = { id = "song_display" }
--- music_player = { id = "music_player" }
+function custom_action(tag, val)
+    val.id = "custom"
+    val.tag = tag
+    return val
+end
 
+
+function variable(var) 
+    return {
+        variable = var
+    }
+end
+
+-- a simple element which displays the current map info
 song_display = {
     id = "row",
     width = "fill",
@@ -120,24 +135,23 @@ song_display = {
         -- {artist} - {title}
         {
             id = "styled_content",
-            color = { r = 1.0, g = 1.0, b = 1.0, a = 0.1 },
+            color = color(1.0, 1.0, 1.0, 0.1 ),
             shape = { round = 5.0 },
             padding = 8.0,
 
-            element = {
-                id = "text",
-                text = { list = {{ value = "map.artist" }, " - ", { value = "map.title" }} },
-                color = WHITE, 
-                size = 30
-            }
+            element = text(
+                text_list({ variable("map.artist"), " - ", variable("map.title") }),
+                30,
+                WHITE
+            )
         }
     }
 }
 
 -- premade button actions
-start_singleplayer = { id = "action", action = { menu = "beatmap_select_menu" } }
-start_multiplayer = { id = "action", action = { menu = "lobby_select_menu" } }
-exit_game = { id = "action", action = { menu = "none" } }
+start_singleplayer = { id = "action", menu = "beatmap_select" }
+start_multiplayer = { id = "action", menu = "lobby_select" }
+exit_game = { id = "action", menu = "none" }
 
 
 -- menu stuff

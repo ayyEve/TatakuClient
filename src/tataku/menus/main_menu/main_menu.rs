@@ -377,7 +377,7 @@ impl AsyncMenu for MainMenu {
 
         // check if there are any new maps
         if self.new_map_helper.update() {
-            self.queued_actions.push(BeatmapMenuAction::Set(self.new_map_helper.0.clone(), false));
+            self.queued_actions.push(BeatmapMenuAction::Set(self.new_map_helper.0.clone(), false, false));
         }
 
         // update the gameplay preview (includes drawing it)

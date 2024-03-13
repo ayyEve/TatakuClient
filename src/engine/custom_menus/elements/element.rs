@@ -83,12 +83,9 @@ impl<'lua> FromLua<'lua> for ElementDef {
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: lua_value.type_name(), to: "ElementIdentifier", message: Some("Not a table".to_owned()) }) };
         
         
-        #[cfg(feature="custom_menu_debugging")] {
-            if let Some(debug_name) = table.get::<_, Option<String>>("debug_name")? {
-                info!("name: {debug_name}");
-            }
-        }
-
+        #[cfg(feature="custom_menu_debugging")] 
+        table.get::<_, Option<String>>("debug_name")?.ok_do(|name| debug!("Name: {name}"));
+        
 
         let id:String = table.get("id")?;
         #[cfg(feature="custom_menu_debugging")] info!("Got id: {id:?}");
@@ -138,6 +135,17 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 debug_color,
             }), 
 
+            "text_input" => Ok(Self {
+                id: ElementIdentifier::TextInput { 
+                    placeholder: table.get("placeholder")?, 
+                    variable: table.get("variable")?, 
+                    is_password: parse_from_multiple(&table, &["is_password", "password"])?.unwrap_or_default(),
+                },
+                width: width.unwrap_or(Length::Shrink),
+                height: height.unwrap_or(Length::Shrink),
+                debug_color,
+            }), 
+
             "button" => Ok(Self {
                 id: ElementIdentifier::Button { 
                     element: Box::new(table.get("element")?),
@@ -165,14 +173,6 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 id: ElementIdentifier::GameplayPreview { visualization: table.get("visualization")? },
                 width: width.unwrap_or(Length::Fill),
                 height: height.unwrap_or(Length::Fill),
-                debug_color,
-            }),
-            
-
-            "music_player" => Ok(Self {
-                id: ElementIdentifier::Space, // { display: CurrentSongDisplay::new() },
-                width: width.unwrap_or(Length::Shrink),
-                height: height.unwrap_or(Length::Shrink),
                 debug_color,
             }),
 

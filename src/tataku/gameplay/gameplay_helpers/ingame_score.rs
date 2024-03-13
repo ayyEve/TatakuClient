@@ -79,6 +79,20 @@ impl IngameScore {
 
 }
 
+impl From<&IngameScore> for CustomElementValue {
+    fn from(score: &IngameScore) -> Self {
+
+        // let the score parser handle most of the work
+        let score:CustomElementValue = (&score.score).into();
+
+        // TODO: add more things?
+
+        score
+    }
+}
+
+
+
 #[derive(Clone, Debug)]
 pub enum ReplayLocation {
     Local,

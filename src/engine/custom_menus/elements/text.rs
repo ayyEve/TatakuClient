@@ -3,7 +3,7 @@ use rlua::{ Value, FromLua, Error::FromLuaConversionError };
 
 #[derive(Clone, Debug)]
 pub enum CustomElementText {
-    Value(String),
+    Variable(String),
     Calc(String),
     /// calc but parsed, should not be read into
     CalcParsed(Arc<CustomElementCalc>, String),
@@ -33,12 +33,9 @@ impl CustomElementText {
         Ok(())
     }
 
-    pub fn to_string(
-        &self, 
-        values: &ShuntingYardValues,
-    ) -> String {
+    pub fn to_string(&self, values: &ShuntingYardValues) -> String {
         match self {
-            Self::Value(t) => values.get_string(t).unwrap_or_else(|_| format!("Invalid property: '{t}'")),
+            Self::Variable(t) => values.get_string(t).unwrap_or_else(|_| format!("Invalid property: '{t}'")),
             Self::Text(t) | Self::Locale(t) => t.clone(),
             
             Self::CalcParsed(calc, calc_str) => {
@@ -47,7 +44,7 @@ impl CustomElementText {
                         SYStackValue::Number(n) => format!("{n:.2}"),
                         SYStackValue::String(s) => s.clone(),
                         SYStackValue::Bool(b) => b.to_string(),
-                    },
+                    }
                     Err(e) => {
                         error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
                         format!("Calc error! See console.")
@@ -60,7 +57,7 @@ impl CustomElementText {
             Self::List(items, join_str) => {
                 items
                     .iter()
-                    .map(|i|i.to_string(values))
+                    .map(|i| i.to_string(values))
                     .collect::<Vec<_>>()
                     .join(&join_str)
             }
@@ -81,8 +78,8 @@ impl<'lua> FromLua<'lua> for CustomElementText {
                     Ok(Self::Locale(locale))
                 } else if let Some(text) = table.get::<_, Option<String>>("text")? {
                     Ok(Self::Text(text))
-                } else if let Some(value) = table.get::<_, Option<String>>("value")? {
-                    Ok(Self::Value(value))
+                } else if let Some(value) = table.get::<_, Option<String>>("variable")? {
+                    Ok(Self::Variable(value))
                 } else if let Some(value) = table.get::<_, Option<Vec<Self>>>("list")? {
                     Ok(Self::List(value, String::new()))
                 } else if let Some(first) = table.get::<_, Option<Self>>(0)? {
