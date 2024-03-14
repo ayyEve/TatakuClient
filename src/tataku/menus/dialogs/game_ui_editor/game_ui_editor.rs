@@ -14,8 +14,8 @@ pub struct GameUIEditorDialog {
     window_size: Arc<WindowSize>,
 
     #[allow(unused)]
-    event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>,
-    event_receiver: MultiBomb<UIElementEvent>,
+    event_sender: AsyncSender<UIElementEvent>,
+    event_receiver: AsyncReceiver<UIElementEvent>, 
 
     sidebar: ScrollableArea,
 
@@ -23,11 +23,9 @@ pub struct GameUIEditorDialog {
 }
 impl GameUIEditorDialog {
     pub fn new(elements: Vec<UIElement>) -> Self {
-        let (event_sender, event_receiver) = MultiBomb::new();
-        let event_sender = Arc::new(Mutex::new(event_sender));
+        let (event_sender, event_receiver) = async_channel(4);
 
         let window_size = WindowSize::get();
-
         let mut sidebar = ScrollableArea::new(Vector2::ZERO, Vector2::new(window_size.x/3.0, window_size.y * (2.0/3.0)), ListMode::VerticalList);
 
         for i in elements.iter() {
@@ -173,22 +171,23 @@ impl GameUIEditorDialog {
     pub async fn update(&mut self) {
         self.sidebar.update();
 
-        if let Some(UIElementEvent(name, action)) = self.event_receiver.exploded() {
+        while let Ok(UIElementEvent(name, action)) = self.event_receiver.try_recv() {
             for i in self.elements.iter_mut() {
-                if i.element_name == name {
+                if i.element_name != name { continue }
 
-                    match action {
-                        UIEditorAction::ToggleVisible => i.visible = !i.visible,
-                        UIEditorAction::Reset => reset_element(i).await,
-                        UIEditorAction::Highlight => self.highlight_name = Some(name.clone()),
-                        UIEditorAction::UnHighlight => if &Some(name) == &self.highlight_name { self.highlight_name = None },
-                    }
-
-                    break;
+                match action {
+                    UIEditorAction::ToggleVisible => i.visible = !i.visible,
+                    UIEditorAction::Reset => reset_element(i).await,
+                    UIEditorAction::Highlight => self.highlight_name = Some(name.clone()),
+                    UIEditorAction::UnHighlight => if &Some(name) == &self.highlight_name { self.highlight_name = None },
                 }
-            }
 
+                break;
+            }
         }
+        // if let Some(UIElementEvent(name, action)) = self.event_receiver.exploded() {
+
+        // }
     }
 
     pub async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
@@ -244,7 +243,7 @@ pub struct UISideBarElement {
 
     element_name: String,
     display_name: String,
-    event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>,
+    event_sender: AsyncSender<UIElementEvent> //Arc<Mutex<MultiFuze<UIElementEvent>>>,
 }
 impl ScrollableItemGettersSetters for UISideBarElement {
     fn size(&self) -> Vector2 {self.size}
@@ -258,9 +257,11 @@ impl ScrollableItemGettersSetters for UISideBarElement {
         self.hover = hover;
 
         if hover {
-            self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::Highlight));
+            let _ = self.event_sender.try_send(UIElementEvent(self.element_name.clone(), UIEditorAction::Highlight));
+            // self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::Highlight));
         } else {
-            self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::UnHighlight));
+            let _ = self.event_sender.try_send(UIElementEvent(self.element_name.clone(), UIEditorAction::UnHighlight));
+            // self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::UnHighlight));
         }
     }
     
@@ -269,7 +270,8 @@ impl ScrollableItemGettersSetters for UISideBarElement {
 }
 
 impl UISideBarElement {
-    fn new(element_name: String, display_name:&str, event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>) -> Self {
+    // fn new(element_name: String, display_name:&str, event_sender: Arc<Mutex<MultiFuze<UIElementEvent>>>) -> Self {
+    fn new(element_name: String, display_name:&str, event_sender: AsyncSender<UIElementEvent>) -> Self {
         Self { 
             pos: Vector2::ZERO, 
             size: Vector2::new(WindowSize::get().x/3.0, TEXT_SIZE), 
@@ -298,7 +300,8 @@ impl ScrollableItem for UISideBarElement {
 
     fn on_click(&mut self, _pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> bool {
         if self.hover {
-            self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::ToggleVisible));
+            let _ = self.event_sender.try_send(UIElementEvent(self.element_name.clone(), UIEditorAction::ToggleVisible));
+            // self.event_sender.lock().ignite(UIElementEvent(self.element_name.clone(), UIEditorAction::ToggleVisible));
         }
         
         self.hover

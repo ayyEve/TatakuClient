@@ -60,6 +60,10 @@ impl GenericDialog {
         // self.buttons.push(button);
         self.button_actions.insert(text, on_click);
     }
+
+    pub fn add_action(&mut self, action: impl Into<MenuAction>) {
+        self.actions.push(action.into());
+    }
 }
 
 #[async_trait]

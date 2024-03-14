@@ -232,5 +232,4 @@ impl Database {
 
 pub enum DatabaseQuery {
     InsertOrUpdate { sql: String, table_name: String, operation: String, sql_if_failed: Option<String>, operation_if_failed: Option<String> }
-    // Other {sql: String, on_complete: MultiBomb<>}
 }

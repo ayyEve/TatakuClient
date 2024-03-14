@@ -11,9 +11,6 @@ pub use std::sync::{ Arc, Weak };
 pub use std::sync::atomic::{ *, Ordering::SeqCst };
 pub use std::sync::mpsc::{ Sender, SyncSender, Receiver, sync_channel, channel };
 
-// bomb imports
-pub use bombs::*;
-
 // async trait
 pub use async_trait::async_trait;
 

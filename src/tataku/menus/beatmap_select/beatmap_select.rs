@@ -42,7 +42,7 @@ pub struct BeatmapSelectMenu {
     mods: ModManagerHelper,
     current_skin: CurrentSkinHelper,
     new_beatmap_helper: LatestBeatmapHelper,
-    diffcalc_complete: Option<Bomb<()>>,
+    diffcalc_complete: Option<tokio::sync::oneshot::Receiver<()>>,
     // key_events: KeyEventsHandlerGroup<BeatmapSelectKeyEvent>,
 
     menu_game: GameplayPreview,
@@ -231,8 +231,8 @@ impl BeatmapSelectMenu {
         // if diffcalc is not enabled, and this wasnt manually triggered
         if !self.settings.enable_diffcalc && !manual { return }
 
-        let (fuze, bomb) = Bomb::new();
-        self.diffcalc_complete = Some(bomb);
+        let (s, r) = tokio::sync::oneshot::channel();
+        self.diffcalc_complete = Some(r);
 
         tokio::spawn(async move {
             for mode in modes {
@@ -247,7 +247,8 @@ impl BeatmapSelectMenu {
                     NotificationManager::add_text_notification(format!("Diffcalc complete for mode {mode}"), 5_000.0, Color::BLUE).await;
                 }
             }
-            fuze.ignite(());
+            let _ = s.send(());
+            // fuze.ignite(());
         });
     }
 
@@ -628,7 +629,7 @@ impl AsyncMenu for BeatmapSelectMenu {
 
         // check for diffcalc update
         let mut filter_pending = false;
-        if let Some(_) = self.diffcalc_complete.as_ref().and_then(|b| b.exploded()) {
+        if let Some(_) = self.diffcalc_complete.as_mut().and_then(|b| b.try_recv().ok()) {
             debug!("diffcalc done, reload maps");
             filter_pending = true;
             self.diffcalc_complete = None;

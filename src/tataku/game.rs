@@ -1101,7 +1101,7 @@ impl Game {
 
                 
                 // game actions
-                MenuAction::Game(GameMenuAction::Quit) => self.queue_state_change(GameState::Closing),//self.close_game(),
+                MenuAction::Game(GameMenuAction::Quit) => self.queue_state_change(GameState::Closing),
 
                 MenuAction::Game(GameMenuAction::ResumeMap(manager)) => {
                     self.queue_state_change(GameState::Ingame(manager));
@@ -1140,6 +1140,8 @@ impl Game {
                         error!("Could not find map from score!")
                     }
                 }
+                MenuAction::Game(GameMenuAction::HandleMessage(message)) => self.ui_manager.add_message(message),
+            
 
                 // song actions
                 MenuAction::Song(song_action) => {

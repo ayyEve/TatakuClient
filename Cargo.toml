@@ -40,7 +40,6 @@ rusqlite = { version = "0.27", features = ["bundled"] }
 futures-util = { version = "0.3", features = ["async-await", "sink", "std"] }
 async-trait = "0.1"
 async-recursion = "1.0"
-bombs = "0.1.5"
 triple_buffer = "6.0"
 crossbeam = "*"
 global_value_manager = "*"

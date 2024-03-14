@@ -88,6 +88,9 @@ pub enum GameMenuAction {
 
     /// Open a score in the score menu
     ViewScore(IngameScore),
+
+    /// Handle a message
+    HandleMessage(Message),
 }
 
 

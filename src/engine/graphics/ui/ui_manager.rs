@@ -49,6 +49,9 @@ impl UiManager {
     pub fn get_menu(&self) -> MenuType {
         self.current_menu.clone()
     }
+    pub fn add_message(&mut self, message: Message) {
+        self.messages.push(message);
+    } 
 
 
     pub fn add_operation(&mut self, operation: IcedOperation) {
@@ -161,7 +164,7 @@ impl UiManager {
         let Ok(_) = self.ui_sender.send(UiAction::Update {
             application: self.application.take().unwrap(),
             callback: sender,
-            messages: std::mem::take(&mut self.messages),
+            messages: self.messages.take(),
             events: state.into_events(),
             operations: self.queued_operations.take(),
             values,

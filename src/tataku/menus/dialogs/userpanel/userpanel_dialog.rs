@@ -1,15 +1,4 @@
 use crate::prelude::*;
-
-lazy_static::lazy_static! {
-    static ref PANEL_QUEUE: Arc<(Mutex<MultiFuze<UserPanelEvent>>, AsyncMutex<MultiBomb<UserPanelEvent>>)> = {
-        let (fuze, bomb) = MultiBomb::new();
-        let fuze = Mutex::new(fuze);
-        let bomb = AsyncMutex::new(bomb);
-
-        Arc::new((fuze, bomb))
-    };
-}
-
 pub struct UserPanel {
     num: usize,
     actions: ActionQueue,
@@ -60,6 +49,8 @@ impl Dialog for UserPanel {
                 // user menu dialog
                 let mut user_menu_dialog = GenericDialog::new("User Options");
 
+                let owner = MessageOwner::new_dialog(self);
+
                 // spectate
                 if user.game.starts_with("Tataku") {
                     user_menu_dialog.add_button("Spectate", Arc::new(move |dialog| {
@@ -71,7 +62,11 @@ impl Dialog for UserPanel {
 
                 // message
                 user_menu_dialog.add_button("Send Message", Arc::new(move |dialog| {
-                    PANEL_QUEUE.0.lock().ignite(UserPanelEvent::OpenChat(username.clone()));
+                    dialog.add_action(GameMenuAction::HandleMessage(Message::new(
+                        owner,
+                        "open_chat",
+                        MessageType::Text(username.clone())
+                    )));
                     dialog.should_close = true;
                     None
                 }));
@@ -80,7 +75,11 @@ impl Dialog for UserPanel {
                 let is_friend = OnlineManager::get().await.friends.contains(&user_id);
                 let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
                 user_menu_dialog.add_button(friend_txt, Arc::new(move |dialog| {
-                    PANEL_QUEUE.0.lock().ignite(UserPanelEvent::AddRemoveFriend(user_id));
+                    dialog.add_action(GameMenuAction::HandleMessage(Message::new(
+                        owner,
+                        "add_remove_friend",
+                        MessageType::Number(user_id as usize)
+                    )));
                     dialog.should_close = true;
                     None
                 }));
@@ -104,6 +103,20 @@ impl Dialog for UserPanel {
                 self.actions.push(MenuMenuAction::AddDialog(Box::new(user_menu_dialog), false));
             }
 
+            "open_chat" => {
+                let Some(username) = message.message_type.as_text() else { return };
+                self.chat.selected_channel = Some(ChatChannel::from_name(username))
+            }
+
+            "add_remove_friend" => {
+                let MessageType::Number(friend_id) = message.message_type else { return };
+                let friend_id = friend_id as u32;
+
+                let manager = OnlineManager::get().await;
+                let is_friend = !manager.friends.contains(&friend_id);
+
+                manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
+            }
             _ => {}
         }
 
@@ -126,21 +139,6 @@ impl Dialog for UserPanel {
     async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
         self.chat.update(values).await;
         
-        let mut bomb = PANEL_QUEUE.1.lock().await;
-        while let Some(event) = bomb.exploded() {
-            match event {
-                UserPanelEvent::OpenChat(username) => self.chat.selected_channel = Some(ChatChannel::from_name(username)),
-
-                UserPanelEvent::AddRemoveFriend(friend_id) => {
-                    let manager = OnlineManager::get().await;
-                    let is_friend = !manager.friends.contains(&friend_id);
-
-                    manager.send_packet(ChatPacket::Client_UpdateFriend {friend_id, is_friend}).await;
-                }
-            }
-        }
-
-
         // update users from online manager
         if let Some(om) = OnlineManager::try_get() {
             for (_, user) in &om.users {
