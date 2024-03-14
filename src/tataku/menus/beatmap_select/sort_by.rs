@@ -42,6 +42,11 @@ impl TryFrom<&CustomElementValue> for SortBy {
     }
 }
 
+impl Into<CustomElementValue> for SortBy {
+    fn into(self) -> CustomElementValue {
+        CustomElementValue::String(self.to_string())
+    }
+}
 
 impl SortBy {
     pub fn list() -> Vec<Self> {

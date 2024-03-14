@@ -45,12 +45,7 @@ impl Widgetable for BuiltElementDef {
                     .height(self.element.height)
                     .chain_maybe(*color, |s, c| s.color(c))
                     .chain_maybe(*font_size, |s, f| s.size(f))
-                    .chain_maybe(font.as_ref(), |s, font| match &**font {
-                        "main" => s.font(iced::Font::with_name("main")),
-                        "fallback" => s.font(iced::Font::with_name("fallback")),
-                        "fa"|"font_awesome" => s.font(iced::Font::with_name("font_awesome")),
-                        _ => s
-                    })
+                    .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
                     .into_element()
             }
             ElementIdentifier::TextInput { placeholder, variable, is_password } => {
@@ -144,11 +139,75 @@ impl Widgetable for BuiltElementDef {
                 }
             }
 
+            ElementIdentifier::Dropdown { 
+                options_key, 
+                options_display_key, 
+                selected_key, 
+
+                padding,
+                placeholder, 
+                font_size,
+                font
+            } => {
+                let options_display_key = options_display_key.as_ref().unwrap_or(options_key);
+
+                #[derive(Clone, Eq)]
+                struct Test {
+                    id: String,
+                    display: String,
+                }
+                impl ToString for Test {
+                    fn to_string(&self) -> String {
+                        self.display.clone()
+                    }
+                }
+                impl PartialEq for Test {
+                    fn eq(&self, other: &Self) -> bool {
+                        self.id == other.id
+                    }
+                }
+
+                let Ok(Some(list)) = values.get_raw(options_key).map(|s|s.list_maybe()) else { 
+                    error!("Value not exist for {options_key}");
+                    return EmptyElement.into_element() 
+                };
+                let Ok(Some(display_list)) = values.get_raw(options_display_key).map(|s| s.list_maybe()) else { 
+                    error!("Value not exist for {options_display_key}");
+                    return EmptyElement.into_element()
+                };
+                let selected = values.get_string(selected_key).ok();
+
+                let list2 = list
+                    .iter()
+                    .zip(display_list.iter())
+                    .map(|(id, display)| Test { id: id.as_string(), display: display.as_string()})
+                    .collect::<Vec<_>>();
+
+                let selected = selected
+                    .and_then(|s| list2.iter().find(|i|i.id == s))
+                    .cloned();
+                let selected_key = selected_key.clone();
+
+                iced_elements::Dropdown::new(
+                    list2, 
+                    selected,
+                    move |t| Message::new(owner, &selected_key, MessageType::Text(t.id))
+                )
+                .width(self.element.width)
+                .chain_maybe(padding.as_ref(), |t, p| t.padding(*p))
+                .chain_maybe(placeholder.as_ref(), |t, p| t.placeholder(p))
+                .chain_maybe(font_size.as_ref(), |t, f| t.text_size(*f))
+                .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
+                
+                .into_element()
+            }
+
+
+
             ElementIdentifier::KeyHandler { events } => {
                 KeyEventsHandler::new(events, owner, values)
                     .into_element()
             }
-
             ElementIdentifier::Custom {} => {
                 todo!()
             }
@@ -158,6 +217,7 @@ impl Widgetable for BuiltElementDef {
                 // panic!("you missed something")
             }
         }
+
         // debug color
         .chain_maybe(self.element.debug_color, |e, color| e.explain(color).into_element())
     }
@@ -185,5 +245,15 @@ impl<S> ChainMaybe for S {
     fn chain_maybe<T>(self, op: Option<T>, f: impl Fn(Self, T) -> Self) -> Self {
         let Some(op) = op else { return self };
         f(self, op)
+    }
+}
+
+
+fn map_font(font: &String) -> Option<iced::Font> {
+    match &**font {
+        "main" => Some(iced::Font::with_name("main")),
+        "fallback" => Some(iced::Font::with_name("fallback")),
+        "fa"|"font_awesome" => Some(iced::Font::with_name("font_awesome")),
+        _ => None
     }
 }

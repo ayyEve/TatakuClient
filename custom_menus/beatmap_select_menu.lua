@@ -17,13 +17,29 @@ menu = {
     -- the beatmap select menu is broken up into rows
     element = col({ width = "fill", height = "fill" }, {
         -- the first row contains the dropdowns
-        row({ width = "fill", height = "shrink", debug_name="dropdowns" }, {
-            -- -- mode dropdown
-            -- {
-            --     id = "dropdown",
-            --     item = "playmode",
-            -- }
-            space("fill", "shrink"), --TODO!
+        row({ width = "fill", height = "shrink", spacing = 10.0, debug_name="dropdowns" }, {
+            -- mode dropdown
+            {
+                id = "dropdown",
+                debug_name = "playmode dropdown",
+                width = "fill",
+                font_size = 25.0,
+
+                options_key = "game.modes",
+                options_display_key = "game.modes_display",
+                selected_key = "global.playmode",
+            },
+            -- sort_by dropdown
+            {
+                id = "dropdown",
+                debug_name = "sort_by dropdown",
+                
+                width = "fill",
+                font_size = 25.0,
+
+                options_key = "enums.sort_by",
+                selected_key = "global.sort_by",
+            },
 
             -- filter text input
             {

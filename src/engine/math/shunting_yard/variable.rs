@@ -49,6 +49,16 @@ impl CustomElementValue {
         let Self::Map(map) = self else { return None };
         Some(CustomElementMapHelper(map))
     }
+
+
+    pub fn string_maybe(&self) -> Option<&String> {
+        let Self::String(s) = self else { return None };
+        Some(s)
+    }
+    pub fn list_maybe(&self) -> Option<&Vec<Self>> {
+        let Self::List(list) = self else { return None };
+        Some(list)
+    }
 }
 impl strfmt::DisplayStr for CustomElementValue {
     fn display_str(&self, f: &mut strfmt::Formatter) -> strfmt::Result<()> {

@@ -224,6 +224,21 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 debug_color,
             }),
             
+            "dropdown" => Ok(Self {
+                id: ElementIdentifier::Dropdown { 
+                    options_key: table.get("options_key")?, 
+                    options_display_key: table.get("options_display_key")?, 
+                    selected_key: table.get("selected_key")?, 
+                    padding: table.get("padding")?, 
+                    placeholder: table.get("placeholder")?, 
+                    font_size: table.get("font_size")?, 
+                    font: table.get("font")?
+                },
+                width: width.unwrap_or(Length::Fill),
+                height: height.unwrap_or(Length::Shrink), // not actually used 
+                debug_color,
+            }),
+
 
             "key_handler" => Ok(Self {
                 id: ElementIdentifier::KeyHandler { 

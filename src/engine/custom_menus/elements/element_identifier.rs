@@ -49,11 +49,6 @@ pub enum ElementIdentifier {
         shape: Option<Shape>,
     },
 
-    //TODO: move this to a component
-    KeyHandler {
-        events: Vec<KeyHandlerEvent>,
-    },
-
     Conditional {
         cond: ElementCondition,
         if_true: Box<ElementDef>,
@@ -65,6 +60,22 @@ pub enum ElementIdentifier {
         scrollable: bool,
         element: Box<ElementDef>,
         variable: Option<String>,
+    },
+
+    Dropdown {
+        options_key: String,
+        options_display_key: Option<String>,
+        selected_key: String,
+
+        padding: Option<ElementPadding>,
+        placeholder: Option<String>,
+        font_size: Option<f32>,
+        font: Option<String>,
+    },
+
+    // not actually an element, but needs to be here since it needs to be added to the DOM
+    KeyHandler {
+        events: Vec<KeyHandlerEvent>,
     },
 
     // TODO: !!!

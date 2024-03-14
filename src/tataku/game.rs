@@ -41,15 +41,14 @@ pub struct Game {
     last_skin: String,
 
     background_loader: Option<AsyncLoader<Option<Image>>>,
-
     spec_watch_action: SpectatorWatchAction,
-
     ui_manager: UiManager,
-
     custom_menus: Vec<CustomMenu>,
 
     pub shunting_yard_values: ShuntingYardValues,
-    pub song_manager: SongManager,
+    song_manager: SongManager,
+
+    value_checker: ValueChecker,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -100,6 +99,7 @@ impl Game {
             shunting_yard_values: ShuntingYardValues::new(),
 
             song_manager: SongManager::new(),
+            value_checker: ValueChecker::new(),
         };
         g.load_custom_menus();
 
@@ -132,6 +132,8 @@ impl Game {
         values.set("global.playmode_display", "Osu".to_owned());
         values.set("global.playmode_actual", "osu".to_owned()); // playmode with map's mode override
         values.set("global.playmode_actual_display", "Osu".to_owned());
+        values.set("global.sort_by", self.settings.last_sort_by);
+        values.set("global.group_by", GroupBy::Set);
 
         {
             // load gamemodes
@@ -140,6 +142,11 @@ impl Game {
             values.set("game.modes", modes);
             values.set("game.modes_display", modes_display);
         }
+
+        // enums (for use with dropdowns)
+        values.set("enums.sort_by", SortBy::list());
+        values.set("enums.group_by", GroupBy::list());
+
 
         // song values
         values.set("song.exists", false);
@@ -332,7 +339,7 @@ impl Game {
                 {
                     let values = &mut self.shunting_yard_values;
                     values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
-                    values.set("global.sort_by", format!("{:?}", self.settings.last_sort_by));
+                    values.set("global.sort_by", self.settings.last_sort_by);
                     // values.set("global.sort_by", format!("{:?}", self.settings.last_group_by));
                 }
             }
@@ -353,6 +360,9 @@ impl Game {
             if update_elapsed >= update_target {
                 update_timer = now;
                 self.update().await;
+
+                // update values
+                self.value_checker.check(&mut self.shunting_yard_values).await;
                 
                 // re-update the time
                 set_time(game_start.elapsed());
@@ -1608,5 +1618,49 @@ impl MenuType {
     pub fn from_menu(menu: &Box<dyn AsyncMenu>) -> Self {
         let Some(custom) = menu.get_custom_name() else { return Self::Internal(menu.get_name()) };
         Self::Custom(custom.clone())
+    }
+}
+
+
+struct ValueChecker {
+    gamemode: SYValueHelper,
+    beatmap: SYValueHelper,
+}
+impl ValueChecker {
+    pub fn new() -> Self {
+        Self {
+            gamemode: SYValueHelper::new("global.playmode", CustomElementValue::String(String::new())),
+            beatmap: SYValueHelper::new("map.hash", CustomElementValue::String(String::new())),
+        }
+    }
+
+    pub async fn check(&mut self, values: &mut ShuntingYardValues) {
+        if self.gamemode.check(values) {
+            if let Some(mode) = self.gamemode.string_maybe() {
+                GlobalValueManager::update::<CurrentPlaymode>(Arc::new(CurrentPlaymode(mode.clone())));
+
+                // update the display value
+                let display = gamemode_display_name(mode).to_owned();
+                values.set("global.playmode_display", display);
+
+                // check playmode override
+                self.check_mode_override(values).await
+            }
+        }
+
+        if self.beatmap.check(values) {
+            self.check_mode_override(values).await
+        }
+    }
+
+    async fn check_mode_override(&self, values: &mut ShuntingYardValues) {
+        let Some(mode) = self.gamemode.string_maybe() else { return };
+        let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
+
+        let actual_mode = map.check_mode_override(mode.clone());
+        let display = gamemode_display_name(&actual_mode).to_owned();
+
+        values.set("global.playmode_actual", actual_mode);
+        values.set("global.playmode_actual_display", display);
     }
 }

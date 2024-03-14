@@ -387,11 +387,19 @@ impl BeatmapManager {
 
 
 #[allow(unused)]
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum GroupBy {
     #[default]
     Set,
     Collections,
+}
+impl GroupBy {
+    pub fn list() -> Vec<Self> {
+        vec![
+            Self::Set,
+            Self::Collections,
+        ]
+    }
 }
 impl TryFrom<&CustomElementValue> for GroupBy {
     type Error = String;
@@ -416,7 +424,11 @@ impl TryFrom<&CustomElementValue> for GroupBy {
         }
     }
 }
-
+impl Into<CustomElementValue> for GroupBy {
+    fn into(self) -> CustomElementValue {
+        CustomElementValue::String(format!("{self:?}"))
+    }
+}
 
 
 

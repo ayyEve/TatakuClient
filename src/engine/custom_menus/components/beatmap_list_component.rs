@@ -53,7 +53,7 @@ impl BeatmapListComponent {
     }
 
     pub async fn refresh_maps(&mut self, values: &mut ShuntingYardValues) {
-        debug!("Refreshing maps");
+        trace!("Refreshing maps");
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Set);
 
@@ -61,7 +61,7 @@ impl BeatmapListComponent {
     }
     
     pub async fn apply_filter(&mut self, values: &mut ShuntingYardValues) {
-        debug!("Applying Filter");
+        trace!("Applying Filter");
         self.filtered_groups.clear();
         let current_hash = CurrentBeatmapHelper::new().0.as_ref().map(|m| m.beatmap_hash).unwrap_or_default();
         
@@ -111,21 +111,19 @@ impl BeatmapListComponent {
             SortBy::Difficulty => sort!(diff, Float),
         }
             
-        // let mut selected = None;
+        let mut selected = false;
         for (n, i) in self.filtered_groups.iter_mut().enumerate() {
             i.number = n;
-            
-            // if selected.is_none() {
-            //     if let Some((n2, _)) = i.maps.iter().enumerate().find(|(_, m)| m.comp_hash(current_hash)) {
-            //         selected = Some((n, n2))
-            //     }
-            // }
-        }
 
-        // if let Some((set, map)) = selected {
-        //     self.select_set(set, values);
-        //     self.select_map(map, values);
-        // }
+            // make sure we have the correct selected set and map number
+            if !selected {
+                if let Some(j) = i.has_hash(&current_hash) {
+                    self.selected_set = n;
+                    self.selected_map = j;
+                    selected = true;
+                }
+            }
+        }
 
         self.update_values(values, current_hash);
     }
@@ -140,14 +138,11 @@ impl BeatmapListComponent {
         );
 
         values.set("beatmap_list.groups", filtered_groups);
-        // debug!("values: {values:#?}");
     }
 
     // menu event helpers
     fn select_set(&mut self, set_num: usize, values: &mut ShuntingYardValues) {
         debug!("selecting set: {set_num}");
-        // self.filtered_groups.get_mut(self.selected_set).ok_do_mut(|set| set.selected = false);
-        // self.filtered_groups.get_mut(set_num).ok_do_mut(|set| set.selected = true);
         
         self.selected_set = set_num;
         self.select_map(0, values);
@@ -209,7 +204,7 @@ impl Widgetable for BeatmapListComponent {
         // check sort_by 
         if let Ok(Ok(sort_by)) = values.get_raw("global.sort_by").map(SortBy::try_from) {
             if self.sort_by != sort_by {
-                debug!("sort_by changed, filtering maps");
+                trace!("sort_by changed, filtering maps");
                 self.sort_by = sort_by;
                 self.apply_filter(values).await;
             }
@@ -218,7 +213,7 @@ impl Widgetable for BeatmapListComponent {
         // check group_by 
         if let Ok(Ok(group_by)) = values.get_raw("global.group_by").map(GroupBy::try_from) {
             if self.group_by != group_by {
-                debug!("group_by changed, reloading maps");
+                trace!("group_by changed, reloading maps");
                 self.group_by = group_by;
                 self.refresh_maps(values).await;
             }
@@ -267,6 +262,12 @@ pub struct BeatmapListGroup {
     pub maps: Vec<BeatmapMetaWithDiff>,
 }
 impl BeatmapListGroup {
+    fn has_hash(&self, hash: &Md5Hash) -> Option<usize> {
+        if let Some((i,_)) = self.maps.iter().enumerate().find(|(_,b)| b.comp_hash(*hash)) {
+            return Some(i)
+        } 
+        None
+    }
     pub fn into_map(&self, current_hash: Md5Hash) -> CustomElementValue {
         let mut is_selected = false;
         
