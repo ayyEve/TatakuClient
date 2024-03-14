@@ -38,9 +38,9 @@ impl DirectApi for QuaverDirect {
             params.join("&")
         );
 
-        let body = reqwest::blocking::get(url)
+        let body = reqwest::get(url).await
             .expect("Error with request")
-            .text()
+            .text().await
             .expect("Error converting to text");
 
 

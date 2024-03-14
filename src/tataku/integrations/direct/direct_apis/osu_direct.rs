@@ -38,9 +38,9 @@ impl DirectApi for OsuDirect {
             /* text search */ if let Some(t) = search_params.text {format!("&q={}", t)} else {String::new()}
         );
 
-        let body = reqwest::blocking::get(url)
+        let body = reqwest::get(url).await
             .expect("error with request")
-            .text()
+            .text().await
             .expect("error converting to text");
 
         let mut lines = body.split('\n');
