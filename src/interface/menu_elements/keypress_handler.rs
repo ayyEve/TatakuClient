@@ -120,21 +120,31 @@ pub struct KeyEvent {
     mods: KeyModifiers,
     message: Message
 }
+impl KeyEvent {
+    pub fn new(key: Key, mods: KeyModifiers, message: Message) -> Self {
+        Self {
+            key, 
+            mods, 
+            message
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct KeyEventsHandler(Vec<KeyEvent>);
 impl KeyEventsHandler {
-    pub fn new(events: &Vec<KeyHandlerEvent>, owner: MessageOwner) -> Self {
-        Self(events.iter().map(|a|KeyEvent {
-            key: a.key,
-            mods: a.mods,
-            message: Message::new(owner, "key_event", MessageType::CustomMenuAction(a.action.clone()))
-        }).collect())
+    pub fn new(events: &Vec<KeyHandlerEvent>, owner: MessageOwner, values: &mut ShuntingYardValues) -> Self {
+        Self(
+            events
+            .iter()
+            .filter_map(|a| 
+                a.action
+                .resolve(owner, values)
+                .map(|message| KeyEvent::new(a.key, a.mods, message))
+            )
+            .collect()
+        )
     }
-    // pub fn new() -> (Self, AsyncReceiver<KeyEvent<T>>) {
-    //     let (sender, receiver) = async_channel(10);
-    //     (Self(sender), receiver)
-    // }
 }
 
 impl iced::advanced::Widget<Message, IcedRenderer> for KeyEventsHandler {

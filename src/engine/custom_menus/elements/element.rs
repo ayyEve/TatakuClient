@@ -75,6 +75,10 @@ impl ElementDef {
                 built.children.push(element.build().await);
             }
 
+            ElementIdentifier::KeyHandler { events } => {
+                events.iter_mut().for_each(|e| e.build());
+            }
+
             _ => {},
         }
 
@@ -208,31 +212,28 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 debug_color,
             }),
 
-            "list" => {
-                Ok(Self {
-                    id: ElementIdentifier::List { 
-                        list_var: table.get("list")?,
-                        scrollable: table.get::<_, Option<bool>>("scroll")?.unwrap_or_default(),
-                        element: Box::new(table.get("element")?),
-                        variable: parse_from_multiple(&table, &["var", "variable"])?,
-                    },
-                    width: width.unwrap_or(Length::Fill),
-                    height: height.unwrap_or(Length::Shrink),
-                    debug_color,
-                })
-            }
+            "list" => Ok(Self {
+                id: ElementIdentifier::List { 
+                    list_var: table.get("list")?,
+                    scrollable: table.get::<_, Option<bool>>("scroll")?.unwrap_or_default(),
+                    element: Box::new(table.get("element")?),
+                    variable: parse_from_multiple(&table, &["var", "variable"])?,
+                },
+                width: width.unwrap_or(Length::Fill),
+                height: height.unwrap_or(Length::Shrink),
+                debug_color,
+            }),
+            
 
-            "key_handler" => {
-                let table = table.get::<_, rlua::Table>("events")?;
-                Ok(Self {
-                    id: ElementIdentifier::KeyHandler { 
-                        events: (0..30).into_iter().filter_map(|i| table.get(i).ok()).collect()
-                    },
-                    width: Length::Fixed(0.0),
-                    height: Length::Fixed(0.0),
-                    debug_color,
-                })
-            }
+            "key_handler" => Ok(Self {
+                id: ElementIdentifier::KeyHandler { 
+                    events: table.get("events")?
+                },
+                width: Length::Fixed(0.0),
+                height: Length::Fixed(0.0),
+                debug_color,
+            }),
+            
             
             _ => { todo!("{id}") }
         }

@@ -61,6 +61,10 @@ impl CustomMenuAction {
         else if let Some(song_action) = table.get::<_, Option<CustomMenuSongAction>>("song")? {
             Ok(Self::Song(song_action))
         }
+        // game actions
+        else if let Some(game_action) = table.get::<_, Option<CustomMenuGameAction>>("game")? {
+            Ok(Self::Game(game_action))
+        }
 
         // nope
         else {

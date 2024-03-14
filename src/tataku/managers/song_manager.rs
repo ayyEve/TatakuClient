@@ -51,7 +51,7 @@ impl SongManager {
 
                 // check if the file is the same as current
                 if let Some(song) = self.current_song.as_ref().filter(|s|s.id == path) {
-                    debug!("Trying to set the same song as current");
+                    trace!("Trying to set the same song as current");
                     if params.restart {
                         params.play = true;
                         Self::apply_params(&song.instance, params);
@@ -76,7 +76,7 @@ impl SongManager {
             SongMenuSetAction::FromData(data, key, mut params) => {
                 // check if the key is the same as current
                 if let Some(song) = self.current_song.as_ref().filter(|s|s.id == key) {
-                    debug!("Trying to set the same song as current");
+                    trace!("Trying to set the same song as current");
                     if params.restart {
                         params.play = true;
                         Self::apply_params(&song.instance, params);
@@ -103,7 +103,7 @@ impl SongManager {
     }
 
     fn apply_params(song: &Arc<dyn AudioInstance>, params: SongPlayData) {
-        info!("Using params: {params:?}");
+        trace!("Using params: {params:?}");
         if params.play { song.play(params.restart) }
         params.position.map(|pos| song.set_position(pos));
         params.rate.map(|rate| song.set_rate(rate));

@@ -130,6 +130,9 @@ impl Game {
         values.set("game.time", 0.0);
         values.set("global.playmode", "osu".to_owned());
         values.set("global.playmode_display", "Osu".to_owned());
+        values.set("global.playmode_actual", "osu".to_owned()); // playmode with map's mode override
+        values.set("global.playmode_actual_display", "Osu".to_owned());
+
         {
             // load gamemodes
             let modes = AVAILABLE_PLAYMODES.iter().map(|&s|s.to_owned()).collect::<Vec<String>>();
@@ -376,7 +379,9 @@ impl Game {
 
     }
 
-    pub fn close_game(&mut self) {
+    /// use this for cleanup, not to tell the game to close
+    /// to tell the game to close, set the state to GameState::Closing
+    fn close_game(&mut self) {
         warn!("stopping game");
     }
 
@@ -1020,12 +1025,7 @@ impl Game {
                 }
                 
                 MenuAction::Menu(MenuMenuAction::AddDialog(dialog, allow_duplicates)) => self.add_dialog(dialog, allow_duplicates),
-                MenuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, _allow_duplicates)) => {
-                    match &*dialog {
-                        "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
-                        other => warn!("unknown dialog '{other}'")
-                    }
-                }
+                MenuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, allow_duplicates)) => self.handle_custom_dialog(dialog, allow_duplicates).await,
                 
                 // beatmap actions
                 MenuAction::Beatmap(BeatmapMenuAction::PlayMap(map, mode)) => {
@@ -1101,7 +1101,7 @@ impl Game {
 
                 
                 // game actions
-                MenuAction::Game(GameMenuAction::Quit) => self.close_game(),
+                MenuAction::Game(GameMenuAction::Quit) => self.queue_state_change(GameState::Closing),//self.close_game(),
 
                 MenuAction::Game(GameMenuAction::ResumeMap(manager)) => {
                     self.queue_state_change(GameState::Ingame(manager));
@@ -1232,13 +1232,33 @@ impl Game {
         } else {
             match &*id {
                 "none" => {}
-                "beatmap_select_menu" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
+                "beatmap_select" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
                 _ => {
                     error!("custom menu not found! {id}");
                     error!("going to main menu instead");
                     self.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)))
                 }
             }
+        }
+    }
+
+    async fn handle_custom_dialog(&mut self, id: String, _allow_duplicates: bool) {
+        match &*id {
+            "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
+            "mods" => {
+                let mut groups = Vec::new();
+                let playmode = self.shunting_yard_values
+                    .get_string("global.playmode_actual")
+                    .unwrap_or_else(|_| format!("osu"));
+
+                if let Some(info) = get_gamemode_info(&playmode) {
+                    groups = info.get_mods();
+                }
+
+                self.add_dialog(Box::new(ModDialog::new(groups).await), false);
+            }
+
+            _ => error!("unknown dialog id: {id}"),
         }
     }
 

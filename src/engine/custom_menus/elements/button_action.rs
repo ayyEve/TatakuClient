@@ -105,16 +105,20 @@ impl<'lua> FromLua<'lua> for ButtonAction {
 
 #[derive(Clone, Debug)]
 pub enum CustomEventValueType {
-    /// direct value
+    /// No value
+    None,
+
+    /// Direct value
     Value(CustomElementValue),
 
-    /// get from a variable
+    /// Get from a variable
     Variable(String),
 }
 
 impl CustomEventValueType {
     pub fn resolve(&self, values: &ShuntingYardValues) -> Option<CustomElementValue> {
         match self {
+            Self::None => None,
             Self::Value(val) => Some(val.clone()),
             Self::Variable(var) => {
                 let val = values.get_raw(var).ok();
@@ -133,7 +137,8 @@ impl CustomEventValueType {
         } else if let Some(var) = table.get::<_, Option<String>>("variable")? {
             Ok(Self::Variable(var))
         } else { 
-            Err(FromLuaConversionError { from: "table", to: "CustomEventValueType", message: Some("not value or variable".to_owned()) })
+            Ok(Self::None)
+            // Err(FromLuaConversionError { from: "table", to: "CustomEventValueType", message: Some("not value or variable".to_owned()) })
         }
     }
 }

@@ -37,7 +37,7 @@ impl ScoreListComponent {
 
 impl ScoreListComponent {
     pub async fn load_scores(&mut self, values: &mut ShuntingYardValues) {
-        debug!("reloading scores");
+        trace!("Score reload requested");
 
         // clear scores, and make sure the values in the collection are removed as well
         self.current_scores.clear();
@@ -55,7 +55,7 @@ impl ScoreListComponent {
         let Ok(hash) = Md5Hash::try_from(&map_hash) else { return };
         let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&hash) else { return };
 
-        debug!("reloading scores");
+        trace!("Reloading scores");
         self.score_loader = Some(self.score_helper.get_scores(hash, &map.check_mode_override(mode)).await);
     }
 
@@ -79,16 +79,16 @@ impl Widgetable for ScoreListComponent {
 
         // check if map hash or playmode have changed
         if self.mode.check(values) {
-            debug!("mode changed");
+            trace!("mode changed");
             self.load_scores(values).await;
         }
         if self.map_hash.check(values) {
-            debug!("hash changed");
+            trace!("hash changed");
             self.load_scores(values).await;
         }
         if let Some(method) = &mut self.method {
             if method.check(values) {
-                debug!("method changed");
+                trace!("method changed");
                 self.load_scores(values).await;
             }
         }
@@ -104,7 +104,7 @@ impl Widgetable for ScoreListComponent {
                 // load scores
                 self.current_scores = helper.scores.clone();
                 self.current_scores.sort_by(|a, b| b.score.score.cmp(&a.score.score));
-                debug!("got list of {} scores from {:?}", self.current_scores.len(), self.score_helper.current_method);
+                trace!("Got list of {} scores from {:?}", self.current_scores.len(), self.score_helper.current_method);
 
                 self.update_values(values);
             }

@@ -147,7 +147,16 @@ menu = {
             }
         }),
         
-        -- the last row currently has nothing lol
+        
+        -- dont forget the key handler!
+        key_handler({
+            --[[previous set]] key_event("Left", custom_action("beatmap_list.prev_set")),
+            --[[next set]] key_event("Right", custom_action("beatmap_list.next_set")),
+            --[[previous map]] key_event("Up", custom_action("beatmap_list.prev_map")),
+            --[[next map]] key_event("Down", custom_action("beatmap_list.next_map")),
+
+            --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods"))
+        })
     })
     
 }

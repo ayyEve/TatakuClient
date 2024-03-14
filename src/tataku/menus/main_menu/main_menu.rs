@@ -407,7 +407,7 @@ impl AsyncMenu for MainMenu {
     }
 
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let owner = MessageOwner::new_menu(self);
         
@@ -458,14 +458,14 @@ impl AsyncMenu for MainMenu {
                 KeyHandlerEvent {
                     key: Key::Left,
                     mods: KeyModifiers::default(),
-                    action: CustomMenuAction::Map(CustomMenuMapAction::Previous(MapActionIfNone::ContinueCurrent))
+                    action: ButtonAction::MenuAction(CustomMenuAction::Map(CustomMenuMapAction::Previous(MapActionIfNone::ContinueCurrent))),
                 },
                 KeyHandlerEvent {
                     key: Key::Right,
                     mods: KeyModifiers::default(),
-                    action: CustomMenuAction::Map(CustomMenuMapAction::Next)
+                    action: ButtonAction::MenuAction(CustomMenuAction::Map(CustomMenuMapAction::Next))
                 },
-            ], owner);
+            ], owner, values);
 
             width = Fill,
             height = Fill

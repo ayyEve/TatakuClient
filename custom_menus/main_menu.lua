@@ -113,18 +113,8 @@ menu = {
         -- lastly, we have the key handler
         -- it doesnt actually occupy any space, but is required to handle key input
         key_handler({
-            -- previous map
-            {
-                key = "Left",
-                action = { id = "action", action = { map = "previous" } },
-            },
-
-            -- next map
-            {
-                key = "Right",
-                action = { id = "action", action = { map = "next" } },
-                mods = { "ctrl" }
-            }
+            --[[previous map]] key_event("Left", map_action("previous")),
+            --[[next map]] key_event("Right", map_action("next"))
         })
     })
     

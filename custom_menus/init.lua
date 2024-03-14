@@ -86,6 +86,18 @@ function key_handler(events)
         events = events
     }
 end
+function key_event(key, mods, action) 
+    if not action then 
+        action = mods
+        mods = nil
+    end
+
+    return {
+        key = key,
+        action = action,
+        mods = mods,
+    }
+end
 
 function cond(cond, if_true, if_false) 
     return {
@@ -96,25 +108,47 @@ function cond(cond, if_true, if_false)
     }
 end
 
+
+--- action helpers
 function map_action(action)
     return {
         id = "action",
         map = action
     }
 end
-
 function song_action(action)
     return {
         id = "action",
         song = action
     }
 end
+function game_action(action)
+    return {
+        id = "action",
+        game = action
+    }
+end
 
 function custom_action(tag, val)
+    if not val then val = { value = "" } end
     val.id = "custom"
     val.tag = tag
     return val
 end
+
+function menu_action(menu) 
+    return {
+        id = "action",
+        menu = menu
+    }
+end
+function dialog_action(dialog)
+    return {
+        id = "action",
+        dialog = dialog
+    }
+end
+
 
 
 function variable(var) 
@@ -135,7 +169,7 @@ song_display = {
         -- {artist} - {title}
         {
             id = "styled_content",
-            color = color(1.0, 1.0, 1.0, 0.1 ),
+            color = color(1.0, 1.0, 1.0, 0.1),
             shape = { round = 5.0 },
             padding = 8.0,
 
@@ -149,9 +183,9 @@ song_display = {
 }
 
 -- premade button actions
-start_singleplayer = { id = "action", menu = "beatmap_select" }
-start_multiplayer = { id = "action", menu = "lobby_select" }
-exit_game = { id = "action", menu = "none" }
+start_singleplayer = menu_action("beatmap_select")
+start_multiplayer = menu_action("lobby_select")
+exit_game = game_action("quit") -- TODO: this properly
 
 
 -- menu stuff

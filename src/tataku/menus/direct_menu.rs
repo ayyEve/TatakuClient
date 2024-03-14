@@ -185,7 +185,7 @@ impl AsyncMenu for DirectMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         info!("got message {message:?}");
     }
 

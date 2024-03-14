@@ -145,7 +145,7 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::KeyHandler { events } => {
-                KeyEventsHandler::new(events, owner)
+                KeyEventsHandler::new(events, owner, values)
                     .into_element()
             }
 

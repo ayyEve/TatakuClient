@@ -269,7 +269,7 @@ impl AsyncMenu for LobbyMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         let slot = message.message_type.as_number().map(|n|n as u8);
