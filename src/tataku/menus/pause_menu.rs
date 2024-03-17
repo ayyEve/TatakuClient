@@ -35,7 +35,7 @@ impl PauseMenu {
     }
 
     pub fn unpause(&mut self) {
-        self.actions.push(GameMenuAction::ResumeMap(self.manager.take()));
+        self.actions.push(GameAction::ResumeMap(self.manager.take()));
     }
 
     async fn retry(&mut self) {
@@ -44,8 +44,7 @@ impl PauseMenu {
     }
 
     async fn exit(&mut self) {
-        self.actions.push(MenuMenuAction::SetMenuCustom("beatmap_select".to_owned()));
-        // self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await)));
+        self.actions.push(MenuMenuAction::SetMenu("beatmap_select".to_owned()));
     }
 }
 
@@ -53,7 +52,7 @@ impl PauseMenu {
 impl AsyncMenu for PauseMenu {
     fn get_name(&self) -> &'static str { if self.is_fail_menu {"fail"} else {"pause"} }
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         let menu = row!(
@@ -87,7 +86,7 @@ impl AsyncMenu for PauseMenu {
             .into_element()
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         info!("got message {message:?}");
         let Some(tag) = message.tag.as_string() else { return };
 
@@ -101,7 +100,7 @@ impl AsyncMenu for PauseMenu {
 
     }
     
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.actions.take()
     }
     

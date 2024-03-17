@@ -38,10 +38,23 @@ pub fn calc_acc(score: &Score) -> f64 {
         .normal_or(1.0)
 }
 
-pub fn gamemode_display_name(playmode: &String) -> &str {
+pub fn gamemode_display_name(playmode: &str) -> &str {
     get_gamemode_info(playmode)
         .map(|i|i.display_name())
         .unwrap_or("Unknown")
+}
+
+
+pub async fn manager_from_playmode_path_hash(playmode: String, map_path: String, map_hash: Md5Hash) -> TatakuResult<IngameManager> {
+    let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
+    let playmode = beatmap.playmode(playmode);
+
+    let info = get_gamemode_info(&playmode)
+        .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))?;
+
+    let gamemode = info.create_game(&beatmap).await?;
+
+    Ok(IngameManager::new(beatmap, gamemode).await)
 }
 
 pub async fn manager_from_playmode(playmode: String, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
@@ -49,7 +62,7 @@ pub async fn manager_from_playmode(playmode: String, beatmap: &BeatmapMeta) -> T
     let playmode = beatmap.playmode(playmode);
 
     let info = get_gamemode_info(&playmode)
-        .ok_or_else(||TatakuError::GameMode(GameModeError::UnknownGameMode))?;
+        .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))?;
 
     let gamemode = info.create_game(&beatmap).await?;
 
@@ -73,7 +86,7 @@ pub async fn calc_diff(map: &BeatmapMeta, mode_override: String) -> TatakuResult
     let playmode = map.check_mode_override(mode_override);
 
     get_gamemode_info(&playmode)
-        .ok_or_else(||TatakuError::GameMode(GameModeError::UnknownGameMode))?
+        .ok_or_else(|| TatakuError::GameMode(GameModeError::UnknownGameMode))?
         .create_diffcalc(map).await
 }}
 

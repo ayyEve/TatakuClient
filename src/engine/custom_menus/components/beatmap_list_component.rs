@@ -52,7 +52,7 @@ impl BeatmapListComponent {
         }
     }
 
-    pub async fn refresh_maps(&mut self, values: &mut ShuntingYardValues) {
+    pub async fn refresh_maps(&mut self, values: &mut ValueCollection) {
         trace!("Refreshing maps");
         //TODO: allow grouping by not just map set
         self.unfiltered_groups = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Set);
@@ -60,17 +60,16 @@ impl BeatmapListComponent {
         self.apply_filter(values).await;
     }
     
-    pub async fn apply_filter(&mut self, values: &mut ShuntingYardValues) {
+    pub async fn apply_filter(&mut self, values: &mut ValueCollection) {
         trace!("Applying Filter");
         self.filtered_groups.clear();
-        let current_hash = CurrentBeatmapHelper::new().0.as_ref().map(|m| m.beatmap_hash).unwrap_or_default();
         
         // get filter text and split here so we arent splitting every map
         let filter_text = self.filter.to_ascii_lowercase();
         let filters = filter_text.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>();
 
-        let mods = ModManagerHelper::new(); //self.mods.clone();
-        let mode = CurrentPlaymodeHelper::new().0.clone(); //self.get_playmode(); //Arc::new(self.mode.clone());
+        let Ok(Ok(mods)) = values.get_raw("global.mods").map(ModManager::try_from) else { return };
+        let Ok(mode) = values.get_string("global.playmode") else { return }; 
 
         for group in self.unfiltered_groups.iter() {
             let mut maps = group.maps.iter().map(|m| {
@@ -93,6 +92,11 @@ impl BeatmapListComponent {
             self.filtered_groups.push(BeatmapListGroup { maps, number: 0, name });
         }
 
+        self.sort(values)
+    }
+
+    fn sort(&mut self, values: &mut ValueCollection) {
+        let current_hash = values.try_get("map.hash").unwrap_or_default();
 
         // sort
         macro_rules! sort {
@@ -130,7 +134,7 @@ impl BeatmapListComponent {
 
 
 
-    fn update_values(&mut self, values: &mut ShuntingYardValues, current_hash: Md5Hash) {
+    fn update_values(&mut self, values: &mut ValueCollection, current_hash: Md5Hash) {
         let filtered_groups = CustomElementValue::List(
             self.filtered_groups
                 .iter()
@@ -141,13 +145,13 @@ impl BeatmapListComponent {
     }
 
     // menu event helpers
-    fn select_set(&mut self, set_num: usize, values: &mut ShuntingYardValues) {
+    fn select_set(&mut self, set_num: usize, values: &mut ValueCollection) {
         debug!("selecting set: {set_num}");
         
         self.selected_set = set_num;
         self.select_map(0, values);
 
-        self.actions.push(MenuAction::PerformOperation(
+        self.actions.push(TatakuAction::PerformOperation(
             snap_to_id(
             "beatmap_scroll", 
             iced::widget::scrollable::RelativeOffset { 
@@ -156,28 +160,28 @@ impl BeatmapListComponent {
             })
         ))
     }
-    fn next_set(&mut self, values: &mut ShuntingYardValues) {
+    fn next_set(&mut self, values: &mut ValueCollection) {
         self.select_set(self.selected_set.wrapping_add_1(self.filtered_groups.len()), values)
     }
-    fn prev_set(&mut self, values: &mut ShuntingYardValues) {
+    fn prev_set(&mut self, values: &mut ValueCollection) {
         self.select_set(self.selected_set.wrapping_sub_1(self.filtered_groups.len()), values)
     }
 
-    fn select_map(&mut self, map_num: usize, values: &mut ShuntingYardValues)  {
+    fn select_map(&mut self, map_num: usize, values: &mut ValueCollection)  {
         self.selected_map = map_num;
 
         let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
         if let Some(map) = set.maps.get(self.selected_map) {
-            self.actions.push(BeatmapMenuAction::Set(map.meta.clone(), true, false));
+            self.actions.push(BeatmapAction::Set(map.meta.clone(), true, false));
             self.update_values(values, map.beatmap_hash);
         }
 
     }
-    fn next_map(&mut self, values: &mut ShuntingYardValues) {
+    fn next_map(&mut self, values: &mut ValueCollection) {
         let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
         self.select_map(self.selected_map.wrapping_add_1(set.maps.len()), values)
     }
-    fn prev_map(&mut self, values: &mut ShuntingYardValues) {
+    fn prev_map(&mut self, values: &mut ValueCollection) {
         let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
         self.select_map(self.selected_map.wrapping_sub_1(set.maps.len()), values)
     }
@@ -186,7 +190,7 @@ impl BeatmapListComponent {
 
 #[async_trait]
 impl Widgetable for BeatmapListComponent {
-    async fn update(&mut self, values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {
+    async fn update(&mut self, values: &mut ValueCollection, _actions: &mut ActionQueue) {
         // Make sure we set the values initially
         if self.unfiltered_groups.is_empty() {
             self.refresh_maps(values).await;
@@ -204,9 +208,9 @@ impl Widgetable for BeatmapListComponent {
         // check sort_by 
         if let Ok(Ok(sort_by)) = values.get_raw("global.sort_by").map(SortBy::try_from) {
             if self.sort_by != sort_by {
-                trace!("sort_by changed, filtering maps");
+                trace!("sort_by changed, re-sorting");
                 self.sort_by = sort_by;
-                self.apply_filter(values).await;
+                self.sort(values);
             }
         }
 
@@ -220,14 +224,14 @@ impl Widgetable for BeatmapListComponent {
         }
     }
     
-    async fn handle_message(&mut self, message: &Message, values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+    async fn handle_message(&mut self, message: &Message, values: &mut ValueCollection) -> Vec<TatakuAction> { 
         
         if let MessageTag::String(tag) = &message.tag {
             match &**tag {
                 "beatmap_list.set_beatmap" => {
                     let Some(hash) = message.message_type.as_text_ref() else { panic!("invalid type for beatmap hash: {:?}", message.message_type) };
                     let Ok(hash) = Md5Hash::try_from(hash) else { panic!("invalid hash string for beatmap hash") };
-                    self.actions.push(BeatmapMenuAction::SetFromHash(hash, true, false));
+                    self.actions.push(BeatmapAction::SetFromHash(hash, true, false));
                     self.update_values(values, hash);
                 }
 
@@ -275,19 +279,11 @@ impl BeatmapListGroup {
             let map_is_selected = beatmap.comp_hash(current_hash);
             if map_is_selected { is_selected = true }
 
-            let mut map = CustomElementMapHelper::default();
-            map.set("artist", &beatmap.artist);
-            map.set("title", &beatmap.title);
-            map.set("creator", &beatmap.creator);
-            map.set("version", &beatmap.version);
-            map.set("playmode", &beatmap.mode);
-            map.set("game", format!("{:?}", beatmap.beatmap_type));
+            let map:CustomElementValue = beatmap.deref().deref().into();
+            let mut map = map.as_map_helper().unwrap();
+            
             map.set("diff_rating", beatmap.diff.unwrap_or_default());
-            map.set("hash", &beatmap.beatmap_hash.to_string());
-            map.set("audio_path", &beatmap.audio_filename);
-            map.set("preview_time", beatmap.audio_preview);
             map.set("is_selected", map_is_selected);
-            map.set("display_mode", gamemode_display_name(&beatmap.mode).to_owned());
             map.finish()
         }).collect();
 

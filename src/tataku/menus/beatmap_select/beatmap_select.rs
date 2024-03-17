@@ -117,18 +117,18 @@ impl BeatmapSelectMenu {
             
             diffcalc_complete: None,
         };
-        b.refresh_maps().await;
+        // b.refresh_maps().await;
 
         b
     }
 
-    pub async fn refresh_maps(&mut self) {
+    pub async fn refresh_maps(&mut self, values: &ShuntingYardValues) {
         //TODO: allow grouping by not just map set
         let sets = BEATMAP_MANAGER.read().await.all_by_sets(GroupBy::Set);
         // let diff_calc_helper = beatmap_manager.on_diffcalc_completed.1.clone();
 
         self.cached_maps = sets;
-        self.apply_filter().await;
+        self.apply_filter(values).await;
 
         // update diffs
         // let mode_clone = self.mode.clone();
@@ -138,10 +138,10 @@ impl BeatmapSelectMenu {
     }
 
 
-    pub async fn apply_filter(&mut self) {
+    pub async fn apply_filter(&mut self, values: &ShuntingYardValues) {
         self.visible_sets.clear();
-        self.menu_game.current_beatmap.update();
-        let current_beatmap = self.get_beatmap();
+        // self.menu_game.current_beatmap.update();
+        // let current_beatmap = self.get_beatmap();
 
         // self.beatmap_scroll.clear();
         let filter_text = self.filter_text.to_ascii_lowercase();
@@ -151,7 +151,8 @@ impl BeatmapSelectMenu {
         let mut modes_needing_diffcalc = HashSet::new();
 
         // used to select the current map in the list
-        let current_hash = current_beatmap.map(|m|m.beatmap_hash.clone()).unwrap_or_default();
+        // let current_hash = current_beatmap.map(|m|m.beatmap_hash.clone()).unwrap_or_default();
+        let Ok(current_hash) = values.get_string("map.hash") else { return };
         // let mut n = 0;
 
         let mut selected_set = 0;
@@ -421,7 +422,7 @@ impl BeatmapSelectMenu {
         self.selected_set = set_num;
         self.select_map(0);
 
-        self.action_queue.push(MenuAction::PerformOperation(
+        self.action_queue.push(TatakuAction::PerformOperation(
             snap_to_id(
             "beatmap_scroll", 
             iced::widget::scrollable::RelativeOffset { 
@@ -552,7 +553,7 @@ impl AsyncMenu for BeatmapSelectMenu {
         )
     }
 
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
         self.updates += 1;
 
         match (message.tag, message.message_type) {
@@ -594,7 +595,7 @@ impl AsyncMenu for BeatmapSelectMenu {
 
 
 
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<TatakuAction> {
         self.settings.update();
         self.mods.update();
 
@@ -646,13 +647,13 @@ impl AsyncMenu for BeatmapSelectMenu {
             self.action_queue.push(BeatmapMenuAction::Set(self.new_beatmap_helper.0.clone(), true, true));
             // BEATMAP_MANAGER.write().await.set_current_beatmap(game, &self.new_beatmap_helper.0, true).await;
             refresh_pending = true;
-            self.menu_game.setup().await;
+            self.menu_game.setup(values).await;
         }
 
         if refresh_pending {
-            self.refresh_maps().await;
+            self.refresh_maps(values).await;
         } else if filter_pending {
-            self.apply_filter().await;
+            self.apply_filter(values).await;
         }
 
         // check load score

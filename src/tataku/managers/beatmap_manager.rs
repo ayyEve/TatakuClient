@@ -130,7 +130,7 @@ impl BeatmapManager {
             // info!("checking {file}");
 
 
-            if AVAILABLE_MAP_EXTENSIONS.iter().find(|e|file.ends_with(**e)).is_some() {
+            if AVAILABLE_MAP_EXTENSIONS.iter().find(|e| file.ends_with(**e)).is_some() {
                 // check file paths first
                 if ignore_paths.contains(file) {
                     continue
@@ -196,6 +196,8 @@ impl BeatmapManager {
 
         if self.initialized { 
             debug!("adding beatmap {}", beatmap.version_string());
+            //TODO:!!!! move this to values
+            // global.new_map_hash
             GlobalValueManager::update(Arc::new(LatestBeatmap(beatmap.clone())));
         }
     }
@@ -242,36 +244,39 @@ impl BeatmapManager {
 
         // update shunting yard values
         {
-            let values = &mut game.shunting_yard_values;
-            values.set("map.artist", beatmap.artist.clone());
-            values.set("map.title", beatmap.title.clone());
-            values.set("map.creator", beatmap.creator.clone());
-            values.set("map.version", beatmap.version.clone());
-            values.set("map.playmode", beatmap.mode.clone());
-            values.set("map.game", format!("{:?}", beatmap.beatmap_type));
-            values.set("map.diff_rating", 0.0f32);
-            values.set("map.hash", beatmap.beatmap_hash.to_string());
-            values.set("map.audio_path", beatmap.audio_filename.clone());
-            values.set("map.preview_time", beatmap.audio_preview);
+            let map: CustomElementValue = beatmap.deref().into();
+            let mut map = map.as_map_helper().unwrap();
+
+            let mode = game.values.get_string("global.playmode_actual").unwrap_or("osu".to_owned());
+            let mods = game.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+            let diff = get_diff(&beatmap, &mode, &mods);
+            map.set("diff_rating", diff.unwrap_or(0.0));
+
+            if let Some(info) = get_gamemode_info(&mode) { 
+                let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
+                let diff_info = info.get_diff_string(&diff_meta, &mods);
+                map.set("diff_info", diff_info);
+            } else {
+                map.set("diff_info", String::new());
+            }
+
+            game.values.set("map", map.finish());
         }
 
         // play song
         let audio_filename = beatmap.audio_filename.clone();
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
-        game.handle_menu_actions(vec![
-            // set the song
-            SongMenuAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
-                play: true,
-                restart: restart_song,
-                position: Some(time),
-                volume: Some(Settings::get().get_music_vol()),
-                ..Default::default()
-            })).into(),
-
-            // make sure the song is playing
-            SongMenuAction::Play.into(),
-        ]).await;
+        // set the song
+        game.actions.push(SongAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
+            play: true,
+            restart: restart_song,
+            position: Some(time),
+            volume: Some(Settings::get().get_music_vol()),
+            ..Default::default()
+        })));
+        // make sure the song is playing
+        game.actions.push(SongAction::Play);
 
         // if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
         //     error!("Error playing song: {:?}", e);
@@ -288,8 +293,11 @@ impl BeatmapManager {
         self.current_beatmap = None;
 
         // stop song
-        game.handle_menu_actions(vec![SongMenuAction::Stop.into()]).await;
+        game.actions.push(SongAction::Stop);
         // AudioManager::stop_song().await;
+
+        // remove the map from the game's values as well
+        game.values.remove("map");
 
         // set bg
         game.remove_background_beatmap().await;
@@ -435,7 +443,7 @@ impl Into<CustomElementValue> for GroupBy {
 
 crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBeatmapHelper);
 crate::create_value_helper!(LatestBeatmap, Arc<BeatmapMeta>, LatestBeatmapHelper);
-crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
+// crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
 
 /// this is a bad name for this
 pub enum HandleDatabase {
@@ -452,7 +460,6 @@ impl From<bool> for HandleDatabase {
 
 /// A group of beatmaps
 pub struct BeatmapGroup {
-    // pub name: String,
     pub group_value: BeatmapGroupValue,
     pub maps: Vec<Arc<BeatmapMeta>>,
 }

@@ -84,7 +84,7 @@ impl Beatmap {
             } else {
                 return Err(TatakuError::Beatmap(BeatmapError::InvalidFile))
             }
-        } 
+        }
         
         match path.extension().unwrap().to_str().unwrap() {
             "osu" => Ok(Beatmap::Osu(Box::new(osu::OsuBeatmap::load(path.to_str().unwrap().to_owned())?))),
@@ -122,6 +122,17 @@ impl Beatmap {
         }
     }
     
+    pub fn from_path_and_hash(path: impl AsRef<Path>, hash: Md5Hash) -> TatakuResult<Beatmap> {
+        let maps = Self::load_multiple(path)?;
+        maps
+            .into_iter()
+            .find(|b| b.get_beatmap_meta().comp_hash(hash))
+            .ok_or(TatakuError::Beatmap(BeatmapError::NotFoundInSet))
+        // if maps.len() > 1 {
+        // } else {
+
+        // }
+    }
     pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         Self::load_single(&meta.file_path, meta)
     }

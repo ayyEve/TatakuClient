@@ -7,13 +7,13 @@ pub struct BuiltElementDef {
 }
 impl BuiltElementDef {
     /// get the view from the nth child, or an empty view if none exist
-    fn nth_child_view(&self, n:usize, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement {
+    fn nth_child_view(&self, n:usize, owner: MessageOwner, values: &mut ValueCollection) -> IcedElement {
         let Some(child) = self.children.get(n) else { return EmptyElement.into_element() };
         child.view(owner, values)
     }
 
     /// get the view from the first child, or an empty view if none exist
-    fn first_child_view(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement {
+    fn first_child_view(&self, owner: MessageOwner, values: &mut ValueCollection) -> IcedElement {
         let Some(child) = self.children.first() else { return EmptyElement.into_element() };
         child.view(owner, values)
     }
@@ -22,13 +22,13 @@ impl BuiltElementDef {
 
 #[async_trait]
 impl Widgetable for BuiltElementDef {
-    async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
+    async fn update(&mut self, values: &mut ValueCollection, actions: &mut ActionQueue) {
         for i in self.children.iter_mut() {
             i.update(values, actions).await;
         }
     }
     
-    fn view(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, owner: MessageOwner, values: &mut ValueCollection) -> IcedElement {
         match &self.element.id {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
             ElementIdentifier::Button { padding,  action, ..} => {
@@ -184,7 +184,7 @@ impl Widgetable for BuiltElementDef {
                     .collect::<Vec<_>>();
 
                 let selected = selected
-                    .and_then(|s| list2.iter().find(|i|i.id == s))
+                    .and_then(|s| list2.iter().find(|i| i.id == s))
                     .cloned();
                 let selected_key = selected_key.clone();
 
@@ -208,9 +208,6 @@ impl Widgetable for BuiltElementDef {
                 KeyEventsHandler::new(events, owner, values)
                     .into_element()
             }
-            ElementIdentifier::Custom {} => {
-                todo!()
-            }
             _ => {
                 // warn!("missed object? {:?}", self.element.id);
                 self.first_child_view(owner, values)
@@ -226,10 +223,10 @@ impl Widgetable for BuiltElementDef {
 // TODO: come up with a better name for this
 #[async_trait]
 pub trait Widgetable: Send + Sync {
-    async fn update(&mut self, _values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {}
-    fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement { EmptyElement.into_element() }
+    async fn update(&mut self, _values: &mut ValueCollection, _actions: &mut ActionQueue) {}
+    fn view(&self, _owner: MessageOwner, _values: &mut ValueCollection) -> IcedElement { EmptyElement.into_element() }
 
-    async fn handle_message(&mut self, _message: &Message, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { Vec::new() }
+    async fn handle_message(&mut self, _message: &Message, _values: &mut ValueCollection) -> Vec<TatakuAction> { Vec::new() }
 }
 
 

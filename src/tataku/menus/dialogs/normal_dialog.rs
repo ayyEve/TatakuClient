@@ -5,11 +5,11 @@ const Y_PADDING:f32 = 5.0;
 const BUTTON_SIZE:Vector2 = Vector2::new(100.0, 30.0);
 
 // pub type ClickFn = Box<dyn Fn(&mut GenericDialog, &mut Game) + Send + Sync>;
-pub type ClickFn = Arc<dyn Fn(&mut GenericDialog) -> Option<MenuAction> + Send + Sync>;
+pub type ClickFn = Arc<dyn Fn(&mut GenericDialog) -> Option<TatakuAction> + Send + Sync>;
 
 pub struct GenericDialog {
     num: usize,
-    actions: Vec<MenuAction>,
+    actions: Vec<TatakuAction>,
 
 
     bounds: Rectangle,
@@ -61,7 +61,7 @@ impl GenericDialog {
         self.button_actions.insert(text, on_click);
     }
 
-    pub fn add_action(&mut self, action: impl Into<MenuAction>) {
+    pub fn add_action(&mut self, action: impl Into<TatakuAction>) {
         self.actions.push(action.into());
     }
 }
@@ -76,7 +76,7 @@ impl Dialog for GenericDialog {
     // fn get_bounds(&self) -> Bounds { *self.bounds }
     async fn force_close(&mut self) { self.should_close = true; }
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         if let Some(action) = self.button_actions.get(&tag).cloned() {
@@ -86,7 +86,7 @@ impl Dialog for GenericDialog {
         }
     }
 
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { self.actions.take() }
 
     fn view(&self) -> IcedElement {
         use iced_elements::*;

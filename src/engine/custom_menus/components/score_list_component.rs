@@ -3,15 +3,16 @@ use crate::prelude::*;
 pub struct ScoreListComponent {
     actions: ActionQueue,
 
-    /// what we think the playmode is currently
+    /// What we think the playmode is currently
+    /// (overridden by the map)
     mode: SYValueHelper,
 
-    /// what we think the current map hash is
+    /// What we think the current map hash is
     /// string because thats how its stored in the variable collection
     map_hash: SYValueHelper,
 
-    /// what method to use to retreive scores
-    method: Option<SYValueHelper>,
+    /// What we think the current score retreival method is
+    score_method: SYValueHelper,
 
     score_helper: ScoreHelper,
 
@@ -19,14 +20,14 @@ pub struct ScoreListComponent {
     score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 }
 impl ScoreListComponent {
-    pub fn new(method_var: Option<String>) -> Self {
+    pub fn new() -> Self {
         let score_helper = ScoreHelper::new();
 
         Self {
             actions: ActionQueue::new(),
-            mode: SYValueHelper::new("global.playmode", String::new()),
+            mode: SYValueHelper::new("global.playmode_actual", String::new()),
             map_hash: SYValueHelper::new("map.hash", String::new()),
-            method: method_var.map(|var| SYValueHelper::new(var, format!("{:?}", score_helper.current_method))),
+            score_method: SYValueHelper::new("global.score_method", score_helper.current_method),
             score_helper,
 
             current_scores: Vec::new(),
@@ -36,7 +37,7 @@ impl ScoreListComponent {
 }
 
 impl ScoreListComponent {
-    pub async fn load_scores(&mut self, values: &mut ShuntingYardValues) {
+    pub async fn load_scores(&mut self, values: &mut ValueCollection) {
         trace!("Score reload requested");
 
         // clear scores, and make sure the values in the collection are removed as well
@@ -48,19 +49,18 @@ impl ScoreListComponent {
         let mode = self.mode.as_string();
         if map_hash.is_empty() || mode.is_empty() { return }
 
-        if let Some(Ok(method)) = self.method.as_deref().map(TryInto::try_into) {
+        if let Ok(method) = self.score_method.deref().try_into() {
             self.score_helper.current_method = method;
         }
 
         let Ok(hash) = Md5Hash::try_from(&map_hash) else { return };
-        let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&hash) else { return };
 
         trace!("Reloading scores");
-        self.score_loader = Some(self.score_helper.get_scores(hash, &map.check_mode_override(mode)).await);
+        self.score_loader = Some(self.score_helper.get_scores(hash, &mode).await);
     }
 
 
-    fn update_values(&self, values: &mut ShuntingYardValues) {
+    fn update_values(&self, values: &mut ValueCollection) {
         let list = self.current_scores.iter().enumerate().map(|(n, score)| {
             let score:CustomElementValue = score.into();
             let mut data = score.as_map_helper().unwrap();
@@ -75,7 +75,7 @@ impl ScoreListComponent {
 
 #[async_trait]
 impl Widgetable for ScoreListComponent {
-    async fn update(&mut self, values: &mut ShuntingYardValues, _actions: &mut ActionQueue) {
+    async fn update(&mut self, values: &mut ValueCollection, _actions: &mut ActionQueue) {
 
         // check if map hash or playmode have changed
         if self.mode.check(values) {
@@ -86,11 +86,9 @@ impl Widgetable for ScoreListComponent {
             trace!("hash changed");
             self.load_scores(values).await;
         }
-        if let Some(method) = &mut self.method {
-            if method.check(values) {
-                trace!("method changed");
-                self.load_scores(values).await;
-            }
+        if self.score_method.check(values) {
+            trace!("method changed");
+            self.load_scores(values).await;
         }
 
 
@@ -112,7 +110,7 @@ impl Widgetable for ScoreListComponent {
     }
 
 
-    async fn handle_message(&mut self, message: &Message, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+    async fn handle_message(&mut self, message: &Message, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
         if let MessageTag::String(tag) = &message.tag {
             match &**tag {
                 "score_list.open_score" => {
@@ -126,7 +124,7 @@ impl Widgetable for ScoreListComponent {
                     };
 
                     if let Some(score) = self.current_scores.get(id).cloned() {
-                        self.actions.push(GameMenuAction::ViewScore(score));
+                        self.actions.push(GameAction::ViewScore(score));
                     } else { warn!("score not found") }
 
                 }
@@ -134,7 +132,6 @@ impl Widgetable for ScoreListComponent {
                 _ => {}
             }
         }
-
 
         self.actions.take()
     }

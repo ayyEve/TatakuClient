@@ -35,7 +35,7 @@ impl Dialog for UserPanel {
     // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.window_size.0) }
     async fn force_close(&mut self) { self.should_close = true; }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
 
@@ -62,7 +62,7 @@ impl Dialog for UserPanel {
 
                 // message
                 user_menu_dialog.add_button("Send Message", Arc::new(move |dialog| {
-                    dialog.add_action(GameMenuAction::HandleMessage(Message::new(
+                    dialog.add_action(GameAction::HandleMessage(Message::new(
                         owner,
                         "open_chat",
                         MessageType::Text(username.clone())
@@ -75,7 +75,7 @@ impl Dialog for UserPanel {
                 let is_friend = OnlineManager::get().await.friends.contains(&user_id);
                 let friend_txt = if is_friend {"Remove Friend"} else {"Add Friend"};
                 user_menu_dialog.add_button(friend_txt, Arc::new(move |dialog| {
-                    dialog.add_action(GameMenuAction::HandleMessage(Message::new(
+                    dialog.add_action(GameAction::HandleMessage(Message::new(
                         owner,
                         "add_remove_friend",
                         MessageType::Number(user_id as usize)
@@ -85,13 +85,11 @@ impl Dialog for UserPanel {
                 }));
 
                 // invite to lobby
-                if let Some(_lobby) = &*CurrentLobbyInfo::get() {
-                    user_menu_dialog.add_button("Invite to Lobby", Arc::new(move |dialog| {
-                        tokio::spawn(OnlineManager::invite_user(user_id));
-                        dialog.should_close = true;
-                        None
-                    }));
-                }
+                user_menu_dialog.add_button("Invite to Lobby", Arc::new(move |dialog| {
+                    dialog.add_action(MultiplayerAction::InviteUser{ user_id });
+                    dialog.should_close = true;
+                    None
+                }));
 
 
                 // close menu
@@ -100,7 +98,7 @@ impl Dialog for UserPanel {
                     None
                 }));
 
-                self.actions.push(MenuMenuAction::AddDialog(Box::new(user_menu_dialog), false));
+                // self.actions.push(MenuMenuAction::AddDialog(Box::new(user_menu_dialog), false));
             }
 
             "open_chat" => {
@@ -136,7 +134,7 @@ impl Dialog for UserPanel {
         )
     }
     
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> { 
         self.chat.update(values).await;
         
         // update users from online manager

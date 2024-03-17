@@ -15,11 +15,11 @@ impl UiApplication {
         }
     }
 
-    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.menu.update(values).await
     }
 
-    pub async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    pub async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
         if message.owner.check_menu(&self.menu) {
             self.menu.handle_message(message, values).await;
         } else {
@@ -59,7 +59,7 @@ impl UiApplication {
     }
 
 
-    pub fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
+    pub fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let content:IcedElement = self.menu.view(values);
         let dialogs = self.dialog_manager.view();

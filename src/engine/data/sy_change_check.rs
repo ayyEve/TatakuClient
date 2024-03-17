@@ -13,7 +13,7 @@ impl SYValueHelper {
         }
     }
 
-    pub fn check(&mut self, values: &ShuntingYardValues) -> bool {
+    pub fn check(&mut self, values: &ValueCollection) -> bool {
         let Ok(value) = values.get_raw(&self.key) else { return false };
         if value == &self.value { return false }
 

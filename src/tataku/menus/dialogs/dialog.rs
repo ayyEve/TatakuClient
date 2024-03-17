@@ -24,8 +24,8 @@ pub trait Dialog:Send+Sync {
     async fn force_close(&mut self) {}
 
     fn view(&self) -> IcedElement;
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues);
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { Vec::new() }
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection);
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { Vec::new() }
 
 
     // /// if in a draggable dialog, and it was resized

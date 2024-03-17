@@ -56,7 +56,7 @@ lazy_static::lazy_static! {{
     }};
 }}
 
-pub fn get_gamemode_info(playmode: &String) -> Option<&Box<dyn GameModeInfo + Send + Sync>> {{
+pub fn get_gamemode_info(playmode: &str) -> Option<&Box<dyn GameModeInfo + Send + Sync>> {{
     GAME_INFOS.get(playmode)
 }}
 

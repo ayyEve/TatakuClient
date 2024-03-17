@@ -13,6 +13,7 @@ const SPECTATOR_SCORE_SYNC_INTERVAL:f32 = 1000.0;
 
 const HIT_DIFF_FACTOR:f32 = 1.0;
 
+pub const SCORE_SEND_TIME:f32 = 1_000.0;
 
 // bc im lazy
 macro_rules! add_timing {
@@ -318,7 +319,7 @@ impl IngameManager {
         self.gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
-    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.song_time = values.get_f32("song.position").unwrap_or_default();
 
         // update settings
@@ -389,10 +390,10 @@ impl IngameManager {
             self.lead_in_time -= elapsed * self.game_speed();
 
             if self.lead_in_time <= 0.0 {
-                self.actions.push(SongMenuAction::SetRate(self.game_speed()));
-                self.actions.push(SongMenuAction::SetVolume(self.settings.get_music_vol()));
-                self.actions.push(SongMenuAction::SetPosition(-self.lead_in_time));
-                self.actions.push(SongMenuAction::Play);
+                self.actions.push(SongAction::SetRate(self.game_speed()));
+                self.actions.push(SongAction::SetVolume(self.settings.get_music_vol()));
+                self.actions.push(SongAction::SetPosition(-self.lead_in_time));
+                self.actions.push(SongAction::Play);
                 
                 // self.song.set_position(-self.lead_in_time);
                 // self.song.set_volume(self.settings.get_music_vol());
@@ -453,14 +454,14 @@ impl IngameManager {
             let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
             if new_rate <= 0.05 {
-                self.actions.push(SongMenuAction::Pause);
+                self.actions.push(SongAction::Pause);
                 // self.song.pause();
 
                 self.completed = true;
                 // self.outgoing_spectator_frame_force((self.end_time + 10.0, SpectatorAction::Failed));
                 trace!("show fail menu");
             } else {
-                self.actions.push(SongMenuAction::SetRate(new_rate));
+                self.actions.push(SongAction::SetRate(new_rate));
                 // self.song.set_rate(new_rate);
             }
 
@@ -1041,7 +1042,7 @@ impl IngameManager {
             let frame = SpectatorAction::UnPause;
             let time = self.time();
             self.outgoing_spectator_frame(SpectatorFrame::new(time, frame));
-            self.actions.push(SongMenuAction::Play);
+            self.actions.push(SongAction::Play);
             // self.song.play(false);
 
             let mut gamemode = std::mem::take(&mut self.gamemode);
@@ -1056,7 +1057,7 @@ impl IngameManager {
         CursorManager::set_ripple_override(None);
 
         // self.song.pause();
-        self.actions.push(SongMenuAction::Pause);
+        self.actions.push(SongAction::Pause);
         self.pause_start = Some(chrono::Utc::now().timestamp());
 
         // is there anything else we need to do?
@@ -1082,10 +1083,10 @@ impl IngameManager {
             self.gamemode.apply_mods(self.current_mods.clone()).await;
         } else {
             // reset song
-            self.actions.push(SongMenuAction::Restart);
-            self.actions.push(SongMenuAction::Pause);
-            self.actions.push(SongMenuAction::SetPosition(0.0));
-            self.actions.push(SongMenuAction::SetRate(self.game_speed()));
+            self.actions.push(SongAction::Restart);
+            self.actions.push(SongAction::Pause);
+            self.actions.push(SongAction::SetPosition(0.0));
+            self.actions.push(SongAction::SetRate(self.game_speed()));
 
             // self.song.set_rate(self.game_speed());
             // self.song.set_position(0.0);
@@ -1169,7 +1170,7 @@ impl IngameManager {
             self.lead_in_time = 0.0;
         }
         
-        self.actions.push(SongMenuAction::SetPosition(time));
+        self.actions.push(SongAction::SetPosition(time));
         // self.song.set_position(time);
 
         self.pending_time_jump = Some(time);
@@ -1277,7 +1278,7 @@ impl IngameManager {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
             if let Some(time) = gamemode.skip_intro(self) {
-                self.actions.push(SongMenuAction::SetPosition(time));
+                self.actions.push(SongAction::SetPosition(time));
             }
             
             // more to do?
@@ -1339,7 +1340,7 @@ impl IngameManager {
                 self.should_pause = true;
             } else if let GameplayMode::Multiplayer { last_escape_press, .. } = &mut *self.gameplay_mode {
                 if last_escape_press.elapsed_and_reset() < 1_000.0 {
-                    self.actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::QuitMulti));
+                    self.actions.push(TatakuAction::Multiplayer(MultiplayerAction::ExitMultiplayer));
                     return;
                 } else {
                     NotificationManager::add_text_notification("Press escape again to quit the lobby", 3_000.0, Color::BLUE).await;
@@ -1795,6 +1796,5 @@ pub enum GameplayAction {
         /// Helpful for spammy actions to keep filesize low (ie cursor position)
         should_save: bool,
     },
-
 
 }

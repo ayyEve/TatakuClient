@@ -1,4 +1,4 @@
-mod build_commit;
+// mod build_commit;
 mod build_gamemodes;
 
 fn main() {

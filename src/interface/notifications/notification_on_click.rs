@@ -25,9 +25,13 @@ impl NotificationOnClick {
 
             NotificationOnClick::MultiplayerLobby(lobby_id) => {
                 debug!("join lobby {lobby_id}");
-                tokio::spawn(OnlineManager::join_lobby(*lobby_id, String::new()));
-                let menu = LobbySelect::new().await;
-                game.queue_state_change(GameState::SetMenu(Box::new(menu)));
+                game.actions.push(MultiplayerAction::JoinLobby {
+                    lobby_id: *lobby_id,
+                    password: String::new(),
+                });
+                // tokio::spawn(OnlineManager::join_lobby(*lobby_id, String::new()));
+                // let menu = LobbySelect::new().await;
+                // game.queue_state_change(GameState::SetMenu(Box::new(menu)));
             }
 
             NotificationOnClick::File(file_path) => {

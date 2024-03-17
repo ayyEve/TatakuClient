@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub struct NotificationsDialog {
     num: usize,
-    actions: Vec<MenuAction>,
+    actions: Vec<TatakuAction>,
 
     notifications: Vec<(Arc<Notification>, bool)>,
     // list: ScrollableArea,
@@ -51,7 +51,7 @@ impl Dialog for NotificationsDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(id) = message.tag.as_number() else { return };
 
         if let MessageType::Click = &message.message_type {
@@ -73,7 +73,7 @@ impl Dialog for NotificationsDialog {
     }
 
 
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         if let Ok(notifs) = NOTIFICATION_MANAGER.try_read() {
             //TODO: only add new notifs
             self.notifications = notifs.all_notifs.clone().into_iter().map(|n|(n, false)).collect();

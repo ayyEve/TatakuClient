@@ -44,7 +44,7 @@ impl LobbyMenu {
 
         // let mut slot_senders = HashMap::new();
         let mut slots = Vec::new();
-        for slot in 0..16 {
+        for _slot in 0..16 {
             slots.push(LobbySlotComponent::new(LobbySlot::Empty, false, None));
             // let (state_sender, state_receiver) = async_channel(CHANNEL_COUNT);
             // let (player_sender, player_receiver) = async_channel(CHANNEL_COUNT);
@@ -103,9 +103,9 @@ impl LobbyMenu {
                 GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                 if let Some(beatmap) = &self.selected_beatmap {
-                    self.actions.push(BeatmapMenuAction::Set(beatmap.clone(), true, false));
+                    self.actions.push(BeatmapAction::Set(beatmap.clone(), true, false));
                 } else {
-                    self.actions.push(BeatmapMenuAction::Remove);
+                    self.actions.push(BeatmapAction::Remove);
                 }
 
                 let new_state = match self.selected_beatmap {
@@ -114,7 +114,7 @@ impl LobbyMenu {
                 };
                 tokio::spawn(OnlineManager::update_lobby_state(new_state));
             } else {
-                self.actions.push(BeatmapMenuAction::Remove);
+                self.actions.push(BeatmapAction::Remove);
                 tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NoMap));
             }
         }
@@ -137,7 +137,7 @@ impl LobbyMenu {
     }
 
     async fn quit_lobby(&mut self) {
-        self.actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::QuitMulti));
+        self.actions.push(TatakuAction::Multiplayer(MultiplayerAction::EndMulti));
     }
 
     fn is_host(&self) -> bool {
@@ -210,7 +210,7 @@ impl LobbyMenu {
 impl AsyncMenu for LobbyMenu {
     fn get_name(&self) -> &'static str { "lobby_menu" }
 
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         if self.init_pending {
             self.init_pending = false;
             self.refresh_data(&None).await;
@@ -238,7 +238,7 @@ impl AsyncMenu for LobbyMenu {
         self.actions.take()
     }
 
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         
         row!(
@@ -269,7 +269,7 @@ impl AsyncMenu for LobbyMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         let slot = message.message_type.as_number().map(|n|n as u8);
@@ -277,9 +277,10 @@ impl AsyncMenu for LobbyMenu {
         match (&*tag, slot) {
             ("beatmap_select", _) => {
                 if self.is_host() {
-                    let mut menu = BeatmapSelectMenu::new().await;
-                    menu.select_action = BeatmapSelectAction::Back;
-                    self.actions.push(MenuMenuAction::SetMenu(Box::new(menu)));
+                    self.actions.push(MenuMenuAction::SetMenuCustom("beatmap_select".to_owned()));
+                    // let mut menu = BeatmapSelectMenu::new().await;
+                    // menu.select_action = BeatmapSelectAction::Back;
+                    // self.actions.push(MenuMenuAction::SetMenu(Box::new(menu)));
                 } else {
                     // player, cant change map. check if we have it, and if not, open a page to download it
                     let hash = self.lobby_info().current_beatmap.as_ref().map(|b|&b.hash);

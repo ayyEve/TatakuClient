@@ -144,7 +144,7 @@ impl ScoreMenu {
             replay.score_data = Some(self.score.score.clone());
         }
 
-        self.actions.push(GameMenuAction::WatchReplay(Box::new(replay)));
+        self.actions.push(GameAction::WatchReplay(Box::new(replay)));
         // match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
         //     Ok(mut manager) => {
         //         manager.set_replay(replay);
@@ -154,7 +154,7 @@ impl ScoreMenu {
     }
 
     async fn retry(&mut self) {
-        self.actions.push(BeatmapMenuAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
+        self.actions.push(BeatmapAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
     }
     
     async fn change_score(&mut self, score: IngameScore) {
@@ -198,29 +198,29 @@ impl ScoreMenu {
         // self.dont_close_on_back = true;
         // self.close_sender = Some(close_sender);
         self.menu_type = Box::new(ScoreMenuType::Multiplayer { 
-            lobby_helper: CurrentLobbyDataHelper::new(),
+            // lobby_helper: CurrentLobbyDataHelper::new(),
             lobby_items: Vec::new(),
         });
 
-        self.update_lobby();
+        // self.update_lobby();
     }
-    fn update_lobby(&mut self) {
+    fn update_lobby(&mut self, values: &mut ValueCollection) {
         let ScoreMenuType::Multiplayer { 
-            lobby_helper, 
+            // lobby_helper, 
             lobby_items 
         } = &mut *self.menu_type else { return };
 
-        let Some(lobby) = lobby_helper.as_ref() else { return };
+        // TODO: read from values
 
-        lobby_items.clear();
-        let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
-        scores.sort_by(|(_,a), (_,b)|b.score.cmp(&a.score));
+        // lobby_items.clear();
+        // let mut scores = lobby.player_scores.iter().collect::<Vec<_>>();
+        // scores.sort_by(|(_,a), (_,b)| b.score.cmp(&a.score));
 
-        for (n, (user_id, score)) in scores.iter().enumerate() {
-            let score = IngameScore::new((*score).clone(), user_id == &&lobby.our_user_id, false);
-            lobby_items.push(LeaderboardComponent::new(n, score));
-            // self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new()))
-        }
+        // for (n, (user_id, score)) in scores.iter().enumerate() {
+        //     let score = IngameScore::new((*score).clone(), user_id == &&lobby.our_user_id, false);
+        //     lobby_items.push(LeaderboardComponent::new(n, score));
+        //     // self.lobby_scrollable.add_item(Box::new(LeaderboardItem::new()))
+        // }
         
     }
   
@@ -397,7 +397,7 @@ impl ScoreMenu {
 impl AsyncMenu for ScoreMenu {
     fn get_name(&self) -> &'static str { "score" }
 
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         if self.score_submit_response.is_none() {
             if let Some(t) = &self.score_submit {
                 if let Some(r) = t.response.read().await.as_ref() {
@@ -407,7 +407,7 @@ impl AsyncMenu for ScoreMenu {
         }
 
         // update lobby scores
-        self.update_lobby();
+        self.update_lobby(values);
         
         // while let Some(event) = self.key_handler.check_events() {
         //     match event {
@@ -424,7 +424,7 @@ impl AsyncMenu for ScoreMenu {
     }
 
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         // score info
@@ -482,7 +482,7 @@ impl AsyncMenu for ScoreMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return };
         match &*tag {
             "retry" => self.retry().await,
@@ -539,7 +539,7 @@ impl AsyncMenu for ScoreMenu {
 enum ScoreMenuType {
     Normal,
     Multiplayer {
-        lobby_helper: CurrentLobbyDataHelper,
+        // lobby_helper: CurrentLobbyDataHelper,
         lobby_items: Vec<LeaderboardComponent>,
     },
 }

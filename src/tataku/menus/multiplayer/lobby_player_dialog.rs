@@ -1,19 +1,23 @@
 use crate::prelude::*;
-const BUTTON_SIZE:Vector2 = Vector2::new(300.0, 50.0);
+// const BUTTON_SIZE:Vector2 = Vector2::new(300.0, 50.0);
 
 pub struct LobbyPlayerDialog {
+    actions: ActionQueue,
     num: usize,
 
     user_id: u32,
+    slot_id: u8,
     should_close: bool,
     is_self: bool,
     we_are_host: bool,
 }
 impl LobbyPlayerDialog {
-    pub fn new(user_id: u32, is_self: bool, we_are_host: bool) -> Self {
+    pub fn new(user_id: u32, slot_id: u8, is_self: bool, we_are_host: bool) -> Self {
         Self {
+            actions: ActionQueue::new(),
             num: 0,
             user_id,
+            slot_id,
             should_close: false,
 
             is_self,
@@ -31,7 +35,7 @@ impl Dialog for LobbyPlayerDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
 
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {
@@ -41,12 +45,19 @@ impl Dialog for LobbyPlayerDialog {
                 self.should_close = true;
             }
             "kick" => {
-                tokio::spawn(OnlineManager::lobby_kick_user(self.user_id));
+                self.actions.push(
+                    MultiplayerAction::LobbyAction(LobbyAction::SlotAction(LobbySlotAction::Kick(self.slot_id)))
+                    // MultiplayerAction::KickUser { user_id: self.user_id }
+                );
                 self.should_close = true;
             }
 
             _ => {}
         }
+    }
+    
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
+        self.actions.take()
     }
     
     fn view(&self) -> IcedElement {

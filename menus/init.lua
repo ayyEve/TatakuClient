@@ -128,6 +128,23 @@ function game_action(action)
         game = action
     }
 end
+function multiplayer_action(action, slot)
+    if slot then 
+        return {
+            id = "action",
+            multiplayer = {
+                id = action,
+                slot = slot
+            }
+        }
+    else
+        return {
+            id = "action",
+            multiplayer = action,
+        }
+    end
+
+end
 
 function custom_action(tag, val)
     if not val then val = { value = "" } end
@@ -148,7 +165,11 @@ function dialog_action(dialog)
         dialog = dialog
     }
 end
-
+function no_action()
+    return {
+        id = "none",
+    }
+end
 
 
 function variable(var) 
@@ -157,31 +178,6 @@ function variable(var)
     }
 end
 
--- a simple element which displays the current map info
-song_display = {
-    id = "row",
-    width = "fill",
-    height = "shrink",
-    padding = 5.0,
-    elements = {
-        --[[ align-right ]] space("fill", "shrink"),
-
-        -- {artist} - {title}
-        {
-            id = "styled_content",
-            color = color(1.0, 1.0, 1.0, 0.1),
-            shape = { round = 5.0 },
-            padding = 8.0,
-
-            element = text(
-                text_list({ variable("map.artist"), " - ", variable("map.title") }),
-                30,
-                WHITE
-            )
-        }
-    }
-}
-
 -- premade button actions
 start_singleplayer = menu_action("beatmap_select")
 start_multiplayer = menu_action("lobby_select")
@@ -189,10 +185,13 @@ exit_game = game_action("quit") -- TODO: this properly
 
 
 -- menu stuff
-menus = {}
-menu_count = 0
+-- menus = {}
+-- menu_count = 0
+new_menu = nil
 
 function add_menu(menu) 
-    menu_count = menu_count + 1
-    menus[menu_count] = menu
+    -- menu_count = menu_count + 1
+    -- menus[menu_count] = menu
+    new_menu = menu
+    print("added menu")
 end

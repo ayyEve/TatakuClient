@@ -32,7 +32,7 @@ impl AsyncMenu for LobbySelect {
         }
     }
 
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         if self.multiplayer_data.update() || self.needs_init {
             if self.multiplayer_data.lobbies != self.lobbies || self.needs_init {
                 self.needs_init = false;
@@ -43,10 +43,10 @@ impl AsyncMenu for LobbySelect {
             }
         }
 
-        if (self.multiplayer_data.lobby_creation_pending || self.multiplayer_data.lobby_join_pending) && CurrentLobbyInfo::get().is_some() {
-            // joined lobby
-            self.actions.push(MenuMenuAction::SetMenu(Box::new(LobbyMenu::new().await)));
-        }
+        // if (self.multiplayer_data.lobby_creation_pending || self.multiplayer_data.lobby_join_pending) && CurrentLobbyInfo::get().is_some() {
+        //     // joined lobby
+        //     // self.actions.push(MenuMenuAction::SetMenu(Box::new(LobbyMenu::new().await)));
+        // }
 
         // lost connection
         if !OnlineManager::get().await.logged_in {
@@ -57,7 +57,7 @@ impl AsyncMenu for LobbySelect {
     }
     
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         let cols = 5;
         let rows = 5;
@@ -90,7 +90,7 @@ impl AsyncMenu for LobbySelect {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return };
 
         match &*tag {
@@ -102,7 +102,8 @@ impl AsyncMenu for LobbySelect {
                 if self.lobbies.get(&id).unwrap().has_password {
                     MenuMenuAction::AddDialog(Box::new(DraggableDialog::new(DraggablePosition::CenterMiddle, Box::new(JoinLobbyDialog::new(id)))), false);
                 } else {
-                    tokio::spawn(OnlineManager::join_lobby(id, String::new()));
+                    self.actions.push(MultiplayerAction::JoinLobby { lobby_id: id, password: String::new() });
+                    // tokio::spawn(OnlineManager::join_lobby(id, String::new()));
                 }
             }
         }

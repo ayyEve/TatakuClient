@@ -98,7 +98,7 @@ impl Dialog for YesNoDialog {
         self.should_close = true; 
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {

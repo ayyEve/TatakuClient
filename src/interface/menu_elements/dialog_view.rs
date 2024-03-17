@@ -22,7 +22,7 @@ impl DialogManager {
         true
     }
 
-    pub async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    pub async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
         for d in self.dialogs.iter_mut() {
             if message.owner.check_dialog(d) {
                 d.handle_message(message, values).await;
@@ -38,7 +38,7 @@ impl DialogManager {
     }
 
 
-    pub async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         let mut list = Vec::new();
         for i in self.dialogs.iter_mut() {
             list.extend(i.update(values).await);

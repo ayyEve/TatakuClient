@@ -57,7 +57,7 @@ impl Dialog for DraggableDialog {
             ;
         )
     }
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) { 
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) { 
         if let Some(tag) = message.tag.clone().as_string() {
             if tag == "close_dialog" {
                 self.force_close().await;
@@ -68,7 +68,7 @@ impl Dialog for DraggableDialog {
         self.inner.handle_message(message, values).await 
     }
     
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.inner.update(values).await }
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> { self.inner.update(values).await }
 }
 
 

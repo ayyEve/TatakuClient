@@ -112,7 +112,7 @@ impl Dialog for Chat {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {
@@ -145,7 +145,7 @@ impl Dialog for Chat {
     }
 
     
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
         // get new messages
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             let mut scroll_pending = false;

@@ -16,7 +16,7 @@ impl CustomElementCalc {
         Ok(Self(tokens))
     }
 
-    pub fn resolve(&self, values: &ShuntingYardValues) -> ShuntingYardResult<SYStackValue> {
+    pub fn resolve(&self, values: &ValueCollection) -> ShuntingYardResult<SYStackValue> {
         ShuntingYard::evaluate_rpn(&self.0, values)
     }
 }

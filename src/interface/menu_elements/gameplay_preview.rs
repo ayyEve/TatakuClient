@@ -1,9 +1,14 @@
 use crate::prelude::*;
 
 pub struct GameplayPreview {
-    pub current_beatmap: CurrentBeatmapHelper,
-    pub current_playmode: CurrentPlaymodeHelper,
-    current_mods: ModManagerHelper,
+    // pub current_beatmap: CurrentBeatmapHelper,
+    // pub current_playmode: CurrentPlaymodeHelper,
+    // current_mods: ModManagerHelper,
+
+    beatmap: SYValueHelper,
+    playmode: SYValueHelper,
+    mods: SYValueHelper,
+
     settings: SettingsHelper,
     pub manager: Option<IngameManager>,
 
@@ -36,9 +41,13 @@ impl GameplayPreview {
         let widget = GameplayPreviewWidget::new(widget_receiver, event_sender);
         
         Self {
-            current_beatmap: CurrentBeatmapHelper::new(),
-            current_playmode: CurrentPlaymodeHelper::new(),
-            current_mods: ModManagerHelper::new(),
+            // current_beatmap: CurrentBeatmapHelper::new(),
+            // current_playmode: CurrentPlaymodeHelper::new(),
+            // current_mods: ModManagerHelper::new(),
+            beatmap: SYValueHelper::new("map.hash", String::new()),
+            playmode: SYValueHelper::new("global.playmode_actual", String::new()),
+            mods: SYValueHelper::new("global.mods", ModManager::new()),
+
             visualization: None,
             handle_song_restart: true,
 
@@ -60,30 +69,33 @@ impl GameplayPreview {
         (self.check_enabled)(&self.settings)
     }
 
-    pub async fn setup(&mut self) {
-        self.current_playmode.update();
-        self.current_beatmap.update();
-        self.current_mods.update();
+    pub async fn setup(&mut self, values: &ValueCollection) {
+        // self.current_playmode.update();
+        // self.current_beatmap.update();
+        // self.current_mods.update();
         self.settings.update();
 
         // make sure we're enabled before doing anything else
         if !self.is_enabled() { return }
 
-        // get the map
-        let Some(map) = &self.current_beatmap.0 else { return trace!("manager no map") };
+        // get the map hash and path
+        let Ok(hash) = Md5Hash::try_from(self.beatmap.as_string()) else { return trace!("manager no map") };
+        let Ok(path) = values.get_string("map.path") else { return error!("no map path") };
+        // let Some(map) = &self.current_beatmap.0 else { return };
 
         // get the mode
         let mode = if self.use_global_playmode { 
-            self.current_playmode.as_ref().0.clone() 
+            self.playmode.as_string()
+            // self.current_playmode.as_ref().0.clone() 
         } else { 
             self.settings.background_game_settings.mode.clone() 
         };
 
         // abort the previous loading task
-        self.loader.ok_do(|i|i.abort());
+        self.loader.ok_do(|i| i.abort());
 
-        let map = map.clone();
-        let f = async move {manager_from_playmode(mode, &map).await};
+        // let map = map.clone();
+        let f = async move { manager_from_playmode_path_hash(mode, path, hash).await };
         self.loader = Some(AsyncLoader::new(f));
 
         // match manager_from_playmode(mode, &map).await {
@@ -108,7 +120,7 @@ impl GameplayPreview {
 
     }
 
-    pub async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
+    pub async fn update(&mut self, values: &mut ValueCollection, actions: &mut ActionQueue) {
         // check for settings changes
         if self.settings.update() {
             if !self.is_enabled() && self.manager.is_some() {
@@ -121,16 +133,28 @@ impl GameplayPreview {
         }
 
         // check for mods changes
-        if self.current_mods.update() {
+        // if self.current_mods.update() {
+        //     if let Some(manager) = &mut self.manager {
+        //         manager.apply_mods(self.current_mods.as_ref().clone()).await;
+        //     }
+        // }
+        if self.mods.check(values) {
             if let Some(manager) = &mut self.manager {
-                manager.apply_mods(self.current_mods.as_ref().clone()).await;
+                if let Ok(mods) = ModManager::try_from(self.mods.deref()) {
+                    manager.apply_mods(mods).await;
+                }
             }
         }
 
-        // check for map changes
-        let mut refresh_map = self.current_playmode.update();
-        refresh_map |= self.current_beatmap.update();
-        if refresh_map { self.setup().await; }
+
+
+        // check for map/mode changes
+        if self.beatmap.check(values) | self.playmode.check(values) {
+            self.setup(values).await;
+        }
+        // let mut refresh_map = self.current_playmode.update();
+        // refresh_map |= self.current_beatmap.update();
+        // if refresh_map { self.setup().await; }
 
         // check for new bounds
         if let Some(new_bounds) = self.event_receiver.try_recv().ok().filter(|bounds|Some(bounds) != self.fit_to.as_ref()) {
@@ -180,29 +204,30 @@ impl GameplayPreview {
             let paused = values.get_bool("song.paused").unwrap();
             let exists = stopped || playing || paused;
 
+            let speed = ModManager::try_from(self.mods.deref()).map(|m| m.get_speed()).unwrap_or(1.0);
+
             if exists {
                 if stopped {
                     if let Ok(preview) = values.get_f32("map.preview_time") {
-                        actions.push(SongMenuAction::SetPosition(preview));
+                        actions.push(SongAction::SetPosition(preview));
                         if self.apply_rate {
-                            actions.push(SongMenuAction::SetRate(self.current_mods.get_speed()));
+                            actions.push(SongAction::SetRate(speed));
                         }
 
-                        actions.push(SongMenuAction::Play);
+                        actions.push(SongAction::Play);
                     }
                 }
             } else {
-                if let Ok(path) = values.get_string("map.audio_path") {
-                    actions.push(SongMenuAction::Set(SongMenuSetAction::FromFile(path, SongPlayData {
+                if let Some(path) = values.get_string("map.audio_path").ok().filter(|s| !s.is_empty()) {
+                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(path, SongPlayData {
                         play: true,
                         position: values.get_f32("map.preview_time").ok(),
-                        rate: self.apply_rate.then_some(self.current_mods.get_speed()),
+                        rate: self.apply_rate.then_some(speed),
                         volume: Some(self.settings.get_music_vol()),
 
                         ..Default::default()
                     })));
                 }
-
             }
 
             // match AudioManager::get_song().await {
@@ -366,11 +391,11 @@ impl core::fmt::Debug for GameplayPreview {
 
 #[async_trait]
 impl Widgetable for GameplayPreview {
-    async fn update(&mut self, values: &mut ShuntingYardValues, actions: &mut ActionQueue) {
+    async fn update(&mut self, values: &mut ValueCollection, actions: &mut ActionQueue) {
         GameplayPreview::update(self, values, actions).await
         // (self as &mut GameplayPreview).update().await
     }
-    fn view(&self, _owner: MessageOwner, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _owner: MessageOwner, _values: &mut ValueCollection) -> IcedElement {
         self.widget()
     }
 }

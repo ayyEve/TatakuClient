@@ -120,10 +120,10 @@ impl DirectMenu {
             //         self.old_audio = Some(None);
             //     }
             // }
-            self.actions.push(SongMenuAction::Set(SongMenuSetAction::PushQueue));
+            self.actions.push(SongAction::Set(SongMenuSetAction::PushQueue));
             
             // AudioManager::play_song_raw(url, data2).await.unwrap();
-            self.actions.push(SongMenuAction::Set(SongMenuSetAction::FromData(data, url.to_owned(), SongPlayData {
+            self.actions.push(SongAction::Set(SongMenuSetAction::FromData(data, url.to_owned(), SongPlayData {
                 play: true,
                 volume: Some(Settings::get().get_music_vol()),
                 ..Default::default()
@@ -137,8 +137,8 @@ impl DirectMenu {
 
     /// go back to the main menu
     async fn back(&mut self, game:&mut Game) {
-        self.actions.push(SongMenuAction::Set(SongMenuSetAction::PopQueue));
-        self.actions.push(SongMenuAction::Play);
+        self.actions.push(SongAction::Set(SongMenuSetAction::PopQueue));
+        self.actions.push(SongAction::Play);
 
         // if let Some(old_audio) = &self.old_audio {
         //     // stop the song thats playing, because its a preview
@@ -159,7 +159,7 @@ impl DirectMenu {
 impl AsyncMenu for DirectMenu {
 
     
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.scroll_area.update();
         self.search_bar.update();
 
@@ -177,7 +177,7 @@ impl AsyncMenu for DirectMenu {
     }
 
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
         col!(
@@ -185,7 +185,7 @@ impl AsyncMenu for DirectMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         info!("got message {message:?}");
     }
 

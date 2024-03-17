@@ -133,7 +133,7 @@ impl KeyEvent {
 #[derive(Clone)]
 pub struct KeyEventsHandler(Vec<KeyEvent>);
 impl KeyEventsHandler {
-    pub fn new(events: &Vec<KeyHandlerEvent>, owner: MessageOwner, values: &mut ShuntingYardValues) -> Self {
+    pub fn new(events: &Vec<KeyHandlerEvent>, owner: MessageOwner, values: &mut ValueCollection) -> Self {
         Self(
             events
             .iter()

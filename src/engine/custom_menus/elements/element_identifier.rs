@@ -2,42 +2,50 @@ use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub enum ElementIdentifier {
+    /// id = row
     Row {
         elements: Vec<ElementDef>,
         padding: Option<ElementPadding>,
         margin: Option<f32>,
     },
+    /// id = col
     Column {
         elements: Vec<ElementDef>,
         padding: Option<ElementPadding>,
         margin: Option<f32>,
     },
+    /// id = space
     Space,
+    /// id = button
     Button {
         element: Box<ElementDef>,
         action: ButtonAction,
         padding: Option<ElementPadding>,
     },
+    /// id = text
     Text {
         text: CustomElementText,
         color: Option<Color>,
         font_size: Option<f32>,
         font: Option<String>,
     },
+    /// id = text_input
     TextInput {
         placeholder: CustomElementText,
         variable: String,
         is_password: bool,
     },
-
+    /// id = gameplay_preview
     GameplayPreview {
         visualization: Option<String>,
     },
+    /// id = animatable
     Animatable {
         triggers: Vec<AnimatableTrigger>,
         actions: HashMap<String, Vec<AnimatableAction>>,
         element: Box<ElementDef>,
     },
+    /// id = styled_content
     StyledContent {
         element: Box<ElementDef>,
         padding: Option<ElementPadding>,
@@ -49,12 +57,14 @@ pub enum ElementIdentifier {
         shape: Option<Shape>,
     },
 
+    /// id = conditional
     Conditional {
         cond: ElementCondition,
         if_true: Box<ElementDef>,
         if_false: Option<Box<ElementDef>>,
     },
 
+    /// id = list
     List {
         list_var: String,
         scrollable: bool,
@@ -62,6 +72,7 @@ pub enum ElementIdentifier {
         variable: Option<String>,
     },
 
+    /// id = dropdown
     Dropdown {
         options_key: String,
         options_display_key: Option<String>,
@@ -74,15 +85,15 @@ pub enum ElementIdentifier {
     },
 
     // not actually an element, but needs to be here since it needs to be added to the DOM
+    /// id = key_handler
     KeyHandler {
         events: Vec<KeyHandlerEvent>,
     },
-
-    // TODO: !!!
-    Custom {
-
-    }
 }
+
+
+
+
 
 
 #[derive(Clone, Debug)]
@@ -103,7 +114,7 @@ impl ElementCondition {
         }
     }
 
-    pub fn resolve<'a>(&'a self, values: &ShuntingYardValues) -> ElementResolve<'a> {
+    pub fn resolve<'a>(&'a self, values: &ValueCollection) -> ElementResolve<'a> {
         match self {
             Self::Failed => ElementResolve::Failed,
             Self::Unbuilt(calc_str) => ElementResolve::Unbuilt(calc_str),

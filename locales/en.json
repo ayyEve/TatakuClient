@@ -1,0 +1,23 @@
+{
+    "name": "English",
+
+    "multiplayer": {
+        "ready": "Ready",
+        "unready": "Unready",
+        "leave_lobby": "Leave Lobby"
+    },
+
+    "user_interface": {
+        "confirmation": {
+            "yes": "Yes",
+            "no": "No",
+            "cancel": "Cancel"
+        },
+
+        "menuing": {
+            "back": "Back",
+            "close": "Close",
+            "quit": "Quit"
+        }
+    }
+}

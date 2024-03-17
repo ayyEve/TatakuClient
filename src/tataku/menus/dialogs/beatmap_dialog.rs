@@ -42,12 +42,12 @@ impl Dialog for BeatmapDialog {
 
     }
 
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {
             "delete" => {
-                self.actions.push(BeatmapMenuAction::Delete(self.target_map));
+                self.actions.push(BeatmapAction::Delete(self.target_map));
                 self.should_close = true;
             }
 
@@ -65,5 +65,5 @@ impl Dialog for BeatmapDialog {
         }
     }
     
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { self.actions.take() }
 }

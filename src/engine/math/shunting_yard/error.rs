@@ -15,4 +15,7 @@ pub enum ShuntingYardError {
     MissingRightSide(SYOperator),
     MissingFunctionArgument(String),
     NumberIsntANumber(String),
+
+    ConversionError(String),
+    InvalidType(String),
 }

@@ -702,6 +702,7 @@ pub fn scroll_to_id(target: &'static str, offset: AbsoluteOffset) -> IcedOperati
     use iced::{ Vector, Rectangle };
     let id = Id::new(target);
 
+    #[derive(Debug, Clone)]
     struct ScrollTo {
         target: Id,
         offset: AbsoluteOffset,
@@ -739,6 +740,7 @@ pub fn snap_to_id(target: &'static str, offset: RelativeOffset) -> IcedOperation
     use iced::{ Vector, Rectangle };
     let id = Id::new(target);
 
+    #[derive(Debug, Clone)]
     struct SnapTo {
         target: Id,
         offset: RelativeOffset,

@@ -1,5 +1,5 @@
 -- helper for the song controls
-function fa_button(char, action) 
+local function fa_button(char, action) 
     return {
         id = "styled_content",
         debug_name = "fa_button",
@@ -23,7 +23,7 @@ function fa_button(char, action)
     }
 end
 
-song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_controls" }, {
+local song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_controls" }, {
     -- the actual controls
     col({ width = "fill", height = "fill", spacing = 2.0, debug_name = "song_controls_col" }, {
         -- buttons
@@ -48,8 +48,32 @@ song_controls = row({ width = "shrink", height = "shrink", debug_name = "song_co
     space("fill_portion(4)", "fill")
 });
 
+local song_display = {
+    id = "row",
+    width = "fill",
+    height = "shrink",
+    padding = 5.0,
+    elements = {
+        --[[ align-right ]] space("fill", "shrink"),
 
-menu = {
+        -- {artist} - {title}
+        {
+            id = "styled_content",
+            color = color(1.0, 1.0, 1.0, 0.1),
+            shape = { round = 5.0 },
+            padding = 8.0,
+
+            element = text(
+                text_list({ variable("map.artist"), " - ", variable("map.title") }),
+                30,
+                WHITE
+            )
+        }
+    }
+}
+
+
+local menu = {
     id = "main_menu",
 
     -- the current main menu is broken up into rows

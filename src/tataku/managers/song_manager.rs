@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-
 pub struct SongManager {
     song_queue: Vec<SongData>,
     current_song: Option<SongData>

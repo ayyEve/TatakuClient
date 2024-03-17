@@ -162,6 +162,18 @@ impl MessageType {
     message_type!(as_dropdown, as_dropdown_ref, Dropdown, String, String);
     message_type!(as_value, as_value_ref, Value, CustomElementValue);
 
+    pub fn as_number2(&self) -> Option<usize> {
+        if let Some(num) = self.as_number_ref() { return Some(*num) }
+
+        let Some(val) = self.as_value_ref() else { return None };
+        match val {
+            CustomElementValue::U32(n) => Some(*n as usize),
+            CustomElementValue::U64(n) => Some(*n as usize),
+
+            _ => None
+        }
+    }
+
     pub fn downcast<T:Send+Sync+'static>(self) -> Arc<T> {
         let Self::Custom(t) = self else { panic!("nope") };
         t.downcast().unwrap()

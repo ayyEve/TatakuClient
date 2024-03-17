@@ -12,7 +12,7 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 // const BUTTON_COUNT: usize = 4;
 
 pub struct MainMenu {
-    queued_actions: ActionQueue,
+    actions: ActionQueue,
 
     // // index 0
     // pub play_button: MainMenuButton,
@@ -71,12 +71,12 @@ impl MainMenu {
 
         let (event_sender, event_receiver) = async_unbounded_channel();
 
-        let mut gameplay_preview = GameplayPreview::new(false, false, Arc::new(|s|s.background_game_settings.main_menu_enabled));
+        let mut gameplay_preview = GameplayPreview::new(false, false, Arc::new(|s| s.background_game_settings.main_menu_enabled));
         gameplay_preview.handle_song_restart = false;
         gameplay_preview.visualization = Some(Box::new(MenuVisualization::new().await));
 
         Self {
-            queued_actions: ActionQueue::new(),
+            actions: ActionQueue::new(),
 
             // play_button,
             // multiplayer_button,
@@ -186,7 +186,7 @@ impl MainMenu {
 
     async fn next(&mut self) -> bool {
         // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.queued_actions.push(BeatmapMenuAction::Next);
+        self.actions.push(BeatmapAction::Next);
 
         // let mut manager = BEATMAP_MANAGER.write().await;
 
@@ -201,7 +201,7 @@ impl MainMenu {
     }
     async fn previous(&mut self) -> bool {
         // TODO: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.queued_actions.push(BeatmapMenuAction::Previous(MapActionIfNone::ContinueCurrent));
+        self.actions.push(BeatmapAction::Previous(MapActionIfNone::ContinueCurrent));
 
         // let mut manager = BEATMAP_MANAGER.write().await;
         
@@ -247,7 +247,7 @@ impl AsyncMenu for MainMenu {
             // self.visualization.reset();
 
             // play song if it exists
-            self.queued_actions.push(SongMenuAction::SetRate(1.0));
+            self.actions.push(SongAction::SetRate(1.0));
             // if let Some(song) = AudioManager::get_song().await {
             //     // reset any time mods
             //     song.set_rate(1.0);
@@ -266,7 +266,7 @@ impl AsyncMenu for MainMenu {
         }
     }
 
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.settings.update();
         self.song_display.update();
 
@@ -356,14 +356,14 @@ impl AsyncMenu for MainMenu {
 
         if song_done {
             trace!("song done");
-            self.queued_actions.push(BeatmapMenuAction::Next);
+            self.actions.push(BeatmapAction::Next);
             
             // // this needs to be separate or it double locks for some reason
             // let map = BEATMAP_MANAGER.read().await.random_beatmap();
 
             // // it should?
             // if let Some(map) = map {
-            //     self.queued_actions.push(MenuAction::SetBeatmap(map, false));
+            //     self.queued_actions.push(BeatmapAction::SetBeatmap(map, false));
             //     // BEATMAP_MANAGER.write().await.set_current_beatmap(g, &map, false).await;
             //     Self::update_online();
             // }
@@ -377,13 +377,13 @@ impl AsyncMenu for MainMenu {
 
         // check if there are any new maps
         if self.new_map_helper.update() {
-            self.queued_actions.push(BeatmapMenuAction::Set(self.new_map_helper.0.clone(), false, false));
+            self.actions.push(BeatmapAction::Set(self.new_map_helper.0.clone(), false, false));
         }
 
         // update the gameplay preview (includes drawing it)
         // self.visualization.update().await;
         // self.menu_game.update().await;
-        self.gameplay_preview.update(values, &mut self.queued_actions).await;
+        self.gameplay_preview.update(values, &mut self.actions).await;
 
         // // check key events
         // while let Some(event) = self.key_events.check_events() {
@@ -403,11 +403,11 @@ impl AsyncMenu for MainMenu {
             self.hide_menu();
         }
 
-        self.queued_actions.take()
+        self.actions.take()
     }
 
     
-    fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let owner = MessageOwner::new_menu(self);
         
@@ -473,15 +473,15 @@ impl AsyncMenu for MainMenu {
         
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return };
         let val = message.message_type.as_float().unwrap_or_default();
 
         match &*tag {
-            "play" => self.queued_actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
-            "multiplayer" => self.queued_actions.push(MenuAction::MultiplayerAction(MultiplayerManagerAction::JoinMulti)),
-            "settings" => self.queued_actions.push(MenuMenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
-            "exit" => self.queued_actions.push(MenuAction::Quit),
+            "play" => self.actions.push(MenuMenuAction::SetMenu("beatmap_select".to_owned())), //self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
+            "multiplayer" => self.actions.push(TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer)),
+            "settings" => self.actions.push(MenuMenuAction::AddDialogCustom("settings".to_owned(), false)), //self.actions.push(MenuMenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
+            "exit" => self.actions.push(TatakuAction::Quit),
 
             
             // music box controls

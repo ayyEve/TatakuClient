@@ -33,7 +33,7 @@ impl CustomElementText {
         Ok(())
     }
 
-    pub fn to_string(&self, values: &ShuntingYardValues) -> String {
+    pub fn to_string(&self, values: &ValueCollection) -> String {
         match self {
             Self::Variable(t) => values.get_string(t).unwrap_or_else(|_| format!("Invalid property: '{t}'")),
             Self::Text(t) | Self::Locale(t) => t.clone(),

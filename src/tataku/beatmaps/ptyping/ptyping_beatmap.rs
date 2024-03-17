@@ -62,7 +62,7 @@ impl PTypingBeatmap {
     pub fn load_single(path:impl AsRef<Path>, meta: &BeatmapMeta) -> TatakuResult<Self> {
         let maps = Self::load_multiple(path)?;
 
-        maps.into_iter().find(|m|m.hash == meta.beatmap_hash).ok_or_else(||BeatmapError::InvalidFile.into())
+        maps.into_iter().find(|m| m.hash == meta.beatmap_hash).ok_or_else(|| BeatmapError::InvalidFile.into())
     }
 }
 impl TatakuBeatmap for PTypingBeatmap {

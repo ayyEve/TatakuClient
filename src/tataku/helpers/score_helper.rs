@@ -126,6 +126,19 @@ pub enum ScoreRetreivalMethod {
     // FriendsMods
 }
 impl ScoreRetreivalMethod {
+    pub fn list() -> Vec<Self> {
+        vec![
+            Self::Local,
+            Self::LocalMods,
+            
+            Self::Global,
+            Self::GlobalMods,
+
+            Self::OgGame,
+            Self::OgGameMods,
+        ]
+    }
+
     pub fn filter_by_mods(&self) -> bool {
         use ScoreRetreivalMethod::*;
         match self {
@@ -180,8 +193,11 @@ impl TryFrom<&CustomElementValue> for ScoreRetreivalMethod {
         }
     }
 }
-
-
+impl Into<CustomElementValue> for ScoreRetreivalMethod {
+    fn into(self) -> CustomElementValue {
+        CustomElementValue::String(format!("{self:?}"))
+    }
+}
 
 
 

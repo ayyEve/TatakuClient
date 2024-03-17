@@ -1,4 +1,4 @@
-menu = {
+local menu = {
     id = "beatmap_select",
 
     -- list of components we want to add, to add extra functionality
@@ -18,6 +18,16 @@ menu = {
     element = col({ width = "fill", height = "fill" }, {
         -- the first row contains the dropdowns
         row({ width = "fill", height = "shrink", spacing = 10.0, debug_name="dropdowns" }, {
+            -- score get method dropdown
+            {
+                id = "dropdown",
+                debug_name = "score method dropdown",
+                width = "fill",
+                font_size = 25.0,
+
+                options_key = "enums.score_methods",
+                selected_key = "global.score_method",
+            },
             -- mode dropdown
             {
                 id = "dropdown",
@@ -25,17 +35,20 @@ menu = {
                 width = "fill",
                 font_size = 25.0,
 
-                options_key = "game.modes",
-                options_display_key = "game.modes_display",
+                placeholder = "Mode",
+
+                options_key = "enums.playmodes",
+                options_display_key = "enums.playmodes_display",
                 selected_key = "global.playmode",
             },
             -- sort_by dropdown
             {
                 id = "dropdown",
                 debug_name = "sort_by dropdown",
-                
                 width = "fill",
                 font_size = 25.0,
+
+                placeholder = "Sort",
 
                 options_key = "enums.sort_by",
                 selected_key = "global.sort_by",
@@ -143,8 +156,8 @@ menu = {
                                         ),
                                         cond(
                                             "map.hash == _map.hash", -- if the map is selected
-                                            -- play it
-                                            map_action("play"),
+                                            -- confirm it
+                                            map_action("confirm"),
                                             -- otherwise, set it as the selected map
                                             custom_action("beatmap_list.set_beatmap", variable("_map.hash"))
                                         ),

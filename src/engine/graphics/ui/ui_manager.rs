@@ -153,7 +153,7 @@ impl UiManager {
         }
     }
 
-    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: ShuntingYardValues) -> (Vec<MenuAction>, ShuntingYardValues) {
+    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: ValueCollection) -> (Vec<TatakuAction>, ValueCollection) {
         while let Ok(e) = self.message_channel.1.try_recv() {
             // info!("adding message: {e:?}");
             self.messages.push(e);
@@ -169,10 +169,10 @@ impl UiManager {
             operations: self.queued_operations.take(),
             values,
             // we should probably return an error instead
-        }) else { return (Vec::new(), ShuntingYardValues::default()); };
+        }) else { return (Vec::new(), ValueCollection::default()); };
 
         // we should probably return an error instead
-        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { return (Vec::new(), ShuntingYardValues::default()); };
+        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { return (Vec::new(), ValueCollection::default()); };
 
         std::mem::swap(&mut self.application, &mut Some(application));
 
@@ -297,7 +297,7 @@ enum UiAction {
         events: SendEvents,
         operations: Vec<IcedOperation>,
 
-        values: ShuntingYardValues
+        values: ValueCollection
     },
     Draw {
         application: UiApplication,
@@ -308,7 +308,7 @@ enum UiAction {
 struct UiUpdateData {
     application: UiApplication,
     messages: Vec<Message>,
-    values: ShuntingYardValues,
+    values: ValueCollection,
 }
 
 struct UiDrawData {

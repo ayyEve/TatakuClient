@@ -88,7 +88,7 @@ impl Dialog for ModDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         match message.tag {
             MessageTag::GameplayMod(m) => self.toggle_mod(m),
 

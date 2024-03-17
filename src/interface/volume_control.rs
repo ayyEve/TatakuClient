@@ -30,7 +30,7 @@ impl VolumeControl {
         let elapsed = self.elapsed();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }
-    async fn change(&mut self, delta:f32) -> Option<SongMenuAction> {
+    async fn change(&mut self, delta:f32) -> Option<SongAction> {
         let elapsed = self.elapsed();
         let mut settings = Settings::get_mut();
 
@@ -52,7 +52,7 @@ impl VolumeControl {
 
         self.vol_selected_time = elapsed;
 
-        Some(SongMenuAction::SetVolume(settings.get_music_vol()))
+        Some(SongAction::SetVolume(settings.get_music_vol()))
     }
 
 
@@ -197,7 +197,7 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> Option<SongMenuAction> {
+    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> Option<SongAction> {
         if mods.alt {
             self.change(delta / 10.0).await
         } else {

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub struct CreateLobbyDialog {
+    actions: ActionQueue,
     num: usize, 
 
     // scrollable: ScrollableArea,
@@ -35,6 +36,7 @@ impl CreateLobbyDialog {
         // scrollable.set_size(Vector2::new(WIDTH, scrollable.get_elements_height()));
 
         Self {
+            actions: ActionQueue::new(),
             num: 0,
             // scrollable,
             should_close: false,
@@ -59,7 +61,7 @@ impl Dialog for CreateLobbyDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
 
-    async fn handle_message(&mut self, message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
         let Some(tag) = message.tag.as_string() else { return }; 
 
         match &*tag {
@@ -81,10 +83,11 @@ impl Dialog for CreateLobbyDialog {
                 let password = self.password_text.clone();
                 let private = self.is_private;
                 let players = 16;
-
-                tokio::spawn(async move {
-                    OnlineManager::create_lobby(name, password, private, players).await
-                });
+                
+                self.actions.push(MultiplayerAction::CreateLobby { name, password, private, players });
+                // tokio::spawn(async move {
+                //     OnlineManager::create_lobby(name, password, private, players).await
+                // });
                 self.should_close = true;
             }
 
@@ -94,6 +97,11 @@ impl Dialog for CreateLobbyDialog {
             _ => {}
         }
 
+    }
+
+    
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
+        self.actions.take()
     }
 
 

@@ -20,7 +20,7 @@ impl ElementDef {
 
         match &mut built.element.id {
             ElementIdentifier::GameplayPreview { visualization } => {
-                let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_|true));
+                let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_| true));
                 gameplay.widget.width(self.width);
                 gameplay.widget.height(self.height);
                 
@@ -54,7 +54,7 @@ impl ElementDef {
                 => {
                     action.build();
                     built.children.push(element.build().await)
-                },
+                }
 
             ElementIdentifier::Text { text, .. } => {
                 if let Err(e) = text.parse() {

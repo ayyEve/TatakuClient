@@ -44,9 +44,12 @@ impl ShuntingYard {
                 
                 _ => {
                     match SYOperator::from_chars(c, c2) {
-                        // ignore warnings for space and equals
-                        Err(ShuntingYardError::InvalidOperator(' '))
-                        | Err(ShuntingYardError::InvalidOperator('=')) => {}
+                        // ignore warnings for space, equals, and pipes (OR operator)
+                        Err(ShuntingYardError::InvalidOperator(' ')) // ignore warnings for spaces
+                        | Err(ShuntingYardError::InvalidOperator('=')) // and equals (EQ)
+                        | Err(ShuntingYardError::InvalidOperator('&')) // and apersands (AND)
+                        | Err(ShuntingYardError::InvalidOperator('|')) // and pipes (OR)
+                        => {}
 
                         Err(e) => warn!("Error parsing operator {c}: {e:?}"),
                         Ok(op) => {
@@ -73,7 +76,7 @@ impl ShuntingYard {
         Ok(output_queue)
     }
 
-    pub fn evaluate_rpn(rpn: &[ShuntingYardToken], values: &ShuntingYardValues) -> ShuntingYardResult<SYStackValue> {
+    pub fn evaluate_rpn(rpn: &[ShuntingYardToken], values: &ValueCollection) -> ShuntingYardResult<SYStackValue> {
         let mut stack = Vec::new();
 
         for token in rpn {
@@ -86,10 +89,10 @@ impl ShuntingYard {
                         SYStackValue::Number(num)
                     } else { 
                         // otherwise try a bool or string
-                        match values.get_raw(&var) {
-                            Ok(CustomElementValue::Bool(b)) => SYStackValue::Bool(*b),
-                            Ok(CustomElementValue::String(s)) => SYStackValue::String(s.clone()),
-                            _ => return Err(ShuntingYardError::InvalidOperator('\n'))
+                        match values.get_raw(&var)? {
+                            CustomElementValue::Bool(b) => SYStackValue::Bool(*b),
+                            CustomElementValue::String(s) => SYStackValue::String(s.clone()),
+                            _ => return Err(ShuntingYardError::InvalidType(var.to_string()))
                         }
                     }
                 ),
@@ -232,7 +235,10 @@ impl SYOperator {
     }
 
     fn perform(&self, right: SYStackValue, left: SYStackValue) -> SYStackValue {
-        match self {
+        // debug!("");
+        // debug!("perform: {left:?} {self:?} {right:?}");
+
+        let res = match self {
             // math
             Self::Add => left + right,
             Self::Sub => left - right,
@@ -252,7 +258,11 @@ impl SYOperator {
             Self::And => SYStackValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
             Self::Or => SYStackValue::Bool(left.as_bool() || right.as_bool()), //if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
             Self::Not => SYStackValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
-        }
+        };
+        // debug!("res: {res:?}");
+        // debug!("");
+
+        res
     }
 
     fn precedence(&self) -> u8 {
@@ -389,7 +399,7 @@ mod shunting_yard_tests {
         let test = -30.0;
         let test_1 = 50.0;
 
-        let values = ShuntingYardValues::default()
+        let values = ValueCollection::default()
             .set_chained("test", test)
             .set_chained("test.1", test_1)
         ;
@@ -412,9 +422,27 @@ mod shunting_yard_tests {
         let test = -30.0;
         let test_1 = 50.0;
 
-        let values = ShuntingYardValues::default()
+        let values = ValueCollection::default()
             .set_chained("test", test)
             .set_chained("test.1", test_1)
+        ;
+
+        let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
+        println!("Result: {:?}", result);
+        assert_eq!(result, SYStackValue::Bool(true));
+    }
+
+    #[test]
+    fn single_bool_tests() {
+        let expression = "test";
+        println!("Expression: {expression}");
+
+        let tokens = ShuntingYard::parse_expression(expression).unwrap();
+        println!("Tokens: {:?}", tokens);
+
+        let test = true;
+        let values = ValueCollection::default()
+            .set_chained("test", test)
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();

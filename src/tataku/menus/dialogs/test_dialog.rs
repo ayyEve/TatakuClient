@@ -50,12 +50,12 @@ impl Dialog for TestDialog {
     fn set_num(&mut self, num: usize) { self.num = num }
     fn should_close(&self) -> bool { self.should_close }
     
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { 
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
         // self.manager.update().await;
 
         Vec::new()
     }
-    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
     }
     fn view(&self) -> IcedElement {
         // use iced_elements::*;
@@ -220,10 +220,10 @@ impl Dialog for StupidDialog {
 
 
     
-    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
     }
 
-    // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> { self.actions.take() }
+    // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<TatakuAction> { self.actions.take() }
 
     
     fn view(&self) -> IcedElement {

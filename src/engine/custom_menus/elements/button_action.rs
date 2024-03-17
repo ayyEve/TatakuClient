@@ -2,6 +2,7 @@ use crate::prelude::*;
 use super::parse_from_multiple;
 use rlua::{ Value, FromLua, Error::FromLuaConversionError, Table };
 
+// TODO: rename this, its not just used by buttons
 #[derive(Clone, Debug)]
 pub enum ButtonAction {
     /// Set a value
@@ -43,21 +44,32 @@ impl ButtonAction {
         }
     }
 
-    pub fn resolve(&self, owner: MessageOwner, values: &mut ShuntingYardValues) -> Option<Message> {
+    pub fn resolve(&self, owner: MessageOwner, values: &mut ValueCollection) -> Option<Message> {
         match self {
             Self::MenuAction(action) => {
                 if let CustomMenuAction::None = &action { return None };
-                let message = MessageType::CustomMenuAction(action.clone());
+
+                let mut action = action.clone();
+                action.resolve(values);
+                let message = MessageType::CustomMenuAction(action);
                 Some(Message::new(owner, "", message))
             }
             
             Self::SetValue { key, value } => {
-                let val = value.resolve(values)?;
+                let Some(val) = value.resolve(values) else {
+                    warn!("Key doesn't exist: {key}");
+                    return None;
+                };
+
                 let action = CustomMenuAction::SetValue(key.clone(), val);
                 Some(Message::new(owner, "", MessageType::CustomMenuAction(action)))
             }
             Self::CustomAction { tag, value } => {
-                let val = value.resolve(values)?;
+                let Some(val) = value.resolve(values) else {
+                    warn!("Tag doesn't exist: {tag}");
+                    return None;
+                };
+
                 Some(Message::new(owner, tag, MessageType::Value(val)))
             }
             Self::Conditional { cond, if_true, if_false } => {
@@ -82,6 +94,7 @@ impl<'lua> FromLua<'lua> for ButtonAction {
         #[cfg(feature="custom_menu_debugging")] info!("Got id: {id}");
 
         match &*id {
+            "none" => Ok(Self::MenuAction(CustomMenuAction::None)),
             "set_value" => Ok(Self::SetValue {
                 key: table.get("key")?,
                 value: CustomEventValueType::from_lua(&table)?,
@@ -108,7 +121,7 @@ pub enum CustomEventValueType {
     /// No value
     None,
 
-    /// Direct value
+    /// Static value
     Value(CustomElementValue),
 
     /// Get from a variable
@@ -116,7 +129,7 @@ pub enum CustomEventValueType {
 }
 
 impl CustomEventValueType {
-    pub fn resolve(&self, values: &ShuntingYardValues) -> Option<CustomElementValue> {
+    pub fn resolve(&self, values: &ValueCollection) -> Option<CustomElementValue> {
         match self {
             Self::None => None,
             Self::Value(val) => Some(val.clone()),
@@ -131,7 +144,7 @@ impl CustomEventValueType {
         }
     }
 
-    fn from_lua(table: &Table) -> rlua::Result<Self> {
+    pub fn from_lua(table: &Table) -> rlua::Result<Self> {
         if let Some(value) = table.get::<_, Option<CustomElementValue>>("value")? {
             Ok(Self::Value(value))
         } else if let Some(var) = table.get::<_, Option<String>>("variable")? {
@@ -143,6 +156,20 @@ impl CustomEventValueType {
     }
 }
 
+impl<'lua> FromLua<'lua> for CustomEventValueType {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        const THIS_TYPE:&str = "CustomEventValueType";
+        #[cfg(feature="custom_menu_debugging")] info!("Reading {THIS_TYPE}");
+        match lua_value {
+            Value::Table(table) => Self::from_lua(&table),
+            Value::String(s) => Ok(Self::Value(CustomElementValue::String(s.to_str()?.to_owned()))),
+            Value::Number(n) => Ok(Self::Value(CustomElementValue::F32(n as f32))),
+            Value::Integer(n) => Ok(Self::Value(CustomElementValue::U64(n as u64))),
+
+            other =>  Err(FromLuaConversionError { from: other.type_name(), to: THIS_TYPE, message: Some(format!("Bad type")) })
+        }
+    }
+}
 
 impl<'lua> FromLua<'lua> for CustomElementValue {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {

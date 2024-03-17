@@ -23,11 +23,16 @@ impl CustomMenu {
 }
 impl<'lua> rlua::FromLua<'lua> for CustomMenu {
     fn from_lua(lua_value: rlua::prelude::LuaValue<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::prelude::LuaResult<Self> {
+        #[cfg(feature="custom_menu_debugging")] info!("=======================");
         #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenu");
-        let rlua::Value::Table(table) = lua_value else { return Err(rlua::Error::ToLuaConversionError { from: lua_value.type_name(), to: "CustomMenu", message: Some("Not a table".to_owned()) }) };
+        #[cfg(feature="custom_menu_debugging")] info!("=======================");
         
+        let rlua::Value::Table(table) = lua_value else { return Err(rlua::Error::ToLuaConversionError { from: lua_value.type_name(), to: "CustomMenu", message: Some("Not a table".to_owned()) }) };
+        let id = table.get("id")?;
+        #[cfg(feature="custom_menu_debugging")] info!("Got id '{id}'");
+
         Ok(Self {
-            id: table.get("id")?,
+            id,
             element: table.get("element")?,
             components: table.get::<_, Option<Vec<_>>>("components")?.unwrap_or_default(),
         })
@@ -47,7 +52,7 @@ impl AsyncMenu for BuiltCustomMenu {
     fn get_name(&self) -> &'static str { "custom_menu" }
     fn get_custom_name(&self) -> Option<&String> { Some(&self.id) }
 
-    fn view(&self, values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, values: &mut ValueCollection) -> IcedElement {
         let view = self.element.view(MessageOwner::new_menu(self), values);
 
         if let Some(debug_color) = self.element.element.debug_color {
@@ -59,7 +64,7 @@ impl AsyncMenu for BuiltCustomMenu {
         }
     }
 
-    async fn update(&mut self, values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.element.update(values, &mut self.actions).await;
         for i in self.components.iter_mut() {
             i.update(values, &mut self.actions).await;
@@ -67,7 +72,7 @@ impl AsyncMenu for BuiltCustomMenu {
         self.actions.take()
     }
 
-    async fn handle_message(&mut self, message: Message, values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
 
         for i in self.components.iter_mut() {
             let actions = i.handle_message(&message, values).await;

@@ -31,6 +31,17 @@ impl CustomElementValue {
         } 
     }
 
+    pub fn as_u32(&self) -> Result<u32, ShuntingYardError> {
+        match self {
+            Self::I32(n) => Ok(*n as u32),
+            Self::U32(n) => Ok(*n),
+            Self::I64(n) => Ok(*n as u32),
+            Self::U64(n) => Ok(*n as u32),
+
+            _ => Err(ShuntingYardError::ConversionError(format!("Not castable to u32")))
+        }
+    }
+
     pub fn as_string(&self) -> String {
         match self {
             Self::I32(i) => format!("{i}"),
@@ -77,6 +88,11 @@ impl strfmt::DisplayStr for CustomElementValue {
     }
 }
 
+impl From<&str> for CustomElementValue {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_owned())
+    }
+}
 
 macro_rules! impl_from {
     ($t:ty, $e: ident) => {
@@ -100,6 +116,11 @@ impl_from!(String, String);
 impl<T:Into<CustomElementValue>> From<Vec<T>> for CustomElementValue {
     fn from(value: Vec<T>) -> Self {
         Self::List(value.into_iter().map(|t|t.into()).collect())
+    }
+}
+impl<T:Into<CustomElementValue>+Clone> From<&[T]> for CustomElementValue {
+    fn from(value: &[T]) -> Self {
+        Self::List(value.into_iter().cloned().map(|t| t.into()).collect())
     }
 }
 

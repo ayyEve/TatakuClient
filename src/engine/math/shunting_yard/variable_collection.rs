@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 #[derive(Default, Debug)]
-pub struct ShuntingYardValues(HashMap<String, CustomElementValue>);
-impl ShuntingYardValues {
+pub struct ValueCollection(HashMap<String, CustomElementValue>);
+impl ValueCollection {
     // initialize with some basic values
     pub fn new() -> Self {
         Self::default()
@@ -45,13 +45,13 @@ impl ShuntingYardValues {
             return Ok(v)
         }
 
-        //TODO: optimize this, this is quite bad
+        // TODO: optimize this, this is quite bad
         let mut remaining = key.split(".").collect::<Vec<_>>();
         if remaining.len() > 1 {
             let k2 = remaining.pop().unwrap();
             let key = remaining.join(".");
 
-            if let Some(CustomElementValue::Map(m)) = self.0.get(&key) {
+            if let CustomElementValue::Map(m) = self.get_raw(&key)? {
                 if let Some(v) = m.get(k2) {
                     return Ok(v);
                 }
@@ -64,6 +64,13 @@ impl ShuntingYardValues {
         match self.get_raw(key) {
             Ok(CustomElementValue::String(_)) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
             Ok(other) => other.as_f32(),
+            Err(_) => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
+        }
+    }
+    pub fn get_u32(&self, key: &str) -> Result<u32, ShuntingYardError> {
+        match self.get_raw(key) {
+            Ok(CustomElementValue::U32(n)) => Ok(*n),
+            Ok(_) => Err(ShuntingYardError::ValueIsntANumber(key.to_owned())),
             Err(_) => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
     }
@@ -81,4 +88,35 @@ impl ShuntingYardValues {
             _ => Err(ShuntingYardError::EntryDoesntExist(key.to_owned()))
         }
     }
+
+
+    pub fn try_get<'a, T>(&'a self, key: &str) -> Result<T, ShuntingYardError> 
+        where 
+            &'a CustomElementValue: TryInto<T>, 
+            <&'a CustomElementValue as TryInto<T>>::Error: ToString
+    {
+        let raw = self.get_raw(key)?;
+        raw.try_into().map_err(|e| ShuntingYardError::ConversionError(e.to_string()))
+    }
+}
+
+#[test]
+fn test() {
+    let mut map = CustomElementMapHelper::default();
+    map.set("hi", "test");
+
+    let count = 1_000;
+    let key = "hi.".repeat(count) + "hi";
+
+    for _ in 0..count {
+        let mut map2 = CustomElementMapHelper::default();
+        map2.set("hi", map.finish());
+        map = map2
+    }
+
+    let CustomElementValue::Map(map) = map.finish() else { panic!() };
+    let values = ValueCollection(map);
+
+    let val = values.get_raw(&key).expect("nope");
+    println!("val: {val:?}");
 }

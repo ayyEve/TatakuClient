@@ -174,7 +174,7 @@ impl LoadingMenu {
 impl AsyncMenu for LoadingMenu {
     fn get_name(&self) -> &'static str { "loading_menu" }
 
-    async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<MenuAction> {
+    async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         for status in self.statuses.iter() {
             let status = status.read();
             if !status.complete { return Vec::new() }
@@ -182,14 +182,14 @@ impl AsyncMenu for LoadingMenu {
 
         // loading complete, move to the main menu
         vec![
-            MenuAction::Beatmap(BeatmapMenuAction::Next),
-            MenuAction::Menu(MenuMenuAction::SetMenuCustom("main_menu".to_owned()))
+            TatakuAction::Beatmap(BeatmapAction::Next),
+            TatakuAction::Menu(MenuMenuAction::SetMenu("main_menu".to_owned()))
         ]
-        // vec![MenuAction::SetMenu(Box::new(MainMenu::new().await))]
+        // vec![MenuMenuAction::SetMenu(Box::new(MainMenu::new().await))]
     }
 
     
-    fn view(&self, _values: &mut ShuntingYardValues) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
         row!(
             Space::new(Fill, Fill),
@@ -232,7 +232,7 @@ impl AsyncMenu for LoadingMenu {
         )
     }
     
-    async fn handle_message(&mut self, _message: Message, _values: &mut ShuntingYardValues) {
+    async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
         // nothing really to do here
     }
 }
