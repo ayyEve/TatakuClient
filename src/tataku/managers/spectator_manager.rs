@@ -14,12 +14,15 @@ pub struct SpectatorManager {
 
     /// what is the current map's hash? 
     /// if this is Some and game_manager is None, we dont have the map
-    pub current_map: Option<(Md5Hash, String, String, u16)>,
+    host_map: Option<HostMap>,
 
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
 
-    new_map_check: LatestBeatmapHelper
+    new_map_check: LatestBeatmapHelper,
+
+
+    own_beatmap: SyValueHelper,
 }
 impl SpectatorManager {
     pub async fn new(host_id: u32, host_username: String) -> Self {
@@ -31,71 +34,80 @@ impl SpectatorManager {
             host_id,
             host_username,
             spectator_cache: HashMap::new(),
-            current_map: None,
+            host_map: None,
             new_map_check: LatestBeatmapHelper::new(),
+
+            own_beatmap: SyValueHelper::new("map.hash"),
         }
     }
-    pub async fn new_from_manager(manager: &IngameManager) -> Self {
-        let GameplayMode::Spectator { 
-            frames, 
-            host_id, 
-            host_username, 
-            spectators,
-            ..
-        } = manager.get_mode() else { panic!("trying to make a spectator manager from an ingame manager which isnt in spectating mode") };
+    // pub async fn new_from_manager(manager: &IngameManager) -> Self {
+    //     let GameplayMode::Spectator { 
+    //         frames, 
+    //         host_id, 
+    //         host_username, 
+    //         spectators,
+    //         ..
+    //     } = manager.get_mode() else { panic!("trying to make a spectator manager from an ingame manager which isnt in spectating mode") };
+    //     Self {
+    //         actions: ActionQueue::new(),
+    //         state: SpectatorState::None,
+    //         frames: frames.clone(),
+    //         host_id: *host_id,
+    //         host_username: host_username.clone(),
+    //         spectator_cache: spectators.clone(),
+    //         host_map: None,
+    //         new_map_check: LatestBeatmapHelper::new(),
+    //     }
+    // }
 
-        Self {
-            actions: ActionQueue::new(),
-            state: SpectatorState::None,
+    async fn start_game(&mut self, values: &ValueCollection, current_time: f32) {
+        trace!("Trying to watch host play a map");
+        let Some(HostMap { map_hash, playmode, mods }) = self.host_map.clone() else { return };
 
-            frames: frames.clone(),
-            host_id: *host_id,
-            host_username: host_username.clone(),
-            spectator_cache: spectators.clone(),
-            current_map: None,
-            new_map_check: LatestBeatmapHelper::new(),
-        }
-    }
+        // self.host_map = Some((beatmap_hash, mode.clone(), mods_str.clone(), speed));
+        // let mut mods = ModManager::new().with_speed(speed);
+        // mods.mods = Score::mods_from_string(mods_str);
 
-    async fn start_game(&mut self, beatmap_hash:Md5Hash, mode:String, mods_str:String, current_time:f32, speed: u16) {
-        trace!("Started watching host play a map");
-        self.current_map = Some((beatmap_hash, mode.clone(), mods_str.clone(), speed));
+        // see if our current map is the host's map
+        let Ok(map_path) = values.get_string("map.file_path") else { return };
+        let Ok(hash) = values.try_get("map.hash") else { return };
+        if hash != map_hash { return }
 
-        let mut mods = ModManager::new().with_speed(speed);
-        mods.mods = Score::mods_from_string(mods_str);
-
-        // find the map
-        let beatmap_manager = BEATMAP_MANAGER.read().await;
-        match beatmap_manager.get_by_hash(&beatmap_hash) {
-            Some(map) => {
-                // beatmap_manager.set_current_beatmap(game, &map, false).await;
-                self.actions.push(BeatmapAction::Set(map.clone(), false, true));
-
-                match manager_from_playmode(mode.clone(), &map).await {
-                    Ok(mut manager) => {
-                        // set manager things
-                        manager.apply_mods(mods).await;
-                        manager.set_mode(GameplayMode::spectator(
-                            self.host_id,
-                            self.host_username.clone(),
-                            self.frames.take(),
-                            self.spectator_cache.clone()
-                        ));
-                        // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
-                        manager.on_start = Box::new(move |manager| {
-                            trace!("Jumping to time {current_time}");
-                            manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
-                        });
-                        
-                        self.actions.push(GameAction::StartGame(Box::new(manager)));
-                    }
-                    Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
-                }
+        match manager_from_playmode_path_hash(playmode, map_path, hash).await {
+            Ok(mut manager) => {
+                // set manager things
+                manager.apply_mods(mods).await;
+                manager.set_mode(GameplayMode::spectator(
+                    self.host_id,
+                    self.host_username.clone(),
+                    self.frames.take(),
+                    self.spectator_cache.clone()
+                ));
+                // manager.replay.score_data = Some(Score::new(map.beatmap_hash, self.host_username.clone(), mode.clone()));
+                manager.on_start = Box::new(move |manager| {
+                    trace!("Jumping to time {current_time}");
+                    manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
+                });
+                
+                self.actions.push(GameAction::StartGame(Box::new(manager)));
             }
-            
-            // user doesnt have beatmap
-            None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED).await
+            Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
         }
+        
+
+        // // find the map
+        // let beatmap_manager = BEATMAP_MANAGER.read().await;
+        // match beatmap_manager.get_by_hash(&beatmap_hash) {
+        //     Some(map) => {
+        //         // beatmap_manager.set_current_beatmap(game, &map, false).await;
+        //         self.actions.push(BeatmapAction::Set(map.clone(), false, true));
+
+            
+        //     }
+            
+        //     // user doesnt have beatmap
+        //     None => NotificationManager::add_text_notification("You do not have the map!", 2000.0, Color::RED).await
+        // }
     }
 
     pub fn stop(&mut self) {
@@ -105,38 +117,47 @@ impl SpectatorManager {
     pub async fn update(
         &mut self, 
         manager: Option<&mut Box<IngameManager>>,
+        values: &mut ValueCollection,
     ) -> Vec<TatakuAction> {
-        if manager.is_some() { return self.actions.take() }
+        // if manager.is_some() { return self.actions.take() }
 
         // (try to) read pending data from the online manager
         if let Some(mut online_manager) = OnlineManager::try_get_mut() {
             self.frames.extend(online_manager.get_pending_spec_frames(self.host_id));
         }
 
-        // handle all new maps
+        // handle new maps
         if self.new_map_check.update() {
             let new_map = self.new_map_check.0.clone();
             info!("got new map: {new_map:?}");
 
-            // TODO: !!!
-            let current_time = 0.0;
-            if let Some((current_map, mode, mods, speed)) = self.current_map.clone() {
-                info!("good state to start map");
-                if &new_map.beatmap_hash == &current_map {
-                    info!("starting map");
-                    self.start_game( current_map, mode, mods, current_time, speed).await;
-                } else {
-                    info!("starting map");
-                    // if this wasnt the map we wanted, check to see if the map we wanted was added anyways
-                    // because it might have loaded a group of maps, and the one we wanted was loaded before the last map added
-                    let has_map = BEATMAP_MANAGER.read().await.get_by_hash(&current_map).is_some();
-                    if has_map {
-                        self.start_game(current_map, mode, mods, current_time, speed).await;
-                    }
-                }
+            // if we got new maps, we have a map waiting to be played, but arent playing
+            if let Some(host_map) = self.host_map.as_ref().filter(|_| manager.is_none()) {
+                self.actions.push(BeatmapAction::SetFromHash(host_map.map_hash, SetBeatmapOptions::new().restart_song(true)));
             }
+            
+            // // TODO: !!!
+            // let current_time = 0.0;
+            // if let Some((current_map, mode, mods, speed)) = self.current_map.clone() {
+            //     info!("good state to start map");
+            //     if &new_map.beatmap_hash == &current_map {
+            //         info!("starting map");
+            //         self.start_game(current_map, mode, mods, current_time, speed).await;
+            //     } else {
+            //         info!("starting map");
+            //         // if this wasnt the map we wanted, check to see if the map we wanted was added anyways
+            //         // because it might have loaded a group of maps, and the one we wanted was loaded before the last map added
+            //         let has_map = BEATMAP_MANAGER.read().await.get_by_hash(&current_map).is_some();
+            //         if has_map {
+            //             self.start_game(current_map, mode, mods, current_time, speed).await;
+            //         }
+            //     }
+            // }
         }
 
+        if self.own_beatmap.check(values) && self.host_map.is_some() && manager.is_none() {
+
+        }
 
         // check all incoming frames
         while let Some(SpectatorFrame { time, action }) = self.frames.pop_front() {
@@ -147,43 +168,11 @@ impl SpectatorManager {
                     info!("got play: {beatmap_hash}, {mode}, {mods}");
                     let beatmap_hash = beatmap_hash.try_into().unwrap();
 
-                    if BEATMAP_MANAGER.read().await.get_by_hash(&beatmap_hash).is_none() {
-                        // we dont have the map, try downloading it
 
-                        match map_game {
-                            MapGame::Osu => {
-                                // need to query the osu api to get the set id for this hashmap
-                                match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
-                                    Ok(Some(map_info)) => {
-                                        // we have a thing! lets download it
-                                        let settings = Settings::get();
-                                        let username = &settings.osu_username;
-                                        let password = &settings.osu_password;
+                    self.host_map = Some(HostMap { map_hash: beatmap_hash, playmode: mode, mods: ModManager::new().with_speed(speed).with_mods(Score::mods_from_string(mods)) });
+                    self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
 
-                                        if !username.is_empty() && !password.is_empty() {
-                                            let url = format!("https://osu.ppy.sh/d/{}.osz?u={username}&h={password}", map_info.beatmapset_id);
-                                            
-                                            let path = format!("downloads/{}.osz", map_info.beatmapset_id);
-                                            perform_download(url, path, Default::default())
-                                        } else {
-                                            warn!("not downloading map, osu user or password missing")
-                                        }
-                                    },
-                                    Ok(None) => warn!("not downloading map, map not found"),
-                                    Err(e) => warn!("not downloading map, {e}"),
-                                }
-                            }
-                            MapGame::Quaver => {
-                                // dont know how to download these yet
-                            }
-
-                            _ => {
-                                // hmm
-                            }
-                        }
-                    }
-
-                    self.start_game(beatmap_hash, mode, mods, 0.0, speed).await;
+                    // self.start_game(beatmap_hash, mode, mods, 0.0, speed).await;
 
                     break;
                 }
@@ -241,6 +230,43 @@ impl SpectatorManager {
         }
 
     }
+
+
+    async fn download_beatmap(&self, beatmap_hash: Md5Hash, map_game: MapGame) {
+
+        match map_game {
+            MapGame::Osu => {
+                // need to query the osu api to get the set id for this hashmap
+                match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
+                    Ok(Some(map_info)) => {
+                        // we have a thing! lets download it
+                        let settings = Settings::get();
+                        let username = &settings.osu_username;
+                        let password = &settings.osu_password;
+
+                        if !username.is_empty() && !password.is_empty() {
+                            let url = format!("https://osu.ppy.sh/d/{}.osz?u={username}&h={password}", map_info.beatmapset_id);
+                            
+                            let path = format!("downloads/{}.osz", map_info.beatmapset_id);
+                            perform_download(url, path, Default::default())
+                        } else {
+                            warn!("not downloading map, osu user or password missing")
+                        }
+                    },
+                    Ok(None) => warn!("not downloading map, map not found"),
+                    Err(e) => warn!("not downloading map, {e}"),
+                }
+            }
+            MapGame::Quaver => {
+                // dont know how to download these yet
+            }
+
+            _ => {
+                // hmm
+            }
+        }
+        
+    }
 }
 
 fn draw_banner(text:&str, window_size: Vector2, list: &mut RenderableCollection) {
@@ -279,4 +305,11 @@ pub enum SpectatorState {
 #[derive(Debug)]
 pub enum SpectatorManagerAction {
     QuitSpec,
+}
+
+#[derive(Clone)]
+struct HostMap {
+    map_hash: Md5Hash,
+    playmode: String,
+    mods: ModManager,
 }

@@ -68,7 +68,6 @@ local beatmap_info_button = {
         cond( -- if we're not the host..
             "!lobby.has_beatmap", -- and we don't have the beatmap
             multiplayer_action("open_map_link") -- open a link to the beatmap
-            
             -- otherwise, there is no action to perform
         )
     ),

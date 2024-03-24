@@ -5,14 +5,14 @@ pub struct ScoreListComponent {
 
     /// What we think the playmode is currently
     /// (overridden by the map)
-    mode: SYValueHelper,
+    mode: SyValueHelper,
 
     /// What we think the current map hash is
     /// string because thats how its stored in the variable collection
-    map_hash: SYValueHelper,
+    map_hash: SyValueHelper,
 
     /// What we think the current score retreival method is
-    score_method: SYValueHelper,
+    score_method: SyValueHelper,
 
     score_helper: ScoreHelper,
 
@@ -25,9 +25,9 @@ impl ScoreListComponent {
 
         Self {
             actions: ActionQueue::new(),
-            mode: SYValueHelper::new("global.playmode_actual", String::new()),
-            map_hash: SYValueHelper::new("map.hash", String::new()),
-            score_method: SYValueHelper::new("global.score_method", score_helper.current_method),
+            mode: SyValueHelper::new("global.playmode_actual", String::new()),
+            map_hash: SyValueHelper::new("map.hash", String::new()),
+            score_method: SyValueHelper::new("settings.score_method", score_helper.current_method),
             score_helper,
 
             current_scores: Vec::new(),

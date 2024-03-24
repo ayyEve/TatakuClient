@@ -59,6 +59,7 @@ impl From<&Score> for CustomElementValue {
 }
 
 
+// TODO: please god we need a proc macro
 impl TryInto<Score> for &CustomElementValue {
     type Error = String;
 
@@ -70,7 +71,45 @@ impl TryInto<Score> for &CustomElementValue {
             map.get("username").ok_or_else(|| format!("no username?"))?.as_string(),
             map.get("playmode").ok_or_else(|| format!("no playmode?"))?.as_string(),
         );
+        score.time = map.get("time").ok_or_else(|| format!("no time"))?.as_u64().map_err(|e| format!("{e:?}"))?;
+        
+        score.score = map.get("score").ok_or_else(|| format!("no score"))?.as_u64().map_err(|e| format!("{e:?}"))?;
+        score.combo = map.get("combo").ok_or_else(|| format!("no combo"))?.as_u32().map_err(|e| format!("{e:?}"))? as u16;
+        score.max_combo = map.get("max_combo").ok_or_else(|| format!("no max_combo"))?.as_u32().map_err(|e| format!("{e:?}"))? as u16;
+        
+        {
+            let judgments = map.get("judgments").ok_or_else(|| format!("no combo"))?.as_map().ok_or_else(|| format!("judgments not a map"))?;
+            for (j, c) in judgments {
+                let Ok(c) = c.as_u32() else { continue };
+                score.judgments.insert(j.clone(), c as u16);
+            }
+        }
+        score.accuracy = map.get("accuracy").ok_or_else(|| format!("no accuracy"))?.as_f32().map_err(|e| format!("{e:?}"))? as f64;
+        score.speed = GameSpeed::from_u16(map.get("speed").ok_or_else(|| format!("no speed"))?.as_u32().map_err(|e| format!("{e:?}"))? as u16);
+        score.performance = map.get("performance").ok_or_else(|| format!("no performance"))?.as_f32().map_err(|e| format!("{e:?}"))?;
+        
+        let mods = ModManager::try_from(
+            map.get("mods").ok_or_else(|| format!("no mods"))?
+        ).map_err(|_| format!("bad mods"))?;
+        mods.mods.into_iter().for_each(|m|score.add_mod(m));
 
+        if let CustomElementValue::List(list) = map.get("hit_timings").ok_or_else(|| format!("no hit_timings"))? {
+            for i in list {
+                score.hit_timings.push(i.as_f32().map_err(|e| format!("{e:?}"))?);
+            }
+        }
+
+        let stats = map.get("stats").ok_or_else(|| format!("no stats"))?.as_map().ok_or_else(|| format!("no hit_timings"))?;
+        for (stat, thing) in stats {
+            let mut val_list = Vec::new();
+            if let CustomElementValue::List(list) = thing {
+                for i in list {
+                    let v = i.as_f32().map_err(|e| format!("{e:?}"))?;
+                    val_list.push(v);
+                }
+            }
+            score.stat_data.insert(stat.clone(), val_list);
+        }
 
 
         Ok(score)

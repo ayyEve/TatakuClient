@@ -24,45 +24,39 @@ pub enum CustomMenuAction {
     /// Perform a multiplayer action
     Multiplayer(CustomMenuMultiplayerAction),
 
-    /// run a custom action
-    CustomEvent(String, String),
-
     /// set a value
     SetValue(String, CustomElementValue)
 }
 impl CustomMenuAction {
-    pub fn into_action(self, values: &mut ValueCollection) -> TatakuAction {
+    pub fn into_action(self, values: &mut ValueCollection) -> Option<TatakuAction> {
         match self {
-            Self::None => TatakuAction::None,
+            Self::None => None,
             Self::AddDialog(dialog) => {
-                let Some(val) = dialog.resolve(values) else { return TatakuAction::None };
-                TatakuAction::Menu(MenuMenuAction::AddDialogCustom(val.as_string(), true))
+                let Some(val) = dialog.resolve(values) else { return None };
+                Some(TatakuAction::Menu(MenuMenuAction::AddDialogCustom(val.as_string(), true)))
             }
             Self::SetMenu(menu) =>  {
-                let Some(val) = menu.resolve(values) else { return TatakuAction::None };
-                TatakuAction::Menu(MenuMenuAction::SetMenu(val.as_string()))
+                let Some(val) = menu.resolve(values) else { return None };
+                Some(TatakuAction::Menu(MenuMenuAction::SetMenu(val.as_string())))
             }
 
-            Self::Map(action) => TatakuAction::Beatmap(action.into_action(values)),
-            Self::Song(action) => TatakuAction::Song(action.into_action(values)),
-            Self::Game(action) => TatakuAction::Game(action.into_action(values)),
-            Self::Multiplayer(action) => {
-                if let Some(action) = action.into_action(values) {
-                    TatakuAction::Multiplayer(action)
-                } else {
-                    TatakuAction::None
-                }
-            }
+            Self::Map(action) => action.into_action(values).map(|a| TatakuAction::Beatmap(a)),
+            Self::Song(action) => action.into_action(values).map(|a| TatakuAction::Song(a)),
+            Self::Game(action) => action.into_action(values).map(|a| TatakuAction::Game(a)),
+            Self::Multiplayer(action) => action.into_action(values).map(|a| TatakuAction::Multiplayer(a)),
             
-            Self::CustomEvent(_, _) => unimplemented!(),
-            Self::SetValue(key, val) => TatakuAction::Game(GameAction::SetValue(key, val)),
+            Self::SetValue(key, val) => Some(TatakuAction::Game(GameAction::SetValue(key, val))),
         }
     }
 
     // build any values that need to be built on item creation (ie, for lists that have temporary variables)
     pub fn resolve(&mut self, values: &ValueCollection) {
         match self {
+            Self::Map(action) => action.resolve(values),
+            Self::Game(action) => action.resolve(values),
             Self::Multiplayer(action) => action.resolve(values),
+
+
             Self::SetMenu(menu) => {
                 if let Some(val) = menu.resolve(values) {
                     *menu = CustomEventValueType::Value(val);

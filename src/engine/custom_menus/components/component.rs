@@ -10,13 +10,8 @@ use rlua::{
 
 #[derive(Clone, Debug)]
 pub enum ComponentDef {
-    /// Provides beatmap list information
-    BeatmapList { 
-        /// What variable to use for the beatmap filter
-        filter_var: Option<String>, 
-    },
-    /// Provides a list of scores 
-    ScoreList,
+    // /// Provides a list of scores 
+    // ScoreList,
 
     /// Provides a list of lobbies 
     LobbyList,
@@ -24,8 +19,7 @@ pub enum ComponentDef {
 impl ComponentDef {
     pub async fn build(&self) -> Box<dyn Widgetable> {
         match self {
-            Self::BeatmapList { filter_var } => Box::new(BeatmapListComponent::new(filter_var.clone())),
-            Self::ScoreList => Box::new(ScoreListComponent::new()),
+            // Self::ScoreList => Box::new(ScoreListComponent::new()),
             Self::LobbyList => Box::new(LobbyListComponent::default()),
         }
     }
@@ -41,11 +35,8 @@ impl<'lua> FromLua<'lua> for ComponentDef {
                 let id:String = table.get("id")?;
                 #[cfg(feature="custom_menu_debugging")] info!("Is table");
                 match &*id {
-                    "beatmap_list" => Ok(Self::BeatmapList {
-                        filter_var: table.get("filter_var")?,
-                    }),
                     
-                    "score_list" => Ok(Self::ScoreList),
+                    // "score_list" => Ok(Self::ScoreList),
                     "lobby_list" => Ok(Self::LobbyList),
 
                     _ => Err(FromLuaConversionError { from: "Table", to: "ComponentDef", message: Some("Could not determine type".to_owned()) })
@@ -55,8 +46,8 @@ impl<'lua> FromLua<'lua> for ComponentDef {
             Value::String(s) => {
                 #[cfg(feature="custom_menu_debugging")] info!("Is string");
                 match s.to_str().unwrap() {
-                    "beatmap_list" => Ok(Self::BeatmapList { filter_var: None }),
-                    "score_list" => Ok(Self::ScoreList),
+                    // "beatmap_list" => Ok(Self::BeatmapList { filter_var: None }),
+                    // "score_list" => Ok(Self::ScoreList),
                     "lobby_list" => Ok(Self::LobbyList),
 
                     _ => Err(FromLuaConversionError { from: "String", to: "ComponentDef", message: Some("Could not determine type".to_owned()) })

@@ -1,4 +1,6 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
+#![deny(unused_must_use)] // ensure all futures are awaited
+
 #[macro_use] extern crate log;
 pub mod engine;
 pub mod tataku;

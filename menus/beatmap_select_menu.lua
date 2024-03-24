@@ -1,18 +1,29 @@
+local scores_list = {
+    id = "list",
+    debug_name = "scores list",
+    width = "fill",
+    height = "fill",
+
+    list = "score_list.scores",
+    variable = "_score",
+    scroll = true,
+
+    element = button(
+        col({ width = "fill", height = "shrink" }, {
+            -- username and score
+            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", variable("_score.score_fmt")}), 16.0, WHITE) }),
+            -- combo, acc, mods
+            row({ width = "fill" }, { text(text_list({variable("_score.max_combo_fmt"), "x, ", variable("_score.accuracy_fmt"), " ", variable("_score.mods_short")}), 16.0, WHITE) }),
+        }),
+        game_action("view_score", { score_id = variable("_score.id") }),
+        "fill",
+        "shrink"
+    )
+}
+
+
 local menu = {
     id = "beatmap_select",
-
-    -- list of components we want to add, to add extra functionality
-    components = {
-        -- a component which adds beatmap list values
-        {
-            id = "beatmap_list",
-            filter_var = "beatmap_list.search_text"
-        },
-        -- a component which adds score list values
-        {
-            id = "score_list"
-        }
-    },
 
     -- the beatmap select menu is broken up into rows
     element = col({ width = "fill", height = "fill" }, {
@@ -26,7 +37,7 @@ local menu = {
                 font_size = 25.0,
 
                 options_key = "enums.score_methods",
-                selected_key = "global.score_method",
+                selected_key = "settings.score_method",
             },
             -- mode dropdown
             {
@@ -51,7 +62,7 @@ local menu = {
                 placeholder = "Sort",
 
                 options_key = "enums.sort_by",
-                selected_key = "global.sort_by",
+                selected_key = "settings.sort_by",
             },
 
             -- filter text input
@@ -75,28 +86,15 @@ local menu = {
                 width = "fill",
                 height = "fill",
         
-                element = {
-                    id = "list",
-                    debug_name = "scores list",
-                    width = "fill",
-                    height = "fill",
-
-                    list = "score_list.scores",
-                    variable = "_score",
-                    scroll = true,
-
-                    element = button(
-                        col({ width = "fill", height = "shrink" }, {
-                            -- username and score
-                            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", variable("_score.score_fmt")}), 16.0, WHITE) }),
-                            -- combo, acc, mods
-                            row({ width = "fill" }, { text(text_list({variable("_score.max_combo_fmt"), "x, ", variable("_score.accuracy_fmt"), " ", variable("_score.mods_short")}), 16.0, WHITE) }),
-                        }),
-                        custom_action("score_list.open_score", variable("_score.id")),
-                        "fill",
-                        "shrink"
+                element = cond(
+                    "!score_list.loaded", -- if not loaded...
+                    text("Loading..."), -- show loading text
+                    cond( -- otherwise,
+                        "score_list.empty", -- if empty
+                        text("No scores"), -- show no scores text
+                        scores_list -- otherwise, show score list
                     )
-                }
+                )
             },
 
             -- preview
@@ -124,7 +122,7 @@ local menu = {
                     button(
                         text(variable("_group.name"), 20.0, WHITE),
                         -- set this as the selected set
-                        custom_action("beatmap_list.set_set", variable("_group.id")),
+                        map_action("select_group", { group_id = variable("_group.id") }),
                         "fill",
                         "shrink",
                         5.0
@@ -159,7 +157,7 @@ local menu = {
                                             -- confirm it
                                             map_action("confirm"),
                                             -- otherwise, set it as the selected map
-                                            custom_action("beatmap_list.set_beatmap", variable("_map.hash"))
+                                            map_action("select_map", { map_hash = variable("_map.hash")})
                                         ),
                                         "fill",
                                         "shrink",

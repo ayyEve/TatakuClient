@@ -170,18 +170,18 @@ impl MainMenu {
     }
     
     fn update_online() {
-        tokio::spawn(async move {
-            let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
+        // tokio::spawn(async move {
+        //     let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
 
-            // if let Some(song) = AudioManager::get_song().await {
-            //     OnlineManager::set_action(SetAction::Listening { 
-            //         artist: map.artist.clone(), 
-            //         title: map.title.clone(),
-            //         elapsed: song.get_position(),
-            //         duration: song.get_duration()
-            //     }, None);
-            // }
-        });
+        //     // if let Some(song) = AudioManager::get_song().await {
+        //     //     OnlineManager::set_action(SetAction::Listening { 
+        //     //         artist: map.artist.clone(), 
+        //     //         title: map.title.clone(),
+        //     //         elapsed: song.get_position(),
+        //     //         duration: song.get_duration()
+        //     //     }, None);
+        //     // }
+        // });
     }
 
     async fn next(&mut self) -> bool {
@@ -377,7 +377,7 @@ impl AsyncMenu for MainMenu {
 
         // check if there are any new maps
         if self.new_map_helper.update() {
-            self.actions.push(BeatmapAction::Set(self.new_map_helper.0.clone(), false, false));
+            self.actions.push(BeatmapAction::Set(self.new_map_helper.0.clone(), SetBeatmapOptions::new()));
         }
 
         // update the gameplay preview (includes drawing it)
@@ -481,7 +481,7 @@ impl AsyncMenu for MainMenu {
             "play" => self.actions.push(MenuMenuAction::SetMenu("beatmap_select".to_owned())), //self.actions.push(MenuMenuAction::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
             "multiplayer" => self.actions.push(TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer)),
             "settings" => self.actions.push(MenuMenuAction::AddDialogCustom("settings".to_owned(), false)), //self.actions.push(MenuMenuAction::AddDialog(Box::new(SettingsMenu::new().await), false)),
-            "exit" => self.actions.push(TatakuAction::Quit),
+            "exit" => self.actions.push(GameAction::Quit),
 
             
             // music box controls

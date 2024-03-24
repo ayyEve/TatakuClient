@@ -1,15 +1,15 @@
 use crate::prelude::*;
 
 #[derive(Clone, Debug)]
-pub struct SYValueHelper {
+pub struct SyValueHelper {
     key: String,
     value: CustomElementValue,
 }
-impl SYValueHelper {
-    pub fn new(key: impl ToString, value: impl Into<CustomElementValue>) -> Self {
+impl SyValueHelper {
+    pub fn new(key: impl ToString) -> Self {
         Self {
             key: key.to_string(), 
-            value: value.into(),
+            value: CustomElementValue::None,
         }
     }
 
@@ -22,7 +22,7 @@ impl SYValueHelper {
     }
 }
 
-impl Deref for SYValueHelper {
+impl Deref for SyValueHelper {
     type Target = CustomElementValue;
     fn deref(&self) -> &Self::Target {
         &self.value

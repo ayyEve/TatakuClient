@@ -4,6 +4,7 @@ use image::ImageError;
 
 use serde_json::Error as JsonError;
 use tataku_common::SerializationError;
+use crate::prelude::ShuntingYardError;
 
 use super::*;
 
@@ -23,7 +24,9 @@ pub enum TatakuError {
     String(String),
     SerializationError(SerializationError),
     ReqwestError(reqwest::Error),
-    DownloadError(DownloadError)
+    DownloadError(DownloadError),
+
+    ShuntingYardError(ShuntingYardError),
 }
 impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
@@ -45,41 +48,45 @@ impl Display for TatakuError {
             TatakuError::SerializationError(e) => write!(f, "{:?}", e),
             TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
             TatakuError::DownloadError(e) => write!(f, "{:?}", e),
+            TatakuError::ShuntingYardError(e) => write!(f, "{:?}", e),
         }
     }
 }
 
 
 impl From<JsonError> for TatakuError {
-    fn from(e: JsonError) -> Self {TatakuError::Serde(e)}
+    fn from(e: JsonError) -> Self {Self::Serde(e)}
 }
 impl From<IOError> for TatakuError {
-    fn from(e: IOError) -> Self {TatakuError::IO(e)}
+    fn from(e: IOError) -> Self {Self::IO(e)}
 }
 impl From<ImageError> for TatakuError {
-    fn from(e: ImageError) -> Self {TatakuError::Image(e)}
+    fn from(e: ImageError) -> Self {Self::Image(e)}
 }
 impl From<AudioError> for TatakuError {
-    fn from(e: AudioError) -> Self {TatakuError::Audio(e)}
+    fn from(e: AudioError) -> Self {Self::Audio(e)}
 }
 
 impl From<BeatmapError> for TatakuError {
-    fn from(e: BeatmapError) -> Self {TatakuError::Beatmap(e)}
+    fn from(e: BeatmapError) -> Self {Self::Beatmap(e)}
 }
 impl From<String> for TatakuError {
-    fn from(e: String) -> Self {TatakuError::String(e)}
+    fn from(e: String) -> Self {Self::String(e)}
 }
 impl From<GameModeError> for TatakuError {
-    fn from(e: GameModeError) -> Self {TatakuError::GameMode(e)}
+    fn from(e: GameModeError) -> Self {Self::GameMode(e)}
 }
 impl From<SerializationError> for TatakuError {
-    fn from(e: SerializationError) -> Self {TatakuError::SerializationError(e)}
+    fn from(e: SerializationError) -> Self {Self::SerializationError(e)}
 }
 impl From<reqwest::Error> for TatakuError {
-    fn from(e: reqwest::Error) -> Self {TatakuError::ReqwestError(e)}
+    fn from(e: reqwest::Error) -> Self {Self::ReqwestError(e)}
 }
 impl From<DownloadError> for TatakuError {
-    fn from(e: DownloadError) -> Self {TatakuError::DownloadError(e)}
+    fn from(e: DownloadError) -> Self {Self::DownloadError(e)}
+}
+impl From<ShuntingYardError> for TatakuError {
+    fn from(value: ShuntingYardError) -> Self { Self::ShuntingYardError(value) }
 }
 
 

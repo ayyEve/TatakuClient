@@ -110,11 +110,19 @@ end
 
 
 --- action helpers
-function map_action(action)
-    return {
-        id = "action",
-        map = action
-    }
+function map_action(action, data)
+    if not data then 
+        return {
+            id = "action",
+            map = action,
+        }
+    else
+        data.id = action
+        return {
+            id = "action",
+            map = data
+        }
+    end
 end
 function song_action(action)
     return {
@@ -122,11 +130,19 @@ function song_action(action)
         song = action
     }
 end
-function game_action(action)
-    return {
-        id = "action",
-        game = action
-    }
+function game_action(action, data)
+    if not data then 
+        return {
+            id = "action",
+            game = action
+        }
+    else
+        data.id = action
+        return {
+            id = "action",
+            game = data
+        }
+    end
 end
 function multiplayer_action(action, slot)
     if slot then 
@@ -177,11 +193,6 @@ function variable(var)
         variable = var
     }
 end
-
--- premade button actions
-start_singleplayer = menu_action("beatmap_select")
-start_multiplayer = menu_action("lobby_select")
-exit_game = game_action("quit") -- TODO: this properly
 
 
 -- menu stuff

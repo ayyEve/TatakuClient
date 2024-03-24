@@ -50,7 +50,8 @@ pub struct IngameManager {
     animation: Box<dyn BeatmapAnimation>,
 
     pub score_list: Vec<IngameScore>,
-    score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
+    scores_loaded: bool,
+    // score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
     pub started: bool,
     pub completed: bool,
@@ -143,7 +144,7 @@ impl IngameManager {
 
 
         let health = HealthHelper::new();
-        let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
+        // let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
 
         // let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
@@ -205,7 +206,7 @@ impl IngameManager {
 
             gamemode,
             score_list: Vec::new(),
-            score_loader,
+            // score_loader,
             settings,
             window_size: WindowSize::get(),
             start_time: chrono::Utc::now().timestamp(),
@@ -408,11 +409,20 @@ impl IngameManager {
 
 
         // check if scores have been loaded
-        if let Some(loader) = self.score_loader.clone() {
-            let loader = loader.read().await;
-            if loader.done {
-                self.score_list = loader.scores.iter().map(|s| { let mut s = s.clone(); s.is_previous = s.username == self.score.username; s }).collect();
-                self.score_loader = None;
+        // if let Some(loader) = self.score_loader.clone() {
+        //     let loader = loader.read().await;
+        //     if loader.done {
+        //         self.score_list = loader.scores.iter().map(|s| { let mut s = s.clone(); s.is_previous = s.username == self.score.username; s }).collect();
+        //         self.score_loader = None;
+        //     }
+        // }
+        if !self.scores_loaded {
+            if let Ok(list) = values.try_get::<Vec<Score>>("scores") {
+                self.scores_loaded = true;
+                self.score_list = list.into_iter().map(|s| {
+                    let is_previous = s.username == self.score.username;
+                    IngameScore::new(s, false, is_previous)
+            }   ).collect();
             }
         }
 
@@ -1241,7 +1251,7 @@ impl IngameManager {
 
             // in a multi match
             GameplayMode::Multiplayer { .. } => {
-                self.score_loader = None;
+                // self.score_loader = None;
 
             }
 
@@ -1605,7 +1615,8 @@ impl Default for IngameManager {
             common_game_settings: Default::default(),
 
             score_list: Vec::new(),
-            score_loader: None,
+            scores_loaded: false,
+            // score_loader: None,
             beatmap_preferences: Default::default(),
             should_pause: false,
             pause_pending: false,

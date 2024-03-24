@@ -3,6 +3,7 @@ use crate::prelude::*;
 /// helper for when starting the game. will load beatmaps, settings, etc from storage
 /// all while providing the user with its progress (relatively anyways)
 pub struct LoadingMenu {
+    actions: ActionQueue,
     pub statuses: Vec<Arc<RwLock<LoadingStatus>>>,
     // window_size: Arc<WindowSize>,
 }
@@ -10,6 +11,7 @@ pub struct LoadingMenu {
 impl LoadingMenu {
     pub async fn new() -> Self {
         Self {
+            actions: ActionQueue::new(),
             statuses: Vec::new(),
             
             // window_size: WindowSize::get(),
@@ -27,8 +29,13 @@ impl LoadingMenu {
         // load difficulties
         add!(load_difficulties, Difficulties);
 
-        // load beatmaps
-        add!(load_beatmaps, Beatmaps);
+        // // load beatmaps
+        // add!(load_beatmaps, Beatmaps);
+        {
+            let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Beatmaps)));
+            self.actions.push(TaskAction::AddTask(Box::new(LoadBeatmapsTask::new(status.clone()))));
+            self.statuses.push(status);
+        }
 
         // init integrations
         add!(init_integrations, Integrations);
@@ -48,6 +55,7 @@ impl LoadingMenu {
         status.write().complete = true;
     }
 
+    /*
     async fn load_beatmaps(status: Arc<RwLock<LoadingStatus>>) {
         // trace!("loading beatmaps");
         // status.lock().await.stage = LoadingStage::Beatmaps;
@@ -93,7 +101,7 @@ impl LoadingMenu {
                     existing_paths.insert(parent.to_string_lossy().to_string());
                 }
             }
-                
+            
             // filter out folders that already exist
             let folders = BeatmapManager::folders_to_check().await;
             let folders:Vec<String> = folders.into_iter().map(|f|f.to_string_lossy().to_string()).filter(|f| !existing_paths.contains(f)).collect();
@@ -143,6 +151,7 @@ impl LoadingMenu {
 
         status.write().complete = true;
     }
+    */
 
     async fn init_integrations(status: Arc<RwLock<LoadingStatus>>) {
         let settings = Settings::get();
@@ -177,15 +186,13 @@ impl AsyncMenu for LoadingMenu {
     async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         for status in self.statuses.iter() {
             let status = status.read();
-            if !status.complete { return Vec::new() }
+            if !status.complete { return self.actions.take() }
         }
 
         // loading complete, move to the main menu
-        vec![
-            TatakuAction::Beatmap(BeatmapAction::Next),
-            TatakuAction::Menu(MenuMenuAction::SetMenu("main_menu".to_owned()))
-        ]
-        // vec![MenuMenuAction::SetMenu(Box::new(MainMenu::new().await))]
+        self.actions.push(BeatmapAction::Next);
+        self.actions.push(MenuMenuAction::SetMenu("main_menu".to_owned()));
+        self.actions.take()
     }
 
     

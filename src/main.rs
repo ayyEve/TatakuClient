@@ -68,6 +68,9 @@ async fn main() {
     // let path = std::env::current_exe().unwrap();
     // println!("file hash: {}", get_file_hash(&path).unwrap());
 
+    // TODO: reimplement this? or do we want to bother
+    // it might be nicer to have a server-side api for it
+    /*
     if let Some(param1) = args.next() {
         match &*param1 {
             "--diff_calc" | "--diffcalc" | "-d" => {
@@ -78,6 +81,7 @@ async fn main() {
             _ => {}
         }
     }
+    */
 
     if play_game {
         start_game().await;

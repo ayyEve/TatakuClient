@@ -65,7 +65,7 @@ pub fn get_diff(map: &BeatmapMeta, playmode: &String, mods: &ModManager) -> Opti
     BEATMAP_DIFFICULTIES.get(playmode)?.read().unwrap().get(&diff_key).cloned()
 }
 
-
+/*
 pub async fn do_diffcalc(playmode: String) {
     if !AVAILABLE_PLAYMODES.contains(&&*playmode) { return }
     debug!("diffcalc initiated for mode {playmode}");
@@ -89,7 +89,7 @@ pub async fn do_diffcalc(playmode: String) {
         let mut calc = None;
         let mut calc_failed = false;
 
-        for speed in (50..=1000).step_by(5) { // 0.5..=10.0
+        for speed in (50..=1000).step_by(5) { // 0.05..=10.0
             for mut mods in mod_mutations.clone() {
                 mods.speed = GameSpeed::from_u16(speed);
 
@@ -142,7 +142,7 @@ pub async fn do_diffcalc(playmode: String) {
         error!("error saving diffs: {e}");
     }
 }
-
+*/
 
 
 fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32>>> {

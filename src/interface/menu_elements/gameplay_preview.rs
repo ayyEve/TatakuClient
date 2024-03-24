@@ -5,9 +5,9 @@ pub struct GameplayPreview {
     // pub current_playmode: CurrentPlaymodeHelper,
     // current_mods: ModManagerHelper,
 
-    beatmap: SYValueHelper,
-    playmode: SYValueHelper,
-    mods: SYValueHelper,
+    beatmap: SyValueHelper,
+    playmode: SyValueHelper,
+    mods: SyValueHelper,
 
     settings: SettingsHelper,
     pub manager: Option<IngameManager>,
@@ -44,9 +44,9 @@ impl GameplayPreview {
             // current_beatmap: CurrentBeatmapHelper::new(),
             // current_playmode: CurrentPlaymodeHelper::new(),
             // current_mods: ModManagerHelper::new(),
-            beatmap: SYValueHelper::new("map.hash", String::new()),
-            playmode: SYValueHelper::new("global.playmode_actual", String::new()),
-            mods: SYValueHelper::new("global.mods", ModManager::new()),
+            beatmap: SyValueHelper::new("map.hash"),
+            playmode: SyValueHelper::new("global.playmode_actual"),
+            mods: SyValueHelper::new("global.mods"),
 
             visualization: None,
             handle_song_restart: true,

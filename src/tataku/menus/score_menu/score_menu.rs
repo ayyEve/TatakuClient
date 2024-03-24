@@ -154,7 +154,8 @@ impl ScoreMenu {
     }
 
     async fn retry(&mut self) {
-        self.actions.push(BeatmapAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
+        self.actions.push(BeatmapAction::PlaySelected);
+        // self.actions.push(BeatmapAction::PlayMap(self.beatmap.clone(), self.score.playmode.clone()));
     }
     
     async fn change_score(&mut self, score: IngameScore) {

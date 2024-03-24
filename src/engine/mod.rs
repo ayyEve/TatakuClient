@@ -1,6 +1,7 @@
 mod io;
 mod data;
 mod math;
+mod tasks;
 mod audio;
 mod input;
 mod errors;
@@ -16,6 +17,7 @@ mod custom_menus;
 pub use io::*;
 pub use data::*;
 pub use math::*;
+pub use tasks::*;
 pub use audio::*;
 pub use input::*;
 pub use errors::*;

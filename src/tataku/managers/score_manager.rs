@@ -1,55 +1,85 @@
-/*
- * this is a helper to store and retrieve scores, either online or local
- */
-
 use crate::prelude::*;
+use tokio::task::AbortHandle;
 
 
-lazy_static::lazy_static! {
-    pub static ref SCORE_HELPER:Arc<AsyncRwLock<ScoreHelper>> = Arc::new(AsyncRwLock::new(ScoreHelper::new()));
+pub struct ScoreManager {
+    current_scores: Vec<IngameScore>,
+
+    current_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
+    abort_handle: Option<AbortHandle>,
+
+    pub force_update: bool,
+
+    beatmap: SyValueHelper,
+    playmode: SyValueHelper,
+    score_method: SyValueHelper,
+    mods: SyValueHelper,
 }
-
-pub struct ScoreHelper {
-    pub current_method: ScoreRetreivalMethod,
-}
-impl ScoreHelper {
+impl ScoreManager {
     pub fn new() -> Self {
         Self {
-            current_method: ScoreRetreivalMethod::Global,
+            current_loader: None,
+            abort_handle: None,
+            current_scores: Vec::new(),
+            force_update: false,
+
+            beatmap: SyValueHelper::new("map.hash"),
+            playmode: SyValueHelper::new("global.playmode_actual"),
+            score_method: SyValueHelper::new("settings.score_method"),
+            mods: SyValueHelper::new("global.mods"),
         }
     }
 
-    pub async fn get_scores(&self, map_hash: Md5Hash, playmode: &String) -> Arc<AsyncRwLock<ScoreLoaderHelper>> {
-        let playmode = playmode.clone();
-        let method = self.current_method;
-        let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::new()));
-        let scores_clone = scores.clone();
+    pub async fn get_scores(&mut self, values: &mut ValueCollection) -> TatakuResult {
+        if self.current_loader.take().is_some() {
+            if let Some(abort) = self.abort_handle.take() {
+                abort.abort();
+            }
+        }   
 
-        match method {
+        // let playmode = values.get_string("global.playmode_actual").ok()?;
+        // let map_hash = values.try_get::<Md5Hash>("map.hash").ok()?;
+        // let method = values.try_get("settings.score_method").unwrap_or_default();
+        let playmode = self.playmode.as_string();
+        let map_hash:Md5Hash = self.beatmap.deref().try_into()?;
+        let method = self.score_method();
+
+        let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::default()));
+        self.current_loader = Some(scores.clone());
+        let scores_clone = scores.clone();
+        
+        match self.score_method() {
             ScoreRetreivalMethod::Local 
             | ScoreRetreivalMethod::LocalMods => {
-                tokio::spawn(async move {
+                let mods = ModManager::try_from(self.mods.deref()).unwrap_or_default();
+
+                let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
+                    let mods = mods.mods;
 
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().mods.clone();
                         local_scores.retain(|s| s.mods() == mods);
                     }
                     
                     let mut thing = scores_clone.write().await;
-                    thing.scores = local_scores.into_iter().map(|s|IngameScore::new(s, false, false)).collect();
+                    thing.scores = local_scores.into_iter().map(|s| IngameScore::new(s, false, false)).collect();
                     thing.done = true;
                 });
+
+                self.abort_handle = Some(handle.abort_handle());
             }
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
-                tokio::spawn(async move {
+                let mods = ModManager::try_from(self.mods.deref()).unwrap_or_default();
+                // let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
+
+                let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
+                    let mods = mods.mods;
                     if method.filter_by_mods() {
-                        let mods = ModManager::get().mods.clone();
                         online_scores.retain(|s| s.mods() == mods);
                     }
 
@@ -57,28 +87,32 @@ impl ScoreHelper {
                     thing.scores = online_scores;
                     thing.done = true;
                 });
+
+                self.abort_handle = Some(handle.abort_handle());
             }
 
             ScoreRetreivalMethod::OgGame
             | ScoreRetreivalMethod::OgGameMods => {
-                tokio::spawn(async move {
-                    let map_by_hash = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash).clone();
+                let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
+                let osu_api_key = values.get_string("settings.osu_api_key")?;
 
+                let handle = tokio::spawn(async move {
                     let mut online_scores = Vec::new();
-                    if let Some(map) = map_by_hash {
-                        let map_hash = map_hash.to_string();
-                        match map.beatmap_type {
-                            BeatmapType::Osu => online_scores = osu::get_scores(&map, &playmode).await,
-                            BeatmapType::Quaver => online_scores = quaver::get_scores(&map_hash).await,
-                            //TODO: add tataku once its implemented
+                    match beatmap_type {
+                        BeatmapType::Osu => online_scores = osu::get_scores(
+                            &osu_api_key,
+                            map_hash, 
+                            &playmode
+                        ).await,
+                        BeatmapType::Quaver => online_scores = quaver::get_scores(map_hash).await,
+                        //TODO: add tataku once its implemented
 
 
-                            BeatmapType::Stepmania
-                            | BeatmapType::Tja
-                            | BeatmapType::UTyping
-                            | BeatmapType::Adofai 
-                            | BeatmapType::Unknown => {},
-                        }
+                        BeatmapType::Stepmania
+                        | BeatmapType::Tja
+                        | BeatmapType::UTyping
+                        | BeatmapType::Adofai 
+                        | BeatmapType::Unknown => {},
                     }
 
 
@@ -92,29 +126,85 @@ impl ScoreHelper {
                     thing.scores = online_scores;
                     thing.done = true;
                 });
+
+                self.abort_handle = Some(handle.abort_handle());
             }
         }
 
-        scores
+        Ok(())
+    }
+
+    fn score_method(&self) -> ScoreRetreivalMethod {
+        ScoreRetreivalMethod::try_from(self.score_method.deref()).unwrap_or_default()
+    }
+
+    fn update_values(&self, values: &mut ValueCollection, loaded: bool) {
+        let list = self.current_scores.iter().enumerate().map(|(n, score)| {
+            let score:CustomElementValue = score.into();
+            let mut data = score.as_map_helper().unwrap();
+            data.set("id", n as u64);
+
+            data.finish()
+        }).collect::<Vec<_>>();
+
+        values.set("score_list.loaded", loaded);
+        values.set("score_list.empty", list.is_empty());
+        values.set("score_list.scores", list);
+    }
+
+    pub async fn update(&mut self, values: &mut ValueCollection) {
+        let did_update = 
+            self.beatmap.check(values) // if the map changed
+            | self.playmode.check(values) // or the actual playmode changed
+            | self.score_method.check(values) // or the score method changed
+            | (self.mods.check(values) && self.score_method().filter_by_mods()) // or the mods changed and the score method filters by mods
+            | self.force_update
+            ;
+
+        if did_update {
+            trace!("doing score update");
+            self.force_update = false;
+
+            // clear scores and update values
+            self.current_scores.clear();
+            self.update_values(values, false);
+
+            // and then get new scores
+            if let Err(e) = self.get_scores(values).await {
+                warn!("error getting scores: {e}");
+            }
+        }
+
+        if let Some(loader) = self.current_loader.clone() {
+            if let Ok(loader) = loader.try_read() {
+                if !loader.done { return } 
+
+                self.current_scores = loader.scores.clone();
+                self.current_loader = None;
+                self.abort_handle = None;
+                self.update_values(values, true);
+            }
+        }
+
+    }
+
+
+    pub fn get_score(&self, id: usize) -> Option<&IngameScore> {
+        self.current_scores.get(id)
     }
 }
 
-/// helper for retreiving scores from online (async)
+#[derive(Default)]
 pub struct ScoreLoaderHelper {
     pub scores: Vec<IngameScore>,
-    pub done: bool
-}
-impl ScoreLoaderHelper {
-    pub fn new() -> Self {
-        Self {
-            scores: Vec::new(),
-            done: false
-        }
-    }
+    pub done: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Dropdown, Serialize, Deserialize)]
+
+
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Dropdown, Serialize, Deserialize)]
 pub enum ScoreRetreivalMethod {
+    #[default]
     Local,
     LocalMods,
     Global,
@@ -201,6 +291,7 @@ impl Into<CustomElementValue> for ScoreRetreivalMethod {
 
 
 
+
 //TODO: use the api crates?
 
 mod osu {
@@ -281,8 +372,12 @@ mod osu {
         maps.first().map(|m|m.beatmap_id.clone())
     }
 
-    pub async fn get_scores(map: &Arc<BeatmapMeta>, playmode: &String) -> Vec<IngameScore> {
-        match get_scores_internal(map, playmode).await {
+    pub async fn get_scores(
+        osu_api_key: &String,
+        hash: Md5Hash,
+        playmode: &String
+    ) -> Vec<IngameScore> {
+        match get_scores_internal(osu_api_key, hash, playmode).await {
             Ok(maps) => maps,
             Err(e) => {
                 warn!("error getting osu scores: {e}");
@@ -291,24 +386,28 @@ mod osu {
         }
     }
 
-    async fn get_scores_internal(map: &Arc<BeatmapMeta>, playmode: &String) -> TatakuResult<Vec<IngameScore>> {
-        let mode = match &*map.check_mode_override(playmode.clone()) {
+    async fn get_scores_internal(
+        osu_api_key: &String,
+        hash: Md5Hash,
+        playmode: &String
+    ) -> TatakuResult<Vec<IngameScore>> {
+        let mode = match &**playmode {
             "osu" => 0,
             "taiko" => 1,
             "catch" => 2,
             "mania" => 3,
-            _ => panic!("osu how?")
+            _ => return Err(TatakuError::Beatmap(BeatmapError::UnsupportedMode))
         };
 
-        let key = Settings::get().osu_api_key.clone();
-        if key.is_empty() {
+        // let key = Settings::get().osu_api_key.clone();
+        if osu_api_key.is_empty() {
             NotificationManager::add_text_notification("You need to supply an osu api key in settings.json", 5000.0, Color::RED).await;
             Err(TatakuError::String("no api key".to_owned()))
         } else {
-            let hash = map.beatmap_hash.to_string();
+            let hash = hash.to_string();
             // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
-            if let Some(id) = fetch_beatmap_id(&key, &hash).await {
-                let url = format!("https://osu.ppy.sh/api/get_scores?k={key}&b={id}&m={mode}");
+            if let Some(id) = fetch_beatmap_id(&osu_api_key, &hash).await {
+                let url = format!("https://osu.ppy.sh/api/get_scores?k={osu_api_key}&b={id}&m={mode}");
 
                 let bytes = reqwest::get(url).await?.bytes().await?;
                 let bytes = bytes.to_vec();
@@ -317,7 +416,7 @@ mod osu {
                 Ok(osu_scores.iter().map(|s| {
 
                     let mut judgments = HashMap::new();
-                    judgments.insert("x50".to_owned(),  s.count50.parse().unwrap_or_default());
+                    judgments.insert("x50".to_owned(),   s.count50.parse().unwrap_or_default());
                     judgments.insert("x100".to_owned(),  s.count100.parse().unwrap_or_default());
                     judgments.insert("x300".to_owned(),  s.count300.parse().unwrap_or_default());
                     judgments.insert("xgeki".to_owned(), s.countgeki.parse().unwrap_or_default());
@@ -395,8 +494,9 @@ mod quaver {
     }
     
 
-    pub async fn get_scores(map_hash: &String) -> Vec<IngameScore> {
-        match get_scores_internal(map_hash).await {
+    pub async fn get_scores(map_hash: Md5Hash) -> Vec<IngameScore> {
+        let map_hash = map_hash.to_string();
+        match get_scores_internal(&map_hash).await {
             Ok(maps) => maps,
             Err(e) => {
                 warn!("error getting quaver scores: {e}");
@@ -507,7 +607,6 @@ mod quaver {
     }
 
 }
-
 
 mod tataku {
     use crate::prelude::*;

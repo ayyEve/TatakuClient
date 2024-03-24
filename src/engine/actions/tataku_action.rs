@@ -1,8 +1,10 @@
 use crate::prelude::*;
 
 /// An action from a menu (or dialog) to tell the game to do something
+#[derive(Default)]
 pub enum TatakuAction {
     /// Don't do anything (this is a helper)
+    #[default]
     None,
 
     /// Perform a menu operation
@@ -20,30 +22,23 @@ pub enum TatakuAction {
     /// Perform a widget operation
     PerformOperation(IcedOperation),
 
-    /// Handle a multiplayer action
+    /// Perform a multiplayer action
     Multiplayer(MultiplayerAction),
 
-    /// Quit the game
-    Quit
+    /// Perform a task action
+    Task(TaskAction),
 }
-
-// impl TatakuAction {
-//     pub fn set_menu(menu: impl AsyncMenu + 'static) -> Self {
-//         Self::Menu(MenuMenuAction::SetMenu(Box::new(menu)))
-//     }
-// }
-
 impl std::fmt::Debug for TatakuAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::None => write!(f, "None"),
             Self::Menu(menu) => write!(f, "Menu({menu:?})"),
-            Self::Game(game) => write!(f, "Game(TODO)"),
+            Self::Game(_game) => write!(f, "Game(TODO)"),
             Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
             Self::Song(song) => write!(f, "Song({song:?})"),
             Self::PerformOperation(_) => write!(f, "PerformOperation"),
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),
-            Self::Quit => write!(f, "Quit"),
+            Self::Task(task) => write!(f, "Task({task:?})"),
         }
     }
 }

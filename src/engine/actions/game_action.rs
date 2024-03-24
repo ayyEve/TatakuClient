@@ -19,11 +19,16 @@ pub enum GameAction {
     /// Open a score in the score menu
     ViewScore(IngameScore),
 
+    /// Open a score in the score menu
+    ViewScoreId(usize),
+
     /// Handle a message
     HandleMessage(Message),
+
+    /// Refresh the scores list
+    RefreshScores,
 }
 
 impl From<GameAction> for TatakuAction {
     fn from(value: GameAction) -> Self { Self::Game(value) }
 }
-

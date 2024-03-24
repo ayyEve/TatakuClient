@@ -8,16 +8,16 @@ pub struct MultiplayerManager {
     pub lobby: CurrentLobbyInfo,
 
     /// what is the current beatmap we have selected?
-    current_beatmap: SYValueHelper,
+    current_beatmap: SyValueHelper,
     
     /// what playmode is selected by the host?
     selected_mode: Option<String>,
 
     /// what mods are currently enabled?
-    current_mods: SYValueHelper,
+    current_mods: SyValueHelper,
 
     /// helper to get new beatmaps
-    new_beatmap_helper: SYValueHelper,
+    new_beatmap_helper: SyValueHelper,
 
     /// async beatmap loader
     beatmap_loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,
@@ -31,11 +31,11 @@ impl MultiplayerManager {
         Self {
             actions: ActionQueue::new(),
             lobby,
-            current_beatmap: SYValueHelper::new("map.hash", String::new()),
+            current_beatmap: SyValueHelper::new("map.hash"),
             selected_mode: None,
-            current_mods: SYValueHelper::new("global.mods", ModManager::new()),
+            current_mods: SyValueHelper::new("global.mods"),
 
-            new_beatmap_helper: SYValueHelper::new("global.new_map_hash", String::new()),
+            new_beatmap_helper: SyValueHelper::new("global.new_map_hash"),
 
             beatmap_loader: None,
             load_complete_sent: false,
@@ -67,7 +67,7 @@ impl MultiplayerManager {
                 // otherwise, the lobby map was updated
                 if let Ok(hash) = self.current_beatmap.deref().try_into() {
                     // if the map is valid, select it
-                    self.actions.push(BeatmapAction::SetFromHash(hash, true, false));
+                    self.actions.push(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().restart_song(true)));
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
                 } else {
                     // otherwise, remove the current map
@@ -112,7 +112,7 @@ impl MultiplayerManager {
 
                 if let Ok(new_hash) = TryInto::<Md5Hash>::try_into(self.new_beatmap_helper.deref()) {
                     if new_hash == beatmap.hash {
-                        self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, true, false));
+                        self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
                     }
                 }
 
@@ -250,10 +250,11 @@ impl MultiplayerManager {
                     // GlobalValueManager::update(Arc::new(CurrentPlaymode(beatmap.mode.clone())));
 
                     self.selected_mode = Some(beatmap.mode.clone());
-                    values.set("global.playmode", beatmap.mode.clone());
+                    // update the playmode
+                    self.actions.push(BeatmapAction::SetPlaymode(beatmap.mode.clone()));
                     
                     // the beatmap change handler in Self::update will handle the rest
-                    self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, true, false));
+                    self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
 
 
                     // if let Some(beatmap) = &self.selected_beatmap {

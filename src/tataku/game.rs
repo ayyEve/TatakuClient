@@ -8,17 +8,23 @@ pub struct Game {
     // engine things
     input_manager: InputManager,
     volume_controller: VolumeControl,
-    pub current_state: GameState,
+    current_state: GameState,
     queued_state: GameState,
     game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
     render_queue_sender: TripleBufferSender<RenderData>,
 
+
+    // managers
+
     /// if some, will handle spectator stuff
     spectator_manager: Option<Box<SpectatorManager>>,
-
     multiplayer_manager: Option<Box<MultiplayerManager>>,
     multiplayer_data: MultiplayerData,
 
+    beatmap_manager: BeatmapManager,
+    song_manager: SongManager,
+    score_manager: ScoreManager,
+    task_manager: TaskManager,
 
     // fps
     fps_display: FpsDisplay,
@@ -51,7 +57,6 @@ pub struct Game {
     pub actions: ActionQueue,
 
     pub values: ValueCollection,
-    song_manager: SongManager,
 
     value_checker: ValueChecker,
 }
@@ -73,6 +78,11 @@ impl Game {
             spectator_manager: None,
             multiplayer_manager: None,
             multiplayer_data: MultiplayerData::default(),
+
+            beatmap_manager: BeatmapManager::new(),
+            song_manager: SongManager::new(),
+            score_manager: ScoreManager::new(),
+            task_manager: TaskManager::new(),
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -105,7 +115,6 @@ impl Game {
 
             values: ValueCollection::new(),
 
-            song_manager: SongManager::new(),
             value_checker: ValueChecker::new(),
         };
         g.load_custom_menus();
@@ -159,19 +168,19 @@ impl Game {
 
         // game values
         values.set("game.time", 0.0);
-        values.set("global.playmode", "osu".to_owned());
-        values.set("global.playmode_display", "Osu".to_owned());
-        values.set("global.playmode_actual", "osu".to_owned()); // playmode with map's mode override
-        values.set("global.playmode_actual_display", "Osu".to_owned());
-        values.set("global.sort_by", self.settings.last_sort_by);
-        values.set("global.group_by", GroupBy::Set);
-        values.set("global.score_method", self.settings.last_score_retreival_method);
+        values.set("global.playmode", "osu");
+        values.set("global.playmode_display", "Osu");
+        values.set("global.playmode_actual", "osu"); // playmode with map's mode override
+        values.set("global.playmode_actual_display", "Osu");
         values.set("global.mods", ModManager::new());
         values.set("global.username", "guest");
         values.set("global.user_id", 0u32);
         values.set("global.new_map_hash", String::new());
         values.set("global.lobbies", CustomElementValue::List(Vec::new()));
 
+        values.set("settings.sort_by", self.settings.last_sort_by);
+        values.set("settings.group_by", GroupBy::Set);
+        values.set("settings.score_method", self.settings.last_score_retreival_method);
 
         // enums (for use with dropdowns)
         // technically just lists but whatever
@@ -189,6 +198,7 @@ impl Game {
         values.set("song.position", 0.0);
 
         // map is set in BeatmapManager
+        values.set("new_map", CustomElementValue::None);
 
         // score values
         values.set("score.score", 0.0);
@@ -228,14 +238,14 @@ impl Game {
         // set the current leaderboard filter
         // this is here so it happens before anything else
         let settings = SettingsHelper::new();
-        SCORE_HELPER.write().await.current_method = settings.last_score_retreival_method;
         self.last_skin = settings.current_skin.clone();
 
         // setup double tap protection
         self.input_manager.set_double_tap_protection(settings.enable_double_tap_protection.then(|| settings.double_tap_protection_duration));
 
         // beatmap manager loop
-        BeatmapManager::download_check_loop();
+        self.actions.push(TaskAction::AddTask(Box::new(BeatmapDownloadsCheckTask::new())));
+        // BeatmapManager::download_check_loop();
 
         // == menu setup ==
         let mut loading_menu = LoadingMenu::new().await;
@@ -362,8 +372,8 @@ impl Game {
                 {
                     let values = &mut self.values;
                     // values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
-                    values.set("global.sort_by", self.settings.last_sort_by);
-                    // values.set("global.sort_by", format!("{:?}", self.settings.last_group_by));
+                    values.set("settings.sort_by", self.settings.last_sort_by);
+                    // values.set("settings.sort_by", format!("{:?}", self.settings.last_group_by));
                 }
             }
 
@@ -616,7 +626,7 @@ impl Game {
             }
         }
 
-
+        // update the ui
         let (mut menu_actions, sy_values) = self.ui_manager.update(
             CurrentInputState {
                 mouse_pos,
@@ -636,14 +646,23 @@ impl Game {
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager { 
             let manager = current_state.get_ingame();
-            menu_actions.extend(spec.update(manager).await);
+            menu_actions.extend(spec.update(manager, &mut self.values).await);
         }
         if let Some(multi) = &mut self.multiplayer_manager { 
             let manager = current_state.get_ingame();
             menu_actions.extend(multi.update(manager, &mut self.values).await);
         }
 
+
+        // update score manager
+        self.score_manager.update(&mut self.values).await;
+
         // handle menu actions
+        let game_state = TaskGameState {
+            ingame: self.current_state.is_ingame(),
+            game_time: self.game_start.as_millis() as u64,
+        };
+        menu_actions.extend(self.task_manager.update(&mut self.values, game_state).await);
         self.handle_actions(menu_actions).await;
 
         // run update on current state
@@ -829,7 +848,7 @@ impl Game {
                         let m = manager.metadata.clone();
                         let start_time = manager.start_time;
 
-                        self.set_background_beatmap(&m).await;
+                        self.set_background_beatmap().await;
                         let action;
                         if let Some(manager) = &self.spectator_manager {
                             action = SetAction::Spectating { 
@@ -1077,7 +1096,6 @@ impl Game {
             TatakuAction::None => return,
             
             // menu actions
-            // TatakuAction::Menu(MenuMenuAction::SetMenu(menu)) => self.queue_state_change(GameState::SetMenu(menu)),
             TatakuAction::Menu(MenuMenuAction::SetMenu(id)) => self.handle_custom_menu(id).await,
 
             TatakuAction::Menu(MenuMenuAction::PreviousMenu(current_menu)) => self.handle_previous_menu(current_menu).await,
@@ -1086,101 +1104,178 @@ impl Game {
             TatakuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, allow_duplicates)) => self.handle_custom_dialog(dialog, allow_duplicates).await,
             
             // beatmap actions
-            TatakuAction::Beatmap(BeatmapAction::PlayMap(map, mode)) => {
-                let mods = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+            TatakuAction::Beatmap(action) => {
+                match action {
+                    BeatmapAction::PlaySelected => {
+                        let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
+                        let Ok(mode) = self.values.get_string("global.playmode") else { return };
+                        // let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return };
+                        let mods = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
 
-                match manager_from_playmode(mode, &map).await {
-                    Ok(mut manager) => {
-                        manager.apply_mods(mods).await;
-                        self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                        // play the map
+                        let Ok(map_path) = self.values.get_string("map.path") else { return };
+
+                        match manager_from_playmode_path_hash(mode, map_path, map_hash).await {
+                            Ok(mut manager) => {
+                                manager.apply_mods(mods).await;
+                                self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                            }
+                            Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
+                        }
                     }
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
-                }
-            }
-            TatakuAction::Beatmap(BeatmapAction::PlaySelected) => {
-                let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
-                let Ok(mode) = self.values.get_string("global.playmode") else { return };
-                let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash) else { return };
 
-                // play the map
-                self.handle_action(BeatmapAction::PlayMap(map, mode)).await;
-            }
+                    BeatmapAction::ConfirmSelected => {
+                        // TODO: could we use this to send map requests from ingame to the spec host?
 
-            TatakuAction::Beatmap(BeatmapAction::ConfirmSelected) => {
-                // TODO: could we use this to send map requests from ingame to the spec host?
+                        if let Some(multi) = &mut self.multiplayer_manager {
+                            // go back to the lobby before any checks
+                            // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
+                            self.actions.push(MenuMenuAction::SetMenu("lobby_menu".to_owned()));
 
-                if let Some(multi) = &mut self.multiplayer_manager {
-                    // go back to the lobby before any checks
-                    // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
-                    self.actions.push(MenuMenuAction::SetMenu("lobby_menu".to_owned()));
+                            if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
+                            
+                            let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return warn!("no/bad map.hash") };
+                            let Ok(playmode) = self.values.get_string("global.playmode") else { return warn!("no/bad global.playmode") };
+                            let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return warn!("no map?") };
 
-                    if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
+                            tokio::spawn(OnlineManager::update_lobby_beatmap(map, playmode));
+                        } else {
+                            // play map
+                            self.handle_action(BeatmapAction::PlaySelected).await
+                        }
+                    }
+
+                    BeatmapAction::Set(beatmap, options) => {
+                        // self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
+                        // warn!("setting beatmap: {}", beatmap.version_string());
+                        self.handle_action(BeatmapAction::SetFromHash(beatmap.beatmap_hash, options)).await;
+                    }
+                    BeatmapAction::SetFromHash(hash, options) => {
+                        if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
+                            self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
+                        
+                            self.set_background_beatmap().await;
+                        } else if self.multiplayer_manager.is_some() {
+                            // if we're in a multiplayer lobby, and the map doesnt exist, remove the map
+                            // self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
+                            self.handle_action(BeatmapAction::Remove).await;
+                        } else {
+                            match options.if_none {
+                                MapActionIfNone::ContinueCurrent => {},
+                                MapActionIfNone::SetNone => self.handle_action(BeatmapAction::Remove).await, //self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
+                                MapActionIfNone::Random(preview) => {
+                                    let Some(map) = self.beatmap_manager.random_beatmap() else { return };
+                                    self.handle_action(BeatmapAction::SetFromHash(map.beatmap_hash, options.use_preview_point(preview))).await;
+                                }
+                            }
+                        }
+
+                    }
                     
-                    let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return warn!("no/bad map.hash") };
-                    let Ok(playmode) = self.values.get_string("global.playmode") else { return warn!("no/bad global.playmode") };
-                    let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash) else { return warn!("no map?") };
+                    BeatmapAction::SetPlaymode(new_mode) => {
+                        // ensure lowercase
+                        let new_mode = new_mode.to_lowercase();
 
-                    tokio::spawn(OnlineManager::update_lobby_beatmap(map, playmode));
-                } else {
-                    // play map
-                    self.handle_action(BeatmapAction::PlaySelected).await
-                }
-            }
+                        // ensure playmode exists
+                        if !AVAILABLE_PLAYMODES.contains(&&*new_mode) { return warn!("Trying to set invalid playmode: {new_mode}") }
 
-            TatakuAction::Beatmap(BeatmapAction::Set(beatmap, use_preview_time, restart)) => {
-                BEATMAP_MANAGER.write().await.set_current_beatmap(self, &beatmap, use_preview_time, restart).await;
-                // warn!("setting beatmap: {}", beatmap.version_string());
-            }
-            TatakuAction::Beatmap(BeatmapAction::SetFromHash(hash, use_preview_time, restart)) => {
-                let mut manager = BEATMAP_MANAGER.write().await;
-                if let Some(beatmap) = manager.get_by_hash(&hash) {
-                    manager.set_current_beatmap(self, &beatmap, use_preview_time, restart).await;
-                } 
-                else {
-                    // if we're in a multiplayer lobby, and the map doesnt exist, remove the map
-                    manager.remove_current_beatmap(self).await;
-                }
-            }
-            
-            TatakuAction::Beatmap(BeatmapAction::Random(use_preview)) => {
-                let mut manager = BEATMAP_MANAGER.write().await;
-                let Some(random) = manager.random_beatmap() else { return };
-                manager.set_current_beatmap(self, &random, use_preview, true).await;
-            }
-            TatakuAction::Beatmap(BeatmapAction::Remove) => {
-                BEATMAP_MANAGER.write().await.remove_current_beatmap(self).await;
-                // warn!("removeing beatmap");
-            }
+                        // set playmode and playmode display
+                        self.values.set("global.playmode", &new_mode);
+                        
+                        let Some(info) = get_gamemode_info(&new_mode) else { return };
+                        self.values.set("global.playmode_display", info.display_name());
 
-            TatakuAction::Beatmap(BeatmapAction::Delete(hash)) => {
-                BEATMAP_MANAGER.write().await.delete_beatmap(hash, self, PostDelete::Next).await;
-            }
-            TatakuAction::Beatmap(BeatmapAction::DeleteCurrent(post_delete)) => {
-                let Some(map) = CurrentBeatmapHelper::new().0.clone() else { return };
-                let mut manager = BEATMAP_MANAGER.write().await;
+                        // if we have a beatmap, get the override mode and update the playmode_actual values
+                        if let Some(map) = &self.beatmap_manager.current_beatmap {
+                            let new_mode = map.check_mode_override(new_mode);
+                            self.values.set("global.playmode_actual", &new_mode);
+                            let Some(info) = get_gamemode_info(&new_mode) else { return };
+                            self.values.set("global.playmode_actual_display", info.display_name());
+                        } else {
+                            // otherwise, set them to the current playmode
+                            self.values.set("global.playmode_actual", &new_mode);
+                            self.values.set("global.playmode_actual_display", info.display_name());
+                        }
 
-                manager.delete_beatmap(map.beatmap_hash, self, post_delete).await;
-            }
-            TatakuAction::Beatmap(BeatmapAction::Next) => {
-                BEATMAP_MANAGER.write().await.next_beatmap(self).await;
-            }
-            TatakuAction::Beatmap(BeatmapAction::Previous(if_none)) => {
-                let mut manager = BEATMAP_MANAGER.write().await;
-                if manager.previous_beatmap(self).await { return }
-                
-                // no previous map availble, handle accordingly
-                match if_none {
-                    MapActionIfNone::ContinueCurrent => return,
-                    MapActionIfNone::Random(use_preview) => {
-                        let Some(random) = manager.random_beatmap() else { return };
-                        manager.set_current_beatmap(self, &random, use_preview, true).await;
                     }
-                }
-            }
 
-            // beatmap list actions
-            TatakuAction::Beatmap(BeatmapAction::ListAction(BeatmapListAction::Refresh { filter:_ })) => {
-                todo!("not yet!");
+                    BeatmapAction::Random(use_preview) => {
+                        let Some(random) = self.beatmap_manager.random_beatmap() else { return };
+                        self.beatmap_manager.set_current_beatmap(&mut self.values, &random, use_preview, true).await;
+                    }
+                    BeatmapAction::Remove => {
+                        self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
+                        // warn!("removeing beatmap");
+                        self.remove_background_beatmap().await;
+                    }
+
+                    BeatmapAction::Delete(hash) => {
+                        self.beatmap_manager.delete_beatmap(hash, &mut self.values, PostDelete::Next).await;
+                    }
+                    BeatmapAction::DeleteCurrent(post_delete) => {
+                        let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
+
+                        self.beatmap_manager.delete_beatmap(map_hash, &mut self.values, post_delete).await;
+                    }
+                    BeatmapAction::Next => {
+                        self.beatmap_manager.next_beatmap(&mut self.values).await;
+                    }
+                    BeatmapAction::Previous(if_none) => {
+                        if self.beatmap_manager.previous_beatmap(&mut self.values).await { return }
+                        
+                        // no previous map availble, handle accordingly
+                        match if_none {
+                            MapActionIfNone::ContinueCurrent => return,
+                            MapActionIfNone::Random(use_preview) => {
+                                let Some(random) = self.beatmap_manager.random_beatmap() else { return };
+                                self.beatmap_manager.set_current_beatmap(&mut self.values, &random, use_preview, true).await;
+                            }
+                            MapActionIfNone::SetNone => self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
+                        }
+                    }
+
+                    BeatmapAction::InitializeManager => { 
+                        self.beatmap_manager.initialize(&mut self.values).await; 
+                    }
+                    BeatmapAction::AddBeatmap { map, add_to_db } => {
+                        self.beatmap_manager.add_beatmap(&map, add_to_db).await;
+                    }
+                    
+
+                    // beatmap list actions
+                    BeatmapAction::ListAction(list_action) => {
+                        match list_action {
+                            BeatmapListAction::Refresh { filter } => {
+                                self.beatmap_manager.filter = filter.unwrap_or_default();
+                                self.beatmap_manager.refresh_maps(&mut self.values).await;
+                            }
+                            BeatmapListAction::NextMap => self.beatmap_manager.next_map(&mut self.values),
+                            BeatmapListAction::PrevMap => self.beatmap_manager.prev_map(&mut self.values),
+
+                            BeatmapListAction::NextSet => self.beatmap_manager.next_set(&mut self.values),
+                            BeatmapListAction::PrevSet => self.beatmap_manager.prev_set(&mut self.values),
+
+                            BeatmapListAction::SelectSet(set_id) => self.beatmap_manager.select_set(set_id, &mut self.values),
+                        }
+                    }
+
+                }
+
+                // if self.value_checker.beatmap.check(&self.values) {
+                //     let hash = self.values.try_get::<Md5Hash>("map.hash");
+                //     if let Ok(_hash) = hash {
+                //         self.set_background_beatmap().await;
+                //     } else {
+                //         // map was removed
+                //         self.remove_background_beatmap().await;
+                //     }
+                // }
+
+                // handle beatmap manager actions
+                let bm_actions = self.beatmap_manager.actions.take();
+                for i in bm_actions {
+                    self.handle_action(i).await;
+                }
             }
 
             
@@ -1200,12 +1295,12 @@ impl Game {
                     return;
                 };
 
-                let Some(beatmap) = BEATMAP_MANAGER.read().await.get_by_hash(&map) else {
+                let Some(beatmap) = self.beatmap_manager.get_by_hash(&map) else {
                     NotificationManager::add_text_notification("You don't have that map!", 5000.0, Color::RED).await;
                     return;
                 };
                 
-                match manager_from_playmode(mode, &beatmap).await {
+                match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash).await {
                     Ok(mut manager) => {
                         manager.set_replay(*replay);
                         self.queue_state_change(GameState::Ingame(Box::new(manager)))
@@ -1217,7 +1312,7 @@ impl Game {
                 self.values.set(key, value);
             }
             TatakuAction::Game(GameAction::ViewScore(score)) => {
-                if let Some(beatmap) = BEATMAP_MANAGER.read().await.get_by_hash(&score.beatmap_hash) {
+                if let Some(beatmap) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) {
                     let menu = ScoreMenu::new(&score, beatmap, false);
                     self.queue_state_change(GameState::SetMenu(Box::new(menu)))
                 } else {
@@ -1225,7 +1320,12 @@ impl Game {
                 }
             }
             TatakuAction::Game(GameAction::HandleMessage(message)) => self.ui_manager.add_message(message),
-        
+            TatakuAction::Game(GameAction::RefreshScores) => self.score_manager.force_update = true,
+            TatakuAction::Game(GameAction::ViewScoreId(id)) => {
+                if let Some(score) = self.score_manager.get_score(id) {
+                    self.handle_action(GameAction::ViewScore(score.clone())).await;
+                }
+            },
 
             // song actions
             TatakuAction::Song(song_action) => {
@@ -1324,7 +1424,7 @@ impl Game {
             }
 
             TatakuAction::Multiplayer(MultiplayerAction::SetBeatmap { hash, mode }) => {
-                let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&hash) else { return };
+                let Some(map) = self.beatmap_manager.get_by_hash(&hash) else { return };
                 let mode = mode.unwrap_or_default();
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map, mode));
             }
@@ -1343,11 +1443,11 @@ impl Game {
             }
 
 
-            TatakuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
+            // task actions
+            TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),
             
-            TatakuAction::Quit => {
-                self.queue_state_change(GameState::Closing);
-            }
+            // UI operation
+            TatakuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
         }
     }
 
@@ -1408,16 +1508,13 @@ impl Game {
     }
 
     /// shortcut for setting the game's background texture to a beatmap's image
-    pub async fn set_background_beatmap(&mut self, beatmap:&BeatmapMeta) {
-        let filename = beatmap.image_filename.clone();
+    pub async fn set_background_beatmap(&mut self) {
+        let Ok(filename) = self.values.get_string("map.image_filename") else { return };
         let f = load_image(filename, false, Vector2::ONE);
         self.background_loader = Some(AsyncLoader::new(f));
     }
     /// shortcut for removing the game's background texture
     pub async fn remove_background_beatmap(&mut self) {
-        // let filename = beatmap.image_filename.clone();
-        // let f = load_image(filename, false, Vector2::ONE);
-        // self.background_loader = Some(AsyncLoader::new(f));
         self.background_image = None;
     }
 
@@ -1451,8 +1548,7 @@ impl Game {
                         Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
                         Ok(path) => {
                             // load the map
-                            let mut beatmap_manager = BEATMAP_MANAGER.write().await;
-                            let Some(last) = beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
+                            let Some(last) = self.beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
                             // set it as current map if wanted
                             let mut use_preview_time = true;
                             let change_map = match &self.current_state {
@@ -1463,7 +1559,7 @@ impl Game {
                                 _ => false,
                             };
                             if change_map {
-                                beatmap_manager.set_current_beatmap(self, &last, use_preview_time, false).await;
+                                self.beatmap_manager.set_current_beatmap(&mut self.values, &last, use_preview_time, false).await;
                             }
                         }
                     }
@@ -1509,14 +1605,12 @@ impl Game {
             return;
         };
 
-        let mut manager = BEATMAP_MANAGER.write().await;
-
-        let Some(map) = manager.get_by_hash(&score.beatmap_hash) else {
+        let Some(map) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) else {
             NotificationManager::add_text_notification("You don't have this beatmap!", 5_000.0, Color::RED).await;
             return;
         };
 
-        manager.set_current_beatmap(self, &map, true, true).await;
+        self.beatmap_manager.set_current_beatmap(&mut self.values, &map, true, true).await;
 
         // move to a score menu with this as the score
         let score = IngameScore::new(score.clone(), false, false);
@@ -1555,8 +1649,15 @@ impl Game {
                     Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
                 }
 
+                let Some(map) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) else { return warn!("no map ???") };
+
                 // submit score
-                let submit = ScoreSubmitHelper::new(replay.clone(), &self.settings);
+                let submit = ScoreSubmitHelper::new(
+                    replay.clone(), 
+                    &self.settings,
+                    &map
+                );
+
                 submit.clone().submit();
                 score_submit = Some(submit);
             }
@@ -1712,7 +1813,7 @@ impl Game {
 
                 // try to update the server with our current map and mode
                 let Ok(map_hash) = self.values.try_get("map.hash") else { return Ok(()) };
-                let Some(map) = BEATMAP_MANAGER.read().await.get_by_hash(&map_hash) else { return Ok(()) };
+                let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return Ok(()) };
 
                 let Ok(mode) = self.values.get_string("global.playmode") else { return Ok(()) };
                 OnlineManager::update_lobby_beatmap(map, mode).await;
@@ -1848,15 +1949,16 @@ impl MenuType {
 }
 
 
+/// really just a struct to avoid cluttering up game with too many SYValueHelpers
 struct ValueChecker {
-    gamemode: SYValueHelper,
-    beatmap: SYValueHelper,
+    gamemode: SyValueHelper,
+    beatmap: SyValueHelper,
 }
 impl ValueChecker {
     pub fn new() -> Self {
         Self {
-            gamemode: SYValueHelper::new("global.playmode", CustomElementValue::String(String::new())),
-            beatmap: SYValueHelper::new("map.hash", CustomElementValue::String(String::new())),
+            gamemode: SyValueHelper::new("global.playmode"),
+            beatmap: SyValueHelper::new("map.hash"),
         }
     }
 
@@ -1869,24 +1971,9 @@ impl ValueChecker {
                 let display = gamemode_display_name(mode).to_owned();
                 values.set("global.playmode_display", display);
 
-                // check playmode override
-                self.check_mode_override(values).await
+                // TODO!! also update global.playmode_actual
             }
         }
-
-        if self.beatmap.check(values) {
-            self.check_mode_override(values).await
-        }
     }
 
-    async fn check_mode_override(&self, values: &mut ValueCollection) {
-        let Some(mode) = self.gamemode.string_maybe() else { return };
-        let Some(map) = BEATMAP_MANAGER.read().await.current_beatmap.clone() else { return };
-
-        let actual_mode = map.check_mode_override(mode.clone());
-        let display = gamemode_display_name(&actual_mode).to_owned();
-
-        values.set("global.playmode_actual", actual_mode);
-        values.set("global.playmode_actual_display", display);
-    }
 }

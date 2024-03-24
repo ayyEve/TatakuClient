@@ -14,6 +14,7 @@ impl From<&BeatmapMeta> for CustomElementValue {
         map.set("preview_time", beatmap.audio_preview);
         map.set("path", &beatmap.file_path);
         map.set("display_mode", gamemode_display_name(&beatmap.mode).to_owned());
+        map.set("beatmap_type", &beatmap.beatmap_type);
         map.finish()
     }
 }
@@ -24,3 +25,41 @@ impl From<&BeatmapMeta> for CustomElementValue {
 //         Md5Hash::try_from(str).map_err(|e| format!("{e:?}"))
 //     }
 // }
+
+impl From<&BeatmapType> for CustomElementValue {
+    fn from(value: &BeatmapType) -> Self {
+        Self::String(format!("{value:?}"))
+    }
+}
+
+impl TryInto<BeatmapType> for &CustomElementValue {
+    type Error = String;
+    fn try_into(self) -> Result<BeatmapType, Self::Error> {
+        match self {
+
+            CustomElementValue::String(s) => {
+                match &**s {
+                    "Osu" | "osu" => Ok(BeatmapType::Osu),
+                    "Quaver" | "quaver" => Ok(BeatmapType::Quaver),
+                    "Stepmania" | "stepmania" => Ok(BeatmapType::Stepmania),
+                    "Tja" | "tja" => Ok(BeatmapType::Tja),
+                    "Utyping" | "u_typing" => Ok(BeatmapType::UTyping),
+                    other => Err(format!("invalid BeatmapType str: '{other}'"))
+                }
+            }
+
+            CustomElementValue::U64(n) => {
+                match *n {
+                    0 => Ok(BeatmapType::Osu),
+                    1 => Ok(BeatmapType::Quaver),
+                    2 => Ok(BeatmapType::Stepmania),
+                    3 => Ok(BeatmapType::Tja),
+                    4 => Ok(BeatmapType::UTyping),
+                    other => Err(format!("Invalid BeatmapType number: {other}")),
+                }
+            }
+
+            other => Err(format!("Invalid BeatmapType value: {other:?}"))
+        }
+    }
+}

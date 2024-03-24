@@ -24,14 +24,14 @@ pub enum CustomMenuSongAction {
     SetPosition(f32),
 }
 impl CustomMenuSongAction {
-    pub fn into_action(self, _values: &mut ValueCollection) -> SongAction {
+    pub fn into_action(self, _values: &mut ValueCollection) -> Option<SongAction> {
         match self {
-            Self::Play => SongAction::Play,
-            Self::Pause => SongAction::Pause,
-            Self::Toggle => SongAction::Toggle,
-            Self::Restart => SongAction::Restart,
-            Self::Seek(n) => SongAction::SeekBy(n),
-            Self::SetPosition(p) => SongAction::SetPosition(p)
+            Self::Play => Some(SongAction::Play),
+            Self::Pause => Some(SongAction::Pause),
+            Self::Toggle => Some(SongAction::Toggle),
+            Self::Restart => Some(SongAction::Restart),
+            Self::Seek(n) => Some(SongAction::SeekBy(n)),
+            Self::SetPosition(p) => Some(SongAction::SetPosition(p)),
         }
     }
 }

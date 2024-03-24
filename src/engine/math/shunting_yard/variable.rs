@@ -1,7 +1,9 @@
 use crate::prelude::*;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum CustomElementValue {
+    #[default]
+    None,
     I32(i32),
     I64(i64),
     U32(u32),
@@ -16,6 +18,14 @@ pub enum CustomElementValue {
     Map(HashMap<String, CustomElementValue>),
 }
 impl CustomElementValue {
+    pub fn is_none(&self) -> bool {
+        if let Self::None = self {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn as_f32(&self) -> Result<f32, ShuntingYardError> {
         match self {
             Self::I32(i) => Ok(*i as f32),
@@ -25,6 +35,7 @@ impl CustomElementValue {
             Self::F32(f) => Ok(*f),
             Self::Bool(b) => Ok(if *b { 1.0 } else { 0.0 }),
 
+            Self::None => Err(ShuntingYardError::ValueIsNone),
             Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone())),
             Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
             Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
@@ -38,7 +49,19 @@ impl CustomElementValue {
             Self::I64(n) => Ok(*n as u32),
             Self::U64(n) => Ok(*n as u32),
 
+            Self::None => Err(ShuntingYardError::ValueIsNone),
             _ => Err(ShuntingYardError::ConversionError(format!("Not castable to u32")))
+        }
+    }
+    pub fn as_u64(&self) -> Result<u64, ShuntingYardError> {
+        match self {
+            Self::I32(n) => Ok(*n as u64),
+            Self::U32(n) => Ok(*n as u64),
+            Self::I64(n) => Ok(*n as u64),
+            Self::U64(n) => Ok(*n),
+
+            Self::None => Err(ShuntingYardError::ValueIsNone),
+            _ => Err(ShuntingYardError::ConversionError(format!("Not castable to u64")))
         }
     }
 
@@ -51,11 +74,17 @@ impl CustomElementValue {
             Self::F32(f) => format!("{f:.2}"),
             Self::Bool(b) => format!("{b}"),
             Self::String(s) => s.clone(),
+
+            Self::None => format!("None"),
             Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
             Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
         } 
     }
 
+    pub fn as_map(&self) -> Option<&HashMap<String, CustomElementValue>> {
+        let Self::Map(map) = self else { return None };
+        Some(map)
+    }
     pub fn as_map_helper(self) -> Option<CustomElementMapHelper> {
         let Self::Map(map) = self else { return None };
         Some(CustomElementMapHelper(map))
@@ -128,6 +157,25 @@ impl<T:Into<CustomElementValue>> From<HashMap<String, T>> for CustomElementValue
     fn from(value: HashMap<String, T>) -> Self {
         Self::Map(value.into_iter().map(|(k,v)| (k, v.into())).collect())
         // Self::List(value.into_iter().map(|t|t.into()).collect())
+    }
+}
+
+impl<'a, T> TryFrom<&'a CustomElementValue> for Vec<T> 
+where 
+    &'a CustomElementValue: TryInto<T>, 
+    <&'a CustomElementValue as TryInto<T>>::Error: ToString
+{
+    type Error = String;
+
+    fn try_from(value: &'a CustomElementValue) -> Result<Self, Self::Error> {
+        let CustomElementValue::List(list) = value else { return Err(format!("Value is not a list")) };
+
+        let mut output = Vec::new();
+        for i in list {
+            output.push(i.try_into().map_err(|e| e.to_string())?)
+        }
+
+        Ok(output)
     }
 }
 

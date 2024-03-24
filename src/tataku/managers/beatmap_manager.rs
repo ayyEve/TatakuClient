@@ -2,12 +2,11 @@ use rand::Rng;
 use crate::prelude::*;
 use std::fs::read_dir;
 
-const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
-lazy_static::lazy_static! {
-    pub static ref BEATMAP_MANAGER:Arc<AsyncRwLock<BeatmapManager>> = Arc::new(AsyncRwLock::new(BeatmapManager::new()));
-}
+// const DOWNLOAD_CHECK_INTERVAL:u64 = 10_000;
 
 pub struct BeatmapManager {
+    pub actions: ActionQueue,
+
     pub initialized: bool,
 
     pub current_beatmap: Option<Arc<BeatmapMeta>>,
@@ -20,11 +19,23 @@ pub struct BeatmapManager {
     /// current index of previously played maps
     play_index: usize,
 
+
+    // list stuff
+    
+    /// cache of groups before we filter them, saved from rebuilding this list every filter update
+    unfiltered_groups: Vec<BeatmapGroup>,
+    filtered_groups: Vec<BeatmapListGroup>,
+
+    pub filter: String,
+
+    selected_set: usize,
+    selected_map: usize,
 }
 impl BeatmapManager {
     pub fn new() -> Self {
         GlobalValueManager::update(Arc::new(LatestBeatmap(Arc::new(BeatmapMeta::default()))));
         Self {
+            actions: ActionQueue::new(),
             initialized: false,
 
             current_beatmap: None,
@@ -34,7 +45,19 @@ impl BeatmapManager {
 
             played: Vec::new(),
             play_index: 0,
+
+
+            unfiltered_groups: Vec::new(),
+            filtered_groups: Vec::new(),
+            filter: String::new(),
+            selected_set: 0,
+            selected_map: 0
         }
+    }
+
+    pub async fn initialize(&mut self, values: &mut ValueCollection) {
+        self.initialized = true;
+        self.refresh_maps(values).await;
     }
 
     fn _log_played(&self) {
@@ -43,41 +66,17 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn folders_to_check() -> Vec<std::path::PathBuf> {
-        let mut folders = Vec::new();
+    pub fn folders_to_check() -> Vec<std::path::PathBuf> {
         let mut dirs_to_check = Settings::get().external_games_folders.clone();
         dirs_to_check.push(SONGS_DIR.to_owned());
 
         dirs_to_check.iter()
-        .map(|d| read_dir(d))
-        .filter_map(|d|d.ok())
-        .for_each(|f| {
-            f.filter_map(|f|f.ok())
-            .for_each(|p| {
-                folders.push(p.path());
-            })
-        });
-
-        folders
-    }
-
-    // download checking
-    async fn check_downloads() {
-        if read_dir(DOWNLOADS_DIR).unwrap().count() > 0 {
-            let folders = Zip::extract_all(DOWNLOADS_DIR, SONGS_DIR, ArchiveDelete::Always).await;
-            info!("checking folders {folders:#?}");
-
-            for f in folders { BEATMAP_MANAGER.write().await.check_folder(&f, true).await; }
-        }
-
-    }
-    pub fn download_check_loop() {
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(Duration::from_millis(DOWNLOAD_CHECK_INTERVAL)).await;
-                BeatmapManager::check_downloads().await;
-            }
-        });
+            .map(|d| read_dir(d))
+            .filter_map(|d| d.ok())
+            .map(|f| f.filter_map(|f| f.ok())
+            .map(|f| f.path()) )
+            .flatten()
+            .collect()
     }
 
     /// clear the cache and db, 
@@ -91,7 +90,7 @@ impl BeatmapManager {
         let mut new_beatmaps = Vec::new();
 
         info!("Reading maps");
-        let folders = Self::folders_to_check().await;
+        let folders = Self::folders_to_check();
         for f in folders {
             if let Some(maps) = self.check_folder(f, false).await {
                 new_beatmaps.extend(maps);
@@ -111,15 +110,11 @@ impl BeatmapManager {
         if !dir.is_dir() { return None }
         let dir_files = read_dir(dir).unwrap();
 
+        let mut ignore_paths = self.ignore_beatmaps.clone();
+
         // ignore existing paths
-        let mut ignore_paths = HashSet::new();
         for i in self.beatmaps.iter() {
             ignore_paths.insert(i.file_path.clone());
-        }
-
-        // also add maps to be ignored to the list
-        for i in self.ignore_beatmaps.iter() {
-            ignore_paths.insert(i.clone());
         }
 
         let mut maps_to_add_to_database = Vec::new();
@@ -147,7 +142,7 @@ impl BeatmapManager {
                 match Beatmap::load_multiple_metadata(file) {
                     Ok(maps) => {
                         for map in maps {
-                            self.add_beatmap(&map);
+                            self.add_beatmap(&map, false).await;
                             
                             // if it got here, it shouldnt be in the database
                             // so we should add it
@@ -175,18 +170,19 @@ impl BeatmapManager {
         }
     }
 
-    pub fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>) {
+    pub async fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>, add_to_db: bool) {
         // check if we already have this map
         if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {
             // see if this beatmap is being added from another source
-            if self.beatmaps.iter().find(|m|m.file_path == beatmap.file_path).is_none() { 
-                trace!("adding {} to the ignore list", beatmap.file_path);
+            if self.beatmaps.iter().find(|m| m.file_path == beatmap.file_path).is_none() { 
                 // if so, add it to the ignore list
+                trace!("adding {} to the ignore list, as it already exists", beatmap.file_path);
                 self.ignore_beatmaps.insert(beatmap.file_path.clone());
                 tokio::spawn(Database::add_ignored(beatmap.file_path.clone()));
             }
 
-            return debug!("map already added") 
+            debug!("map already added");
+            return;
         }
 
         // dont have it, add it
@@ -200,11 +196,16 @@ impl BeatmapManager {
             // global.new_map_hash
             GlobalValueManager::update(Arc::new(LatestBeatmap(beatmap.clone())));
         }
+
+        if add_to_db {
+            Database::insert_beatmaps(vec![beatmap.clone()]).await;
+        }
+
     }
 
-    pub async fn delete_beatmap(&mut self, beatmap:Md5Hash, game: &mut Game, post_delete: PostDelete) {
+    pub async fn delete_beatmap(&mut self, beatmap:Md5Hash, values: &mut ValueCollection, post_delete: PostDelete) {
         // remove beatmap from ourselves
-        self.beatmaps.retain(|b|b.beatmap_hash != beatmap);
+        self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
 
         if let Some(old_map) = self.beatmaps_by_hash.remove(&beatmap) {
             if old_map.file_path.starts_with(SONGS_DIR) {
@@ -225,17 +226,24 @@ impl BeatmapManager {
         if self.current_beatmap.as_ref().filter(|b|b.beatmap_hash == beatmap).is_some() {
             match post_delete {
                 // select next beatmap
-                PostDelete::Next => { self.next_beatmap(game).await; },
-                PostDelete::Previous => { self.previous_beatmap(game).await; },
+                PostDelete::Next => { self.next_beatmap(values).await; },
+                PostDelete::Previous => { self.previous_beatmap(values).await; },
                 PostDelete::Random => if let Some(map) = self.random_beatmap() {
-                    self.set_current_beatmap(game, &map, true, true).await
+                    self.set_current_beatmap(values, &map, true, true).await
                 }
             }
         }
     }
 
     #[async_recursion::async_recursion]
-    pub async fn set_current_beatmap(&mut self, game:&mut Game, beatmap:&Arc<BeatmapMeta>, use_preview_time:bool, restart_song: bool) {
+    pub async fn set_current_beatmap(
+        &mut self, 
+        // game:&mut Game, 
+        values: &mut ValueCollection,
+        beatmap:&Arc<BeatmapMeta>, 
+        use_preview_time:bool, 
+        restart_song: bool
+    ) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         GlobalValueManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
         self.current_beatmap = Some(beatmap.clone());
@@ -247,9 +255,12 @@ impl BeatmapManager {
             let map: CustomElementValue = beatmap.deref().into();
             let mut map = map.as_map_helper().unwrap();
 
-            let mode = game.values.get_string("global.playmode_actual").unwrap_or("osu".to_owned());
-            let mods = game.values.try_get::<ModManager>("global.mods").unwrap_or_default();
-            let diff = get_diff(&beatmap, &mode, &mods);
+            let mode = values.get_string("global.playmode").unwrap_or("osu".to_owned());
+            let actual_mode = beatmap.check_mode_override(mode.clone());
+
+
+            let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
+            let diff = get_diff(&beatmap, &actual_mode, &mods);
             map.set("diff_rating", diff.unwrap_or(0.0));
 
             if let Some(info) = get_gamemode_info(&mode) { 
@@ -260,7 +271,11 @@ impl BeatmapManager {
                 map.set("diff_info", String::new());
             }
 
-            game.values.set("map", map.finish());
+            values.set("map", map.finish());
+
+            
+            values.set("global.playmode_actual", &actual_mode);
+            values.set("global.playmode_actual_display", gamemode_display_name(&actual_mode));
         }
 
         // play song
@@ -268,7 +283,7 @@ impl BeatmapManager {
         let time = if use_preview_time { beatmap.audio_preview } else { 0.0 };
 
         // set the song
-        game.actions.push(SongAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
+        self.actions.push(SongAction::Set(SongMenuSetAction::FromFile(audio_filename, SongPlayData {
             play: true,
             restart: restart_song,
             position: Some(time),
@@ -276,31 +291,31 @@ impl BeatmapManager {
             ..Default::default()
         })));
         // make sure the song is playing
-        game.actions.push(SongAction::Play);
+        self.actions.push(SongAction::Play);
 
         // if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
         //     error!("Error playing song: {:?}", e);
         //     NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
         // }
 
-        // set bg
-        game.set_background_beatmap(beatmap).await;
+        // // set bg
+        // game.set_background_beatmap(beatmap).await;
     }
     #[async_recursion::async_recursion]
-    pub async fn remove_current_beatmap(&mut self, game:&mut Game) {
+    pub async fn remove_current_beatmap(&mut self, values: &mut ValueCollection) {
         trace!("Setting current beatmap to None");
-        GlobalValueManager::update(Arc::new(CurrentBeatmap(None)));
+        // GlobalValueManager::update(Arc::new(CurrentBeatmap(None)));
         self.current_beatmap = None;
 
         // stop song
-        game.actions.push(SongAction::Stop);
+        self.actions.push(SongAction::Stop);
         // AudioManager::stop_song().await;
 
         // remove the map from the game's values as well
-        game.values.remove("map");
+        values.remove("map");
 
-        // set bg
-        game.remove_background_beatmap().await;
+        // // set bg
+        // game.remove_background_beatmap().await;
     }
     
 
@@ -345,12 +360,12 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn next_beatmap(&mut self, game:&mut Game) -> bool {
+    pub async fn next_beatmap(&mut self, values:&mut ValueCollection) -> bool {
         // println!("i: {}", self.play_index);
 
         match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false, true).await;
+                self.set_current_beatmap(values, &map, false, true).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
 
@@ -358,7 +373,7 @@ impl BeatmapManager {
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(game, &map, false, true).await;
+                self.set_current_beatmap(values, &map, false, true).await;
                 true
             } else {
                 false
@@ -373,13 +388,13 @@ impl BeatmapManager {
         // }
     }
 
-    pub async fn previous_beatmap(&mut self, game:&mut Game) -> bool {
+    pub async fn previous_beatmap(&mut self, values:&mut ValueCollection) -> bool {
         if self.play_index == 0 { return false }
         // println!("i: {}", self.play_index);
         
         match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(game, &map, false, true).await;
+                self.set_current_beatmap(values, &map, false, true).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap
@@ -391,6 +406,147 @@ impl BeatmapManager {
         }
     }
 
+}
+
+
+impl BeatmapManager {
+    
+    pub async fn refresh_maps(&mut self, values: &mut ValueCollection) {
+        trace!("Refreshing maps");
+
+        let group_by = values.try_get::<GroupBy>("settings.group_by").unwrap_or_default();
+        //TODO: allow grouping by not just map set
+        self.unfiltered_groups = self.all_by_sets(group_by);
+
+        self.apply_filter(values).await;
+    }
+    
+    pub async fn apply_filter(&mut self, values: &mut ValueCollection) {
+        trace!("Applying Filter");
+        self.filtered_groups.clear();
+        
+        // get filter text and split here so we arent splitting every map
+        let filter_text = self.filter.to_ascii_lowercase();
+        let filters = filter_text.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>();
+
+        let Ok(Ok(mods)) = values.get_raw("global.mods").map(ModManager::try_from) else { return };
+        let Ok(mode) = values.get_string("global.playmode") else { return }; 
+
+        for group in self.unfiltered_groups.iter() {
+            let mut maps = group.maps.iter().map(|m| {
+                let mode = m.check_mode_override(mode.clone());
+                let diff = get_diff(&m, &mode, &mods);
+
+                BeatmapMetaWithDiff::new(m.clone(), diff)
+            }).collect::<Vec<_>>();
+
+            // apply filter
+            if !filters.is_empty() {
+                for filter in filters.iter() {
+                    maps.retain(|bm| bm.filter(filter));
+                }
+
+                if maps.is_empty() { continue }
+            }
+
+            let name = group.get_name().clone();
+            self.filtered_groups.push(BeatmapListGroup { maps, number: 0, name });
+        }
+
+        self.sort(values)
+    }
+
+    pub fn sort(&mut self, values: &mut ValueCollection) {
+        let current_hash = values.try_get("map.hash").unwrap_or_default();
+
+        // sort
+        macro_rules! sort {
+            ($property:tt, String) => {
+                self.filtered_groups.sort_by(|a, b| a.maps[0].$property.to_lowercase().cmp(&b.maps[0].$property.to_lowercase()))
+            };
+            ($property:ident, Float) => {
+                self.filtered_groups.sort_by(|a, b| a.maps[0].$property.partial_cmp(&b.maps[0].$property).unwrap())
+            }
+        }
+
+        let Ok(sort_by) = values.try_get::<SortBy>("settings.sort_by") else { return };
+
+        match sort_by {
+            SortBy::Title => sort!(title, String),
+            SortBy::Artist => sort!(artist, String),
+            SortBy::Creator => sort!(creator, String),
+            SortBy::Difficulty => sort!(diff, Float),
+        }
+            
+        let mut selected = false;
+        for (n, i) in self.filtered_groups.iter_mut().enumerate() {
+            i.number = n;
+
+            // make sure we have the correct selected set and map number
+            if !selected {
+                if let Some(j) = i.has_hash(&current_hash) {
+                    self.selected_set = n;
+                    self.selected_map = j;
+                    selected = true;
+                }
+            }
+        }
+
+        self.update_values(values, current_hash);
+    }
+
+
+
+    pub fn update_values(&mut self, values: &mut ValueCollection, current_hash: Md5Hash) {
+        let filtered_groups = CustomElementValue::List(
+            self.filtered_groups
+                .iter()
+                .map(|group| group.into_map(current_hash)).collect()
+        );
+
+        values.set("beatmap_list.groups", filtered_groups);
+    }
+
+    pub fn select_set(&mut self, set_num: usize, values: &mut ValueCollection) {
+        debug!("selecting set: {set_num}");
+        
+        self.selected_set = set_num;
+        self.select_map(0, values);
+
+        self.actions.push(TatakuAction::PerformOperation(
+            snap_to_id(
+            "beatmap_scroll", 
+            iced::widget::scrollable::RelativeOffset { 
+                x: 0.0,
+                y: set_num as f32 / self.filtered_groups.len() as f32
+            })
+        ))
+    }
+    pub fn next_set(&mut self, values: &mut ValueCollection) {
+        self.select_set(self.selected_set.wrapping_add_1(self.filtered_groups.len()), values)
+    }
+    pub fn prev_set(&mut self, values: &mut ValueCollection) {
+        self.select_set(self.selected_set.wrapping_sub_1(self.filtered_groups.len()), values)
+    }
+
+    pub fn select_map(&mut self, map_num: usize, values: &mut ValueCollection)  {
+        self.selected_map = map_num;
+
+        let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
+        if let Some(map) = set.maps.get(self.selected_map) {
+            self.actions.push(BeatmapAction::Set(map.meta.clone(), SetBeatmapOptions::new().use_preview_point(true)));
+            self.update_values(values, map.beatmap_hash);
+        }
+
+    }
+    pub fn next_map(&mut self, values: &mut ValueCollection) {
+        let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
+        self.select_map(self.selected_map.wrapping_add_1(set.maps.len()), values)
+    }
+    pub fn prev_map(&mut self, values: &mut ValueCollection) {
+        let Some(set) = self.filtered_groups.get(self.selected_set) else { return };
+        self.select_map(self.selected_map.wrapping_sub_1(set.maps.len()), values)
+    }
 }
 
 
@@ -487,5 +643,45 @@ impl BeatmapGroupValue {
             Self::Set(name) => name,
             Self::Collection(name) => name,
         }
+    }
+}
+
+
+
+
+pub struct BeatmapListGroup {
+    pub number: usize,
+    pub name: String,
+    pub maps: Vec<BeatmapMetaWithDiff>,
+}
+impl BeatmapListGroup {
+    fn has_hash(&self, hash: &Md5Hash) -> Option<usize> {
+        if let Some((i,_)) = self.maps.iter().enumerate().find(|(_,b)| b.comp_hash(*hash)) {
+            return Some(i)
+        } 
+        None
+    }
+    pub fn into_map(&self, current_hash: Md5Hash) -> CustomElementValue {
+        let mut is_selected = false;
+        
+        let maps:Vec<CustomElementValue> = self.maps.iter().map(|beatmap| {
+            let map_is_selected = beatmap.comp_hash(current_hash);
+            if map_is_selected { is_selected = true }
+
+            let map:CustomElementValue = beatmap.deref().deref().into();
+            let mut map = map.as_map_helper().unwrap();
+            
+            map.set("diff_rating", beatmap.diff.unwrap_or_default());
+            map.set("is_selected", map_is_selected);
+            map.finish()
+        }).collect();
+
+        let mut group = CustomElementMapHelper::default();
+        group.set("maps", maps);
+        group.set("selected", is_selected);
+        group.set("name", self.name.clone());
+        group.set("id", self.number as u64);
+        
+        group.finish()
     }
 }

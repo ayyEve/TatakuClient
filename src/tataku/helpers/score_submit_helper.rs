@@ -2,13 +2,30 @@ use crate::prelude::*;
 
 pub struct ScoreSubmitHelper {
     pub replay: Replay,
-    settings: Settings,
+    // settings: Settings,
+    username: String,
+    password: String,
+    score_url: String,
+
+    beatmap_type: BeatmapType,
     pub response: AsyncRwLock<Option<SubmitResponse>>,
 }
 
 impl ScoreSubmitHelper {
-    pub fn new(replay: Replay, settings: &Settings) -> Arc<Self> {
-        Arc::new(Self { replay, settings: settings.clone(), response: AsyncRwLock::new(None) })
+    pub fn new(
+        replay: Replay, 
+        settings: &Settings,
+        beatmap: &BeatmapMeta,
+    ) -> Arc<Self> {
+        Arc::new(Self { 
+            replay, 
+            // settings: settings.clone(), 
+            beatmap_type: beatmap.beatmap_type,
+            username: settings.username.clone(),
+            password: settings.password.clone(),
+            score_url: settings.score_url.clone(),
+            response: AsyncRwLock::new(None),
+        })
     } 
 
     pub fn submit(self: Arc<Self>) {
@@ -17,8 +34,8 @@ impl ScoreSubmitHelper {
             let replay = &self.replay;
             let score = replay.score_data.as_ref().unwrap();
 
-            let username = self.settings.username.clone();
-            let password = self.settings.password.clone();
+            let username = self.username.clone();
+            let password = self.password.clone();
             if username.is_empty() || password.is_empty() { 
                 warn!("no user or pass, not submitting score");
                 *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::NoUser, "No user/password in settings".to_owned()));
@@ -26,15 +43,15 @@ impl ScoreSubmitHelper {
             }
 
 
-            let map = match BEATMAP_MANAGER.read().await.beatmaps_by_hash.get(&score.beatmap_hash) {
-                None => { // what? how did you play the map then?
-                    *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::MapNotFound, "Map not found locally".to_owned()));
-                    return 
-                }
-                Some(map) => map.clone()
-            };
+            // let map = match BEATMAP_MANAGER.read().await.beatmaps_by_hash.get(&score.beatmap_hash) {
+            //     None => { // what? how did you play the map then?
+            //         *self.response.write().await = Some(SubmitResponse::NotSubmitted(NotSubmittedReason::MapNotFound, "Map not found locally".to_owned()));
+            //         return 
+            //     }
+            //     Some(map) => map.clone()
+            // };
             let map_info = ScoreMapInfo {
-                game: map.beatmap_type.into(),
+                game: self.beatmap_type.into(),
                 map_hash: score.beatmap_hash.clone(),
                 playmode: score.playmode.clone(),
             };
@@ -47,7 +64,7 @@ impl ScoreSubmitHelper {
             };
 
             if let Ok(replay_data) = serde_json::to_string(&score_submit) {
-                let url = format!("{}/score_submit", self.settings.score_url);
+                let url = format!("{}/score_submit", self.score_url);
                 
                 let c = reqwest::Client::new();
                 let res = c

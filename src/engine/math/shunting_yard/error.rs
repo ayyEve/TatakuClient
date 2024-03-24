@@ -16,6 +16,8 @@ pub enum ShuntingYardError {
     MissingFunctionArgument(String),
     NumberIsntANumber(String),
 
+    ValueIsNone,
+
     ConversionError(String),
     InvalidType(String),
 }

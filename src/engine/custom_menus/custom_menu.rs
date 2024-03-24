@@ -90,7 +90,11 @@ impl AsyncMenu for BuiltCustomMenu {
             // MessageType::CustomMenuAction(AddDialog(dialog)) => {}
             // MessageType::CustomMenuAction(SetMenu(menu)) => self.queued_actions.push(MenuMenuAction::SetMenuCustom(menu)),
 
-            MessageType::CustomMenuAction(action) => self.actions.push(action.into_action(values)),
+            MessageType::CustomMenuAction(action) => {
+                if let Some(action) = action.into_action(values) {
+                    self.actions.push(action)
+                }
+            }
 
             _ => {}
         }
