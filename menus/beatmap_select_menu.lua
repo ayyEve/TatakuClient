@@ -21,12 +21,78 @@ local scores_list = {
     )
 }
 
+local beatmap_list = {
+    -- group items
+    id = "list",
+    debug_name = "groups list",
+    width = "fill",
+    height = "shrink",
+
+    list = "beatmap_list.groups",
+    variable = "_group",
+    scroll = true,
+
+    element = col({ width = "fill", height = "shrink", spacing = 5.0, debug_name = "col" }, {
+        -- set info
+        button(
+            text(variable("_group.name"), 20.0, WHITE),
+            -- set this as the selected set
+            map_action("select_group", { group_id = variable("_group.id") }),
+            "fill",
+            "shrink",
+            5.0
+        ),
+        
+        -- map items
+        cond(
+            "_group.selected", -- if this group is selected
+            -- show a list of maps
+            {
+                id = "list",
+                debug_name = "song list",
+                width = "fill",
+                height = "shrink",
+
+                list = "_group.maps",
+                variable = "_map",
+                element = row({ width = "fill", height = "shrink", spacing = 2.0 }, {
+                    -- add some space to indent the list
+                    space("fill_portion(1)", "shrink"),
+
+                    -- and the rest of the list
+                    col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
+                        button(
+                            text(
+                                text_list({ variable("_map.display_mode"), " - ", variable("_map.version") }),
+                                20, 
+                                WHITE
+                            ),
+                            cond(
+                                "map.hash == _map.hash", -- if the map is selected
+                                -- confirm it
+                                map_action("confirm"),
+                                -- otherwise, set it as the selected map
+                                map_action("select_map", { map_hash = variable("_map.hash")})
+                            ),
+                            "fill",
+                            "shrink",
+                            5.0
+                        )
+                        -- diff info here
+                    })
+
+                })
+                
+            }
+        )
+    })
+}
 
 local menu = {
     id = "beatmap_select",
 
     -- the beatmap select menu is broken up into rows
-    element = col({ width = "fill", height = "fill" }, {
+    element = col({ width = "fill", height = "fill", spacing = 10.0 }, {
         -- the first row contains the dropdowns
         row({ width = "fill", height = "shrink", spacing = 10.0, debug_name="dropdowns" }, {
             -- score get method dropdown
@@ -107,71 +173,14 @@ local menu = {
 
             -- beatmap list
             {
-                -- group items
-                id = "list",
-                debug_name = "groups list",
+                id = "styled_content",
+                debug_name = "beatmap list styled",
+                color = color(1.0, 1.0, 1.0, 0.1),
+                shape = { round = 5.0 },
                 width = "fill_portion(4)",
-                height = "shrink",
-
-                list = "beatmap_list.groups",
-                variable = "_group",
-                scroll = true,
-
-                element = col({ width = "fill", height = "shrink", spacing = 5.0, debug_name = "col" }, {
-                    -- set info
-                    button(
-                        text(variable("_group.name"), 20.0, WHITE),
-                        -- set this as the selected set
-                        map_action("select_group", { group_id = variable("_group.id") }),
-                        "fill",
-                        "shrink",
-                        5.0
-                    ),
-                    
-                    -- map items
-                    cond(
-                        "_group.selected", -- if this group is selected
-                        -- show a list of maps
-                        {
-                            id = "list",
-                            debug_name = "song list",
-                            width = "fill",
-                            height = "shrink",
-
-                            list = "_group.maps",
-                            variable = "_map",
-                            element = row({ width = "fill", height = "shrink", spacing = 2.0 }, {
-                                -- add some space to indent the list
-                                space("fill_portion(1)", "shrink"),
-
-                                -- and the rest of the list
-                                col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
-                                    button(
-                                        text(
-                                            text_list({ variable("_map.display_mode"), " - ", variable("_map.version") }),
-                                            20, 
-                                            WHITE
-                                        ),
-                                        cond(
-                                            "map.hash == _map.hash", -- if the map is selected
-                                            -- confirm it
-                                            map_action("confirm"),
-                                            -- otherwise, set it as the selected map
-                                            map_action("select_map", { map_hash = variable("_map.hash")})
-                                        ),
-                                        "fill",
-                                        "shrink",
-                                        5.0
-                                    )
-                                    -- diff info here
-                                })
-
-                            })
-                            
-                        }
-                    )
-                })
-            }
+                height = "fill",
+                element = beatmap_list
+            },
         }),
         
         

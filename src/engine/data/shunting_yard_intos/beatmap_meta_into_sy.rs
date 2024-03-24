@@ -12,6 +12,7 @@ impl From<&BeatmapMeta> for CustomElementValue {
         map.set("hash", &beatmap.beatmap_hash.to_string());
         map.set("audio_path", &beatmap.audio_filename);
         map.set("preview_time", beatmap.audio_preview);
+        map.set("image_filename", &beatmap.image_filename);
         map.set("path", &beatmap.file_path);
         map.set("display_mode", gamemode_display_name(&beatmap.mode).to_owned());
         map.set("beatmap_type", &beatmap.beatmap_type);
