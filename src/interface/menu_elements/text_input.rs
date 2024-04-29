@@ -35,14 +35,14 @@ pub struct TextInput {
     key_hold: Option<(Key, KeyModifiers, Instant, f32)>,
 
     hold_pos: Option<Vector2>,
-    
-    pub on_change: Arc<dyn Fn(&mut Self, String) + Send + Sync>,
+
+    pub on_change: Arc<dyn Fn(&mut Self) + Send + Sync>,
 }
-impl TextInput { 
+impl TextInput {
     pub fn new(pos:Vector2, size: Vector2, placeholder:&str, value:&str, font:Font) -> Self {
         Self {
-            pos, 
-            size, 
+            pos,
+            size,
             keywords: placeholder.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
             placeholder: placeholder.to_owned(),
 
@@ -61,8 +61,8 @@ impl TextInput {
             selection_end: 0,
             key_hold: None,
             hold_pos: None,
-            
-            on_change: Arc::new(|_,_|{}),
+
+            on_change: Arc::new(|_|{}),
         }
     }
 
@@ -72,7 +72,7 @@ impl TextInput {
         self.cursor_index = text.len();
         self.selection_end = 0;
 
-        (self.on_change.clone())(self, text.clone());
+        (self.on_change.clone())(self);
     }
 
     fn add_letter(&mut self, c:char) {
@@ -87,15 +87,19 @@ impl TextInput {
         }
 
         self.cursor_index += 1;
+
+        (self.on_change.clone())(self);
     }
 
     fn remove_selected_text(&mut self) {
-        // 
+        //
         let (start, end) = self.text.split_at(self.cursor_index);
         let (_snipped, end) = end.split_at(self.selection_end - self.cursor_index);
 
         self.text = start.to_owned() + end;
         self.selection_end = 0;
+
+        (self.on_change.clone())(self);
     }
 
     fn index_at_x(&self, x: f32) -> usize {
@@ -115,9 +119,9 @@ impl TextInput {
         for (counter, char) in text.chars().enumerate() {
             // get the font character
             let Some(c) = self.font.get_character(self.font_size, char) else { continue };
-            
+
             width += c.advance_width() / 2.0;
-            
+
             if rel_x < width { return counter; }
 
             width += c.advance_width() / 2.0;
@@ -144,7 +148,7 @@ impl ScrollableItem for TextInput {
     fn draw(&mut self, mut pos_offset:Vector2, list:&mut RenderableCollection) {
         list.push(Rectangle::new(
             self.pos + pos_offset,
-            self.size, 
+            self.size,
             Color::WHITE,
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
         ));
@@ -188,7 +192,7 @@ impl ScrollableItem for TextInput {
         if self.selected && self.selection_end == 0 {
             list.push(Rectangle::new(
                 self.pos + pos_offset + Vector2::new(width, 0.0),
-                Vector2::new(0.7, self.font_size), 
+                Vector2::new(0.7, self.font_size),
                 Color::RED,
                 Some(Border::new(Color::RED, 1.2))
             ));
@@ -198,7 +202,7 @@ impl ScrollableItem for TextInput {
         if self.selection_end > self.cursor_index {
             let (start, draw_this) = text.split_at(self.cursor_index);
             let (draw_this, _end) = draw_this.split_at(self.selection_end - self.cursor_index);
-            
+
             let start_offset = Text::new(
                 self.pos,
                 self.font_size,
@@ -217,15 +221,15 @@ impl ScrollableItem for TextInput {
 
 
             list.push(Rectangle::new(
-                self.pos + pos_offset + Vector2::with_x(start_offset), 
-                Vector2::new(width, self.size.y), 
-                SELECTION_COLOR.alpha(SELECTION_COLOR_ALPHA), 
+                self.pos + pos_offset + Vector2::with_x(start_offset),
+                Vector2::new(width, self.size.y),
+                SELECTION_COLOR.alpha(SELECTION_COLOR_ALPHA),
                 Some(Border::new(SELECTION_COLOR, 1.0))
             ))
         }
 
     }
-    
+
     fn on_click(&mut self, pos:Vector2, _btn:MouseButton, _mods:KeyModifiers) -> bool {
         self.show_password = false;
 
@@ -239,7 +243,7 @@ impl ScrollableItem for TextInput {
             self.hold_pos = Some(pos);
             self.cursor_index = self.index_at_x(pos.x);
             self.selection_end = 0;
-            
+
             return true;
         }
 
@@ -269,7 +273,7 @@ impl ScrollableItem for TextInput {
                 // set the start of the selection to the mouse-pos-index
                 self.cursor_index = i;
             }
-            
+
         }
     }
 
@@ -307,7 +311,7 @@ impl ScrollableItem for TextInput {
             Key::Left if mods.shift => {
                 if self.selection_end > self.cursor_index {
                     self.selection_end -= 1
-                } 
+                }
                 // else if self.cursor_index > 0 {
                 //     // selection will be were cursor index was, and cursor index will reduce (selection expands to the left)
                 //     if self.selection_end == 0 {
@@ -323,7 +327,7 @@ impl ScrollableItem for TextInput {
 
             Key::Left if self.cursor_index > 0 => self.cursor_index -= 1,
             Key::Right if self.cursor_index < self.text.len() => self.cursor_index += 1,
-            
+
             Key::Back if self.cursor_index > 0 => {
                 if self.selection_end > 0 {
                     self.remove_selected_text();
@@ -336,7 +340,7 @@ impl ScrollableItem for TextInput {
                     self.cursor_index -= 1;
                 }
 
-                (self.on_change.clone())(self, self.text.clone());
+                (self.on_change.clone())(self);
             }
             Key::Delete if self.cursor_index < self.text.len() => {
                 if self.selection_end > 0 {
@@ -344,14 +348,14 @@ impl ScrollableItem for TextInput {
                 } else {
                     self.text.remove(self.cursor_index);
                 }
-                
-                (self.on_change.clone())(self, self.text.clone());
+
+                (self.on_change.clone())(self);
             }
-            
+
             Key::V if mods.ctrl => {
                 let ctx:Result<ClipboardContext, Box<dyn Error>> = ClipboardProvider::new();
                 match ctx {
-                    Ok(mut ctx) => 
+                    Ok(mut ctx) =>
                         match ctx.get_contents() {
                             Ok(text) => self.set_text(text),
                             Err(e) => println!("[Clipboard] Error: {:?}", e),
@@ -359,7 +363,7 @@ impl ScrollableItem for TextInput {
                     Err(e) => println!("[Clipboard] Error: {:?}", e),
                 }
             }
-            
+
             Key::A if mods.ctrl => {
                 self.cursor_index = 0;
                 self.selection_end = self.text.len();
@@ -388,7 +392,7 @@ impl ScrollableItem for TextInput {
             self.on_key_press(k, mods);
         }
     }
-    
+
     fn on_key_release(&mut self, _key:Key) {
         if self.key_hold.is_some() {
             self.key_hold = None;
@@ -399,7 +403,7 @@ impl ScrollableItem for TextInput {
 
         for c in text.chars() { self.add_letter(c) }
         if text.len() > 0 {
-            (self.on_change.clone())(self, self.text.clone());
+            (self.on_change.clone())(self);
         }
     }
 }

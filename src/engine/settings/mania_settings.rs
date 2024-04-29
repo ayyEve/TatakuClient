@@ -21,17 +21,17 @@ pub struct ManiaSettings {
 
     #[Setting(text="Per-Column Judjments")]
     pub judgements_per_column: bool,
-    
+
     /// how far from the hit position should hit indicators be?
     #[Setting(text="Judgment Offset", min=-200.0, max=200.0)]
     pub judgement_indicator_offset: f32,
-    
+
     #[Setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
 
     // playfield settings
     pub playfield_settings: Vec<ManiaPlayfieldSettings>,
-    
+
     /// col_count [col_num, 0 based]
     /// ie for 4k, key 2: mania_keys\[3]\[1]
     pub keys: Vec<Vec<Key>>,
@@ -39,17 +39,17 @@ pub struct ManiaSettings {
 impl ManiaSettings {
     pub fn get_key_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
 
-        let info = CollapsibleSettings { 
-            header_text: "Key Config".to_string(), 
-            header_text_color: Color::WHITE, 
-            header_text_align: HorizontalAlign::Center, 
+        let info = CollapsibleSettings {
+            header_text: "Key Config".to_string(),
+            header_text_color: Color::WHITE,
+            header_text_align: HorizontalAlign::Center,
             header_height: 50.0,
-            header_color: Color::GRAY, 
-            header_color_hover: Color::GRAY, 
-            header_border: Some(Border::new(Color::BLACK, 2.0)), 
-            header_border_hover: Some(Border::new(Color::RED, 2.0)), 
-            header_shape: Shape::Round(10.0), 
-            auto_height: true, 
+            header_color: Color::GRAY,
+            header_color_hover: Color::GRAY,
+            header_border: Some(Border::new(Color::BLACK, 2.0)),
+            header_border_hover: Some(Border::new(Color::RED, 2.0)),
+            header_shape: Shape::Round(10.0),
+            auto_height: true,
             first_item_margin: Some(10.0),
             initially_expanded: false
         };
@@ -68,7 +68,7 @@ impl ManiaSettings {
             for (n, key) in self.keys[i].iter().enumerate() {
                 let mut kb = KeyButton::new(Vector2::with_x(OFFSET2), size, *key, "Key ".to_owned() + &(n+1).to_string(), Font::Main).with_tag(prefix.clone() + "|" + &i.to_string() + "key" + &n.to_string());
                 let s = sender.clone();
-                kb.on_change = Arc::new(move |_,_|{let _ = s.send(());});
+                kb.on_change = Arc::new(move |_|{let _ = s.send(());});
                 list2.add_item(Box::new(kb));
             }
 
@@ -91,7 +91,7 @@ impl ManiaSettings {
             }
         }
     }
-    
+
 }
 
 impl Default for ManiaSettings {
@@ -144,7 +144,7 @@ pub struct ManiaPlayfieldSettings {
     pub name: String,
 
     /// y pos of the hit area
-    /// 
+    ///
     /// if not upside-down, y is playfield_height - this
     pub hit_pos: f32,
 

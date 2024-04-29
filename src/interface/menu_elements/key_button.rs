@@ -14,14 +14,14 @@ pub struct KeyButton {
     pub font: Font,
     pub font_size: f32,
 
-    pub on_change: Arc<dyn Fn(&mut Self, Key) + Send + Sync>,
+    pub on_change: Arc<dyn Fn(&mut Self) + Send + Sync>,
 }
 impl KeyButton {
     pub fn new(pos: Vector2, size: Vector2, key:Key, prefix: impl ToString, font:Font) -> Self {
         Self {
             key,
-            pos, 
-            size, 
+            pos,
+            size,
             prefix: prefix.to_string(),
 
             hover: false,
@@ -30,8 +30,8 @@ impl KeyButton {
 
             font,
             font_size: 32.0,
-            
-            on_change: Arc::new(|_,_|{}),
+
+            on_change: Arc::new(|_|{}),
         }
     }
 
@@ -48,7 +48,7 @@ impl ScrollableItem for KeyButton {
     fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
         let border = Rectangle::new(
             self.pos + pos_offset,
-            self.size, 
+            self.size,
             Color::WHITE,
             Some(Border::new(if self.hover {Color::RED} else if self.selected {Color::BLUE} else {Color::BLACK}, 1.2))
         );
@@ -90,7 +90,7 @@ impl ScrollableItem for KeyButton {
 
         self.key = key;
         self.selected = false;
-        (self.on_change.clone())(self, key);
+        (self.on_change.clone())(self);
 
         true
     }

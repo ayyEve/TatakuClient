@@ -30,7 +30,7 @@ pub struct Dropdown<E:Dropdownable> {
     pub text_color: Color,
     pub bg_color: Color,
 
-    pub on_change: Arc<dyn Fn(&mut Self, Option<E>) + Send + Sync>,
+    pub on_change: Arc<dyn Fn(&mut Self) + Send + Sync>,
 }
 impl<E:Dropdownable> Dropdown<E> {
     pub fn new(pos: Vector2, width: f32, font_size: f32, text:&str, value:Option<E>, font: Font) -> Self {
@@ -58,8 +58,8 @@ impl<E:Dropdownable> Dropdown<E> {
 
             text_color: Color::BLACK,
             bg_color: Color::WHITE,
-            
-            on_change: Arc::new(|_,_|{}),
+
+            on_change: Arc::new(|_|{}),
         }
     }
 }
@@ -102,7 +102,7 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
                 self.expanded = false;
                 // get the clicked item
                 self.value = E::variants().get(self.hover_index).cloned();
-                (self.on_change.clone())(self, self.value.clone());
+                (self.on_change.clone())(self);
             } else {
                 // expand self so the user can select the item
                 self.expanded = true;
@@ -119,7 +119,7 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
 
     fn on_mouse_move(&mut self, p:Vector2) {
         self.check_hover(p);
-        
+
         if self.hover {
             if p.y < self.pos.y + self.item_height {
                 self.hover_index = 999;
@@ -187,17 +187,17 @@ impl<E:'static+Dropdownable> ScrollableItem for Dropdown<E> {
             for (mut index, text) in E::variants().iter().map(|e|e.display_text()).enumerate() {
                 index += 1;
 
-                // draw border 
+                // draw border
                 list.push(Rectangle::new(
                     pos + item_offset + y_size * index as f32 - Vector2::with_y(ITEM_Y_PADDING),
                     item_size,
                     self.bg_color,
                     Some(Border::new(
-                        if index-1 == self.hover_index {Color::BLUE} else {Color::BLACK}, 
+                        if index-1 == self.hover_index {Color::BLUE} else {Color::BLACK},
                         1.0
                     ))
                 ));
-                
+
                 // draw text
                 list.push(Text::new(
                     pos + item_offset + y_size * index as f32 - Vector2::with_y(ITEM_Y_PADDING),

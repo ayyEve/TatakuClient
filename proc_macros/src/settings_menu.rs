@@ -37,10 +37,10 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 Type::Tuple(_) => setting.setting_type = SettingsType::Button,
                 _ => {}
             }
-        
+
             // read the attributes
             for attr in &f.attrs {
-                if attr.path.is_ident("Subsetting") { 
+                if attr.path.is_ident("Subsetting") {
                     setting.setting_type = SettingsType::SubSetting;
 
                     // check for category
@@ -107,20 +107,20 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                                 let val = b.value;
                                 check!(val, password_input, "password");
                             },
-                            
+
                             _ => {}
                         }
-                        
+
                         panic!("Unknown parameter {}={}", name_value.path.get_ident().unwrap().to_string(), name_value.lit.to_token_stream().to_string())
                     }
-                
+
                 }
                 // println!("{:#?}", setting);
 
                 settings.push(setting);
                 break;
             }
-        
+
         }
     } else {
         panic!("tf you doin")
@@ -133,7 +133,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     get_menu_items_lines.push("pub fn get_menu_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {".to_owned());
     get_menu_items_lines.push("let mut list:Vec<Box<dyn ScrollableItem>> = Vec::new();".to_owned());
     get_menu_items_lines.push("let font = Font::Main;".to_owned());
-    
+
     // pulling vals back from the menu
     let mut from_menu_lines = Vec::new();
     from_menu_lines.push("pub fn from_menu(&mut self, prefix: String, list: &ScrollableArea) {".to_owned());
@@ -161,20 +161,20 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                     let val = val.downcast_ref::<bool>().expect(&format!(\"error downcasting for {property}\"));
-                    
-                    self.{property} = val.clone(); 
+
+                    self.{property} = val.clone();
                 }}"))
             }
 
             // slider
-            f 
-            @(SettingsType::U32 
-            | SettingsType::U64 
-            | SettingsType::F32 
-            | SettingsType::Usize 
+            f
+            @(SettingsType::U32
+            | SettingsType::U64
+            | SettingsType::F32
+            | SettingsType::Usize
             | SettingsType::F64) => {
                 let t = f.to_str();
-                
+
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
 
@@ -192,8 +192,8 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                     let val = val.downcast_ref::<f64>().expect(&format!(\"error downcasting for {property}\"));
-                    
-                    self.{property} = (*val) as {t}; 
+
+                    self.{property} = (*val) as {t};
                 }}"))
             }
 
@@ -201,9 +201,9 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::String => {
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
-                
+
                 get_menu_items_lines.push(format!("let mut i = TextInput::new(p, {size}, \"{text}\", &self.{property}, Font::Main);"));
-                    
+
                 if setting.password_input == Some(true) {
                     get_menu_items_lines.push("i.is_password = true;".to_owned());
                 }
@@ -211,7 +211,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                     let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for {property}\"));
-                    self.{property} = val.clone(); 
+                    self.{property} = val.clone();
                 }}"))
             }
 
@@ -227,11 +227,11 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                     let val = val.first().expect(\"error getting tagged\"); // unwrap
                     let val = val.get_value(); // get the value from the item
                     let val = val.downcast_ref::<String>().expect(&format!(\"error downcasting for Color (String)\"));
-                    
-                    self.{property} = val.clone().into(); 
+
+                    self.{property} = val.clone().into();
                 }}"));
             }
-            // 
+            //
             SettingsType::Key => {
                 let w = float(setting.width.unwrap_or(WIDTH));
                 let size = format!("Vector2::new({w}, 50.0)");
@@ -240,7 +240,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                 from_menu_lines.push(format!("
                 if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                     let val = val.downcast_ref::<Key>().expect(&format!(\"error downcasting for {property}\"));
-                    self.{property} = val.clone(); 
+                    self.{property} = val.clone();
                 }}"))
             }
 
@@ -248,7 +248,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             SettingsType::Dropdown(enum_name) => {
                 let width = float(setting.width.unwrap_or(WIDTH));
                 let font_size = "20.0";
-            
+
                 let e = if let Some(s) = setting.dropdown_value.clone() {
                     format!("{enum_name}::{s}(self.{property}.clone())")
                 } else {
@@ -261,18 +261,18 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                     from_menu_lines.push(format!("
                     if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                         let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
-                        
+
                         if let Some({enum_name}::{override_}(val)) = val {{
-                            self.{property} = val.to_owned(); 
+                            self.{property} = val.to_owned();
                         }}
                     }}"))
                 } else {
                     from_menu_lines.push(format!("
                     if let Some(val) = list.get_tagged(prefix.clone() + \"{property}\").first().map(|i|i.get_value()) {{
                         let val = val.downcast_ref::<Option<{enum_name}>>().expect(&format!(\"error downcasting for {property}\"));
-                        
+
                         if let Some(val) = val {{
-                            self.{property} = val.to_owned(); 
+                            self.{property} = val.to_owned();
                         }}
                     }}"))
                 }
@@ -308,7 +308,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
             get_menu_items_lines.push(format!("i.set_tag(&(prefix.clone() + \"{property}\"));"));
 
             get_menu_items_lines.push(format!("let c = sender.clone();"));
-            get_menu_items_lines.push(format!("i.on_change = Arc::new(move|_,_|{{c.send(()).unwrap()}});"));
+            get_menu_items_lines.push(format!("i.on_change = Arc::new(move|_|{{c.send(()).unwrap()}});"));
 
             get_menu_items_lines.push(format!("list.push(Box::new(i));"));
         }
@@ -319,7 +319,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
     get_menu_items_lines.push("list".to_owned());
     get_menu_items_lines.push("}".to_owned());
 
-    
+
     if let Some(extra) = from_menu_extra { from_menu_lines.push("self.".to_owned() + &extra + "(prefix, list);"); }
     from_menu_lines.push("}".to_owned());
     get_menu_items_lines.extend(from_menu_lines);
@@ -339,7 +339,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
 
 fn float(n:f64) -> String {
-    let mut n = n.to_string(); 
+    let mut n = n.to_string();
     if !n.contains(".") { n += ".0" }
     n
 }
@@ -348,9 +348,9 @@ fn float(n:f64) -> String {
 #[derive(Default)]
 struct SettingsItem {
     /// the type for this setting item
-    setting_type: SettingsType, 
+    setting_type: SettingsType,
 
-    /// what is the name of the setting? 
+    /// what is the name of the setting?
     setting_name: String,
 
     /// what text to display
@@ -385,7 +385,7 @@ enum SettingsType {
     Usize,
     String,
     // Vec(Box<SettingsType>),
-    
+
     Key,
     Dropdown(String),
     SubSetting,
@@ -447,6 +447,6 @@ fn recurse_meta(meta: MetaList) -> Vec<MetaNameValue> {
             }
         }
     }
-    
+
     list
 }

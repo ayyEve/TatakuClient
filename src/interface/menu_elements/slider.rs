@@ -22,16 +22,16 @@ pub struct Slider {
 
     pub font: Font,
     pub font_size: f32,
-    
-    pub on_change: Arc<dyn Fn(&mut Self, f64) + Send + Sync>,
+
+    pub on_change: Arc<dyn Fn(&mut Self) + Send + Sync>,
 }
 impl Slider {
     pub fn new(pos: Vector2, size: Vector2, text:&str, value:f64, range:Option<Range<f64>>, snapping:Option<f64>, font:Font) -> Self {
         let range = if let Some(r) = range{r} else {0.0..100.0};
 
         Self {
-            pos, 
-            size, 
+            pos,
+            size,
             hover: false,
             selected: false,
             tag: String::new(),
@@ -46,8 +46,8 @@ impl Slider {
             font,
 
             font_size: 12.0,
-            
-            on_change: Arc::new(|_,_|{}),
+
+            on_change: Arc::new(|_|{}),
         }
     }
 
@@ -78,7 +78,7 @@ impl Slider {
         // println!("val:{}, min:{}, max:{}", val, self.range.start, self.range.end);
 
         self.value = val;
-        (self.on_change.clone())(self, val);
+        (self.on_change.clone())(self);
     }
 
     fn text_val(&self) -> String {format!("{}: {:.2}", self.text, self.value)}
@@ -106,7 +106,7 @@ impl ScrollableItem for Slider {
 
 
     fn draw(&mut self, pos_offset:Vector2, list:&mut RenderableCollection) {
-        
+
         // draw bounding box
         list.push(Rectangle::new(
             self.pos+pos_offset,
@@ -129,7 +129,7 @@ impl ScrollableItem for Slider {
         // TODO: center text to area that slider_bounds isnt ([text][slider_bounds])
         // let text_size = txt.measure_text();
         list.push(txt);
-        
+
         // draw track
         list.push(Rectangle::new(
             self.pos + pos_offset + slider_bounds.pos + Vector2::with_y(slider_bounds.size.y / 3.0),
@@ -176,7 +176,7 @@ impl ScrollableItem for Slider {
 
     fn on_click_tagged(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> Option<String> {
         self.check_hover(pos);
-        
+
         if self.hover {
             self.set_value_by_mouse(pos);
             self.mouse_down = true;

@@ -16,13 +16,13 @@ pub struct Checkbox {
     pub font: Font,
     pub font_size: f32,
 
-    pub on_change: Arc<dyn Fn(&mut Self, bool) + Send + Sync>,
+    pub on_change: Arc<dyn Fn(&mut Self) + Send + Sync>,
 }
 impl Checkbox {
     pub fn new(pos: Vector2, size: Vector2, text:&str, value:bool, font: Font) -> Self {
         Self {
-            pos, 
-            size, 
+            pos,
+            size,
             text: text.to_owned(),
             keywords: text.split(" ").map(|a|a.to_lowercase().to_owned()).collect(),
 
@@ -32,8 +32,8 @@ impl Checkbox {
             checked: value,
             font,
             font_size: 12.0,
-            
-            on_change: Arc::new(|_,_|{}),
+
+            on_change: Arc::new(|_|{}),
         }
     }
 }
@@ -66,7 +66,7 @@ impl ScrollableItem for Checkbox {
                 None
             ));
         }
-        
+
         // draw text
         let mut txt = Text::new(
             self.pos + pos_offset,
@@ -82,9 +82,9 @@ impl ScrollableItem for Checkbox {
 
     fn on_click_tagged(&mut self, pos:Vector2, _button:MouseButton, _mods:KeyModifiers) -> Option<String> {
         self.check_hover(pos);
-        if self.hover { 
+        if self.hover {
             self.checked = !self.checked;
-            (self.on_change.clone())(self, self.checked);
+            (self.on_change.clone())(self);
 
             Some(self.tag.clone())
         } else {
