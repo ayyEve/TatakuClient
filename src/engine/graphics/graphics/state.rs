@@ -61,14 +61,36 @@ impl GraphicsState {
         let surface = unsafe { instance.create_surface(window).unwrap() };
 
         // create the adapter
-        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: match settings.performance_mode {
-                PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
-                PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
-            },
-            compatible_surface: Some(&surface),
-            force_fallback_adapter: false,
-        }).await.unwrap();
+        let mut adapter = None;
+        for i in [settings.performance_mode, PerformanceMode::HighPerformance, PerformanceMode::PowerSaver] {
+            adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: match i {
+                    PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
+                    PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+                },
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            }).await;
+
+            if adapter.is_some() { break }
+        }
+        if adapter.is_none() {
+            warn!("unable to find wgpu adapter, trying fallback...");
+            for i in [settings.performance_mode, PerformanceMode::HighPerformance, PerformanceMode::PowerSaver] {
+                adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: match i {
+                        PerformanceMode::HighPerformance => wgpu::PowerPreference::HighPerformance,
+                        PerformanceMode::PowerSaver => wgpu::PowerPreference::LowPower,
+                    },
+                    compatible_surface: Some(&surface),
+                    force_fallback_adapter: true,
+                }).await;
+
+                if adapter.is_some() { break }
+            }
+        }
+
+        let Some(adapter) = adapter else { panic!("unable to find a wgpu adaptor") };
 
         // create device and queue
         let (device, queue) = adapter.request_device(

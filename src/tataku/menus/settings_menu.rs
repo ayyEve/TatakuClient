@@ -148,7 +148,7 @@ impl Dialog<Game> for SettingsMenu {
     async fn on_mouse_down(&mut self, pos:Vector2, button:MouseButton, mods:&KeyModifiers, _game:&mut Game) -> bool {
         if !self.get_bounds().contains(pos) { return false }
         self.last_click_was_us = true;
-        info!("click");
+        // info!("click");
         self.search_text.on_click(pos, button, *mods);
 
         if let Some(tag) = self.scroll_area.on_click_tagged(pos, button, *mods) {
@@ -165,7 +165,7 @@ impl Dialog<Game> for SettingsMenu {
     async fn on_mouse_up(&mut self, pos:Vector2, button:MouseButton, _mods:&KeyModifiers, _g:&mut Game) -> bool {
         if !self.last_click_was_us { return false }
         self.last_click_was_us = false;
-        info!("unclick");
+        // info!("unclick");
 
         self.search_text.on_click_release(pos, button);
         self.scroll_area.on_click_release(pos, button);

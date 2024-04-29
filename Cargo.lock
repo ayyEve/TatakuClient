@@ -3058,7 +3058,7 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.10.1"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
+source = "git+https://gitlab.ayyeve.dev/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3068,7 +3068,7 @@ dependencies = [
 [[package]]
 name = "tataku-logging"
 version = "0.2.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-logging#53ece5d13babf3525122ef447fe58395c3c1b101"
+source = "git+https://gitlab.ayyeve.dev/tataku/tataku-logging#53ece5d13babf3525122ef447fe58395c3c1b101"
 dependencies = [
  "bombs",
  "chrono",
@@ -3080,7 +3080,7 @@ dependencies = [
 [[package]]
 name = "tataku-proc-macros"
 version = "0.1.0"
-source = "git+https://gitlab.ayyeve.xyz/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
+source = "git+https://gitlab.ayyeve.dev/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -4,7 +4,7 @@ use tataku_client::prelude::*;
 #[macro_use] extern crate log;
 
 
-const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.xyz/tataku";
+const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 
 #[inline]
 fn download_url<T:AsRef<str>>(file:T) -> String {
