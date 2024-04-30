@@ -27,16 +27,19 @@ impl CustomMenuParser {
     /// read a file
     pub fn load_menu(&mut self, file_path: impl AsRef<Path>) -> TatakuResult<CustomMenu> {
         let path = file_path.as_ref();
-        let file_data = std::fs::read_to_string(path)?;
+        let file_data = std::fs::read(path)?;
+        self.load_menu_from_bytes(&file_data, &path.to_string_lossy().to_string())
+    }
 
+    pub fn load_menu_from_bytes(&mut self, data: &[u8], name: &String) -> TatakuResult<CustomMenu> {
         let res:Result<CustomMenu, Error> = self.lua.context(move |lua| {
             // let menu_count:usize = lua.globals().get("menu_count")?;
             // println!("got menu count: {menu_count}");
 
             // run the file
             lua
-                .load(&file_data)
-                .set_name(&path.to_string_lossy().to_string())?
+                .load(&data)
+                .set_name(name)?
                 .exec()?;
 
             // let menu_count2:usize = lua.globals().get("menu_count")?;

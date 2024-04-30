@@ -25,6 +25,8 @@ pub struct Game {
     song_manager: SongManager,
     score_manager: ScoreManager,
     task_manager: TaskManager,
+    custom_menu_manager: CustomMenuManager,
+
 
     // fps
     fps_display: FpsDisplay,
@@ -52,7 +54,7 @@ pub struct Game {
     background_loader: Option<AsyncLoader<Option<Image>>>,
     spec_watch_action: SpectatorWatchAction,
     ui_manager: UiManager,
-    custom_menus: Vec<CustomMenu>,
+    // custom_menus: Vec<CustomMenu>,
 
     pub actions: ActionQueue,
 
@@ -83,6 +85,7 @@ impl Game {
             song_manager: SongManager::new(),
             score_manager: ScoreManager::new(),
             task_manager: TaskManager::new(),
+            custom_menu_manager: CustomMenuManager::new(),
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -110,11 +113,10 @@ impl Game {
             background_loader: None,
 
             ui_manager: UiManager::new(),
-            custom_menus: Vec::new(),
+            // custom_menus: Vec::new(),
             actions: ActionQueue::new(),
 
             values: ValueCollection::new(),
-
             value_checker: ValueChecker::new(),
         };
         g.load_custom_menus();
@@ -125,39 +127,37 @@ impl Game {
     }
 
     fn load_custom_menus(&mut self) {
-        if !self.custom_menus.is_empty() {
+        if self.custom_menu_manager.clear_menus(CustomMenuSource::Any) {
             debug!("Reloading custom menus");
-            self.custom_menus.clear();
         }
 
-        {
-            // load menu list menu separately
-            let mut parser = CustomMenuParser::new();
-            match parser.load_menu("../menus/menu_list.lua") {
-                Ok(menu) => self.custom_menus.push(menu),
-                Err(e) => error!("error loading menu_list menu: {e}"),
-            }
+        // macro to help
+        macro_rules! load_menu {
+            ($self:ident, $path: expr) => {{
+                let result;
+                #[cfg(any(debug_assertions, load_internal_menus_from_file))] {
+                    result = $self.custom_menu_manager.load_menu($path.to_owned(), CustomMenuSource::Game);
+                }
+                #[cfg(not(any(debug_assertions, load_internal_menus_from_file)))] {
+                    const BYTES:&[u8] = include_bytes!(concat!("../", $path));
+                    result = $self.custom_menu_manager.load_menu_from_bytes(BYTES, $path.to_owned(), CustomMenuSource::Game);
+                }
+
+                if let Err(e) = result {
+                    error!("error loading custom menu {}: {e}", $path);
+                }
+            }}
         }
 
-        for i in [
-            "../menus/main_menu.lua",
-            "../menus/beatmap_select_menu.lua",
-            "../menus/lobby_select.lua",
-            "../menus/lobby_menu.lua",
-        ] {
-            let mut parser = CustomMenuParser::new();
-            match parser.load_menu(i) {
-                Ok(menu) => self.custom_menus.push(menu),
-                Err(e) => error!("error loading custom menu: {i}: {e}"),
-            }
-        }
+        load_menu!(self, "../menus/menu_list.lua");
 
-        let menu_names = self.custom_menus
-            .iter()
-            .map(|m| m.id.clone())
-            .collect::<Vec<_>>();
-        self.values.set("global.menu_list", menu_names);
+        load_menu!(self, "../menus/main_menu.lua");
+        load_menu!(self, "../menus/beatmap_select_menu.lua");
+        load_menu!(self, "../menus/lobby_select.lua");
+        load_menu!(self, "../menus/lobby_menu.lua");
 
+
+        self.custom_menu_manager.update_values(&mut self.values);
         debug!("Done loading custom menus");
     }
 
@@ -1452,12 +1452,12 @@ impl Game {
     }
 
     async fn handle_custom_menu(&mut self, id: impl ToString) {
-        let id = id.to_string();
 
-        let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
-        if let Some(menu) = menu {
+        // let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
+        if let Some(menu) = self.custom_menu_manager.get_menu((id.to_string(), CustomMenuSource::Any)) {
             self.queue_state_change(GameState::SetMenu(Box::new(menu.build().await)))
         } else {
+            let id = id.to_string();
             match &*id {
                 "none" => {}
                 // "beatmap_select" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),

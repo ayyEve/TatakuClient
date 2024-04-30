@@ -98,10 +98,10 @@ impl CustomMenuMapAction {
 }
 impl<'lua> FromLua<'lua> for CustomMenuMapAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuMapAction");
+        #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenuMapAction");
         match lua_value {
             Value::Table(table) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is table");
+                #[cfg(feature="debug_custom_menus")] info!("Is table");
                 let id:String = table.get("id")?;
                 match &*id {
                     "play" => Ok(Self::Play),
@@ -136,7 +136,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                 }
             }
             Value::String(action_str) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is string");
+                #[cfg(feature="debug_custom_menus")] info!("Is string");
                 match action_str.to_str()? {
                     "play" => Ok(Self::Play),
                     "next" => Ok(Self::Next),

@@ -88,16 +88,16 @@ impl ElementDef {
 
 impl<'lua> FromLua<'lua> for ElementDef {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading ElementDef");
+        #[cfg(feature="debug_custom_menus")] info!("Reading ElementDef");
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: lua_value.type_name(), to: "ElementIdentifier", message: Some("Not a table".to_owned()) }) };
         
         
-        #[cfg(feature="custom_menu_debugging")] 
+        #[cfg(feature="debug_custom_menus")] 
         table.get::<_, Option<String>>("debug_name")?.ok_do(|name| debug!("Name: {name}"));
         
 
         let id:String = table.get("id")?;
-        #[cfg(feature="custom_menu_debugging")] info!("Got id: {id:?}");
+        #[cfg(feature="debug_custom_menus")] info!("Got id: {id:?}");
         let width = CustomMenuParser::parse_length(table.get("width")?);
         let height = CustomMenuParser::parse_length(table.get("height")?);
         let debug_color = table.get("debug_color")?;
@@ -282,7 +282,7 @@ impl Into<iced::Padding> for ElementPadding {
 }
 impl<'lua> FromLua<'lua> for ElementPadding {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading ElementPadding");
+        #[cfg(feature="debug_custom_menus")] info!("Reading ElementPadding");
         match lua_value {
             Value::Integer(i) => Ok(Self::Single(i as f32)),
             Value::Number(n) => Ok(Self::Single(n as f32)),
@@ -309,7 +309,7 @@ impl<'lua> FromLua<'lua> for ElementPadding {
 
 pub(super) fn parse_from_multiple<'lua, T:FromLua<'lua>>(table: &rlua::Table<'lua>, list: &[&'static str]) -> rlua::Result<Option<T>> {
     for i in list.iter() {
-        #[cfg(feature="custom_menu_debugging")] info!("Trying to read value {i}");
+        #[cfg(feature="debug_custom_menus")] info!("Trying to read value {i}");
         let Some(t) = table.get(*i)? else { continue };
         return Ok(Some(t))
     }

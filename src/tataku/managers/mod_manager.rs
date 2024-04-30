@@ -44,9 +44,9 @@ impl ModManager {
         default_mod_groups()
             .into_iter()
             .chain(info.get_mods().into_iter())
-            .map(|m|m.mods)
+            .map(|m| m.mods)
             .flatten()
-            .map(|m|(m.name.to_owned(), m))
+            .map(|m| (m.name.to_owned(), m))
             .collect()
     }
 
@@ -106,15 +106,15 @@ impl ModManager {
         let mod_groups = gamemode_info.get_mods();
         let mods = mod_groups
             .iter()
-            .map(|mg|&mg.mods)
+            .map(|mg| &mg.mods)
             .flatten()
-            .map(|m|(m.name, m))
+            .map(|m| (m.name, m))
             .collect::<HashMap<_,_>>();
 
         let mut list = self.mods
             .iter()
-            .filter_map(|id|mods.get(&**id))
-            .map(|m|m.short_name.to_owned())
+            .filter_map(|id| mods.get(&**id))
+            .map(|m| m.short_name.to_owned())
             .collect::<Vec<_>>();
 
 

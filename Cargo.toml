@@ -20,7 +20,9 @@ bass_audio = ["bass-rs"]
 debug_sliders = []
 debug_hitsounds = []
 debug_perf_rating = []
-custom_menu_debugging = []
+debug_custom_menus = []
+load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
+
 storyboards = []
 texture_arrays = []
 no_media_control = []

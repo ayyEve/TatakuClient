@@ -66,12 +66,12 @@ impl CustomElementText {
 }
 impl<'lua> FromLua<'lua> for CustomElementText {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading text");
+        #[cfg(feature="debug_custom_menus")] info!("Reading text");
 
         match lua_value {
             Value::String(s) => Ok(Self::Text(s.to_str()?.to_owned())),
             Value::Table(table) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is table");
+                #[cfg(feature="debug_custom_menus")] info!("Is table");
                 if let Some(calc) = table.get::<_, Option<String>>("calc")? {
                     Ok(Self::Calc(calc))
                 } else if let Some(locale) = table.get::<_, Option<String>>("locale")? {
@@ -83,7 +83,7 @@ impl<'lua> FromLua<'lua> for CustomElementText {
                 } else if let Some(value) = table.get::<_, Option<Vec<Self>>>("list")? {
                     Ok(Self::List(value, String::new()))
                 } else if let Some(first) = table.get::<_, Option<Self>>(0)? {
-                    #[cfg(feature="custom_menu_debugging")] info!("Is table/array");
+                    #[cfg(feature="debug_custom_menus")] info!("Is table/array");
 
                     let mut list = vec![first];
                     for i in 1.. {
@@ -97,7 +97,7 @@ impl<'lua> FromLua<'lua> for CustomElementText {
                 }
             }
             Value::Integer(n) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is Integer");
+                #[cfg(feature="debug_custom_menus")] info!("Is Integer");
                 let Some(char) = char::from_u32(n as u32) else {
                     return Err(FromLuaConversionError { 
                         from: "Integer", 

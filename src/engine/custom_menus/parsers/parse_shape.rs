@@ -2,7 +2,7 @@ use super::prelude::*;
 
 impl<'lua> FromLua<'lua> for Shape {
     fn from_lua(lua_value: Value<'lua>, _lua: LuaContext<'lua>) -> LuaResult<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading Shape");
+        #[cfg(feature="debug_custom_menus")] info!("Reading Shape");
         match lua_value {
             Value::Integer(i) => Ok(Self::Round(i as f32)),
             Value::Number(n) => Ok(Self::Round(n as f32)),

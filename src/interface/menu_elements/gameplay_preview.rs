@@ -285,7 +285,7 @@ impl GameplayPreview {
     }
 
     pub async fn fit_to_area(&mut self, bounds: Bounds) {
-        info!("fitting to area {bounds:?}");
+        // info!("fitting to area {bounds:?}");
         self.fit_to = Some(bounds);
 
         let Some(manager) = self.manager.as_mut() else { return };

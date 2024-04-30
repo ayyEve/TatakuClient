@@ -58,10 +58,10 @@ impl<'lua> FromLua<'lua> for CustomMenuMultiplayerAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         const THIS_TYPE: &str = "CustomMenuMultiplayerAction"; 
 
-        #[cfg(feature="custom_menu_debugging")] info!("Reading {THIS_TYPE}");
+        #[cfg(feature="debug_custom_menus")] info!("Reading {THIS_TYPE}");
         match lua_value {
             Value::String(str) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is String");
+                #[cfg(feature="debug_custom_menus")] info!("Is String");
                 match str.to_str()? {
                     "leave" => Ok(Self::Leave),
                     "quit" => Ok(Self::Quit),
@@ -73,7 +73,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMultiplayerAction {
                 }
             }
             Value::Table(table) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is Table");
+                #[cfg(feature="debug_custom_menus")] info!("Is Table");
                 
                 let id = table.get::<_, String>("id")?;
                 match &*id {

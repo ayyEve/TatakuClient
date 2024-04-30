@@ -28,12 +28,12 @@ impl ComponentDef {
 
 impl<'lua> FromLua<'lua> for ComponentDef {
     fn from_lua(lua_value: Value<'lua>, _lua: LuaContext<'lua>) -> Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading ComponentDef");
+        #[cfg(feature="debug_custom_menus")] info!("Reading ComponentDef");
         match lua_value {
             Value::Table(table) => {
                 
                 let id:String = table.get("id")?;
-                #[cfg(feature="custom_menu_debugging")] info!("Is table");
+                #[cfg(feature="debug_custom_menus")] info!("Is table");
                 match &*id {
                     
                     // "score_list" => Ok(Self::ScoreList),
@@ -44,7 +44,7 @@ impl<'lua> FromLua<'lua> for ComponentDef {
             }
 
             Value::String(s) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is string");
+                #[cfg(feature="debug_custom_menus")] info!("Is string");
                 match s.to_str().unwrap() {
                     // "beatmap_list" => Ok(Self::BeatmapList { filter_var: None }),
                     // "score_list" => Ok(Self::ScoreList),

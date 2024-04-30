@@ -37,10 +37,10 @@ impl CustomMenuSongAction {
 }
 impl<'lua> FromLua<'lua> for CustomMenuSongAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuSongAction");
+        #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenuSongAction");
         match lua_value {
             Value::Table(table) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is table");
+                #[cfg(feature="debug_custom_menus")] info!("Is table");
                 if let Some(seek) = table.get("seek")? {
                     Ok(Self::Seek(seek))
                 } else if let Some(pos) = table.get("position")?{
@@ -55,7 +55,7 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
             }
 
             Value::String(str) => {
-                #[cfg(feature="custom_menu_debugging")] info!("Is String");
+                #[cfg(feature="debug_custom_menus")] info!("Is String");
                 match str.to_str()? {
                     "play" => Ok(Self::Play),
                     "pause" => Ok(Self::Pause),

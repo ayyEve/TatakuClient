@@ -155,15 +155,15 @@ impl KeyHandlerEvent {
 use rlua::{ Value, Error::FromLuaConversionError, FromLua };
 impl<'lua> FromLua<'lua> for KeyHandlerEvent {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading KeyhandlerEvent");
+        #[cfg(feature="debug_custom_menus")] info!("Reading KeyhandlerEvent");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "KeyHandlerEvent", message: None }) }; 
         
-        #[cfg(feature="custom_menu_debugging")] info!("Reading key");
+        #[cfg(feature="debug_custom_menus")] info!("Reading key");
         let key = table.get("key")?;
         let key = serde_json::from_value(serde_json::Value::String(key))
             .map_err(|e| FromLuaConversionError { from: "String", to: "Key", message: Some(e.to_string()) })?;
 
-        #[cfg(feature="custom_menu_debugging")] info!("Reading mods");
+        #[cfg(feature="debug_custom_menus")] info!("Reading mods");
         let mut mods = KeyModifiers::default();
         if let Some(incoming_mods) = table.get::<_, Option<Vec<String>>>("mods")? {
             for m in incoming_mods { 

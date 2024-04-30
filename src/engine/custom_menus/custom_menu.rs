@@ -23,13 +23,13 @@ impl CustomMenu {
 }
 impl<'lua> rlua::FromLua<'lua> for CustomMenu {
     fn from_lua(lua_value: rlua::prelude::LuaValue<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::prelude::LuaResult<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("=======================");
-        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenu");
-        #[cfg(feature="custom_menu_debugging")] info!("=======================");
+        #[cfg(feature="debug_custom_menus")] info!("=======================");
+        #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenu");
+        #[cfg(feature="debug_custom_menus")] info!("=======================");
         
         let rlua::Value::Table(table) = lua_value else { return Err(rlua::Error::ToLuaConversionError { from: lua_value.type_name(), to: "CustomMenu", message: Some("Not a table".to_owned()) }) };
         let id = table.get("id")?;
-        #[cfg(feature="custom_menu_debugging")] info!("Got id '{id}'");
+        #[cfg(feature="debug_custom_menus")] info!("Got id '{id}'");
 
         Ok(Self {
             id,
@@ -110,5 +110,9 @@ pub struct CustomMenuEvent {
 
 pub enum CustomMenuEventType {
     SongEnd,
+    SongStart,
+
+
+    // ingame events
     
 }

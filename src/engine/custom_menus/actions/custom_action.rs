@@ -115,7 +115,7 @@ impl CustomMenuAction {
 }
 impl<'lua> FromLua<'lua> for CustomMenuAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomMenuAction");
+        #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenuAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "CustomMenuAction", message: Some("Not a table".to_owned()) }) };
         Self::from_table(&table)
     }

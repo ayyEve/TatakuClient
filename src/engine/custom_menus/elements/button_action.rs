@@ -86,12 +86,12 @@ impl ButtonAction {
 }
 impl<'lua> FromLua<'lua> for ButtonAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading ButtonAction");
+        #[cfg(feature="debug_custom_menus")] info!("Reading ButtonAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "ButtonAction", message: Some("Not a table".to_owned()) }) };
     
-        #[cfg(feature="custom_menu_debugging")] info!("Reading id...");
+        #[cfg(feature="debug_custom_menus")] info!("Reading id...");
         let id:String = table.get("id")?;
-        #[cfg(feature="custom_menu_debugging")] info!("Got id: {id}");
+        #[cfg(feature="debug_custom_menus")] info!("Got id: {id}");
 
         match &*id {
             "none" => Ok(Self::MenuAction(CustomMenuAction::None)),
@@ -159,7 +159,7 @@ impl CustomEventValueType {
 impl<'lua> FromLua<'lua> for CustomEventValueType {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         const THIS_TYPE:&str = "CustomEventValueType";
-        #[cfg(feature="custom_menu_debugging")] info!("Reading {THIS_TYPE}");
+        #[cfg(feature="debug_custom_menus")] info!("Reading {THIS_TYPE}");
         match lua_value {
             Value::Table(table) => Self::from_lua(&table),
             Value::String(s) => Ok(Self::Value(CustomElementValue::String(s.to_str()?.to_owned()))),
@@ -173,7 +173,7 @@ impl<'lua> FromLua<'lua> for CustomEventValueType {
 
 impl<'lua> FromLua<'lua> for CustomElementValue {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="custom_menu_debugging")] info!("Reading CustomElementValue");
+        #[cfg(feature="debug_custom_menus")] info!("Reading CustomElementValue");
 
         match &lua_value {
             Value::Boolean(b) => Ok(Self::Bool(*b)),
