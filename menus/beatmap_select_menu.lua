@@ -11,9 +11,9 @@ local scores_list = {
     element = button(
         col({ width = "fill", height = "shrink" }, {
             -- username and score
-            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", variable("_score.score_fmt")}), 16.0, WHITE) }),
+            row({ width = "fill" }, { text(text_list({variable("_score.username"), ": ", calc("display(_score.score)")}), 16.0, WHITE) }),
             -- combo, acc, mods
-            row({ width = "fill" }, { text(text_list({variable("_score.max_combo_fmt"), "x, ", variable("_score.accuracy_fmt"), " ", variable("_score.mods_short")}), 16.0, WHITE) }),
+            row({ width = "fill" }, { text(text_list({calc("display(_score.max_combo)"), "x, ", calc("display(_score.accuracy)"), "% ", calc("display(_score.mods)")}), 16.0, WHITE) }),
         }),
         game_action("view_score", { score_id = variable("_score.id") }),
         "fill",
@@ -63,7 +63,7 @@ local beatmap_list = {
                     col({ width = "fill_portion(10)", height = "shrink", spacing = 5.0, debug_name = "song text" }, {
                         button(
                             text(
-                                text_list({ variable("_map.display_mode"), " - ", variable("_map.version") }),
+                                text_list({ calc("display(_map.playmode)"), " - ", variable("_map.version") }),
                                 20, 
                                 WHITE
                             ),
@@ -113,9 +113,9 @@ local menu = {
                 font_size = 25.0,
 
                 placeholder = "Mode",
+                on_select = map_action("set_playmode", { playmode = passed_in() }),
 
                 options_key = "enums.playmodes",
-                options_display_key = "enums.playmodes_display",
                 selected_key = "global.playmode",
             },
             -- sort_by dropdown

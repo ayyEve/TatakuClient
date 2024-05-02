@@ -140,18 +140,20 @@ impl ScoreManager {
 
     fn update_values(&self, values: &mut ValueCollection, loaded: bool) {
         let list = self.current_scores.iter().enumerate().map(|(n, score)| {
-            let score:CustomElementValue = score.into();
+            let score:TatakuValue = score.into();
             let mut data = score.as_map_helper().unwrap();
-            data.set("id", n as u64);
+            data.set("id", TatakuVariable::new(n as u64));
 
-            data.finish()
+            TatakuVariable::new_game(data.finish())
         }).collect::<Vec<_>>();
 
-        values.set("score_list.loaded", loaded);
-        values.set("score_list.empty", list.is_empty());
-        values.set("score_list.scores", list);
+        let mut score_list = ValueCollectionMapHelper::default();
+        score_list.set("loaded", TatakuVariable::new_game(loaded));
+        score_list.set("empty", TatakuVariable::new_game(list.is_empty()));
+        score_list.set("scores", TatakuVariable::new_game(TatakuValue::List(list)));
+        values.set("score_list", TatakuVariable::new_game(score_list.finish()));
     }
-
+    
     pub async fn update(&mut self, values: &mut ValueCollection) {
         let did_update = 
             self.beatmap.check(values) // if the map changed
@@ -249,11 +251,11 @@ impl Display for ScoreRetreivalMethod {
         write!(f, "{self:?}")
     }
 }
-impl TryFrom<&CustomElementValue> for ScoreRetreivalMethod {
+impl TryFrom<&TatakuValue> for ScoreRetreivalMethod {
     type Error = String;
-    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
         match value {
-            CustomElementValue::String(s) => {
+            TatakuValue::String(s) => {
                 match &**s {
                     "Local" | "local" => Ok(Self::Local),
                     "LocalMods" | "local_mods" => Ok(Self::LocalMods),
@@ -267,7 +269,7 @@ impl TryFrom<&CustomElementValue> for ScoreRetreivalMethod {
                     other => Err(format!("invalid ScoreRetreivalMethod str: '{other}'"))
                 }
             }
-            CustomElementValue::U64(n) => {
+            TatakuValue::U64(n) => {
                 match *n {
                     0 => Ok(Self::Local),
                     1 => Ok(Self::LocalMods),
@@ -283,9 +285,9 @@ impl TryFrom<&CustomElementValue> for ScoreRetreivalMethod {
         }
     }
 }
-impl Into<CustomElementValue> for ScoreRetreivalMethod {
-    fn into(self) -> CustomElementValue {
-        CustomElementValue::String(format!("{self:?}"))
+impl Into<TatakuValue> for ScoreRetreivalMethod {
+    fn into(self) -> TatakuValue {
+        TatakuValue::String(format!("{self:?}"))
     }
 }
 

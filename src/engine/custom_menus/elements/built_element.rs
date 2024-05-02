@@ -33,7 +33,7 @@ impl Widgetable for BuiltElementDef {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
             ElementIdentifier::Button { padding,  action, ..} => {
                 Button::new(self.first_child_view(owner, values))
-                    .on_press_maybe(action.resolve(owner, values))
+                    .on_press_maybe(action.resolve(owner, values, None))
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -54,7 +54,7 @@ impl Widgetable for BuiltElementDef {
                 let variable = variable.clone();
 
                 iced_elements::TextInput::new(&placeholder, &value)
-                    .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), CustomElementValue::String(t)))))
+                    .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
                     .width(self.element.width)
                     .chain_bool(*is_password, |s| s.password())
                     .into_element()
@@ -99,7 +99,7 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::List { list_var, scrollable, variable, .. } => {
-                let Ok(CustomElementValue::List(list)) = values.get_raw(list_var).cloned() else { 
+                let Ok(TatakuValue::List(list)) = values.get_raw(list_var).map(|r| r.value.clone()) else { 
                     error!("list variable doesnt exist! {list_var}");
                     return EmptyElement.into_element() 
                 };
@@ -124,7 +124,7 @@ impl Widgetable for BuiltElementDef {
                     values.set(var.clone(), value);
                     children.push(ele.view(owner, values));
                 }
-                values.remove(&var);
+                // values.remove(&var);
 
                 if *scrollable {
                     make_scrollable(children, "a")
@@ -141,15 +141,17 @@ impl Widgetable for BuiltElementDef {
 
             ElementIdentifier::Dropdown { 
                 options_key, 
-                options_display_key, 
+                options_display_key: _, 
                 selected_key, 
+
+                on_select,
 
                 padding,
                 placeholder, 
                 font_size,
                 font
             } => {
-                let options_display_key = options_display_key.as_ref().unwrap_or(options_key);
+                // let options_display_key = options_display_key.as_ref().unwrap_or(options_key);
 
                 #[derive(Clone, Eq)]
                 struct Test {
@@ -167,20 +169,20 @@ impl Widgetable for BuiltElementDef {
                     }
                 }
 
-                let Ok(Some(list)) = values.get_raw(options_key).map(|s|s.list_maybe()) else { 
+                let Ok(Some(list)) = values.get_raw(options_key).map(|s| s.list_maybe()) else { 
                     error!("Value not exist for {options_key}");
                     return EmptyElement.into_element() 
                 };
-                let Ok(Some(display_list)) = values.get_raw(options_display_key).map(|s| s.list_maybe()) else { 
-                    error!("Value not exist for {options_display_key}");
-                    return EmptyElement.into_element()
-                };
+                // let Ok(Some(display_list)) = values.get_raw(options_display_key).map(|s| s.list_maybe()) else { 
+                //     error!("Value not exist for {options_display_key}");
+                //     return EmptyElement.into_element()
+                // };
                 let selected = values.get_string(selected_key).ok();
 
                 let list2 = list
                     .iter()
-                    .zip(display_list.iter())
-                    .map(|(id, display)| Test { id: id.as_string(), display: display.as_string()})
+                    // .zip(display_list.iter())
+                    .map(|id| Test { id: id.as_string(), display: id.get_display()} )
                     .collect::<Vec<_>>();
 
                 let selected = selected
@@ -188,10 +190,25 @@ impl Widgetable for BuiltElementDef {
                     .cloned();
                 let selected_key = selected_key.clone();
 
+                // println!("a: {on_select:?}");
+                let on_select:Box<dyn Fn(Test)->Message> = match on_select.clone() {
+                    Some(action) => Box::new(move |t: Test| 
+                        action.resolve(
+                            owner, 
+                            &mut ValueCollection::new(),
+                            Some(TatakuValue::String(t.id))
+                        )
+                        .unwrap_or_else(move || Message::new(owner, "", MessageType::Value(TatakuValue::None)))
+                        // Message::new(owner, format!("dropdown.{selected_key}"), MessageType),
+                    ),
+                    
+                    None => Box::new(move |t:Test| Message::new(owner, &selected_key, MessageType::Text(t.id)))
+                };
+
                 iced_elements::Dropdown::new(
                     list2, 
                     selected,
-                    move |t| Message::new(owner, &selected_key, MessageType::Text(t.id))
+                    on_select,
                 )
                 .width(self.element.width)
                 .chain_maybe(padding.as_ref(), |t, p| t.padding(*p))
@@ -216,7 +233,7 @@ impl Widgetable for BuiltElementDef {
         }
 
         // debug color
-        .chain_maybe(self.element.debug_color, |e, color| e.explain(color).into_element())
+        .chain_maybe(self.element.debug_color, move |e, color| e.explain(color).into_element())
     }
 }
 

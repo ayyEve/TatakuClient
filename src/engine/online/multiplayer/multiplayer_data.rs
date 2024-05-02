@@ -19,7 +19,7 @@ impl MultiplayerData {
 
     pub fn update_values(&self, values: &mut ValueCollection) {
         let lobbies = self.lobbies.values().collect::<Vec<_>>();
-        values.set("global.lobbies", lobbies);
+        values.set("global.lobbies", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, lobbies)));
     }
 }
 
@@ -88,47 +88,47 @@ impl DerefMut for CurrentLobbyInfo {
 }
 
 
-impl Into<CustomElementValue> for &CurrentLobbyInfo {
-    fn into(self) -> CustomElementValue {
-        let mut lobby_map = CustomElementMapHelper::default();
-        lobby_map.set("id", self.id);
-        lobby_map.set("name", self.name.clone());
-        lobby_map.set("host", self.host);
-        lobby_map.set("map", &self.current_beatmap);
-        lobby_map.set("state", format!("{:?}", self.state));
-        lobby_map.set("is_host", self.is_host());
+impl Into<TatakuValue> for &CurrentLobbyInfo {
+    fn into(self) -> TatakuValue {
+        let mut lobby_map = ValueCollectionMapHelper::default();
+        lobby_map.set("id", TatakuVariable::new(self.id));
+        lobby_map.set("name", TatakuVariable::new(self.name.clone()));
+        lobby_map.set("host", TatakuVariable::new(self.host));
+        lobby_map.set("map", TatakuVariable::new(&self.current_beatmap));
+        lobby_map.set("state", TatakuVariable::new(format!("{:?}", self.state)));
+        lobby_map.set("is_host", TatakuVariable::new(self.is_host()));
 
         let players = self.info.players.iter().map(|p| (p.user_id, p)).collect::<HashMap<_,_>>();
         let mut slots = Vec::new();
         for (id, slot) in self.info.slots.iter() {
-            let mut slot_map = CustomElementMapHelper::default();
-            slot_map.set("id", (*id) as u32);
+            let mut slot_map = ValueCollectionMapHelper::default();
+            slot_map.set("id", TatakuVariable::new((*id) as u32));
 
             // states
-            slot_map.set("empty", slot == &LobbySlot::Empty);
-            slot_map.set("filled", false);
-            slot_map.set("locked", slot == &LobbySlot::Locked);
+            slot_map.set("empty", TatakuVariable::new(slot == &LobbySlot::Empty));
+            slot_map.set("filled", TatakuVariable::new(false));
+            slot_map.set("locked", TatakuVariable::new(slot == &LobbySlot::Locked));
 
-            slot_map.set("status", format!("{slot:?}"));
-            slot_map.set("is_host", false);
+            slot_map.set("status", TatakuVariable::new(format!("{slot:?}")));
+            slot_map.set("is_host", TatakuVariable::new(false));
 
             if let LobbySlot::Filled { user } = slot { 
                 let username = self.player_usernames.get(user).cloned().unwrap_or(format!("[Loading...]"));
-                slot_map.set("filled", true);
-                slot_map.set("is_host", user == &self.host);
+                slot_map.set("filled", TatakuVariable::new(true));
+                slot_map.set("is_host", TatakuVariable::new(user == &self.host));
 
                 // this should always resolve
                 if let Some(player) = players.get(user) {
-                    let mut player_map = CustomElementMapHelper::default();
+                    let mut player_map = ValueCollectionMapHelper::default();
                     let mods = ModManager::new().with_mods(player.mods.clone()).with_speed(player.speed);
-                    player_map.set("mods", mods);
-                    player_map.set("username", username);
-                    player_map.set("user_id", *user);
+                    player_map.set("mods", TatakuVariable::new(mods));
+                    player_map.set("username", TatakuVariable::new(username));
+                    player_map.set("user_id", TatakuVariable::new(*user));
 
-                    player_map.set("no_map", player.state == LobbyUserState::NoMap);
-                    player_map.set("in_game", player.state == LobbyUserState::InGame);
-                    player_map.set("not_ready", player.state == LobbyUserState::NotReady);
-                    player_map.set("ready", player.state == LobbyUserState::Ready);
+                    player_map.set("no_map", TatakuVariable::new(player.state == LobbyUserState::NoMap));
+                    player_map.set("in_game", TatakuVariable::new(player.state == LobbyUserState::InGame));
+                    player_map.set("not_ready", TatakuVariable::new(player.state == LobbyUserState::NotReady));
+                    player_map.set("ready", TatakuVariable::new(player.state == LobbyUserState::Ready));
 
                     let status = match player.state {
                         LobbyUserState::NoMap => "No Map",
@@ -137,61 +137,61 @@ impl Into<CustomElementValue> for &CurrentLobbyInfo {
                         LobbyUserState::NotReady => "Not Ready",
                         LobbyUserState::Unknown => "???",
                     };
-                    player_map.set("status", status);
+                    player_map.set("status", TatakuVariable::new(status));
 
 
                     let player_map = player_map.finish();
                     if user == &self.our_user_id {
-                        lobby_map.set("our_player", player_map.clone());
+                        lobby_map.set("our_player", TatakuVariable::new(player_map.clone()));
                     }
 
-                    slot_map.set("player", player_map);
+                    slot_map.set("player", TatakuVariable::new(player_map));
                 }
             
                 if let Some(score) = self.player_scores.get(user) {
-                    slot_map.set("score", score);
+                    slot_map.set("score", TatakuVariable::new(score));
                 }
             }
 
-            slots.push((*id, slot_map.finish()));
+            slots.push((*id, TatakuVariable::new(slot_map.finish())));
         }
 
         slots.sort_by(|a, b| a.0.cmp(&b.0));
         let slots = slots.into_iter().map(|(_,a)| a).collect::<Vec<_>>();
 
-        lobby_map.set("slots", slots);
+        lobby_map.set("slots", TatakuVariable::new(TatakuValue::List(slots)));
         lobby_map.finish()
     }
 }
 
-impl From<&Option<LobbyBeatmap>> for CustomElementValue {
+impl From<&Option<LobbyBeatmap>> for TatakuValue {
     fn from(value: &Option<LobbyBeatmap>) -> Self {
-        let mut map = CustomElementMapHelper::default();
-        map.set("exists", false);
+        let mut map = ValueCollectionMapHelper::default();
+        map.set("exists", TatakuVariable::new(false));
         let Some(beatmap) = value.as_ref() else { return map.finish() };
 
-        map.set("exists", true);
-        map.set("hash", beatmap.hash);
-        map.set("playmode", &beatmap.mode);
-        map.set("title", &beatmap.title);
+        map.set("exists", TatakuVariable::new(true));
+        map.set("hash", TatakuVariable::new(beatmap.hash));
+        map.set("playmode", TatakuVariable::new(&beatmap.mode));
+        map.set("title", TatakuVariable::new(&beatmap.title));
         match &beatmap.map_game {
-            MapGame::Osu => map.set("game", "Osu"),
-            MapGame::Quaver => map.set("game", "Quaver"),
-            MapGame::Other(other) => map.set("game", other),
+            MapGame::Osu => map.set("game", TatakuVariable::new("Osu")),
+            MapGame::Quaver => map.set("game", TatakuVariable::new("Quaver")),
+            MapGame::Other(other) => map.set("game", TatakuVariable::new(other)),
         }
 
         map.finish()
     }
 }
 
-impl From<&LobbyInfo> for CustomElementValue {
+impl From<&LobbyInfo> for TatakuValue {
     fn from(value: &LobbyInfo) -> Self {
-        let mut map = CustomElementMapHelper::default();
-        map.set("id", value.id);
-        map.set("name", &value.name);
-        map.set("host", value.host);
-        map.set("state", format!("{:?}", value.state));
-        map.set("players", value.players.clone());
+        let mut map = ValueCollectionMapHelper::default();
+        map.set("id", TatakuVariable::new(value.id));
+        map.set("name", TatakuVariable::new(&value.name));
+        map.set("host", TatakuVariable::new(value.host));
+        map.set("state", TatakuVariable::new(format!("{:?}", value.state)));
+        map.set("players", TatakuVariable::new((TatakuVariableAccess::ReadOnly, value.players.clone())));
 
         // map.set("map", &value.current_beatmap);
         // map.set("players", &value.players);
@@ -199,7 +199,7 @@ impl From<&LobbyInfo> for CustomElementValue {
         map.finish()
     }
 }
-impl From<LobbyInfo> for CustomElementValue {
+impl From<LobbyInfo> for TatakuValue {
     fn from(value: LobbyInfo) -> Self {
         (&value).into()
     }

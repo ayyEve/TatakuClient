@@ -79,6 +79,10 @@ impl ElementDef {
                 events.iter_mut().for_each(|e| e.build());
             }
 
+            ElementIdentifier::Dropdown { on_select, .. } => {
+                on_select.ok_do_mut(|a| a.build())
+            }
+
             _ => {},
         }
 
@@ -229,6 +233,7 @@ impl<'lua> FromLua<'lua> for ElementDef {
                     options_key: table.get("options_key")?, 
                     options_display_key: table.get("options_display_key")?, 
                     selected_key: table.get("selected_key")?, 
+                    on_select: table.get("on_select")?, 
                     padding: table.get("padding")?, 
                     placeholder: table.get("placeholder")?, 
                     font_size: table.get("font_size")?, 

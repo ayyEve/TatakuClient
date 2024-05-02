@@ -23,7 +23,7 @@ pub struct MenuVisualization {
 
     cookie: Image,
     unload_cookie: bool,
-    initial_inner_radius: f32,
+    // initial_inner_radius: f32,
     current_inner_radius: f32,
 
     ripples: Vec<TransformGroup>,
@@ -64,7 +64,7 @@ impl MenuVisualization {
             unload_cookie,
 
             bar_height: 1.0,
-            initial_inner_radius,
+            // initial_inner_radius,
             current_inner_radius: initial_inner_radius,
 
             // ripple things

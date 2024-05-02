@@ -194,6 +194,16 @@ function variable(var)
     }
 end
 
+function calc(var) 
+    return {
+        calc = var
+    }
+end
+function passed_in() 
+    return {
+        passed_in = true
+    }
+end
 
 -- menu stuff
 -- menus = {}

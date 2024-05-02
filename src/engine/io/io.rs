@@ -186,8 +186,9 @@ pub async fn read_replay_path(path: impl AsRef<Path>) -> TatakuResult<Replay> {
 
 
 /// opens a folder in the os' file explorer
+#[allow(unused)]
 pub fn open_folder(path: String, selected_file: Option<String>) {
-    #[cfg(windows)] {
+    #[cfg(target_os="windows")] {
         let mut cmd = &mut std::process::Command::new("explorer.exe");
         let path = path.replace("/", "\\");
         
@@ -205,23 +206,29 @@ pub fn open_folder(path: String, selected_file: Option<String>) {
 
         // explorer.exe /select,"C:\Folder\subfolder\file.txt"
     }
-}
+
+    #[cfg(target_os="linux")] {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(path);
+        if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
+    }
+}   
 
 pub fn open_link(url: String) {
     info!("Opening link '{url}'");
-    #[cfg(windows)] {
+    #[cfg(target_os="windows")] {
         let mut cmd = std::process::Command::new("explorer");
         cmd.arg(url);
         if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
     }
 
-    #[cfg(linux)] {
+    #[cfg(target_os="linux")] {
         let mut cmd = std::process::Command::new("xdg-open");
         cmd.arg(url);
         if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }
     }
 
-    #[cfg(macos)] {
+    #[cfg(target_os="macos")] {
         let mut cmd = std::process::Command::new("open");
         cmd.arg(url);
         if let Err(e) = cmd.spawn() { error!("error running cmd: {e}") }

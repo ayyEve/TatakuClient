@@ -16,7 +16,7 @@ impl CustomElementCalc {
         Ok(Self(tokens))
     }
 
-    pub fn resolve(&self, values: &ValueCollection) -> ShuntingYardResult<SYStackValue> {
+    pub fn resolve<'a> (&self, values: &'a ValueCollection) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
         ShuntingYard::evaluate_rpn(&self.0, values)
     }
 }

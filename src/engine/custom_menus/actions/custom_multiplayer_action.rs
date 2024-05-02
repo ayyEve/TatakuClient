@@ -44,10 +44,10 @@ impl CustomMenuMultiplayerAction {
         }
     }
     
-    pub fn resolve(&mut self, values: &ValueCollection) {
+    pub fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         match self {
             Self::SlotAction(slot_action) => {
-                slot_action.resolve(values);
+                slot_action.resolve(values, passed_in);
             }
 
             _ => {}
@@ -117,11 +117,11 @@ impl CustomMultiplayerSlot {
         let slot = CustomEventValueType::from_lua(&slot_table)?;
 
         match &*id {
-            "show_slot_profile" => Ok(Self{
+            "show_slot_profile" => Ok(Self {
                 action: CustomMultiplayerSlotAction::ShowSlotProfile,
                 slot
             }),
-            "move_to_slot" => Ok(Self{
+            "move_to_slot" => Ok(Self {
                 action: CustomMultiplayerSlotAction::MoveToSlot,
                 slot,
             }),
@@ -129,7 +129,7 @@ impl CustomMultiplayerSlot {
                 action: CustomMultiplayerSlotAction::TransferHostToSlot,
                 slot,
             }),
-            "lock_slot" => Ok(Self{
+            "lock_slot" => Ok(Self {
                 action: CustomMultiplayerSlotAction::LockSlot,
                 slot,
             }),
@@ -137,7 +137,7 @@ impl CustomMultiplayerSlot {
                 action: CustomMultiplayerSlotAction::UnlockSlot,
                 slot,
             }),
-            "kick_slot" => Ok(Self{
+            "kick_slot" => Ok(Self {
                 action: CustomMultiplayerSlotAction::KickSlot,
                 slot,
             }),
@@ -146,8 +146,8 @@ impl CustomMultiplayerSlot {
         }
     }
 
-    fn resolve(&mut self, values: &ValueCollection) {
-        let Some(slot) = self.slot.resolve(values) else {
+    fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+        let Some(slot) = self.slot.resolve(values, passed_in) else {
             error!("Couldn't resolve slot: {:?} ({:?})", self.slot, self.action);
             return;
         };
@@ -157,7 +157,7 @@ impl CustomMultiplayerSlot {
             return;
         };
 
-        self.slot = CustomEventValueType::Value(CustomElementValue::U32(slot_num));
+        self.slot = CustomEventValueType::Value(TatakuVariable::new_any(TatakuValue::U32(slot_num)));
     }
 
     fn get_action(&self) -> Option<LobbySlotAction> {
@@ -169,6 +169,10 @@ impl CustomMultiplayerSlot {
             CustomEventValueType::Value(val) => val,
             CustomEventValueType::Variable(_) => {
                 error!("slot is variable?? ({:?})", self.action);
+                return None;
+            }
+            CustomEventValueType::PassedIn => {
+                error!("slot is passed in?? ({:?})", self.action);
                 return None;
             }
         };

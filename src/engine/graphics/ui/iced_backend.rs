@@ -36,12 +36,12 @@ impl backend::Text for IcedBackend {
         &self,
         contents: &str,
         size: f32,
-        line_height: iced::advanced::text::LineHeight,
+        _line_height: iced::advanced::text::LineHeight,
         font: iced::Font,
         bounds: iced::Size,
         _shaping: iced::advanced::text::Shaping,
         point: iced::Point,
-        nearest_only: bool,
+        _nearest_only: bool,
     ) -> Option<iced::advanced::text::Hit> {
         let bounds = Vector2::new(bounds.width, bounds.height);
         let mut ti = TextInput::new(Vector2::ZERO, bounds, "", contents, Font::from_iced(&font));

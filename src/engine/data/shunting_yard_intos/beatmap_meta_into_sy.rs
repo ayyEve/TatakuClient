@@ -1,21 +1,22 @@
 use crate::prelude::*;
 
-impl From<&BeatmapMeta> for CustomElementValue {
+impl From<&BeatmapMeta> for TatakuValue {
     fn from(beatmap: &BeatmapMeta) -> Self {
-        let mut map = CustomElementMapHelper::default();
-        map.set("artist", &beatmap.artist);
-        map.set("title", &beatmap.title);
-        map.set("creator", &beatmap.creator);
-        map.set("version", &beatmap.version);
-        map.set("playmode", &beatmap.mode);
-        map.set("game", format!("{:?}", beatmap.beatmap_type));
-        map.set("hash", &beatmap.beatmap_hash.to_string());
-        map.set("audio_path", &beatmap.audio_filename);
-        map.set("preview_time", beatmap.audio_preview);
-        map.set("image_filename", &beatmap.image_filename);
-        map.set("path", &beatmap.file_path);
-        map.set("display_mode", gamemode_display_name(&beatmap.mode).to_owned());
-        map.set("beatmap_type", &beatmap.beatmap_type);
+        let mut map = ValueCollectionMapHelper::default();
+
+        map.set("artist", TatakuVariable::new(&beatmap.artist));
+        map.set("title", TatakuVariable::new(&beatmap.title));
+        map.set("creator", TatakuVariable::new(&beatmap.creator));
+        map.set("version", TatakuVariable::new(&beatmap.version));
+        map.set("playmode", TatakuVariable::new(&beatmap.mode).display(gamemode_display_name(&beatmap.mode)));
+        map.set("game", TatakuVariable::new(format!("{:?}", beatmap.beatmap_type)));
+        map.set("hash", TatakuVariable::new(&beatmap.beatmap_hash.to_string()));
+        map.set("audio_path", TatakuVariable::new(&beatmap.audio_filename));
+        map.set("preview_time", TatakuVariable::new(beatmap.audio_preview));
+        map.set("image_filename", TatakuVariable::new(&beatmap.image_filename));
+        map.set("path", TatakuVariable::new(&beatmap.file_path));
+        // map.set("display_mode", TatakuVariable::new_readonly());
+        map.set("beatmap_type", TatakuVariable::new(&beatmap.beatmap_type));
         map.finish()
     }
 }
@@ -27,18 +28,18 @@ impl From<&BeatmapMeta> for CustomElementValue {
 //     }
 // }
 
-impl From<&BeatmapType> for CustomElementValue {
+impl From<&BeatmapType> for TatakuValue {
     fn from(value: &BeatmapType) -> Self {
         Self::String(format!("{value:?}"))
     }
 }
 
-impl TryInto<BeatmapType> for &CustomElementValue {
+impl TryInto<BeatmapType> for &TatakuValue {
     type Error = String;
     fn try_into(self) -> Result<BeatmapType, Self::Error> {
         match self {
 
-            CustomElementValue::String(s) => {
+            TatakuValue::String(s) => {
                 match &**s {
                     "Osu" | "osu" => Ok(BeatmapType::Osu),
                     "Quaver" | "quaver" => Ok(BeatmapType::Quaver),
@@ -49,7 +50,7 @@ impl TryInto<BeatmapType> for &CustomElementValue {
                 }
             }
 
-            CustomElementValue::U64(n) => {
+            TatakuValue::U64(n) => {
                 match *n {
                     0 => Ok(BeatmapType::Osu),
                     1 => Ok(BeatmapType::Quaver),

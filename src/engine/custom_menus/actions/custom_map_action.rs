@@ -26,6 +26,9 @@ pub enum CustomMenuMapAction {
     /// Select a specific map by hash
     SelectMap(CustomEventValueType),
 
+    /// Set the current playmode
+    SetPlaymode(CustomEventValueType),
+
     // TODO: document the difference between BeatmapAction::Next and BeatmapListAction::NextSet
     NextMap,
     NextSet,
@@ -33,7 +36,7 @@ pub enum CustomMenuMapAction {
     PrevSet,
 }
 impl CustomMenuMapAction {
-    pub fn into_action(self, values: &mut ValueCollection) -> Option<BeatmapAction> {
+    pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
             Self::Next => Some(BeatmapAction::Next),
@@ -46,35 +49,45 @@ impl CustomMenuMapAction {
             Self::PrevMap => Some(BeatmapAction::ListAction(BeatmapListAction::PrevMap)),
             Self::PrevSet => Some(BeatmapAction::ListAction(BeatmapListAction::PrevSet)),
 
+
+            Self::SetPlaymode(CustomEventValueType::None) => None,
+            Self::SetPlaymode(CustomEventValueType::Value(v)) => Some(BeatmapAction::SetPlaymode(v.as_string())),
+            Self::SetPlaymode(CustomEventValueType::Variable(var)) => {
+                let val = values.get_raw(&var).ok()?.as_string();
+                Some(BeatmapAction::SetPlaymode(val))
+            },
+            Self::SetPlaymode(CustomEventValueType::PassedIn) => {
+                let val = passed_in?.as_string();
+                Some(BeatmapAction::SetPlaymode(val))
+            }
+
             Self::SelectGroup(set) => {
-                match set {
-                    CustomEventValueType::None => return None,
-                    CustomEventValueType::Value(v) => {
-                        let num = v.as_u64().ok()?;
-                        Some(BeatmapAction::ListAction(BeatmapListAction::SelectSet(num as usize)))
-                    }
-                    CustomEventValueType::Variable(var) => {
-                        let num = values.get_raw(&var).ok()?.as_u64().ok()?;
-                        Some(BeatmapAction::ListAction(BeatmapListAction::SelectSet(num as usize)))
-                    }
-                }
+                // let num = match set {
+                //     CustomEventValueType::None => return None,
+                //     CustomEventValueType::Value(v) => v.as_u64().ok()?,
+                //     CustomEventValueType::Variable(var) => values.get_raw(&var).ok()?.as_u64().ok()?,
+                //     CustomEventValueType::PassedIn => passed_in?.as_u64().ok()?,
+                // };
+                let num = set.resolve(values, passed_in)?.as_u64().ok()?;
+                Some(BeatmapAction::ListAction(BeatmapListAction::SelectSet(num as usize)))
             }
         
             Self::SelectMap(map) => {
-                match map {
-                    CustomEventValueType::None => return None,
-                    CustomEventValueType::Value(v) => {
-                        let str = v.string_maybe()?;
-                        let hash = Md5Hash::try_from(str).ok()?;
-                        Some(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().use_preview_point(true)))
-                    }
-                    CustomEventValueType::Variable(var) => {
-                        let v = values.get_raw(&var).ok()?;
-                        let str = v.string_maybe()?;
-                        let hash = Md5Hash::try_from(str).ok()?;
-                        Some(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().use_preview_point(true)))
-                    }
-                }
+
+                let hash = Md5Hash::try_from(map.resolve(values, passed_in)?.string_maybe()?).ok()?;
+                // let hash = match map {
+                //     CustomEventValueType::None => return None,
+                //     CustomEventValueType::Value(v) => Md5Hash::try_from(v.string_maybe()?).ok()?,
+                //     CustomEventValueType::PassedIn => Md5Hash::try_from(passed_in?.string_maybe()?).ok()?,
+
+                //     CustomEventValueType::Variable(var) => {
+                //         let v = values.get_raw(&var).ok()?;
+                //         let str = v.string_maybe()?;
+                //         Md5Hash::try_from(str).ok()?
+                //     }
+                // };
+
+                Some(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().use_preview_point(true)))
             }
         }
     }
@@ -88,7 +101,7 @@ impl CustomMenuMapAction {
             _ => return,
         };
 
-        let Some(resolved) = thing.resolve(values) else {
+        let Some(resolved) = thing.resolve(values, None) else {
             error!("Couldn't resolve: {:?}", self);
             return;
         };
@@ -116,6 +129,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
 
                     "select_group" => Ok(Self::SelectGroup(table.get("group_id")?)),
                     "select_map" => Ok(Self::SelectMap(table.get("map_hash")?)),
+                    "set_playmode" => Ok(Self::SetPlaymode(table.get("playmode")?)),
 
 
                     "previous" | "prev" => {

@@ -139,7 +139,7 @@ impl KeyEventsHandler {
             .iter()
             .filter_map(|a| 
                 a.action
-                .resolve(owner, values)
+                .resolve(owner, values, None)
                 .map(|message| KeyEvent::new(a.key, a.mods, message))
             )
             .collect()

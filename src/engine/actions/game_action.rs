@@ -14,7 +14,7 @@ pub enum GameAction {
     WatchReplay(Box<Replay>),
 
     /// Update a value 
-    SetValue(String, CustomElementValue),
+    SetValue(String, TatakuValue),
 
     /// Open a score in the score menu
     ViewScore(IngameScore),

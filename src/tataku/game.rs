@@ -60,7 +60,7 @@ pub struct Game {
 
     pub values: ValueCollection,
 
-    value_checker: ValueChecker,
+    // value_checker: ValueChecker,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -117,7 +117,7 @@ impl Game {
             actions: ActionQueue::new(),
 
             values: ValueCollection::new(),
-            value_checker: ValueChecker::new(),
+            // value_checker: ValueChecker::new(),
         };
         g.load_custom_menus();
 
@@ -164,50 +164,91 @@ impl Game {
     /// initialize all the values in our value collection
     /// doubles as a list of available values because i know i'm going to forget to put them in the doc at some point
     fn init_value_collection(&mut self) {
+        use TatakuVariableAccess as Access;
+
         let values = &mut self.values;
 
         // game values
-        values.set("game.time", 0.0);
-        values.set("global.playmode", "osu");
-        values.set("global.playmode_display", "Osu");
-        values.set("global.playmode_actual", "osu"); // playmode with map's mode override
-        values.set("global.playmode_actual_display", "Osu");
-        values.set("global.mods", ModManager::new());
-        values.set("global.username", "guest");
-        values.set("global.user_id", 0u32);
-        values.set("global.new_map_hash", String::new());
-        values.set("global.lobbies", CustomElementValue::List(Vec::new()));
+        {
+            let mut game = ValueCollectionMapHelper::default();
+            game.set("time", TatakuVariable::new_game(0.0));
 
-        values.set("settings.sort_by", self.settings.last_sort_by);
-        values.set("settings.group_by", GroupBy::Set);
-        values.set("settings.score_method", self.settings.last_score_retreival_method);
+            values.set("game", TatakuVariable::new_game(game.finish()));
+        }
+
+        // global variables
+        {
+            let mut global = ValueCollectionMapHelper::default();
+
+            // playmode, we want this to be writable by the game only, since we also need to update the display value on change
+            global.set("playmode", TatakuVariable::new_game("osu").display("Osu"));
+
+            // playmode with map's mode override
+            global.set("playmode_actual", TatakuVariable::new_game("osu").display("Osu"));
+
+            global.set("mods", TatakuVariable::new_game(ModManager::new()));
+            global.set("username", TatakuVariable::new_game("Guest"));
+            global.set("user_id", TatakuVariable::new_game(0u32));
+            global.set("new_map_hash", TatakuVariable::new_game(String::new()));
+            global.set("lobbies", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
+            global.set("menu_list", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
+
+            values.set("global", TatakuVariable::new_game(global.finish()));
+        }
+
+        // settings
+        {
+            let mut settings = ValueCollectionMapHelper::default();
+            settings.set("sort_by", TatakuVariable::new_any(self.settings.last_sort_by));
+            settings.set("group_by", TatakuVariable::new_any(GroupBy::Set));
+            settings.set("score_method", TatakuVariable::new_any(self.settings.last_score_retreival_method));
+
+            values.set("settings", TatakuVariable::new_any(settings.finish()).display("Settings"));
+        }
 
         // enums (for use with dropdowns)
-        // technically just lists but whatever
-        values.set("enums.sort_by", SortBy::list());
-        values.set("enums.group_by", GroupBy::list());
-        values.set("enums.score_methods", ScoreRetreivalMethod::list());
-        values.set("enums.playmodes", AVAILABLE_PLAYMODES);
-        values.set("enums.playmodes_display", AVAILABLE_PLAYMODES.iter().map(|m| gamemode_display_name(*m)).collect::<Vec<_>>() );
+        {
+            // technically just lists but whatever
+            let mut enums = ValueCollectionMapHelper::default();
+            enums.set("sort_by", TatakuVariable::new((Access::ReadOnly, SortBy::list())));
+            enums.set("group_by", TatakuVariable::new((Access::ReadOnly, GroupBy::list())));
+            enums.set("score_methods", TatakuVariable::new((Access::ReadOnly, ScoreRetreivalMethod::list())));
+
+            let playmodes = AVAILABLE_PLAYMODES
+                .iter()
+                .map(|m| TatakuVariable::new(*m).display(gamemode_display_name(*m)))
+                .collect::<Vec<_>>();
+            enums.set("playmodes", TatakuVariable::new(TatakuValue::List(playmodes)));
+        
+            values.set("enums", TatakuVariable::new_game(enums.finish()));
+        }
 
         // song values
-        values.set("song.exists", false);
-        values.set("song.playing", false);
-        values.set("song.paused", false);
-        values.set("song.stopped", false);
-        values.set("song.position", 0.0);
+        {
+            let mut song = ValueCollectionMapHelper::default();
+            song.set("exists", TatakuVariable::new_game(false));
+            song.set("playing", TatakuVariable::new_game(false));
+            song.set("paused", TatakuVariable::new_game(false));
+            song.set("stopped", TatakuVariable::new_game(false));
+            song.set("position", TatakuVariable::new_game(0.0));
 
-        // map is set in BeatmapManager
-        values.set("new_map", CustomElementValue::None);
+            values.set("song", TatakuVariable::new_game(song.finish()));
+        }
+
+        values.set("beatmap_list", TatakuVariable::new_game(TatakuValue::Map(Default::default())));
+
+        // // map is set in BeatmapManager
+        // values.set("new_map", TatakuValue::None);
 
         // score values
-        values.set("score.score", 0.0);
-        values.set("score.combo", 0.0);
-        values.set("score.max_combo", 0.0);
-        values.set("score.accuracy", 0.0);
-        values.set("score.performance", 0.0);
-        values.set("score.placing", 0);
-        values.set("score.health", 0.0);
+        values.set("score", TatakuVariable::new_game(&Score::default()));
+        // values.set("score.score", 0.0);
+        // values.set("score.combo", 0.0);
+        // values.set("score.max_combo", 0.0);
+        // values.set("score.accuracy", 0.0);
+        // values.set("score.performance", 0.0);
+        // values.set("score.placing", 0);
+        // values.set("score.health", 0.0);
 
     }
 
@@ -372,7 +413,7 @@ impl Game {
                 {
                     let values = &mut self.values;
                     // values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
-                    values.set("settings.sort_by", self.settings.last_sort_by);
+                    values.update("settings.sort_by", TatakuVariableWriteSource::Game, self.settings.last_sort_by);
                     // values.set("settings.sort_by", format!("{:?}", self.settings.last_group_by));
                 }
             }
@@ -394,8 +435,8 @@ impl Game {
                 update_timer = now;
                 self.update().await;
 
-                // update values
-                self.value_checker.check(&mut self.values).await;
+                // // update values
+                // self.value_checker.check(&mut self.values).await;
                 
                 // re-update the time
                 set_time(game_start.elapsed());
@@ -430,7 +471,7 @@ impl Game {
 
     async fn update(&mut self) {
         let elapsed = self.game_start.as_millis();
-        self.values.set("game.time", elapsed);
+        self.values.update("game.time", TatakuVariableWriteSource::Game, elapsed);
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -585,10 +626,14 @@ impl Game {
         }
 
         // custom menu list
-        if keys_down.contains(&Key::M) && mods.ctrl {
+        if keys_down.contains(&Key::M) && mods.ctrl && !mods.shift {
             self.actions.push(MenuMenuAction::SetMenu("menu_list".to_owned()));
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
+        if keys_down.contains(&Key::M) && mods.ctrl && mods.shift {
+            warn!("{:#?}", self.values);
+        }
+
 
         // update any dialogs
         if keys_down.contains(&Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
@@ -609,16 +654,16 @@ impl Game {
         // update our global values
         {
             let values = &mut self.values;
-            values.set("song.position", self.song_manager.position());
+            values.update("song.position", TatakuVariableWriteSource::Game, self.song_manager.position());
 
             if let Some(audio) = self.song_manager.instance() {
-                values.set_multiple([
+                values.update_multiple(TatakuVariableWriteSource::Game, [
                     ("song.playing", audio.is_playing()),
                     ("song.paused", audio.is_paused()),
                     ("song.stopped", audio.is_stopped()),
                 ].into_iter());
             } else {
-                values.set_multiple([
+                values.update_multiple(TatakuVariableWriteSource::Game, [
                     ("song.playing", false),
                     ("song.paused", false),
                     ("song.stopped", false),
@@ -926,7 +971,7 @@ impl Game {
 
             //TODO: not run this all the time
             if manager.logged_in && manager.user_id > 0 {
-                self.values.set("global.user_id", manager.user_id);
+                self.values.update("global.user_id", TatakuVariableWriteSource::Game, manager.user_id);
             }
 
 
@@ -1174,29 +1219,24 @@ impl Game {
                     
                     BeatmapAction::SetPlaymode(new_mode) => {
                         // ensure lowercase
-                        let new_mode = new_mode.to_lowercase();
+                        let mut new_mode = new_mode.to_lowercase();
+                        // warn!("setting playmode: {new_mode}");
 
                         // ensure playmode exists
                         if !AVAILABLE_PLAYMODES.contains(&&*new_mode) { return warn!("Trying to set invalid playmode: {new_mode}") }
 
                         // set playmode and playmode display
-                        self.values.set("global.playmode", &new_mode);
-                        
-                        let Some(info) = get_gamemode_info(&new_mode) else { return };
-                        self.values.set("global.playmode_display", info.display_name());
+                        let Some(mut info) = get_gamemode_info(&new_mode) else { return };
+                        self.values.update_display("global.playmode", TatakuVariableWriteSource::Game, &new_mode, Some(info.display_name()));
 
                         // if we have a beatmap, get the override mode and update the playmode_actual values
                         if let Some(map) = &self.beatmap_manager.current_beatmap {
-                            let new_mode = map.check_mode_override(new_mode);
-                            self.values.set("global.playmode_actual", &new_mode);
-                            let Some(info) = get_gamemode_info(&new_mode) else { return };
-                            self.values.set("global.playmode_actual_display", info.display_name());
-                        } else {
-                            // otherwise, set them to the current playmode
-                            self.values.set("global.playmode_actual", &new_mode);
-                            self.values.set("global.playmode_actual_display", info.display_name());
+                            new_mode = map.check_mode_override(new_mode);
+                            let Some(info2) = get_gamemode_info(&new_mode) else { return };
+                            info = info2;
                         }
-
+                        
+                        self.values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &new_mode, Some(info.display_name()));
                     }
 
                     BeatmapAction::Random(use_preview) => {
@@ -1309,7 +1349,9 @@ impl Game {
                 }
             }
             TatakuAction::Game(GameAction::SetValue(key, value)) => {
-                self.values.set(key, value);
+                self.values.update_or_insert(&key, TatakuVariableWriteSource::Menu, value, || TatakuVariable::new_any(TatakuValue::None));
+                // self.values.try_insert(&key, || TatakuVariable::new(value, None, true, TatakuVariableAccess::Any));
+                // self.values.update(&key, TatakuVariableWriteSource::Menu, value);
             }
             TatakuAction::Game(GameAction::ViewScore(score)) => {
                 if let Some(beatmap) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) {
@@ -1325,7 +1367,7 @@ impl Game {
                 if let Some(score) = self.score_manager.get_score(id) {
                     self.handle_action(GameAction::ViewScore(score.clone())).await;
                 }
-            },
+            }
 
             // song actions
             TatakuAction::Song(song_action) => {
@@ -1369,14 +1411,14 @@ impl Game {
 
                 // update song state
                 if let Some(audio) = self.song_manager.instance() {
-                    self.values.set_multiple([
+                    self.values.update_multiple(TatakuVariableWriteSource::Game, [
                         ("song.exists", true),
                         ("song.playing", audio.is_playing()),
                         ("song.paused", audio.is_paused()),
                         ("song.stopped", audio.is_stopped()),
                     ].into_iter());
                 } else {
-                    self.values.set_multiple([
+                    self.values.update_multiple(TatakuVariableWriteSource::Game, [
                         ("song.exists", false),
                         ("song.playing", false),
                         ("song.paused", false),
@@ -1949,31 +1991,31 @@ impl MenuType {
 }
 
 
-/// really just a struct to avoid cluttering up game with too many SYValueHelpers
-struct ValueChecker {
-    gamemode: SyValueHelper,
-    beatmap: SyValueHelper,
-}
-impl ValueChecker {
-    pub fn new() -> Self {
-        Self {
-            gamemode: SyValueHelper::new("global.playmode"),
-            beatmap: SyValueHelper::new("map.hash"),
-        }
-    }
+// /// really just a struct to avoid cluttering up game with too many SYValueHelpers
+// struct ValueChecker {
+//     gamemode: SyValueHelper,
+//     beatmap: SyValueHelper,
+// }
+// impl ValueChecker {
+//     pub fn new() -> Self {
+//         Self {
+//             gamemode: SyValueHelper::new("global.playmode"),
+//             beatmap: SyValueHelper::new("map.hash"),
+//         }
+//     }
 
-    pub async fn check(&mut self, values: &mut ValueCollection) {
-        if self.gamemode.check(values) {
-            if let Some(mode) = self.gamemode.string_maybe() {
-                // GlobalValueManager::update::<CurrentPlaymode>(Arc::new(CurrentPlaymode(mode.clone())));
+//     pub async fn check(&mut self, values: &mut ValueCollection) {
+//         // if self.gamemode.check(values) {
+//         //     if let Some(mode) = self.gamemode.string_maybe() {
+//         //         // GlobalValueManager::update::<CurrentPlaymode>(Arc::new(CurrentPlaymode(mode.clone())));
 
-                // update the display value
-                let display = gamemode_display_name(mode).to_owned();
-                values.set("global.playmode_display", display);
+//         //         // update the display value
+//         //         let display = gamemode_display_name(mode).to_owned();
+//         //         values.set("global.playmode_display", display);
 
-                // TODO!! also update global.playmode_actual
-            }
-        }
-    }
+//         //         // TODO!! also update global.playmode_actual
+//         //     }
+//         // }
+//     }
 
-}
+// }

@@ -11,8 +11,10 @@ impl CustomMenuParser {
     pub fn new() -> Self {
         let lua =  Lua::new();
         let res:Result<(), Error> = lua.context(|lua| {
-            #[cfg(feature="debug_custom_menus")] 
-            lua.load(LUA_INIT).set_name("lua_init")?.exec()?;
+            #[cfg(feature="debug_custom_menus")] {
+                let bytes = std::fs::read("../menus/init.lua").unwrap();
+                lua.load(&bytes).set_name("lua_init")?.exec()?;
+            }
             #[cfg(not(feature="debug_custom_menus"))]
             lua.load(LUA_INIT).set_name("lua_init")?.exec()?;
             Ok(())

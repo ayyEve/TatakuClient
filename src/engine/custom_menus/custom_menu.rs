@@ -72,6 +72,7 @@ impl AsyncMenu for BuiltCustomMenu {
         self.actions.take()
     }
 
+    // #[async_recursion]
     async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
 
         for i in self.components.iter_mut() {
@@ -85,18 +86,25 @@ impl AsyncMenu for BuiltCustomMenu {
         match message.message_type {
             MessageType::Text(incoming) => {
                 let Some(variable) = message.tag.as_string() else { return };
-                values.set(variable, incoming);
+                values.update_or_insert(&variable, TatakuVariableWriteSource::Menu, incoming, || TatakuVariable::new_any(TatakuValue::None));
+
+                // values.set(variable, incoming);
             }
             // MessageType::CustomMenuAction(AddDialog(dialog)) => {}
             // MessageType::CustomMenuAction(SetMenu(menu)) => self.queued_actions.push(MenuMenuAction::SetMenuCustom(menu)),
 
-            MessageType::CustomMenuAction(action) => {
-                if let Some(action) = action.into_action(values) {
+            MessageType::CustomMenuAction(action, passed_in) => {
+                if let Some(action) = action.into_action(values, passed_in) {
                     self.actions.push(action)
                 }
             }
+            MessageType::Multi(actions) => {
+                for i in actions {
+                    self.handle_message(i, values).await;
+                }
+            }
 
-            _ => {}
+            other => warn!("unhandled message: {other:?}"),
         }
     }
 }

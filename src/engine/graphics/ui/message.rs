@@ -121,7 +121,7 @@ macro_rules! message_type {
     ($a1:ident, $a2:ident, $t:ident, $t2:ty, $t3: ident) => {
         pub fn $a1(self) -> Option<$t2> {
             let Self::$t(v) = self else { 
-                let Self::Value(CustomElementValue::$t3(v)) = self else { return None };
+                let Self::Value(TatakuValue::$t3(v)) = self else { return None };
                 return Some(v);
             };
             Some(v)
@@ -129,7 +129,7 @@ macro_rules! message_type {
 
         pub fn $a2(&self) -> Option<&$t2> {
             let Self::$t(v) = self else { 
-                let Self::Value(CustomElementValue::$t3(v)) = self else { return None };
+                let Self::Value(TatakuValue::$t3(v)) = self else { return None };
                 return Some(v);
             };
             Some(v)
@@ -147,10 +147,11 @@ pub enum MessageType {
     Toggle(bool),
     Dropdown(String),
     
-    Value(CustomElementValue),
+    Value(TatakuValue),
+    Multi(Vec<Message>),
 
     Custom(Arc<dyn std::any::Any + Send + Sync>),
-    CustomMenuAction(CustomMenuAction),
+    CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
 }
 #[allow(unused)]
 impl MessageType {
@@ -160,15 +161,15 @@ impl MessageType {
     message_type!(as_float, as_float_ref, Float, f32, F32);
     message_type!(as_toggle, as_toggle_ref, Toggle, bool, Bool);
     message_type!(as_dropdown, as_dropdown_ref, Dropdown, String, String);
-    message_type!(as_value, as_value_ref, Value, CustomElementValue);
+    message_type!(as_value, as_value_ref, Value, TatakuValue);
 
     pub fn as_number2(&self) -> Option<usize> {
         if let Some(num) = self.as_number_ref() { return Some(*num) }
 
         let Some(val) = self.as_value_ref() else { return None };
         match val {
-            CustomElementValue::U32(n) => Some(*n as usize),
-            CustomElementValue::U64(n) => Some(*n as usize),
+            TatakuValue::U32(n) => Some(*n as usize),
+            TatakuValue::U64(n) => Some(*n as usize),
 
             _ => None
         }

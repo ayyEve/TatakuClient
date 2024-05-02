@@ -77,6 +77,8 @@ pub enum ElementIdentifier {
         options_key: String,
         options_display_key: Option<String>,
         selected_key: String,
+        
+        on_select: Option<ButtonAction>,
 
         padding: Option<ElementPadding>,
         placeholder: Option<String>,
@@ -124,6 +126,7 @@ impl ElementCondition {
                     Ok(false) => ElementResolve::False,
                     Err(e) => {
                         error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
+                        println!("");
                         ElementResolve::Error(e)
                     }
                 }

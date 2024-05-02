@@ -79,11 +79,11 @@ impl IngameScore {
 
 }
 
-impl From<&IngameScore> for CustomElementValue {
+impl From<&IngameScore> for TatakuValue {
     fn from(score: &IngameScore) -> Self {
 
         // let the score parser handle most of the work
-        let score:CustomElementValue = (&score.score).into();
+        let score:TatakuValue = (&score.score).into();
 
         // TODO: add more things?
 

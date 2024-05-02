@@ -44,40 +44,40 @@ impl ButtonAction {
         }
     }
 
-    pub fn resolve(&self, owner: MessageOwner, values: &mut ValueCollection) -> Option<Message> {
+    pub fn resolve(&self, owner: MessageOwner, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<Message> {
         match self {
             Self::MenuAction(action) => {
                 if let CustomMenuAction::None = &action { return None };
 
                 let mut action = action.clone();
                 action.resolve(values);
-                let message = MessageType::CustomMenuAction(action);
+                let message = MessageType::CustomMenuAction(action, passed_in);
                 Some(Message::new(owner, "", message))
             }
             
             Self::SetValue { key, value } => {
-                let Some(val) = value.resolve(values) else {
+                let Some(val) = value.resolve(values, passed_in.clone()) else {
                     warn!("Key doesn't exist: {key}");
                     return None;
                 };
 
-                let action = CustomMenuAction::SetValue(key.clone(), val);
-                Some(Message::new(owner, "", MessageType::CustomMenuAction(action)))
+                let action = CustomMenuAction::SetValue(key.clone(), val.value);
+                Some(Message::new(owner, "", MessageType::CustomMenuAction(action, passed_in)))
             }
             Self::CustomAction { tag, value } => {
-                let Some(val) = value.resolve(values) else {
+                let Some(val) = value.resolve(values, passed_in) else {
                     warn!("Tag doesn't exist: {tag}");
                     return None;
                 };
 
-                Some(Message::new(owner, tag, MessageType::Value(val)))
+                Some(Message::new(owner, tag, MessageType::Value(val.value)))
             }
             Self::Conditional { cond, if_true, if_false } => {
                 match cond.resolve(values) {
                     ElementResolve::Failed | ElementResolve::Error(_) => None,
                     ElementResolve::Unbuilt(_) => unreachable!("conditional element not built!"),
-                    ElementResolve::True => if_true.resolve(owner, values),
-                    ElementResolve::False => if_false.as_ref().and_then(|f| f.resolve(owner, values)),
+                    ElementResolve::True => if_true.resolve(owner, values, passed_in),
+                    ElementResolve::False => if_false.as_ref().and_then(|f| f.resolve(owner, values, passed_in)),
                 }
             }
 
@@ -122,14 +122,17 @@ pub enum CustomEventValueType {
     None,
 
     /// Static value
-    Value(CustomElementValue),
+    Value(TatakuVariable),
 
     /// Get from a variable
     Variable(String),
+
+    /// Get value from a passed in value
+    PassedIn,
 }
 
 impl CustomEventValueType {
-    pub fn resolve(&self, values: &ValueCollection) -> Option<CustomElementValue> {
+    pub fn resolve(&self, values: &ValueCollection, passed_in: Option<TatakuValue>) -> Option<TatakuVariable> {
         match self {
             Self::None => None,
             Self::Value(val) => Some(val.clone()),
@@ -141,14 +144,17 @@ impl CustomEventValueType {
                 
                 val.cloned()
             }
+            Self::PassedIn => passed_in.map(|v| TatakuVariable::new(v))
         }
     }
 
     pub fn from_lua(table: &Table) -> rlua::Result<Self> {
-        if let Some(value) = table.get::<_, Option<CustomElementValue>>("value")? {
-            Ok(Self::Value(value))
+        if let Some(value) = table.get::<_, Option<TatakuValue>>("value")? {
+            Ok(Self::Value(TatakuVariable::new_any(value)))
         } else if let Some(var) = table.get::<_, Option<String>>("variable")? {
             Ok(Self::Variable(var))
+        } else if let Some(_) = table.get::<_, Option<bool>>("passed_in")?{
+            Ok(Self::PassedIn)
         } else { 
             Ok(Self::None)
             // Err(FromLuaConversionError { from: "table", to: "CustomEventValueType", message: Some("not value or variable".to_owned()) })
@@ -162,22 +168,22 @@ impl<'lua> FromLua<'lua> for CustomEventValueType {
         #[cfg(feature="debug_custom_menus")] info!("Reading {THIS_TYPE}");
         match lua_value {
             Value::Table(table) => Self::from_lua(&table),
-            Value::String(s) => Ok(Self::Value(CustomElementValue::String(s.to_str()?.to_owned()))),
-            Value::Number(n) => Ok(Self::Value(CustomElementValue::F32(n as f32))),
-            Value::Integer(n) => Ok(Self::Value(CustomElementValue::U64(n as u64))),
+            Value::String(s) => Ok(Self::Value(TatakuVariable::new_any(TatakuValue::String(s.to_str()?.to_owned())))),
+            Value::Number(n) => Ok(Self::Value(TatakuVariable::new_any(TatakuValue::F32(n as f32)))),
+            Value::Integer(n) => Ok(Self::Value(TatakuVariable::new_any(TatakuValue::U64(n as u64)))),
 
             other =>  Err(FromLuaConversionError { from: other.type_name(), to: THIS_TYPE, message: Some(format!("Bad type")) })
         }
     }
 }
 
-impl<'lua> FromLua<'lua> for CustomElementValue {
+impl<'lua> FromLua<'lua> for TatakuValue {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading CustomElementValue");
 
         match &lua_value {
             Value::Boolean(b) => Ok(Self::Bool(*b)),
-            Value::Integer(i) => Ok(Self::I64(*i)),
+            // Value::Integer(i) => Ok(Self::I64(*i)),
             Value::Number(f) => Ok(Self::F32(*f as f32)),
             Value::String(s) => Ok(Self::String(s.to_str()?.to_owned())),
             // Value::Table(table) => {

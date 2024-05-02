@@ -38,9 +38,9 @@ pub fn calc_acc(score: &Score) -> f64 {
         .normal_or(1.0)
 }
 
-pub fn gamemode_display_name(playmode: &str) -> &str {
+pub fn gamemode_display_name(playmode: &str) -> &'static str {
     get_gamemode_info(playmode)
-        .map(|i|i.display_name())
+        .map(|i| i.display_name())
         .unwrap_or("Unknown")
 }
 

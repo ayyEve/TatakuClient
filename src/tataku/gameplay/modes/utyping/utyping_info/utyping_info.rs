@@ -5,7 +5,7 @@ pub struct UTypingGameInfo;
 #[async_trait]
 impl GameModeInfo for UTypingGameInfo {
     fn new() -> Self { Self }
-    fn display_name(&self) -> &str { "UTyping" }
+    fn display_name(&self) -> &'static str { "UTyping" }
 
     fn calc_acc(&self, score: &Score) -> f64 {
         let x100 = score.judgments.get("x100").copy_or_default() as f64;

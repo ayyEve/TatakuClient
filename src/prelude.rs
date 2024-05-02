@@ -1,4 +1,5 @@
 // std imports
+pub use std::borrow::Cow;
 pub use std::fmt::Display;
 pub use std::time::Duration;
 pub use std::f32::consts::PI;

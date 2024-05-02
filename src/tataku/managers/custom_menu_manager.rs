@@ -57,7 +57,13 @@ impl CustomMenuManager {
             .iter()
             .map(|(_src, m)| m.id.clone())
             .collect::<Vec<_>>();
-        values.set("global.menu_list", menu_names);
+
+        values.update_or_insert(
+            "global.menu_list", 
+            TatakuVariableWriteSource::Game, 
+            (TatakuVariableAccess::GameOnly, menu_names),
+            || TatakuVariable::new_game(TatakuValue::None)
+        );
     }
 }
 

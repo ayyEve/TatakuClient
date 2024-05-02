@@ -252,7 +252,7 @@ impl BeatmapManager {
 
         // update shunting yard values
         {
-            let map: CustomElementValue = beatmap.deref().into();
+            let map: TatakuValue = beatmap.deref().into();
             let mut map = map.as_map_helper().unwrap();
 
             let mode = values.get_string("global.playmode").unwrap_or("osu".to_owned());
@@ -261,21 +261,22 @@ impl BeatmapManager {
 
             let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
             let diff = get_diff(&beatmap, &actual_mode, &mods);
-            map.set("diff_rating", diff.unwrap_or(0.0));
+            map.set("diff_rating", TatakuVariable::new_game(diff.unwrap_or(0.0)));
 
             if let Some(info) = get_gamemode_info(&mode) { 
                 let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
                 let diff_info = info.get_diff_string(&diff_meta, &mods);
-                map.set("diff_info", diff_info);
+                map.set("diff_info", TatakuVariable::new_game(diff_info));
             } else {
-                map.set("diff_info", String::new());
+                map.set("diff_info", TatakuVariable::new_game(String::new()));
             }
 
-            values.set("map", map.finish());
+            values.set("map", TatakuVariable::new_game(map.finish()));
+            let display = gamemode_display_name(&actual_mode);
 
-            
-            values.set("global.playmode_actual", &actual_mode);
-            values.set("global.playmode_actual_display", gamemode_display_name(&actual_mode));
+            values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &actual_mode, Some(display));
+            // values.set("global.playmode_actual", &actual_mode);
+            // values.set("global.playmode_actual_display", );
         }
 
         // play song
@@ -429,7 +430,7 @@ impl BeatmapManager {
         let filter_text = self.filter.to_ascii_lowercase();
         let filters = filter_text.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>();
 
-        let Ok(Ok(mods)) = values.get_raw("global.mods").map(ModManager::try_from) else { return };
+        let Ok(Ok(mods)) = values.get_raw("global.mods").map(TatakuVariable::deref).map(ModManager::try_from) else { return };
         let Ok(mode) = values.get_string("global.playmode") else { return }; 
 
         for group in self.unfiltered_groups.iter() {
@@ -498,13 +499,16 @@ impl BeatmapManager {
 
 
     pub fn update_values(&mut self, values: &mut ValueCollection, current_hash: Md5Hash) {
-        let filtered_groups = CustomElementValue::List(
-            self.filtered_groups
-                .iter()
-                .map(|group| group.into_map(current_hash)).collect()
+        let filtered_groups = self.filtered_groups
+            .iter()
+            .map(|group| TatakuVariable::new_game(group.into_map(current_hash))).collect();
+        
+        values.update_or_insert(
+            "beatmap_list.groups",
+            TatakuVariableWriteSource::Game,
+            TatakuValue::List(filtered_groups),
+            || TatakuVariable::new_game(TatakuValue::None)
         );
-
-        values.set("beatmap_list.groups", filtered_groups);
     }
 
     pub fn select_set(&mut self, set_num: usize, values: &mut ValueCollection) {
@@ -565,18 +569,18 @@ impl GroupBy {
         ]
     }
 }
-impl TryFrom<&CustomElementValue> for GroupBy {
+impl TryFrom<&TatakuValue> for GroupBy {
     type Error = String;
-    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
         match value {
-            CustomElementValue::String(s) => {
+            TatakuValue::String(s) => {
                 match &**s {
                     "Set" | "set" => Ok(Self::Set),
                     "Collections" | "collections" => Ok(Self::Collections),
                     other => Err(format!("invalid GroupBy str: '{other}'"))
                 }
             }
-            CustomElementValue::U64(n) => {
+            TatakuValue::U64(n) => {
                 match *n {
                     0 => Ok(Self::Set),
                     1 => Ok(Self::Collections),
@@ -588,9 +592,9 @@ impl TryFrom<&CustomElementValue> for GroupBy {
         }
     }
 }
-impl Into<CustomElementValue> for GroupBy {
-    fn into(self) -> CustomElementValue {
-        CustomElementValue::String(format!("{self:?}"))
+impl Into<TatakuValue> for GroupBy {
+    fn into(self) -> TatakuValue {
+        TatakuValue::String(format!("{self:?}"))
     }
 }
 
@@ -661,26 +665,26 @@ impl BeatmapListGroup {
         } 
         None
     }
-    pub fn into_map(&self, current_hash: Md5Hash) -> CustomElementValue {
+    pub fn into_map(&self, current_hash: Md5Hash) -> TatakuValue {
         let mut is_selected = false;
         
-        let maps:Vec<CustomElementValue> = self.maps.iter().map(|beatmap| {
+        let maps:Vec<TatakuValue> = self.maps.iter().map(|beatmap| {
             let map_is_selected = beatmap.comp_hash(current_hash);
             if map_is_selected { is_selected = true }
 
-            let map:CustomElementValue = beatmap.deref().deref().into();
+            let map:TatakuValue = beatmap.deref().deref().into();
             let mut map = map.as_map_helper().unwrap();
             
-            map.set("diff_rating", beatmap.diff.unwrap_or_default());
-            map.set("is_selected", map_is_selected);
+            map.set("diff_rating", TatakuVariable::new(beatmap.diff.unwrap_or_default()));
+            map.set("is_selected", TatakuVariable::new(map_is_selected));
             map.finish()
         }).collect();
 
-        let mut group = CustomElementMapHelper::default();
-        group.set("maps", maps);
-        group.set("selected", is_selected);
-        group.set("name", self.name.clone());
-        group.set("id", self.number as u64);
+        let mut group = ValueCollectionMapHelper::default();
+        group.set("maps", TatakuVariable::new((TatakuVariableAccess::GameOnly, maps)));
+        group.set("selected", TatakuVariable::new_game(is_selected));
+        group.set("name", TatakuVariable::new(&self.name));
+        group.set("id", TatakuVariable::new(self.number as u64));
         
         group.finish()
     }

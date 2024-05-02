@@ -76,37 +76,25 @@ impl ShuntingYard {
         Ok(output_queue)
     }
 
-    pub fn evaluate_rpn(rpn: &[ShuntingYardToken], values: &ValueCollection) -> ShuntingYardResult<SYStackValue> {
+    pub fn evaluate_rpn<'a>(rpn: &[ShuntingYardToken], values: &'a ValueCollection) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
         let mut stack = Vec::new();
 
         for token in rpn {
             match token {
-                ShuntingYardToken::Number(num) => stack.push(SYStackValue::Number(*num)),
-
-                ShuntingYardToken::Variable(var) => stack.push(
-                    // try getting a number first
-                    if let Ok(num) = values.get_f32(&var) {
-                        SYStackValue::Number(num)
-                    } else { 
-                        // otherwise try a bool or string
-                        match values.get_raw(&var)? {
-                            CustomElementValue::Bool(b) => SYStackValue::Bool(*b),
-                            CustomElementValue::String(s) => SYStackValue::String(s.clone()),
-                            _ => return Err(ShuntingYardError::InvalidType(var.to_string()))
-                        }
-                    }
-                ),
+                ShuntingYardToken::Number(num) => stack.push(Cow::Owned(TatakuVariable::new_any(*num))),
+                ShuntingYardToken::Variable(var) => stack.push(Cow::Borrowed(values.get_raw(var)?)),
 
                 ShuntingYardToken::Function(func) => {
                     let n = stack.pop().ok_or(ShuntingYardError::MissingFunctionArgument(func.clone()))?;
-                    let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
-                    
-                    match &**func {
-                        "abs" => stack.push(SYStackValue::Number(n.abs())),
-                        "sin" => stack.push(SYStackValue::Number(n.sin())),
-                        "cos" => stack.push(SYStackValue::Number(n.cos())),
-                        "tan" => stack.push(SYStackValue::Number(n.tan())),
+                    // let SYStackValue::Number(n) = n else { return Err(ShuntingYardError::NumberIsntANumber(String::new())) };
 
+                    match &**func {
+                        "abs" => stack.push(MathFunction::Abs.run(n)?),
+                        "sin" => stack.push(MathFunction::Sin.run(n)?),
+                        "cos" => stack.push(MathFunction::Cos.run(n)?),
+                        "tan" => stack.push(MathFunction::Tan.run(n)?),
+                        "display" => stack.push(Cow::Owned(TatakuVariable::new_any(n.get_display()))),
+                        
                         other => return Err(ShuntingYardError::InvalidFunction(other.to_string())),
                     }
                 }
@@ -115,7 +103,7 @@ impl ShuntingYard {
                     let right = stack.pop().ok_or(ShuntingYardError::MissingRightSide(*op))?;
                     // "Not" is a special case, we only care about the right side
                     if let SYOperator::Not = op {
-                        stack.push(op.perform(right, SYStackValue::Number(0.0)));
+                        stack.push(op.perform(right, Cow::Owned(TatakuVariable::new_any(TatakuValue::None))));
                         continue;
                     }
 
@@ -234,9 +222,11 @@ impl SYOperator {
         }
     }
 
-    fn perform(&self, right: SYStackValue, left: SYStackValue) -> SYStackValue {
+    fn perform<'a> (&self, right: Cow<'a, TatakuVariable>, left: Cow<'a, TatakuVariable>) -> Cow<'a, TatakuVariable> {
         // debug!("");
         // debug!("perform: {left:?} {self:?} {right:?}");
+        let left = &left.value;
+        let right = &right.value;
 
         let res = match self {
             // math
@@ -244,25 +234,25 @@ impl SYOperator {
             Self::Sub => left - right,
             Self::Mul => left * right,
             Self::Div => left / right,
-            Self::Pow => left.powf(right),
+            Self::Pow => TatakuValue::F32(left.as_f32().unwrap().powf(right.as_f32().unwrap())),
 
             // math -> bool
-            Self::Eq => SYStackValue::Bool(left == right), // if left == right { 1.0 } else { 0.0 },
-            Self::NotEq => SYStackValue::Bool(left != right), // if left != right { 1.0 } else { 0.0 },
-            Self::Less => SYStackValue::Bool(left < right), // if left < right { 1.0 } else { 0.0 },
-            Self::LessEq => SYStackValue::Bool(left <= right), // if left <= right { 1.0 } else { 0.0 },
-            Self::Greater => SYStackValue::Bool(left > right), // if left > right { 1.0 } else { 0.0 },
-            Self::GreaterEq => SYStackValue::Bool(left >= right), // if left >= right { 1.0 } else { 0.0 },
+            Self::Eq => TatakuValue::Bool(left == right), // if left == right { 1.0 } else { 0.0 },
+            Self::NotEq => TatakuValue::Bool(left != right), // if left != right { 1.0 } else { 0.0 },
+            Self::Less => TatakuValue::Bool(left < right), // if left < right { 1.0 } else { 0.0 },
+            Self::LessEq => TatakuValue::Bool(left <= right), // if left <= right { 1.0 } else { 0.0 },
+            Self::Greater => TatakuValue::Bool(left > right), // if left > right { 1.0 } else { 0.0 },
+            Self::GreaterEq => TatakuValue::Bool(left >= right), // if left >= right { 1.0 } else { 0.0 },
 
             // bool
-            Self::And => SYStackValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
-            Self::Or => SYStackValue::Bool(left.as_bool() || right.as_bool()), //if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
-            Self::Not => SYStackValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
+            Self::And => TatakuValue::Bool(left.as_bool() && right.as_bool()), //if left > 0.0 && right > 0.0 { 1.0 } else { 0.0 },
+            Self::Or => TatakuValue::Bool(left.as_bool() || right.as_bool()), //if left > 0.0 || right > 0.0 { 1.0 } else { 0.0 },
+            Self::Not => TatakuValue::Bool(!right.as_bool()), //if right > 0.0 { 0.0 } else { 1.0 },
         };
         // debug!("res: {res:?}");
         // debug!("");
 
-        res
+        Cow::Owned(TatakuVariable::new_any(res))
     }
 
     fn precedence(&self) -> u8 {
@@ -290,97 +280,27 @@ impl SYOperator {
     }
 }
 
-
-
-use std::ops::{
-    Add,
-    Sub,
-    Mul,
-    Div,
-};
-
-#[derive(Clone, Debug)]
-pub enum SYStackValue {
-    String(String),
-    Number(f32),
-    Bool(bool),
+enum MathFunction {
+    Abs,
+    Sin,
+    Cos,
+    Tan
 }
-impl SYStackValue {
-    fn powf(&self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs.powf(rhs)),
-            _ => panic!("nope")
-        }
-    }
-
-    pub fn as_bool(&self) -> bool {
-        match self {
-            Self::String(s) => !s.is_empty(),
-            Self::Number(n) => *n > 0.0,
-            Self::Bool(b) => *b
-        }
+impl MathFunction {
+    fn run<'a>(self, val: Cow<'a, TatakuVariable>) -> ShuntingYardResult<Cow<'a, TatakuVariable>> {
+        let num = val.as_number().ok_or_else(|| ShuntingYardError::NumberIsntANumber(val.as_string()))?;
+        
+        let mut new = val.into_owned();
+        new.value = match self {
+            Self::Abs => num.abs(),
+            Self::Sin => num.sin(),
+            Self::Cos => num.cos(),
+            Self::Tan => num.tan(),
+        }.into();
+        
+        Ok(Cow::Owned(new))
     }
 }
-
-impl Add for SYStackValue {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs+rhs),
-            (Self::String(lhs), Self::String(rhs)) => Self::String(lhs+&rhs),
-            _ => panic!("nope")
-        }
-    }
-}
-impl Sub for SYStackValue {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs-rhs),
-            _ => panic!("nope")
-        }
-    }
-}
-impl Mul for SYStackValue {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs*rhs),
-            _ => panic!("nope")
-        }
-    }
-}
-impl Div for SYStackValue {
-    type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Self::Number(lhs), Self::Number(rhs)) => Self::Number(lhs/rhs),
-            _ => panic!("nope")
-        }
-    }
-}
-
-impl PartialEq for SYStackValue {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Number(lhs), Self::Number(rhs)) => lhs == rhs,
-            (Self::String(lhs), Self::String(rhs)) => lhs == rhs,
-            
-            _ => self.as_bool() == other.as_bool()
-        }
-    }
-}
-impl std::cmp::PartialOrd for SYStackValue {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (Self::Number(lhs), Self::Number(rhs)) => lhs.partial_cmp(rhs),
-            _ => panic!("nope")
-        }
-    }
-}
-
-
-
 
 
 
@@ -394,20 +314,20 @@ mod shunting_yard_tests {
         println!("expression: {expression}");
 
         let tokens = ShuntingYard::parse_expression(expression).unwrap();
-        println!("Tokens: {:?}", tokens);
+        println!("Tokens: {tokens:?}");
 
         let test = -30.0;
         let test_1 = 50.0;
 
         let values = ValueCollection::default()
-            .set_chained("test", test)
-            .set_chained("test.1", test_1)
+            .set_chained("test", TatakuVariable::new_any(test))
+            .set_chained("test.1", TatakuVariable::new_any(test_1))
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-        println!("Result: {:?}", result);
-        let ok = SYStackValue::Number(test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
-        assert_eq!(result, ok);
+        println!("Result: {result:?}");
+        let ok = TatakuValue::F32(test.sin() + 4.0 * (2.0 - 7.0) / test_1 + 100.5);
+        assert_eq!(result.value, ok);
     }
     
 
@@ -417,19 +337,19 @@ mod shunting_yard_tests {
         println!("Expression: {expression}");
 
         let tokens = ShuntingYard::parse_expression(expression).unwrap();
-        println!("Tokens: {:?}", tokens);
+        println!("Tokens: {tokens:?}");
 
         let test = -30.0;
         let test_1 = 50.0;
 
         let values = ValueCollection::default()
-            .set_chained("test", test)
-            .set_chained("test.1", test_1)
+            .set_chained("test", TatakuVariable::new_any(test))
+            .set_chained("test.1", TatakuVariable::new_any(test_1))
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-        println!("Result: {:?}", result);
-        assert_eq!(result, SYStackValue::Bool(true));
+        println!("Result: {result:?}");
+        assert_eq!(result.value, TatakuValue::Bool(100 == 100 && !(test == test_1)));
     }
 
     #[test]
@@ -438,15 +358,15 @@ mod shunting_yard_tests {
         println!("Expression: {expression}");
 
         let tokens = ShuntingYard::parse_expression(expression).unwrap();
-        println!("Tokens: {:?}", tokens);
+        println!("Tokens: {tokens:?}");
 
         let test = true;
         let values = ValueCollection::default()
-            .set_chained("test", test)
+            .set_chained("test", TatakuVariable::new_any(test))
         ;
 
         let result = ShuntingYard::evaluate_rpn(&tokens, &values).unwrap();
-        println!("Result: {:?}", result);
-        assert_eq!(result, SYStackValue::Bool(true));
+        println!("Result: {result:?}");
+        assert_eq!(result.value, TatakuValue::Bool(test));
     }
 }

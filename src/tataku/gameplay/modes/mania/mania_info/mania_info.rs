@@ -5,7 +5,7 @@ pub struct ManiaGameInfo;
 #[async_trait]
 impl GameModeInfo for ManiaGameInfo {
     fn new() -> Self { Self }
-    fn display_name(&self) -> &str { "Mania" }
+    fn display_name(&self) -> &'static str { "Mania" }
 
     /// from https://wiki.quavergame.com/docs/gameplay#accuracy
     fn calc_acc(&self, score: &Score) -> f64 {

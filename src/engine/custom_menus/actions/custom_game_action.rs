@@ -10,33 +10,32 @@ pub enum CustomMenuGameAction {
     ViewScore(CustomEventValueType)
 }
 impl CustomMenuGameAction {
-    pub fn into_action(self, values: &mut ValueCollection) -> Option<GameAction> {
+    pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<GameAction> {
         match self {
             Self::Quit => Some(GameAction::Quit),
+
             Self::ViewScore(score) => {
-                match score {
-                    CustomEventValueType::None => return None,
-                    CustomEventValueType::Value(v) => {
-                        let num = v.as_u64().ok()?;
-                        Some(GameAction::ViewScoreId(num as usize))
-                    }
-                    CustomEventValueType::Variable(var) => {
-                        let num = values.get_raw(&var).ok()?.as_u64().ok()?;
-                        Some(GameAction::ViewScoreId(num as usize))
-                    }
-                }
+                // let num = match score {
+                //     CustomEventValueType::None => return None,
+                //     CustomEventValueType::Value(v) => v.as_u64().ok()?
+                //     CustomEventValueType::Variable(var) => {
+                //         let num = values.get_raw(&var).ok()?.as_u64().ok()?;
+                //     }
+                // };
+
+                Some(GameAction::ViewScoreId(score.resolve(values, passed_in)?.as_u64().ok()? as usize))
             }
         }
     }
     
-    pub fn resolve(&mut self, values: &ValueCollection) {
+    pub fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         let thing = match self {
             Self::ViewScore(score) => score,
             Self::Quit => return,
         };
 
-        let Some(resolved) = thing.resolve(values) else {
-            error!("Couldn't resolve: {:?}", self);
+        let Some(resolved) = thing.resolve(values, passed_in) else {
+            error!("Couldn't resolve: {self:?}");
             return;
         };
 

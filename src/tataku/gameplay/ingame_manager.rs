@@ -692,13 +692,13 @@ impl IngameManager {
 
         // update value collection
         {
-            let score:CustomElementValue = (&self.score).into();
+            let score:TatakuValue = (&self.score).into();
             let mut score_data = score.as_map_helper().unwrap();
 
-            score_data.set("health", self.health.get_ratio());
+            score_data.set("health", TatakuVariable::new_game(self.health.get_ratio()));
             // TODO: placing
 
-            values.set("score", score_data.finish());
+            values.set("score", TatakuVariable::new_game(score_data.finish()));
         }
 
         self.actions.take()

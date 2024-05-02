@@ -40,11 +40,12 @@ impl CustomElementText {
             
             Self::CalcParsed(calc, calc_str) => {
                 match calc.resolve(values) {
-                    Ok(n) => match n {
-                        SYStackValue::Number(n) => format!("{n:.2}"),
-                        SYStackValue::String(s) => s.clone(),
-                        SYStackValue::Bool(b) => b.to_string(),
-                    }
+                    Ok(val) => val.as_string(),
+                    // Ok(n) => match n {
+                    //     SYStackValue::Number(n) => format!("{n:.2}"),
+                    //     SYStackValue::String(s) => s.clone(),
+                    //     SYStackValue::Bool(b) => b.to_string(),
+                    // }
                     Err(e) => {
                         error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
                         format!("Calc error! See console.")

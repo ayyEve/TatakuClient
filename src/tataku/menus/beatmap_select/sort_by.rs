@@ -14,11 +14,11 @@ impl Display for SortBy {
     }
 }
 
-impl TryFrom<&CustomElementValue> for SortBy {
+impl TryFrom<&TatakuValue> for SortBy {
     type Error = String;
-    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
+    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
         match value {
-            CustomElementValue::String(s) => {
+            TatakuValue::String(s) => {
                 match &**s {
                     "Title" | "title" => Ok(Self::Title),
                     "Artist" | "artist" => Ok(Self::Artist),
@@ -27,7 +27,7 @@ impl TryFrom<&CustomElementValue> for SortBy {
                     other => Err(format!("invalid SortBy str: '{other}'"))
                 }
             }
-            CustomElementValue::U64(n) => {
+            TatakuValue::U64(n) => {
                 match *n {
                     0 => Ok(Self::Title),
                     1 => Ok(Self::Artist),
@@ -42,9 +42,9 @@ impl TryFrom<&CustomElementValue> for SortBy {
     }
 }
 
-impl Into<CustomElementValue> for SortBy {
-    fn into(self) -> CustomElementValue {
-        CustomElementValue::String(self.to_string())
+impl Into<TatakuValue> for SortBy {
+    fn into(self) -> TatakuValue {
+        TatakuValue::String(self.to_string())
     }
 }
 

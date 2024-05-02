@@ -215,29 +215,29 @@ impl Hash for ModManager {
 }
 
 
-impl TryFrom<&CustomElementValue> for ModManager {
+impl TryFrom<&TatakuValue> for ModManager {
     type Error = String;
-    fn try_from(value: &CustomElementValue) -> Result<Self, Self::Error> {
-        let CustomElementValue::Map(map) = value else { return Err(format!("Not a map")) };
+    fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
+        let TatakuValue::Map(map) = value else { return Err(format!("Not a map")) };
 
         let Some(speed) = map.get("speed") else { return Err(format!("No speed entry")) };
-        let CustomElementValue::U32(speed) = speed else { return Err(format!("speed entry is wrong type")) };
+        let TatakuValue::U32(speed) = &speed.value else { return Err(format!("speed entry is wrong type")) };
 
         let Some(mods) = map.get("mods") else { return Err(format!("No mods entry")) };
-        let CustomElementValue::List(mods) = mods else { return Err(format!("Mods entry wrong type")) };
+        let TatakuValue::List(mods) = &mods.value else { return Err(format!("Mods entry wrong type")) };
 
         Ok(Self {
             speed: GameSpeed::from_u16(*speed as u16),
-            mods: mods.into_iter().map(CustomElementValue::as_string).collect()
+            mods: mods.into_iter().map(|d|d.as_string()).collect()
         })
     }
 }
 
-impl Into<CustomElementValue> for ModManager {
-    fn into(self) -> CustomElementValue {
-        let mut map = CustomElementMapHelper::default();
-        map.set("speed", CustomElementValue::U32(self.speed.as_u16() as u32));
-        map.set("mods", self.mods.iter().collect::<Vec<_>>());
+impl Into<TatakuValue> for ModManager {
+    fn into(self) -> TatakuValue {
+        let mut map = ValueCollectionMapHelper::default();
+        map.set("speed", TatakuVariable::new_game(TatakuValue::U32(self.speed.as_u16() as u32)));
+        map.set("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, self.mods.iter().collect::<Vec<_>>())));
         map.finish()
     }
 }

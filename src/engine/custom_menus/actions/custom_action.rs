@@ -25,24 +25,24 @@ pub enum CustomMenuAction {
     Multiplayer(CustomMenuMultiplayerAction),
 
     /// set a value
-    SetValue(String, CustomElementValue)
+    SetValue(String, TatakuValue),
 }
 impl CustomMenuAction {
-    pub fn into_action(self, values: &mut ValueCollection) -> Option<TatakuAction> {
+    pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<TatakuAction> {
         match self {
             Self::None => None,
             Self::AddDialog(dialog) => {
-                let Some(val) = dialog.resolve(values) else { return None };
+                let Some(val) = dialog.resolve(values, passed_in) else { return None };
                 Some(TatakuAction::Menu(MenuMenuAction::AddDialogCustom(val.as_string(), true)))
             }
             Self::SetMenu(menu) =>  {
-                let Some(val) = menu.resolve(values) else { return None };
+                let Some(val) = menu.resolve(values, passed_in) else { return None };
                 Some(TatakuAction::Menu(MenuMenuAction::SetMenu(val.as_string())))
             }
 
-            Self::Map(action) => action.into_action(values).map(|a| TatakuAction::Beatmap(a)),
+            Self::Map(action) => action.into_action(values, passed_in).map(|a| TatakuAction::Beatmap(a)),
             Self::Song(action) => action.into_action(values).map(|a| TatakuAction::Song(a)),
-            Self::Game(action) => action.into_action(values).map(|a| TatakuAction::Game(a)),
+            Self::Game(action) => action.into_action(values, passed_in).map(|a| TatakuAction::Game(a)),
             Self::Multiplayer(action) => action.into_action(values).map(|a| TatakuAction::Multiplayer(a)),
             
             Self::SetValue(key, val) => Some(TatakuAction::Game(GameAction::SetValue(key, val))),
@@ -53,19 +53,19 @@ impl CustomMenuAction {
     pub fn resolve(&mut self, values: &ValueCollection) {
         match self {
             Self::Map(action) => action.resolve(values),
-            Self::Game(action) => action.resolve(values),
-            Self::Multiplayer(action) => action.resolve(values),
+            Self::Game(action) => action.resolve(values, None),
+            Self::Multiplayer(action) => action.resolve(values, None),
 
 
             Self::SetMenu(menu) => {
-                if let Some(val) = menu.resolve(values) {
+                if let Some(val) = menu.resolve(values, None) {
                     *menu = CustomEventValueType::Value(val);
                 } else {
                     error!("failed to resolve menu from variable: {menu:?}")
                 }
             }
             Self::AddDialog(dialog) => {
-                if let Some(val) = dialog.resolve(values) {
+                if let Some(val) = dialog.resolve(values, None) {
                     *dialog = CustomEventValueType::Value(val);
                 } else {
                     error!("failed to resolve dialog from variable: {dialog:?}")

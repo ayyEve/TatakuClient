@@ -1,57 +1,48 @@
 use crate::prelude::*;
 
-impl From<&Score> for CustomElementValue {
+impl From<&Score> for TatakuValue {
     fn from(score: &Score) -> Self {
-        let mut map = CustomElementMapHelper::default();
+        let mut map = ValueCollectionMapHelper::default();
 
-        map.set("username", score.username.clone());
-        map.set("beatmap_hash", score.beatmap_hash);
-        map.set("playmode", &score.playmode);
-        map.set("time", score.time);
+        map.set("username", TatakuVariable::new(score.username.clone()));
+        map.set("beatmap_hash", TatakuVariable::new(score.beatmap_hash));
+        map.set("playmode", TatakuVariable::new(&score.playmode));
+        map.set("time", TatakuVariable::new(score.time));
         
-        map.set("score", score.score);
-        map.set("score_fmt", format_number(score.score));
-
-        map.set("combo", score.combo as u32);
-        map.set("combo_fmt", format_number(score.combo));
-        
-        map.set("max_combo", score.max_combo as u32);
-        map.set("max_combo_fmt", format_number(score.max_combo));
+        map.set("score", TatakuVariable::new(score.score).display(format_number(score.score)));
+        map.set("combo", TatakuVariable::new(score.combo as u32).display(format_number(score.combo)));
+        map.set("max_combo", TatakuVariable::new(score.max_combo as u32).display(format_number(score.max_combo)));
 
         // judgments 
         {
-            let mut judgments = CustomElementMapHelper::default();
+            let mut judgments = ValueCollectionMapHelper::default();
             for (judge, count) in &score.judgments {
-                judgments.set(judge, *count as u32)
+                judgments.set(judge, TatakuVariable::new(*count as u32))
             }
-            map.set("judgments", judgments.finish());
+            map.set("judgments", TatakuVariable::new(judgments.finish()));
         }
 
-        map.set("accuracy", score.accuracy as f32);
-        map.set("accuracy_fmt", format!("{:.2}", score.accuracy * 100.0));
+        map.set("accuracy", TatakuVariable::new(score.accuracy as f32).display(format!("{:.2}", score.accuracy * 100.0)));
+        map.set("speed", TatakuVariable::new(score.speed.as_u16() as u32));
 
-        map.set("speed", score.speed.as_u16() as u32);
-
-        map.set("performance", score.performance);
-        map.set("performance_fmt", format!("{:.2}", score.performance));
+        map.set("performance", TatakuVariable::new(score.performance).display(format!("{:.2}", score.performance)));
 
 
         
-        map.set("mods_short", ModManager::short_mods_string(score.mods(), false, &score.playmode));
+        // map.set("mods_short", ));
 
-        map.set("mods", ModManager::new().with_mods(score.mods()).with_speed(score.speed));
-
-        map.set("hit_timings", score.hit_timings.clone());
+        map.set("mods", TatakuVariable::new(ModManager::new().with_mods(score.mods()).with_speed(score.speed)).display(ModManager::short_mods_string(score.mods(), false, &score.playmode)));
+        map.set("hit_timings", TatakuVariable::new((TatakuVariableAccess::ReadOnly, score.hit_timings.clone())));
 
         
 
         // stats
         {
-            let mut stats = CustomElementMapHelper::default();
+            let mut stats = ValueCollectionMapHelper::default();
             for (stat, list) in &score.stat_data {
-                stats.set(stat, list.clone());
+                stats.set(stat, TatakuVariable::new((TatakuVariableAccess::ReadOnly, list.clone())));
             }
-            map.set("stats", stats.finish());
+            map.set("stats", TatakuVariable::new(stats.finish()));
         }
 
         map.finish()
@@ -60,14 +51,14 @@ impl From<&Score> for CustomElementValue {
 
 
 // TODO: please god we need a proc macro
-impl TryInto<Score> for &CustomElementValue {
+impl TryInto<Score> for &TatakuValue {
     type Error = String;
 
     fn try_into(self) -> Result<Score, Self::Error> {
-        let CustomElementValue::Map(map) = self else { return Err(format!("Not a map")) };
+        let TatakuValue::Map(map) = self else { return Err(format!("Not a map")) };
         
         let mut score = Score::new(
-            map.get("beatmap_hash").ok_or_else(|| format!("no beatmap_hash?"))?.try_into().map_err(|e| format!("beatmap_hash read error: {e}"))?,
+            (&map.get("beatmap_hash").ok_or_else(|| format!("no beatmap_hash?"))?.value).try_into().map_err(|e| format!("beatmap_hash read error: {e}"))?,
             map.get("username").ok_or_else(|| format!("no username?"))?.as_string(),
             map.get("playmode").ok_or_else(|| format!("no playmode?"))?.as_string(),
         );
@@ -89,11 +80,11 @@ impl TryInto<Score> for &CustomElementValue {
         score.performance = map.get("performance").ok_or_else(|| format!("no performance"))?.as_f32().map_err(|e| format!("{e:?}"))?;
         
         let mods = ModManager::try_from(
-            map.get("mods").ok_or_else(|| format!("no mods"))?
+            &map.get("mods").ok_or_else(|| format!("no mods"))?.value
         ).map_err(|_| format!("bad mods"))?;
         mods.mods.into_iter().for_each(|m|score.add_mod(m));
 
-        if let CustomElementValue::List(list) = map.get("hit_timings").ok_or_else(|| format!("no hit_timings"))? {
+        if let TatakuValue::List(list) = &map.get("hit_timings").ok_or_else(|| format!("no hit_timings"))?.value {
             for i in list {
                 score.hit_timings.push(i.as_f32().map_err(|e| format!("{e:?}"))?);
             }
@@ -102,7 +93,7 @@ impl TryInto<Score> for &CustomElementValue {
         let stats = map.get("stats").ok_or_else(|| format!("no stats"))?.as_map().ok_or_else(|| format!("no hit_timings"))?;
         for (stat, thing) in stats {
             let mut val_list = Vec::new();
-            if let CustomElementValue::List(list) = thing {
+            if let TatakuValue::List(list) = &thing.value {
                 for i in list {
                     let v = i.as_f32().map_err(|e| format!("{e:?}"))?;
                     val_list.push(v);

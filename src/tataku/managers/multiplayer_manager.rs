@@ -132,11 +132,11 @@ impl MultiplayerManager {
         debug!("multi manager value update");
         // TODO: optimize this
 
-        let lobby_info:CustomElementValue = (&self.lobby).into();
+        let lobby_info:TatakuValue = (&self.lobby).into();
         let mut map = lobby_info.as_map_helper().unwrap();
-        map.set("has_beatmap", self.current_beatmap_is_selected());
+        map.set("has_beatmap", TatakuVariable::new_game(self.current_beatmap_is_selected()));
 
-        values.set("lobby", map.finish());
+        values.set("lobby", TatakuVariable::new_game(map.finish()));
     }
 
     

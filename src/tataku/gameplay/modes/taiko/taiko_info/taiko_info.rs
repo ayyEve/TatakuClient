@@ -5,7 +5,7 @@ pub struct TaikoGameInfo;
 #[async_trait]
 impl GameModeInfo for TaikoGameInfo {
     fn new() -> Self { Self }
-    fn display_name(&self) -> &str { "Taiko" }
+    fn display_name(&self) -> &'static str { "Taiko" }
 
     fn calc_acc(&self, score: &Score) -> f64 {
         let x100 = score.judgments.get("x100").copy_or_default() as f64;
