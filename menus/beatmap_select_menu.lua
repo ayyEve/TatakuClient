@@ -91,6 +91,17 @@ local beatmap_list = {
 local menu = {
     id = "beatmap_select",
 
+    events = {
+        -- on song end, restart map
+        { 
+            event = "song_end", 
+            actions = { 
+                song_action({ position = variable("map.preview_time")}),
+                song_action("play") 
+            }
+        }
+    },
+
     -- the beatmap select menu is broken up into rows
     element = col({ width = "fill", height = "fill", spacing = 10.0 }, {
         -- the first row contains the dropdowns

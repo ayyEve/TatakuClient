@@ -18,6 +18,9 @@ impl UiApplication {
     pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.menu.update(values).await
     }
+    pub async fn handle_event(&mut self, event: TatakuEventType, param: Option<TatakuValue>, values: &mut ValueCollection) {
+        self.menu.handle_event(event, param, values).await;
+    }
 
     pub async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
         if message.owner.check_menu(&self.menu) {
@@ -26,6 +29,7 @@ impl UiApplication {
             self.dialog_manager.handle_message(message, values).await;
         }
     }
+
 
     pub async fn handle_make_userpanel(&mut self) {
         let mut user_panel_exists = false;

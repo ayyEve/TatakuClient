@@ -18,21 +18,37 @@ pub enum CustomMenuSongAction {
     Restart,
 
     /// Seek by the specified number of ms
-    Seek(f32),
+    Seek(CustomEventValueType),
 
     /// Set the song's position
-    SetPosition(f32),
+    SetPosition(CustomEventValueType),
 }
 impl CustomMenuSongAction {
-    pub fn into_action(self, _values: &mut ValueCollection) -> Option<SongAction> {
+    pub fn into_action(self, values: &mut ValueCollection) -> Option<SongAction> {
         match self {
             Self::Play => Some(SongAction::Play),
             Self::Pause => Some(SongAction::Pause),
             Self::Toggle => Some(SongAction::Toggle),
             Self::Restart => Some(SongAction::Restart),
-            Self::Seek(n) => Some(SongAction::SeekBy(n)),
-            Self::SetPosition(p) => Some(SongAction::SetPosition(p)),
+            Self::Seek(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n|SongAction::SeekBy(n)),
+            Self::SetPosition(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n| SongAction::SetPosition(n)),
         }
+    }
+
+
+    pub fn build(&mut self, values: &ValueCollection) {
+        let thing = match self {
+            Self::Seek(n) => n,
+            Self::SetPosition(n) => n,
+            _ => return,
+        };
+
+        let Some(resolved) = thing.resolve(values, None) else {
+            error!("Couldn't resolve: {:?}", self);
+            return;
+        };
+
+        *thing = CustomEventValueType::Value(resolved);
     }
 }
 impl<'lua> FromLua<'lua> for CustomMenuSongAction {
@@ -43,7 +59,7 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
                 #[cfg(feature="debug_custom_menus")] info!("Is table");
                 if let Some(seek) = table.get("seek")? {
                     Ok(Self::Seek(seek))
-                } else if let Some(pos) = table.get("position")?{
+                } else if let Some(pos) = table.get("position")? {
                     Ok(Self::SetPosition(pos))
                 } else {
                     Err(FromLuaConversionError { 

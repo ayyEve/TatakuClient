@@ -27,6 +27,9 @@ pub enum GameAction {
 
     /// Refresh the scores list
     RefreshScores,
+
+    /// Handle an event
+    HandleEvent(TatakuEventType, Option<TatakuValue>),
 }
 
 impl From<GameAction> for TatakuAction {

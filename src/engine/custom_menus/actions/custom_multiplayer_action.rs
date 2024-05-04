@@ -44,10 +44,10 @@ impl CustomMenuMultiplayerAction {
         }
     }
     
-    pub fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    pub fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         match self {
             Self::SlotAction(slot_action) => {
-                slot_action.resolve(values, passed_in);
+                slot_action.build(values, passed_in);
             }
 
             _ => {}
@@ -146,7 +146,7 @@ impl CustomMultiplayerSlot {
         }
     }
 
-    fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         let Some(slot) = self.slot.resolve(values, passed_in) else {
             error!("Couldn't resolve slot: {:?} ({:?})", self.slot, self.action);
             return;

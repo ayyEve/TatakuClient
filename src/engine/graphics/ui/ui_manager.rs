@@ -115,7 +115,7 @@ impl UiManager {
 
                     mouse_pos = iced::Point::new(events.mouse_pos.x, events.mouse_pos.y);
                     let (_s, e) = ui.update(
-                        &events.events,
+                        &events.window_events,
                         iced::mouse::Cursor::Available(mouse_pos),
                         &mut renderer,
                         &mut iced_runtime::core::clipboard::Null,
@@ -153,7 +153,12 @@ impl UiManager {
         }
     }
 
-    pub async fn update<'a>(&mut self, state: CurrentInputState<'a>, values: ValueCollection) -> (Vec<TatakuAction>, ValueCollection) {
+    pub async fn update<'a>(
+        &mut self, 
+        state: CurrentInputState<'a>, 
+        tataku_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
+        values: ValueCollection,
+    ) -> (Vec<TatakuAction>, ValueCollection) {
         while let Ok(e) = self.message_channel.1.try_recv() {
             // info!("adding message: {e:?}");
             self.messages.push(e);
@@ -179,6 +184,11 @@ impl UiManager {
         let app = self.application();
         for m in messages {
             app.handle_message(m, &mut values).await;
+        }
+
+        for (event, param) in tataku_events {
+            debug!("handling event {event:?}");
+            app.handle_event(event, param, &mut values).await;
         }
 
         let mut list = app.update(&mut values).await;
@@ -376,7 +386,7 @@ impl<'a> CurrentInputState<'a> {
 
         SendEvents {
             mouse_pos: self.mouse_pos,
-            events,
+            window_events: events,
             force_refresh,
         }
     }
@@ -384,7 +394,7 @@ impl<'a> CurrentInputState<'a> {
 
 struct SendEvents {
     mouse_pos: Vector2,
-    events: Vec<Event>,
+    window_events: Vec<Event>,
     force_refresh: bool,
 }
 

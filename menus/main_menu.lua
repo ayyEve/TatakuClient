@@ -81,6 +81,11 @@ local exit_game = game_action("quit")
 local menu = {
     id = "main_menu",
 
+    events = { 
+        -- on song end, play next song
+        { event = "song_end", action = map_action("next") }
+    },
+
     -- the current main menu is broken up into rows
     element = col({ width = "fill", height = "fill", debug_name = "main_menu" }, {
         -- the first row contains the song display

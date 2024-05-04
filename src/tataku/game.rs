@@ -54,13 +54,13 @@ pub struct Game {
     background_loader: Option<AsyncLoader<Option<Image>>>,
     spec_watch_action: SpectatorWatchAction,
     ui_manager: UiManager,
-    // custom_menus: Vec<CustomMenu>,
 
     pub actions: ActionQueue,
+    pub queued_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
 
     pub values: ValueCollection,
 
-    // value_checker: ValueChecker,
+    song_state: AudioState,
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
@@ -113,11 +113,11 @@ impl Game {
             background_loader: None,
 
             ui_manager: UiManager::new(),
-            // custom_menus: Vec::new(),
             actions: ActionQueue::new(),
+            queued_events: Vec::new(),
 
             values: ValueCollection::new(),
-            // value_checker: ValueChecker::new(),
+            song_state: AudioState::Unknown,
         };
         g.load_custom_menus();
 
@@ -657,11 +657,25 @@ impl Game {
             values.update("song.position", TatakuVariableWriteSource::Game, self.song_manager.position());
 
             if let Some(audio) = self.song_manager.instance() {
-                values.update_multiple(TatakuVariableWriteSource::Game, [
-                    ("song.playing", audio.is_playing()),
-                    ("song.paused", audio.is_paused()),
-                    ("song.stopped", audio.is_stopped()),
-                ].into_iter());
+                let song_state = audio.get_state();
+                if self.song_state != song_state {
+                    self.song_state = song_state;
+
+                    match self.song_state {
+                        AudioState::Stopped | AudioState::Unknown => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongEnd, None)),
+                        AudioState::Playing => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None)),
+                        AudioState::Paused => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongPause, None)),
+                        
+                        _ => {}
+                    }
+
+                    values.update_multiple(TatakuVariableWriteSource::Game, [
+                        ("song.playing", audio.is_playing()),
+                        ("song.paused", audio.is_paused()),
+                        ("song.stopped", audio.is_stopped()),
+                    ].into_iter());
+                }
+
             } else {
                 values.update_multiple(TatakuVariableWriteSource::Game, [
                     ("song.playing", false),
@@ -684,6 +698,7 @@ impl Game {
                 text: &text,
                 mods,
             }, 
+            self.queued_events.take(),
             self.values.take()
         ).await;
         self.values = sy_values;
@@ -1368,6 +1383,8 @@ impl Game {
                     self.handle_action(GameAction::ViewScore(score.clone())).await;
                 }
             }
+            TatakuAction::Game(GameAction::HandleEvent(event, param)) => self.queued_events.push((event, param)),
+            
 
             // song actions
             TatakuAction::Song(song_action) => {
@@ -1990,32 +2007,3 @@ impl MenuType {
     }
 }
 
-
-// /// really just a struct to avoid cluttering up game with too many SYValueHelpers
-// struct ValueChecker {
-//     gamemode: SyValueHelper,
-//     beatmap: SyValueHelper,
-// }
-// impl ValueChecker {
-//     pub fn new() -> Self {
-//         Self {
-//             gamemode: SyValueHelper::new("global.playmode"),
-//             beatmap: SyValueHelper::new("map.hash"),
-//         }
-//     }
-
-//     pub async fn check(&mut self, values: &mut ValueCollection) {
-//         // if self.gamemode.check(values) {
-//         //     if let Some(mode) = self.gamemode.string_maybe() {
-//         //         // GlobalValueManager::update::<CurrentPlaymode>(Arc::new(CurrentPlaymode(mode.clone())));
-
-//         //         // update the display value
-//         //         let display = gamemode_display_name(mode).to_owned();
-//         //         values.set("global.playmode_display", display);
-
-//         //         // TODO!! also update global.playmode_actual
-//         //     }
-//         // }
-//     }
-
-// }

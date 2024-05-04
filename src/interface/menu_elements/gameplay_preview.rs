@@ -8,6 +8,7 @@ pub struct GameplayPreview {
     beatmap: SyValueHelper,
     playmode: SyValueHelper,
     mods: SyValueHelper,
+    song_time: SyValueHelper,
 
     settings: SettingsHelper,
     pub manager: Option<IngameManager>,
@@ -47,9 +48,10 @@ impl GameplayPreview {
             beatmap: SyValueHelper::new("map.hash"),
             playmode: SyValueHelper::new("global.playmode_actual"),
             mods: SyValueHelper::new("global.mods"),
+            song_time: SyValueHelper::new("song.position"),
 
             visualization: None,
-            handle_song_restart: true,
+            handle_song_restart: false,
 
             settings: SettingsHelper::new(),
             manager: None,
@@ -146,6 +148,12 @@ impl GameplayPreview {
             }
         }
 
+        let last_song_time = self.song_time.as_f32().unwrap_or_default();
+        if self.song_time.check(values) {
+            if self.song_time.as_f32().unwrap_or_default() < last_song_time {
+                self.setup(values).await;
+            }
+        }
 
 
         // check for map/mode changes

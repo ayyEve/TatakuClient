@@ -28,7 +28,7 @@ impl CustomMenuGameAction {
         }
     }
     
-    pub fn resolve(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    pub fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         let thing = match self {
             Self::ViewScore(score) => score,
             Self::Quit => return,

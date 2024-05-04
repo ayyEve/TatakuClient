@@ -93,7 +93,7 @@ impl CustomMenuMapAction {
     }
 
     
-    pub fn resolve(&mut self, values: &ValueCollection) {
+    pub fn build(&mut self, values: &ValueCollection) {
         let thing = match self {
             Self::SelectGroup(group) => group,
             Self::SelectMap(map) => map,

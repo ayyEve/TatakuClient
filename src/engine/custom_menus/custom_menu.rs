@@ -4,7 +4,8 @@ use crate::prelude::*;
 pub struct CustomMenu {
     pub id: String,
     pub element: ElementDef,
-    pub components: Vec<ComponentDef>
+    pub components: Vec<ComponentDef>,
+    pub events: Vec<CustomMenuEvent>,
 }
 impl CustomMenu {
     pub async fn build(&self) -> BuiltCustomMenu {
@@ -13,11 +14,21 @@ impl CustomMenu {
             components.push(i.build().await);
         }
 
+        let mut events:HashMap<TatakuEventType, Vec<ButtonAction>> = HashMap::new();
+        for event in self.events.clone() {
+            let list = events.entry(event.event_type).or_default();
+            for mut action in event.get_actions() {
+                action.build();
+                list.push(action);
+            }
+        }
+
         BuiltCustomMenu {
             id: self.id.clone(),
             element: *self.element.build().await,
             actions: ActionQueue::new(),
             components,
+            events,
         }
     }
 }
@@ -35,6 +46,7 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenu {
             id,
             element: table.get("element")?,
             components: table.get::<_, Option<Vec<_>>>("components")?.unwrap_or_default(),
+            events: table.get::<_, Option<Vec<_>>>("events")?.unwrap_or_default(),
         })
     }
 }
@@ -45,6 +57,7 @@ pub struct BuiltCustomMenu {
     pub element: BuiltElementDef,
     pub actions: ActionQueue,
     pub components: Vec<Box<dyn Widgetable>>,
+    pub events: HashMap<TatakuEventType, Vec<ButtonAction>>,
 }
 
 #[async_trait]
@@ -72,7 +85,6 @@ impl AsyncMenu for BuiltCustomMenu {
         self.actions.take()
     }
 
-    // #[async_recursion]
     async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
 
         for i in self.components.iter_mut() {
@@ -107,20 +119,22 @@ impl AsyncMenu for BuiltCustomMenu {
             other => warn!("unhandled message: {other:?}"),
         }
     }
-}
 
+    async fn handle_event(&mut self, event: TatakuEventType, event_value: Option<TatakuValue>, values: &mut ValueCollection) {
+        let Some(events) = self.events.get(&event) else { return };
+        let owner = MessageOwner::new_menu(self);
 
+        for i in events.iter() {
+            let Some(message) = i.resolve(owner, values, event_value.clone()) else { continue };
+            match message.message_type {
+                MessageType::CustomMenuAction(action, passed_in) => {
+                    let Some(a) = action.into_action(values, passed_in) else { continue };
+                    self.actions.push(a);
+                }
 
-pub struct CustomMenuEvent {
-    pub event_type: CustomMenuEventType,
-    pub action: CustomMenuAction
-}
+                _ => self.actions.push(TatakuAction::Game(GameAction::HandleMessage(message))),
+            }
+        }
 
-pub enum CustomMenuEventType {
-    SongEnd,
-    SongStart,
-
-
-    // ingame events
-    
+    }
 }

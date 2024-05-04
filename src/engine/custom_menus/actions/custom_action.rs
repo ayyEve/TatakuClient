@@ -50,11 +50,12 @@ impl CustomMenuAction {
     }
 
     // build any values that need to be built on item creation (ie, for lists that have temporary variables)
-    pub fn resolve(&mut self, values: &ValueCollection) {
+    pub fn build(&mut self, values: &ValueCollection) {
         match self {
-            Self::Map(action) => action.resolve(values),
-            Self::Game(action) => action.resolve(values, None),
-            Self::Multiplayer(action) => action.resolve(values, None),
+            Self::Map(action) => action.build(values),
+            Self::Song(action) => action.build(values),
+            Self::Game(action) => action.build(values, None),
+            Self::Multiplayer(action) => action.build(values, None),
 
 
             Self::SetMenu(menu) => {

@@ -50,7 +50,7 @@ impl ButtonAction {
                 if let CustomMenuAction::None = &action { return None };
 
                 let mut action = action.clone();
-                action.resolve(values);
+                action.build(values);
                 let message = MessageType::CustomMenuAction(action, passed_in);
                 Some(Message::new(owner, "", message))
             }
