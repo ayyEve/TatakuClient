@@ -1,3 +1,5 @@
+todo: dear god update this
+
 Notes:
     - Unless otherwise specified, the default value of a property is nil (non-existant)
     - If a property cant be nil, and has no value provided, the item will fail to load, and an error will be printed to the console

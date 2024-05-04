@@ -78,12 +78,25 @@ local start_multiplayer = menu_action("lobby_select")
 local exit_game = game_action("quit")
 
 
+-- notification example
+local notify_now_playing = { 
+    event = "song_start", 
+    action = game_action("show_notification", { 
+        text = text_list({ "Now playing: ", variable("map.title"), " by ", variable("map.artist")}),
+        duration = 10000, -- ms
+        color = TEAL,
+    })
+}
+
+
 local menu = {
     id = "main_menu",
 
     events = { 
         -- on song end, play next song
-        { event = "song_end", action = map_action("next") }
+        { event = "song_end", action = map_action("next") },
+
+        -- notify_now_playing,
     },
 
     -- the current main menu is broken up into rows

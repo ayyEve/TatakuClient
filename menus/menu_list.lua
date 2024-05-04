@@ -1,5 +1,4 @@
 
-
 local menu = {
     id = "menu_list",
 
@@ -14,7 +13,7 @@ local menu = {
             variable = "_menu",
             scroll = true,
 
-            element = row({ width = "fill", height = "shrink", spacing = 10.0}, {
+            element = row({ width = "fill", height = "shrink", spacing = 10.0 }, {
                 button(
                     text(variable("_menu")),
                     menu_action(variable("_menu")),

@@ -30,6 +30,9 @@ pub enum GameAction {
 
     /// Handle an event
     HandleEvent(TatakuEventType, Option<TatakuValue>),
+
+    /// Add a notification
+    AddNotification(Notification),
 }
 
 impl From<GameAction> for TatakuAction {

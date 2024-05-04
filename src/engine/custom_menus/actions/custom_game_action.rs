@@ -7,22 +7,28 @@ pub enum CustomMenuGameAction {
     Quit,
 
     /// View a score by id
-    ViewScore(CustomEventValueType)
+    ViewScore(CustomEventValueType),
+
+    ShowNotification {
+        text: CustomElementText,
+        color: Color,
+        duration: CustomEventValueType
+    },
 }
 impl CustomMenuGameAction {
     pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<GameAction> {
         match self {
             Self::Quit => Some(GameAction::Quit),
+            Self::ShowNotification {
+                text, color, duration
+            } => Some(GameAction::AddNotification(Notification::new(
+                text.to_string(values),
+                color,
+                duration.resolve(values, passed_in)?.as_f32().ok()?,
+                NotificationOnClick::None
+            ))),
 
             Self::ViewScore(score) => {
-                // let num = match score {
-                //     CustomEventValueType::None => return None,
-                //     CustomEventValueType::Value(v) => v.as_u64().ok()?
-                //     CustomEventValueType::Variable(var) => {
-                //         let num = values.get_raw(&var).ok()?.as_u64().ok()?;
-                //     }
-                // };
-
                 Some(GameAction::ViewScoreId(score.resolve(values, passed_in)?.as_u64().ok()? as usize))
             }
         }
@@ -31,6 +37,13 @@ impl CustomMenuGameAction {
     pub fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
         let thing = match self {
             Self::ViewScore(score) => score,
+            Self::ShowNotification { text, duration, .. } => {
+                if let Err(e) = text.parse() {
+                    error!("error parsing text '{text:?}': {e:?}");
+                }
+
+                duration
+            }
             Self::Quit => return,
         };
 
@@ -68,6 +81,12 @@ impl<'lua> FromLua<'lua> for CustomMenuGameAction {
                 match &*id {
                     "quit" => Ok(Self::Quit),
                     "view_score" => Ok(Self::ViewScore(table.get("score_id")?)),
+                    "show_notification" => Ok(Self::ShowNotification {
+                        text: table.get("text")?,
+                        color: table.get::<_, Option<Color>>("color")?.unwrap_or(Color::SKY_BLUE),
+                        duration: table.get::<_, Option<_>>("duration")?.unwrap_or(CustomEventValueType::Value(TatakuVariable::new_any(TatakuValue::F32(5_000.0)))),
+                        // onclick: NotificationOnClick::None,
+                    }),
 
                     other => Err(FromLuaConversionError { 
                         from: "Table", 

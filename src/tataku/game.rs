@@ -1384,8 +1384,8 @@ impl Game {
                 }
             }
             TatakuAction::Game(GameAction::HandleEvent(event, param)) => self.queued_events.push((event, param)),
+            TatakuAction::Game(GameAction::AddNotification(notif)) => NotificationManager::add_notification(notif).await,
             
-
             // song actions
             TatakuAction::Song(song_action) => {
                 match song_action {
@@ -1488,7 +1488,7 @@ impl Game {
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map, mode));
             }
 
-            TatakuAction::Multiplayer(MultiplayerAction::InviteUser {user_id}) => {
+            TatakuAction::Multiplayer(MultiplayerAction::InviteUser { user_id }) => {
                 tokio::spawn(OnlineManager::invite_user(user_id));
             }
 
