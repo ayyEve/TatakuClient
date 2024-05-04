@@ -971,9 +971,9 @@ impl Game {
                     // old mode was none, or was pause menu, transition to new mode
                     std::mem::swap(&mut self.queued_state, &mut self.current_state);
 
-                    if let GameState::SetMenu(menu) = &mut self.current_state {
-                        menu.on_change(true).await;
-                    }
+                    // if let GameState::SetMenu(menu) = &mut self.current_state {
+                    //     menu.on_change(true).await;
+                    // }
                 }
             }
         }
@@ -1556,6 +1556,7 @@ impl Game {
                 self.queued_state = GameState::InMenu(MenuType::from_menu(&menu));
                 debug!("Changing menu to: {} ({:?})", menu.get_name(), menu.get_custom_name());
                 self.ui_manager.set_menu(menu);
+                self.queued_events.push((TatakuEventType::MenuEnter, None));
             }
             GameState::InMenu(_) => {}
             state => {

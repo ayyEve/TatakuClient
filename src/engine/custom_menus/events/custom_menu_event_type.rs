@@ -3,12 +3,17 @@ use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum TatakuEventType {
+    /// Song has ended
     SongEnd,
+
+    /// Song was paused
     SongPause,
+
+    /// Song has started
     SongStart,
 
-
-    // ingame events
+    /// Menu was entered
+    MenuEnter,
     
 }
 impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
@@ -21,6 +26,7 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
         match &*str {
             "song_start" => Ok(Self::SongStart),
             "song_end" => Ok(Self::SongEnd),
+            "menu_enter" => Ok(Self::MenuEnter),
 
             other => Err(rlua::Error::ToLuaConversionError { from: "String", to: "CustomMenuEventType", message: Some(format!("unknown event: '{other}'")) })
         }
