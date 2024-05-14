@@ -1214,7 +1214,6 @@ impl Game {
                         if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
                             self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
                         
-                            self.set_background_beatmap().await;
                         } else if self.multiplayer_manager.is_some() {
                             // if we're in a multiplayer lobby, and the map doesnt exist, remove the map
                             // self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
@@ -1386,6 +1385,8 @@ impl Game {
             TatakuAction::Game(GameAction::HandleEvent(event, param)) => self.queued_events.push((event, param)),
             TatakuAction::Game(GameAction::AddNotification(notif)) => NotificationManager::add_notification(notif).await,
             
+            TatakuAction::Game(GameAction::UpdateBackground) => self.set_background_beatmap().await,
+
             // song actions
             TatakuAction::Song(song_action) => {
                 match song_action {

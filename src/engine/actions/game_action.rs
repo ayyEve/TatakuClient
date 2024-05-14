@@ -33,6 +33,9 @@ pub enum GameAction {
 
     /// Add a notification
     AddNotification(Notification),
+
+    /// Update the game's background
+    UpdateBackground,
 }
 
 impl From<GameAction> for TatakuAction {

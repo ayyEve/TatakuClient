@@ -293,14 +293,8 @@ impl BeatmapManager {
         })));
         // make sure the song is playing
         self.actions.push(SongAction::Play);
-
-        // if let Err(e) = AudioManager::play_song(audio_filename, false, time).await {
-        //     error!("Error playing song: {:?}", e);
-        //     NotificationManager::add_text_notification("There was an error playing the audio", 5000.0, Color::RED).await;
-        // }
-
-        // // set bg
-        // game.set_background_beatmap(beatmap).await;
+        // make sure to update the background
+        self.actions.push(GameAction::UpdateBackground);
     }
     #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self, values: &mut ValueCollection) {
@@ -380,6 +374,7 @@ impl BeatmapManager {
                 false
             }
         }
+
 
         // if self.play_index < self.played.len() {
         //     let hash = self.played[self.play_index].clone();
