@@ -274,7 +274,7 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
         }
         iced::advanced::graphics::Primitive::Clip { bounds, content } => {
             let mut group = TransformGroup::new(Vector2::ZERO);
-            group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
+            // group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
             group.push_arced(into_renderable(content));
             Arc::new(group)
         }
