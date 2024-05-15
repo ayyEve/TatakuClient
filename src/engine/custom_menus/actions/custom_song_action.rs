@@ -22,6 +22,9 @@ pub enum CustomMenuSongAction {
 
     /// Set the song's position
     SetPosition(CustomEventValueType),
+
+    /// Set the song's speed
+    SetRate(CustomEventValueType),
 }
 impl CustomMenuSongAction {
     pub fn into_action(self, values: &mut ValueCollection) -> Option<SongAction> {
@@ -32,6 +35,7 @@ impl CustomMenuSongAction {
             Self::Restart => Some(SongAction::Restart),
             Self::Seek(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n|SongAction::SeekBy(n)),
             Self::SetPosition(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n| SongAction::SetPosition(n)),
+            Self::SetRate(n) => n.resolve(values, None).and_then(|n| n.as_f32().ok()).map(|n| SongAction::SetRate(n)),
         }
     }
 
@@ -40,6 +44,7 @@ impl CustomMenuSongAction {
         let thing = match self {
             Self::Seek(n) => n,
             Self::SetPosition(n) => n,
+            Self::SetRate(n) => n,
             _ => return,
         };
 
@@ -61,6 +66,8 @@ impl<'lua> FromLua<'lua> for CustomMenuSongAction {
                     Ok(Self::Seek(seek))
                 } else if let Some(pos) = table.get("position")? {
                     Ok(Self::SetPosition(pos))
+                } else if let Some(pos) = table.get("rate")? {
+                    Ok(Self::SetRate(pos))
                 } else {
                     Err(FromLuaConversionError { 
                         from: "table", 

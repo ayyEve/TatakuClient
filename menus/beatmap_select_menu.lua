@@ -92,10 +92,13 @@ local menu = {
     id = "beatmap_select",
 
     events = {
-        -- on entering menu, make sure song is playing
+        -- on entering menu, make sure song is playing, and is also at a rate of 1.0
         {
             event = "menu_enter",
-            action = cond("!song.playing", song_action("play"))
+            actions = {
+                song_action({ rate = 1.0 }),
+                cond("!song.playing", song_action("play")),
+            }
         },
         
         -- on song end, restart map
