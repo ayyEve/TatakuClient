@@ -66,7 +66,7 @@ impl UiApplication {
     pub fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
         let content:IcedElement = self.menu.view(values);
-        let dialogs = self.dialog_manager.view();
+        let dialogs = self.dialog_manager.view(values);
 
         Container::new(col!(
             content, 

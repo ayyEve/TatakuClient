@@ -57,7 +57,7 @@ impl Dialog for TestDialog {
     }
     async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
     }
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         // use iced_elements::*;
         EmptyElement.into_element()
     }
@@ -226,7 +226,7 @@ impl Dialog for StupidDialog {
     // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<TatakuAction> { self.actions.take() }
 
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         self.manager.widget()
     }

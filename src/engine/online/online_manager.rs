@@ -79,9 +79,9 @@ impl OnlineManager {
         info!("starting network connection");
         let mut settings = SettingsHelper::new();
 
-        // insert multiplayer data
-        GlobalValueManager::update(Arc::new(MultiplayerData::default()));
-        GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
+        // // insert multiplayer data
+        // GlobalValueManager::update(Arc::new(MultiplayerData::default()));
+        // GlobalValueManager::update::<Option<CurrentLobbyInfo>>(Arc::new(None));
 
         let server_url = settings.server_url.clone();
 

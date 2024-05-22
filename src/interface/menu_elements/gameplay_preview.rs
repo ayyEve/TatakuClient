@@ -1,8 +1,6 @@
 use crate::prelude::*;
 
 pub struct GameplayPreview {
-    // pub current_beatmap: CurrentBeatmapHelper,
-    // pub current_playmode: CurrentPlaymodeHelper,
     // current_mods: ModManagerHelper,
 
     beatmap: SyValueHelper,
@@ -42,8 +40,6 @@ impl GameplayPreview {
         let widget = GameplayPreviewWidget::new(widget_receiver, event_sender);
         
         Self {
-            // current_beatmap: CurrentBeatmapHelper::new(),
-            // current_playmode: CurrentPlaymodeHelper::new(),
             // current_mods: ModManagerHelper::new(),
             beatmap: SyValueHelper::new("map.hash"),
             playmode: SyValueHelper::new("global.playmode_actual"),
@@ -96,8 +92,10 @@ impl GameplayPreview {
         // abort the previous loading task
         self.loader.ok_do(|i| i.abort());
 
+        let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
+
         // let map = map.clone();
-        let f = async move { manager_from_playmode_path_hash(mode, path, hash).await };
+        let f = async move { manager_from_playmode_path_hash(mode, path, hash, mods).await };
         self.loader = Some(AsyncLoader::new(f));
 
         // match manager_from_playmode(mode, &map).await {

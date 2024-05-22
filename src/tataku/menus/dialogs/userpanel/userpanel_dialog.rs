@@ -121,13 +121,13 @@ impl Dialog for UserPanel {
     }
 
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         
         col!(
             //TODO:!!!!!!!!!!!!!!!!!!!!!! add panel
 
-            self.chat.view();
+            self.chat.view(values);
 
             width = Fill, 
             height = Fill

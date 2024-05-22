@@ -5,9 +5,9 @@ pub struct DraggableDialogElement {
     dialog_content: IcedElement,
 }
 impl DraggableDialogElement {
-    pub fn new(dialog: &Box<dyn Dialog>) -> Self {
+    pub fn new(dialog: &Box<dyn Dialog>, values: &mut ValueCollection) -> Self {
         // use iced::widget::Tooltip;
-        let view = dialog.view();
+        let view = dialog.view(values);
 
         Self {
             dialog_content: ContentBackground::new(view)

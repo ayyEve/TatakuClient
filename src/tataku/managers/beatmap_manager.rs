@@ -33,7 +33,6 @@ pub struct BeatmapManager {
 }
 impl BeatmapManager {
     pub fn new() -> Self {
-        GlobalValueManager::update(Arc::new(LatestBeatmap(Arc::new(BeatmapMeta::default()))));
         Self {
             actions: ActionQueue::new(),
             initialized: false,
@@ -81,7 +80,7 @@ impl BeatmapManager {
 
     /// clear the cache and db, 
     /// and do a full rescan of the songs folder
-    pub async fn full_refresh(&mut self) {
+    pub async fn full_refresh(&mut self, values: &mut ValueCollection) {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
 
@@ -92,7 +91,7 @@ impl BeatmapManager {
         info!("Reading maps");
         let folders = Self::folders_to_check();
         for f in folders {
-            if let Some(maps) = self.check_folder(f, false).await {
+            if let Some(maps) = self.check_folder(f, false, values).await {
                 new_beatmaps.extend(maps);
             }
         }
@@ -104,7 +103,12 @@ impl BeatmapManager {
     }
 
     /// if this doesnt handle the database entries, returns a list of new beatmaps that should be added to the database
-    pub async fn check_folder(&mut self, dir: impl AsRef<Path>, handle_database: impl Into<HandleDatabase>) -> Option<Vec<Arc<BeatmapMeta>>> {
+    pub async fn check_folder(
+        &mut self, 
+        dir: impl AsRef<Path>, 
+        handle_database: impl Into<HandleDatabase>,
+        values: &mut ValueCollection,
+    ) -> Option<Vec<Arc<BeatmapMeta>>> {
         let dir = dir.as_ref();
 
         if !dir.is_dir() { return None }
@@ -142,7 +146,7 @@ impl BeatmapManager {
                 match Beatmap::load_multiple_metadata(file) {
                     Ok(maps) => {
                         for map in maps {
-                            self.add_beatmap(&map, false).await;
+                            self.add_beatmap(&map, false, values).await;
                             
                             // if it got here, it shouldnt be in the database
                             // so we should add it
@@ -170,7 +174,7 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>, add_to_db: bool) {
+    pub async fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>, add_to_db: bool, values: &mut ValueCollection) {
         // check if we already have this map
         if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {
             // see if this beatmap is being added from another source
@@ -192,9 +196,7 @@ impl BeatmapManager {
 
         if self.initialized { 
             debug!("adding beatmap {}", beatmap.version_string());
-            //TODO:!!!! move this to values
-            // global.new_map_hash
-            GlobalValueManager::update(Arc::new(LatestBeatmap(beatmap.clone())));
+            values.update("global.new_map_hash", TatakuVariableWriteSource::Game, beatmap.beatmap_hash);
         }
 
         if add_to_db {
@@ -245,7 +247,6 @@ impl BeatmapManager {
         restart_song: bool
     ) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
-        GlobalValueManager::update(Arc::new(CurrentBeatmap(Some(beatmap.clone()))));
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
         self.play_index += 1;
@@ -299,7 +300,6 @@ impl BeatmapManager {
     #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self, values: &mut ValueCollection) {
         trace!("Setting current beatmap to None");
-        // GlobalValueManager::update(Arc::new(CurrentBeatmap(None)));
         self.current_beatmap = None;
 
         // stop song
@@ -592,13 +592,6 @@ impl Into<TatakuValue> for GroupBy {
         TatakuValue::String(format!("{self:?}"))
     }
 }
-
-
-
-
-crate::create_value_helper!(CurrentBeatmap, Option<Arc<BeatmapMeta>>, CurrentBeatmapHelper);
-crate::create_value_helper!(LatestBeatmap, Arc<BeatmapMeta>, LatestBeatmapHelper);
-// crate::create_value_helper!(CurrentPlaymode, String, CurrentPlaymodeHelper);
 
 /// this is a bad name for this
 pub enum HandleDatabase {

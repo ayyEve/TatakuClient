@@ -27,7 +27,7 @@ impl Dialog for BeatmapDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
         col!(

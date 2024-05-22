@@ -206,7 +206,8 @@ impl MultiplayerManager {
                         let Some(mode) = self.selected_mode.clone() else { return Ok(()) };
                         let Ok(hash) = values.try_get("map.hash") else { return Ok(()) };
                         let Ok(path) = values.get_string("map.path") else { return Ok(()) };
-                        let f = manager_from_playmode_path_hash(mode, path, hash);
+                        let Ok(mods) = values.try_get("global.mods") else { return Ok(()) };
+                        let f = manager_from_playmode_path_hash(mode, path, hash, mods);
                         self.beatmap_loader = Some(AsyncLoader::new(f));
                     } else {
                         warn!("not loading map: current != selected");

@@ -45,36 +45,37 @@ impl ModDialog {
         }
     }
 
-    fn increment_index(&mut self) {
-        // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+    // fn increment_index(&mut self) {
+    //     // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
 
-        // let old = self.selected_index;
-        // self.selected_index = (self.selected_index + 1) % self.scroll.items.len();
+    //     // let old = self.selected_index;
+    //     // self.selected_index = (self.selected_index + 1) % self.scroll.items.len();
 
-        // self.scroll.items.get_mut(old).unwrap().set_selected(false);
-        // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
-    }
-    fn deincrement_index(&mut self) {
-        // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
+    //     // self.scroll.items.get_mut(old).unwrap().set_selected(false);
+    //     // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
+    // }
+    // fn deincrement_index(&mut self) {
+    //     // if self.scroll.items.len() == 0 { return } // should never happen but just to be safe
 
-        // let old = self.selected_index;
-        // self.selected_index = if self.selected_index == 0 { self.scroll.items.len() - 1 } else { self.selected_index - 1 };
+    //     // let old = self.selected_index;
+    //     // self.selected_index = if self.selected_index == 0 { self.scroll.items.len() - 1 } else { self.selected_index - 1 };
 
-        // self.scroll.items.get_mut(old).unwrap().set_selected(false);
-        // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
-    }
+    //     // self.scroll.items.get_mut(old).unwrap().set_selected(false);
+    //     // self.scroll.items.get_mut(self.selected_index).unwrap().set_selected(true);
+    // }
     // fn toggle_current(&mut self) {
     //     if let Some(i) = self.scroll.items.get_mut(self.selected_index) {
     //         i.on_key_press(Key::Space, Default::default());
     //     }
     // }
 
-    fn toggle_mod(&self, m:GameplayMod) {
-        let removes:HashSet<String> = m.removes.iter().map(|m|(*m).to_owned()).collect();
+    fn toggle_mod(&self, m:GameplayMod, values: &mut ValueCollection) {
+        let removes:HashSet<String> = m.removes.iter().map(|m| m.to_string()).collect();
 
-        let mut mods = ModManager::get_mut();
+        let mut mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
         mods.toggle_mod(m);
-        mods.mods.retain(|m|!removes.contains(m));
+        mods.mods.retain(|m| !removes.contains(m));
+        values.update("global.mods", TatakuVariableWriteSource::Game, mods);
     }
 }
 
@@ -88,17 +89,14 @@ impl Dialog for ModDialog {
     async fn force_close(&mut self) { self.should_close = true; }
 
     
-    async fn handle_message(&mut self, message: Message, _values: &mut ValueCollection) {
-        match message.tag {
-            MessageTag::GameplayMod(m) => self.toggle_mod(m),
-
-            _ => {}
-        }
+    async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
+        let MessageTag::GameplayMod(m) = message.tag else { return };
+        self.toggle_mod(m, values);
     }
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
-        let mods = ModManager::get();
+        let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
         let owner = MessageOwner::new_dialog(self);
 
         let mut items = Vec::new();
@@ -108,7 +106,7 @@ impl Dialog for ModDialog {
 
             for m in group.mods {
                 items.push(row!(
-                    Checkbox::new(m.name, mods.has_mod(m), move|_|Message::new(owner, m.clone(), MessageType::Custom(Arc::new(m)))).text_size(30.0).width(Fill),
+                    Checkbox::new(m.name, mods.has_mod(m), move|_| Message::new(owner, m, MessageType::Click)).text_size(30.0).width(Fill),
                     Text::new(m.description).width(Fill).size(30.0);
                     width = Fill
                 ))
@@ -163,90 +161,90 @@ impl Dialog for ModDialog {
 
 }
 
-#[derive(ScrollableGettersSetters)]
-struct ModButton {
-    size: Vector2,
-    pos: Vector2,
-    hover: bool,
-    selected: bool,
+// #[derive(ScrollableGettersSetters)]
+// struct ModButton {
+//     size: Vector2,
+//     pos: Vector2,
+//     hover: bool,
+//     selected: bool,
 
-    gameplay_mod: GameplayMod,
-    mod_name: String,
-    enabled: bool,
+//     gameplay_mod: GameplayMod,
+//     mod_name: String,
+//     enabled: bool,
 
-    mods: ModManagerHelper
-}
-impl ModButton {
-    fn new(pos: Vector2, gameplay_mod: GameplayMod, current_mods: &ModManager) -> Self {
-        let enabled = current_mods.has_mod(gameplay_mod.name);
-        let mod_name = gameplay_mod.display_name.to_owned();
+//     mods: ModManagerHelper
+// }
+// impl ModButton {
+//     fn new(pos: Vector2, gameplay_mod: GameplayMod, current_mods: &ModManager) -> Self {
+//         let enabled = current_mods.has_mod(gameplay_mod.name);
+//         let mod_name = gameplay_mod.display_name.to_owned();
 
-        Self {
-            size: Vector2::new(500.0, 50.0),
-            pos, 
-            hover: false,
-            selected: false,
+//         Self {
+//             size: Vector2::new(500.0, 50.0),
+//             pos, 
+//             hover: false,
+//             selected: false,
 
-            gameplay_mod,
-            mod_name,
+//             gameplay_mod,
+//             mod_name,
 
-            enabled,
-            mods: ModManagerHelper::new()
-        }
-    }
+//             enabled,
+//             mods: ModManagerHelper::new()
+//         }
+//     }
 
-    fn toggle(&self) {
-        let name = self.gameplay_mod.name;
-        let removes:HashSet<String> = self.gameplay_mod.removes.iter().map(|m|(*m).to_owned()).collect();
-        tokio::spawn(async move {
-            let mut manager = ModManager::get_mut();
-            manager.toggle_mod(name);
-            manager.mods.retain(|m|!removes.contains(m));
-        });
-    }
-}
-impl ScrollableItem for ModButton {
-    fn update(&mut self) {
-        if self.mods.update() {
-            self.enabled = self.mods.has_mod(self.gameplay_mod)
-        }
-    }
+//     fn toggle(&self) {
+//         let name = self.gameplay_mod.name;
+//         let removes:HashSet<String> = self.gameplay_mod.removes.iter().map(|m|(*m).to_owned()).collect();
+//         tokio::spawn(async move {
+//             let mut manager = ModManager::get_mut();
+//             manager.toggle_mod(name);
+//             manager.mods.retain(|m|!removes.contains(m));
+//         });
+//     }
+// }
+// impl ScrollableItem for ModButton {
+//     fn update(&mut self) {
+//         if self.mods.update() {
+//             self.enabled = self.mods.has_mod(self.gameplay_mod)
+//         }
+//     }
 
-    fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
-        let pos_offset = self.pos + pos_offset;
-        let cb_size = Vector2::new(200.0, 50.0);
+//     fn draw(&mut self, pos_offset:Vector2, list: &mut RenderableCollection) {
+//         let pos_offset = self.pos + pos_offset;
+//         let cb_size = Vector2::new(200.0, 50.0);
 
-        let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, Font::Main);
-        checkbox.set_hover(self.hover);
-        checkbox.set_selected(self.selected);
+//         let mut checkbox = Checkbox::new(Vector2::ZERO, cb_size, &self.mod_name, self.enabled, Font::Main);
+//         checkbox.set_hover(self.hover);
+//         checkbox.set_selected(self.selected);
 
-        let font_size = 30.0;
-        let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
-        let desc_text = Text::new(
-            desc_pos, 
-            font_size, 
-            self.gameplay_mod.description, 
-            Color::WHITE, 
-            Font::Main
-        );
+//         let font_size = 30.0;
+//         let desc_pos = pos_offset + cb_size.x_portion() + Vector2::new(10.0, (cb_size.y - font_size) / 2.0);
+//         let desc_text = Text::new(
+//             desc_pos, 
+//             font_size, 
+//             self.gameplay_mod.description, 
+//             Color::WHITE, 
+//             Font::Main
+//         );
 
-        checkbox.draw(pos_offset, list);
-        list.push(desc_text);
-    }
+//         checkbox.draw(pos_offset, list);
+//         list.push(desc_text);
+//     }
 
-    fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
-        if key == Key::Space {
-            self.toggle()
-        }
+//     fn on_key_press(&mut self, key:Key, _mods:KeyModifiers) -> bool {
+//         if key == Key::Space {
+//             self.toggle()
+//         }
 
-        self.get_selected()
-    }
+//         self.get_selected()
+//     }
 
-    fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
-        if self.hover {
-            self.toggle();
-        }
+//     fn on_click(&mut self, _pos:Vector2, _btn: MouseButton, _mods:KeyModifiers) -> bool {
+//         if self.hover {
+//             self.toggle();
+//         }
 
-        self.hover
-    }
-}
+//         self.hover
+//     }
+// }

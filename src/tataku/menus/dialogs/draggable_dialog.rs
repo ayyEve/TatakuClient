@@ -30,7 +30,7 @@ impl Dialog for DraggableDialog {
 
 
 
-    fn view(&self) -> IcedElement { 
+    fn view(&self, values: &mut ValueCollection) -> IcedElement { 
         use iced_elements::*;
 
         col!(
@@ -53,7 +53,7 @@ impl Dialog for DraggableDialog {
             ),
 
             // content
-            self.inner.view()
+            self.inner.view(values)
             ;
         )
     }

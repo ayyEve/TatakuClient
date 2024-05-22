@@ -238,7 +238,7 @@ impl Dialog for Chat {
     }
 
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         
         col!(

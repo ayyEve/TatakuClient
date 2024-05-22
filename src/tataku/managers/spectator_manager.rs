@@ -18,10 +18,7 @@ pub struct SpectatorManager {
 
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
-
-    new_map_check: LatestBeatmapHelper,
-
-
+    new_map: SyValueHelper,
     own_beatmap: SyValueHelper,
 }
 impl SpectatorManager {
@@ -35,9 +32,9 @@ impl SpectatorManager {
             host_username,
             spectator_cache: HashMap::new(),
             host_map: None,
-            new_map_check: LatestBeatmapHelper::new(),
 
             own_beatmap: SyValueHelper::new("map.hash"),
+            new_map: SyValueHelper::new("global.new_map_hash"),
         }
     }
     // pub async fn new_from_manager(manager: &IngameManager) -> Self {
@@ -56,7 +53,6 @@ impl SpectatorManager {
     //         host_username: host_username.clone(),
     //         spectator_cache: spectators.clone(),
     //         host_map: None,
-    //         new_map_check: LatestBeatmapHelper::new(),
     //     }
     // }
 
@@ -73,7 +69,7 @@ impl SpectatorManager {
         let Ok(hash) = values.try_get("map.hash") else { return };
         if hash != map_hash { return }
 
-        match manager_from_playmode_path_hash(playmode, map_path, hash).await {
+        match manager_from_playmode_path_hash(playmode, map_path, hash, mods.clone()).await {
             Ok(mut manager) => {
                 // set manager things
                 manager.apply_mods(mods).await;
@@ -127,9 +123,9 @@ impl SpectatorManager {
         }
 
         // handle new maps
-        if self.new_map_check.update() {
-            let new_map = self.new_map_check.0.clone();
-            info!("got new map: {new_map:?}");
+        if self.new_map.check(values) {
+            // let new_map_hash:Md5Hash = self.new_map.deref().try_into().unwrap_or_default();
+            // info!("got new map: {new_map_hash:?}");
 
             // if we got new maps, we have a map waiting to be played, but arent playing
             if let Some(host_map) = self.host_map.as_ref().filter(|_| manager.is_none()) {

@@ -45,7 +45,12 @@ pub fn gamemode_display_name(playmode: &str) -> &'static str {
 }
 
 
-pub async fn manager_from_playmode_path_hash(playmode: String, map_path: String, map_hash: Md5Hash) -> TatakuResult<IngameManager> {
+pub async fn manager_from_playmode_path_hash(
+    playmode: String, 
+    map_path: String, 
+    map_hash: Md5Hash,
+    mods: ModManager,
+) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
     let playmode = beatmap.playmode(playmode);
 
@@ -54,10 +59,14 @@ pub async fn manager_from_playmode_path_hash(playmode: String, map_path: String,
 
     let gamemode = info.create_game(&beatmap).await?;
 
-    Ok(IngameManager::new(beatmap, gamemode).await)
+    Ok(IngameManager::new(beatmap, gamemode, mods).await)
 }
 
-pub async fn manager_from_playmode(playmode: String, beatmap: &BeatmapMeta) -> TatakuResult<IngameManager> {
+pub async fn manager_from_playmode(
+    playmode: String, 
+    beatmap: &BeatmapMeta,
+    mods: ModManager,
+) -> TatakuResult<IngameManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let playmode = beatmap.playmode(playmode);
 
@@ -66,7 +75,7 @@ pub async fn manager_from_playmode(playmode: String, beatmap: &BeatmapMeta) -> T
 
     let gamemode = info.create_game(&beatmap).await?;
 
-    Ok(IngameManager::new(beatmap, gamemode).await)
+    Ok(IngameManager::new(beatmap, gamemode, mods).await)
 }
 
 

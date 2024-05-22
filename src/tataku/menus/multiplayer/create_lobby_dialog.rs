@@ -105,7 +105,7 @@ impl Dialog for CreateLobbyDialog {
     }
 
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         let owner = MessageOwner::new_dialog(self);
         col!(

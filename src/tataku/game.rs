@@ -64,8 +64,6 @@ pub struct Game {
 }
 impl Game {
     pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
-        GlobalValueManager::update(Arc::new(CurrentBeatmap::default()));
-        // GlobalValueManager::update(Arc::new(CurrentPlaymode("osu".to_owned())));
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
 
         let mut g = Game {
@@ -269,10 +267,6 @@ impl Game {
                 tokio::time::sleep(Duration::from_millis(1_000)).await;
             }
         });
-
-        // make sure we have a value in the mod manager global store
-        GlobalValueManager::update(Arc::new(ModManager::new()));
-        GlobalValueManager::update(Arc::new(LatestBeatmap(Default::default())));
 
         Self::load_theme(&self.settings.theme);
 
@@ -626,11 +620,11 @@ impl Game {
         }
 
         // custom menu list
-        if keys_down.contains(&Key::M) && mods.ctrl && !mods.shift {
+        if keys_down.contains(&Key::M) && mods.ctrl && mods.shift {
             self.actions.push(MenuMenuAction::SetMenu("menu_list".to_owned()));
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
-        if keys_down.contains(&Key::M) && mods.ctrl && mods.shift {
+        if keys_down.contains(&Key::H) && mods.ctrl && mods.shift {
             warn!("{:#?}", self.values);
         }
 
@@ -638,6 +632,14 @@ impl Game {
         // update any dialogs
         if keys_down.contains(&Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
             keys_down.remove_item(Key::Escape)
+        }
+
+        if keys_down.contains(&Key::F5) && mods.ctrl {
+            NotificationManager::add_text_notification("Doing a full refresh, the game will freeze for a bit", 5000.0, Color::RED).await;
+            self.beatmap_manager.full_refresh(&mut self.values).await;
+            // tokio::spawn(async {
+            //     BEATMAP_MANAGER.write().await.full_refresh().await;
+            // });
         }
 
 
@@ -1175,7 +1177,7 @@ impl Game {
                         // play the map
                         let Ok(map_path) = self.values.get_string("map.path") else { return };
 
-                        match manager_from_playmode_path_hash(mode, map_path, map_hash).await {
+                        match manager_from_playmode_path_hash(mode, map_path, map_hash, mods.clone()).await {
                             Ok(mut manager) => {
                                 manager.apply_mods(mods).await;
                                 self.queue_state_change(GameState::Ingame(Box::new(manager)))
@@ -1231,27 +1233,7 @@ impl Game {
 
                     }
                     
-                    BeatmapAction::SetPlaymode(new_mode) => {
-                        // ensure lowercase
-                        let mut new_mode = new_mode.to_lowercase();
-                        // warn!("setting playmode: {new_mode}");
-
-                        // ensure playmode exists
-                        if !AVAILABLE_PLAYMODES.contains(&&*new_mode) { return warn!("Trying to set invalid playmode: {new_mode}") }
-
-                        // set playmode and playmode display
-                        let Some(mut info) = get_gamemode_info(&new_mode) else { return };
-                        self.values.update_display("global.playmode", TatakuVariableWriteSource::Game, &new_mode, Some(info.display_name()));
-
-                        // if we have a beatmap, get the override mode and update the playmode_actual values
-                        if let Some(map) = &self.beatmap_manager.current_beatmap {
-                            new_mode = map.check_mode_override(new_mode);
-                            let Some(info2) = get_gamemode_info(&new_mode) else { return };
-                            info = info2;
-                        }
-                        
-                        self.values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &new_mode, Some(info.display_name()));
-                    }
+                    BeatmapAction::SetPlaymode(new_mode) => self.update_playmode(new_mode).await,
 
                     BeatmapAction::Random(use_preview) => {
                         let Some(random) = self.beatmap_manager.random_beatmap() else { return };
@@ -1292,7 +1274,7 @@ impl Game {
                         self.beatmap_manager.initialize(&mut self.values).await; 
                     }
                     BeatmapAction::AddBeatmap { map, add_to_db } => {
-                        self.beatmap_manager.add_beatmap(&map, add_to_db).await;
+                        self.beatmap_manager.add_beatmap(&map, add_to_db, &mut self.values).await;
                     }
                     
 
@@ -1353,8 +1335,10 @@ impl Game {
                     NotificationManager::add_text_notification("You don't have that map!", 5000.0, Color::RED).await;
                     return;
                 };
+
+                let mods = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
                 
-                match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash).await {
+                match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash, mods).await {
                     Ok(mut manager) => {
                         manager.set_replay(*replay);
                         self.queue_state_change(GameState::Ingame(Box::new(manager)))
@@ -1609,7 +1593,7 @@ impl Game {
                         Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
                         Ok(path) => {
                             // load the map
-                            let Some(last) = self.beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
+                            let Some(last) = self.beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps, &mut self.values).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
                             // set it as current map if wanted
                             let mut use_preview_time = true;
                             let change_map = match &self.current_state {
@@ -1942,6 +1926,34 @@ impl Game {
         }
 
         Ok(())
+    }
+
+
+    async fn update_playmode(&mut self, playmode: String) {
+
+        // ensure lowercase
+        let mut playmode = playmode.to_lowercase();
+        // warn!("setting playmode: {new_mode}");
+
+        // ensure playmode exists
+        if !AVAILABLE_PLAYMODES.contains(&&*playmode) { return warn!("Trying to set invalid playmode: {playmode}") }
+
+        // set playmode and playmode display
+        let Some(mut info) = get_gamemode_info(&playmode) else { return };
+        self.values.update_display("global.playmode", TatakuVariableWriteSource::Game, &playmode, Some(info.display_name()));
+
+        // if we have a beatmap, get the override mode and update the playmode_actual values
+        if let Some(map) = &self.beatmap_manager.current_beatmap {
+            playmode = map.check_mode_override(playmode);
+            let Some(info2) = get_gamemode_info(&playmode) else { return };
+            info = info2;
+        }
+        
+        self.values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &playmode, Some(info.display_name()));
+    
+
+        // update mods list as well
+    
     }
 }
 

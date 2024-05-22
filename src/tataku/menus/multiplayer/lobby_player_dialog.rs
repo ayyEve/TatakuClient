@@ -60,7 +60,7 @@ impl Dialog for LobbyPlayerDialog {
         self.actions.take()
     }
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
         col!(

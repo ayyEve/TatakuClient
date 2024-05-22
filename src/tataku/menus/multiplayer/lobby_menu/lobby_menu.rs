@@ -16,7 +16,6 @@ pub struct LobbyMenu {
     selected_beatmap: Option<Arc<BeatmapMeta>>,
     selected_mode: Option<String>,
     current_mods: ModManagerHelper,
-    // latest_beatmap_helper: LatestBeatmapHelper,
 
 
     // beatmap_loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,

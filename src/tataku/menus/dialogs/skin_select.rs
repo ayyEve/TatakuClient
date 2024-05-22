@@ -67,7 +67,7 @@ impl Dialog for SkinSelect {
     }
 
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         let current_skin = Settings::get().current_skin.clone();
         

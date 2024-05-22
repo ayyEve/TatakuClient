@@ -20,13 +20,29 @@ impl From<&BeatmapMeta> for TatakuValue {
         map.finish()
     }
 }
-// impl TryInto<BeatmapMeta> for &CustomElementValue {
-//     type Error = String;
-//     fn try_into(self) -> Result<BeatmapMeta, Self::Error> {
-//         let str = self.as_string();
-//         Md5Hash::try_from(str).map_err(|e| format!("{e:?}"))
-//     }
-// }
+impl TryInto<BeatmapMeta> for &TatakuValue {
+    type Error = String;
+    fn try_into(self) -> Result<BeatmapMeta, Self::Error> {
+        let TatakuValue::Map(map) = self else { return Err(format!("not a map")) };
+        Ok(BeatmapMeta {
+            artist: map.get("artist").ok_or_else(|| "no artist".to_owned())?.as_string(),
+            title: map.get("title").ok_or_else(|| "no title".to_owned())?.as_string(),
+
+            creator: map.get("creator").ok_or_else(|| "no creator".to_owned())?.as_string(),
+            version: map.get("version").ok_or_else(|| "no version".to_owned())?.as_string(),
+            mode: map.get("playmode").ok_or_else(|| "no playmode".to_owned())?.as_string(),
+            beatmap_type: map.get("game").ok_or_else(|| "no game".to_owned())?.as_ref().try_into().map_err(|e:String| e.to_string())?,
+            beatmap_hash: map.get("hash").ok_or_else(|| "no hash".to_owned())?.as_ref().try_into().map_err(|e:String| e.to_string())?,
+            audio_filename: map.get("audio_filename").ok_or_else(|| "no audio_filename".to_owned())?.as_string(),
+            audio_preview: map.get("preview_time").ok_or_else(|| "no preview_time".to_owned())?.as_f32().map_err(|e| format!("{e:?}"))?,
+
+            file_path: map.get("path").ok_or_else(|| "no path".to_owned())?.as_string(),
+            image_filename: map.get("image_filename").ok_or_else(|| "no image_filename".to_owned())?.as_string(),
+
+            ..Default::default()
+        })
+    }
+}
 
 impl From<&BeatmapType> for TatakuValue {
     fn from(value: &BeatmapType) -> Self {

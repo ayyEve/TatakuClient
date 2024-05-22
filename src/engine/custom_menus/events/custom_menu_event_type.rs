@@ -1,4 +1,3 @@
-use crate::prelude::*;
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -25,6 +24,7 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
         
         match &*str {
             "song_start" => Ok(Self::SongStart),
+            "song_pause" => Ok(Self::SongPause),
             "song_end" => Ok(Self::SongEnd),
             "menu_enter" => Ok(Self::MenuEnter),
 

@@ -85,7 +85,7 @@ impl Dialog for SettingsMenu {
 
     }
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
         // build settings list

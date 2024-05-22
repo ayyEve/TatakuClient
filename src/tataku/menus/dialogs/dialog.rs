@@ -23,7 +23,7 @@ pub trait Dialog:Send+Sync {
     /// dialog is being forcefully closed
     async fn force_close(&mut self) {}
 
-    fn view(&self) -> IcedElement;
+    fn view(&self, values: &mut ValueCollection) -> IcedElement;
     async fn handle_message(&mut self, message: Message, values: &mut ValueCollection);
     async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { Vec::new() }
 

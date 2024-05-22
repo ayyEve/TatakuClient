@@ -66,7 +66,7 @@ impl Dialog for DirectDownloadDialog {
         // let Some(tag) = message.tag.as_string() else { return }; 
     }
     
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         EmptyElement.into_element()
     }

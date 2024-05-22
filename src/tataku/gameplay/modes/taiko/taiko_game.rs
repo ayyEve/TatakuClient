@@ -264,7 +264,7 @@ impl GameMode for TaikoGame {
             hit_cache,
             last_judgment: TaikoHitJudgments::Miss,
             counter: FullAltCounter::new(),
-            current_mods: ModManager::get(),
+            current_mods: Arc::new(ModManager::new()),
             healthbar_swap_pending: false
         };
 

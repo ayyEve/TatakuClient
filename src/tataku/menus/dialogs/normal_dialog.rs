@@ -88,7 +88,7 @@ impl Dialog for GenericDialog {
 
     async fn update(&mut self, _values: &mut ValueCollection) -> Vec<TatakuAction> { self.actions.take() }
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
         col!(

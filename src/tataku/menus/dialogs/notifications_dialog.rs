@@ -63,7 +63,7 @@ impl Dialog for NotificationsDialog {
 
     }
 
-    fn view(&self) -> IcedElement {
+    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         col!(
             self.notifications.iter().map(|(n, new)|NotificationItem::new(n.clone(), *new).into_element()).collect(),

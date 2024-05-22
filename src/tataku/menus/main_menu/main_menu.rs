@@ -14,17 +14,6 @@ const MENU_HIDE_TIMER:f32 = 5_000.0;
 pub struct MainMenu {
     actions: ActionQueue,
 
-    // // index 0
-    // pub play_button: MainMenuButton,
-    // // // index 1
-    // // pub direct_button: MainMenuButton,
-    // // index 2
-    // pub multiplayer_button: MainMenuButton,
-    // // index 3
-    // pub settings_button: MainMenuButton,
-    // // index 4
-    // pub exit_button: MainMenuButton,
-
     // visualization: MenuVisualization,
     gameplay_preview: GameplayPreview,
     // key_events: KeyEventsHandlerGroup<MainMenuKeys>,
@@ -38,9 +27,9 @@ pub struct MainMenu {
     settings: SettingsHelper,
     // window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
-    new_map_helper: LatestBeatmapHelper,
     current_skin: CurrentSkinHelper,
-    current_beatmap: CurrentBeatmapHelper,
+    beatmap: SyValueHelper,
+    new_map: SyValueHelper,
 
     music_box: MusicBox,
     media_controls: MediaControlHelper,
@@ -86,6 +75,8 @@ impl MainMenu {
 
             // visualization: ,
             gameplay_preview,
+            beatmap: SyValueHelper::new("map"),
+            new_map: SyValueHelper::new("global.new_map_hash"),
             // key_events: KeyEventsHandlerGroup::new(),
 
             // menu_game: MenuGameHelper::new(false, false, Box::new(|s|s.background_game_settings.main_menu_enabled)),
@@ -93,7 +84,6 @@ impl MainMenu {
             menu_visible: true,
             music_box: MusicBox::new(event_sender.clone()).await,
             media_controls: MediaControlHelper::new(event_sender.clone()),
-            current_beatmap: CurrentBeatmapHelper::new(),
 
             event_sender, 
             event_receiver,
@@ -103,7 +93,6 @@ impl MainMenu {
             // window_size,
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
-            new_map_helper: LatestBeatmapHelper::new(),
             current_skin: CurrentSkinHelper::new(),
         }
     }
@@ -239,36 +228,34 @@ impl AsyncMenu for MainMenu {
     fn get_name(&self) -> &'static str { "main_menu" }
 
     async fn on_change(&mut self, into:bool) {
-        if into {
-            // update our window size
-            // self.window_size_changed(WindowSize::get()).await;
-            self.new_map_helper.update();
+        if !into { return };
 
-            // self.visualization.reset();
+        // // update our window size
+        // // self.window_size_changed(WindowSize::get()).await;
+        // self.new_map_helper.update();
 
-            // play song if it exists
-            self.actions.push(SongAction::SetRate(1.0));
-            // if let Some(song) = AudioManager::get_song().await {
-            //     // reset any time mods
-            //     song.set_rate(1.0);
-            //     // // play
-            //     // song.play(true).unwrap();
-            // }
+        // self.visualization.reset();
 
-            // update online to what song we're listening to
-            Self::update_online();
+        // play song if it exists
+        self.actions.push(SongAction::SetRate(1.0));
+        // if let Some(song) = AudioManager::get_song().await {
+        //     // reset any time mods
+        //     song.set_rate(1.0);
+        //     // // play
+        //     // song.play(true).unwrap();
+        // }
 
-            self.setup_manager("on_change").await;
-            
-            self.hide_menu();
-        } else {
-            debug!("leaving main menu");
-        }
+        // update online to what song we're listening to
+        Self::update_online();
+
+        self.setup_manager("on_change").await;
+        
+        self.hide_menu();
     }
 
     async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
         self.settings.update();
-        self.song_display.update();
+        self.song_display.update(values);
 
         if self.current_skin.update() {
             // self.visualization.reload_skin().await;
@@ -370,14 +357,18 @@ impl AsyncMenu for MainMenu {
         }
 
         // check if current map changed
-        if self.current_beatmap.update() {
+        if self.beatmap.check(values) {
             self.setup_manager("update song done").await;
             Self::update_online();
         }
 
         // check if there are any new maps
-        if self.new_map_helper.update() {
-            self.actions.push(BeatmapAction::Set(self.new_map_helper.0.clone(), SetBeatmapOptions::new()));
+        if self.new_map.check(values) {
+            let new_map_hash:Md5Hash = self.new_map.deref().try_into().unwrap_or_default();
+            if new_map_hash.as_ref() != &0 {
+                self.actions.push(BeatmapAction::SetFromHash(new_map_hash, SetBeatmapOptions::new()));
+                // self.actions.push(BeatmapAction::Set(self.new_map_helper.0.clone(), SetBeatmapOptions::new()));
+            }
         }
 
         // update the gameplay preview (includes drawing it)
@@ -414,7 +405,7 @@ impl AsyncMenu for MainMenu {
         col!(
             // song info
             row!(
-                self.song_display.view();
+                self.song_display.view(values);
                 width = Fill,
                 height = Fill
             ),

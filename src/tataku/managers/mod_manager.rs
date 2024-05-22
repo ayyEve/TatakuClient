@@ -1,8 +1,6 @@
 use std::hash::Hash;
 use crate::prelude::*;
 
-pub type ModManagerHelper = GlobalValue<ModManager>;
-
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
 #[serde(default)]
 pub struct ModManager {
@@ -16,16 +14,6 @@ pub struct ModManager {
 impl ModManager {
     pub fn new() -> Self {
         Self::default()
-    }
-    
-    pub fn get_mut() -> GlobalValueMut<Self> {
-        GlobalValueManager::get_mut::<Self>().unwrap()
-    }
-    pub fn get() -> Arc<Self> {
-        GlobalValueManager::get::<Self>().unwrap()
-    }
-    pub fn get_cloned() -> Self {
-        GlobalValueManager::get::<Self>().unwrap().as_ref().clone()
     }
 
     pub fn mods_for_playmode(playmode: &String) -> Vec<GameplayMod> {

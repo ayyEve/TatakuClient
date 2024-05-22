@@ -6,39 +6,38 @@ const PRIMARY_COLOR:Color = Color::WHITE;
 const SECONDARY_COLOR:Color = Color::new(1.0, 1.0, 1.0, 0.1);
 
 pub struct CurrentSongDisplay {
-    current_song: CurrentBeatmapHelper,
-    // window_size: WindowSizeHelper,
+    current_beatmap: SyValueHelper,
 
     song_text: String,
     // text_size: Vector2,
 }
 impl CurrentSongDisplay {
     pub fn new() -> Self {
-        let current_song = CurrentBeatmapHelper::new();
-        let song_text = Self::get_text(&current_song);
         Self {
-            current_song,
-            // window_size: WindowSizeHelper::new(),
+            current_beatmap: SyValueHelper::new("map"),
+            // current_song,
 
-            song_text,
+            song_text: String::new(),
             // text_size: Vector2::ZERO,
         }
     }
-    fn get_text(current_song: &CurrentBeatmapHelper) -> String {
-        current_song.0.as_ref().map(|s|format!("{} - {}", s.artist, s.title)).unwrap_or_default()
-    }
 
-    pub fn update(&mut self) {
-        // self.window_size.update();
-        if self.current_song.update() {
-            self.song_text = Self::get_text(&self.current_song);
+    pub fn update(&mut self, values: &ValueCollection) {
+        if self.current_beatmap.check(values) {
+            let a = self.current_beatmap.deref();
+            let map:Result<BeatmapMeta, String> = a.try_into();
             
-            // let text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
-            // self.text_size = text.measure_text();
+            self.song_text = match map {
+                Ok(map) => format!("{} - {}", map.artist, map.title),
+                Err(_) => String::new(),
+            };
+                
+            //     // let text = Text::new(Vector2::ZERO, 30.0, self.song_text.clone(), PRIMARY_COLOR, Font::Main);
+            //     // self.text_size = text.measure_text();
         }
     }
 
-    pub fn view(&self) -> IcedElement {
+    pub fn view(&self, _values: &ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
         
         row!(

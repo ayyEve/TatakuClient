@@ -123,7 +123,7 @@ pub struct IngameManager {
 }
 
 impl IngameManager {
-    pub async fn new(beatmap: Beatmap, mut gamemode: Box<dyn GameMode>) -> Self {
+    pub async fn new(beatmap: Beatmap, mut gamemode: Box<dyn GameMode>, mut current_mods: ModManager) -> Self {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
@@ -133,7 +133,6 @@ impl IngameManager {
         let timing_points = beatmap.get_timing_points();
 
 
-        let mut current_mods = ModManager::get_cloned();
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
