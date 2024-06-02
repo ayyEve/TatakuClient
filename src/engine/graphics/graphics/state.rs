@@ -50,12 +50,12 @@ impl GraphicsState {
     // Creating some of the wgpu types requires async code
     #[cfg(feature="graphics")]
     pub async fn new(window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
-        let window_size = settings.window_size;
-        let window_size = Vector2::new(window_size[0], window_size[1]);
-
+        let window_size = window.inner_size();
+        let window_size = Vector2::new(window_size.width as f32, window_size.height as f32);
+        
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL,
+            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL,
             dx12_shader_compiler: Default::default(),
         });
 
@@ -94,7 +94,7 @@ impl GraphicsState {
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT, // | wgpu::TextureUsages::COPY_SRC,
             format: surface_format,
             width: size[0],
             height: size[1],
