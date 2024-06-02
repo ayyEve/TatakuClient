@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rlua::{ Error, Lua };
+use rlua::Lua;
 
 #[cfg(not(feature="debug_custom_menus"))]
 const LUA_INIT:&'static str = include_str!("../../../menus/init.lua");
@@ -8,22 +8,20 @@ pub struct CustomMenuParser {
     lua: Lua,
 }
 impl CustomMenuParser {
-    pub fn new() -> Self {
+    pub fn new() -> TatakuResult<Self> {
         let lua =  Lua::new();
-        let res:Result<(), Error> = lua.context(|lua| {
-            #[cfg(feature="debug_custom_menus")] {
-                let bytes = std::fs::read("../menus/init.lua").unwrap();
-                lua.load(&bytes).set_name("lua_init")?.exec()?;
-            }
-            #[cfg(not(feature="debug_custom_menus"))]
-            lua.load(LUA_INIT).set_name("lua_init")?.exec()?;
-            Ok(())
-        });
-        if let Err(e) = res { error!("Error parsing init.lua: {e:?}"); }
 
-        Self {
-            lua,
+        #[cfg(feature="debug_custom_menus")] {
+            let bytes = std::fs::read("../menus/init.lua").unwrap();
+            lua.load(&bytes).set_name("lua_init").exec()?;
         }
+        #[cfg(not(feature="debug_custom_menus"))]
+        lua.load(LUA_INIT).set_name("lua_init").exec()?;
+
+
+        Ok(Self {
+            lua,
+        })
     }
 
     /// read a file
@@ -34,28 +32,21 @@ impl CustomMenuParser {
     }
 
     pub fn load_menu_from_bytes(&mut self, data: &[u8], name: &String) -> TatakuResult<CustomMenu> {
-        let res:Result<CustomMenu, Error> = self.lua.context(move |lua| {
-            // let menu_count:usize = lua.globals().get("menu_count")?;
-            // println!("got menu count: {menu_count}");
+        // let menu_count:usize = lua.globals().get("menu_count")?;
+        // println!("got menu count: {menu_count}");
 
-            // run the file
-            lua
-                .load(&data)
-                .set_name(name)?
-                .exec()?;
+        // run the file
+        self.lua
+            .load(data)
+            .set_name(name)
+            .exec()?;
 
-            // let menu_count2:usize = lua.globals().get("menu_count")?;
-            // if menu_count2 == menu_count { warn!("No menu was loaded from the file {path:?}") }
+        // let menu_count2:usize = lua.globals().get("menu_count")?;
+        // if menu_count2 == menu_count { warn!("No menu was loaded from the file {path:?}") }
 
-            lua
-                .globals()
-                .get("new_menu")
-        });
-
-        match res {
-            Ok(menu) => Ok(menu),
-            Err(e) => Err(TatakuError::String(e.to_string())),
-        }
+        Ok(self.lua
+            .globals()
+            .get("new_menu")?)
     }
 
     // pub fn get_menus(&mut self) -> Vec<CustomMenu> {

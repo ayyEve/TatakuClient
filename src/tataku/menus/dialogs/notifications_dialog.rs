@@ -221,26 +221,26 @@ impl iced::advanced::Widget<Message, IcedRenderer> for NotificationItem {
     fn width(&self) -> iced::Length { iced::Length::Fill }
     fn height(&self) -> iced::Length { iced::Length::Shrink }
 
-    fn state(&self) -> iced_runtime::core::widget::tree::State {
-        iced_runtime::core::widget::tree::State::new(NotificationItemState::new(self.is_new))
+    fn state(&self) -> iced_core::widget::tree::State {
+        iced_core::widget::tree::State::new(NotificationItemState::new(self.is_new))
     }
 
     fn layout(
         &self,
         renderer: &IcedRenderer,
-        limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
+        limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
         self.content.as_widget().layout(renderer, &limits.width(self.width()).height(self.height()))
     }
 
     fn draw(
         &self,
-        state: &iced_runtime::core::widget::Tree,
+        state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
         theme: &iced::Theme,
-        style: &iced_runtime::core::renderer::Style,
-        layout: iced_runtime::core::Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        style: &iced_core::renderer::Style,
+        layout: iced_core::Layout<'_>,
+        cursor: iced_core::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
         

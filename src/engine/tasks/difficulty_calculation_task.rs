@@ -39,7 +39,7 @@ impl TatakuTask for DiffCalcTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(&mut self, values: &mut ValueCollection, state: &TaskGameState, _actions: &mut ActionQueue) {
+    async fn run(&mut self, _values: &mut ValueCollection, state: &TaskGameState, _actions: &mut ActionQueue) {
         if state.ingame { 
             self.state = TatakuTaskState::Paused;
             return;
@@ -78,7 +78,7 @@ impl TatakuTask for DiffCalcTask {
             
             #[cfg(feature="debug_perf_rating")]
             info!("[calc] {diff_key:?} -> {diff}");
-            self.diff_entries.push((diff_key, -1.0));
+            self.diff_entries.push((diff_key, diff));
         } else {
             self.state = TatakuTaskState::Complete
         }

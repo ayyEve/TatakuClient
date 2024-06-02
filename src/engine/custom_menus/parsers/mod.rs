@@ -9,6 +9,6 @@ pub(self) mod prelude {
         FromLua, 
         Error::FromLuaConversionError,
         prelude::LuaResult,
-        prelude::LuaContext,
+        Context as LuaContext,
     };
 }

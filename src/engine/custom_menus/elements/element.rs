@@ -91,7 +91,7 @@ impl ElementDef {
 }
 
 impl<'lua> FromLua<'lua> for ElementDef {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading ElementDef");
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: lua_value.type_name(), to: "ElementIdentifier", message: Some("Not a table".to_owned()) }) };
         
@@ -286,7 +286,7 @@ impl Into<iced::Padding> for ElementPadding {
     }
 }
 impl<'lua> FromLua<'lua> for ElementPadding {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading ElementPadding");
         match lua_value {
             Value::Integer(i) => Ok(Self::Single(i as f32)),

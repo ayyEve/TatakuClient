@@ -66,7 +66,7 @@ impl CustomElementText {
     }
 }
 impl<'lua> FromLua<'lua> for CustomElementText {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading text");
 
         match lua_value {

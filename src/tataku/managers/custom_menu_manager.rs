@@ -12,7 +12,7 @@ impl CustomMenuManager {
     }
 
     pub fn load_menu(&mut self, path: String, source: CustomMenuSource) -> TatakuResult {
-        let mut parser = CustomMenuParser::new();
+        let mut parser = CustomMenuParser::new()?;
         match parser.load_menu(&path) {
             Ok(menu) => self.menu_list.push((source, menu)),
             Err(e) => error!("error loading custom menu: {path}: {e}"),
@@ -21,7 +21,7 @@ impl CustomMenuManager {
         Ok(())
     }
     pub fn load_menu_from_bytes(&mut self, bytes: &[u8], name: String, source: CustomMenuSource) -> TatakuResult {
-        let mut parser = CustomMenuParser::new();
+        let mut parser = CustomMenuParser::new()?;
         match parser.load_menu_from_bytes(bytes, &name) {
             Ok(menu) => self.menu_list.push((source, menu)),
             Err(e) => error!("error loading custom menu: {name}: {e}"),

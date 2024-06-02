@@ -80,23 +80,23 @@ impl iced::advanced::Widget<Message, IcedRenderer> for DrawableComponentWidget {
     fn layout(
         &self,
         _renderer: &IcedRenderer,
-        limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
+        limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
         let limits = limits
             .width(self.width)
             .height(self.height);
 
-        iced_runtime::core::layout::Node::new(limits.fill())
+        iced_core::layout::Node::new(limits.fill())
     }
 
     fn draw(
         &self,
-        _state: &iced_runtime::core::widget::Tree,
+        _state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        _style: &iced_runtime::core::renderer::Style,
-        layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _style: &iced_core::renderer::Style,
+        layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {
         let _ = self.event_sender.try_send(layout.bounds().into());

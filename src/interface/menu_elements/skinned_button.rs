@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 use iced::Theme;
-use iced_runtime::core::{
+use iced_core::{
     keyboard,
     layout,
     mouse,

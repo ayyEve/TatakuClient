@@ -39,6 +39,8 @@ pub use serde::{ Serialize, Deserialize };
 
 pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
 
+pub use iced::advanced::graphics::core as iced_core;
+
 // tataku-common imports
 pub use tataku_common::types::*;
 

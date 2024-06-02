@@ -473,9 +473,9 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
 
     fn children(&self) -> Vec<Tree> { self.children.iter().map(Tree::new).collect() }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(&self.children) }
-    fn state(&self) -> iced_runtime::core::widget::tree::State {
+    fn state(&self) -> iced_core::widget::tree::State {
         println!("making panel scroll state");
-        iced_runtime::core::widget::tree::State::new(PanelState::default())
+        iced_core::widget::tree::State::new(PanelState::default())
     }
 
     fn on_event(
@@ -483,13 +483,13 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
         tree: &mut Tree,
         event: Event,
         layout: Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        cursor: iced_core::mouse::Cursor,
         renderer: &IcedRenderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &iced::Rectangle,
     ) -> event::Status {
-        use iced_runtime::core::widget::tree::State;
+        use iced_core::widget::tree::State;
         if let &State::None = &tree.state {
             tree.state = State::new(PanelState::default())
         }
@@ -572,10 +572,10 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
         &self,
         tree: &Tree,
         renderer: &mut IcedRenderer,
-        theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        style: &iced_runtime::core::renderer::Style,
+        theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        style: &iced_core::renderer::Style,
         layout: Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        cursor: iced_core::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
         let old = renderer.start_layer();

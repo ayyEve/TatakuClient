@@ -1,10 +1,11 @@
-use iced::Event;
+
 use crate::prelude::*;
 use tokio::sync::oneshot;
+use iced::Event;
 use iced::advanced::graphics::Primitive;
 use iced_runtime::{ user_interface, UserInterface };
 
-use iced::advanced::widget::Operation;
+use iced::advanced::widget::Operation; 
 
 pub type IcedElement = iced::Element<'static, Message, IcedRenderer>;
 pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, IcedRenderer>;
@@ -69,10 +70,11 @@ impl UiManager {
         let mut last_draw = TransformGroup::new(Vector2::ZERO);
         let mut mouse_pos = iced::Point::ORIGIN;
 
+
         let mut ui: UserInterface<Message, IcedRenderer> = user_interface::UserInterface::build(
             iced::widget::Column::new().into_element(),
             iced::Size::new(window_size.x, window_size.y),
-            iced_runtime::user_interface::Cache::default(), // std::mem::take(&mut cache),
+            iced_runtime::user_interface::Cache::default(),
             &mut renderer,
         );
 
@@ -95,7 +97,7 @@ impl UiManager {
                         ui = user_interface::UserInterface::build(
                             application.view(&mut values),
                             iced::Size::new(window_size.x, window_size.y),
-                            ui.into_cache(), //std::mem::take(&mut cache),
+                            ui.into_cache(), 
                             &mut renderer,
                         );
                     }
@@ -118,7 +120,7 @@ impl UiManager {
                         &events.window_events,
                         iced::mouse::Cursor::Available(mouse_pos),
                         &mut renderer,
-                        &mut iced_runtime::core::clipboard::Null,
+                        &mut iced_core::clipboard::Null,
                         &mut messages
                     );
 
@@ -227,7 +229,7 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
             font,
             horizontal_alignment,
             vertical_alignment,
-            shaping: _
+            shaping: _,
         } => {
             let height = line_height.to_absolute(iced::Pixels(*font_size)).0;
             
@@ -236,7 +238,7 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
                 *font_size,
                 content,
                 Color::new(color.r, color.g, color.b, color.a),
-                Font::from_iced(font)
+                crate::prelude::Font::from_iced(font)
             );
 
             match vertical_alignment {
@@ -252,7 +254,13 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
             
             Arc::new(text)
         }
-        iced::advanced::graphics::Primitive::Quad { bounds, background, border_radius, border_width, border_color } => {
+        iced::advanced::graphics::Primitive::Quad { 
+            bounds, 
+            background, 
+            border_radius, 
+            border_width, 
+            border_color ,
+        } => {
             Arc::new(Rectangle::new(
                 Vector2::new(bounds.x, bounds.y),
                 Vector2::new(bounds.width, bounds.height),
@@ -273,7 +281,7 @@ fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRe
             Arc::new(group)
         }
         iced::advanced::graphics::Primitive::Clip { bounds, content } => {
-            let mut group = TransformGroup::new(Vector2::ZERO);
+            let mut group = ScissorGroup::new();
             // group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
             group.push_arced(into_renderable(content));
             Arc::new(group)
@@ -397,8 +405,6 @@ struct SendEvents {
     window_events: Vec<Event>,
     force_refresh: bool,
 }
-
-
 
 
 /// Replaces the regular [`Into`] trait for types that can be converted

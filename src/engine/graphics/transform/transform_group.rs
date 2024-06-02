@@ -75,8 +75,6 @@ impl TransformGroup {
     }
 }
 
-
-
 impl TatakuRenderable for TransformGroup {
     fn get_bounds(&self) -> Bounds { 
         // for when i inevitebly forget

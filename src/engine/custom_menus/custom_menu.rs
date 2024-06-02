@@ -33,7 +33,7 @@ impl CustomMenu {
     }
 }
 impl<'lua> rlua::FromLua<'lua> for CustomMenu {
-    fn from_lua(lua_value: rlua::prelude::LuaValue<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::prelude::LuaResult<Self> {
+    fn from_lua(lua_value: rlua::prelude::LuaValue<'lua>, _lua: rlua::Context<'lua>) -> rlua::prelude::LuaResult<Self> {
         #[cfg(feature="debug_custom_menus")] info!("=======================");
         #[cfg(feature="debug_custom_menus")] info!("Reading CustomMenu");
         #[cfg(feature="debug_custom_menus")] info!("=======================");

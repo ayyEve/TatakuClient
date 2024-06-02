@@ -44,3 +44,12 @@ impl From<iced::Rectangle> for Bounds {
         )
     }
 }
+
+impl From<[f32;4]> for Bounds {
+    fn from([x, y, w, h]: [f32;4]) -> Self {
+        Self::new(
+            Vector2::new(x, y),
+            Vector2::new(w, h)
+        )
+    }
+}

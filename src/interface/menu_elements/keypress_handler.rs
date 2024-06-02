@@ -46,13 +46,13 @@ use iced::keyboard::Event;
 
 //     fn on_event(
 //         &mut self,
-//         _state: &mut iced_runtime::core::widget::Tree,
+//         _state: &mut iced_core::widget::Tree,
 //         event: iced::Event,
-//         _layout: iced_runtime::core::Layout<'_>,
-//         _cursor: iced_runtime::core::mouse::Cursor,
+//         _layout: iced_core::Layout<'_>,
+//         _cursor: iced_core::mouse::Cursor,
 //         _renderer: &IcedRenderer,
-//         _clipboard: &mut dyn iced_runtime::core::Clipboard,
-//         _shell: &mut iced_runtime::core::Shell<'_, Message>,
+//         _clipboard: &mut dyn iced_core::Clipboard,
+//         _shell: &mut iced_core::Shell<'_, Message>,
 //         _viewport: &iced::Rectangle,
 //     ) -> Status {
 //         let iced::Event::Keyboard(event) = event else { return Status::Ignored };
@@ -81,19 +81,19 @@ use iced::keyboard::Event;
 //     fn layout(
 //         &self,
 //         _renderer: &IcedRenderer,
-//         _limits: &iced_runtime::core::layout::Limits,
-//     ) -> iced_runtime::core::layout::Node {
-//         iced_runtime::core::layout::Node::default()
+//         _limits: &iced_core::layout::Limits,
+//     ) -> iced_core::layout::Node {
+//         iced_core::layout::Node::default()
 //     }
 
 //     fn draw(
 //         &self,
-//         _state: &iced_runtime::core::widget::Tree,
+//         _state: &iced_core::widget::Tree,
 //         _renderer: &mut IcedRenderer,
-//         _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-//         _style: &iced_runtime::core::renderer::Style,
-//         _layout: iced_runtime::core::Layout<'_>,
-//         _cursor: iced_runtime::core::mouse::Cursor,
+//         _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+//         _style: &iced_core::renderer::Style,
+//         _layout: iced_core::Layout<'_>,
+//         _cursor: iced_core::mouse::Cursor,
 //         _viewport: &iced::Rectangle,
 //     ) {}
 // }
@@ -153,13 +153,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for KeyEventsHandler {
 
     fn on_event(
         &mut self,
-        _state: &mut iced_runtime::core::widget::Tree,
+        _state: &mut iced_core::widget::Tree,
         event: iced::Event,
-        _layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _renderer: &IcedRenderer,
-        _clipboard: &mut dyn iced_runtime::core::Clipboard,
-        shell: &mut iced_runtime::core::Shell<'_, Message>,
+        _clipboard: &mut dyn iced_core::Clipboard,
+        shell: &mut iced_core::Shell<'_, Message>,
         _viewport: &iced::Rectangle,
     ) -> Status {
         let iced::Event::Keyboard(event) = event else { return Status::Ignored };
@@ -199,19 +199,19 @@ impl iced::advanced::Widget<Message, IcedRenderer> for KeyEventsHandler {
     fn layout(
         &self,
         _renderer: &IcedRenderer,
-        _limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
-        iced_runtime::core::layout::Node::default()
+        _limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
+        iced_core::layout::Node::default()
     }
 
     fn draw(
         &self,
-        _state: &iced_runtime::core::widget::Tree,
+        _state: &iced_core::widget::Tree,
         _renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        _style: &iced_runtime::core::renderer::Style,
-        _layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _style: &iced_core::renderer::Style,
+        _layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {}
 }

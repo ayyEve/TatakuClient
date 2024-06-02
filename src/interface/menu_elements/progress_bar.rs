@@ -72,9 +72,9 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
     fn layout(
         &self,
         _renderer: &IcedRenderer,
-        limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
-        iced_runtime::core::layout::Node::new(
+        limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
+        iced_core::layout::Node::new(
             limits
             .width(self.width)
             .height(self.height)
@@ -84,13 +84,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
 
     fn on_event(
         &mut self,
-        _state: &mut iced_runtime::core::widget::Tree,
+        _state: &mut iced_core::widget::Tree,
         event: iced::Event,
-        layout: iced_runtime::core::Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        layout: iced_core::Layout<'_>,
+        cursor: iced_core::mouse::Cursor,
         _renderer: &IcedRenderer,
-        _clipboard: &mut dyn iced_runtime::core::Clipboard,
-        shell: &mut iced_runtime::core::Shell<'_, Message>,
+        _clipboard: &mut dyn iced_core::Clipboard,
+        shell: &mut iced_core::Shell<'_, Message>,
         _viewport: &Rectangle,
     ) -> iced::event::Status {
         let iced::Event::Mouse(iced::mouse::Event::ButtonPressed(iced::mouse::Button::Left)) = event else { return iced::event::Status::Ignored };
@@ -109,12 +109,12 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
 
     fn draw(
         &self,
-        _state: &iced_runtime::core::widget::Tree,
+        _state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        _style: &iced_runtime::core::renderer::Style,
-        layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _style: &iced_core::renderer::Style,
+        layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();

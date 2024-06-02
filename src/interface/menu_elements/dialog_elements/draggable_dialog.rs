@@ -23,41 +23,41 @@ impl Widget<Message, IcedRenderer> for DraggableDialogElement {
     fn width(&self) -> iced::Length { iced::Length::Fixed(0.0) }
     fn height(&self) -> iced::Length { iced::Length::Fixed(0.0) }
 
-    fn children(&self) -> Vec<iced_runtime::core::widget::Tree> {
-        vec![iced_runtime::core::widget::Tree::new(&self.dialog_content)]
+    fn children(&self) -> Vec<iced_core::widget::Tree> {
+        vec![iced_core::widget::Tree::new(&self.dialog_content)]
     }
-    fn diff(&self, tree: &mut iced_runtime::core::widget::Tree) {
+    fn diff(&self, tree: &mut iced_core::widget::Tree) {
         tree.diff_children(std::slice::from_ref(&self.dialog_content))
     }
-    fn state(&self) -> iced_runtime::core::widget::tree::State {
-        iced_runtime::core::widget::tree::State::new(DraggableState::new())
+    fn state(&self) -> iced_core::widget::tree::State {
+        iced_core::widget::tree::State::new(DraggableState::new())
     }
 
     fn layout(
         &self,
         _renderer: &IcedRenderer,
-        _limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
-        iced_runtime::core::layout::Node::new(iced::Size::ZERO)
+        _limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
+        iced_core::layout::Node::new(iced::Size::ZERO)
     }
 
     fn draw(
         &self,
-        _state: &iced_runtime::core::widget::Tree,
+        _state: &iced_core::widget::Tree,
         _renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        _style: &iced_runtime::core::renderer::Style,
-        _layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _style: &iced_core::renderer::Style,
+        _layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {}
 
     fn overlay<'a>(
         &'a mut self,
-        state: &'a mut iced_runtime::core::widget::Tree,
-        _layout: iced_runtime::core::Layout<'_>,
+        state: &'a mut iced_core::widget::Tree,
+        _layout: iced_core::Layout<'_>,
         _renderer: &IcedRenderer,
-    ) -> Option<iced_runtime::core::overlay::Element<'a, Message, IcedRenderer>> {
+    ) -> Option<iced_core::overlay::Element<'a, Message, IcedRenderer>> {
         let state2 = state.state.downcast_ref::<DraggableState>();
 
         Some(IcedOverlay::new(state2.pos, Box::new(DraggableOverlay {
@@ -76,7 +76,7 @@ impl From<DraggableDialogElement> for IcedElement {
 
 struct DraggableOverlay<'a> {
     content: &'a mut DraggableDialogElement,
-    tree: &'a mut iced_runtime::core::widget::Tree
+    tree: &'a mut iced_core::widget::Tree
 }
 impl<'a> DraggableOverlay<'a> {
     fn viewport(&self) -> iced::Rectangle {
@@ -92,8 +92,8 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
         renderer: &IcedRenderer,
         bounds: iced::Size,
         position: iced::Point,
-    ) -> iced_runtime::core::layout::Node {
-        let limits = iced_runtime::core::layout::Limits::new(iced::Size::ZERO, bounds);
+    ) -> iced_core::layout::Node {
+        let limits = iced_core::layout::Limits::new(iced::Size::ZERO, bounds);
 
         let mut node = self.content.dialog_content.as_widget().layout(renderer, &limits);
         node.move_to(position);
@@ -104,11 +104,11 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
     fn on_event(
         &mut self,
         event: iced::Event,
-        layout: iced_runtime::core::Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        layout: iced_core::Layout<'_>,
+        cursor: iced_core::mouse::Cursor,
         renderer: &IcedRenderer,
-        clipboard: &mut dyn iced_runtime::core::Clipboard,
-        shell: &mut iced_runtime::core::Shell<'_, Message>,
+        clipboard: &mut dyn iced_core::Clipboard,
+        shell: &mut iced_core::Shell<'_, Message>,
     ) -> iced::event::Status {
         let viewport = self.viewport();
         self.tree.state.downcast_mut::<DraggableState>().size = layout.bounds().size();
@@ -128,10 +128,10 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
     fn draw(
         &self,
         renderer: &mut IcedRenderer,
-        theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        style: &iced_runtime::core::renderer::Style,
-        layout: iced_runtime::core::Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        style: &iced_core::renderer::Style,
+        layout: iced_core::Layout<'_>,
+        cursor: iced_core::mouse::Cursor,
     ) {
         let viewport = self.viewport();
         self.content.dialog_content.as_widget().draw(
@@ -148,7 +148,7 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
 
     fn is_over(
         &self,
-        layout: iced_runtime::core::Layout<'_>,
+        layout: iced_core::Layout<'_>,
         _renderer: &IcedRenderer,
         cursor_position: iced::Point,
     ) -> bool {
@@ -157,11 +157,11 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
 
     fn mouse_interaction(
         &self,
-        layout: iced_runtime::core::Layout<'_>,
-        cursor: iced_runtime::core::mouse::Cursor,
+        layout: iced_core::Layout<'_>,
+        cursor: iced_core::mouse::Cursor,
         viewport: &iced::Rectangle,
         renderer: &IcedRenderer,
-    ) -> iced_runtime::core::mouse::Interaction {
+    ) -> iced_core::mouse::Interaction {
         self.content.dialog_content.as_widget().mouse_interaction(
             &self.tree.children[0], 
             layout, 
@@ -173,9 +173,9 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
 
     fn operate(
         &mut self,
-        layout: iced_runtime::core::Layout<'_>,
+        layout: iced_core::Layout<'_>,
         renderer: &IcedRenderer,
-        operation: &mut dyn iced_runtime::core::widget::Operation<Message>,
+        operation: &mut dyn iced_core::widget::Operation<Message>,
     ) {
         self.content.dialog_content.as_widget_mut().operate(
             &mut self.tree.children[0], 

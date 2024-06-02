@@ -27,6 +27,8 @@ pub enum TatakuError {
     DownloadError(DownloadError),
 
     ShuntingYardError(ShuntingYardError),
+
+    Lua(rlua::Error)
 }
 impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
@@ -49,6 +51,7 @@ impl Display for TatakuError {
             TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
             TatakuError::DownloadError(e) => write!(f, "{:?}", e),
             TatakuError::ShuntingYardError(e) => write!(f, "{:?}", e),
+            TatakuError::Lua(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -87,6 +90,10 @@ impl From<DownloadError> for TatakuError {
 }
 impl From<ShuntingYardError> for TatakuError {
     fn from(value: ShuntingYardError) -> Self { Self::ShuntingYardError(value) }
+}
+
+impl From<rlua::Error> for TatakuError {
+    fn from(value: rlua::Error) -> Self { Self::Lua(value) }
 }
 
 

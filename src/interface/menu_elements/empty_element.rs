@@ -10,19 +10,19 @@ impl iced::advanced::Widget<Message, IcedRenderer> for EmptyElement {
     fn layout(
         &self,
         _renderer: &IcedRenderer,
-        _limits: &iced_runtime::core::layout::Limits,
-    ) -> iced_runtime::core::layout::Node {
-        iced_runtime::core::layout::Node::new(iced::Size::ZERO)
+        _limits: &iced_core::layout::Limits,
+    ) -> iced_core::layout::Node {
+        iced_core::layout::Node::new(iced::Size::ZERO)
     }
 
     fn draw(
         &self,
-        _state: &iced_runtime::core::widget::Tree,
+        _state: &iced_core::widget::Tree,
         _renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_runtime::core::Renderer>::Theme,
-        _style: &iced_runtime::core::renderer::Style,
-        _layout: iced_runtime::core::Layout<'_>,
-        _cursor: iced_runtime::core::mouse::Cursor,
+        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _style: &iced_core::renderer::Style,
+        _layout: iced_core::Layout<'_>,
+        _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {}
     

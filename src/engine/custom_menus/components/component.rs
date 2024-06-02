@@ -4,7 +4,7 @@ use rlua::{
     Error::FromLuaConversionError, 
     FromLua,
     Result,
-    prelude::LuaContext,
+    Context,
 };
 
 
@@ -27,7 +27,7 @@ impl ComponentDef {
 
 
 impl<'lua> FromLua<'lua> for ComponentDef {
-    fn from_lua(lua_value: Value<'lua>, _lua: LuaContext<'lua>) -> Result<Self> {
+    fn from_lua(lua_value: Value<'lua>, _lua: Context<'lua>) -> Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading ComponentDef");
         match lua_value {
             Value::Table(table) => {

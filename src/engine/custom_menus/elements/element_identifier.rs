@@ -157,7 +157,7 @@ impl KeyHandlerEvent {
 
 use rlua::{ Value, Error::FromLuaConversionError, FromLua };
 impl<'lua> FromLua<'lua> for KeyHandlerEvent {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::prelude::LuaContext<'lua>) -> rlua::Result<Self> {
+    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading KeyhandlerEvent");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "KeyHandlerEvent", message: None }) }; 
         
