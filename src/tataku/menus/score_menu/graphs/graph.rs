@@ -60,7 +60,7 @@ impl Widget<Message, iced::Theme, IcedRenderer> for StatsGraphElement {
 
     fn layout(
         &self,
-        tree: &mut iced_core::widget::Tree,
+        _tree: &mut iced_core::widget::Tree,
         _renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {

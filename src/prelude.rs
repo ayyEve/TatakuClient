@@ -8,7 +8,7 @@ pub use std::path::{ Path, PathBuf };
 pub use std::ops::{ Range, Deref, DerefMut };
 pub use std::collections::{ HashMap, HashSet, VecDeque };
 
-// sync imports
+pub use std::rc::Rc;
 pub use std::sync::{ Arc, Weak };
 pub use std::sync::atomic::{ *, Ordering::SeqCst };
 pub use std::sync::mpsc::{ Sender, SyncSender, Receiver, sync_channel, channel };

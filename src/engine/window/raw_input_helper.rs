@@ -21,7 +21,7 @@ impl MouseInputHelper {
     pub fn set_system_cursor(&mut self, enabled: bool) {
         self.system_cursor = enabled;
     }
-    pub fn set_focus(&mut self, has_focus: bool, _window: Ref<'_, winit::window::Window>) {
+    pub fn set_focus(&mut self, has_focus: bool, _window: &winit::window::Window) {
         self.window_focused = has_focus;
 
         // if has_focus {
@@ -55,7 +55,7 @@ impl MouseInputHelper {
         None
     }
 
-    pub fn reset_cursor_pos(&mut self, window: Ref<'_, winit::window::Window>) {
+    pub fn reset_cursor_pos(&mut self, window: &winit::window::Window) {
         let size = window.inner_size();
         let pos = Vector2::new(size.width as f32, size.height as f32) / 2.0;
         

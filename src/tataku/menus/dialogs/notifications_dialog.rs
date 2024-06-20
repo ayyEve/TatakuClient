@@ -232,7 +232,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for Notification
         renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
-        self.content.as_widget().layout(tree, renderer, &limits.width(self.size().width).height(self.size().height))
+        self.content.as_widget().layout(&mut tree.children[0], renderer, &limits.width(self.size().width).height(self.size().height))
     }
 
     fn draw(

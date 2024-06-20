@@ -170,7 +170,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for SkinnedButto
         let skin_params = self.get_skin_params();
         let limits = limits.width(self.width).height(self.height);
 
-        let content = self.content.as_widget().layout(tree, renderer, &limits);
+        let content = self.content.as_widget().layout(&mut tree.children[0], renderer, &limits);
         let padding = self.padding.fit(content.size(), limits.max());
         let size = limits.resolve(self.width, self.height, content.size());
     

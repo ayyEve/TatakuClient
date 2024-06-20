@@ -32,10 +32,12 @@ lazy_static::lazy_static! {
 pub type RenderData = Vec<Arc<dyn TatakuRenderable>>;
 
 pub struct GameWindow<'window> {
-    initialized: bool,
-
     #[cfg(feature="graphics")]
-    window: &'window RefCell<Option<WinitWindow>>,
+    window: &'window std::cell::OnceCell<WinitWindow>,
+    window_creation_barrier: Arc<tokio::sync::Barrier>,
+
+    runtime: Rc<tokio::runtime::Runtime>,
+
     
     #[cfg(feature="graphics")]
     graphics: Box<dyn GraphicsEngine + 'window>,
@@ -65,7 +67,9 @@ impl<'window> GameWindow<'window> {
     pub async fn new(
         render_event_receiver: TripleBufferReceiver<RenderData>, 
         game_event_sender: Sender<Window2GameEvent>,
-        window: &'window std::cell::RefCell<Option<WinitWindow>>,
+        window: &'window std::cell::OnceCell<WinitWindow>,
+        runtime: Rc<tokio::runtime::Runtime>,
+        window_creation_barrier: Arc<tokio::sync::Barrier>,
     ) -> Self {
         let settings = SettingsHelper::new();
         let now = std::time::Instant::now();
@@ -99,10 +103,11 @@ impl<'window> GameWindow<'window> {
         // }
 
         let s = Self {
-            initialized: false,
             window,
+            window_creation_barrier,
             graphics: Box::new(DummyGraphicsEngine),
             settings,
+            runtime,
             
             game_event_sender: Arc::new(game_event_sender),
             window_event_receiver,
@@ -132,14 +137,7 @@ impl<'window> GameWindow<'window> {
         let settings = Settings::get().clone();
         GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
 
-        self.init_media_controls();
         self.settings.update();
-
-        self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
-
-        self.refresh_monitors_inner();
-        self.apply_fullscreen();
-        self.apply_vsync();
 
         event_loop.run_app(&mut self).expect("nope");
 
@@ -346,6 +344,10 @@ impl<'window> GameWindow<'window> {
         // apply
         self.window().pre_present_notify();
         let _ = self.graphics.present();
+
+
+        // update
+        self.graphics.update_emitters();
     }
 
 
@@ -375,12 +377,8 @@ impl<'window> GameWindow<'window> {
     }
 
 
-    pub fn set_graphics(&mut self, graphics: Box<dyn GraphicsEngine + 'window>) {
-        self.graphics = graphics;
-    }
-
-    fn window(&self) -> Ref<'window, WinitWindow> {
-        Ref::map(self.window.borrow(), |a| a.as_ref().unwrap())
+    fn window(&self) -> &'window WinitWindow {
+        self.window.get().unwrap()
     }
 }
 
@@ -577,7 +575,8 @@ impl<'window> GameWindow<'window> {
 
 impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        if self.window.borrow().is_some() { return }
+        if self.window.get().is_some() { return }
+        event_loop.set_control_flow(ControlFlow::Poll);
         
         let window = event_loop.create_window(
             winit::window::WindowAttributes::default()
@@ -588,7 +587,23 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
         window.set_cursor_visible(false);
         info!("Window created");
 
-        self.window.replace(Some(window));
+        self.window.set(window).unwrap();
+
+
+        self.runtime.clone().block_on(async {
+            let graphics = GraphicsState::new(self.window(), &self.settings).await;
+            self.graphics = Box::new(graphics);
+            
+            // let the game side know the window is good to go
+            self.window_creation_barrier.wait().await;
+        });
+
+
+        self.init_media_controls();
+        self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
+        self.refresh_monitors_inner();
+        self.apply_fullscreen();
+        self.apply_vsync();
     }
     
 
@@ -601,7 +616,7 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
 
         let event = match event {
             DeviceEvent::MouseMotion { delta: (x, y) } => {
-                if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window.unwrap()) {
+                if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {
                 self.post_cursor_move();
                 Some(Window2GameEvent::MouseMove(new_pos))
             } else {
@@ -725,9 +740,6 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
         //         None
         //     }
 
-        //     Event::RedrawRequested(_) => {
-        //     }
-
         //     // we want this to run after the game has been rendered so it doesnt interfere with the render latency
         //     Event::RedrawEventsCleared => {
         //         self.graphics.update_emitters();
@@ -740,6 +752,11 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
         if let Some(event) = event { self.send_game_event(event); }
     }
 
+    fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.update();
+        
+        // self.graphics.update_emitters();
+    }
 }
 
 
@@ -756,8 +773,3 @@ fn delta2f32(delta: winit::event::MouseScrollDelta) -> f32 {
     }
 }
 
-
-pub enum UpdateWindowThing<'window> {
-    SetWindow(&'window WinitWindow),
-    SetGraphics(Box<dyn GraphicsEngine>),
-}

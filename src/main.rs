@@ -32,10 +32,121 @@ const FIRST_MAPS: &[u32] = &[
     727903, // galaxy collapse (taiko)
 ];
 
+fn main() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
 
-// main fn
-#[tokio::main]
-async fn main() {
+    // initialize the game
+    runtime.block_on(startup());
+
+
+    start_game(&runtime);
+}
+
+// // actuial main fn
+// async fn game_main() {
+//     let mut play_game = true;
+
+//     let mut args = std::env::args().map(|s|s.to_string());
+//     args.next(); // skip the file param
+
+//     // let path = std::env::current_exe().unwrap();
+//     // println!("file hash: {}", get_file_hash(&path).unwrap());
+
+//     // TODO: reimplement this? or do we want to bother
+//     // it might be nicer to have a server-side api for it
+//     /*
+//     if let Some(param1) = args.next() {
+//         match &*param1 {
+//             "--diff_calc" | "--diffcalc" | "-d" => {
+//                 play_game = false;
+//                 diff_calc_cli(&mut args).await;
+//             }
+
+//             _ => {}
+//         }
+//     }
+//     */
+
+//     if play_game {
+//         start_game().await;
+
+//         // game.await.ok().expect("error finishing game?");
+//         info!("byebye!");
+//     }
+
+// }
+
+fn start_game(runtime: &tokio::runtime::Runtime) {
+    // let main_thread = tokio::task::LocalSet::new();
+
+    
+    let window_runtime = Rc::new(tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap());
+
+
+    let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
+    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
+
+    let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
+    let window_side_barrier = window_load_barrier.clone();
+
+
+    // start game
+    let game = runtime.spawn(async move {
+        // wait for the window side to be ready
+        #[cfg(feature="graphics")] {
+            window_load_barrier.wait().await;
+            trace!("window ready");
+        }
+
+        // start the game
+        trace!("creating game");
+        let game = Game::new(render_queue_sender, game_event_receiver).await;
+        trace!("running game");
+        game.game_loop().await;
+        warn!("game closed");
+
+        // this shouldnt be necessary but its here commented out just in case
+        // GameWindow::send_event(Game2WindowEvent::CloseGame);
+    });
+
+
+
+    let window = std::cell::OnceCell::new();
+
+    // setup window
+    #[cfg(feature="graphics")]
+    let game_window = window_runtime.block_on(async {
+        info!("creating window");
+        GameWindow::new(
+            render_queue_receiver, 
+            game_event_sender, 
+            &window, 
+            window_runtime.clone(), 
+            window_side_barrier
+        ).await
+    });
+
+    
+    
+    trace!("window running");
+    let e = winit::event_loop::EventLoop::new().unwrap();
+    GameWindow::run(game_window, e);
+    warn!("window closed");
+
+    // wait for game to finish
+    runtime.block_on(game).unwrap();
+
+    info!("Byebye!");
+}
+
+
+async fn startup() {
     #[cfg(not(feature="graphics"))] panic!("The client is **NOT** designed to be run without the graphics feature, it will break, and therefor i will not let you do it.");
 
     // enter game dir
@@ -58,99 +169,7 @@ async fn main() {
 
     // init skin manager
     SkinManager::init().await;
-
-
-    let mut play_game = true;
-
-    let mut args = std::env::args().map(|s|s.to_string());
-    args.next(); // skip the file param
-
-    // let path = std::env::current_exe().unwrap();
-    // println!("file hash: {}", get_file_hash(&path).unwrap());
-
-    // TODO: reimplement this? or do we want to bother
-    // it might be nicer to have a server-side api for it
-    /*
-    if let Some(param1) = args.next() {
-        match &*param1 {
-            "--diff_calc" | "--diffcalc" | "-d" => {
-                play_game = false;
-                diff_calc_cli(&mut args).await;
-            }
-
-            _ => {}
-        }
-    }
-    */
-
-    if play_game {
-        start_game().await;
-
-        // game.await.ok().expect("error finishing game?");
-        info!("byebye!");
-    }
-
 }
-
-async fn start_game() {
-    let main_thread = tokio::task::LocalSet::new();
-
-    let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
-    let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
-
-    let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
-    let window_side_barrier = window_load_barrier.clone();
-
-
-    // setup window
-    #[cfg(feature="graphics")]
-    main_thread.spawn_local(async move {
-        info!("creating window");
-        let settings = Settings::get();
-
-        let window;
-        let (window_sender, window_receiver) = tokio::sync::oneshot::channel();
-        let mut w = GameWindow::new(render_queue_receiver, game_event_sender, window_sender).await;
-        let e = winit::event_loop::EventLoop::new().unwrap();
-        GameWindow::run(w, e);
-
-        window = window_receiver.await.expect("no window????");
-        let graphics = GraphicsState::new(&window, &settings).await;
-        w.set_window(&window);
-        w.set_graphics(Box::new(graphics));
-
-
-        trace!("window running");
-
-        // let the game side know the window is good to go
-        window_side_barrier.wait().await;
-        
-        warn!("window closed");
-    });
-
-    // start game
-    let game = tokio::spawn(async move {
-        // wait for the window side to be ready
-        #[cfg(feature="graphics")] {
-            window_load_barrier.wait().await;
-            trace!("window ready");
-        }
-
-        // start the game
-        trace!("creating game");
-        let game = Game::new(render_queue_sender, game_event_receiver).await;
-        trace!("running game");
-        game.game_loop().await;
-        warn!("game closed");
-
-        // this shouldnt be necessary but its here commented out just in case
-        // GameWindow::send_event(Game2WindowEvent::CloseGame);
-    });
-
-
-    let _ = tokio::join!(main_thread, game);
-}
-
 
 async fn setup() {
     Settings::load().await;
@@ -195,6 +214,8 @@ async fn setup() {
 
     debug!("File check done");
 }
+
+
 
 
 // helper functions

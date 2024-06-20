@@ -100,7 +100,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for Transformabl
     ) -> iced_core::layout::Node {
         let offset = self.data.pos.current;
         self.content.as_widget()
-            .layout(tree, renderer, limits)
+            .layout(&mut tree.children[0], renderer, limits)
             .translate(iced::Vector::new(offset.x, offset.y))
     }
 

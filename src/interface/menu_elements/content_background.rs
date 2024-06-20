@@ -131,7 +131,7 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ContentBackg
             .width(self.width)
             .height(self.height);
 
-        let content = self.content.as_widget().layout(tree, renderer, &limits.loose());
+        let content = self.content.as_widget().layout(&mut tree.children[0], renderer, &limits.loose());
         let padding = self.padding.fit(content.size(), limits.max());
         let size = limits.resolve(self.width, self.height, content.size());
 

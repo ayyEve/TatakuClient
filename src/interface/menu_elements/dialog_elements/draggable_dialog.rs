@@ -98,7 +98,7 @@ impl<'a> Overlay<Message, iced::Theme, IcedRenderer> for DraggableOverlay<'a> {
     ) -> iced_core::layout::Node {
         let limits = iced_core::layout::Limits::new(iced::Size::ZERO, size);
 
-        let mut node = self.content.dialog_content.as_widget().layout(self.tree, renderer, &limits);
+        let node = self.content.dialog_content.as_widget().layout(&mut self.tree.children[0], renderer, &limits);
         node.move_to(iced::Point::new(self.offset.x, self.offset.y))
     }
     
