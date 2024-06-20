@@ -141,6 +141,10 @@ impl InputManager {
                 }
 
                 if ok_to_continue {
+                    if let winit::keyboard::Key::Character(txt) = &key.logical {
+                        self.text_cache += txt;
+                    }
+
                     self.keys.insert(key.clone());
                     self.keys_down.insert((key.clone(), Instant::now()));
                     self.last_key_press.insert(key, (Instant::now(), false));
@@ -165,12 +169,7 @@ impl InputManager {
                     self.last_key_press.remove(&key);
                 }
             }
-            Window2GameEvent::Char(char) => {
-                let mods = self.get_key_mods();
-                if !mods.alt && !mods.ctrl {
-                    self.text_cache.push(char)
-                }
-            }
+
 
             // mouse input
             Window2GameEvent::MousePress(mb) => {

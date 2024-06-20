@@ -343,7 +343,6 @@ pub struct CurrentInputState<'a> {
 
     pub keys_down: &'a KeyCollection,
     pub keys_up: &'a KeyCollection,
-    pub text: &'a String,
 
     pub mods: KeyModifiers,
 }
@@ -394,11 +393,6 @@ impl<'a> CurrentInputState<'a> {
                 modifiers,
             }));
         }
-
-        // for char in self.text.chars() {
-        //     events.push(Event::Keyboard(KeyboardEvent::CharacterReceived(char)));
-        // }
-        // events.push(Event::Keyboard(KeyboardEvent::ModifiersChanged(())))
 
         SendEvents {
             mouse_pos: self.mouse_pos,

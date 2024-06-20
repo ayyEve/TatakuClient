@@ -13,6 +13,8 @@ pub struct Game {
     game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
     render_queue_sender: TripleBufferSender<RenderData>,
 
+    window_proxy: winit::event_loop::EventLoopProxy<()>,
+
 
     // managers
 
@@ -63,11 +65,16 @@ pub struct Game {
     song_state: AudioState,
 }
 impl Game {
-    pub async fn new(render_queue_sender: TripleBufferSender<RenderData>, game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>) -> Game {
+    pub async fn new(
+        render_queue_sender: TripleBufferSender<RenderData>, 
+        game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
+        window_proxy: winit::event_loop::EventLoopProxy<()>,
+    ) -> Game {
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
 
         let mut g = Game {
             // engine
+            window_proxy,
             input_manager: InputManager::new(),
             volume_controller: VolumeControl::new().await,
             // dialogs: Vec::new(),
@@ -698,7 +705,6 @@ impl Game {
                 mouse_up: &mouse_up,
                 keys_down: &keys_down,
                 keys_up: &keys_up,
-                text: &text,
                 mods,
             }, 
             self.queued_events.take(),
@@ -760,9 +766,7 @@ impl Game {
                     // kb
                     for k in keys_down.0 { manager.key_down(k, mods).await }
                     for k in keys_up.0 { manager.key_up(k).await }
-                    if text.len() > 0 {
-                        manager.on_text(&text, &mods).await
-                    }
+                    if text.len() > 0 { manager.on_text(&text, &mods).await }
 
                     // controller
                     for (c, buttons) in controller_down {
@@ -1115,6 +1119,7 @@ impl Game {
 
         // toss the items to the window to render
         self.render_queue_sender.write(render_queue.take());
+        self.window_proxy.send_event(()).unwrap();
         NEW_RENDER_DATA_AVAILABLE.store(true, Ordering::Release);
         
         self.fps_display.increment();

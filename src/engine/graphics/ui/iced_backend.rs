@@ -37,7 +37,7 @@ impl IcedRenderer {
 impl iced::advanced::Renderer for IcedRenderer {
     fn start_layer(&mut self, bounds: iced::Rectangle) {
         let mut a = TransformGroup::new(bounds.position().into());
-        a.set_scissor(Some([ bounds.x, bounds.y, bounds.width, bounds.height ]));
+        // a.set_scissor(Some([ bounds.x, bounds.y, bounds.width, bounds.height ]));
         self.object_stack.push(a);
     }
 
@@ -74,7 +74,7 @@ impl iced::advanced::Renderer for IcedRenderer {
 }
 
 impl iced::advanced::text::Renderer for IcedRenderer {
-    type Font = crate::prelude::Font;
+    type Font = Font;
     type Paragraph = IcedParagraph;
     type Editor = IcedEditor;
 
@@ -92,7 +92,12 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         color: iced::Color,
         clip_bounds: iced::Rectangle,
     ) {
-
+        self.fill_text(
+            text.text.clone(),
+            position,
+            color,
+            clip_bounds
+        )
     }
 
     fn fill_editor(
@@ -101,7 +106,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         position: iced::Point,
         color: iced::Color,
         clip_bounds: iced::Rectangle,
-    ) {
+    ) { 
 
     }
 
@@ -112,6 +117,29 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         color: iced::Color,
         clip_bounds: iced::Rectangle,
     ) {
+        let height = text.line_height.to_absolute(text.size).0;
+        
+        let mut out_text = Text::new(
+            position.into(),
+            text.size.0,
+            text.content,
+            color.into(),
+            text.font
+        );
+        out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
+
+        match text.vertical_alignment {
+            iced::alignment::Vertical::Bottom => out_text.pos.y -= height,
+            iced::alignment::Vertical::Center => out_text.pos.y -= height / 2.0,
+            iced::alignment::Vertical::Top => {}
+        }
+        match text.horizontal_alignment {
+            iced::alignment::Horizontal::Left => {}
+            iced::alignment::Horizontal::Center => out_text.pos.x += text.bounds.width - out_text.measure_text().x / 2.0,
+            iced::alignment::Horizontal::Right => out_text.pos.x += text.bounds.width - out_text.measure_text().x,
+        }
+        
+        self.add_renderable(Arc::new(out_text))
 
     }
 }
@@ -175,12 +203,16 @@ impl iced::advanced::text::Renderer for IcedRenderer {
 
 pub struct IcedParagraph {
     text: iced_core::Text<String, Font>,
+    text_size: Vector2,
 }
 impl iced::advanced::text::Paragraph for IcedParagraph {
     type Font = Font;
 
     fn with_text(text: iced_core::Text<&str, Self::Font>) -> Self {
+        let size = Text::measure_text_raw(&[text.font], text.size.0, text.content, Vector2::ONE, 2.0);
+
         Self {
+            text_size: size,
             text: iced_core::Text {
                 content: text.content.to_owned(),
                 bounds: text.bounds,
@@ -195,10 +227,14 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
     }
 
     fn resize(&mut self, new_bounds: iced::Size) {
-
+        self.text.bounds = new_bounds;
     }
 
     fn compare(&self, text: iced_core::Text<&str, Self::Font>) -> iced_core::text::Difference {
+        if self.text.content != text.content {
+            return iced_core::text::Difference::Shape
+        }
+
         iced_core::text::Difference::None
     }
 
@@ -211,7 +247,10 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
     }
 
     fn min_bounds(&self) -> iced::Size {
-        self.text.bounds
+        iced::Size::new(
+            self.text_size.x,
+            self.text_size.y
+        )
     }
 
     fn hit_test(&self, point: iced::Point) -> Option<iced_core::text::Hit> {
@@ -226,6 +265,7 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
 impl Default for IcedParagraph {
     fn default() -> Self {
         Self {
+            text_size: Vector2::ZERO,
             text: iced_core::Text {
                 content: String::new(),
                 bounds: iced::Size::new(0.0, 0.0),
@@ -270,6 +310,9 @@ impl iced::advanced::text::Editor for IcedEditor {
     }
 
     fn line(&self, index: usize) -> Option<&str> {
+        if index == 0 {
+            return Some(&self.text)
+        }
         None
     }
 

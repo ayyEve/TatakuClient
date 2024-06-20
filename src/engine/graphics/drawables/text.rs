@@ -53,7 +53,7 @@ impl Text {
     }
     
     pub fn measure_text(&self) -> Vector2 {
-        Self::measure_text_internal(&self.fonts, self.font_size, &self.text, self.scale * self.text_scale, 2.0) 
+        Self::measure_text_raw(&self.fonts, self.font_size, &self.text, self.scale * self.text_scale, 2.0) 
     }
     pub fn center_text(&mut self, rect:&Bounds) {
         let text_size = self.measure_text();
@@ -77,7 +77,7 @@ impl Text {
     // }
 
     
-    fn measure_text_internal(fonts: &Vec<Font>, font_size: f32, text: &String, scale: Vector2, line_spacing: f32) -> Vector2 {
+    pub fn measure_text_raw(fonts: &[Font], font_size: f32, text: &str, scale: Vector2, line_spacing: f32) -> Vector2 {
         if fonts.len() == 0 { return Vector2::ZERO }
 
         let mut max_width:f32 = 0.0;
@@ -93,10 +93,9 @@ impl Text {
             }
 
             for i in fonts {
-                if let Some(data) = i.get_character(font_size, ch) {
-                    current_width += data.advance_width();
-                    break;
-                }
+                let Some(data) = i.get_character(font_size, ch) else { continue };
+                current_width += data.advance_width();
+                break;
             };
         }
 

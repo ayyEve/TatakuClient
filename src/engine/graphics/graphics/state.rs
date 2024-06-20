@@ -56,7 +56,7 @@ impl<'window> GraphicsState<'window> {
         
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL,
+            backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL, // | wgpu::Backends::GL,
             flags: wgpu::InstanceFlags::empty(),
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
             dx12_shader_compiler: Default::default(),
@@ -409,7 +409,7 @@ impl<'window> GraphicsState<'window> {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: wgpu::StoreOp::Discard,
+                        store: wgpu::StoreOp::Store, // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -1055,7 +1055,7 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
         self.surface.configure(&self.device, &self.config);
     }
 
-    fn create_render_target(&mut self, [w,h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
+    fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
         // find space in the render target atlas
         let mut atlased = self.render_target_atlas.try_insert(w, h)?;
 
@@ -1096,8 +1096,6 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: self.config.format,
-                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                // COPY_DST means that we want to copy data to this texture
                 usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
                 label: Some("render_target_temp_tex"),
                 view_formats: &[],
@@ -1122,11 +1120,13 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
         let transform = Matrix::identity();
         do_render(self, transform);
 
-        // complete buffers
+        // finish up
         self.end_render();
 
         // perform render
-        let _ = self.render(&renderable);
+        if let Err(e) = self.render(&renderable) {
+            error!("Error rendering render target: {e:?}")
+        }
 
 
         // copy render to atlas
@@ -1442,7 +1442,10 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
             slider_grids.len() as u64,
             grid_cells.len() as u64,
             line_segments.len() as u64
-        ) else { return };
+        ) else { 
+            error!("couldnt reserve slider?");
+            return 
+        };
 
         // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
 

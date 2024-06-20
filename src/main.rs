@@ -46,7 +46,7 @@ fn main() {
 }
 
 // // actuial main fn
-// async fn game_main() {
+// fn game_main(runtime: &tokio::runtime::Runtime) {
 //     let mut play_game = true;
 
 //     let mut args = std::env::args().map(|s|s.to_string());
@@ -71,9 +71,7 @@ fn main() {
 //     */
 
 //     if play_game {
-//         start_game().await;
-
-//         // game.await.ok().expect("error finishing game?");
+//         start_game(runtime);
 //         info!("byebye!");
 //     }
 
@@ -96,6 +94,9 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     let window_side_barrier = window_load_barrier.clone();
 
 
+    let e = winit::event_loop::EventLoop::new().unwrap();
+    let proxy = e.create_proxy();
+
     // start game
     let game = runtime.spawn(async move {
         // wait for the window side to be ready
@@ -106,7 +107,7 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
 
         // start the game
         trace!("creating game");
-        let game = Game::new(render_queue_sender, game_event_receiver).await;
+        let game = Game::new(render_queue_sender, game_event_receiver, proxy).await;
         trace!("running game");
         game.game_loop().await;
         warn!("game closed");
@@ -135,7 +136,7 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     
     
     trace!("window running");
-    let e = winit::event_loop::EventLoop::new().unwrap();
+
     GameWindow::run(game_window, e);
     warn!("window closed");
 

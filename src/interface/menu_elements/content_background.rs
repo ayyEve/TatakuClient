@@ -128,24 +128,34 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ContentBackg
             .loose()
             .max_width(self.max_width)
             .max_height(self.max_height)
-            .width(self.width)
-            .height(self.height);
+            // .width(self.width)
+            // .height(self.height)
+            ;
 
-        let content = self.content.as_widget().layout(&mut tree.children[0], renderer, &limits.loose());
-        let padding = self.padding.fit(content.size(), limits.max());
-        let size = limits.resolve(self.width, self.height, content.size());
+        // let content = self.content.as_widget().layout(&mut tree.children[0], renderer, &limits.loose());
+        // let padding = self.padding.fit(content.size(), limits.max());
+        // let size = limits.resolve(self.width, self.height, content.size());
 
-        let content = content
-            .move_to(Point::new(padding.left, padding.top))
-            .align(
-            Alignment::from(self.horizontal_alignment),
-            Alignment::from(self.vertical_alignment),
-            size,
-        );
+        // let content = content
+        //     .move_to(Point::new(padding.left, padding.top))
+        //     .align(
+        //     Alignment::from(self.horizontal_alignment),
+        //     Alignment::from(self.vertical_alignment),
+        //     size,
+        // );
 
-        iced::advanced::layout::Node::container(
-            layout::Node::with_children(size, vec![content]),
-            padding
+        padded(
+            &limits,
+            self.width,
+            self.height,
+            self.padding,
+            |limits| {
+                self.content.as_widget().layout(
+                    &mut tree.children[0],
+                    renderer,
+                    limits,
+                )
+            }
         )
     }
 

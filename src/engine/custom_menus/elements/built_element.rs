@@ -121,7 +121,7 @@ impl Widgetable for BuiltElementDef {
                 let mut children = Vec::new();
 
                 for value in list {
-                    values.set(var.clone(), value);
+                    values.set(&var, value);
                     children.push(ele.view(owner, values));
                 }
                 // values.remove(&var);

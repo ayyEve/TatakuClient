@@ -25,10 +25,11 @@ use iced::advanced::{
 /// how far the
 const DRAG_THRESHOLD:f32 = 5.0;
 
-pub fn make_scrollable(children: Vec<IcedElement>, id: &'static str) -> Scrollable<'static, Message, iced::Theme, IcedRenderer> {
-    Scrollable::new(CullingColumn::with_children(children).spacing(5.0).into_element()).id(iced::widget::scrollable::Id::new(id))
+pub fn make_scrollable(children: Vec<IcedElement>, id: impl Into<std::borrow::Cow<'static, str>>) -> Scrollable<'static, Message, iced::Theme, IcedRenderer> {
+    // Scrollable::new(CullingColumn::with_children(children).spacing(5.0).into_element()).id(iced::widget::scrollable::Id::new(id))
+    Scrollable::new(iced_elements::Column::with_children(children).spacing(5.0).clip(true).into_element()).id(iced::widget::scrollable::Id::new(id))
 }
-pub fn make_panel_scroll(children: Vec<IcedElement>, id: &'static str) -> PanelScroll {
+pub fn make_panel_scroll(children: Vec<IcedElement>, id: impl Into<std::borrow::Cow<'static, str>>) -> PanelScroll {
     PanelScroll::with_children(vec![make_scrollable(children, id).into_element()])
         // .id(iced::advanced::widget::Id::new(id))
         .spacing(5.0)
@@ -115,13 +116,6 @@ impl CullingColumn {
     }
 }
 
-impl Default for CullingColumn {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-
 impl Widget<Message, iced::Theme, IcedRenderer> for CullingColumn {
     fn children(&self) -> Vec<Tree> { self.children.iter().map(Tree::new).collect() }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(&self.children); }
@@ -134,10 +128,7 @@ impl Widget<Message, iced::Theme, IcedRenderer> for CullingColumn {
         renderer: &IcedRenderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        let limits = limits
-            .max_width(self.max_width)
-            .width(self.width)
-            .height(self.height);
+        let limits = limits.max_width(self.max_width);
 
         layout::flex::resolve(
             layout::flex::Axis::Vertical,
@@ -234,22 +225,22 @@ impl Widget<Message, iced::Theme, IcedRenderer> for CullingColumn {
         cursor: mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        use iced::advanced::Renderer;
-        renderer.start_layer(layout.bounds());
+        // use iced::advanced::Renderer;
+        // renderer.start_layer(layout.bounds());
 
         for ((child, state), layout) in 
             self.children.iter()
             .zip(&tree.children)
             .zip(layout.children())
         {
-            if !viewport.intersects(&layout.bounds()) { continue }
+            // if !viewport.intersects(&layout.bounds()) { continue }
 
             child
                 .as_widget()
                 .draw(state, renderer, theme, style, layout, cursor, viewport);
         }
 
-        renderer.end_layer();
+        // renderer.end_layer();
     }
 
     fn overlay<'b>(

@@ -7,7 +7,7 @@ use image::RgbaImage;
 #[cfg(feature="graphics")]
 use winit::{
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::ControlFlow,
     window::Window as WinitWindow,
 };
 use souvlaki::{ MediaControls, PlatformConfig };
@@ -268,14 +268,16 @@ impl<'window> GameWindow<'window> {
                     let (metrics, bitmap) = font.font.rasterize(char, font_size.f32());
 
                     // bitmap is a vec of grayscale pixels
-                    // we need to turn that into rgba bytes
-                    let mut data = Vec::with_capacity(bitmap.len() * 4);
-                    bitmap.into_iter().for_each(|gray| {
-                        data.push(255); // r
-                        data.push(255); // g
-                        data.push(255); // b
-                        data.push(gray); // a
-                    });
+                    
+                    // // we need to turn that into rgba bytes
+                    let data = bitmap.into_iter().map(|gray| [255,255,255, gray]).flatten().collect::<Vec<_>>();
+                    // let mut data = Vec::with_capacity(bitmap.len() * 4);
+                    // bitmap.into_iter().for_each(|gray| {
+                    //     data.push(255); // r
+                    //     data.push(255); // g
+                    //     data.push(255); // b
+                    //     data.push(gray); // a
+                    // });
                     
                     let Ok(texture) = self.graphics.load_texture_rgba(&data, [metrics.width as u32, metrics.height as u32]) else { panic!("eve broke fonts") };
                     
@@ -304,9 +306,6 @@ impl<'window> GameWindow<'window> {
                 on_done.send(()).ok().expect("uh oh");
             }
 
-            // LoadImage::UpdateRenderTarget(target, on_done, callback) => {
-            //     self.graphics.update_render_target(target, callback);
-            // }
         }
 
         trace!("Done loading tex")
@@ -342,7 +341,7 @@ impl<'window> GameWindow<'window> {
         self.graphics.end_render();
 
         // apply
-        self.window().pre_present_notify();
+        // self.window().pre_present_notify();
         let _ = self.graphics.present();
 
 
@@ -607,10 +606,19 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
     }
     
 
+    fn new_events(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, _cause: StartCause) {
+        if self.window.get().is_none() { return }
+        self.update();
+    }
+
+    fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, _event: ()) {
+        self.window().request_redraw();
+    }
+
     fn device_event(
         &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        device_id: DeviceId,
+        _event_loop: &winit::event_loop::ActiveEventLoop,
+        _device_id: DeviceId,
         event: DeviceEvent,
     ) {
 
@@ -672,24 +680,24 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
             }
 
             // WindowEvent::ReceivedCharacter(c) if !c.is_control() => Some(Window2GameEvent::Char(c)),
-            WindowEvent::KeyboardInput {
-                event: winit::event::KeyEvent {
-                    logical_key: winit::keyboard::Key::Character(c),
-                    state: ElementState::Pressed, ..
-                }, ..
-            } if c.len() == 1 => {
-                Some(Window2GameEvent::Char(c.chars().next().unwrap()))
-            }
+            // WindowEvent::KeyboardInput {
+            //     event: winit::event::KeyEvent {
+            //         logical_key: winit::keyboard::Key::Character(c),
+            //         state: ElementState::Pressed, ..
+            //     }, ..
+            // } if c.len() == 1 => {
+            //     Some(Window2GameEvent::Char(c.chars().next().unwrap()))
+            // }
 
-            WindowEvent::KeyboardInput { 
-                event: winit::event::KeyEvent {
-                    logical_key: winit::keyboard::Key::Named(winit::keyboard::NamedKey::Home),
-                    state: ElementState::Pressed, ..
-                }, ..
-            } => {
-                self.mouse_helper.reset_cursor_pos(self.window());
-                Some(Window2GameEvent::MouseMove(Vector2::ZERO))
-            }
+            // WindowEvent::KeyboardInput { 
+            //     event: winit::event::KeyEvent {
+            //         logical_key: winit::keyboard::Key::Named(winit::keyboard::NamedKey::Home),
+            //         state: ElementState::Pressed, ..
+            //     }, ..
+            // } => {
+            //     self.mouse_helper.reset_cursor_pos(self.window());
+            //     Some(Window2GameEvent::MouseMove(Vector2::ZERO))
+            // }
 
             WindowEvent::KeyboardInput { 
                 event: e @ winit::event::KeyEvent { 
@@ -753,7 +761,7 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
     }
 
     fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.update();
+        
         
         // self.graphics.update_emitters();
     }

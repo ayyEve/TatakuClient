@@ -16,7 +16,6 @@ pub enum Window2GameEvent {
     // keyboard input
     KeyPress(KeyInput),
     KeyRelease(KeyInput),
-    Char(char),
 
     // mouse input
     MousePress(MouseButton),

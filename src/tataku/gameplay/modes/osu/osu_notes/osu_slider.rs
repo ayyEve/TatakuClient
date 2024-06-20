@@ -403,10 +403,11 @@ impl OsuSlider {
         }
 
 
-        // draw it to the render texture
+        // draw it to the render target
         if self.use_render_targets() {
             if let Some(target) = self.slider_body_render_target.clone() {
                 GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
+                    println!("hi mom 2");
                     transform = transform.trans(offset); 
                     drawables.into_iter().for_each(|d| d.draw(transform, g))
                 })).await;
@@ -416,7 +417,7 @@ impl OsuSlider {
                     size.y as u32, 
                     Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                         transform = transform.trans(offset); 
-                        drawables.into_iter().for_each(|d|d.draw(transform, g))
+                        drawables.into_iter().for_each(|d| d.draw(transform, g))
                     })
                 ).await;
 
