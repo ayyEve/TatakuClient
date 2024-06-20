@@ -1321,7 +1321,9 @@ impl IngameManager {
         self.gamemode = gamemode;
     }
 
-    pub async fn key_down(&mut self, key:Key, mods: KeyModifiers) {
+    pub async fn key_down(&mut self, key_input: KeyInput, mods: KeyModifiers) {
+        let Some(key) = key_input.as_key() else { return };
+
         if (self.gameplay_mode.is_replay() || self.current_mods.has_autoplay()) && !self.gameplay_mode.is_preview() {
             // check replay-only keys
             if key == Key::Escape {
@@ -1360,7 +1362,7 @@ impl IngameManager {
 
         
         if let Some(ui_editor) = &mut self.ui_editor {
-            ui_editor.on_key_press(key, &mods, &mut ()).await;
+            ui_editor.on_key_press(key_input, &mods, &mut ()).await;
             if key == Key::F9 {
                 ui_editor.should_close = true;
 
@@ -1405,8 +1407,9 @@ impl IngameManager {
 
         self.handle_input(frame).await;
     }
-    pub async fn key_up(&mut self, key:Key) {
+    pub async fn key_up(&mut self, key_input: KeyInput) {
         if self.should_skip_input() { return }
+        let Some(key) = key_input.as_key() else { return };
         
         // check map restart key
         if key == self.common_game_settings.map_restart_key {

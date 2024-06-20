@@ -563,12 +563,13 @@ impl Game {
         self.volume_controller.on_key_press(&mut keys_down, mods).await;
         
         // check user panel
-        if keys_down.contains(&self.settings.key_user_panel) {
+        if keys_down.has_key(self.settings.key_user_panel) {
             self.ui_manager.application().handle_make_userpanel().await;
         }
 
+
         // screenshot
-        if keys_down.contains(&Key::F12) {
+        if keys_down.has_key(Key::F12) {
             let (f, b) = tokio::sync::oneshot::channel();
             GameWindow::send_event(Game2WindowEvent::TakeScreenshot(f));
 
@@ -598,12 +599,12 @@ impl Game {
         // }
 
         // notfications menu
-        if keys_down.contains(&Key::B) && mods.ctrl {
+        if keys_down.has_key(Key::B) && mods.ctrl {
             self.add_dialog(Box::new(NotificationsDialog::new().await), false);
         }
 
         // settings menu
-        if keys_down.contains(&Key::O) && mods.ctrl {
+        if keys_down.has_key(Key::O) && mods.ctrl {
             let allow_ingame = self.settings.common_game_settings.allow_ingame_settings;
             let is_ingame = self.current_state.is_ingame();
 
@@ -614,27 +615,27 @@ impl Game {
         }
 
         // meme
-        if keys_down.contains(&Key::PageUp) && mods.ctrl {
+        if keys_down.has_key(Key::PageUp) && mods.ctrl {
             debug!("{:#?}", self.values);
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
 
         // custom menu list
-        if keys_down.contains(&Key::M) && mods.ctrl && mods.shift {
+        if keys_down.has_key(Key::M) && mods.ctrl && mods.shift {
             self.actions.push(MenuMenuAction::SetMenu("menu_list".to_owned()));
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
-        if keys_down.contains(&Key::H) && mods.ctrl && mods.shift {
+        if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
             warn!("{:#?}", self.values);
         }
 
 
         // update any dialogs
-        if keys_down.contains(&Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
-            keys_down.remove_item(Key::Escape)
+        if keys_down.has_key(Key::Escape) && self.ui_manager.application().dialog_manager.close_latest().await {
+            keys_down.remove_key(Key::Escape);
         }
 
-        if keys_down.contains(&Key::F5) && mods.ctrl {
+        if keys_down.has_key(Key::F5) && mods.ctrl {
             NotificationManager::add_text_notification("Doing a full refresh, the game will freeze for a bit", 5000.0, Color::RED).await;
             self.beatmap_manager.full_refresh(&mut self.values).await;
             // tokio::spawn(async {
@@ -645,7 +646,7 @@ impl Game {
 
 
         // reload custom menus
-        if keys_down.contains(&Key::R) && mods.ctrl {
+        if keys_down.has_key(Key::R) && mods.ctrl {
             self.load_custom_menus();
             if let MenuType::Custom(name) = self.ui_manager.get_menu() {
                 debug!("Reloading current menu");
@@ -757,8 +758,8 @@ impl Game {
                     if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta).await}
 
                     // kb
-                    for k in keys_down.iter() {manager.key_down(*k, mods).await}
-                    for k in keys_up.iter() {manager.key_up(*k).await}
+                    for k in keys_down.0 { manager.key_down(k, mods).await }
+                    for k in keys_up.0 { manager.key_up(k).await }
                     if text.len() > 0 {
                         manager.on_text(&text, &mods).await
                     }

@@ -117,11 +117,11 @@ impl TatakuRenderable for Text {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
  
-    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut GraphicsState) {
+    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut dyn GraphicsEngine) {
         if self.fonts.len() == 0 { return error!("NO FONT FOR TEXT {}", self.text); }
         let scale = self.scale * self.text_scale;
 

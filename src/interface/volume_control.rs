@@ -205,37 +205,26 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_key_press(&mut self, keys:&mut Vec<Key>, mods:KeyModifiers) -> bool {
+    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods:KeyModifiers) -> bool {
         let elapsed = self.elapsed();
 
         if mods.alt {
             let mut changed = false;
 
-            if keys.contains(&Key::Right) {
+            if keys.has_and_remove(Key::Right) {
                 self.change(0.1).await;
-                changed = true;
             }
-            if keys.contains(&Key::Left) {
-                keys.retain(|k|k == &Key::Left);
+            if keys.has_and_remove(Key::Left) {
                 self.change(-0.1).await;
-                changed = true;
             }
 
-            if keys.contains(&Key::Up) {
+            if keys.has_and_remove(Key::Up) {
                 self.vol_selected_index = (3+(self.vol_selected_index as i8 - 1)) as u8 % 3;
                 self.vol_selected_time = elapsed;
-                changed = true;
             }
-            if keys.contains(&Key::Down) {
+            if keys.has_and_remove(Key::Down) {
                 self.vol_selected_index = (self.vol_selected_index + 1) % 3;
                 self.vol_selected_time = elapsed;
-                changed = true;
-            }
-
-            if changed {
-                let remove = vec![&Key::Right, &Key::Left, &Key::Up, &Key::Down];
-                keys.retain(|k| remove.contains(&k));
-                return true;
             }
         }
 

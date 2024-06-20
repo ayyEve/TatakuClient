@@ -42,9 +42,8 @@ struct TransformableContent {
     data: TransformableData
 }
 
-impl iced::advanced::Widget<Message, IcedRenderer> for TransformableContent {
-    fn width(&self) -> iced::Length { iced::Length::Shrink }
-    fn height(&self) -> iced::Length { iced::Length::Shrink }
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for TransformableContent {
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(iced::Length::Shrink, iced::Length::Shrink) }
 
     fn children(&self) -> Vec<iced_core::widget::Tree> {
         vec![iced_core::widget::Tree::new(&self.content)]
@@ -95,12 +94,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for TransformableContent {
 
     fn layout(
         &self,
+        tree: &mut iced_core::widget::Tree,
         renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
         let offset = self.data.pos.current;
         self.content.as_widget()
-            .layout(renderer, limits)
+            .layout(tree, renderer, limits)
             .translate(iced::Vector::new(offset.x, offset.y))
     }
 
@@ -108,7 +108,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for TransformableContent {
         &self,
         state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
-        theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        theme: &iced::Theme,
         style: &iced_core::renderer::Style,
         layout: iced_core::Layout<'_>,
         cursor: iced_core::mouse::Cursor,

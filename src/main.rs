@@ -101,17 +101,30 @@ async fn start_game() {
     let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
 
+
     // setup window
     #[cfg(feature="graphics")]
     main_thread.spawn_local(async move {
         info!("creating window");
-        let (w, e) = GameWindow::new(render_queue_receiver, game_event_sender).await;
+        let settings = Settings::get();
+
+        let window;
+        let (window_sender, window_receiver) = tokio::sync::oneshot::channel();
+        let mut w = GameWindow::new(render_queue_receiver, game_event_sender, window_sender).await;
+        let e = winit::event_loop::EventLoop::new().unwrap();
+        GameWindow::run(w, e);
+
+        window = window_receiver.await.expect("no window????");
+        let graphics = GraphicsState::new(&window, &settings).await;
+        w.set_window(&window);
+        w.set_graphics(Box::new(graphics));
+
+
+        trace!("window running");
 
         // let the game side know the window is good to go
         window_side_barrier.wait().await;
         
-        trace!("window running");
-        GameWindow::run(w, e);
         warn!("window closed");
     });
 

@@ -19,9 +19,9 @@ impl DraggableDialogElement {
     }
 }
 
-impl Widget<Message, IcedRenderer> for DraggableDialogElement {
-    fn width(&self) -> iced::Length { iced::Length::Fixed(0.0) }
-    fn height(&self) -> iced::Length { iced::Length::Fixed(0.0) }
+impl Widget<Message, iced::Theme, IcedRenderer> for DraggableDialogElement {    
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(iced::Length::Fixed(0.0), iced::Length::Fixed(0.0)) }
+
 
     fn children(&self) -> Vec<iced_core::widget::Tree> {
         vec![iced_core::widget::Tree::new(&self.dialog_content)]
@@ -35,6 +35,7 @@ impl Widget<Message, IcedRenderer> for DraggableDialogElement {
 
     fn layout(
         &self,
+        _state: &mut iced_core::widget::Tree,
         _renderer: &IcedRenderer,
         _limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
@@ -45,7 +46,7 @@ impl Widget<Message, IcedRenderer> for DraggableDialogElement {
         &self,
         _state: &iced_core::widget::Tree,
         _renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _theme: &iced::Theme,
         _style: &iced_core::renderer::Style,
         _layout: iced_core::Layout<'_>,
         _cursor: iced_core::mouse::Cursor,
@@ -57,12 +58,14 @@ impl Widget<Message, IcedRenderer> for DraggableDialogElement {
         state: &'a mut iced_core::widget::Tree,
         _layout: iced_core::Layout<'_>,
         _renderer: &IcedRenderer,
-    ) -> Option<iced_core::overlay::Element<'a, Message, IcedRenderer>> {
+        offset: iced::Vector,
+    ) -> Option<iced_core::overlay::Element<'a, Message, iced::Theme, IcedRenderer>> {
         let state2 = state.state.downcast_ref::<DraggableState>();
 
-        Some(IcedOverlay::new(state2.pos, Box::new(DraggableOverlay {
+        Some(IcedOverlay::new(Box::new(DraggableOverlay {
             content: self,
-            tree: state
+            tree: state,
+            offset
         })))
     }
 }
@@ -76,7 +79,8 @@ impl From<DraggableDialogElement> for IcedElement {
 
 struct DraggableOverlay<'a> {
     content: &'a mut DraggableDialogElement,
-    tree: &'a mut iced_core::widget::Tree
+    tree: &'a mut iced_core::widget::Tree,
+    offset: iced::Vector
 }
 impl<'a> DraggableOverlay<'a> {
     fn viewport(&self) -> iced::Rectangle {
@@ -86,18 +90,16 @@ impl<'a> DraggableOverlay<'a> {
     }
 }
 
-impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
+impl<'a> Overlay<Message, iced::Theme, IcedRenderer> for DraggableOverlay<'a> {
     fn layout(
-        &self,
+        &mut self,
         renderer: &IcedRenderer,
-        bounds: iced::Size,
-        position: iced::Point,
+        size: iced::Size,
     ) -> iced_core::layout::Node {
-        let limits = iced_core::layout::Limits::new(iced::Size::ZERO, bounds);
+        let limits = iced_core::layout::Limits::new(iced::Size::ZERO, size);
 
-        let mut node = self.content.dialog_content.as_widget().layout(renderer, &limits);
-        node.move_to(position);
-        node
+        let mut node = self.content.dialog_content.as_widget().layout(self.tree, renderer, &limits);
+        node.move_to(iced::Point::new(self.offset.x, self.offset.y))
     }
     
 
@@ -128,7 +130,7 @@ impl<'a> Overlay<Message, IcedRenderer> for DraggableOverlay<'a> {
     fn draw(
         &self,
         renderer: &mut IcedRenderer,
-        theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        theme: &iced::Theme,
         style: &iced_core::renderer::Style,
         layout: iced_core::Layout<'_>,
         cursor: iced_core::mouse::Cursor,

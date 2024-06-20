@@ -1,11 +1,5 @@
 
-#[cfg(feature="graphics")]
 mod state;
-
-
-#[cfg(not(feature="graphics"))]
-mod fake_state;
-
 
 mod vsync;
 mod atlas;
@@ -19,10 +13,7 @@ mod particle_system;
 mod slider_render;
 mod flashlight_render;
 
-#[cfg(feature="graphics")]
 pub use state::*;
-#[cfg(not(feature="graphics"))]
-pub use fake_state::*;
 
 pub use vsync::*;
 pub use atlas::*;

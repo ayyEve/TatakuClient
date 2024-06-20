@@ -189,6 +189,7 @@ pub fn create_slider_pipeline(
             module: &slider_shader,
             entry_point: "slider_vs_main",
             buffers: &[ SliderVertex::desc() ],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
             module: &slider_shader,
@@ -198,6 +199,7 @@ pub fn create_slider_pipeline(
                 blend: Some(crate::prelude::BlendMode::AlphaBlending.get_blend_state()),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,

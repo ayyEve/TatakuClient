@@ -114,7 +114,7 @@ impl Dialog for CreateLobbyDialog {
             
             TextInput::new("Lobby Name", &self.name_text).on_input(move|t|Message::new(owner, "lobby_name", MessageType::Text(t))),
             TextInput::new("Lobby Password", &self.password_text).on_input(move|t|Message::new(owner, "lobby_password", MessageType::Text(t))),
-            Checkbox::new("Private", self.is_private, move|v|Message::new(owner, "lobby_private", MessageType::Toggle(v))),
+            Checkbox::new("Private", self.is_private).on_toggle(move|v|Message::new(owner, "lobby_private", MessageType::Toggle(v))),
 
             row!(
                 Button::new(Text::new("Done")).on_press(Message::new_dialog(self, "done", MessageType::Click)),

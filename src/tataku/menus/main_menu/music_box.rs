@@ -161,7 +161,7 @@ impl MusicBox {
         ContentBackground::new(
             Button::new(
                 Text::new(c.to_string())
-                .font(Font::FontAwesome.to_iced())
+                .font(Font::FontAwesome)
                 .size(CONTROL_BUTTON_SIZE)
                 .color(PRIMARY_COLOR)
             )
@@ -181,7 +181,7 @@ impl MusicBox {
 
         col!(
             row!(
-                CONTROL_BUTTONS.iter().map(|b|self.btn(b, owner)).collect(),
+                CONTROL_BUTTONS.iter().map(|b|self.btn(b, owner)).collect::<Vec<_>>(),
                 width = Fill,
                 height = FillPortion(10),
                 padding = MUSIC_BOX_PADDING,

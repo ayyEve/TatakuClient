@@ -39,12 +39,12 @@ impl TatakuRenderable for Circle {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
         let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
         self.draw_with_transparency(self.color.a, border_alpha, transform, g)
     }
 
-    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
+    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
         let border = self.border.map(|mut b|{ b.color.a = border_alpha; b });
 
         let transform = transform * Matrix::identity()

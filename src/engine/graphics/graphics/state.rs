@@ -19,8 +19,8 @@ macro_rules! get_render_buffer {
     }}
 }
 
-pub struct GraphicsState {
-    surface: wgpu::Surface,
+pub struct GraphicsState<'window> {
+    surface: wgpu::Surface<'window>,
     device: wgpu::Device,
     queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
@@ -39,28 +39,31 @@ pub struct GraphicsState {
     render_target_atlas: Atlas,
     atlas_texture: WgpuTexture,
 
-    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static>>,
+    screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>>,
 
     particle_system: ParticleSystem,
 
     scissors: ScissorManager
 }
-impl GraphicsState {
+impl<'window> GraphicsState<'window> {
 
     // Creating some of the wgpu types requires async code
     #[cfg(feature="graphics")]
-    pub async fn new(window: &winit::window::Window, settings: &Settings, size: [u32;2]) -> Self {
+    pub async fn new(window: &'window winit::window::Window, settings: &Settings) -> Self {
+        use wgpu::PipelineCompilationOptions;
+
         let window_size = window.inner_size();
-        let window_size = Vector2::new(window_size.width as f32, window_size.height as f32);
         
         // create a wgpu instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL,
+            flags: wgpu::InstanceFlags::empty(),
+            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
             dx12_shader_compiler: Default::default(),
         });
 
         // create the serface
-        let surface = unsafe { instance.create_surface(window).unwrap() };
+        let surface: wgpu::Surface<'window> = instance.create_surface(window).unwrap();
 
         // create the adapter
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -78,8 +81,8 @@ impl GraphicsState {
                 #[cfg(feature="texture_arrays")]
                 features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                 #[cfg(not(feature="texture_arrays"))]
-                features: wgpu::Features::default(),
-                limits: wgpu::Limits::default(),
+                required_features: wgpu::Features::default(),
+                required_limits: wgpu::Limits::default(),
                 label: None,
             },
             None,
@@ -96,11 +99,13 @@ impl GraphicsState {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT, // | wgpu::TextureUsages::COPY_SRC,
             format: surface_format,
-            width: size[0],
-            height: size[1],
+            width: window_size.width,
+            height: window_size.height,
             present_mode: wgpu::PresentMode::AutoNoVsync, //surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
+
+            desired_maximum_frame_latency: 1,
         };
         surface.configure(&device, &config);
 
@@ -206,6 +211,7 @@ impl GraphicsState {
             ]
         });
 
+        let window_size = Vector2::new(window_size.width as f32, window_size.height as f32);
         let projection_matrix = Self::create_projection(window_size);
         let projection_matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Projection Matrix Buffer"),
@@ -255,6 +261,7 @@ impl GraphicsState {
                     module: &shader,
                     entry_point: "vs_main",
                     buffers: &[ Vertex::desc() ],
+                    compilation_options: PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -264,6 +271,7 @@ impl GraphicsState {
                         blend: Some(blend_state),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
+                    compilation_options: PipelineCompilationOptions::default(),
                 }),
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -317,7 +325,7 @@ impl GraphicsState {
             (LastDrawn::Flashlight, Box::new(RenderBufferQueueType::Flashlight(RenderBufferQueue::new().init(&device)))),
         ].into_iter().collect();
 
-        let s = Self {
+        Self {
             surface,
             device,
             queue: Arc::new(queue),
@@ -337,26 +345,9 @@ impl GraphicsState {
             screenshot_pending: None,
             particle_system,
             scissors: ScissorManager::default()
-        };
-        s
-    }
-
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
-            self.config.width = new_size.width;
-            self.config.height = new_size.height;
-            self.surface.configure(&self.device, &self.config);
-
-            let window_size = Vector2::new(new_size.width as f32, new_size.height as f32);
-            self.projection_matrix = Self::create_projection(window_size);
-            self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
         }
     }
 
-    pub fn set_vsync(&mut self, vsync: Vsync) {
-        self.config.present_mode = (vsync.to_okay()).into();
-        self.surface.configure(&self.device, &self.config);
-    }
 
 
     pub fn render_current_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -407,7 +398,7 @@ impl GraphicsState {
         Ok(())
     }
 
-    pub fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
+    fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
@@ -418,10 +409,12 @@ impl GraphicsState {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: true,
+                        store: wgpu::StoreOp::Discard,
                     },
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             let mut current_blend_mode = BlendMode::None;
@@ -500,102 +493,10 @@ impl GraphicsState {
         ].into()
     }
 
-
-    pub fn create_render_target(&mut self, w:u32, h:u32, clear_color: Color, do_render: impl FnOnce(&mut GraphicsState, Matrix)) -> Option<RenderTarget> {
-        // find space in the render target atlas
-        let mut atlased = self.render_target_atlas.try_insert(w, h)?;
-
-        // offset the texture layer so it accesses the render target atlas
-        atlased.layer += LAYER_COUNT;
-
-        // create a projection and render target
-        let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
-        let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
-
-        // queue rendering the data to it
-        self.update_render_target(target.clone(), do_render);
-
-        // return the new render target
-        Some(target)
-    }
-    pub fn update_render_target(&mut self, target: RenderTarget, do_render: impl FnOnce(&mut GraphicsState, Matrix)) {
-        // get the texture this target was written to
-        let textures = self.atlas_texture.textures.clone();
-        let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
-
-        // write the projection matrix
-        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
-        self.queue.submit([].into_iter());
-
-        let width = target.width;
-        let height = target.height;
-
-        // create a temporary texture to render to this target to
-        let texture = self.device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: self.config.format,
-                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                // COPY_DST means that we want to copy data to this texture
-                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                label: Some("render_target_temp_tex"),
-                view_formats: &[],
-            }
-        );
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("render_target_temp_tex_view"),
-            dimension: Some(TextureViewDimension::D2),
-            base_array_layer: 0,
-
-            ..Default::default()
-        });
-
-        // create renderable surface
-        let renderable = RenderableSurface::new(&view, target.clear_color, Vector2::new(width as f32, height as f32));
-
-        // clear buffers
-        self.begin();
-
-        // fill buffers
-        let transform = Matrix::identity();
-        do_render(self, transform);
-
-        // complete buffers
-        self.end();
-
-        // perform render
-        let _ = self.render(&renderable);
-
-
-        // copy render to atlas
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
-
-        let mut dest = atlas_tex.as_image_copy();
-        dest.origin.x = target.texture.x;
-        dest.origin.y = target.texture.y;
-
-        encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
-        self.queue.submit([encoder.finish()]);
-
-        // remove temp texture
-        self.queue.on_submitted_work_done(move || texture.destroy());
-
-        // reapply the window projection matrix
-        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
-
-    }
 }
 
 // texture stuff
-impl GraphicsState {
+impl<'w> GraphicsState<'w> {
     fn create_texture(device: &wgpu::Device, layout: &wgpu::BindGroupLayout, sampler: &wgpu::Sampler, width:u32, height:u32, format: wgpu::TextureFormat) -> WgpuTexture {
         let texture_size = wgpu::Extent3d {
             width,
@@ -721,129 +622,9 @@ impl GraphicsState {
         }
     }
 
-    pub fn load_texture_bytes(&mut self, data: impl AsRef<[u8]>) -> TatakuResult<TextureReference> {
-        let diffuse_image = image::load_from_memory(data.as_ref())?;
-        let diffuse_rgba = diffuse_image.to_rgba8();
-
-        use image::GenericImageView;
-        let (width, height) = diffuse_image.dimensions();
-
-        self.load_texture_rgba(&diffuse_rgba.to_vec(), width, height)
-    }
-
-    pub fn load_texture_rgba(&mut self, data: &Vec<u8>, width: u32, height: u32) -> TatakuResult<TextureReference> {
-        let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
-        if info.is_empty() { return Ok(info) }
-
-        // let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
-
-        let data = data
-        // cast to bgra
-        .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
-        // // add padding bytes to both left and right side
-        // .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
-        // // collect into Vec<u8>
-        // .flatten()
-        // .map(|b|*b)
-        // .collect::<Vec<_>>()
-        ;
-
-
-        // let width = width + ATLAS_PADDING * 2;
-        // let height = height + ATLAS_PADDING * 2;
-
-        let texture_size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
-
-
-        // let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
-        // let mut data2 = vertical_padding.clone();
-        // data2.extend(data.into_iter());
-        // data2.extend(vertical_padding.into_iter());
-
-
-        self.queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
-                texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: info.x, // x: info.x - ATLAS_PADDING,
-                    y: info.y, // y: info.y - ATLAS_PADDING,
-                    z: 0
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            // The actual pixel data
-            &data,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            texture_size,
-        );
-
-        Ok(info)
-    }
-
-    pub fn free_tex(&mut self, mut tex: TextureReference) {
-        if tex.is_empty() { return }
-
-        // write empty data to where the texture was
-        // this should remove the weird border when the atlas space is reused
-        let width = tex.width + ATLAS_PADDING * 2;
-        let height = tex.height + ATLAS_PADDING * 2;
-        // empty pixels
-        let data = vec![0u8; (width * height * 4) as usize];
-
-        self.queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
-                texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: tex.x - ATLAS_PADDING,
-                    y: tex.y - ATLAS_PADDING,
-                    z: 0
-                },
-                aspect: wgpu::TextureAspect::All,
-            },
-            // The actual pixel data
-            &data,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
-            wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            }
-        );
-
-        // remove from texture atlas
-        if tex.layer >= LAYER_COUNT {
-            tex.layer -= LAYER_COUNT;
-            self.render_target_atlas.remove_entry(tex);
-        } else {
-            self.atlas.remove_entry(tex);
-        }
-    }
 
     #[cfg(feature="graphics")]
-    pub fn screenshot(&mut self, callback: impl FnOnce((Vec<u8>, u32, u32))+Send+Sync+'static) {
-        self.screenshot_pending = Some(Box::new(callback));
-    }
-
-    #[cfg(feature="graphics")]
-    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, u32, u32)) + Send + Sync>) {
+    fn finish_screenshot(&mut self, texture: wgpu::Texture, callback: Box<dyn FnOnce((Vec<u8>, [u32;2])) + Send + Sync>) {
         let (w, h) = (texture.width(), texture.height());
         let format = texture.format();
 
@@ -880,57 +661,22 @@ impl GraphicsState {
             r.await.unwrap();
             let data = slice.get_mapped_range().chunks_exact(4).map(|b|cast_to_rgba_bytes(b, format)).flatten().collect();
 
-            callback((data, w, h));
+            callback((data, [w, h]));
         });
     }
 }
 
 
 // render code
-impl GraphicsState {
-    pub fn begin(&mut self) {
-        // if self.last_drawn is not None at this point, something went wrong
-        assert!(self.current_render_buffer.is_none());
+impl<'w> GraphicsState<'w> {
 
-        let mut vertex_buffers = Vec::new();
-        let mut slider_buffers = Vec::new();
-        let mut flashlight_buffers = Vec::new();
-
-        for i in std::mem::take(&mut self.completed_buffers) {
-            match i {
-                RenderBufferType::Vertex(v) => vertex_buffers.push(v),
-                RenderBufferType::Slider(s) => slider_buffers.push(s),
-                RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
-            }
-        }
-
-        for i in self.buffer_queues.values_mut() {
-            match &mut **i {
-                RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
-                RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
-                RenderBufferQueueType::Flashlight(f) => f.begin(std::mem::take(&mut flashlight_buffers)),
-            }
-        }
-    }
-
-    pub fn end(&mut self) {
-        if let Some(mut last_queue) = std::mem::take(&mut self.current_render_buffer) {
-            if let Some(b) = last_queue.end(&self.queue) {
-                self.completed_buffers.push(b);
-            }
-
-            self.buffer_queues.insert(last_queue.draw_type(), last_queue);
-        }
-    }
-
-
-    pub fn dump_last_drawn(&mut self) {
+    fn dump_last_drawn(&mut self) {
         let Some(mut last_drawn) = std::mem::take(&mut self.current_render_buffer) else { return };
         if let Some(b) = last_drawn.dump_and_next(&self.queue, &self.device) { self.completed_buffers.push(b); };
         self.buffer_queues.insert(last_drawn.draw_type(), last_drawn);
     }
 
-    pub fn check_dump_and_next(&mut self, to_draw: LastDrawn) {
+    fn check_dump_and_next(&mut self, to_draw: LastDrawn) {
         if let Some(last_drawn) = &self.current_render_buffer {
             if last_drawn.draw_type() == to_draw { return }
         }
@@ -940,13 +686,6 @@ impl GraphicsState {
     }
 
 
-
-    pub fn push_scissor(&mut self, scissor: [f32; 4]) {
-        self.scissors.push_scissor(scissor)
-    }
-    pub fn pop_scissor(&mut self) {
-        self.scissors.pop_scissor()
-    }
 
     /// returns reserve data
     fn reserve_vertex(
@@ -1226,177 +965,7 @@ impl GraphicsState {
 
 
 // draw helpers
-impl GraphicsState {
-
-    /// draw an arc with the center at 0,0
-    pub fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
-        let n = resolution;
-
-        // minor optimization
-        if color.a <= 0.0 { return }
-
-        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-        let (cw, ch) = (0.5 * w, 0.5 * h);
-        let (cx, cy) = (x + cw, y + ch);
-
-        let mut path = lyon_tessellation::path::Path::builder();
-        for i in 0..=n {
-            let angle = f32::lerp(start, end, i as f32 / n as f32);
-            let p = Point::new(cx + angle.cos() * cw, cy + angle.sin() * ch);
-            if i == 0 {
-                path.begin(p);
-            } else {
-                path.line_to(p);
-            }
-        }
-        path.end(false);
-        let path = path.build();
-
-        self.tessellate_path(&path, color, None, transform, blend_mode);
-    }
-
-    pub fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
-        let n = resolution;
-
-        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-        let (cw, ch) = (0.5 * w, 0.5 * h);
-        let (cx, cy) = (x + cw, y + ch);
-        let points = (0..n).map(|i| {
-            let angle = i as f32 / n as f32 * (PI * 2.0);
-            Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-        }).collect::<Vec<_>>();
-
-        // fill
-        if color.a > 0.0 {
-            self.tessellate_polygon(&points, color, None, transform, blend_mode);
-        }
-
-        // border
-        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            // let radius = radius + border.radius;
-            // let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
-            // let (cw, ch) = (0.5 * w, 0.5 * h);
-            // let (cx, cy) = (x + cw, y + ch);
-            // let points = (0..n).map(|i| {
-            //     let angle = i as f32 / n as f32 * (PI * 2.0);
-            //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
-            // });
-
-            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, blend_mode);
-        }
-
-    }
-
-    pub fn draw_line(&mut self, line: [f32; 4], thickness: f32, color: Color, transform: Matrix, blend_mode: BlendMode) {
-        let p1 = Vector2::new(line[0], line[1]);
-        let p2 = Vector2::new(line[2], line[3]);
-
-        let n = p2 - p1;
-        let n = Vector2::new(-n.y, n.x).normalize() * thickness;
-
-        let n0 = p1 + n;
-        let n1 = p2 + n;
-        let n2 = p1 - n;
-        let n3 = p2 - n;
-
-        let quad = [ n0, n2, n1, n3 ];
-        self.reserve_quad(quad, color, transform, blend_mode);
-    }
-
-    /// rect is [x,y,w,h]
-    pub fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode) {
-        // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
-        if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
-
-        let [x, y, w, h] = rect;
-        let rect = Box2D::new(Point::new(x, y), Point::new(x+w, y+h));
-
-        let mut path = lyon_tessellation::path::Path::builder();
-        match shape {
-            Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
-            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive),
-            Shape::RoundSep([top_left, top_right, bottom_left, bottom_right]) => path.add_rounded_rectangle(&rect, &BorderRadii {
-                top_left, top_right, bottom_left, bottom_right
-            }, lyon_tessellation::path::Winding::Positive)
-        }
-        let path = path.build();
-
-        // fill
-        if color.a > 0.0 {
-            self.tessellate_path(&path, color, None, transform, blend_mode)
-        }
-
-        // border
-        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
-            self.tessellate_path(&path, border.color, Some(border.radius), transform, blend_mode)
-        }
-    }
-
-    pub fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
-        let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
-        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, blend_mode);
-    }
-
-    
-    pub fn draw_slider(
-        &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
-
-        mut slider_data: SliderData,
-        slider_grids: Vec<GridCell>,
-        grid_cells: Vec<u32>,
-        line_segments: Vec<LineSegment>
-    ) {
-        let Some(mut reserved) = self.reserve_slider(
-            slider_grids.len() as u64,
-            grid_cells.len() as u64,
-            line_segments.len() as u64
-        ) else { return };
-
-        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
-
-        
-        let vertices = quad.into_iter().map(|p|SliderVertex {
-            position: transform.mul_v2(p).into(),
-            slider_index: reserved.slider_index,
-        }).collect::<Vec<_>>();
-
-        let offset = reserved.idx_offset as u32;
-        slider_data.grid_index += reserved.slider_grid_offset;
-        reserved.copy_in(
-            &vertices, 
-            &[
-                0 + offset,
-                2 + offset,
-                1 + offset,
-
-                1 + offset,
-                2 + offset,
-                3 + offset,
-            ],
-            slider_data,
-            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
-            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
-            &line_segments
-        );
-    }
-
-    pub fn draw_flashlight(
-        &mut self,
-        quad: [Vector2; 4],
-        transform: Matrix,
-        flashlight_data: FlashlightData
-    ) {
-        let Some(mut reserved) = self.reserve_flashlight() else { return };
-        
-        let vertices = quad.into_iter().map(|p|FlashlightVertex {
-            position: transform.mul_v2(p).into(),
-            flashlight_index: reserved.flashlight_index,
-        }).collect::<Vec<_>>();
-        
-        reserved.copy_in(&vertices, flashlight_data);
-    }
+impl<'w> GraphicsState<'w> {
 
     fn tessellate_polygon(&mut self, polygon: &Vec<Vector2>, color: Color, border: Option<f32>, transform: Matrix, blend_mode: BlendMode) {
         let mut polygon = polygon.iter();
@@ -1465,16 +1034,471 @@ impl GraphicsState {
     }
 }
 
-// particle stuff
-impl GraphicsState {
-    pub fn add_emitter(&mut self, emitter: EmitterRef) {
+
+
+impl<'w> GraphicsEngine for GraphicsState<'w> {
+
+    fn resize(&mut self, [width, height]: [u32; 2]) {
+        if width == 0 || height == 0 { return }
+
+        self.config.width = width;
+        self.config.height = height;
+        self.surface.configure(&self.device, &self.config);
+
+        let window_size = Vector2::new(width as f32, height as f32);
+        self.projection_matrix = Self::create_projection(window_size);
+        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
+    }
+
+    fn set_vsync(&mut self, vsync: Vsync) {
+        self.config.present_mode = (vsync.to_okay()).into();
+        self.surface.configure(&self.device, &self.config);
+    }
+
+    fn create_render_target(&mut self, [w,h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
+        // find space in the render target atlas
+        let mut atlased = self.render_target_atlas.try_insert(w, h)?;
+
+        // offset the texture layer so it accesses the render target atlas
+        atlased.layer += LAYER_COUNT;
+
+        // create a projection and render target
+        let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
+        let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
+
+        // queue rendering the data to it
+        self.update_render_target(target.clone(), do_render);
+
+        // return the new render target
+        Some(target)
+    }
+    fn update_render_target(&mut self, target: RenderTarget, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) {
+        // get the texture this target was written to
+        let textures = self.atlas_texture.textures.clone();
+        let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
+
+        // write the projection matrix
+        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
+        self.queue.submit([].into_iter());
+
+        let width = target.width;
+        let height = target.height;
+
+        // create a temporary texture to render to this target to
+        let texture = self.device.create_texture(
+            &wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.config.format,
+                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+                // COPY_DST means that we want to copy data to this texture
+                usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                label: Some("render_target_temp_tex"),
+                view_formats: &[],
+            }
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("render_target_temp_tex_view"),
+            dimension: Some(TextureViewDimension::D2),
+            base_array_layer: 0,
+
+            ..Default::default()
+        });
+
+        // create renderable surface
+        let renderable = RenderableSurface::new(&view, target.clear_color, Vector2::new(width as f32, height as f32));
+
+        // clear buffers
+        self.begin_render();
+
+        // fill buffers
+        let transform = Matrix::identity();
+        do_render(self, transform);
+
+        // complete buffers
+        self.end_render();
+
+        // perform render
+        let _ = self.render(&renderable);
+
+
+        // copy render to atlas
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
+
+        let mut dest = atlas_tex.as_image_copy();
+        dest.origin.x = target.texture.x;
+        dest.origin.y = target.texture.y;
+
+        encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
+        self.queue.submit([encoder.finish()]);
+
+        // remove temp texture
+        self.queue.on_submitted_work_done(move || texture.destroy());
+
+        // reapply the window projection matrix
+        self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&self.projection_matrix.to_raw()));
+
+    }
+
+
+    fn load_texture_bytes(&mut self, data: &[u8]) -> TatakuResult<TextureReference> {
+        let diffuse_image = image::load_from_memory(data)?;
+        let diffuse_rgba = diffuse_image.to_rgba8();
+
+        use image::GenericImageView;
+        let (width, height) = diffuse_image.dimensions();
+
+        self.load_texture_rgba(&diffuse_rgba.to_vec(), [width, height])
+    }
+
+    fn load_texture_rgba(&mut self, data: &Vec<u8>, [width, height]: [u32; 2]) -> TatakuResult<TextureReference> {
+        let Some(info) = self.atlas.try_insert(width, height) else { return Err(TatakuError::String("no space in atlas".to_owned())); };
+        if info.is_empty() { return Ok(info) }
+
+        // let padding_bytes = (0..ATLAS_PADDING).map(|_|[0u8;4]).flatten().collect::<Vec<u8>>();
+
+        let data = data
+        // cast to bgra
+        .chunks_exact(4).map(|b|cast_from_rgba_bytes(b, self.config.format)).flatten().collect::<Vec<_>>()
+        // // add padding bytes to both left and right side
+        // .chunks_exact(4 * width as usize).map(|b|[&padding_bytes[..], b, &padding_bytes[..]]).flatten()
+        // // collect into Vec<u8>
+        // .flatten()
+        // .map(|b|*b)
+        // .collect::<Vec<_>>()
+        ;
+
+
+        // let width = width + ATLAS_PADDING * 2;
+        // let height = height + ATLAS_PADDING * 2;
+
+        let texture_size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+
+
+        // let vertical_padding = vec![0u8; (width * 4 * ATLAS_PADDING) as usize];
+        // let mut data2 = vertical_padding.clone();
+        // data2.extend(data.into_iter());
+        // data2.extend(vertical_padding.into_iter());
+
+
+        self.queue.write_texture(
+            // Tells wgpu where to copy the pixel data
+            wgpu::ImageCopyTexture {
+                texture: &self.atlas_texture.textures.get(info.layer as usize).unwrap().0,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: info.x, // x: info.x - ATLAS_PADDING,
+                    y: info.y, // y: info.y - ATLAS_PADDING,
+                    z: 0
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            // The actual pixel data
+            &data,
+            // The layout of the texture
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            texture_size,
+        );
+
+        Ok(info)
+    }
+
+    fn free_tex(&mut self, mut tex: TextureReference) {
+        if tex.is_empty() { return }
+
+        // write empty data to where the texture was
+        // this should remove the weird border when the atlas space is reused
+        let width = tex.width + ATLAS_PADDING * 2;
+        let height = tex.height + ATLAS_PADDING * 2;
+        // empty pixels
+        let data = vec![0u8; (width * height * 4) as usize];
+
+        self.queue.write_texture(
+            // Tells wgpu where to copy the pixel data
+            wgpu::ImageCopyTexture {
+                texture: &self.atlas_texture.textures.get(tex.layer as usize).unwrap().0,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: tex.x - ATLAS_PADDING,
+                    y: tex.y - ATLAS_PADDING,
+                    z: 0
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            // The actual pixel data
+            &data,
+            // The layout of the texture
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            }
+        );
+
+        // remove from texture atlas
+        if tex.layer >= LAYER_COUNT {
+            tex.layer -= LAYER_COUNT;
+            self.render_target_atlas.remove_entry(tex);
+        } else {
+            self.atlas.remove_entry(tex);
+        }
+    }
+
+    fn screenshot(&mut self, callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>) {
+        self.screenshot_pending = Some(Box::new(callback));
+    }
+
+
+
+    fn begin_render(&mut self) {
+        // if self.last_drawn is not None at this point, something went wrong
+        assert!(self.current_render_buffer.is_none());
+
+        let mut vertex_buffers = Vec::new();
+        let mut slider_buffers = Vec::new();
+        let mut flashlight_buffers = Vec::new();
+
+        for i in std::mem::take(&mut self.completed_buffers) {
+            match i {
+                RenderBufferType::Vertex(v) => vertex_buffers.push(v),
+                RenderBufferType::Slider(s) => slider_buffers.push(s),
+                RenderBufferType::Flashlight(f) => flashlight_buffers.push(f),
+            }
+        }
+
+        for i in self.buffer_queues.values_mut() {
+            match &mut **i {
+                RenderBufferQueueType::Slider(s) => s.begin(std::mem::take(&mut slider_buffers)),
+                RenderBufferQueueType::Vertex(v) => v.begin(std::mem::take(&mut vertex_buffers)),
+                RenderBufferQueueType::Flashlight(f) => f.begin(std::mem::take(&mut flashlight_buffers)),
+            }
+        }
+    }
+
+    fn end_render(&mut self) {
+        if let Some(mut last_queue) = std::mem::take(&mut self.current_render_buffer) {
+            if let Some(b) = last_queue.end(&self.queue) {
+                self.completed_buffers.push(b);
+            }
+
+            self.buffer_queues.insert(last_queue.draw_type(), last_queue);
+        }
+    }
+
+    fn present(&mut self) -> TatakuResult<()> {
+        self.render_current_surface().map_err(|e| TatakuError::String(e.to_string()))
+    }    
+
+
+    fn push_scissor(&mut self, scissor: [f32; 4]) {
+        self.scissors.push_scissor(scissor)
+    }
+    fn pop_scissor(&mut self) {
+        self.scissors.pop_scissor()
+    }
+
+    // draw helpers
+
+    /// draw an arc with the center at 0,0
+    fn draw_arc(&mut self, start: f32, end: f32, radius: f32, color: Color, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
+        let n = resolution;
+
+        // minor optimization
+        if color.a <= 0.0 { return }
+
+        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+        let (cw, ch) = (0.5 * w, 0.5 * h);
+        let (cx, cy) = (x + cw, y + ch);
+
+        let mut path = lyon_tessellation::path::Path::builder();
+        for i in 0..=n {
+            let angle = f32::lerp(start, end, i as f32 / n as f32);
+            let p = Point::new(cx + angle.cos() * cw, cy + angle.sin() * ch);
+            if i == 0 {
+                path.begin(p);
+            } else {
+                path.line_to(p);
+            }
+        }
+        path.end(false);
+        let path = path.build();
+
+        self.tessellate_path(&path, color, None, transform, blend_mode);
+    }
+
+    fn draw_circle(&mut self, radius: f32, color: Color, border: Option<Border>, resolution: u32, transform: Matrix, blend_mode: BlendMode) {
+        let n = resolution;
+
+        let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+        let (cw, ch) = (0.5 * w, 0.5 * h);
+        let (cx, cy) = (x + cw, y + ch);
+        let points = (0..n).map(|i| {
+            let angle = i as f32 / n as f32 * (PI * 2.0);
+            Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+        }).collect::<Vec<_>>();
+
+        // fill
+        if color.a > 0.0 {
+            self.tessellate_polygon(&points, color, None, transform, blend_mode);
+        }
+
+        // border
+        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
+            // let radius = radius + border.radius;
+            // let (x, y, w, h) = (-radius, -radius, 2.0 * radius, 2.0 * radius);
+            // let (cw, ch) = (0.5 * w, 0.5 * h);
+            // let (cx, cy) = (x + cw, y + ch);
+            // let points = (0..n).map(|i| {
+            //     let angle = i as f32 / n as f32 * (PI * 2.0);
+            //     Vector2::new(cx + angle.cos() * cw, cy + angle.sin() * ch)
+            // });
+
+            self.tessellate_polygon(&points, border.color, Some(border.radius), transform, blend_mode);
+        }
+
+    }
+
+    fn draw_line(&mut self, p2: Vector2, thickness: f32, color: Color, transform: Matrix, blend_mode: BlendMode) {
+        let p1 = Vector2::ZERO;
+
+        let n = p2 - p1;
+        let n = Vector2::new(-n.y, n.x).normalize() * thickness;
+
+        let n0 = p1 + n;
+        let n1 = p2 + n;
+        let n2 = p1 - n;
+        let n3 = p2 - n;
+
+        let quad = [ n0, n2, n1, n3 ];
+        self.reserve_quad(quad, color, transform, blend_mode);
+    }
+
+    /// rect is [x,y,w,h]
+    fn draw_rect(&mut self, rect: [f32; 4], border: Option<Border>, shape: Shape, color: Color, transform: Matrix, blend_mode: BlendMode) {
+        // for some reason something gets set to infinity on screen resize and panics the tesselator, this prevents that
+        if rect.iter().any(|n|!n.is_normal() && *n != 0.0) { return }
+
+        let [x, y, w, h] = rect;
+        let rect = Box2D::new(Point::new(x, y), Point::new(x+w, y+h));
+
+        let mut path = lyon_tessellation::path::Path::builder();
+        match shape {
+            Shape::Square => path.add_rectangle(&rect, lyon_tessellation::path::Winding::Positive),
+            Shape::Round(radius) => path.add_rounded_rectangle(&rect, &BorderRadii::new(radius), lyon_tessellation::path::Winding::Positive),
+            Shape::RoundSep([top_left, top_right, bottom_left, bottom_right]) => path.add_rounded_rectangle(&rect, &BorderRadii {
+                top_left, top_right, bottom_left, bottom_right
+            }, lyon_tessellation::path::Winding::Positive)
+        }
+        let path = path.build();
+
+        // fill
+        if color.a > 0.0 {
+            self.tessellate_path(&path, color, None, transform, blend_mode)
+        }
+
+        // border
+        if let Some(border) = border.filter(|b|b.color.a > 0.0) {
+            self.tessellate_path(&path, border.color, Some(border.radius), transform, blend_mode)
+        }
+    }
+
+    fn draw_tex(&mut self, tex: &TextureReference, color: Color, h_flip: bool, v_flip: bool, transform: Matrix, blend_mode: BlendMode) {
+        let rect = [0.0, 0.0, tex.width as f32, tex.height as f32];
+        self.reserve_tex_quad(&tex, rect, color, h_flip, v_flip, transform, blend_mode);
+    }
+
+    
+    fn draw_slider(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+
+        mut slider_data: SliderData,
+        slider_grids: Vec<GridCell>,
+        grid_cells: Vec<u32>,
+        line_segments: Vec<LineSegment>
+    ) {
+        let Some(mut reserved) = self.reserve_slider(
+            slider_grids.len() as u64,
+            grid_cells.len() as u64,
+            line_segments.len() as u64
+        ) else { return };
+
+        // info!("{} : {} : {}", reserved.slider_grid_offset, reserved.grid_cell_offset, reserved.line_segment_offset);
+
+        
+        let vertices = quad.into_iter().map(|p|SliderVertex {
+            position: transform.mul_v2(p).into(),
+            slider_index: reserved.slider_index,
+        }).collect::<Vec<_>>();
+
+        let offset = reserved.idx_offset as u32;
+        slider_data.grid_index += reserved.slider_grid_offset;
+        reserved.copy_in(
+            &vertices, 
+            &[
+                0 + offset,
+                2 + offset,
+                1 + offset,
+
+                1 + offset,
+                2 + offset,
+                3 + offset,
+            ],
+            slider_data,
+            &slider_grids.into_iter().map(|mut a|{a.index += reserved.grid_cell_offset; a}).collect::<Vec<_>>(),
+            &grid_cells.into_iter().map(|i|i + reserved.line_segment_offset).collect::<Vec<_>>(),
+            &line_segments
+        );
+    }
+
+    fn draw_flashlight(
+        &mut self,
+        quad: [Vector2; 4],
+        transform: Matrix,
+        flashlight_data: FlashlightData
+    ) {
+        let Some(mut reserved) = self.reserve_flashlight() else { return };
+        
+        let vertices = quad.into_iter().map(|p|FlashlightVertex {
+            position: transform.mul_v2(p).into(),
+            flashlight_index: reserved.flashlight_index,
+        }).collect::<Vec<_>>();
+        
+        reserved.copy_in(&vertices, flashlight_data);
+    }
+
+
+    // particle engine stuff
+    fn add_emitter(&mut self, emitter: EmitterRef) {
         self.particle_system.add(emitter);
     }
 
-    pub fn update_emitters(&mut self) {
+    fn update_emitters(&mut self) {
         self.particle_system.update(&self.device, &self.queue);
     }
 }
+
 
 
 pub struct WgpuTexture {

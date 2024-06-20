@@ -174,9 +174,9 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                             // Text::new("{text}").size(FONT_SIZE).into_element(),
                             Checkbox::new(
                                 "{text}",
-                                self.{property},
-                                move|b| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Toggle(b))
+                                self.{property}
                             )
+                            .on_toggle(move|b| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Toggle(b)))
                             .text_size(FONT_SIZE)
                             .into_element(),
                             Space::new(Shrink, Shrink).into_element(),
@@ -229,7 +229,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
 
             // text input
             SettingsType::String => {
-                let do_password = if setting.password_input == Some(true) {".password()"} else {""};
+                let do_password = if setting.password_input == Some(true) {"true"} else {"false"};
                 
                 into_elements_lines.push(format!(r#"
                     if filter.check("{text}") {{
@@ -243,7 +243,7 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
                             )
                             .size(FONT_SIZE)
                             .on_input(move|t| Message::new(owner, format!("{{prefix}}.{property}"), MessageType::Text(t)))
-                            {do_password}
+                            .secure({do_password})
                             .into_element()
                         );
                     }}
@@ -415,10 +415,10 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         }}
     "#);
 
-    #[cfg(feature="extra_debugging")] {
+    // #[cfg(feature="extra_debugging")] {
         std::fs::create_dir_all("./debug").unwrap();
-        std::fs::write(format!("./debug/{struct_name}.rs", ), &all_lines).unwrap();
-    }
+        std::fs::write(format!("./debug/{struct_name}-settings_impl.rs", ), &all_lines).unwrap();
+    // }
 
     let impl_tokens = all_lines.parse::<proc_macro2::TokenStream>().unwrap();
     quote! { #impl_tokens }

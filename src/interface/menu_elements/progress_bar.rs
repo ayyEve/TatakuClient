@@ -2,7 +2,6 @@
 use crate::prelude::*;
 use std::ops::RangeInclusive;
 use crate::prelude::iced_elements::{*, Rectangle};
-use iced::advanced::graphics::Primitive;
 
 macro_rules! chain {
     ($name:ident, $type: ty) => {
@@ -65,12 +64,12 @@ impl ProgressBarWidget {
 }
 
 
-impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
-    fn width(&self) -> Length { self.width }
-    fn height(&self) -> Length { self.height }
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ProgressBarWidget {
+    fn size(&self) -> iced::Size<Length> { iced::Size::new(self.width, self.height) }
 
     fn layout(
         &self,
+        _state: &mut iced_core::widget::Tree,
         _renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
@@ -78,7 +77,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
             limits
             .width(self.width)
             .height(self.height)
-            .fill()
+            .max()
         )
     }
 
@@ -111,50 +110,71 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ProgressBarWidget {
         &self,
         _state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _theme: &iced::Theme,
         _style: &iced_core::renderer::Style,
         layout: iced_core::Layout<'_>,
         _cursor: iced_core::mouse::Cursor,
         _viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();
-        let border_width = 0.0;
-        let border_color = Color::TRANSPARENT_WHITE.into();
-        let border_radius = match self.shape {
-            Shape::Square => [0.0; 4],
-            Shape::Round(r) => [r; 4],
-            Shape::RoundSep(a) => a,
-        };
+        // let border_width = 0.0;
+        // let border_color = Color::TRANSPARENT_WHITE.into();
+        // let border_radius = match self.shape {
+        //     Shape::Square => [0.0; 4],
+        //     Shape::Round(r) => [r; 4],
+        //     Shape::RoundSep(a) => a,
+        // };
         
         // bg
-        renderer.draw_primitive(Primitive::Quad { 
-            bounds, 
-            background: iced::Background::Color(self.background_color.into()), 
-            border_radius, 
-            border_width, 
-            border_color
-        });
+
+        renderer.add_renderable(Arc::new(crate::prelude::Rectangle::new(
+            bounds.position().into(),
+            bounds.size().into(),
+            self.background_color,
+            None
+        ).shape(self.shape)));
+        
+        // renderer.draw_primitive(Primitive::Quad { 
+        //     bounds, 
+        //     background: iced::Background::Color(self.background_color.into()), 
+        //     border_radius, 
+        //     border_width, 
+        //     border_color
+        // });
 
         // fill
         let mut fill_bounds = bounds;
         fill_bounds.width *= self.value_percent();
-        renderer.draw_primitive(Primitive::Quad { 
-            bounds: fill_bounds, 
-            background: iced::Background::Color(self.fill_color.into()), 
-            border_radius, 
-            border_width, 
-            border_color
-        });
+        renderer.add_renderable(Arc::new(crate::prelude::Rectangle::new(
+            fill_bounds.position().into(),
+            fill_bounds.size().into(),
+            self.fill_color,
+            None
+        ).shape(self.shape)));
+        // renderer.draw_primitive(Primitive::Quad { 
+        //     bounds: fill_bounds, 
+        //     background: iced::Background::Color(self.fill_color.into()), 
+        //     border_radius, 
+        //     border_width, 
+        //     border_color
+        // });
 
         // border
         if let Some((border_width, border_color)) = self.border {
-            renderer.draw_primitive(Primitive::Quad { 
-                bounds, 
-                background: iced::Background::Color(Color::TRANSPARENT_WHITE.into()), 
-                border_radius, 
-                border_width, 
-                border_color: border_color.into()
-            });
+            renderer.add_renderable(Arc::new(crate::prelude::Rectangle::new(
+                bounds.position().into(),
+                bounds.size().into(),
+                Color::TRANSPARENT_WHITE,
+                Some(Border::new(border_color, border_width))
+            ).shape(self.shape)));
+
+            // renderer.draw_primitive(Primitive::Quad { 
+            //     bounds, 
+            //     background: iced::Background::Color(Color::TRANSPARENT_WHITE.into()), 
+            //     border_radius, 
+            //     border_width, 
+            //     border_color: border_color.into()
+            // });
         }
     }
 }

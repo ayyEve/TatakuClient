@@ -25,11 +25,11 @@ pub struct InputManager {
     pub controller_axis: HashMap<GamepadId, HashMap<Axis, (bool, f32)>>,
 
     /// currently pressed keys
-    keys: HashSet<Key>,
+    keys: HashSet<KeyInput>,
     /// keys that were pressed but waiting to be registered
-    keys_down: HashSet<(Key, Instant)>,
+    keys_down: HashSet<(KeyInput, Instant)>,
     /// keys that were released but waiting to be registered
-    keys_up: HashSet<(Key, Instant)>,
+    keys_up: HashSet<(KeyInput, Instant)>,
     
     text_cache: String,
     window_change_focus: Option<bool>,
@@ -39,7 +39,7 @@ pub struct InputManager {
     pub double_tap_protection: Option<f32>,
     
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
-    last_key_press: HashMap<Key, (Instant, bool)>,
+    last_key_press: HashMap<KeyInput, (Instant, bool)>,
 }
 impl InputManager {
     pub fn new() -> InputManager {
@@ -141,8 +141,8 @@ impl InputManager {
                 }
 
                 if ok_to_continue {
-                    self.keys.insert(key);
-                    self.keys_down.insert((key, Instant::now()));
+                    self.keys.insert(key.clone());
+                    self.keys_down.insert((key.clone(), Instant::now()));
                     self.last_key_press.insert(key, (Instant::now(), false));
                 }
             }
@@ -229,7 +229,7 @@ impl InputManager {
     }
 
     /// is the key currently down (not up)
-    pub fn key_down(&self, k:Key) -> bool {self.keys.contains(&k)}
+    pub fn key_down(&self, k:Key) -> bool { self.keys.iter().find(|ki|ki.is_key(k)).is_some() }
     pub fn get_key_mods(&self) -> KeyModifiers {
         KeyModifiers {
             ctrl: self.key_down(Key::LControl) || self.key_down(Key::RControl),
@@ -240,19 +240,19 @@ impl InputManager {
 
 
     /// get all keys that were pressed, and clear the pressed list. (will be true when first checked and pressed, false after first check or when key is up)
-    pub fn get_keys_down(&mut self) -> Vec<Key> {
+    pub fn get_keys_down(&mut self) -> KeyCollection {
         let mut down = Vec::new();
-        for (i, time) in &self.keys_down { down.push(*i); self.register_times.push(time.as_millis()); }
+        for (i, time) in &self.keys_down { down.push(i.clone()); self.register_times.push(time.as_millis()); }
         self.keys_down.clear();
 
-        down
+        KeyCollection::new(down)
     }
-    pub fn get_keys_up(&mut self) -> Vec<Key> {
+    pub fn get_keys_up(&mut self) -> KeyCollection {
         let mut up = Vec::new();
-        for (i, time) in &self.keys_up { up.push(*i); self.register_times.push(time.as_millis()); }
+        for (i, time) in &self.keys_up { up.push(i.clone()); self.register_times.push(time.as_millis()); }
         self.keys_up.clear();
 
-        up
+        KeyCollection::new(up)
     }
 
 
@@ -371,6 +371,14 @@ impl InputManager {
         (min,max,sum)
     }
 }
+
+
+pub struct InputBinding {
+    pub keyboard: Option<winit::keyboard::PhysicalKey>,
+    pub mouse: Option<winit::event::MouseButton>,
+}
+
+
 
 
 #[derive(Clone)]

@@ -152,9 +152,8 @@ impl SkinnedButton {
 }
 
 
-impl iced::advanced::Widget<Message, IcedRenderer> for SkinnedButton {
-    fn width(&self) -> Length { self.width }
-    fn height(&self) -> Length { self.height }
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for SkinnedButton {
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
     fn tag(&self) -> tree::Tag { tree::Tag::of::<State>() }
 
     fn state(&self) -> tree::State { tree::State::new(State::default()) }
@@ -164,17 +163,18 @@ impl iced::advanced::Widget<Message, IcedRenderer> for SkinnedButton {
 
     fn layout(
         &self,
+        tree: &mut Tree,
         renderer: &IcedRenderer,
         limits: &layout::Limits,
     ) -> layout::Node {
         let skin_params = self.get_skin_params();
         let limits = limits.width(self.width).height(self.height);
 
-        let mut content = self.content.as_widget().layout(renderer, &limits.pad(self.padding));
+        let content = self.content.as_widget().layout(tree, renderer, &limits);
         let padding = self.padding.fit(content.size(), limits.max());
-        let size = limits.pad(padding).resolve(content.size()).pad(padding);
+        let size = limits.resolve(self.width, self.height, content.size());
     
-        content.move_to(Point::new(padding.left + skin_params.offset.x, padding.top + skin_params.offset.y));
+        let content = content.move_to(Point::new(padding.left + skin_params.offset.x, padding.top + skin_params.offset.y));
     
         layout::Node::with_children(size, vec![content])
     }
@@ -249,7 +249,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for SkinnedButton {
                 }
             }
 
-            Event::Keyboard(keyboard::Event::KeyPressed { key_code: keyboard::KeyCode::Enter, .. }) if self.handle_enter_keypress && self.is_selected => {
+            Event::Keyboard(keyboard::Event::KeyPressed { key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Enter), .. }) if self.handle_enter_keypress && self.is_selected => {
                 if let Some(on_press) = self.on_press.clone() {
                     shell.publish(on_press);
                     return event::Status::Captured;
@@ -285,16 +285,16 @@ impl iced::advanced::Widget<Message, IcedRenderer> for SkinnedButton {
             image.set_size(bounds.size().into());
             image.color = params.background;
 
-            renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(image)));
+            renderer.add_renderable(Arc::new(image));
         } else {
-            renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(
+            renderer.add_renderable(Arc::new(
                 crate::prelude::Rectangle::new(
                     bounds.position().into(),
                     bounds.size().into(),
                     Color::new(0.2, 0.2, 0.2, 1.0),
                     Some(Border::new(params.background, 1.0 * params.scale.y))
                 ).shape(Shape::Round(5.0))
-            )))
+            ))
         }
 
         self.content.as_widget().draw(
@@ -330,11 +330,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for SkinnedButton {
         tree: &'b mut Tree,
         layout: Layout<'_>,
         renderer: &IcedRenderer,
-    ) -> Option<overlay::Element<'b, Message, IcedRenderer>> {
+        offset: iced::Vector
+    ) -> Option<overlay::Element<'b, Message, iced::Theme, IcedRenderer>> {
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
             layout.children().next().unwrap(),
             renderer,
+            offset,
         )
     }
     

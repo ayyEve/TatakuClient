@@ -57,7 +57,7 @@ impl TatakuRenderable for ScissorGroup {
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) { }
 
 
-    fn draw(&self, transform: Matrix, g: &mut GraphicsState) {
+    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
         self.items.iter().for_each(|i| {
             // need to scissor internal items manually
             if let Some(scissor) = i.get_scissor() {
@@ -72,7 +72,7 @@ impl TatakuRenderable for ScissorGroup {
         });
     }
 
-    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut GraphicsState) {
+    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
         self.items.iter().for_each(|i| {
             // need to scissor internal items manually
             if let Some(scissor) = i.get_scissor() {

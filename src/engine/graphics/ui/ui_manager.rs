@@ -2,13 +2,13 @@
 use crate::prelude::*;
 use tokio::sync::oneshot;
 use iced::Event;
-use iced::advanced::graphics::Primitive;
+// use iced::advanced::graphics::Primitive;
 use iced_runtime::{ user_interface, UserInterface };
 
 use iced::advanced::widget::Operation; 
 
-pub type IcedElement = iced::Element<'static, Message, IcedRenderer>;
-pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, IcedRenderer>;
+pub type IcedElement = iced::Element<'static, Message, iced::Theme, IcedRenderer>;
+pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, iced::Theme, IcedRenderer>;
 pub type IcedOperation = Box<dyn Operation<Message> + Send + Sync>;
 
 pub struct UiManager {
@@ -60,7 +60,7 @@ impl UiManager {
     }
 
     fn handle_actions(ui_receiver: Receiver<UiAction>) {
-        let mut renderer = IcedRenderer::new(IcedBackend::new());
+        let mut renderer = IcedRenderer::new();
         let mut window_size = WindowSizeHelper::new();
 
         // do we rebuild the ui next frame? (required if the ui was updated, adding new items to the view)
@@ -71,7 +71,7 @@ impl UiManager {
         let mut mouse_pos = iced::Point::ORIGIN;
 
 
-        let mut ui: UserInterface<Message, IcedRenderer> = user_interface::UserInterface::build(
+        let mut ui: UserInterface<Message, iced::Theme, IcedRenderer> = user_interface::UserInterface::build(
             iced::widget::Column::new().into_element(),
             iced::Size::new(window_size.x, window_size.y),
             iced_runtime::user_interface::Cache::default(),
@@ -140,9 +140,8 @@ impl UiManager {
 
                         ui.draw(&mut renderer, &iced::Theme::Dark, &Default::default(), iced::mouse::Cursor::Available(mouse_pos));
 
-                        let mut group = TransformGroup::new(Vector2::ZERO);
-                        renderer.with_primitives(|_b, p| p.iter().for_each(|p|group.push_arced(into_renderable(p))));
-                        last_draw = group;
+                        // renderer.with_primitives(|_b, p| p.iter().for_each(|p| group.push_arced(into_renderable(p))));
+                        last_draw = renderer.finish();
                         last_draw.raw_draw = true;
                     }
 
@@ -218,93 +217,93 @@ impl UiManager {
     }
 }
 
-fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRenderable> {
-    match p {
-        iced::advanced::graphics::Primitive::Text {
-            content,
-            bounds,
-            color,
-            size: font_size,
-            line_height,
-            font,
-            horizontal_alignment,
-            vertical_alignment,
-            shaping: _,
-        } => {
-            let height = line_height.to_absolute(iced::Pixels(*font_size)).0;
+// fn into_renderable(p: &Primitive<Arc<dyn TatakuRenderable>>) -> Arc<dyn TatakuRenderable> {
+//     match p {
+//         iced::advanced::graphics::Primitive::Text {
+//             content,
+//             bounds,
+//             color,
+//             size: font_size,
+//             line_height,
+//             font,
+//             horizontal_alignment,
+//             vertical_alignment,
+//             shaping: _,
+//         } => {
+//             let height = line_height.to_absolute(iced::Pixels(*font_size)).0;
             
-            let mut text = Text::new(
-                Vector2::new(bounds.x, bounds.y),
-                *font_size,
-                content,
-                Color::new(color.r, color.g, color.b, color.a),
-                crate::prelude::Font::from_iced(font)
-            );
+//             let mut text = Text::new(
+//                 Vector2::new(bounds.x, bounds.y),
+//                 *font_size,
+//                 content,
+//                 Color::new(color.r, color.g, color.b, color.a),
+//                 crate::prelude::Font::from_iced(font)
+//             );
 
-            match vertical_alignment {
-                iced::alignment::Vertical::Bottom => text.pos.y -= height,
-                iced::alignment::Vertical::Center => text.pos.y -= height / 2.0,
-                iced::alignment::Vertical::Top => {}
-            }
-            match horizontal_alignment {
-                iced::alignment::Horizontal::Left => {}
-                iced::alignment::Horizontal::Center => text.pos.x += bounds.x - text.measure_text().x / 2.0,
-                iced::alignment::Horizontal::Right => text.pos.x += bounds.x - text.measure_text().x,
-            }
+//             match vertical_alignment {
+//                 iced::alignment::Vertical::Bottom => text.pos.y -= height,
+//                 iced::alignment::Vertical::Center => text.pos.y -= height / 2.0,
+//                 iced::alignment::Vertical::Top => {}
+//             }
+//             match horizontal_alignment {
+//                 iced::alignment::Horizontal::Left => {}
+//                 iced::alignment::Horizontal::Center => text.pos.x += bounds.x - text.measure_text().x / 2.0,
+//                 iced::alignment::Horizontal::Right => text.pos.x += bounds.x - text.measure_text().x,
+//             }
             
-            Arc::new(text)
-        }
-        iced::advanced::graphics::Primitive::Quad { 
-            bounds, 
-            background, 
-            border_radius, 
-            border_width, 
-            border_color ,
-        } => {
-            Arc::new(Rectangle::new(
-                Vector2::new(bounds.x, bounds.y),
-                Vector2::new(bounds.width, bounds.height),
-                match background {
-                    iced::Background::Color(color) => color.into(),
-                    _ => Color::TRANSPARENT_WHITE,
-                },
-                Some(Border::new(border_color.into(), *border_width))
-            ).shape(Shape::RoundSep(*border_radius)))
-        }
-        iced::advanced::graphics::Primitive::Group { primitives } => {
-            let mut group = TransformGroup::new(Vector2::ZERO);
-            group.items.reserve(primitives.len());
-            for p in primitives {
-                group.push_arced(into_renderable(p))
-            }
+//             Arc::new(text)
+//         }
+//         iced::advanced::graphics::Primitive::Quad { 
+//             bounds, 
+//             background, 
+//             border_radius, 
+//             border_width, 
+//             border_color ,
+//         } => {
+//             Arc::new(Rectangle::new(
+//                 Vector2::new(bounds.x, bounds.y),
+//                 Vector2::new(bounds.width, bounds.height),
+//                 match background {
+//                     iced::Background::Color(color) => color.into(),
+//                     _ => Color::TRANSPARENT_WHITE,
+//                 },
+//                 Some(Border::new(border_color.into(), *border_width))
+//             ).shape(Shape::RoundSep(*border_radius)))
+//         }
+//         iced::advanced::graphics::Primitive::Group { primitives } => {
+//             let mut group = TransformGroup::new(Vector2::ZERO);
+//             group.items.reserve(primitives.len());
+//             for p in primitives {
+//                 group.push_arced(into_renderable(p))
+//             }
 
-            Arc::new(group)
-        }
-        iced::advanced::graphics::Primitive::Clip { bounds, content } => {
-            let mut group = ScissorGroup::new();
-            // group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
-            group.push_arced(into_renderable(content));
-            Arc::new(group)
-        }
-        iced::advanced::graphics::Primitive::Translate { translation, content } => {
-            let mut group = TransformGroup::new(Vector2::new(translation.x, translation.y));
-            group.push_arced(into_renderable(content));
-            Arc::new(group)
-        }
+//             Arc::new(group)
+//         }
+//         iced::advanced::graphics::Primitive::Clip { bounds, content } => {
+//             let mut group = ScissorGroup::new();
+//             // group.set_scissor(Some([bounds.x, bounds.y, bounds.width, bounds.height]));
+//             group.push_arced(into_renderable(content));
+//             Arc::new(group)
+//         }
+//         iced::advanced::graphics::Primitive::Translate { translation, content } => {
+//             let mut group = TransformGroup::new(Vector2::new(translation.x, translation.y));
+//             group.push_arced(into_renderable(content));
+//             Arc::new(group)
+//         }
 
-        iced::advanced::graphics::Primitive::Cache { content } => {
-            into_renderable(content)
-        }
-        // iced::advanced::graphics::Primitive::Image { handle, bounds } => {}
-        iced::advanced::graphics::Primitive::Custom(i) => {
-            i.clone()
-        }
+//         iced::advanced::graphics::Primitive::Cache { content } => {
+//             into_renderable(content)
+//         }
+//         // iced::advanced::graphics::Primitive::Image { handle, bounds } => {}
+//         iced::advanced::graphics::Primitive::Custom(i) => {
+//             i.clone()
+//         }
         
-        _ => {
-            Arc::new(TransformGroup::new(Vector2::ZERO))
-        }
-    }
-}
+//         _ => {
+//             Arc::new(TransformGroup::new(Vector2::ZERO))
+//         }
+//     }
+// }
 
 
 enum UiAction {
@@ -342,8 +341,8 @@ pub struct CurrentInputState<'a> {
     pub mouse_down: &'a Vec<MouseButton>,
     pub mouse_up: &'a Vec<MouseButton>,
 
-    pub keys_down: &'a Vec<Key>,
-    pub keys_up: &'a Vec<Key>,
+    pub keys_down: &'a KeyCollection,
+    pub keys_up: &'a KeyCollection,
     pub text: &'a String,
 
     pub mods: KeyModifiers,
@@ -356,8 +355,8 @@ impl<'a> CurrentInputState<'a> {
         let mut force_refresh = false;
         force_refresh |= !self.mouse_down.is_empty();
         force_refresh |= !self.mouse_up.is_empty();
-        force_refresh |= !self.keys_down.is_empty();
-        force_refresh |= !self.keys_up.is_empty();
+        force_refresh |= !self.keys_down.0.is_empty();
+        force_refresh |= !self.keys_up.0.is_empty();
 
         let mut events = Vec::new();
         if self.mouse_moved {
@@ -372,24 +371,33 @@ impl<'a> CurrentInputState<'a> {
         }
 
 
-        for i in self.mouse_down {
-            events.push(Event::Mouse(MouseEvent::ButtonPressed(mouse_button(*i))));
+        for i in self.mouse_down.iter().filter_map(mouse_button) {
+            events.push(Event::Mouse(MouseEvent::ButtonPressed(i)));
         }
-        for i in self.mouse_up {
-            events.push(Event::Mouse(MouseEvent::ButtonReleased(mouse_button(*i))));
+        for i in self.mouse_up.iter().filter_map(mouse_button) {
+            events.push(Event::Mouse(MouseEvent::ButtonReleased(i)));
         }
 
         let modifiers = self.mods.into();
-        for key in self.keys_down {
-            events.push(Event::Keyboard(KeyboardEvent::KeyPressed { key_code: keyboard(*key), modifiers }));
+        for key in &self.keys_down.0 {
+            events.push(Event::Keyboard(KeyboardEvent::KeyPressed { 
+                key: conv_key(key.logical.clone()), 
+                location: conv_location(key.location), 
+                text: key.text.clone(),
+                modifiers,
+            }));
         }
-        for key in self.keys_up {
-            events.push(Event::Keyboard(KeyboardEvent::KeyReleased { key_code: keyboard(*key), modifiers }));
+        for key in &self.keys_up.0 {
+            events.push(Event::Keyboard(KeyboardEvent::KeyReleased { 
+                key: conv_key(key.logical.clone()), 
+                location: conv_location(key.location), 
+                modifiers,
+            }));
         }
 
-        for char in self.text.chars() {
-            events.push(Event::Keyboard(KeyboardEvent::CharacterReceived(char)));
-        }
+        // for char in self.text.chars() {
+        //     events.push(Event::Keyboard(KeyboardEvent::CharacterReceived(char)));
+        // }
         // events.push(Event::Keyboard(KeyboardEvent::ModifiersChanged(())))
 
         SendEvents {
@@ -425,180 +433,349 @@ impl<T> IntoElement for T where
     }
 }
 
-fn mouse_button(mb: MouseButton) -> iced::mouse::Button {
+fn mouse_button(mb: &MouseButton) -> Option<iced::mouse::Button> {
     match mb {
-        MouseButton::Left => iced::mouse::Button::Left,
-        MouseButton::Right => iced::mouse::Button::Right,
-        MouseButton::Middle => iced::mouse::Button::Middle,
-        MouseButton::Other(i) => iced::mouse::Button::Other(i)
+        MouseButton::Left => Some(iced::mouse::Button::Left),
+        MouseButton::Right => Some(iced::mouse::Button::Right),
+        MouseButton::Middle => Some(iced::mouse::Button::Middle),
+        MouseButton::Other(i) => Some(iced::mouse::Button::Other(*i)),
+        _ => None,
     }
 }
-fn keyboard(key: Key) -> iced::keyboard::KeyCode {
+
+
+// fuck you
+fn conv_key(key: winit::keyboard::Key) -> iced::keyboard::Key {
+    use iced::keyboard::key::Named;
+    use winit::keyboard::NamedKey;
+
     match key {
-        Key::Key1 => iced::keyboard::KeyCode::Key1,
-        Key::Key2 => iced::keyboard::KeyCode::Key2,
-        Key::Key3 => iced::keyboard::KeyCode::Key3,
-        Key::Key4 => iced::keyboard::KeyCode::Key4,
-        Key::Key5 => iced::keyboard::KeyCode::Key5,
-        Key::Key6 => iced::keyboard::KeyCode::Key6,
-        Key::Key7 => iced::keyboard::KeyCode::Key7,
-        Key::Key8 => iced::keyboard::KeyCode::Key8,
-        Key::Key9 => iced::keyboard::KeyCode::Key9,
-        Key::Key0 => iced::keyboard::KeyCode::Key0,
-        Key::A => iced::keyboard::KeyCode::A,
-        Key::B => iced::keyboard::KeyCode::B,
-        Key::C => iced::keyboard::KeyCode::C,
-        Key::D => iced::keyboard::KeyCode::D,
-        Key::E => iced::keyboard::KeyCode::E,
-        Key::F => iced::keyboard::KeyCode::F,
-        Key::G => iced::keyboard::KeyCode::G,
-        Key::H => iced::keyboard::KeyCode::H,
-        Key::I => iced::keyboard::KeyCode::I,
-        Key::J => iced::keyboard::KeyCode::J,
-        Key::K => iced::keyboard::KeyCode::K,
-        Key::L => iced::keyboard::KeyCode::L,
-        Key::M => iced::keyboard::KeyCode::M,
-        Key::N => iced::keyboard::KeyCode::N,
-        Key::O => iced::keyboard::KeyCode::O,
-        Key::P => iced::keyboard::KeyCode::P,
-        Key::Q => iced::keyboard::KeyCode::Q,
-        Key::R => iced::keyboard::KeyCode::R,
-        Key::S => iced::keyboard::KeyCode::S,
-        Key::T => iced::keyboard::KeyCode::T,
-        Key::U => iced::keyboard::KeyCode::U,
-        Key::V => iced::keyboard::KeyCode::V,
-        Key::W => iced::keyboard::KeyCode::W,
-        Key::X => iced::keyboard::KeyCode::X,
-        Key::Y => iced::keyboard::KeyCode::Y,
-        Key::Z => iced::keyboard::KeyCode::Z,
-        Key::Escape => iced::keyboard::KeyCode::Escape,
-        Key::F1 => iced::keyboard::KeyCode::F1,
-        Key::F2 => iced::keyboard::KeyCode::F2,
-        Key::F3 => iced::keyboard::KeyCode::F3,
-        Key::F4 => iced::keyboard::KeyCode::F4,
-        Key::F5 => iced::keyboard::KeyCode::F5,
-        Key::F6 => iced::keyboard::KeyCode::F6,
-        Key::F7 => iced::keyboard::KeyCode::F7,
-        Key::F8 => iced::keyboard::KeyCode::F8,
-        Key::F9 => iced::keyboard::KeyCode::F9,
-        Key::F10 => iced::keyboard::KeyCode::F10,
-        Key::F11 => iced::keyboard::KeyCode::F11,
-        Key::F12 => iced::keyboard::KeyCode::F12,
-        Key::F13 => iced::keyboard::KeyCode::F13,
-        Key::F14 => iced::keyboard::KeyCode::F14,
-        Key::F15 => iced::keyboard::KeyCode::F15,
-        Key::F16 => iced::keyboard::KeyCode::F16,
-        Key::F17 => iced::keyboard::KeyCode::F17,
-        Key::F18 => iced::keyboard::KeyCode::F18,
-        Key::F19 => iced::keyboard::KeyCode::F19,
-        Key::F20 => iced::keyboard::KeyCode::F20,
-        Key::F21 => iced::keyboard::KeyCode::F21,
-        Key::F22 => iced::keyboard::KeyCode::F22,
-        Key::F23 => iced::keyboard::KeyCode::F23,
-        Key::F24 => iced::keyboard::KeyCode::F24,
-        Key::Snapshot => iced::keyboard::KeyCode::Snapshot,
-        Key::Scroll => iced::keyboard::KeyCode::Scroll,
-        Key::Pause => iced::keyboard::KeyCode::Pause,
-        Key::Insert => iced::keyboard::KeyCode::Insert,
-        Key::Home => iced::keyboard::KeyCode::Home,
-        Key::Delete => iced::keyboard::KeyCode::Delete,
-        Key::End => iced::keyboard::KeyCode::End,
-        Key::PageDown => iced::keyboard::KeyCode::PageDown,
-        Key::PageUp => iced::keyboard::KeyCode::PageUp,
-        Key::Left => iced::keyboard::KeyCode::Left,
-        Key::Up => iced::keyboard::KeyCode::Up,
-        Key::Right => iced::keyboard::KeyCode::Right,
-        Key::Down => iced::keyboard::KeyCode::Down,
-        Key::Back => iced::keyboard::KeyCode::Backspace,
-        Key::Return => iced::keyboard::KeyCode::Enter,
-        Key::Space => iced::keyboard::KeyCode::Space,
-        Key::Compose => iced::keyboard::KeyCode::Compose,
-        Key::Caret => iced::keyboard::KeyCode::Caret,
-        Key::Numlock => iced::keyboard::KeyCode::Numlock,
-        Key::Numpad0 => iced::keyboard::KeyCode::Numpad0,
-        Key::Numpad1 => iced::keyboard::KeyCode::Numpad1,
-        Key::Numpad2 => iced::keyboard::KeyCode::Numpad2,
-        Key::Numpad3 => iced::keyboard::KeyCode::Numpad3,
-        Key::Numpad4 => iced::keyboard::KeyCode::Numpad4,
-        Key::Numpad5 => iced::keyboard::KeyCode::Numpad5,
-        Key::Numpad6 => iced::keyboard::KeyCode::Numpad6,
-        Key::Numpad7 => iced::keyboard::KeyCode::Numpad7,
-        Key::Numpad8 => iced::keyboard::KeyCode::Numpad8,
-        Key::Numpad9 => iced::keyboard::KeyCode::Numpad9,
-        Key::NumpadAdd => iced::keyboard::KeyCode::NumpadAdd,
-        Key::NumpadDivide => iced::keyboard::KeyCode::NumpadDivide,
-        Key::NumpadDecimal => iced::keyboard::KeyCode::NumpadDecimal,
-        Key::NumpadComma => iced::keyboard::KeyCode::NumpadComma,
-        Key::NumpadEnter => iced::keyboard::KeyCode::NumpadEnter,
-        Key::NumpadEquals => iced::keyboard::KeyCode::NumpadEquals,
-        Key::NumpadMultiply => iced::keyboard::KeyCode::NumpadMultiply,
-        Key::NumpadSubtract => iced::keyboard::KeyCode::NumpadSubtract,
-        Key::AbntC1 => iced::keyboard::KeyCode::AbntC1,
-        Key::AbntC2 => iced::keyboard::KeyCode::AbntC2,
-        Key::Apostrophe => iced::keyboard::KeyCode::Apostrophe,
-        Key::Apps => iced::keyboard::KeyCode::Apps,
-        Key::Asterisk => iced::keyboard::KeyCode::Asterisk,
-        Key::At => iced::keyboard::KeyCode::At,
-        Key::Ax => iced::keyboard::KeyCode::Ax,
-        Key::Backslash => iced::keyboard::KeyCode::Backslash,
-        Key::Calculator => iced::keyboard::KeyCode::Calculator,
-        Key::Capital => iced::keyboard::KeyCode::Capital,
-        Key::Colon => iced::keyboard::KeyCode::Colon,
-        Key::Comma => iced::keyboard::KeyCode::Comma,
-        Key::Convert => iced::keyboard::KeyCode::Convert,
-        Key::Equals => iced::keyboard::KeyCode::Equals,
-        Key::Grave => iced::keyboard::KeyCode::Grave,
-        Key::Kana => iced::keyboard::KeyCode::Kana,
-        Key::Kanji => iced::keyboard::KeyCode::Kanji,
-        Key::LAlt => iced::keyboard::KeyCode::LAlt,
-        Key::LBracket => iced::keyboard::KeyCode::LBracket,
-        Key::LControl => iced::keyboard::KeyCode::LControl,
-        Key::LShift => iced::keyboard::KeyCode::LShift,
-        Key::LWin => iced::keyboard::KeyCode::LWin,
-        Key::Mail => iced::keyboard::KeyCode::Mail,
-        Key::MediaSelect => iced::keyboard::KeyCode::MediaSelect,
-        Key::MediaStop => iced::keyboard::KeyCode::MediaStop,
-        Key::Minus => iced::keyboard::KeyCode::Minus,
-        Key::Mute => iced::keyboard::KeyCode::Mute,
-        Key::MyComputer => iced::keyboard::KeyCode::MyComputer,
-        Key::NavigateForward => iced::keyboard::KeyCode::NavigateForward,  // also called "Next"
-        Key::NavigateBackward => iced::keyboard::KeyCode::NavigateBackward, // also called "Prior"
-        Key::NextTrack => iced::keyboard::KeyCode::NextTrack,
-        Key::NoConvert => iced::keyboard::KeyCode::NoConvert,
-        Key::OEM102 => iced::keyboard::KeyCode::OEM102,
-        Key::Period => iced::keyboard::KeyCode::Period,
-        Key::PlayPause => iced::keyboard::KeyCode::PlayPause,
-        Key::Plus => iced::keyboard::KeyCode::Plus,
-        Key::Power => iced::keyboard::KeyCode::Power,
-        Key::PrevTrack => iced::keyboard::KeyCode::PrevTrack,
-        Key::RAlt => iced::keyboard::KeyCode::RAlt,
-        Key::RBracket => iced::keyboard::KeyCode::RBracket,
-        Key::RControl => iced::keyboard::KeyCode::RControl,
-        Key::RShift => iced::keyboard::KeyCode::RShift,
-        Key::RWin => iced::keyboard::KeyCode::RWin,
-        Key::Semicolon => iced::keyboard::KeyCode::Semicolon,
-        Key::Slash => iced::keyboard::KeyCode::Slash,
-        Key::Sleep => iced::keyboard::KeyCode::Sleep,
-        Key::Stop => iced::keyboard::KeyCode::Stop,
-        Key::Sysrq => iced::keyboard::KeyCode::Sysrq,
-        Key::Tab => iced::keyboard::KeyCode::Tab,
-        Key::Underline => iced::keyboard::KeyCode::Underline,
-        Key::Unlabeled => iced::keyboard::KeyCode::Unlabeled,
-        Key::VolumeDown => iced::keyboard::KeyCode::VolumeDown,
-        Key::VolumeUp => iced::keyboard::KeyCode::VolumeUp,
-        Key::Wake => iced::keyboard::KeyCode::Wake,
-        Key::WebBack => iced::keyboard::KeyCode::WebBack,
-        Key::WebFavorites => iced::keyboard::KeyCode::WebFavorites,
-        Key::WebForward => iced::keyboard::KeyCode::WebForward,
-        Key::WebHome => iced::keyboard::KeyCode::WebHome,
-        Key::WebRefresh => iced::keyboard::KeyCode::WebRefresh,
-        Key::WebSearch => iced::keyboard::KeyCode::WebSearch,
-        Key::WebStop => iced::keyboard::KeyCode::WebStop,
-        Key::Yen => iced::keyboard::KeyCode::Yen,
-        Key::Copy => iced::keyboard::KeyCode::Copy,
-        Key::Paste => iced::keyboard::KeyCode::Paste,
-        Key::Cut => iced::keyboard::KeyCode::Cut,
-        // _ => unimplemented!()
+        winit::keyboard::Key::Character(c) => iced::keyboard::Key::Character(c),
+        winit::keyboard::Key::Named(named_key) => {
+            iced::keyboard::Key::Named(match named_key {
+                NamedKey::Alt => Named::Alt,
+                NamedKey::AltGraph => Named::AltGraph,
+                NamedKey::CapsLock => Named::CapsLock,
+                NamedKey::Control => Named::Control,
+                NamedKey::Fn => Named::Fn,
+                NamedKey::FnLock => Named::FnLock,
+                NamedKey::NumLock => Named::NumLock,
+                NamedKey::ScrollLock => Named::ScrollLock,
+                NamedKey::Shift => Named::Shift,
+                NamedKey::Symbol => Named::Symbol,
+                NamedKey::SymbolLock => Named::SymbolLock,
+                NamedKey::Meta => Named::Meta,
+                NamedKey::Hyper => Named::Hyper,
+                NamedKey::Super => Named::Super,
+                NamedKey::Enter => Named::Enter,
+                NamedKey::Tab => Named::Tab,
+                NamedKey::Space => Named::Space,
+                NamedKey::ArrowDown => Named::ArrowDown,
+                NamedKey::ArrowLeft => Named::ArrowLeft,
+                NamedKey::ArrowRight => Named::ArrowRight,
+                NamedKey::ArrowUp => Named::ArrowUp,
+                NamedKey::End => Named::End,
+                NamedKey::Home => Named::Home,
+                NamedKey::PageDown => Named::PageDown,
+                NamedKey::PageUp => Named::PageUp,
+                NamedKey::Backspace => Named::Backspace,
+                NamedKey::Clear => Named::Clear,
+                NamedKey::Copy => Named::Copy,
+                NamedKey::CrSel => Named::CrSel,
+                NamedKey::Cut => Named::Cut,
+                NamedKey::Delete => Named::Delete,
+                NamedKey::EraseEof => Named::EraseEof,
+                NamedKey::ExSel => Named::ExSel,
+                NamedKey::Insert => Named::Insert,
+                NamedKey::Paste => Named::Paste,
+                NamedKey::Redo => Named::Redo,
+                NamedKey::Undo => Named::Undo,
+                NamedKey::Accept => Named::Accept,
+                NamedKey::Again => Named::Again,
+                NamedKey::Attn => Named::Attn,
+                NamedKey::Cancel => Named::Cancel,
+                NamedKey::ContextMenu => Named::ContextMenu,
+                NamedKey::Escape => Named::Escape,
+                NamedKey::Execute => Named::Execute,
+                NamedKey::Find => Named::Find,
+                NamedKey::Help => Named::Help,
+                NamedKey::Pause => Named::Pause,
+                NamedKey::Play => Named::Play,
+                NamedKey::Props => Named::Props,
+                NamedKey::Select => Named::Select,
+                NamedKey::ZoomIn => Named::ZoomIn,
+                NamedKey::ZoomOut => Named::ZoomOut,
+                NamedKey::BrightnessDown => Named::BrightnessDown,
+                NamedKey::BrightnessUp => Named::BrightnessUp,
+                NamedKey::Eject => Named::Eject,
+                NamedKey::LogOff => Named::LogOff,
+                NamedKey::Power => Named::Power,
+                NamedKey::PowerOff => Named::PowerOff,
+                NamedKey::PrintScreen => Named::PrintScreen,
+                NamedKey::Hibernate => Named::Hibernate,
+                NamedKey::Standby => Named::Standby,
+                NamedKey::WakeUp => Named::WakeUp,
+                NamedKey::AllCandidates => Named::AllCandidates,
+                NamedKey::Alphanumeric => Named::Alphanumeric,
+                NamedKey::CodeInput => Named::CodeInput,
+                NamedKey::Compose => Named::Compose,
+                NamedKey::Convert => Named::Convert,
+                NamedKey::FinalMode => Named::FinalMode,
+                NamedKey::GroupFirst => Named::GroupFirst,
+                NamedKey::GroupLast => Named::GroupLast,
+                NamedKey::GroupNext => Named::GroupNext,
+                NamedKey::GroupPrevious => Named::GroupPrevious,
+                NamedKey::ModeChange => Named::ModeChange,
+                NamedKey::NextCandidate => Named::NextCandidate,
+                NamedKey::NonConvert => Named::NonConvert,
+                NamedKey::PreviousCandidate => Named::PreviousCandidate,
+                NamedKey::Process => Named::Process,
+                NamedKey::SingleCandidate => Named::SingleCandidate,
+                NamedKey::HangulMode => Named::HangulMode,
+                NamedKey::HanjaMode => Named::HanjaMode,
+                NamedKey::JunjaMode => Named::JunjaMode,
+                NamedKey::Eisu => Named::Eisu,
+                NamedKey::Hankaku => Named::Hankaku,
+                NamedKey::Hiragana => Named::Hiragana,
+                NamedKey::HiraganaKatakana => Named::HiraganaKatakana,
+                NamedKey::KanaMode => Named::KanaMode,
+                NamedKey::KanjiMode => Named::KanjiMode,
+                NamedKey::Katakana => Named::Katakana,
+                NamedKey::Romaji => Named::Romaji,
+                NamedKey::Zenkaku => Named::Zenkaku,
+                NamedKey::ZenkakuHankaku => Named::ZenkakuHankaku,
+                NamedKey::Soft1 => Named::Soft1,
+                NamedKey::Soft2 => Named::Soft2,
+                NamedKey::Soft3 => Named::Soft3,
+                NamedKey::Soft4 => Named::Soft4,
+                NamedKey::ChannelDown => Named::ChannelDown,
+                NamedKey::ChannelUp => Named::ChannelUp,
+                NamedKey::Close => Named::Close,
+                NamedKey::MailForward => Named::MailForward,
+                NamedKey::MailReply => Named::MailReply,
+                NamedKey::MailSend => Named::MailSend,
+                NamedKey::MediaClose => Named::MediaClose,
+                NamedKey::MediaFastForward => Named::MediaFastForward,
+                NamedKey::MediaPause => Named::MediaPause,
+                NamedKey::MediaPlay => Named::MediaPlay,
+                NamedKey::MediaPlayPause => Named::MediaPlayPause,
+                NamedKey::MediaRecord => Named::MediaRecord,
+                NamedKey::MediaRewind => Named::MediaRewind,
+                NamedKey::MediaStop => Named::MediaStop,
+                NamedKey::MediaTrackNext => Named::MediaTrackNext,
+                NamedKey::MediaTrackPrevious => Named::MediaTrackPrevious,
+                NamedKey::New => Named::New,
+                NamedKey::Open => Named::Open,
+                NamedKey::Print => Named::Print,
+                NamedKey::Save => Named::Save,
+                NamedKey::SpellCheck => Named::SpellCheck,
+                NamedKey::Key11 => Named::Key11,
+                NamedKey::Key12 => Named::Key12,
+                NamedKey::AudioBalanceLeft => Named::AudioBalanceLeft,
+                NamedKey::AudioBalanceRight => Named::AudioBalanceRight,
+                NamedKey::AudioBassBoostDown => Named::AudioBassBoostDown,
+                NamedKey::AudioBassBoostToggle => Named::AudioBassBoostToggle,
+                NamedKey::AudioBassBoostUp => Named::AudioBassBoostUp,
+                NamedKey::AudioFaderFront => Named::AudioFaderFront,
+                NamedKey::AudioFaderRear => Named::AudioFaderRear,
+                NamedKey::AudioSurroundModeNext => Named::AudioSurroundModeNext,
+                NamedKey::AudioTrebleDown => Named::AudioTrebleDown,
+                NamedKey::AudioTrebleUp => Named::AudioTrebleUp,
+                NamedKey::AudioVolumeDown => Named::AudioVolumeDown,
+                NamedKey::AudioVolumeUp => Named::AudioVolumeUp,
+                NamedKey::AudioVolumeMute => Named::AudioVolumeMute,
+                NamedKey::MicrophoneToggle => Named::MicrophoneToggle,
+                NamedKey::MicrophoneVolumeDown => Named::MicrophoneVolumeDown,
+                NamedKey::MicrophoneVolumeUp => Named::MicrophoneVolumeUp,
+                NamedKey::MicrophoneVolumeMute => Named::MicrophoneVolumeMute,
+                NamedKey::SpeechCorrectionList => Named::SpeechCorrectionList,
+                NamedKey::SpeechInputToggle => Named::SpeechInputToggle,
+                NamedKey::LaunchApplication1 => Named::LaunchApplication1,
+                NamedKey::LaunchApplication2 => Named::LaunchApplication2,
+                NamedKey::LaunchCalendar => Named::LaunchCalendar,
+                NamedKey::LaunchContacts => Named::LaunchContacts,
+                NamedKey::LaunchMail => Named::LaunchMail,
+                NamedKey::LaunchMediaPlayer => Named::LaunchMediaPlayer,
+                NamedKey::LaunchMusicPlayer => Named::LaunchMusicPlayer,
+                NamedKey::LaunchPhone => Named::LaunchPhone,
+                NamedKey::LaunchScreenSaver => Named::LaunchScreenSaver,
+                NamedKey::LaunchSpreadsheet => Named::LaunchSpreadsheet,
+                NamedKey::LaunchWebBrowser => Named::LaunchWebBrowser,
+                NamedKey::LaunchWebCam => Named::LaunchWebCam,
+                NamedKey::LaunchWordProcessor => Named::LaunchWordProcessor,
+                NamedKey::BrowserBack => Named::BrowserBack,
+                NamedKey::BrowserFavorites => Named::BrowserFavorites,
+                NamedKey::BrowserForward => Named::BrowserForward,
+                NamedKey::BrowserHome => Named::BrowserHome,
+                NamedKey::BrowserRefresh => Named::BrowserRefresh,
+                NamedKey::BrowserSearch => Named::BrowserSearch,
+                NamedKey::BrowserStop => Named::BrowserStop,
+                NamedKey::AppSwitch => Named::AppSwitch,
+                NamedKey::Call => Named::Call,
+                NamedKey::Camera => Named::Camera,
+                NamedKey::CameraFocus => Named::CameraFocus,
+                NamedKey::EndCall => Named::EndCall,
+                NamedKey::GoBack => Named::GoBack,
+                NamedKey::GoHome => Named::GoHome,
+                NamedKey::HeadsetHook => Named::HeadsetHook,
+                NamedKey::LastNumberRedial => Named::LastNumberRedial,
+                NamedKey::Notification => Named::Notification,
+                NamedKey::MannerMode => Named::MannerMode,
+                NamedKey::VoiceDial => Named::VoiceDial,
+                NamedKey::TV => Named::TV,
+                NamedKey::TV3DMode => Named::TV3DMode,
+                NamedKey::TVAntennaCable => Named::TVAntennaCable,
+                NamedKey::TVAudioDescription => Named::TVAudioDescription,
+                NamedKey::TVAudioDescriptionMixDown => {
+                    Named::TVAudioDescriptionMixDown
+                }
+                NamedKey::TVAudioDescriptionMixUp => {
+                    Named::TVAudioDescriptionMixUp
+                }
+                NamedKey::TVContentsMenu => Named::TVContentsMenu,
+                NamedKey::TVDataService => Named::TVDataService,
+                NamedKey::TVInput => Named::TVInput,
+                NamedKey::TVInputComponent1 => Named::TVInputComponent1,
+                NamedKey::TVInputComponent2 => Named::TVInputComponent2,
+                NamedKey::TVInputComposite1 => Named::TVInputComposite1,
+                NamedKey::TVInputComposite2 => Named::TVInputComposite2,
+                NamedKey::TVInputHDMI1 => Named::TVInputHDMI1,
+                NamedKey::TVInputHDMI2 => Named::TVInputHDMI2,
+                NamedKey::TVInputHDMI3 => Named::TVInputHDMI3,
+                NamedKey::TVInputHDMI4 => Named::TVInputHDMI4,
+                NamedKey::TVInputVGA1 => Named::TVInputVGA1,
+                NamedKey::TVMediaContext => Named::TVMediaContext,
+                NamedKey::TVNetwork => Named::TVNetwork,
+                NamedKey::TVNumberEntry => Named::TVNumberEntry,
+                NamedKey::TVPower => Named::TVPower,
+                NamedKey::TVRadioService => Named::TVRadioService,
+                NamedKey::TVSatellite => Named::TVSatellite,
+                NamedKey::TVSatelliteBS => Named::TVSatelliteBS,
+                NamedKey::TVSatelliteCS => Named::TVSatelliteCS,
+                NamedKey::TVSatelliteToggle => Named::TVSatelliteToggle,
+                NamedKey::TVTerrestrialAnalog => Named::TVTerrestrialAnalog,
+                NamedKey::TVTerrestrialDigital => Named::TVTerrestrialDigital,
+                NamedKey::TVTimer => Named::TVTimer,
+                NamedKey::AVRInput => Named::AVRInput,
+                NamedKey::AVRPower => Named::AVRPower,
+                NamedKey::ColorF0Red => Named::ColorF0Red,
+                NamedKey::ColorF1Green => Named::ColorF1Green,
+                NamedKey::ColorF2Yellow => Named::ColorF2Yellow,
+                NamedKey::ColorF3Blue => Named::ColorF3Blue,
+                NamedKey::ColorF4Grey => Named::ColorF4Grey,
+                NamedKey::ColorF5Brown => Named::ColorF5Brown,
+                NamedKey::ClosedCaptionToggle => Named::ClosedCaptionToggle,
+                NamedKey::Dimmer => Named::Dimmer,
+                NamedKey::DisplaySwap => Named::DisplaySwap,
+                NamedKey::DVR => Named::DVR,
+                NamedKey::Exit => Named::Exit,
+                NamedKey::FavoriteClear0 => Named::FavoriteClear0,
+                NamedKey::FavoriteClear1 => Named::FavoriteClear1,
+                NamedKey::FavoriteClear2 => Named::FavoriteClear2,
+                NamedKey::FavoriteClear3 => Named::FavoriteClear3,
+                NamedKey::FavoriteRecall0 => Named::FavoriteRecall0,
+                NamedKey::FavoriteRecall1 => Named::FavoriteRecall1,
+                NamedKey::FavoriteRecall2 => Named::FavoriteRecall2,
+                NamedKey::FavoriteRecall3 => Named::FavoriteRecall3,
+                NamedKey::FavoriteStore0 => Named::FavoriteStore0,
+                NamedKey::FavoriteStore1 => Named::FavoriteStore1,
+                NamedKey::FavoriteStore2 => Named::FavoriteStore2,
+                NamedKey::FavoriteStore3 => Named::FavoriteStore3,
+                NamedKey::Guide => Named::Guide,
+                NamedKey::GuideNextDay => Named::GuideNextDay,
+                NamedKey::GuidePreviousDay => Named::GuidePreviousDay,
+                NamedKey::Info => Named::Info,
+                NamedKey::InstantReplay => Named::InstantReplay,
+                NamedKey::Link => Named::Link,
+                NamedKey::ListProgram => Named::ListProgram,
+                NamedKey::LiveContent => Named::LiveContent,
+                NamedKey::Lock => Named::Lock,
+                NamedKey::MediaApps => Named::MediaApps,
+                NamedKey::MediaAudioTrack => Named::MediaAudioTrack,
+                NamedKey::MediaLast => Named::MediaLast,
+                NamedKey::MediaSkipBackward => Named::MediaSkipBackward,
+                NamedKey::MediaSkipForward => Named::MediaSkipForward,
+                NamedKey::MediaStepBackward => Named::MediaStepBackward,
+                NamedKey::MediaStepForward => Named::MediaStepForward,
+                NamedKey::MediaTopMenu => Named::MediaTopMenu,
+                NamedKey::NavigateIn => Named::NavigateIn,
+                NamedKey::NavigateNext => Named::NavigateNext,
+                NamedKey::NavigateOut => Named::NavigateOut,
+                NamedKey::NavigatePrevious => Named::NavigatePrevious,
+                NamedKey::NextFavoriteChannel => Named::NextFavoriteChannel,
+                NamedKey::NextUserProfile => Named::NextUserProfile,
+                NamedKey::OnDemand => Named::OnDemand,
+                NamedKey::Pairing => Named::Pairing,
+                NamedKey::PinPDown => Named::PinPDown,
+                NamedKey::PinPMove => Named::PinPMove,
+                NamedKey::PinPToggle => Named::PinPToggle,
+                NamedKey::PinPUp => Named::PinPUp,
+                NamedKey::PlaySpeedDown => Named::PlaySpeedDown,
+                NamedKey::PlaySpeedReset => Named::PlaySpeedReset,
+                NamedKey::PlaySpeedUp => Named::PlaySpeedUp,
+                NamedKey::RandomToggle => Named::RandomToggle,
+                NamedKey::RcLowBattery => Named::RcLowBattery,
+                NamedKey::RecordSpeedNext => Named::RecordSpeedNext,
+                NamedKey::RfBypass => Named::RfBypass,
+                NamedKey::ScanChannelsToggle => Named::ScanChannelsToggle,
+                NamedKey::ScreenModeNext => Named::ScreenModeNext,
+                NamedKey::Settings => Named::Settings,
+                NamedKey::SplitScreenToggle => Named::SplitScreenToggle,
+                NamedKey::STBInput => Named::STBInput,
+                NamedKey::STBPower => Named::STBPower,
+                NamedKey::Subtitle => Named::Subtitle,
+                NamedKey::Teletext => Named::Teletext,
+                NamedKey::VideoModeNext => Named::VideoModeNext,
+                NamedKey::Wink => Named::Wink,
+                NamedKey::ZoomToggle => Named::ZoomToggle,
+                NamedKey::F1 => Named::F1,
+                NamedKey::F2 => Named::F2,
+                NamedKey::F3 => Named::F3,
+                NamedKey::F4 => Named::F4,
+                NamedKey::F5 => Named::F5,
+                NamedKey::F6 => Named::F6,
+                NamedKey::F7 => Named::F7,
+                NamedKey::F8 => Named::F8,
+                NamedKey::F9 => Named::F9,
+                NamedKey::F10 => Named::F10,
+                NamedKey::F11 => Named::F11,
+                NamedKey::F12 => Named::F12,
+                NamedKey::F13 => Named::F13,
+                NamedKey::F14 => Named::F14,
+                NamedKey::F15 => Named::F15,
+                NamedKey::F16 => Named::F16,
+                NamedKey::F17 => Named::F17,
+                NamedKey::F18 => Named::F18,
+                NamedKey::F19 => Named::F19,
+                NamedKey::F20 => Named::F20,
+                NamedKey::F21 => Named::F21,
+                NamedKey::F22 => Named::F22,
+                NamedKey::F23 => Named::F23,
+                NamedKey::F24 => Named::F24,
+                NamedKey::F25 => Named::F25,
+                NamedKey::F26 => Named::F26,
+                NamedKey::F27 => Named::F27,
+                NamedKey::F28 => Named::F28,
+                NamedKey::F29 => Named::F29,
+                NamedKey::F30 => Named::F30,
+                NamedKey::F31 => Named::F31,
+                NamedKey::F32 => Named::F32,
+                NamedKey::F33 => Named::F33,
+                NamedKey::F34 => Named::F34,
+                NamedKey::F35 => Named::F35,
+                _ => return iced::keyboard::Key::Unidentified,
+            })
+        }
+        _ => iced::keyboard::Key::Unidentified,
+    }
+}
+
+fn conv_location(location: winit::keyboard::KeyLocation) -> iced::keyboard::Location {
+    match location {
+        winit::keyboard::KeyLocation::Standard => iced::keyboard::Location::Standard,
+        winit::keyboard::KeyLocation::Left => iced::keyboard::Location::Left,
+        winit::keyboard::KeyLocation::Right => iced::keyboard::Location::Right,
+        winit::keyboard::KeyLocation::Numpad => iced::keyboard::Location::Numpad,
     }
 }
 
@@ -680,3 +857,8 @@ mod macros {
     }
 
 }
+
+
+
+
+

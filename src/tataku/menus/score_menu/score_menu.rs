@@ -455,7 +455,7 @@ impl AsyncMenu for ScoreMenu {
                 // multi scores
                 if let ScoreMenuType::Multiplayer {lobby_items, ..} = &*self.menu_type {
                     col!(
-                        lobby_items.iter().map(|l|l.view(self.get_name())).collect(),
+                        lobby_items.iter().map(|l|l.view(self.get_name())).collect::<Vec<_>>(),
                         width = FillPortion(1),
                         height = Fill,
                         align_items = Alignment::End

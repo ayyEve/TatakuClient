@@ -20,6 +20,7 @@ pub enum TatakuError {
 
     Audio(AudioError),
     Image(ImageError),
+    Graphics(GraphicsError),
 
     String(String),
     SerializationError(SerializationError),
@@ -40,18 +41,19 @@ impl TatakuError {
 impl Display for TatakuError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            TatakuError::Beatmap(e) => write!(f, "{:?}", e),
-            TatakuError::Serde(e) => write!(f, "{:?}", e),
-            TatakuError::IO(e) => write!(f, "{}", e),
-            TatakuError::Image(e) => write!(f, "{:?}", e),
-            TatakuError::Audio(e) => write!(f, "{:?}", e),
-            TatakuError::String(e) => write!(f, "{:?}", e),
-            TatakuError::GameMode(e) => write!(f, "{:?}", e),
-            TatakuError::SerializationError(e) => write!(f, "{:?}", e),
-            TatakuError::ReqwestError(e) => write!(f, "{:?}", e),
-            TatakuError::DownloadError(e) => write!(f, "{:?}", e),
-            TatakuError::ShuntingYardError(e) => write!(f, "{:?}", e),
-            TatakuError::Lua(e) => write!(f, "{:?}", e),
+            Self::Beatmap(e) => write!(f, "{:?}", e),
+            Self::Serde(e) => write!(f, "{:?}", e),
+            Self::IO(e) => write!(f, "{}", e),
+            Self::Image(e) => write!(f, "{:?}", e),
+            Self::Audio(e) => write!(f, "{:?}", e),
+            Self::String(e) => write!(f, "{:?}", e),
+            Self::GameMode(e) => write!(f, "{:?}", e),
+            Self::SerializationError(e) => write!(f, "{:?}", e),
+            Self::ReqwestError(e) => write!(f, "{:?}", e),
+            Self::DownloadError(e) => write!(f, "{:?}", e),
+            Self::Graphics(e) => write!(f, "{:?}", e),
+            Self::ShuntingYardError(e) => write!(f, "{:?}", e),
+            Self::Lua(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -94,6 +96,9 @@ impl From<ShuntingYardError> for TatakuError {
 
 impl From<rlua::Error> for TatakuError {
     fn from(value: rlua::Error) -> Self { Self::Lua(value) }
+}
+impl From<GraphicsError> for TatakuError {
+    fn from(value: GraphicsError) -> Self { Self::Graphics(value) }
 }
 
 

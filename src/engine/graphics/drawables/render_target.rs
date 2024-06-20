@@ -13,7 +13,7 @@ pub struct RenderTarget {
     drop_check: Arc<()>
 }
 impl RenderTarget {
-    pub async fn new(width: u32, height: u32, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) -> TatakuResult<Self> {
+    pub async fn new(width: u32, height: u32, callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + 'static) -> TatakuResult<Self> {
         GameWindow::create_render_target((width, height), callback).await
     }
 
@@ -38,7 +38,7 @@ impl RenderTarget {
     }
 
 
-    // pub async fn update(&self, callback: impl FnOnce(&mut GraphicsState, Matrix) + Send + 'static) {
+    // pub async fn update(&self, callback: impl FnOnce(&mut dyn GraphicsEngine, Matrix) + Send + 'static) {
     // }
 
 }

@@ -56,12 +56,12 @@ impl Widgetable for BuiltElementDef {
                 iced_elements::TextInput::new(&placeholder, &value)
                     .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
                     .width(self.element.width)
-                    .chain_bool(*is_password, |s| s.password())
+                    .secure(*is_password)
                     .into_element()
             }
 
             ElementIdentifier::Row { padding, margin, .. } => {
-                Row::with_children(self.children.iter().map(|e|e.view(owner, values)).collect())
+                Row::with_children(self.children.iter().map(|e|e.view(owner, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -69,7 +69,7 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
             ElementIdentifier::Column { padding, margin, .. } => {
-                Column::with_children(self.children.iter().map(|e|e.view(owner, values)).collect())
+                Column::with_children(self.children.iter().map(|e|e.view(owner, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -263,11 +263,11 @@ impl<S> ChainMaybe for S {
 }
 
 
-fn map_font(font: &String) -> Option<iced::Font> {
+fn map_font(font: &String) -> Option<Font> {
     match &**font {
-        "main" => Some(iced::Font::with_name("main")),
-        "fallback" => Some(iced::Font::with_name("fallback")),
-        "fa"|"font_awesome" => Some(iced::Font::with_name("font_awesome")),
+        "main" => Some(Font::Main),
+        "fallback" => Some(Font::Fallback),
+        "fa"|"font_awesome" => Some(Font::FontAwesome),
         _ => None
     }
 }

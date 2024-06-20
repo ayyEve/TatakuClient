@@ -225,7 +225,7 @@ impl AsyncMenu for LoadingMenu {
                         Text::new(text).color(color).width(Fill);
                         width = Fill
                     )
-                }).collect(),
+                }).collect::<Vec<_>>(),
                 width = Fill,
                 height = Fill,
                 spacing = 5.0

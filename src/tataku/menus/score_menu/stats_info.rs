@@ -37,7 +37,7 @@ impl MenuStatsInfo {
                 self.data.iter().filter(|i|i.show_in_list).map(|i|{
                     let text = format!("{}: {}", i.name, format_float(i.get_value(), 2));
                     Text::new(text).size(20.0).color(i.color).width(Fill).into_element()
-                }).collect(),
+                }).collect::<Vec<_>>(),
 
                 width = Fill,
                 spacing = 5.0

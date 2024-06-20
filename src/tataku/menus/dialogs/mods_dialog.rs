@@ -104,9 +104,10 @@ impl Dialog for ModDialog {
             items.push(Text::new(group.name).width(Fill).into_element());
             items.push(Text::new("   ").width(Fill).into_element());
 
+
             for m in group.mods {
                 items.push(row!(
-                    Checkbox::new(m.name, mods.has_mod(m), move|_| Message::new(owner, m, MessageType::Click)).text_size(30.0).width(Fill),
+                    Checkbox::new(m.name, mods.has_mod(m)).on_toggle(move|_| Message::new(owner, m, MessageType::Click)).text_size(30.0).width(Fill),
                     Text::new(m.description).width(Fill).size(30.0);
                     width = Fill
                 ))

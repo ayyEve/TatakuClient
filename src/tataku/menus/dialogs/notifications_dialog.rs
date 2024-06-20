@@ -66,7 +66,7 @@ impl Dialog for NotificationsDialog {
     fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
         col!(
-            self.notifications.iter().map(|(n, new)|NotificationItem::new(n.clone(), *new).into_element()).collect(),
+            self.notifications.iter().map(|(n, new)|NotificationItem::new(n.clone(), *new).into_element()).collect::<Vec<_>>(),
             height = Fill
         )
 
@@ -217,9 +217,10 @@ impl NotificationItem {
 //     }
 // }
 
-impl iced::advanced::Widget<Message, IcedRenderer> for NotificationItem {
-    fn width(&self) -> iced::Length { iced::Length::Fill }
-    fn height(&self) -> iced::Length { iced::Length::Shrink }
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for NotificationItem {
+    fn size(&self) -> iced::Size<iced::Length> {
+        iced::Size::new(iced::Length::Fill, iced::Length::Shrink)
+    }
 
     fn state(&self) -> iced_core::widget::tree::State {
         iced_core::widget::tree::State::new(NotificationItemState::new(self.is_new))
@@ -227,10 +228,11 @@ impl iced::advanced::Widget<Message, IcedRenderer> for NotificationItem {
 
     fn layout(
         &self,
+        tree: &mut iced_core::widget::Tree,
         renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
-        self.content.as_widget().layout(renderer, &limits.width(self.width()).height(self.height()))
+        self.content.as_widget().layout(tree, renderer, &limits.width(self.size().width).height(self.size().height))
     }
 
     fn draw(

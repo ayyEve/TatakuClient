@@ -15,6 +15,7 @@ use iced::advanced::graphics::core::{
     Rectangle, Shell, Padding, Pixels,
     Alignment
 };
+use iced_core::layout::padded;
 
 #[derive(ChainableInitializer)]
 pub struct ContentBackground {
@@ -111,16 +112,15 @@ impl ContentBackground {
 }
 
 
-impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
-    fn width(&self) -> Length { self.width }
-    fn height(&self) -> Length { self.height }
-    
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for ContentBackground {
+    fn size(&self) -> iced::Size<Length> { iced::Size::new(self.width, self.height) }
     fn children(&self) -> Vec<Tree> { vec![Tree::new(&self.content)] }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(std::slice::from_ref(&self.content)) }
 
 
     fn layout(
         &self,
+        tree: &mut iced_core::widget::Tree,
         renderer: &IcedRenderer,
         limits: &layout::Limits,
     ) -> layout::Node {
@@ -131,18 +131,22 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
             .width(self.width)
             .height(self.height);
 
-        let mut content = self.content.as_widget().layout(renderer, &limits.pad(self.padding).loose());
+        let content = self.content.as_widget().layout(tree, renderer, &limits.loose());
         let padding = self.padding.fit(content.size(), limits.max());
-        let size = limits.pad(padding).resolve(content.size());
+        let size = limits.resolve(self.width, self.height, content.size());
 
-        content.move_to(Point::new(padding.left, padding.top));
-        content.align(
+        let content = content
+            .move_to(Point::new(padding.left, padding.top))
+            .align(
             Alignment::from(self.horizontal_alignment),
             Alignment::from(self.vertical_alignment),
             size,
         );
 
-        layout::Node::with_children(size.pad(padding), vec![content])
+        iced::advanced::layout::Node::container(
+            layout::Node::with_children(size, vec![content]),
+            padding
+        )
     }
 
     fn operate(
@@ -202,7 +206,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
             image.pos = bounds.position().into();
             image.set_size(bounds.size().into());
 
-            renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(image)));
+            renderer.add_renderable(Arc::new(image));
         } else if self.color.is_some() || self.border.is_some() {
             let rect = crate::prelude::Rectangle::new(
                 bounds.position().into(), 
@@ -210,7 +214,7 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
                 self.color.unwrap_or(Color::TRANSPARENT_WHITE),
                 self.border
             ).shape(self.shape);
-            renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(Arc::new(rect)));
+            renderer.add_renderable(Arc::new(rect));
         }
 
         self.content.as_widget().draw(
@@ -246,11 +250,13 @@ impl iced::advanced::Widget<Message, IcedRenderer> for ContentBackground {
         tree: &'b mut Tree,
         layout: Layout<'_>,
         renderer: &IcedRenderer,
-    ) -> Option<overlay::Element<'b, Message, IcedRenderer>> {
+        translation: iced::Vector
+    ) -> Option<overlay::Element<'b, Message, iced::Theme, IcedRenderer>> {
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
             layout.children().next().unwrap(),
             renderer,
+            translation
         )
     }
     

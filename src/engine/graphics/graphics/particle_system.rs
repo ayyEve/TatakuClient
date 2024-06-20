@@ -50,6 +50,7 @@ impl ParticleSystem {
             layout: Some(&pipeline_layout),
             module: &particle_compute_shader,
             entry_point: "main",
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
         });
         
         let (sender, receiver) = sync_channel(1000);
@@ -173,7 +174,7 @@ impl ParticleSystem {
 
         for buffer in &self.used_buffers {
             {
-                let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor { label: Some("Particles") });
+                let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor { label: Some("Particles"), timestamp_writes: None, });
                 compute_pass.set_pipeline(&self.pipeline);
                 compute_pass.set_bind_group(0, &buffer.bind_group, &[]);
                 compute_pass.dispatch_workgroups(buffer.particle_count as u32, 1, 1);

@@ -280,7 +280,7 @@ impl GameplayPreview {
         self.widget_sender.write(Arc::new(group));
     }
 
-    pub async fn key_down(&mut self, key:Key, mods:KeyModifiers) {
+    pub async fn key_down(&mut self, key:KeyInput, mods:KeyModifiers) {
         let Some(manager) = self.manager.as_mut() else { return };
         manager.key_down(key, mods).await
     }
@@ -349,12 +349,12 @@ impl GameplayPreviewWidget {
     }
 }
 
-impl iced::advanced::Widget<Message, IcedRenderer> for GameplayPreviewWidget {
-    fn width(&self) -> iced::Length { self.width }
-    fn height(&self) -> iced::Length { self.height }
+impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPreviewWidget {
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
 
     fn layout(
         &self,
+        _state: &mut iced_core::widget::Tree,
         _renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
@@ -362,21 +362,21 @@ impl iced::advanced::Widget<Message, IcedRenderer> for GameplayPreviewWidget {
             .width(self.width)
             .height(self.height);
 
-        iced_core::layout::Node::new(limits.fill())
+        iced_core::layout::Node::new(limits.max())
     }
 
     fn draw(
         &self,
         _state: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
-        _theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        _theme: &iced::Theme,
         _style: &iced_core::renderer::Style,
         layout: iced_core::Layout<'_>,
         _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {
         let _ = self.event_sender.try_send(layout.bounds().into());
-        renderer.draw_primitive(iced::advanced::graphics::Primitive::Custom(self.draw_data.lock().read().clone()));
+        renderer.add_renderable(self.draw_data.lock().read().clone());
     }
 }
 

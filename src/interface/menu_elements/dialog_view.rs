@@ -51,7 +51,7 @@ impl DialogManager {
     pub fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
 
-        let dialogs = self.dialogs.iter().map(|d|DraggableDialogElement::new(d, values).into_element()).collect();
+        let dialogs = self.dialogs.iter().map(|d| DraggableDialogElement::new(d, values).into_element()).collect::<Vec<_>>();
         col!(
             dialogs,
         )

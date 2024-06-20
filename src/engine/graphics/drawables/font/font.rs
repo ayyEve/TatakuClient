@@ -112,7 +112,7 @@ impl ActualFont {
         color: Color, 
         blend_mode: BlendMode,
         transform: Matrix, 
-        graphics: &mut GraphicsState
+        graphics: &mut dyn GraphicsEngine
     ) {
         let Some(character) = self.get_character(font_size, ch) else { return; };
         
@@ -130,50 +130,15 @@ impl ActualFont {
 }
 
 
-#[derive(Clone, Default)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub enum Font {
     #[default]
     Main,
     Fallback,
     FontAwesome,
-    // boxed to keep the Font type small (16 vs 48)
-    #[allow(unused)]
-    Custom(Box<ActualFont>)
-}
-impl Font {
-    pub fn to_iced(&self) -> iced::Font {
-        match self {
-            Self::Main => iced::Font::with_name("main"),
-            Self::Fallback => iced::Font::with_name("fallback"),
-            Self::FontAwesome => iced::Font::with_name("font_awesome"),
-            Self::Custom(_) => iced::Font::with_name("custom"),
-        }
-    }
-
-    pub fn from_iced(f: &iced::Font) -> Self {
-        let iced::font::Family::Name(name) = f.family else { return Self::Main };
-
-        match name {
-            "main" => Self::Main,
-            "fallback" => Self::Fallback,
-            "font_awesome" => Self::FontAwesome,
-            "custom" => unimplemented!("custom fonts are not working yet"),
-
-            _ => Self::Main
-        }
-    }
-}
-
-impl std::fmt::Debug for Font {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self {
-            Self::Main => "Main".to_owned(),
-            Self::Fallback => "Fallback".to_owned(),
-            Self::FontAwesome => "FontAwesome".to_owned(),
-            Self::Custom(f) => "Custom('".to_owned() + &f.get_name() + "')"
-        };
-        write!(f, "Font({name})")
-    }
+    // // boxed to keep the Font type small (16 vs 48)
+    // #[allow(unused)]
+    // Custom(Box<ActualFont>)
 }
 impl Deref for Font {
     type Target = ActualFont;
@@ -182,7 +147,7 @@ impl Deref for Font {
             Self::Main => &MAIN_FONT,
             Self::Fallback => &FALLBACK_FONT,
             Self::FontAwesome => &FONT_AWESOME,
-            Self::Custom(font) => font
+            // Self::Custom(font) => font
         }
     }
 }

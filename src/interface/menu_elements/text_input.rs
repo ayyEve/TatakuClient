@@ -324,7 +324,7 @@ impl ScrollableItem for TextInput {
             Key::Left if self.cursor_index > 0 => self.cursor_index -= 1,
             Key::Right if self.cursor_index < self.text.len() => self.cursor_index += 1,
             
-            Key::Back if self.cursor_index > 0 => {
+            Key::Backspace if self.cursor_index > 0 => {
                 if self.selection_end > 0 {
                     self.remove_selected_text();
                 } else {

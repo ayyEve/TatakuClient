@@ -25,7 +25,7 @@ use iced::advanced::{
 /// how far the
 const DRAG_THRESHOLD:f32 = 5.0;
 
-pub fn make_scrollable(children: Vec<IcedElement>, id: &'static str) -> Scrollable<'static, Message, IcedRenderer> {
+pub fn make_scrollable(children: Vec<IcedElement>, id: &'static str) -> Scrollable<'static, Message, iced::Theme, IcedRenderer> {
     Scrollable::new(CullingColumn::with_children(children).spacing(5.0).into_element()).id(iced::widget::scrollable::Id::new(id))
 }
 pub fn make_panel_scroll(children: Vec<IcedElement>, id: &'static str) -> PanelScroll {
@@ -122,15 +122,15 @@ impl Default for CullingColumn {
 }
 
 
-impl Widget<Message, IcedRenderer> for CullingColumn {
+impl Widget<Message, iced::Theme, IcedRenderer> for CullingColumn {
     fn children(&self) -> Vec<Tree> { self.children.iter().map(Tree::new).collect() }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(&self.children); }
-    fn width(&self) -> Length { self.width }
-    fn height(&self) -> Length { self.height }
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
 
 
     fn layout(
         &self,
+        tree: &mut Tree,
         renderer: &IcedRenderer,
         limits: &layout::Limits,
     ) -> layout::Node {
@@ -143,10 +143,13 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
             layout::flex::Axis::Vertical,
             renderer,
             &limits,
+            self.width,
+            self.height,
             self.padding,
             self.spacing,
             self.align_items,
             &self.children,
+            &mut tree.children
         )
     }
 
@@ -231,7 +234,8 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
         cursor: mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        let old = renderer.start_layer();
+        use iced::advanced::Renderer;
+        renderer.start_layer(layout.bounds());
 
         for ((child, state), layout) in 
             self.children.iter()
@@ -245,7 +249,7 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
                 .draw(state, renderer, theme, style, layout, cursor, viewport);
         }
 
-        renderer.end_layer(old, layout.bounds());
+        renderer.end_layer();
     }
 
     fn overlay<'b>(
@@ -253,8 +257,9 @@ impl Widget<Message, IcedRenderer> for CullingColumn {
         tree: &'b mut Tree,
         layout: Layout<'_>,
         renderer: &IcedRenderer,
-    ) -> Option<overlay::Element<'b, Message, IcedRenderer>> {
-        iced::advanced::overlay::from_children(&mut self.children, tree, layout, renderer)
+        offset: iced::Vector,
+    ) -> Option<overlay::Element<'b, Message, iced::Theme, IcedRenderer>> {
+        iced::advanced::overlay::from_children(&mut self.children, tree, layout, renderer, offset)
     }
 }
 
@@ -467,9 +472,8 @@ impl PanelScroll {
     }
 }
 
-impl Widget<Message, IcedRenderer> for PanelScroll {
-    fn width(&self) -> Length { self.width }
-    fn height(&self) -> Length { self.height }
+impl Widget<Message, iced::Theme, IcedRenderer> for PanelScroll {
+    fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
 
     fn children(&self) -> Vec<Tree> { self.children.iter().map(Tree::new).collect() }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(&self.children) }
@@ -529,6 +533,7 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
     
     fn layout(
         &self,
+        tree: &mut Tree,
         renderer: &IcedRenderer,
         limits: &layout::Limits,
     ) -> layout::Node {
@@ -541,10 +546,13 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
             self.get_axis(),
             renderer,
             &limits,
+            self.width,
+            self.height,
             self.padding,
             self.spacing,
             self.align_items,
             &self.children,
+            &mut tree.children
         )
     }
 
@@ -572,13 +580,14 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
         &self,
         tree: &Tree,
         renderer: &mut IcedRenderer,
-        theme: &<IcedRenderer as iced_core::Renderer>::Theme,
+        theme: &iced::Theme,
         style: &iced_core::renderer::Style,
         layout: Layout<'_>,
         cursor: iced_core::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        let old = renderer.start_layer();
+        use iced::advanced::Renderer;
+        renderer.start_layer(layout.bounds());
 
         for ((child, state), layout) in 
             self.children.iter()
@@ -592,7 +601,7 @@ impl Widget<Message, IcedRenderer> for PanelScroll {
                 .draw(state, renderer, theme, style, layout, cursor, viewport);
         }
 
-        renderer.end_layer(old, layout.bounds());
+        renderer.end_layer();
     }
 }
 

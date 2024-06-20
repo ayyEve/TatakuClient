@@ -92,7 +92,7 @@ impl Dialog for GenericDialog {
         use iced_elements::*;
 
         col!(
-            self.button_actions.keys().map(|s|Button::new(Text::new(s.clone())).on_press(Message::new_dialog(self, s, MessageType::Click)).into_element()).collect(),
+            self.button_actions.keys().map(|s|Button::new(Text::new(s.clone())).on_press(Message::new_dialog(self, s, MessageType::Click)).into_element()).collect::<Vec<_>>(),
             height = Fill
         )
     }

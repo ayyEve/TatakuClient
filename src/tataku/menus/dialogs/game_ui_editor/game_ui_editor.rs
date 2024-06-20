@@ -141,30 +141,34 @@ impl GameUIEditorDialog {
         true
     }
 
-    pub async fn on_key_press(&mut self, key:Key, _mods:&KeyModifiers, _g:&mut ()) -> bool {
-        if key == Key::V {
-            if self.mouse_down.is_none() {
-                if let Some((_, ele)) = self.find_ele_under_mouse() {
-                    reset_element(ele).await;
+    pub async fn on_key_press(&mut self, key:KeyInput, _mods:&KeyModifiers, _g:&mut ()) -> bool {
+        let Some(k) = key.as_key() else { return false };
+
+        match k {
+            Key::V => {
+                if self.mouse_down.is_none() {
+                    if let Some((_, ele)) = self.find_ele_under_mouse() {
+                        reset_element(ele).await;
+                    }
                 }
             }
-        }
-        
-        
-        if key == Key::S {
-            if self.mouse_down.is_none() {
-                let y = self.sidebar.get_pos().y;
 
-                if self.sidebar.get_pos().x < -self.window_size.x {
-                    self.sidebar.set_pos(Vector2::new(0.0, y));
-                } else {
-                    self.sidebar.set_pos(Vector2::new(-self.window_size.x * 5.0, y));
+            Key::S => {
+                if self.mouse_down.is_none() {
+                    let y = self.sidebar.get_pos().y;
+
+                    if self.sidebar.get_pos().x < -self.window_size.x {
+                        self.sidebar.set_pos(Vector2::new(0.0, y));
+                    } else {
+                        self.sidebar.set_pos(Vector2::new(-self.window_size.x * 5.0, y));
+                    }
+
+                    self.sidebar.refresh_layout();
                 }
-
-                self.sidebar.refresh_layout();
             }
+            
+            _ => {}
         }
-
         true
     }
 
