@@ -114,6 +114,7 @@ local menu = {
         --[[next set]] key_event("Right", map_action("next_set")),
         --[[previous map]] key_event("Up", map_action("previous_map")),
         --[[next map]] key_event("Down", map_action("next_map")),
+        --[[next map]] key_event("Escape", { id = "action", menu = "main_menu" }),
 
         --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods"))
     },

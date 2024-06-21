@@ -483,10 +483,6 @@ impl<'window> GameWindow<'window> {
     pub fn free_texture(tex: TextureReference) {
         Self::send_event(Game2WindowEvent::LoadImage(LoadImage::FreeTexture(tex)));
     }
-
-
-
-
 }
 
 
@@ -713,30 +709,12 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
             _ => None
         };
 
-
-        // let event = match event {
-            
-        //     Event::MainEventsCleared => {
-        //         self.update();
-        //         None
-        //     }
-
-        //     // we want this to run after the game has been rendered so it doesnt interfere with the render latency
-        //     Event::RedrawEventsCleared => {
-        //         self.graphics.update_emitters();
-        //         None
-        //     }
-
-        //     _ => None
-        // };
-
         if let Some(event) = event { self.send_game_event(event); }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
-        
-        
-        // self.graphics.update_emitters();
+
+    fn exiting(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
+        warn!("window closing");
     }
 }
 

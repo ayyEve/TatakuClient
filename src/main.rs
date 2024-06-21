@@ -134,9 +134,7 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     
     
     trace!("window running");
-
-    GameWindow::run(game_window, e);
-    warn!("window closed");
+    game_window.run(e);
 
     // wait for game to finish
     runtime.block_on(game).unwrap();
