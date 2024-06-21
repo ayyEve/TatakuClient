@@ -128,12 +128,12 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
     bool!("MouseDisableButtons", osu_settings, ignore_mouse_buttons);
     num!("Offset", global_offset, f32);
     if let Some((width, height)) = num!("Width", f32).zip(num!("Height", f32)) {
-        settings.window_size = [width, height] 
+        settings.display_settings.window_size = [width, height] 
     }
 
-    num!("CustomFrameLimit", fps_target, u64);
+    // num!("CustomFrameLimit", display_settings.fps_target, u64);
     string!("Skin", current_skin);
-    bool!("RawInput", raw_mouse_input);
+    // bool!("RawInput", display_settings.raw_mouse_input);
     // bool!("ComboColourSliderBall", standard_settings, combo_color_slider);
     string!("Username", osu_username);
     // bool!("DiscordRichPresence", discord);

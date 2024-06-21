@@ -15,7 +15,10 @@ pub enum Game2WindowEvent {
     RefreshMonitors,
 
     AddEmitter(EmitterRef),
-    RenderData(Vec<Arc<dyn TatakuRenderable>>)
+    RenderData(Vec<Arc<dyn TatakuRenderable>>),
+
+    SettingsUpdated(DisplaySettings),
+    IntegrationsChanged(IntegrationSettings),
 }
 
 impl std::fmt::Debug for Game2WindowEvent {

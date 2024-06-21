@@ -49,7 +49,7 @@ impl<'window> GraphicsState<'window> {
 
     // Creating some of the wgpu types requires async code
     #[cfg(feature="graphics")]
-    pub async fn new(window: &'window winit::window::Window, settings: &Settings) -> Self {
+    pub async fn new(window: &'window winit::window::Window, settings: &DisplaySettings) -> Self {
         use wgpu::PipelineCompilationOptions;
 
         let window_size = window.inner_size();

@@ -61,41 +61,9 @@ pub struct Settings {
     #[Setting(text="Enable Difficulty Calculation")]
     pub enable_diffcalc: bool,
 
-    // window settings
-    pub window_pos: [i32; 2],
-    pub window_size: [f32; 2],
-    #[Setting(text="FPS Limit", min=15, max=1_000, category="Window Settings")]
-    pub fps_target: u64,
-    #[Setting(text="Vsync", dropdown="Vsync")]
-    #[serde(deserialize_with = "vsync_reader")]
-    pub vsync: Vsync,
-    #[Setting(text="Update Limit", min=500, max=10_000)]
-    pub update_target: u64,
+    #[Subsetting(category="Display Settings")]
+    pub display_settings: DisplaySettings,
     
-    // #[Setting(text="UI Scale")] // not ready yet
-    pub ui_scale: f64,
-    #[Setting(text="Background Dim", min=0, max=1)]
-    pub background_dim: f32,
-    /// should the game pause when focus is lost?
-    #[Setting(text="Pause on Focus Loss")]
-    pub pause_on_focus_lost: bool,
-    #[Setting(text="Raw Mouse Input (requires restart)")]
-    pub raw_mouse_input: bool,
-    #[Setting(text="Scroll Sensitivity", min=0.1, max=5.0)]
-    pub scroll_sensitivity: f32,
-
-    #[Setting(text="Fullscreen", dropdown="FullscreenMonitor")]
-    pub fullscreen_monitor: FullscreenMonitor,
-    pub fullscreen_windowed: bool, // render at window_size?
-    pub fullscreen_center: bool, // when rendering at window_size, center?
-
-    
-    #[Setting(text="Performance Mode (requires restart)", dropdown="PerformanceMode")]
-    pub performance_mode: PerformanceMode,
-    
-    #[serde(skip)]
-    #[Setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()")]
-    refresh_monitors_button: (),
 
     // cursor
     #[Setting(text="Cursor Color", category="Cursor Settings")]
@@ -125,6 +93,10 @@ pub struct Settings {
     #[Setting(text="Theme", dropdown="SelectedTheme")]
     pub theme: SelectedTheme,
 
+    // #[Setting(text="UI Scale")] // not ready yet
+    pub ui_scale: f64,
+    #[Setting(text="Background Dim", min=0, max=1)]
+    pub background_dim: f32,
 
     // misc keybinds
     #[Setting(text="User Panel Key", category="Common Keybinds")]
@@ -178,7 +150,7 @@ impl Settings {
         s.check_hashes();
         
         GlobalValueManager::update(Arc::new(s.clone()));
-        GlobalValueManager::update(Arc::new(WindowSize(s.window_size.into())));
+        GlobalValueManager::update(Arc::new(WindowSize(s.display_settings.window_size.into())));
 
         // save after loading.
         // writes file if it doesnt exist, and writes new values from updates
@@ -257,30 +229,12 @@ impl Default for Settings {
             mania_settings: ManiaSettings::default(),
             background_game_settings: BackgroundGameSettings::default(),
             common_game_settings: CommonGameplaySettings::default(),
-            pause_on_focus_lost: true,
             last_played_mode: "osu".to_owned(),
             last_score_retreival_method: ScoreRetreivalMethod::Local,
             last_sort_by: SortBy::Title,
             beatmap_hitsounds: true,
             enable_diffcalc: true,
 
-            // window settings
-            fps_target: 144,
-            update_target: 10_000,
-            vsync: Vsync::default(),
-            window_pos: [0, 0],
-            window_size: [1280.0, 720.0],
-            performance_mode: PerformanceMode::HighPerformance,
-            
-            ui_scale: 1.0,
-            background_dim: 0.8,
-            raw_mouse_input: false,
-            scroll_sensitivity: 1.0,
-            
-            fullscreen_monitor: FullscreenMonitor::None,
-            fullscreen_windowed: false,
-            fullscreen_center: true,
-            refresh_monitors_button: (),
 
             // cursor
             cursor_scale: 1.0,
@@ -300,6 +254,10 @@ impl Default for Settings {
             
             // integrations
             integrations: Default::default(),
+
+            display_settings: Default::default(),
+            ui_scale: 1.0,
+            background_dim: 0.8,
 
             // other
             last_git_hash: String::new(),

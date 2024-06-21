@@ -34,7 +34,8 @@ pub struct GameWindow<'window> {
     
     #[cfg(feature="graphics")]
     graphics: Box<dyn GraphicsEngine + 'window>,
-    settings: SettingsHelper,
+    settings: DisplaySettings,
+    integration_settings: IntegrationSettings,
 
     game_event_sender: Arc<Sender<Window2GameEvent>>,
     render_data: Vec<Arc<dyn TatakuRenderable>>,
@@ -61,16 +62,18 @@ impl<'window> GameWindow<'window> {
         window: &'window std::cell::OnceCell<WinitWindow>,
         runtime: Rc<tokio::runtime::Runtime>,
         window_creation_barrier: Arc<tokio::sync::Barrier>,
+        settings: &Settings,
     ) -> Self {
-        let settings = SettingsHelper::new();
         let now = std::time::Instant::now();
     
         let s = Self {
             window,
             window_creation_barrier,
-            graphics: Box::new(DummyGraphicsEngine),
-            settings,
             runtime,
+
+            graphics: Box::new(DummyGraphicsEngine),
+            settings: settings.display_settings.clone(),
+            integration_settings: settings.integrations.clone(),
             
             game_event_sender: Arc::new(game_event_sender),
             // window_event_receiver,
@@ -97,7 +100,6 @@ impl<'window> GameWindow<'window> {
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<Game2WindowEvent>) {
         WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
         GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
-        self.settings.update();
 
         event_loop.run_app(&mut self).expect("nope");
     }
@@ -120,27 +122,6 @@ impl<'window> GameWindow<'window> {
     }
 
     fn update(&mut self) {
-        let old_fullscreen = self.settings.fullscreen_monitor;
-        let old_vsync = self.settings.vsync;
-        let old_media_integration = self.settings.integrations.media_controls;
-
-        if self.settings.update() {
-            if self.settings.fullscreen_monitor != old_fullscreen {
-                self.apply_fullscreen();
-            }
-
-            if self.settings.vsync != old_vsync {
-                self.apply_vsync();
-            }
-
-            self.mouse_helper.set_raw_input(self.settings.raw_mouse_input);
-
-            if old_media_integration != self.settings.integrations.media_controls && !self.settings.integrations.media_controls {
-                MediaControlHelper::set_metadata(&Default::default());
-                MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
-                let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
-            }
-        }
 
 
         // increment input frametime stuff
@@ -309,8 +290,8 @@ impl<'window> GameWindow<'window> {
     }
 
     #[cfg(feature="graphics")]
-    fn apply_fullscreen(&mut self) {
-        if let FullscreenMonitor::Monitor(monitor_num) = self.settings.fullscreen_monitor {
+    fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
+        if let FullscreenMonitor::Monitor(monitor_num) = monitor {
             if let Some((_, monitor)) = self.window().available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
                 self.window().set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(monitor))));
                 return
@@ -325,8 +306,8 @@ impl<'window> GameWindow<'window> {
     }
 
     #[cfg(feature="graphics")]
-    fn apply_vsync(&mut self) {
-        self.graphics.set_vsync(self.settings.vsync);
+    fn set_vsync(&mut self, vsync: Vsync) {
+        self.graphics.set_vsync(vsync);
     }
 
     pub fn set_clipboard(content: String) -> TatakuResult {
@@ -538,8 +519,8 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         self.init_media_controls();
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
         self.refresh_monitors_inner();
-        self.apply_fullscreen();
-        self.apply_vsync();
+        self.set_fullscreen(self.settings.fullscreen_monitor);
+        self.set_vsync(self.settings.vsync);
     }
     
 
@@ -581,6 +562,29 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 self.render_data = data;
                 self.window().request_redraw();
             }
+
+            Game2WindowEvent::IntegrationsChanged(integrations) => {
+                if integrations.media_controls && !self.integration_settings.media_controls {
+                    MediaControlHelper::set_metadata(&Default::default());
+                    MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
+                    let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
+                }
+                self.integration_settings = integrations;
+            }
+
+            Game2WindowEvent::SettingsUpdated(settings) => {
+                if self.settings.fullscreen_monitor != settings.fullscreen_monitor {
+                    self.set_fullscreen(settings.fullscreen_monitor);
+                }
+    
+                if self.settings.vsync != settings.vsync {
+                    self.set_vsync(settings.vsync);
+                }
+    
+                self.mouse_helper.set_raw_input(settings.raw_mouse_input);
+
+                self.settings = settings;
+            }
         }
     }
 
@@ -590,7 +594,6 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-
         let event = match event {
             DeviceEvent::MouseMotion { delta: (x, y) } => {
                 if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {

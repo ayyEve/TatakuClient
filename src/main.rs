@@ -123,11 +123,13 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     #[cfg(feature="graphics")]
     let game_window = window_runtime.block_on(async {
         info!("creating window");
+        let settings = Settings::get();
         GameWindow::new(
             game_event_sender, 
             &window, 
             window_runtime.clone(), 
-            window_side_barrier
+            window_side_barrier,
+            &settings,
         ).await
     });
 

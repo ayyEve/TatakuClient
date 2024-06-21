@@ -320,15 +320,15 @@ impl Game {
         let mut last_draw_offset = 0.0;
 
         let game_start = std::time::Instant::now();
-
         let mut last_setting_update = None;
 
+        let mut display_settings = self.settings.display_settings.clone();
+        let mut integrations = self.settings.integrations.clone();
 
-        let mut last_render_target = self.settings.fps_target as f64;
-        let mut last_update_target = self.settings.update_target as f64;
+        let mut render_rate   = 1.0 / display_settings.fps_target as f64;
+        let mut update_target = 1.0 / display_settings.update_target as f64;
+        
 
-        let mut render_rate   = 1.0 / last_render_target;
-        let mut update_target = 1.0 / last_update_target;
 
         loop {
             while let Ok(e) = self.game_event_receiver.try_recv() {
@@ -346,9 +346,16 @@ impl Game {
             let last_effect_vol = self.settings.effect_vol;
             let last_theme = self.settings.theme.clone();
             let last_server_url = self.settings.server_url.clone();
-            let last_discord_enabled = self.settings.integrations.discord;
             
             if self.settings.update() {
+
+                if self.settings.display_settings != display_settings {
+                    display_settings = self.settings.display_settings.clone();
+                    render_rate = 1.0 / display_settings.fps_target as f64;
+                    update_target = 1.0 / display_settings.update_target as f64;
+                    self.window_proxy.send_event(Game2WindowEvent::SettingsUpdated(display_settings.clone())).unwrap();
+                }
+
                 let audio_changed = 
                     last_master_vol != self.settings.master_vol
                     || last_music_vol != self.settings.music_vol
@@ -361,14 +368,6 @@ impl Game {
                     last_setting_update = Some(Instant::now());
                 }
 
-                if self.settings.fps_target as f64 != last_render_target {
-                    last_render_target = self.settings.fps_target as f64;
-                    render_rate = 1.0 / last_render_target;
-                }
-                if self.settings.update_target as f64 != update_target {
-                    last_update_target = self.settings.update_target as f64;
-                    update_target = 1.0 / last_update_target;
-                }
 
                 let skin_changed = self.settings.current_skin != self.last_skin;
                 if skin_changed {
@@ -384,11 +383,17 @@ impl Game {
                     OnlineManager::restart();
                 }
 
-                // update discord
-                match (last_discord_enabled, self.settings.integrations.discord) {
-                    (true, false) => OnlineManager::get_mut().await.discord = None,
-                    (false, true) => OnlineManager::init_discord().await,
-                    _ => {}
+                if integrations != self.settings.integrations {
+
+                    // update discord
+                    match (integrations.discord, self.settings.integrations.discord) {
+                        (true, false) => OnlineManager::get_mut().await.discord = None,
+                        (false, true) => OnlineManager::init_discord().await,
+                        _ => {}
+                    }
+
+                    integrations = self.settings.integrations.clone();
+                    self.window_proxy.send_event(Game2WindowEvent::IntegrationsChanged(integrations.clone())).unwrap();
                 }
 
 
@@ -513,7 +518,7 @@ impl Game {
         let mouse_up = self.input_manager.get_mouse_up();
         let mouse_moved = self.input_manager.get_mouse_moved();
         // TODO: do we want this here or only in menus?
-        let mut scroll_delta = self.input_manager.get_scroll_delta() * self.settings.scroll_sensitivity;
+        let mut scroll_delta = self.input_manager.get_scroll_delta() * self.settings.display_settings.scroll_sensitivity;
 
         let mut keys_down = self.input_manager.get_keys_down();
         let keys_up = self.input_manager.get_keys_up();
@@ -559,7 +564,7 @@ impl Game {
         // check for volume change
         if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos) }
         if scroll_delta != 0.0 {
-            if let Some(action) = self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.scroll_sensitivity * 1.5), mods).await { 
+            if let Some(action) = self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.display_settings.scroll_sensitivity * 1.5), mods).await { 
                 scroll_delta = 0.0;
                 self.actions.push(action);
             }
@@ -761,7 +766,7 @@ impl Game {
 
                 // pause button, or focus lost, only if not replaying
                 if let Some(got_focus) = window_focus_changed {
-                    if self.settings.pause_on_focus_lost {
+                    if self.settings.display_settings.pause_on_focus_lost {
                         manager.window_focus_lost(got_focus)
                     }
                 }
