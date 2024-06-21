@@ -29,7 +29,7 @@ impl Widgetable for BuiltElementDef {
     }
     
     fn view(&self, owner: MessageOwner, values: &mut ValueCollection) -> IcedElement {
-        match &self.element.id {
+        match &self.element.element {
             ElementIdentifier::Space => Space::new(self.element.width, self.element.height).into_element(),
             ElementIdentifier::Button { padding,  action, ..} => {
                 Button::new(self.first_child_view(owner, values))
@@ -48,15 +48,37 @@ impl Widgetable for BuiltElementDef {
                     .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
                     .into_element()
             }
-            ElementIdentifier::TextInput { placeholder, variable, is_password } => {
+            ElementIdentifier::TextInput { placeholder, variable,  on_input, on_submit,is_password } => {
                 let placeholder = placeholder.to_string(values);
                 let value = values.get_string(&variable).unwrap_or_default();
                 let variable = variable.clone();
 
+                let on_input:Box<dyn Fn(String) -> Message> = match on_input.clone() {
+                    Some(on_input) => {
+                        Box::new(move |t| {
+                            let value = TatakuValue::String(t);
+                            match on_input.resolve(owner, &mut ValueCollection::new(), Some(value.clone())) {
+                                Some(resolved) => Message::new(owner, "", MessageType::Multi(vec![
+                                    resolved,
+                                    Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None)),
+                                ])),
+                            
+                                None => Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None))
+                            }
+                        })
+                    }
+                    None => {
+                        Box::new(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
+                    }
+                };
+
+
                 iced_elements::TextInput::new(&placeholder, &value)
-                    .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
+                    .on_input(on_input)
+                    // .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
                     .width(self.element.width)
                     .secure(*is_password)
+                    .chain_maybe(on_submit.as_ref().and_then(|e| e.resolve(owner, values, None)), |t, m| t.on_submit(m))
                     .into_element()
             }
 
@@ -220,11 +242,6 @@ impl Widgetable for BuiltElementDef {
             }
 
 
-
-            ElementIdentifier::KeyHandler { events } => {
-                KeyEventsHandler::new(events, owner, values)
-                    .into_element()
-            }
             _ => {
                 // warn!("missed object? {:?}", self.element.id);
                 self.first_child_view(owner, values)

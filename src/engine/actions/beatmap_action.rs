@@ -93,7 +93,8 @@ pub enum BeatmapListAction {
     PrevSet,
     SelectSet(usize),
 
-    Refresh {
+    Refresh,
+    ApplyFilter {
         filter: Option<String>,
     },
 }

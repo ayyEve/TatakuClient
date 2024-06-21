@@ -442,21 +442,7 @@ impl AsyncMenu for MainMenu {
                 ;
                 width = Fill,
                 height = Fill
-            ),
-
-            // key input
-            KeyEventsHandler::new(&vec![
-                KeyHandlerEvent {
-                    key: Key::Left,
-                    mods: KeyModifiers::default(),
-                    action: ButtonAction::MenuAction(CustomMenuAction::Map(CustomMenuMapAction::Previous(MapActionIfNone::ContinueCurrent))),
-                },
-                KeyHandlerEvent {
-                    key: Key::Right,
-                    mods: KeyModifiers::default(),
-                    action: ButtonAction::MenuAction(CustomMenuAction::Map(CustomMenuMapAction::Next))
-                },
-            ], owner, values);
+            );
 
             width = Fill,
             height = Fill

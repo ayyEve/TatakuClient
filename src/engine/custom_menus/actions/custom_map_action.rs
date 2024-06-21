@@ -29,6 +29,8 @@ pub enum CustomMenuMapAction {
     /// Set the current playmode
     SetPlaymode(CustomEventValueType),
 
+    RefreshList,
+
     // TODO: document the difference between BeatmapAction::Next and BeatmapListAction::NextSet
     NextMap,
     NextSet,
@@ -48,6 +50,7 @@ impl CustomMenuMapAction {
             Self::NextSet => Some(BeatmapAction::ListAction(BeatmapListAction::NextSet)),
             Self::PrevMap => Some(BeatmapAction::ListAction(BeatmapListAction::PrevMap)),
             Self::PrevSet => Some(BeatmapAction::ListAction(BeatmapListAction::PrevSet)),
+            Self::RefreshList => Some(BeatmapAction::ListAction(BeatmapListAction::Refresh)),
 
 
             Self::SetPlaymode(CustomEventValueType::None) => None,
@@ -124,8 +127,8 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                     
                     "next_map" => Ok(Self::NextMap),
                     "next_set" => Ok(Self::NextSet),
-                    "prev_map" => Ok(Self::PrevMap),
-                    "prev_set" => Ok(Self::PrevSet),
+                    "previous_map" | "prev_map" => Ok(Self::PrevMap),
+                    "previous_set" | "prev_set" => Ok(Self::PrevSet),
 
                     "select_group" => Ok(Self::SelectGroup(table.get("group_id")?)),
                     "select_map" => Ok(Self::SelectMap(table.get("map_hash")?)),
@@ -160,8 +163,8 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
 
                     "next_map" => Ok(Self::NextMap),
                     "next_set" => Ok(Self::NextSet),
-                    "prev_map" => Ok(Self::PrevMap),
-                    "prev_set" => Ok(Self::PrevSet),
+                    "previous_map" | "prev_map" => Ok(Self::PrevMap),
+                    "previous_set" | "prev_set" => Ok(Self::PrevSet),
 
                     other => Err(FromLuaConversionError { from: "String", to: "CustomMenuMapAction", message: Some(format!("Unknown map action {other}")) })
                 }

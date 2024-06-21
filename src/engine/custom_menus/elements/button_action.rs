@@ -30,7 +30,9 @@ pub enum ButtonAction {
         if_true: Box<Self>,
         /// What to do if false
         if_false: Option<Box<Self>>,
-    }
+    },
+
+    Multiple(Vec<Box<Self>>),
 }
 impl ButtonAction {
     pub fn build(&mut self) {
@@ -40,6 +42,7 @@ impl ButtonAction {
                 if_true.build();
                 if_false.ok_do_mut(|f| f.build());
             }
+            Self::Multiple(list) => list.iter_mut().for_each(|a| a.build()),
             _ => {}
         }
     }
@@ -81,6 +84,11 @@ impl ButtonAction {
                 }
             }
 
+            Self::Multiple(list) => {
+                let list = list.iter().map(|a| a.resolve(owner, values, passed_in.clone())).filter_map(|m|m).collect::<Vec<_>>();
+                (!list.is_empty()).then(|| Message::new(owner, "", MessageType::Multi(list)))
+            }
+
         }
     }
 }
@@ -88,6 +96,17 @@ impl<'lua> FromLua<'lua> for ButtonAction {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
         #[cfg(feature="debug_custom_menus")] info!("Reading ButtonAction");
         let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "ButtonAction", message: Some("Not a table".to_owned()) }) };
+
+        if let Ok(_) = table.get::<_, Self>(0) {
+            let mut list = Vec::new();
+
+            for i in 0.. {
+                let Ok(item) = table.get::<_, Self>(i) else { break };
+                list.push(Box::new(item));
+            }
+
+            return Ok(Self::Multiple(list));
+        }
     
         #[cfg(feature="debug_custom_menus")] info!("Reading id...");
         let id:String = table.get("id")?;
@@ -194,3 +213,4 @@ impl<'lua> FromLua<'lua> for TatakuValue {
 
     }
 }
+

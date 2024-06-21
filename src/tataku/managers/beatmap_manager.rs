@@ -26,8 +26,6 @@ pub struct BeatmapManager {
     unfiltered_groups: Vec<BeatmapGroup>,
     filtered_groups: Vec<BeatmapListGroup>,
 
-    pub filter: String,
-
     selected_set: usize,
     selected_map: usize,
 }
@@ -48,7 +46,6 @@ impl BeatmapManager {
 
             unfiltered_groups: Vec::new(),
             filtered_groups: Vec::new(),
-            filter: String::new(),
             selected_set: 0,
             selected_map: 0
         }
@@ -422,7 +419,7 @@ impl BeatmapManager {
         self.filtered_groups.clear();
         
         // get filter text and split here so we arent splitting every map
-        let filter_text = self.filter.to_ascii_lowercase();
+        let filter_text = values.get_string("beatmap_list.search_text").unwrap_or_default();
         let filters = filter_text.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>();
 
         let Ok(Ok(mods)) = values.get_raw("global.mods").map(TatakuVariable::deref).map(ModManager::try_from) else { return };

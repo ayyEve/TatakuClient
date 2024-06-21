@@ -4952,6 +4952,7 @@ dependencies = [
  "tokio-native-tls",
  "tokio-tungstenite",
  "triple_buffer",
+ "uuid 1.8.0",
  "wgpu",
  "winit 0.30.2",
  "zip",
@@ -5495,6 +5496,9 @@ name = "uuid"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a183cf7feeba97b4dd1c0d46788634f6221d87fa961b305bed08c851829efcc0"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "v_frame"

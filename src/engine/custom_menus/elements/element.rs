@@ -1,11 +1,11 @@
 use crate::prelude::*;
 use crate::prelude::iced_elements::*;
-
-use rlua::{Value, Error, FromLua};
+use rlua::{ Value, Error, FromLua };
 
 #[derive(Clone, Debug)]
 pub struct ElementDef {
-    pub id: ElementIdentifier,
+    pub id: String,
+    pub element: ElementIdentifier,
     pub debug_color: Option<Color>,
     pub width: Length,
     pub height: Length,
@@ -18,7 +18,7 @@ impl ElementDef {
             children: Vec::new(),
         };
 
-        match &mut built.element.id {
+        match &mut built.element.element {
             ElementIdentifier::GameplayPreview { visualization } => {
                 let mut gameplay = GameplayPreview::new(true, true, Arc::new(|_| true));
                 gameplay.widget.width(self.width);
@@ -62,6 +62,11 @@ impl ElementDef {
                 }
             }
 
+            ElementIdentifier::TextInput { on_input, on_submit, .. } => {
+                on_input.ok_do_mut(|i| i.build());
+                on_submit.ok_do_mut(|i| i.build());
+            }
+
             ElementIdentifier::Conditional { cond, if_true, if_false } => {
                 cond.build();
 
@@ -73,10 +78,6 @@ impl ElementDef {
 
             ElementIdentifier::List { element, .. } => {
                 built.children.push(element.build().await);
-            }
-
-            ElementIdentifier::KeyHandler { events } => {
-                events.iter_mut().for_each(|e| e.build());
             }
 
             ElementIdentifier::Dropdown { on_select, .. } => {
@@ -92,6 +93,8 @@ impl ElementDef {
 
 impl<'lua> FromLua<'lua> for ElementDef {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        let id = uuid::Uuid::new_v4().to_string();
+
         #[cfg(feature="debug_custom_menus")] info!("Reading ElementDef");
         let Value::Table(table) = lua_value else { return Err(Error::FromLuaConversionError { from: lua_value.type_name(), to: "ElementIdentifier", message: Some("Not a table".to_owned()) }) };
         
@@ -100,15 +103,16 @@ impl<'lua> FromLua<'lua> for ElementDef {
         table.get::<_, Option<String>>("debug_name")?.ok_do(|name| debug!("Name: {name}"));
         
 
-        let id:String = table.get("id")?;
+        let element:String = table.get("id")?;
         #[cfg(feature="debug_custom_menus")] info!("Got id: {id:?}");
         let width = CustomMenuParser::parse_length(table.get("width")?);
         let height = CustomMenuParser::parse_length(table.get("height")?);
         let debug_color = table.get("debug_color")?;
 
-        match &*id {
+        match &*element {
             "row" => Ok(Self {
-                id: ElementIdentifier::Row { 
+                id,
+                element: ElementIdentifier::Row { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
                     margin: parse_from_multiple(&table, &["margin", "spacing"])?,
@@ -119,7 +123,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
             
             "col" | "column" => Ok(Self {
-                id: ElementIdentifier::Column { 
+                id,
+                element: ElementIdentifier::Column { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
                     margin: parse_from_multiple(&table, &["margin", "spacing"])?,
@@ -130,14 +135,16 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
             
             "space" => Ok(Self {
-                id: ElementIdentifier::Space,
+                id,
+                element: ElementIdentifier::Space,
                 width: width.unwrap_or(Length::Shrink),
                 height: height.unwrap_or(Length::Shrink),
                 debug_color,
             }),
 
             "text" => Ok(Self {
-                id: ElementIdentifier::Text { 
+                id,
+                element: ElementIdentifier::Text { 
                     text: table.get("text")?, 
                     color: table.get("color")?, 
                     font_size: table.get("font_size")?,
@@ -149,9 +156,12 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }), 
 
             "text_input" => Ok(Self {
-                id: ElementIdentifier::TextInput { 
+                id,
+                element: ElementIdentifier::TextInput { 
                     placeholder: table.get("placeholder")?, 
                     variable: table.get("variable")?, 
+                    on_input: table.get("on_input")?,
+                    on_submit: table.get("on_submit")?,
                     is_password: parse_from_multiple(&table, &["is_password", "password"])?.unwrap_or_default(),
                 },
                 width: width.unwrap_or(Length::Shrink),
@@ -160,7 +170,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }), 
 
             "button" => Ok(Self {
-                id: ElementIdentifier::Button { 
+                id,
+                element: ElementIdentifier::Button { 
                     element: Box::new(table.get("element")?),
                     padding: table.get("padding")?,
                     action: table.get("action")?,
@@ -171,7 +182,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
 
             "animatable" => Ok(Self {
-                id: ElementIdentifier::Animatable {
+                id,
+                element: ElementIdentifier::Animatable {
                     // TODO: !! 
                     triggers: Default::default(),
                     actions: Default::default(),
@@ -183,14 +195,16 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
 
             "gameplay_preview" => Ok(Self {
-                id: ElementIdentifier::GameplayPreview { visualization: table.get("visualization")? },
+                id,
+                element: ElementIdentifier::GameplayPreview { visualization: table.get("visualization")? },
                 width: width.unwrap_or(Length::Fill),
                 height: height.unwrap_or(Length::Fill),
                 debug_color,
             }),
 
             "styled_content" => Ok(Self {
-                id: ElementIdentifier::StyledContent { 
+                id,
+                element: ElementIdentifier::StyledContent { 
                     element: Box::new(table.get("element")?),
                     padding: table.get("padding")?,
                     image: table.get("image")?,
@@ -206,7 +220,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
 
             "conditional" => Ok(Self {
-                id: ElementIdentifier::Conditional { 
+                id,
+                element: ElementIdentifier::Conditional { 
                     cond: ElementCondition::Unbuilt(parse_from_multiple(&table, &["cond", "condition"])?.expect("no condition provided for conditional")),
                     if_true: Box::new(table.get("if_true")?),
                     if_false: table.get::<_, Option<ElementDef>>("if_false")?.map(Box::new),
@@ -217,7 +232,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
 
             "list" => Ok(Self {
-                id: ElementIdentifier::List { 
+                id,
+                element: ElementIdentifier::List { 
                     list_var: table.get("list")?,
                     scrollable: table.get::<_, Option<bool>>("scroll")?.unwrap_or_default(),
                     element: Box::new(table.get("element")?),
@@ -229,7 +245,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
             }),
             
             "dropdown" => Ok(Self {
-                id: ElementIdentifier::Dropdown { 
+                id,
+                element: ElementIdentifier::Dropdown { 
                     options_key: table.get("options_key")?, 
                     options_display_key: table.get("options_display_key")?, 
                     selected_key: table.get("selected_key")?, 
@@ -243,19 +260,8 @@ impl<'lua> FromLua<'lua> for ElementDef {
                 height: height.unwrap_or(Length::Shrink), // not actually used 
                 debug_color,
             }),
-
-
-            "key_handler" => Ok(Self {
-                id: ElementIdentifier::KeyHandler { 
-                    events: table.get("events")?
-                },
-                width: Length::Fixed(0.0),
-                height: Length::Fixed(0.0),
-                debug_color,
-            }),
             
-            
-            _ => { todo!("{id}") }
+            _ => { todo!("{element}") }
         }
     }
 }

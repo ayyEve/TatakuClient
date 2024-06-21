@@ -80,22 +80,15 @@ function button(ele, action, width, height, padding)
     }
 end
 
-function key_handler(events)
-    return {
-        id = "key_handler",
-        events = events
-    }
-end
 function key_event(key, mods, action) 
     if not action then 
         action = mods
         mods = nil
     end
 
-    return {
-        key = key,
-        action = action,
-        mods = mods,
+    return { 
+        event = { key_press = { key = key, mods = mods } },
+        action = action
     }
 end
 

@@ -33,6 +33,8 @@ pub enum ElementIdentifier {
     TextInput {
         placeholder: CustomElementText,
         variable: String,
+        on_input: Option<ButtonAction>,
+        on_submit: Option<ButtonAction>,
         is_password: bool,
     },
     /// id = gameplay_preview
@@ -86,11 +88,6 @@ pub enum ElementIdentifier {
         font: Option<String>,
     },
 
-    // not actually an element, but needs to be here since it needs to be added to the DOM
-    /// id = key_handler
-    KeyHandler {
-        events: Vec<KeyHandlerEvent>,
-    },
 }
 
 
@@ -140,49 +137,4 @@ pub enum ElementResolve<'a> {
     True,
     False,
     Error(ShuntingYardError)
-}
-
-
-#[derive(Clone, Debug)]
-pub struct KeyHandlerEvent {
-    pub key: Key,
-    pub mods: KeyModifiers,
-    pub action: ButtonAction,
-}
-impl KeyHandlerEvent {
-    pub fn build(&mut self) {
-        self.action.build();
-    }
-}
-
-use rlua::{ Value, Error::FromLuaConversionError, FromLua };
-impl<'lua> FromLua<'lua> for KeyHandlerEvent {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="debug_custom_menus")] info!("Reading KeyhandlerEvent");
-        let Value::Table(table) = lua_value else { return Err(FromLuaConversionError { from: lua_value.type_name(), to: "KeyHandlerEvent", message: None }) }; 
-        
-        #[cfg(feature="debug_custom_menus")] info!("Reading key");
-        let key = table.get("key")?;
-        let key = serde_json::from_value(serde_json::Value::String(key))
-            .map_err(|e| FromLuaConversionError { from: "String", to: "Key", message: Some(e.to_string()) })?;
-
-        #[cfg(feature="debug_custom_menus")] info!("Reading mods");
-        let mut mods = KeyModifiers::default();
-        if let Some(incoming_mods) = table.get::<_, Option<Vec<String>>>("mods")? {
-            for m in incoming_mods { 
-                match &*m {
-                    "ctrl" | "control" => mods.ctrl = true,
-                    "alt" => mods.alt = true,
-                    "shift" => mods.shift = true,
-                    _ => {}
-                }
-            }
-        }
-
-        Ok(KeyHandlerEvent {
-            key,
-            mods,
-            action: table.get("action")?
-        })
-    }
 }

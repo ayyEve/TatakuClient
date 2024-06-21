@@ -97,6 +97,9 @@ local menu = {
         { event = "song_end", action = map_action("next") },
 
         -- notify_now_playing,
+
+        --[[previous map]] key_event("Left", map_action("previous")),
+        --[[next map]] key_event("Right", map_action("next"))
     },
 
     -- the current main menu is broken up into rows
@@ -157,12 +160,6 @@ local menu = {
             song_controls
         }),
 
-        -- lastly, we have the key handler
-        -- it doesnt actually occupy any space, but is required to handle key input
-        key_handler({
-            --[[previous map]] key_event("Left", map_action("previous")),
-            --[[next map]] key_event("Right", map_action("next"))
-        })
     })
     
 }

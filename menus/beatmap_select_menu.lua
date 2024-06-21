@@ -108,7 +108,14 @@ local menu = {
                 song_action({ position = variable("map.preview_time")}),
                 song_action("play") 
             }
-        }
+        },
+
+        --[[previous set]] key_event("Left", map_action("previous_set")),
+        --[[next set]] key_event("Right", map_action("next_set")),
+        --[[previous map]] key_event("Up", map_action("previous_map")),
+        --[[next map]] key_event("Down", map_action("next_map")),
+
+        --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods"))
     },
 
     -- the beatmap select menu is broken up into rows
@@ -203,16 +210,6 @@ local menu = {
             },
         }),
         
-        
-        -- dont forget the key handler!
-        key_handler({
-            --[[previous set]] key_event("Left", custom_action("beatmap_list.prev_set")),
-            --[[next set]] key_event("Right", custom_action("beatmap_list.next_set")),
-            --[[previous map]] key_event("Up", custom_action("beatmap_list.prev_map")),
-            --[[next map]] key_event("Down", custom_action("beatmap_list.next_map")),
-
-            --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods"))
-        })
     })
     
 }
