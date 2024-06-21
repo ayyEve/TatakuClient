@@ -124,6 +124,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                     "next" => Ok(Self::Next),
                     "confirm" => Ok(Self::Confirm),
                     "random" => Ok(Self::Random(table.get::<_, Option<bool>>("use_preview")?.unwrap_or(true))),
+                    "refres" | "refresh_list" => Ok(Self::RefreshList),
                     
                     "next_map" => Ok(Self::NextMap),
                     "next_set" => Ok(Self::NextSet),
@@ -160,6 +161,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                     "confirm" => Ok(Self::Confirm),
                     "random" => Ok(Self::Random(true)),
                     "previous" | "prev" => Ok(Self::Previous(MapActionIfNone::ContinueCurrent)),
+                    "refres" | "refresh_list" => Ok(Self::RefreshList),
 
                     "next_map" => Ok(Self::NextMap),
                     "next_set" => Ok(Self::NextSet),

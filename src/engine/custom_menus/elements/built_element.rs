@@ -59,8 +59,8 @@ impl Widgetable for BuiltElementDef {
                             let value = TatakuValue::String(t);
                             match on_input.resolve(owner, &mut ValueCollection::new(), Some(value.clone())) {
                                 Some(resolved) => Message::new(owner, "", MessageType::Multi(vec![
-                                    resolved,
                                     Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None)),
+                                    resolved,
                                 ])),
                             
                                 None => Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None))

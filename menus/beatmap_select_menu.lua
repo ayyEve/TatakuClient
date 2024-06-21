@@ -120,7 +120,7 @@ local menu = {
 
     -- the beatmap select menu is broken up into rows
     element = col({ width = "fill", height = "fill", spacing = 10.0 }, {
-        -- the first row contains the dropdowns
+        -- the first row contains the dropdowns and search
         row({ width = "fill", height = "shrink", spacing = 10.0, debug_name="dropdowns" }, {
             -- score get method dropdown
             {
@@ -163,6 +163,7 @@ local menu = {
                 id = "text_input",
                 width = "fill",
 
+                on_input = map_action("refresh_list"),
                 placeholder = "search",
                 variable = "beatmap_list.search_text",
             },
