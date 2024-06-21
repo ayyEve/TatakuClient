@@ -56,7 +56,7 @@ impl iced::advanced::Renderer for IcedRenderer {
         let background:iced::Background = background.into();
         let color = match background {
             iced::Background::Color(color) => color.into(),
-            iced::Background::Gradient(g) => Color::ALIEN_GREEN,
+            iced::Background::Gradient(_g) => Color::ALIEN_GREEN,
         };
 
         self.add_renderable(Arc::new(Rectangle::new(
@@ -92,22 +92,45 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         color: iced::Color,
         clip_bounds: iced::Rectangle,
     ) {
-        self.fill_text(
-            text.text.clone(),
-            position,
-            color,
-            clip_bounds
-        )
+        let height = text.line_height.to_absolute(text.font_size).0;
+        let mut pos:Vector2 = position.into();
+
+        for line in &text.lines {
+            let mut out_text = Text::new(
+                pos,
+                text.font_size.0,
+                &line,
+                color.into(),
+                text.font
+            );
+            out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
+
+            match text.alignment.0 {
+                iced::alignment::Horizontal::Left => {}
+                iced::alignment::Horizontal::Center => out_text.pos.x += text.bounds.width - out_text.measure_text().x / 2.0,
+                iced::alignment::Horizontal::Right => out_text.pos.x += text.bounds.width - out_text.measure_text().x,
+            }
+            match text.alignment.1 {
+                iced::alignment::Vertical::Bottom => out_text.pos.y -= height,
+                iced::alignment::Vertical::Center => out_text.pos.y -= height / 2.0,
+                iced::alignment::Vertical::Top => {}
+            }
+            
+            self.add_renderable(Arc::new(out_text));
+            pos.y += height;
+        }
+        
     }
 
+    /// i'm not convinced this is actuall used by my code
     fn fill_editor(
         &mut self,
-        editor: &Self::Editor,
-        position: iced::Point,
-        color: iced::Color,
-        clip_bounds: iced::Rectangle,
+        _editor: &Self::Editor,
+        _position: iced::Point,
+        _color: iced::Color,
+        _clip_bounds: iced::Rectangle,
     ) { 
-
+        todo!("not using multiline editors yet (iced::widget::TextEditor")
     }
 
     fn fill_text(
@@ -140,57 +163,8 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         }
         
         self.add_renderable(Arc::new(out_text))
-
     }
 }
-
-
-// impl backend::Text for IcedBackend {
-//     const ICON_FONT: iced::Font = iced::Font::with_name("FontAwesome");
-//     const CHECKMARK_ICON: char = '✔';
-//     const ARROW_DOWN_ICON: char = '▼';
-
-//     fn default_size(&self) -> f32 { 25.0 }
-//     fn default_font(&self) -> iced::Font { iced::Font::DEFAULT }
-
-//     fn measure(
-//         &self,
-//         contents: &str,
-//         size: f32,
-//         _line_height: iced::advanced::text::LineHeight,
-//         font: iced::Font,
-//         _bounds: iced::Size,
-//         _shaping: iced::advanced::text::Shaping,
-//     ) -> iced::Size {
-//         let s = Text::new(Vector2::ZERO, size, contents, Color::WHITE, Font::from_iced(&font)).measure_text();
-//         iced::Size::new(s.x, s.y)
-//     }
-
-//     fn hit_test(
-//         &self,
-//         contents: &str,
-//         size: f32,
-//         _line_height: iced::advanced::text::LineHeight,
-//         font: iced::Font,
-//         bounds: iced::Size,
-//         _shaping: iced::advanced::text::Shaping,
-//         point: iced::Point,
-//         _nearest_only: bool,
-//     ) -> Option<iced::advanced::text::Hit> {
-//         let bounds = Vector2::new(bounds.width, bounds.height);
-//         let mut ti = TextInput::new(Vector2::ZERO, bounds, "", contents, Font::from_iced(&font));
-//         ti.font_size = size;
-
-//         //TODO: not always return the thing
-//         Some(iced::advanced::text::Hit::CharOffset(ti.index_at_x(point.x)))
-//     }
-
-//     fn load_font(&mut self, _font: std::borrow::Cow<'static, [u8]>) {
-//         warn!("thingy wanted to load font");
-//         // todo!()
-//     }
-
-// }
 
 // impl backend::Image for IcedBackend {
 //     fn dimensions(&self, _handle: &iced::advanced::image::Handle) -> iced::Size<u32> {
@@ -200,50 +174,66 @@ impl iced::advanced::text::Renderer for IcedRenderer {
 //     }
 // }
 
-
 pub struct IcedParagraph {
-    text: iced_core::Text<String, Font>,
+    text_raw: String,
+    lines: Vec<String>,
+    /// pre-calculated text size
     text_size: Vector2,
+
+    font: Font,
+    font_size: iced::Pixels,
+    line_height: iced_core::text::LineHeight,
+    bounds: iced::Size<f32>,
+    alignment: (iced::alignment::Horizontal, iced::alignment::Vertical),
+    // shaping: iced_core::text::Shaping,
 }
 impl iced::advanced::text::Paragraph for IcedParagraph {
     type Font = Font;
 
     fn with_text(text: iced_core::Text<&str, Self::Font>) -> Self {
-        let size = Text::measure_text_raw(&[text.font], text.size.0, text.content, Vector2::ONE, 2.0);
+        let size = Text::measure_text_raw(&[text.font], text.size.0, text.content, Vector2::ONE, text.line_height.to_absolute(text.size).0 - text.size.0);
 
         Self {
+            text_raw: text.content.to_owned(),
+            lines: text.content.lines().map(|s| s.to_string()).collect(),
             text_size: size,
-            text: iced_core::Text {
-                content: text.content.to_owned(),
-                bounds: text.bounds,
-                size: text.size,
-                line_height: text.line_height,
-                font: text.font,
-                horizontal_alignment: text.horizontal_alignment,
-                vertical_alignment: text.vertical_alignment,
-                shaping: text.shaping,
-            }
+
+            bounds: text.bounds,
+            font_size: text.size,
+            line_height: text.line_height,
+            font: text.font,
+            alignment: (text.horizontal_alignment, text.vertical_alignment),
+            // shaping: text.shaping,
         }
     }
 
     fn resize(&mut self, new_bounds: iced::Size) {
-        self.text.bounds = new_bounds;
+        self.bounds = new_bounds;
     }
 
     fn compare(&self, text: iced_core::Text<&str, Self::Font>) -> iced_core::text::Difference {
-        if self.text.content != text.content {
-            return iced_core::text::Difference::Shape
+        if text.content != self.text_raw
+        || (text.horizontal_alignment, text.vertical_alignment) != self.alignment
+        || text.font != self.font
+        || text.size != self.font_size
+        || text.line_height != self.line_height
+        {
+            return iced_core::text::Difference::Shape;
+        }
+
+        if self.bounds != text.bounds {
+            return iced_core::text::Difference::Bounds;
         }
 
         iced_core::text::Difference::None
     }
 
     fn horizontal_alignment(&self) -> iced::alignment::Horizontal {
-        self.text.horizontal_alignment
+        self.alignment.0
     }
 
     fn vertical_alignment(&self) -> iced::alignment::Vertical {
-        self.text.vertical_alignment
+        self.alignment.1
     }
 
     fn min_bounds(&self) -> iced::Size {
@@ -254,28 +244,70 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
     }
 
     fn hit_test(&self, point: iced::Point) -> Option<iced_core::text::Hit> {
-        None
+        // if !iced::Rectangle::new(iced::Point::new(0.0, 0.0), self.bounds).contains(point) {
+        //     return None;
+        // }
+
+        use iced_core::text::Hit::CharOffset;
+        //TODO: eventually we will need to care about y coords here as well.
+
+        if point.x > self.text_size.x { return Some(CharOffset(self.text_raw.len()-1)) }
+        let pos = Vector2::ZERO;
+
+        if pos.x > point.x { return Some(CharOffset(self.lines.len())); }
+
+
+        // cumulative width
+        let mut width = 0.0;
+
+        for (counter, char) in self.text_raw.char_indices() {
+            // get the font character
+            let Some(c) = self.font.get_character(self.font_size.0, char) else { continue };
+            
+            width += c.advance_width() / 2.0;
+            
+            if point.x < width { return Some(CharOffset(counter)); }
+
+            width += c.advance_width() / 2.0;
+        }
+
+        Some(CharOffset(self.lines.len()))
     }
 
     fn grapheme_position(&self, line: usize, index: usize) -> Option<iced::Point> {
-        None
+        let text = self.lines.get(line)?;
+        
+        // cumulative width
+        let mut width = 0.0;
+
+        for (counter, char) in text.char_indices() {
+            if counter == index { break }
+
+            // get the font character
+            let Some(c) = self.font.get_character(self.font_size.0, char) else { continue };
+            
+            width += c.advance_width();
+        }
+
+        Some(iced::Point::new(
+            width, 
+            self.line_height.to_absolute(self.font_size).0 * (line as f32)
+        ))
     }
 }
-
 impl Default for IcedParagraph {
     fn default() -> Self {
         Self {
+            text_raw: String::new(),
+            lines: Vec::new(),
             text_size: Vector2::ZERO,
-            text: iced_core::Text {
-                content: String::new(),
-                bounds: iced::Size::new(0.0, 0.0),
-                size: iced::Pixels(25.0),
-                line_height: iced_core::text::LineHeight::Relative(0.0),
-                font: Font::Main,
-                horizontal_alignment: iced::alignment::Horizontal::Left,
-                vertical_alignment: iced::alignment::Vertical::Top,
-                shaping: iced_core::text::Shaping::Basic,
-            }
+        
+            font: Font::Main,
+            font_size: iced::Pixels(25.0),
+            line_height: iced_core::text::LineHeight::default(),
+            bounds: iced::Size::default(),
+            alignment: (iced::alignment::Horizontal::Left, iced::alignment::Vertical::Top),
+            // shaping: iced_core::text::Shaping::Basic,
         }
     }
 }
@@ -331,7 +363,7 @@ impl iced::advanced::text::Editor for IcedEditor {
     fn min_bounds(&self) -> iced::Size {
         self.bounds
     }
-
+ 
     fn update(
         &mut self,
         new_bounds: iced::Size,

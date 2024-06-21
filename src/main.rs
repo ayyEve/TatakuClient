@@ -87,14 +87,13 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
         .unwrap());
 
 
-    let (render_queue_sender, render_queue_receiver) = TripleBuffer::default().split();
     let (game_event_sender, game_event_receiver) = tokio::sync::mpsc::channel(30);
 
     let window_load_barrier = Arc::new(tokio::sync::Barrier::new(2));
     let window_side_barrier = window_load_barrier.clone();
 
 
-    let e = winit::event_loop::EventLoop::new().unwrap();
+    let e = winit::event_loop::EventLoop::with_user_event().build().unwrap();
     let proxy = e.create_proxy();
 
     // start game
@@ -107,7 +106,7 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
 
         // start the game
         trace!("creating game");
-        let game = Game::new(render_queue_sender, game_event_receiver, proxy).await;
+        let game = Game::new( game_event_receiver, proxy).await;
         trace!("running game");
         game.game_loop().await;
         warn!("game closed");
@@ -125,7 +124,6 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     let game_window = window_runtime.block_on(async {
         info!("creating window");
         GameWindow::new(
-            render_queue_receiver, 
             game_event_sender, 
             &window, 
             window_runtime.clone(), 

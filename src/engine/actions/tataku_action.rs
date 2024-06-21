@@ -33,7 +33,7 @@ impl std::fmt::Debug for TatakuAction {
         match self {
             Self::None => write!(f, "None"),
             Self::Menu(menu) => write!(f, "Menu({menu:?})"),
-            Self::Game(_game) => write!(f, "Game(TODO)"),
+            Self::Game(game) => write!(f, "Game({game:?})"),
             Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
             Self::Song(song) => write!(f, "Song({song:?})"),
             Self::PerformOperation(_) => write!(f, "PerformOperation"),

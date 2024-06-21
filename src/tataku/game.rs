@@ -11,9 +11,8 @@ pub struct Game {
     current_state: GameState,
     queued_state: GameState,
     game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
-    render_queue_sender: TripleBufferSender<RenderData>,
 
-    window_proxy: winit::event_loop::EventLoopProxy<()>,
+    window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
 
 
     // managers
@@ -66,9 +65,8 @@ pub struct Game {
 }
 impl Game {
     pub async fn new(
-        render_queue_sender: TripleBufferSender<RenderData>, 
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
-        window_proxy: winit::event_loop::EventLoopProxy<()>,
+        window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
     ) -> Game {
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
 
@@ -112,7 +110,6 @@ impl Game {
             game_start: Instant::now(),
             // register_timings: (0.0,0.0,0.0),
             game_event_receiver,
-            render_queue_sender,
             cursor_manager: CursorManager::new().await,
             last_skin: String::new(),
             background_loader: None,
@@ -578,7 +575,7 @@ impl Game {
         // screenshot
         if keys_down.has_key(Key::F12) {
             let (f, b) = tokio::sync::oneshot::channel();
-            GameWindow::send_event(Game2WindowEvent::TakeScreenshot(f));
+            self.window_proxy.send_event(Game2WindowEvent::TakeScreenshot(f)).unwrap();
 
             tokio::spawn(async move {
                 if let Err(e) = Self::await_screenshot(b, mods).await {
@@ -675,8 +672,6 @@ impl Game {
                         AudioState::Stopped | AudioState::Unknown => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongEnd, None)),
                         AudioState::Playing => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None)),
                         AudioState::Paused => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongPause, None)),
-                        
-                        _ => {}
                     }
 
                     values.update_multiple(TatakuVariableWriteSource::Game, [
@@ -887,7 +882,7 @@ impl Game {
             GameState::Closing => {
                 self.settings.save().await;
                 self.current_state = GameState::Closing;
-                GameWindow::send_event(Game2WindowEvent::CloseGame);
+                let _ = self.window_proxy.send_event(Game2WindowEvent::CloseGame);
             }
 
             _ => {
@@ -1118,9 +1113,7 @@ impl Game {
         self.cursor_manager.draw(&mut render_queue);
 
         // toss the items to the window to render
-        self.render_queue_sender.write(render_queue.take());
-        self.window_proxy.send_event(()).unwrap();
-        NEW_RENDER_DATA_AVAILABLE.store(true, Ordering::Release);
+        self.window_proxy.send_event(Game2WindowEvent::RenderData(render_queue.take())).unwrap();
         
         self.fps_display.increment();
 

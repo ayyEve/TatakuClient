@@ -1,7 +1,7 @@
 use image::RgbaImage;
 use crate::prelude::*;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[allow(unused)]
 pub enum Game2WindowEvent {
@@ -14,8 +14,16 @@ pub enum Game2WindowEvent {
 
     RefreshMonitors,
 
-    AddEmitter(EmitterRef)
+    AddEmitter(EmitterRef),
+    RenderData(Vec<Arc<dyn TatakuRenderable>>)
 }
+
+impl std::fmt::Debug for Game2WindowEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Game2WindowEvent")
+    }
+}
+
 
 pub enum LoadImage {
     Image(RgbaImage, UnboundedSender<TatakuResult<TextureReference>>),

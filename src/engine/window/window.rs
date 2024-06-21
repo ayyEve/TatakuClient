@@ -1,9 +1,5 @@
 use crate::prelude::*;
 use image::RgbaImage;
-
-
-// pub type IcedRenderer = iced::advanced::Renderer<IcedBackend, iced::Theme>;
-
 #[cfg(feature="graphics")]
 use winit::{
     event::*,
@@ -11,11 +7,9 @@ use winit::{
     window::Window as WinitWindow,
 };
 use souvlaki::{ MediaControls, PlatformConfig };
-use std::sync::atomic::Ordering::{ Acquire, Relaxed };
-use tokio::sync::mpsc::{ UnboundedSender, UnboundedReceiver, unbounded_channel, Sender };
+use tokio::sync::mpsc::{ unbounded_channel, Sender };
 
-static WINDOW_EVENT_QUEUE:OnceCell<UnboundedSender<Game2WindowEvent>> = OnceCell::const_new();
-pub static NEW_RENDER_DATA_AVAILABLE:AtomicBool = AtomicBool::new(true);
+static WINDOW_PROXY: OnceCell<winit::event_loop::EventLoopProxy<Game2WindowEvent>> = OnceCell::const_new();
 static MEDIA_CONTROLS:OnceCell<Arc<Mutex<MediaControls>>> = OnceCell::const_new();
 
 
@@ -29,7 +23,6 @@ lazy_static::lazy_static! {
     pub static ref INPUT_FRAMETIME: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
 }
 
-pub type RenderData = Vec<Arc<dyn TatakuRenderable>>;
 
 pub struct GameWindow<'window> {
     #[cfg(feature="graphics")]
@@ -44,8 +37,7 @@ pub struct GameWindow<'window> {
     settings: SettingsHelper,
 
     game_event_sender: Arc<Sender<Window2GameEvent>>,
-    window_event_receiver: UnboundedReceiver<Game2WindowEvent>,
-    render_event_receiver: TripleBufferReceiver<RenderData>,
+    render_data: Vec<Arc<dyn TatakuRenderable>>,
 
     frametime_timer: Instant,
     input_timer: Instant,
@@ -65,7 +57,6 @@ pub struct GameWindow<'window> {
 impl<'window> GameWindow<'window> {
 
     pub async fn new(
-        render_event_receiver: TripleBufferReceiver<RenderData>, 
         game_event_sender: Sender<Window2GameEvent>,
         window: &'window std::cell::OnceCell<WinitWindow>,
         runtime: Rc<tokio::runtime::Runtime>,
@@ -73,35 +64,7 @@ impl<'window> GameWindow<'window> {
     ) -> Self {
         let settings = SettingsHelper::new();
         let now = std::time::Instant::now();
-        
-        // let graphics = Box<dyn GraphicsEngine>::new(&window, &settings, window.inner_size().into()).await;
-        debug!("done graphics");
-        
-        let (window_event_sender, window_event_receiver) = unbounded_channel(); //sync_channel(30);
-        WINDOW_EVENT_QUEUE.set(window_event_sender).ok().expect("bad");
-        debug!("done texture load queue");
-
-        // // set window icon
-        // match image::open("resources/icon-small.png") {
-        //     Ok(image) => {
-        //         let width = image.width();
-        //         let height = image.height();
-                
-        //         match winit::window::Icon::from_rgba(image.to_rgba8().into_vec(), width, height) {
-        //             Ok(icon) => {
-        //                 window.set_window_icon(Some(icon.clone()));
-                        
-        //                 #[cfg(target_os="windows")] {
-        //                     use winit::platform::windows::WindowExtWindows;
-        //                     window.set_taskbar_icon(Some(icon));
-        //                 }
-        //             },
-        //             Err(e) => warn!("error setting window icon: {}", e)
-        //         }
-        //     }
-        //     Err(e) => warn!("error setting window icon: {}", e)
-        // }
-
+    
         let s = Self {
             window,
             window_creation_barrier,
@@ -110,8 +73,8 @@ impl<'window> GameWindow<'window> {
             runtime,
             
             game_event_sender: Arc::new(game_event_sender),
-            window_event_receiver,
-            render_event_receiver,
+            // window_event_receiver,
+            render_data: Vec::new(),
             
             frametime_timer: Instant::now(),
             input_timer: Instant::now(),
@@ -131,21 +94,12 @@ impl<'window> GameWindow<'window> {
         s
     }
 
-    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) {
-        // fire event so things get moved around correctly
-        // what??
-        let settings = Settings::get().clone();
-        GlobalValueManager::update(Arc::new(WindowSize(settings.window_size.into())));
-
+    pub fn run(mut self, event_loop: winit::event_loop::EventLoop<Game2WindowEvent>) {
+        WINDOW_PROXY.set(event_loop.create_proxy()).unwrap();
+        GlobalValueManager::update(Arc::new(WindowSize(self.settings.window_size.into())));
         self.settings.update();
 
         event_loop.run_app(&mut self).expect("nope");
-
-        // event_loop.run_app(move |event, _, control_flow| {
-        //     control_flow.set_wait_timeout(Duration::from_nanos(5));
-        //     if self.close_pending { *control_flow = ControlFlow::Exit; }
-
-        // });
     }
     
     fn send_game_event(&mut self, event: Window2GameEvent) {
@@ -188,48 +142,11 @@ impl<'window> GameWindow<'window> {
             }
         }
 
-        if let Ok(event) = self.window_event_receiver.try_recv() {
-            match event {
-                Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
-                Game2WindowEvent::ShowCursor => { 
-                    self.mouse_helper.set_system_cursor(true);
-                    self.window().set_cursor_visible(true);
-                }
-                Game2WindowEvent::HideCursor => { 
-                    self.mouse_helper.set_system_cursor(false);
-                    self.window().set_cursor_visible(false);
-                }
-                // Game2WindowEvent::Redraw => {
-                //     self.redraw_requested = Instant::now();
-                //     self.window.request_redraw();
-                // }
-
-                Game2WindowEvent::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
-
-                Game2WindowEvent::CloseGame => { 
-                    self.close_pending = true;
-                    // try send because the game might already be dead at this point
-                    let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
-                }
-
-                Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(Box::new(move |(window_data, [width, height])| { let _ = fuze.send((window_data, width, height)); })),
-                Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
-
-                Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
-            }
-        }
 
         // increment input frametime stuff
         let frametime = (self.input_timer.elapsed_and_reset() * 100.0).floor() as u32;
         INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
         INPUT_COUNT.fetch_add(1, SeqCst);
-
-        // // request a redraw. the render code is run in the event loop
-        // self.window.request_redraw();
-        
-        if let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) {
-            self.window().request_redraw();
-        }
 
         // check gamepad events
         while let Some(event) = self.controller_input.next_event() {
@@ -315,8 +232,6 @@ impl<'window> GameWindow<'window> {
         let inner_size = self.window().inner_size();
         if inner_size.width == 0 || inner_size.height == 0 { return }
 
-        // let Ok(_) = NEW_RENDER_DATA_AVAILABLE.compare_exchange(true, false, Acquire, Relaxed) else { return };
-        let data = self.render_event_receiver.read();
 
         let frametime = (self.frametime_timer.elapsed_and_reset() * 100.0).floor() as u32;
         RENDER_FRAMETIME.fetch_max(frametime, SeqCst);
@@ -325,7 +240,7 @@ impl<'window> GameWindow<'window> {
         let transform = Matrix::identity();
         
         self.graphics.begin_render();
-        data.iter().for_each(|d| {
+        self.render_data.iter().for_each(|d| {
             let scissor = d.get_scissor();
             if let Some(scissor) = scissor {
                 self.graphics.push_scissor(scissor);
@@ -360,6 +275,7 @@ impl<'window> GameWindow<'window> {
             use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
             let handle = match self.window.raw_window_handle() {
                 RawWindowHandle::Win32(h) => h,
+                // RawWindowHandle::WinRt(h) => h,
                 _ => unreachable!(),
             };
             Some(handle.hwnd)
@@ -505,7 +421,9 @@ impl<'window> GameWindow<'window> {
     pub fn send_event(event: Game2WindowEvent) {
         // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
         #[cfg(feature="graphics")]
-        WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
+        let Some(proxy) = WINDOW_PROXY.get() else { return };
+        let _ = proxy.send_event(event);
+        // WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 
     pub fn refresh_monitors() {
@@ -572,7 +490,7 @@ impl<'window> GameWindow<'window> {
 }
 
 
-impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window> {
+impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'window> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.get().is_some() { return }
         event_loop.set_control_flow(ControlFlow::Poll);
@@ -584,14 +502,37 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
             .with_inner_size(to_size(self.settings.window_size.into()))
         ).expect("Unable to create window");
         window.set_cursor_visible(false);
-        info!("Window created");
+
+
+        // set window icon
+        match image::open("resources/icon-small.png") {
+            Ok(image) => {
+                let width = image.width();
+                let height = image.height();
+                
+                match winit::window::Icon::from_rgba(image.to_rgba8().into_vec(), width, height) {
+                    Ok(icon) => {
+                        window.set_window_icon(Some(icon.clone()));
+                        
+                        #[cfg(target_os="windows")] {
+                            use winit::platform::windows::WindowExtWindows;
+                            window.set_taskbar_icon(Some(icon));
+                        }
+                    }
+                    Err(e) => warn!("error setting window icon: {e}")
+                }
+            }
+            Err(e) => warn!("error setting window icon: {e}")
+        }
 
         self.window.set(window).unwrap();
+        info!("Window created");
 
 
         self.runtime.clone().block_on(async {
             let graphics = GraphicsState::new(self.window(), &self.settings).await;
             self.graphics = Box::new(graphics);
+            debug!("done graphics");
             
             // let the game side know the window is good to go
             self.window_creation_barrier.wait().await;
@@ -611,8 +552,40 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
         self.update();
     }
 
-    fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, _event: ()) {
-        self.window().request_redraw();
+    fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, event: Game2WindowEvent) {
+        match event {
+            Game2WindowEvent::LoadImage(event) => self.run_load_image_event(event),
+            Game2WindowEvent::ShowCursor => { 
+                self.mouse_helper.set_system_cursor(true);
+                self.window().set_cursor_visible(true);
+            }
+            Game2WindowEvent::HideCursor => { 
+                self.mouse_helper.set_system_cursor(false);
+                self.window().set_cursor_visible(false);
+            }
+            // Game2WindowEvent::Redraw => {
+            //     self.redraw_requested = Instant::now();
+            //     self.window.request_redraw();
+            // }
+
+            Game2WindowEvent::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
+
+            Game2WindowEvent::CloseGame => { 
+                self.close_pending = true;
+                // try send because the game might already be dead at this point
+                let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
+            }
+
+            Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(Box::new(move |(window_data, [width, height])| { let _ = fuze.send((window_data, width, height)); })),
+            Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
+
+            Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
+
+            Game2WindowEvent::RenderData(data) => {
+                self.render_data = data;
+                self.window().request_redraw();
+            }
+        }
     }
 
     fn device_event(
@@ -625,13 +598,13 @@ impl<'window> winit::application::ApplicationHandler<()> for GameWindow<'window>
         let event = match event {
             DeviceEvent::MouseMotion { delta: (x, y) } => {
                 if let Some(new_pos) = self.mouse_helper.device_mouse_moved((x as f32, y as f32), self.window()) {
-                self.post_cursor_move();
-                Some(Window2GameEvent::MouseMove(new_pos))
-            } else {
-                None
-            }
+                    self.post_cursor_move();
+                    Some(Window2GameEvent::MouseMove(new_pos))
+                } else {
+                    None
+                }
 
-        }
+            }
 
             _ => None 
         };
