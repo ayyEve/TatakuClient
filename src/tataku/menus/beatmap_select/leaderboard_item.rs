@@ -94,8 +94,8 @@ impl LeaderboardItem {
             theme: ThemeHelper::new(),
         }
     }
-    pub async fn load_image(mut self) -> Self {
-        self.image = SkinManager::get_texture("menu-button-background", true).await;
+    pub async fn load_image(mut self, image: Image) -> Self {
+        self.image = Some(image); // = SkinManager::get_texture("menu-button-background", true).await;
         self
     }
 }
@@ -175,4 +175,6 @@ impl ScrollableItem for LeaderboardItem {
             self.font.clone()
         ));
     }
+
+
 }

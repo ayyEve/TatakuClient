@@ -209,12 +209,13 @@ impl SpectatorManager {
     // }
 
 
-    pub async fn key_down(&mut self, key:Key, _mods:KeyModifiers, game:&mut Game) {
+    pub async fn key_down(&mut self, key:Key, _mods:KeyModifiers) {
         // check if we need to close something
         if key == Key::Escape {
 
+            self.actions.push(MenuMenuAction::SetMenu(format!("main_menu")));
             // let menu = game.menus.get("main").unwrap().clone();
-            game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
+            // game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
             // resume song if paused
 
             //TODO: !!!!!!!1

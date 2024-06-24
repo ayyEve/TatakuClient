@@ -12,7 +12,7 @@ pub struct ElementDef {
 }
 impl ElementDef {
     #[async_recursion::async_recursion]
-    pub async fn build(&self) -> Box<BuiltElementDef> {
+    pub async fn build(&self, skin_manager: &mut SkinManager) -> Box<BuiltElementDef> {
         let mut built = BuiltElementDef {
             element: self.clone(),
             children: Vec::new(),
@@ -36,24 +36,24 @@ impl ElementDef {
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
                 => for i in elements.iter_mut() {
-                    built.children.push(i.build().await)
+                    built.children.push(i.build(skin_manager).await)
                 }
 
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
-                => built.children.push(element.build().await),
+                => built.children.push(element.build(skin_manager).await),
 
             ElementIdentifier::StyledContent { element, image, built_image, .. } 
                 => {
                     if let Some(image) = image {
-                        *built_image = SkinManager::get_texture(image, true).await;
+                        *built_image = skin_manager.get_texture(image, true).await;
                     }
-                    built.children.push(element.build().await)
+                    built.children.push(element.build(skin_manager).await)
                 },
             
             ElementIdentifier::Button { element, action, .. } 
                 => {
                     action.build();
-                    built.children.push(element.build().await)
+                    built.children.push(element.build(skin_manager).await)
                 }
 
             ElementIdentifier::Text { text, .. } => {
@@ -70,14 +70,14 @@ impl ElementDef {
             ElementIdentifier::Conditional { cond, if_true, if_false } => {
                 cond.build();
 
-                built.children.push(if_true.build().await);
+                built.children.push(if_true.build(skin_manager).await);
                 if let Some(if_false) = if_false {
-                    built.children.push(if_false.build().await);
+                    built.children.push(if_false.build(skin_manager).await);
                 }
             }
 
             ElementIdentifier::List { element, .. } => {
-                built.children.push(element.build().await);
+                built.children.push(element.build(skin_manager).await);
             }
 
             ElementIdentifier::Dropdown { on_select, .. } => {

@@ -18,7 +18,7 @@ impl GameMode for NoMode {
     async fn fit_to_area(&mut self, _:Vector2, _:Vector2) {}
     async fn force_update_settings(&mut self, _: &Settings) {}
     
-    async fn reload_skin(&mut self) {}
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
     async fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
     

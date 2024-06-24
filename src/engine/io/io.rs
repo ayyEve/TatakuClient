@@ -114,44 +114,6 @@ impl Io {
 }
 
 
-
-/// load an image file to an image struct
-/// non-main thread safe
-pub async fn load_image(path: impl AsRef<str> + Send + Sync, use_grayscale: bool, base_scale: Vector2) -> Option<Image> {
-    let path2 = path.as_ref().to_owned();
-
-    let Ok(buf) = Io::read_file_async(&path2).await else { return None };
-
-    match image::load_from_memory(&buf) {
-        Ok(img) => {
-            let mut img = img.into_rgba8();
-
-            if use_grayscale {
-                for i in img.pixels_mut() {
-                    let [r, g, b, _a] = &mut i.0;
-
-                    let rf = *r as f32 / 255.0;
-                    let gf = *g as f32 / 255.0;
-                    let bf = *b as f32 / 255.0;
-
-                    let gray = 0.299 * rf + 0.587 * gf + 0.114 * bf;
-
-                    *r = (gray * 255.0) as u8;
-                    *g = (gray * 255.0) as u8;
-                    *b = (gray * 255.0) as u8;
-                }
-            }
-
-            let tex = GameWindow::load_texture_data(img).await.expect("no atlas");
-            Some(Image::new(Vector2::ZERO, tex, base_scale))
-        }
-        Err(e) => {
-            NotificationManager::add_error_notification(format!("Error loading image: {}", path.as_ref()), e).await;
-            None
-        }
-    }
-}
-
 /// download a file from `url` to `download_path`
 pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRef<Path>) -> TatakuResult<()> {
     let bytes = reqwest::get(url).await?.bytes().await?;

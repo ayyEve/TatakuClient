@@ -6,7 +6,10 @@ pub trait OsuHitObject: HitObject {
     /// return the window-scaled coords of this object at time
     fn pos_at(&self, time:f32) -> Vector2;
 
-    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {Vec::new()}
+    fn new_combo(&self) -> bool;
+    fn set_combo_color(&mut self, color: Color);
+
+    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> { Vec::new() }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
     async fn set_settings(&mut self, settings: Arc<OsuSettings>);

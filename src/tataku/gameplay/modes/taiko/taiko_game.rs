@@ -921,27 +921,27 @@ impl GameMode for TaikoGame {
 
     }
     
-    async fn reload_skin(&mut self) {
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         let radius = self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult;
         let scale = Vector2::ONE * (radius * 2.0) / TAIKO_HIT_INDICATOR_TEX_SIZE.x;
 
-        if let Some(don) = &mut SkinManager::get_texture("taiko-drum-inner", true).await {
+        if let Some(mut don) = skin_manager.get_texture("taiko-drum-inner", true).await {
             don.origin.x = (don.tex_size() / don.base_scale).x;
             don.pos = self.playfield.hit_position;
             don.scale = scale;
             self.left_don_image = Some(don.clone());
             
-            let mut rdon = don.clone();
+            let mut rdon = don;
             rdon.scale *= Vector2::new(-1.0, 1.0);
             self.right_don_image = Some(rdon);
         }
-        if let Some(kat) = &mut SkinManager::get_texture("taiko-drum-outer", true).await {
+        if let Some(mut kat) = skin_manager.get_texture("taiko-drum-outer", true).await {
             kat.origin.x = 0.0;
             kat.pos = self.playfield.hit_position;
             kat.scale = scale;
             self.right_kat_image = Some(kat.clone());
 
-            let mut lkat = kat.clone(); 
+            let mut lkat = kat; 
             lkat.scale *= Vector2::new(-1.0, 1.0);
             self.left_kat_image = Some(lkat);
         }
@@ -949,7 +949,7 @@ impl GameMode for TaikoGame {
         self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
 
         for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
-            n.reload_skin().await;
+            n.reload_skin(skin_manager).await;
         }
     }
 

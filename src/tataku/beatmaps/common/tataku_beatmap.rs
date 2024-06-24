@@ -17,5 +17,5 @@ pub trait TatakuBeatmap:Send+Sync {
 
     fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
 
-    async fn get_animation(&self) -> Option<Box<dyn BeatmapAnimation>> { None }
+    async fn get_animation(&self, skin_manager: &mut SkinManager) -> Option<Box<dyn BeatmapAnimation>> { None }
 }

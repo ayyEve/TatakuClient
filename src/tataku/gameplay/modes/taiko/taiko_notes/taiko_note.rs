@@ -95,8 +95,8 @@ impl HitObject for TaikoNote {
         self.hit_time = 0.0;
     }
 
-    async fn reload_skin(&mut self) {
-        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher).await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.image = HitCircleImageHelper::new(&self.settings, self.hit_type, self.finisher, skin_manager).await;
     }
 }
 impl TaikoHitObject for TaikoNote {

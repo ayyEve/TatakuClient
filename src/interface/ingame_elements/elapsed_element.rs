@@ -28,6 +28,7 @@ impl ElapsedElement {
     }
 }
 
+#[async_trait]
 impl InnerUIElement for ElapsedElement {
     fn display_name(&self) -> &'static str { "Time Elapsed" }
     fn get_bounds(&self) -> Bounds { self.elapsed_bounds }
@@ -63,4 +64,7 @@ impl InnerUIElement for ElapsedElement {
         text.center_text(&bounds);
         list.push(text);
     }
+
+
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

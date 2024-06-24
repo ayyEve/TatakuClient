@@ -33,6 +33,7 @@ impl JudgementBarElement {
         }
     }
 }
+#[async_trait]
 impl InnerUIElement for JudgementBarElement {
     fn display_name(&self) -> &'static str { "Judgement Bar" }
 
@@ -105,4 +106,7 @@ impl InnerUIElement for JudgementBarElement {
 
         
     }
+
+
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

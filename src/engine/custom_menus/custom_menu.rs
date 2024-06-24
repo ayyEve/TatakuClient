@@ -8,7 +8,7 @@ pub struct CustomMenu {
     pub events: Vec<CustomMenuEvent>,
 }
 impl CustomMenu {
-    pub async fn build(&self) -> BuiltCustomMenu {
+    pub async fn build(&self, skin_manager: &mut SkinManager) -> BuiltCustomMenu {
         let mut components = Vec::new();
         for i in self.components.iter() {
             components.push(i.build().await);
@@ -25,7 +25,7 @@ impl CustomMenu {
 
         BuiltCustomMenu {
             id: self.id.clone(),
-            element: *self.element.build().await,
+            element: *self.element.build(skin_manager).await,
             actions: ActionQueue::new(),
             components,
             events,

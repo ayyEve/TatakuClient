@@ -33,14 +33,14 @@ pub struct CursorManager {
     right_pressed: bool,
 
     settings: SettingsHelper,
-    current_skin: CurrentSkinHelper,
+    current_skin: Arc<SkinSettings>,
 
     ripples: Vec<TransformGroup>,
     time: Instant,
 }
 
 impl CursorManager {
-    pub async fn new() -> Self {
+    pub async fn new(skin: Arc<SkinSettings>) -> Self {
         let (sender, event_receiver) = channel(1000);
         CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
 
@@ -51,7 +51,7 @@ impl CursorManager {
             cursor_images: HashMap::new(),
             cursor_mode: CursorMode::Normal,
             
-            current_skin: CurrentSkinHelper::new(),
+            current_skin: skin,
             cursor_rotation: 0.0,
 
             event_receiver,
@@ -68,8 +68,9 @@ impl CursorManager {
     }
 
 
-    pub async fn reload_skin(&mut self) {
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.cursor_images.clear();
+        self.current_skin = skin_manager.skin().clone();
 
         for mode in [
             CursorMode::Normal,
@@ -79,7 +80,7 @@ impl CursorManager {
             CursorMode::Pointer,
             CursorMode::Text
         ] {
-            if let Some(image) = SkinManager::get_texture(mode.tex_name(), true).await {
+            if let Some(image) = skin_manager.get_texture(mode.tex_name(), true).await {
                 self.cursor_images.insert(mode, image);
             }
         }
@@ -105,11 +106,6 @@ impl CursorManager {
                 CursorEvent::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
                 CursorEvent::SetVisible(show) => self.visible = show,
             }
-        }
-
-
-        if self.current_skin.update() {
-            self.reload_skin().await;
         }
 
         // if self.current_skin.cursor_rotate {

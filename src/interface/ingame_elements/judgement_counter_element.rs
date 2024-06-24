@@ -11,11 +11,12 @@ impl JudgementCounterElement {
     pub async fn new() -> Self {
         Self {
             hit_counts: Vec::new(),
-            button_image: SkinManager::get_texture("inputoverlay-key", true).await,
+            button_image: None,
             colors: HashMap::new()
         }
     }
 }
+#[async_trait]
 impl InnerUIElement for JudgementCounterElement {
     fn display_name(&self) -> &'static str { "Judgement Counter" }
 
@@ -95,5 +96,9 @@ impl InnerUIElement for JudgementCounterElement {
 
             list.push(text);
         }
+    }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.button_image = skin_manager.get_texture("inputoverlay-key", true).await
     }
 }

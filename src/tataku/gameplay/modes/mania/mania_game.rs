@@ -131,7 +131,7 @@ impl ManiaGame {
         }
     }
     
-    async fn load_col_images(&mut self) {
+    async fn load_col_images(&mut self, skin_manager: &mut SkinManager) {
         let Some(settings) = &self.mania_skin_settings else { return };
         self.key_images_down.clear();
         self.key_images_up.clear();
@@ -149,7 +149,7 @@ impl ManiaGame {
                 (&settings.key_image_d, &mut self.key_images_down),
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
-                let Some(mut img) = SkinManager::get_texture(path, true).await else { continue };
+                let Some(mut img) = skin_manager.get_texture(path, true).await else { continue };
                 self.playfield.column_image(&mut img);
                 img.pos = Vector2::new(x, y);
 
@@ -313,8 +313,7 @@ impl GameMode for ManiaGame {
         let auto_helper = ManiaAutoHelper::new();
         let window_size = WindowSize::get();
 
-        let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
-        let mut mania_skin_settings = None;
+        // let all_mania_skin_settings = &SkinManager::skin().await.mania_settings;
         let map_preferences = Database::get_beatmap_mode_prefs(metadata.beatmap_hash, &"mania".to_owned()).await;
         
         // windows
@@ -398,18 +397,19 @@ impl GameMode for ManiaGame {
                     let tp = timing_points.timing_point_at(time);
                     Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
                 };
-                for i in all_mania_skin_settings.iter() {
-                    if i.keys == column_count {
-                        mania_skin_settings = Some(Arc::new(i.clone()));
-                        break;
-                    }
-                }
+                // for i in all_mania_skin_settings.iter() {
+                //     if i.keys == column_count {
+                //         mania_skin_settings = Some(Arc::new(i.clone()));
+                //         break;
+                //     }
+                // }
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
                     Bounds::new(Vector2::ZERO, window_size.0), 
                     column_count,
-                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+                    0.0,
+                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
 
@@ -431,7 +431,7 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield,
-                    mania_skin_settings,
+                    mania_skin_settings: None,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
                     key_images_up: HashMap::new(),
@@ -512,17 +512,18 @@ impl GameMode for ManiaGame {
             }
             Beatmap::Quaver(beatmap) => {
                 let column_count = beatmap.mode.into();
-                for i in all_mania_skin_settings.iter() {
-                    if i.keys == column_count {
-                        mania_skin_settings = Some(Arc::new(i.clone()));
-                    }
-                }
+                // for i in all_mania_skin_settings.iter() {
+                //     if i.keys == column_count {
+                //         mania_skin_settings = Some(Arc::new(i.clone()));
+                //     }
+                // }
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
                     Bounds::new(Vector2::ZERO, window_size.0), 
                     column_count,
-                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
+                    0.0
+                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default(),
                 ));
 
                 let get_hitsounds = || {
@@ -547,7 +548,7 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield,
-                    mania_skin_settings,
+                    mania_skin_settings: None,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
                     
@@ -577,7 +578,7 @@ impl GameMode for ManiaGame {
                             x,
                             s.sv_mult,
                             s.playfield.clone(),
-                            s.mania_skin_settings.clone(),
+                            None,
                             get_hitsounds()
                         ).await));
                     } else {
@@ -588,7 +589,7 @@ impl GameMode for ManiaGame {
                             x,
                             s.sv_mult,
                             s.playfield.clone(),
-                            s.mania_skin_settings.clone(),
+                            None,
                             get_hitsounds()
                         ).await));
                     }
@@ -600,17 +601,18 @@ impl GameMode for ManiaGame {
             Beatmap::Stepmania(beatmap) => {
                 // stepmania maps are always 4k
                 let column_count = 4;
-                for i in all_mania_skin_settings.iter() {
-                    if i.keys == column_count {
-                        mania_skin_settings = Some(Arc::new(i.clone()));
-                    }
-                }
+                // for i in all_mania_skin_settings.iter() {
+                //     if i.keys == column_count {
+                //         mania_skin_settings = Some(Arc::new(i.clone()));
+                //     }
+                // }
 
                 let playfield = Arc::new(ManiaPlayfield::new(
                     playfields[(column_count - 1) as usize].clone(), 
                     Bounds::new(Vector2::ZERO, window_size.0), 
                     column_count,
-                    mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
+                    0.0
+                    // mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
                 ));
 
                 let get_hitsounds = || {
@@ -635,7 +637,7 @@ impl GameMode for ManiaGame {
 
                     auto_helper,
                     playfield,
-                    mania_skin_settings,
+                    mania_skin_settings: None,
                     map_preferences,
                     game_settings: Arc::new(game_settings),
                     
@@ -985,9 +987,9 @@ impl GameMode for ManiaGame {
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     
-    async fn reload_skin(&mut self) {
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         // reload skin settings
-        let all_mania_skin_settings = &SkinManager::current_skin_config().await.mania_settings;
+        let all_mania_skin_settings = &skin_manager.skin().mania_settings;
         for i in all_mania_skin_settings.iter() {
             if i.keys == self.column_count {
                 self.mania_skin_settings = Some(Arc::new(i.clone()));
@@ -997,11 +999,11 @@ impl GameMode for ManiaGame {
         
         for c in self.columns.iter_mut() {
             for n in c.iter_mut() {
-                n.reload_skin().await;
+                n.reload_skin(skin_manager).await;
             }
         }
         
-        self.load_col_images().await;
+        self.load_col_images(skin_manager).await;
     }
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) {

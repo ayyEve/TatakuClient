@@ -72,7 +72,7 @@ impl UTypingGame {
 
 #[async_trait]
 impl GameMode for UTypingGame {
-    async fn new(beatmap:&Beatmap, diff_calc_only:bool) -> TatakuResult<Self> {
+    async fn new(beatmap:&Beatmap, _:bool) -> TatakuResult<Self> {
         let settings = Arc::new(Settings::get().taiko_settings.clone());
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
 
@@ -112,7 +112,6 @@ impl GameMode for UTypingGame {
                         note.text.clone(), 
                         settings.clone(), 
                         playfield.clone(),
-                        diff_calc_only
                     ).await);
                 }
 
@@ -126,7 +125,6 @@ impl GameMode for UTypingGame {
                         note.text.clone(), 
                         settings.clone(), 
                         playfield.clone(),
-                        diff_calc_only
                     ).await);
                 }
             }
@@ -405,7 +403,11 @@ impl GameMode for UTypingGame {
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
-    async fn reload_skin(&mut self) {}
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        for i in self.notes.iter_mut() {
+            i.reload_skin(skin_manager).await;
+        }
+    }
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) {}
     

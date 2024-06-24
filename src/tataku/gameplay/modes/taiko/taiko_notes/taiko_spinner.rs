@@ -117,8 +117,8 @@ impl HitObject for TaikoSpinner {
         self.complete = false;
     }
     
-    async fn reload_skin(&mut self) {
-        self.spinner_image = SkinManager::get_texture("spinner-warning", true).await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.spinner_image = skin_manager.get_texture("spinner-warning", true).await;
     }
 }
 impl TaikoHitObject for TaikoSpinner {

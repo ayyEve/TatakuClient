@@ -165,9 +165,6 @@ async fn startup() {
 
     // finish setting up
     setup().await;
-
-    // init skin manager
-    SkinManager::init().await;
 }
 
 async fn setup() {

@@ -136,7 +136,7 @@ impl DirectMenu {
     }
 
     /// go back to the main menu
-    async fn back(&mut self, game:&mut Game) {
+    async fn back(&mut self) {
         self.actions.push(SongAction::Set(SongMenuSetAction::PopQueue));
         self.actions.push(SongAction::Play);
 
@@ -151,7 +151,8 @@ impl DirectMenu {
         // }
 
         // let menu = game.menus.get("main").unwrap().clone();
-        game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
+        self.actions.push(MenuMenuAction::SetMenu("main_menu".to_owned()));
+        // game.queue_state_change(GameState::(Box::new(MainMenu::new().await)));
     }
 }
 

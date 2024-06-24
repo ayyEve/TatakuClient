@@ -21,14 +21,14 @@ pub struct ApproachCircle {
     pub easing_type: Easing
 }
 impl ApproachCircle {
-    pub fn new(base_pos:Vector2, time: f32, radius:f32, preempt:f32, color: Color, scaling_helper: Arc<ScalingHelper>) -> Self {
+    pub fn new(base_pos:Vector2, time: f32, radius:f32, preempt:f32, scaling_helper: Arc<ScalingHelper>) -> Self {
         Self {
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),
             time,
             radius,
             preempt,
-            color,
+            color: Color::WHITE,
             scaling_helper,
 
             alpha: 0.0,
@@ -42,8 +42,8 @@ impl ApproachCircle {
         self.pos = self.scaling_helper.scale_coords(self.base_pos);
         self.radius = new_radius;
     }
-    pub async fn reload_texture(&mut self) {
-        self.image = SkinManager::get_texture("approachcircle", true).await;
+    pub async fn reload_texture(&mut self, skin_manager: &mut SkinManager) {
+        self.image = skin_manager.get_texture("approachcircle", true).await;
     }
 
     pub fn update(&mut self, map_time: f32) {
@@ -57,6 +57,9 @@ impl ApproachCircle {
 
     pub fn set_alpha(&mut self, alpha: f32) {
         self.alpha = alpha;
+    }
+    pub fn set_color(&mut self, color: Color) {
+        self.color = color;
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {

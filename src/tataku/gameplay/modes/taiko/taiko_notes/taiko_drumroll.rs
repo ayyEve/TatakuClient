@@ -148,8 +148,8 @@ impl HitObject for TaikoDrumroll {
         self.end_x = 0.0;
     }
     
-    async fn reload_skin(&mut self) {
-        let mut middle_image = SkinManager::get_texture("taiko-roll-middle", true).await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        let mut middle_image = skin_manager.get_texture("taiko-roll-middle", true).await;
         if let Some(image) = &mut middle_image {
             image.origin.x = 0.0;
             image.color = Color::YELLOW;
@@ -159,7 +159,7 @@ impl HitObject for TaikoDrumroll {
         }
         self.middle_image = middle_image;
 
-        let mut end_image = SkinManager::get_texture("taiko-roll-end", true).await;
+        let mut end_image = skin_manager.get_texture("taiko-roll-end", true).await;
         if let Some(image) = &mut end_image {
             image.origin.x = 0.0;
             image.color = Color::YELLOW;

@@ -15,7 +15,7 @@ impl SpectatorsElement {
         }
     }
 }
-
+#[async_trait]
 impl InnerUIElement for SpectatorsElement {
     fn display_name(&self) -> &'static str { "Spectators" }
 
@@ -59,4 +59,6 @@ impl InnerUIElement for SpectatorsElement {
             ))
         }
     }
+
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

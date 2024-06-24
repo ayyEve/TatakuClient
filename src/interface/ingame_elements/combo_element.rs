@@ -8,13 +8,13 @@ pub struct ComboElement {
 impl ComboElement {
     pub async fn new(combo_bounds: Bounds) -> Self {
         Self {
-            combo_image: SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0).await.ok(),
+            combo_image: None,
             combo_bounds,
             combo: 0,
         }
     }
 }
-
+#[async_trait]
 impl InnerUIElement for ComboElement {
     fn display_name(&self) -> &'static str { "Combo" }
 
@@ -48,4 +48,9 @@ impl InnerUIElement for ComboElement {
             list.push(combo_text);
         }
     }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.combo_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0, skin_manager).await.ok()
+    }
 }
+

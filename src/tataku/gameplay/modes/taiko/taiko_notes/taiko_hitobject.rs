@@ -63,7 +63,7 @@ pub struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    pub async fn new(settings: &Arc<TaikoSettings>, hit_type: HitType, finisher: bool) -> Option<Self> {
+    pub async fn new(settings: &Arc<TaikoSettings>, hit_type: HitType, finisher: bool, skin_manager: &mut SkinManager) -> Option<Self> {
         let color = match hit_type {
             HitType::Don => settings.don_color.color,
             HitType::Kat => settings.kat_color.color,
@@ -75,7 +75,7 @@ impl HitCircleImageHelper {
             (settings.note_radius, "taikohitcircle")
         };
 
-        let mut circle = SkinManager::get_texture(hitcircle, true).await;
+        let mut circle = skin_manager.get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
             let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 
@@ -84,7 +84,7 @@ impl HitCircleImageHelper {
             circle.color = color;
         }
 
-        let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
+        let mut overlay = skin_manager.get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
             let scale = Vector2::ONE * (radius * 2.0) / TAIKO_NOTE_TEX_SIZE;
 

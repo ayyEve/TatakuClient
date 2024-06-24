@@ -35,8 +35,8 @@ pub struct OsuCursor {
     left_pressed: bool,
     right_pressed: bool,
 
-    skin: CurrentSkinHelper,
     settings: SettingsHelper,
+    skin: SkinSettings,
 
     ripples: Vec<TransformGroup>,
     time: Instant,
@@ -47,7 +47,10 @@ pub struct OsuCursor {
 }
 
 impl OsuCursor {
-    pub async fn new(note_radius: f32) -> Self {
+    pub async fn new(
+        note_radius: f32,
+        skin: SkinSettings,
+    ) -> Self {
         let a = PI / 4.0;
         let builder = EmitterBuilder::new()
             .spawn_delay(20.0)
@@ -65,7 +68,7 @@ impl OsuCursor {
         let left_emitter = builder.angle(EmitterVal::init_only(-a-PI..a-PI)).build(0.0);
 
         let settings = SettingsHelper::new();
-        let skin = CurrentSkinHelper::new();
+        // let skin = CurrentSkinHelper::new();
 
         Self {
             pos: Vector2::ZERO,
@@ -338,10 +341,10 @@ impl CustomCursor for OsuCursor {
     }
 
 
-    async fn reload_skin(&mut self) {
-        self.cursor_image = SkinManager::get_texture("cursor", true).await;
-        self.cursor_trail_image = SkinManager::get_texture("cursortrail", true).await;
-        self.cursor_middle_image = SkinManager::get_texture("cursormiddle", false).await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.cursor_image = skin_manager.get_texture("cursor", true).await;
+        self.cursor_trail_image = skin_manager.get_texture("cursortrail", true).await;
+        self.cursor_middle_image = skin_manager.get_texture("cursormiddle", false).await;
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if self.cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
@@ -356,7 +359,7 @@ impl CustomCursor for OsuCursor {
         self.cursor_rotation = 0.0;
 
         
-        let tex = SkinManager::get_texture("star2", true).await.map(|t|t.tex).unwrap_or_default();
+        let tex = skin_manager.get_texture("star2", true).await.map(|t|t.tex).unwrap_or_default();
         self.left_emitter.image = tex;
         self.right_emitter.image = tex;
     }

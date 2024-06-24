@@ -21,8 +21,7 @@ pub struct MenuVisualization {
     bar_height: f32,
     rotation: f32,
 
-    cookie: Image,
-    unload_cookie: bool,
+    cookie: Option<Image>,
     // initial_inner_radius: f32,
     current_inner_radius: f32,
 
@@ -46,22 +45,12 @@ impl MenuVisualization {
         let window_size = WindowSizeHelper::new();
         let initial_inner_radius = window_size.y / 6.0;
 
-        let mut unload_cookie = false;
-        let mut cookie = SkinManager::get_texture("menu-osu", true).await;
-        if cookie.is_none() {
-            unload_cookie = true;
-            cookie = load_image("./resources/icon.png", false, Vector2::ONE).await;
-        }
-
-        let cookie = cookie.expect("no cookie image?");
-
         Self {
             rotation: 0.0,
             data: Vec::new(),
             timer: Instant::now(),
             other_timer: Instant::now(),
-            cookie,
-            unload_cookie,
+            cookie: None,
 
             bar_height: 1.0,
             // initial_inner_radius,
@@ -117,14 +106,15 @@ impl MenuVisualization {
     }
 
     pub fn draw_cookie(&mut self, list: &mut RenderableCollection) {
+        let Some(mut cookie) = self.cookie.clone() else { return };
+
         let pos = self.bounds_center();
         let inner_radius = self.inner_radius();
 
-        let mut cookie = self.cookie.clone();
         cookie.pos = pos;
         cookie.rotation = self.rotation * 2.0;
         // cookie.set_size(Vector2::ONE * self.initial_inner_radius);
-        cookie.set_size(Vector2::ONE * inner_radius * 2.05 * if self.unload_cookie {1.0} else {1.2});
+        cookie.set_size(Vector2::ONE * inner_radius * 2.05);
         list.push(cookie);
     }
 
@@ -251,17 +241,11 @@ impl Visualization for MenuVisualization {
         });
     }
 
-    async fn reload_skin(&mut self) {
-        if self.unload_cookie {
-            GameWindow::free_texture(self.cookie.tex);
-        }
-
-        if let Some(cookie) = SkinManager::get_texture("menu-osu", true).await {
-            self.cookie = cookie;
-            self.unload_cookie = false;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        if let Some(cookie) = skin_manager.get_texture("menu-osu", true).await {
+            self.cookie = Some(cookie);
         } else {
-            self.cookie = load_image("./resources/icon.png", false, Vector2::ONE).await.unwrap();
-            self.unload_cookie = true;
+            self.cookie = skin_manager.get_texture_noskin("./resources/icon.png", false).await;
         }
     }
 
@@ -277,14 +261,5 @@ impl Visualization for MenuVisualization {
         self.data.clear();
         self.ripples.clear();
         // self.timer = Instant::now();
-    }
-}
-
-// free up the image from the texture atlas
-impl Drop for MenuVisualization {
-    fn drop(&mut self) {
-        if self.unload_cookie {
-            GameWindow::free_texture(self.cookie.tex);
-        }
     }
 }

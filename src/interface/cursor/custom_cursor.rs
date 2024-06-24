@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait CustomCursor {
-    async fn reload_skin(&mut self);
     async fn update(&mut self, time: f32);
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager);
 
     async fn draw_above(&mut self, list: &mut RenderableCollection);
     async fn draw_below(&mut self, _list: &mut RenderableCollection) {}

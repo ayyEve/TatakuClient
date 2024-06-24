@@ -6,7 +6,6 @@ use super::prelude::*;
 const STACK_LENIENCY:u32 = 3;
 pub const PREEMPT_MIN:f32 = 450.0;
 
-
 pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn OsuHitObject>>,
@@ -38,6 +37,7 @@ pub struct OsuGame {
 
     /// list of note_indices which are new_combos
     new_combos: Vec<usize>,
+    beatmap_combo_colors: Vec<Color>,
 
     use_controller_cursor: bool,
     window_size: Arc<WindowSize>,
@@ -278,6 +278,26 @@ impl OsuGame {
 
     }
 
+    fn apply_combo_colors(&mut self, colors: Vec<Color>) {
+        let mut combo_num = 0;
+        let mut combo_change = 0;
+
+        for note in self.notes.iter_mut() {
+            if note.new_combo() { combo_num = 0 }
+
+            // if new combo, increment new combo counter
+            if combo_num == 0 {
+                combo_change += 1;
+            }
+
+            // get color
+            let color = colors[(combo_change - 1) % colors.len()];
+            note.set_combo_color(color);
+
+            // update combo number
+            combo_num += 1;
+        }
+    }
 }
 
 #[async_trait]
@@ -295,28 +315,16 @@ impl GameMode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock)).await);
 
-        let skin_combo_colors = &SkinManager::current_skin_config().await.combo_colors;
-        let mut combo_colors = if skin_combo_colors.len() > 0 {
-            skin_combo_colors.clone()
-        } else {
-            settings.combo_colors.iter().map(|c|Color::from_hex(c)).collect()
-        };
-
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
-        let follow_point_image = SkinManager::get_texture("followpoint", true).await;
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
-        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0).await;
+        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default()).await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
                 let std_settings = Arc::new(settings);
 
-                if std_settings.use_beatmap_combo_colors && beatmap.combo_colors.len() > 0 {
-                    combo_colors = beatmap.combo_colors.clone();
-                }
-                
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time, true);
                     Hitsound::from_hitsamples(hitsound, hitsamples, true, tp)
@@ -343,13 +351,15 @@ impl GameMode for OsuGame {
                     new_combos: Vec::new(),
                     stack_leniency,
                     window_size,
-                    follow_point_image,
+                    follow_point_image: None,
                     judgment_helper,
                     metadata,
                     mods,
                     timing_points: map.get_timing_points(),
                     smoke_emitter: None,
                     cursor,
+
+                    beatmap_combo_colors: beatmap.combo_colors.clone()
                 };
                 
                 // join notes and sliders into a single array
@@ -395,8 +405,6 @@ impl GameMode for OsuGame {
 
                 // add notes
                 let mut combo_num = 0;
-                let mut combo_change = 0;
-        
                 let mut counter = 0;
         
                 for (note, slider, spinner) in all_items {
@@ -407,11 +415,9 @@ impl GameMode for OsuGame {
         
                     // if new combo, increment new combo counter
                     if combo_num == 0 {
-                        combo_change += 1;
                         s.new_combos.push(counter);
                     }
                     // get color
-                    let color = combo_colors[(combo_change - 1) % combo_colors.len()];
                     // update combo number
                     combo_num += 1;
         
@@ -419,7 +425,6 @@ impl GameMode for OsuGame {
                         s.notes.push(Box::new(OsuNote::new(
                             note.clone(),
                             ar,
-                            color,
                             combo_num as u16,
                             scaling_helper.clone(),
                             std_settings.clone(),
@@ -442,7 +447,6 @@ impl GameMode for OsuGame {
                             s.notes.push(Box::new(OsuNote::new(
                                 note,
                                 ar,
-                                Color::new(0.0, 0.0, 0.0, 1.0),
                                 combo_num as u16,
                                 scaling_helper.clone(),
                                 std_settings.clone(),
@@ -454,7 +458,6 @@ impl GameMode for OsuGame {
                                 slider.clone(),
                                 curve,
                                 ar,
-                                color,
                                 combo_num as u16,
                                 scaling_helper.clone(),
                                 std_settings.clone(),
@@ -946,15 +949,27 @@ impl GameMode for OsuGame {
         }
     }
 
-    async fn reload_skin(&mut self) {
-        self.cursor.reload_skin().await;
-        self.judgment_helper.reload_skin().await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.cursor.reload_skin(skin_manager).await;
+        self.judgment_helper.reload_skin(skin_manager).await;
+        self.follow_point_image = skin_manager.get_texture("followpoint", true).await;
+
+        let combo_colors = if self.game_settings.use_beatmap_combo_colors && self.beatmap_combo_colors.len() > 0 {
+            self.beatmap_combo_colors.clone()
+        } else if skin_manager.skin().combo_colors.len() > 0 {
+            skin_manager.skin().combo_colors.clone()
+        } else {
+            self.game_settings.combo_colors.iter().map(|c| Color::from_hex(c)).collect()
+        };
+
+
+        self.apply_combo_colors(combo_colors);
 
         for n in self.notes.iter_mut() {
-            n.reload_skin().await;
+            n.reload_skin(skin_manager).await;
         }
 
-        let smoke = SkinManager::get_texture("cursor-smoke", true).await.map(|i|i.tex).unwrap_or_default();
+        let smoke = skin_manager.get_texture("cursor-smoke", true).await.map(|i| i.tex).unwrap_or_default();
         if let Some(emitter) = &mut self.smoke_emitter {
             emitter.image = smoke;
         } else {
@@ -968,7 +983,6 @@ impl GameMode for OsuGame {
                 .opacity(EmitterVal::new(1.0..1.0, 1.0..0.0))
                 .rotation(EmitterVal::init_only(0.0..PI*2.0))
                 .color(Color::WHITE)
-
                 .build(0.0);
 
             self.smoke_emitter = Some(emitter);

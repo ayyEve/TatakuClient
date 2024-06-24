@@ -1,5 +1,3 @@
-
-
 use crate::prelude::*;
 
 const BOX_SIZE:Vector2 = Vector2::new(40.0, 40.0);
@@ -11,22 +9,17 @@ pub struct KeyCounterElement {
 }
 impl KeyCounterElement {
     pub async fn new() -> Self {
-        // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", true);
-        // if let Some(image) = &mut background_image {
-        //     image.current_rotation = 90f64.to_radians();
-        //     image.origin = Vector2::new(image.size().x, 0.0);
-        //     // image.current_pos = pos - Vector2::new(image.size().x, 0.0);
-        //     image.depth = -100.0;
-        // }
 
         Self {
             counter: KeyCounter::default(),
             
             // background_image,
-            button_image: SkinManager::get_texture("inputoverlay-key", true).await,
+            button_image: None,
         }
     }
 }
+
+#[async_trait]
 impl InnerUIElement for KeyCounterElement {
     fn display_name(&self) -> &'static str { "Key Counter" }
 
@@ -114,5 +107,17 @@ impl InnerUIElement for KeyCounterElement {
             list.push(text);
         }
 
+    }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", true);
+        // if let Some(image) = &mut background_image {
+        //     image.current_rotation = 90f64.to_radians();
+        //     image.origin = Vector2::new(image.size().x, 0.0);
+        //     // image.current_pos = pos - Vector2::new(image.size().x, 0.0);
+        //     image.depth = -100.0;
+        // }
+
+        self.button_image = skin_manager.get_texture("inputoverlay-key", true).await;
     }
 }

@@ -253,28 +253,28 @@ impl HitObject for OsuSpinner {
         self.points_queue.clear();
     }
 
-    async fn reload_skin(&mut self) {
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;
 
-        self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, |i| {
+        self.spinner_circle = IngameManager::load_texture_maybe("spinner-circle", false, skin_manager, |i| {
             // const SIZE:f64 = 700.0;
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_background = IngameManager::load_texture_maybe("spinner-background", false, |i| {
+        self.spinner_background = IngameManager::load_texture_maybe("spinner-background", false, skin_manager, |i| {
             // const SIZE:f64 = 667.0;
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_bottom = IngameManager::load_texture_maybe("spinner-bottom", false, |i| {
+        self.spinner_bottom = IngameManager::load_texture_maybe("spinner-bottom", false, skin_manager, |i| {
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_approach = IngameManager::load_texture_maybe("spinner-approachcircle", false, |i| {
+        self.spinner_approach = IngameManager::load_texture_maybe("spinner-approachcircle", false, skin_manager, |i| {
             // const SIZE:f64 = 320.0;
             i.pos = pos;
             i.scale = scale;
@@ -300,6 +300,8 @@ impl OsuHitObject for OsuSpinner {
     fn get_hitsound(&self) -> Vec<Hitsound> { vec![] }
     fn hit(&mut self, _time: f32) {}
 
+    fn new_combo(&self) -> bool { true }
+    fn set_combo_color(&mut self, _color: Color) {}
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>) {
         let scale = Vector2::ONE * new_scale.scale;

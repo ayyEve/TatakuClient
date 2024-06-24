@@ -110,7 +110,6 @@ pub struct IngameManager {
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
-    skin_helper: CurrentSkinHelper,
 
     restart_key_hold_start: Option<Instant>,
 
@@ -170,8 +169,6 @@ impl IngameManager {
         #[cfg(not(feature="storyboards"))]
         let animation = Box::new(EmptyAnimation);
 
-        // make sure the game has loaded its skin stuff
-        gamemode.reload_skin().await;
         // make sure the gamemode has the correct mods applied
         gamemode.apply_mods(current_mods.clone()).await;
 
@@ -201,7 +198,6 @@ impl IngameManager {
             beatmap_preferences,
 
             common_game_settings,
-            skin_helper: CurrentSkinHelper::new(),
 
             gamemode,
             score_list: Vec::new(),
@@ -324,9 +320,6 @@ impl IngameManager {
 
         // update settings
         self.settings.update();
-        if self.skin_helper.update() {
-            self.reload_skin().await;
-        }
         
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
@@ -1545,16 +1538,20 @@ impl IngameManager {
         self.gamemode.force_update_settings(&self.settings).await;
     }
 
-    pub async fn reload_skin(&mut self) {
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         info!("reloading skin");
-        self.gamemode.reload_skin().await;
+        self.gamemode.reload_skin(skin_manager).await;
         self.hitsound_manager.reload_skin(&self.settings).await;
+
+        for i in self.ui_elements.iter_mut() {
+            i.reload_skin(skin_manager).await;
+        }
     }
 
 
     /// helper since most texture loads will look something like this
-    pub async fn load_texture_maybe(name: impl AsRef<str> + Send + Sync, grayscale:bool, mut on_loaded: impl FnMut(&mut Image)) -> Option<Image> {
-        SkinManager::get_texture_grayscale(name, true, grayscale).await.map(|mut i| {on_loaded(&mut i); i})
+    pub async fn load_texture_maybe(name: impl AsRef<str> + Send + Sync, grayscale:bool, skin_manager: &mut SkinManager, mut on_loaded: impl FnMut(&mut Image)) -> Option<Image> {
+        skin_manager.get_texture_grayscale(name, true, grayscale).await.map(|mut i| {on_loaded(&mut i); i})
     }
 
 
@@ -1634,7 +1631,6 @@ impl Default for IngameManager {
             settings: SettingsHelper::new(),
             window_size: WindowSize::get(),
             pending_time_jump: None,
-            skin_helper: CurrentSkinHelper::new(),
 
             restart_key_hold_start: None,
             map_diff: 0.0,

@@ -32,14 +32,13 @@ pub struct HitCircleImageHelper {
     shake_group: Option<TransformGroup>
 }
 impl HitCircleImageHelper {
-    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, color: Color, combo_num: u16) -> Self {
-        let skin_settings = SkinManager::current_skin_config().await;
+    pub async fn new(base_pos: Vector2, scaling_helper: Arc<ScalingHelper>, combo_num: u16) -> Self {
         Self {
             circle: None,
             overlay: None,
             base_pos,
             pos: scaling_helper.scale_coords(base_pos),
-            skin_settings,
+            skin_settings: Default::default(),
             combo_num,
             scaling_helper,
 
@@ -47,23 +46,23 @@ impl HitCircleImageHelper {
             combo_text: None,
 
             alpha: 0.0,
-            color,
+            color: Color::WHITE,
             shake_group: None
         }
     }
 
-    pub async fn reload_skin(&mut self) {
-        self.skin_settings = SkinManager::current_skin_config().await;
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
 
-        self.circle = SkinManager::get_texture("hitcircle", true).await;
+        self.circle = skin_manager.get_texture("hitcircle", true).await;
         if let Some(circle) = &mut self.circle {
             circle.pos = self.pos;
             circle.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
             circle.color = self.color;
         }
         
-        self.overlay = SkinManager::get_texture("hitcircleoverlay", true).await;
+        self.overlay = skin_manager.get_texture("hitcircleoverlay", true).await;
         if let Some(overlay) = &mut self.overlay {
             overlay.pos = self.pos;
             overlay.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
@@ -74,7 +73,8 @@ impl HitCircleImageHelper {
             Color::WHITE, 
             &self.skin_settings.hitcircle_prefix,
             None,
-            0
+            0,
+            skin_manager
         ).await.ok();
 
         let rect = Bounds::new(self.pos - Vector2::ONE * radius / 2.0, Vector2::ONE * radius);
@@ -133,6 +133,10 @@ impl HitCircleImageHelper {
 
     pub fn set_alpha(&mut self, alpha: f32) {
         self.alpha = alpha;
+    }
+    pub fn set_color(&mut self, color: Color) {
+        self.color = color;
+        self.circle.ok_do_mut(|c| c.color = color);
     }
 
     pub fn update(&mut self, time: f32) {

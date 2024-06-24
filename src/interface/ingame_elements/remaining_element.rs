@@ -27,7 +27,7 @@ impl RemainingElement {
         }
     }
 }
-
+#[async_trait]
 impl InnerUIElement for RemainingElement {
     fn display_name(&self) -> &'static str { "Time Remaining" }
     fn get_bounds(&self) -> Bounds { self.elapsed_bounds }
@@ -64,4 +64,6 @@ impl InnerUIElement for RemainingElement {
         text.center_text(&bounds);
         list.push(text);
     }
+
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

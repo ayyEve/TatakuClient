@@ -11,7 +11,7 @@ pub struct OsuStoryboard {
 }
 
 impl OsuStoryboard {
-    pub async fn new(def: StoryboardDef, dir: String) -> TatakuResult<Self> {
+    pub async fn new(def: StoryboardDef, dir: String, skin_manager: &mut SkinManager) -> TatakuResult<Self> {
         let settings = Settings::get().osu_settings.clone();
         let window_size = WindowSize::get();
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
@@ -19,7 +19,7 @@ impl OsuStoryboard {
         let mut image_cache = HashMap::new();
         let mut elements = Vec::new();
         for e in def.entries.clone() {
-            elements.push(Element::new(e, &dir, &mut image_cache, &scaling_helper).await?);
+            elements.push(Element::new(e, &dir, &mut image_cache, &scaling_helper, skin_manager).await?);
         }
         elements.sort_by(Element::sort);
 
@@ -87,7 +87,7 @@ struct Element {
     group: TransformGroup,
 }
 impl Element {
-    async fn new(def: StoryboardEntryDef, parent_dir: &String, image_cache: &mut HashMap<String, Image>, scale: &ScalingHelper) -> TatakuResult<Self> {
+    async fn new(def: StoryboardEntryDef, parent_dir: &String, image_cache: &mut HashMap<String, Image>, scale: &ScalingHelper, skin_manager: &mut SkinManager) -> TatakuResult<Self> {
         let layer;
 
         let mut group = TransformGroup::new(Vector2::ZERO).border_alpha(0.0).alpha(0.0);
@@ -96,7 +96,7 @@ impl Element {
                 let filepath = format!("{parent_dir}/{}", sprite.filepath);
                 let mut image = if let Some(image) = image_cache.get(&filepath).cloned() {
                     image
-                } else if let Some(i) = load_image(&filepath, false, Vector2::ONE).await {
+                } else if let Some(i) = skin_manager.get_texture_noskin(&filepath, false).await {
                     image_cache.insert(filepath, i.clone());
                     i
                 } else {
@@ -136,7 +136,7 @@ impl Element {
                     let filepath = format!("{parent_dir}/{filename}{counter}.{ext}");
                     let image = if let Some(image) = image_cache.get(&filepath).cloned() {
                         image
-                    } else if let Some(i) = load_image(&filepath, false, Vector2::ONE).await {
+                    } else if let Some(i) = skin_manager.get_texture_noskin(&filepath, false).await {
                         image_cache.insert(filepath, i.clone());
                         i
                     } else {

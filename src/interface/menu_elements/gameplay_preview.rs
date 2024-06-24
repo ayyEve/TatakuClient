@@ -298,9 +298,9 @@ impl GameplayPreview {
         manager.fit_to_area(bounds).await;
     } 
 
-    pub async fn skin_changed(&mut self) {
+    pub async fn skin_changed(&mut self, skin_manager: &mut SkinManager) {
         if let Some(vis) = &mut self.visualization {
-            vis.reload_skin().await;
+            vis.reload_skin(skin_manager).await;
         }
     }
 

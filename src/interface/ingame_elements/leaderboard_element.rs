@@ -8,11 +8,11 @@ impl LeaderboardElement {
     pub async fn new() -> Self {
         Self {
             scores: Vec::new(),
-            image: SkinManager::get_texture("menu-button-background", true).await,
+            image: None,
         }
     }
 }
-
+#[async_trait]
 impl InnerUIElement for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
@@ -64,5 +64,9 @@ impl InnerUIElement for LeaderboardElement {
             base_pos += Vector2::with_y(l.size().y + 5.0) * scale;
         }
 
+    }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.image = skin_manager.get_texture("menu-button-background", true).await;
     }
 }

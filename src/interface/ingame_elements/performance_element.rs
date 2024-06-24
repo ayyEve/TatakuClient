@@ -2,6 +2,7 @@ use crate::prelude::*;
 const PADDING:Vector2 = Vector2::new(3.0, 3.0);
 
 const WHITE_TEXT:bool = true;
+const NUMBER: u32 = 1_000_000_000;
 
 pub struct PerformanceElement {
     perf_image: Option<SkinnedNumber>,
@@ -11,32 +12,15 @@ pub struct PerformanceElement {
 }
 impl PerformanceElement {
     pub async fn new() -> Self {
-        let number:u32 = 1_000_000_000;
-        let mut perf_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 2).await.ok();
-        
-        // get the bounds
-        // TODO: make it not rely on this shit
-        let bounds_size = if let Some(im) = &mut perf_image {
-            im.number = number as f64;
-            im.measure_text()
-        } else {
-            Text::new(
-                Vector2::ZERO,
-                30.0,
-                format_float(number, 2),
-                Color::BLACK,
-                Font::Main
-            ).measure_text()
-        };
-
         Self {
-            bounds_size,
-            perf_image,
+            bounds_size: Text::measure_text_raw(&[Font::Main], 30.0, &format_float(NUMBER, 2), Vector2::ONE, 0.0),
+            perf_image: None,
             perf: 0.0,
         }
     }
 }
 
+#[async_trait]
 impl InnerUIElement for PerformanceElement {
     fn display_name(&self) -> &'static str { "Performance" }
 
@@ -96,5 +80,17 @@ impl InnerUIElement for PerformanceElement {
             list.push(text);
         }
         
+    }
+
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.perf_image = SkinnedNumber::new(Vector2::ZERO, self.perf as f64, Color::WHITE, "score", None, 2, skin_manager).await.ok();
+
+        self.bounds_size = if let Some(im) = &mut self.perf_image {
+            im.number = NUMBER as f64;
+            im.measure_text()
+        } else {
+            Text::measure_text_raw(&[Font::Main], 30.0, &format_float(NUMBER, 2), Vector2::ONE, 0.0)
+        };
     }
 }

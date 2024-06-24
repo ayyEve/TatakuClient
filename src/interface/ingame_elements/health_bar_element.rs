@@ -15,16 +15,7 @@ pub struct HealthBarElement {
 }
 impl HealthBarElement {
     pub async fn new(common_game_settings: Arc<CommonGameplaySettings>) -> Self {
-        // peppy calls the healthbar texture "scorebar"
-        let mut healthbar_image = SkinManager::get_texture("scorebar-colour", true).await;
-        let mut healthbar_bg_image = SkinManager::get_texture("scorebar-bg", true).await;
 
-        for i in [&mut healthbar_image, &mut healthbar_bg_image] {
-            if let Some(i) = i {
-                i.origin = Vector2::ZERO;
-                i.color = Color::WHITE;
-            }
-        }
 
         Self {
             common_game_settings,
@@ -34,11 +25,12 @@ impl HealthBarElement {
             window_size: WindowSize::get(),
             last_health_time: 0.0,
 
-            healthbar_image,
-            healthbar_bg_image
+            healthbar_image: None,
+            healthbar_bg_image: None
         }
     }
 }
+#[async_trait]
 impl InnerUIElement for HealthBarElement {
     fn display_name(&self) -> &'static str { "Health Bar" }
 
@@ -48,6 +40,19 @@ impl InnerUIElement for HealthBarElement {
             Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT)
         )
     }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        // peppy calls the healthbar texture "scorebar"
+        self.healthbar_image = skin_manager.get_texture("scorebar-colour", true).await;
+        self.healthbar_bg_image = skin_manager.get_texture("scorebar-bg", true).await;
+
+        for i in [&mut self.healthbar_image, &mut self.healthbar_bg_image] {
+            let Some(i) = i else { continue };
+            i.origin = Vector2::ZERO;
+            i.color = Color::WHITE;
+        }
+    }
+    
     
     fn update(&mut self, manager: &mut IngameManager) {
         self.window_size = WindowSize::get();

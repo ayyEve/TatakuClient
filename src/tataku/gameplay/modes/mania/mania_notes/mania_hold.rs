@@ -224,7 +224,7 @@ impl HitObject for ManiaHold {
         self.position_function_index = 0;
     }
 
-    async fn reload_skin(&mut self) {
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.start_image = None;
         self.middle_image = None;
         self.end_image = None;
@@ -233,7 +233,7 @@ impl HitObject for ManiaHold {
         
         // start
         if let Some(path) = settings.note_image_h.get(&self.column) {
-            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+            if let Some(mut img) = skin_manager.get_texture_grayscale(path, true, true).await {
                 self.playfield.note_image(&mut img);
                 img.color = self.color;
                 self.start_image = Some(img);
@@ -242,7 +242,7 @@ impl HitObject for ManiaHold {
         
         // middle
         if let Some(path) = settings.note_image_l.get(&self.column) {
-            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+            if let Some(mut img) = skin_manager.get_texture_grayscale(path, true, true).await {
                 img.origin = Vector2::ZERO;
                 img.color = Color::WHITE;
                 img.scale.x = self.playfield.column_width / img.tex_size().x;
@@ -253,7 +253,7 @@ impl HitObject for ManiaHold {
 
         // end
         if let Some(path) = settings.note_image_t.get(&self.column) {
-            if let Some(mut img) = SkinManager::get_texture_grayscale(path, true, true).await {
+            if let Some(mut img) = skin_manager.get_texture_grayscale(path, true, true).await {
                 self.playfield.note_image(&mut img);
                 img.scale.y *= -1.0;
                 img.color = Color::WHITE;

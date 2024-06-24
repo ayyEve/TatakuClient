@@ -106,9 +106,10 @@ pub struct OsuSlider {
     beat_scale: f32,
 
     slider_body: SliderDrawable,
+    skin: Arc<SkinSettings>,
 }
 impl OsuSlider {
-    pub async fn new(def:SliderDef, curve:Curve, ar:f32, color:Color, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
+    pub async fn new(def:SliderDef, curve:Curve, ar:f32, combo_num: u16, scaling_helper:Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsound_fn: impl Fn(f32, u8, HitSamples)->Vec<Hitsound>, velocity: f32) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
@@ -131,18 +132,17 @@ impl OsuSlider {
             hitsound_fn(def.time, hitsound, samples)
         }).collect();
 
-        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
+        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
         let start_circle_image = HitCircleImageHelper::new(
             def.pos,
             scaling_helper.clone(),
-            color,
             combo_num
         ).await;
 
         Self {
             def,
             curve,
-            color,
+            color: Color::WHITE,
             time_preempt,
             radius,
 
@@ -198,6 +198,7 @@ impl OsuSlider {
             beat_scale: 1.0,
 
             slider_body: SliderDrawable::default(),
+            skin: Default::default(),
         }
     }
 
@@ -210,13 +211,12 @@ impl OsuSlider {
         if self.slider_body_render_target_failed.is_some() {
             return
         }
-        let skin = SkinManager::current_skin_config().await;
 
         // let mut list:Vec<Box<dyn TatakuRenderable>> = Vec::new();
         let window_size = WindowSize::get().0;
 
         // info!("{:?}", skin.slider_track_override);
-        let mut color = skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
+        let mut color = self.skin.slider_track_override.filter(|c|c != &Color::BLACK && self.standard_settings.use_skin_slider_body_color).unwrap_or_else(|| {
             let mut color = self.color;
             const DARKER:f32 = 2.0/3.0;
             color.r *= DARKER;
@@ -227,7 +227,7 @@ impl OsuSlider {
 
         color.a = self.standard_settings.slider_body_alpha;
 
-        let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //skin.slider_border.unwrap_or(BORDER_COLOR);
+        let border_color = BORDER_COLOR.alpha(self.standard_settings.slider_border_alpha); //self.skin.slider_border.unwrap_or(BORDER_COLOR);
         let border_radius = BORDER_RADIUS * self.scaling_helper.scaled_cs;
 
         let mut min_pos = window_size;
@@ -813,25 +813,26 @@ impl HitObject for OsuSlider {
         }
     }
 
-    async fn reload_skin(&mut self) {
-        self.start_circle_image.reload_skin().await;
-        self.end_circle_image = SkinManager::get_texture("sliderendcircle", true).await;
-        self.slider_reverse_image = SkinManager::get_texture("reversearrow", true).await;
-        self.follow_circle_image = SkinManager::get_texture("sliderfollowcircle", true).await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.skin = skin_manager.skin().clone();
+        self.start_circle_image.reload_skin(skin_manager).await;
+        self.end_circle_image = skin_manager.get_texture("sliderendcircle", true).await;
+        self.slider_reverse_image = skin_manager.get_texture("reversearrow", true).await;
+        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", true).await;
 
-        self.approach_circle.reload_texture().await;
+        self.approach_circle.reload_texture(skin_manager).await;
 
         for dot in self.hit_dots.iter_mut() {
-            dot.reload_skin().await;
+            dot.reload_skin(skin_manager).await;
         }
 
         // slider ball
-        self.sliderball_under_image = SkinManager::get_texture("sliderb-nd", true).await;
+        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", true).await;
 
         let mut i = 0;
         let mut images = Vec::new();
         loop {
-            let Some(image) = SkinManager::get_texture(format!("sliderb{i}"), true).await else { break };
+            let Some(image) = skin_manager.get_texture(format!("sliderb{i}"), true).await else { break };
             images.push(image);
             i += 1;
         }
@@ -879,6 +880,17 @@ impl OsuHitObject for OsuSlider {
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
+
+
+    fn new_combo(&self) -> bool { self.def.new_combo }
+    fn set_combo_color(&mut self, color: Color) { 
+        self.color = color;
+        
+        self.start_circle_image.set_color(color);
+        if self.standard_settings.approach_combo_color { 
+            self.approach_circle.set_color(color);
+        }
+     }
 
     fn set_judgment(&mut self, j: &OsuHitJudgments) {
         self.start_checked = true;
@@ -1038,7 +1050,7 @@ impl SliderDot {
 
             hit: false,
             checked: false,
-            dot_image: SkinManager::get_texture("sliderscorepoint", true).await,
+            dot_image: None, 
         }
     }
     /// returns true if the hitsound should play
@@ -1071,8 +1083,8 @@ impl SliderDot {
 
     }
 
-    pub async fn reload_skin(&mut self) {
-        self.dot_image = SkinManager::get_texture("sliderscorepoint", true).await;
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.dot_image = skin_manager.get_texture("sliderscorepoint", true).await;
     }
 }
 

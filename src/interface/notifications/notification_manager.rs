@@ -31,7 +31,6 @@ pub struct NotificationManager {
     processed_notifs: Vec<ProcessedNotif>,
     pending_notifs: Vec<Arc<Notification>>,
     
-    current_skin: CurrentSkinHelper,
     window_size: WindowSizeHelper,
     notification_image: Option<Image>,
 
@@ -44,7 +43,6 @@ impl NotificationManager {
             processed_notifs: Vec::new(),
             pending_notifs: Vec::new(),
             
-            current_skin: CurrentSkinHelper::new(),
             window_size: WindowSizeHelper::new(),
             notification_image: None,
             queued_actions: Vec::new(),
@@ -79,9 +77,6 @@ impl NotificationManager {
 
     pub async fn update(&mut self, game: &mut Game) {
         self.window_size.update();
-        if self.current_skin.update() {
-            self.notification_image = SkinManager::get_texture("notification", true).await;
-        }
 
         for notif in std::mem::take(&mut self.pending_notifs) {
             // trace!("adding notif");
@@ -96,6 +91,10 @@ impl NotificationManager {
         for i in self.queued_actions.take() {
             i.do_action(game).await;
         }
+    }
+
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.notification_image = skin_manager.get_texture("notification", true).await;
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {

@@ -27,7 +27,6 @@ pub struct MainMenu {
     settings: SettingsHelper,
     // window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
-    current_skin: CurrentSkinHelper,
     beatmap: SyValueHelper,
     new_map: SyValueHelper,
 
@@ -93,7 +92,6 @@ impl MainMenu {
             // window_size,
             last_input: Instant::now(),
             song_display: CurrentSongDisplay::new(),
-            current_skin: CurrentSkinHelper::new(),
         }
     }
 
@@ -257,26 +255,6 @@ impl AsyncMenu for MainMenu {
         self.settings.update();
         self.song_display.update(values);
 
-        if self.current_skin.update() {
-            // self.visualization.reload_skin().await;
-
-            // self.play_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-play").await;
-            // self.multiplayer_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Play", "menu-button-multiplayer").await;
-            // // self.direct_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "osu!Direct").await;
-            // self.settings_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Settings", "menu-button-options").await;
-            // self.exit_button = MainMenuButton::new(Vector2::ZERO, BUTTON_SIZE, "Exit", "menu-button-exit").await;
-
-            // self.window_size_changed(self.window_size.clone()).await;
-            self.gameplay_preview.skin_changed().await;
-            // self.music_box = MusicBox::new(self.event_sender.clone()).await;
-
-            if self.menu_visible {
-                self.show_menu();
-            } else {
-                self.hide_menu();
-            }
-
-        }
 
         let mut song_done = false;
 
@@ -478,6 +456,10 @@ impl AsyncMenu for MainMenu {
         }
     }
 
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.gameplay_preview.skin_changed(skin_manager).await;
+    }
     // async fn draw(&mut self, list: &mut RenderableCollection) {
     //     // background game
     //     self.menu_game.draw(list).await;

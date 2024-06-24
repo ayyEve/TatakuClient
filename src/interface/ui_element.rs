@@ -70,14 +70,20 @@ impl UIElement {
     pub fn reset_element(&mut self) {
         self.inner.reset();
     }
+
+    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.inner.reload_skin(skin_manager).await;
+    }
 }
 
+#[async_trait]
 pub trait InnerUIElement: Send + Sync {
     fn update(&mut self, manager: &mut IngameManager);
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection);
     fn get_bounds(&self) -> Bounds;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager);
 }
 
 #[allow(unused)]

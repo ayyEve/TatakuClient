@@ -22,22 +22,30 @@ pub struct SkinnedNumber {
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
-    pub async fn new<TN: AsRef<str>>(pos: Vector2, number: f64, color:Color, texture_name: TN, symbol: Option<char>, floating_precision: usize) -> TatakuResult<Self> {
+    pub async fn new<TN: AsRef<str>>(
+        pos: Vector2, 
+        number: f64, 
+        color:Color, 
+        texture_name: TN, 
+        symbol: Option<char>, 
+        floating_precision: usize, 
+        skin_manager: &mut SkinManager
+    ) -> TatakuResult<Self> {
+        let texture_name = texture_name.as_ref();
         let rotation = 0.0;
         let scale = Vector2::ONE;
-        let tn = texture_name.as_ref();
 
-        let mut textures =  Vec::new();
+        let mut number_textures = Vec::new();
         for i in 0..10 {
-            let tex = format!("{tn}-{i}");
-            let mut tex2 = SkinManager::get_texture(&tex, true).await.ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
+            let tex = format!("{texture_name}-{i}");
+            let mut tex2 = skin_manager.get_texture(&tex, true).await.ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
             tex2.origin = Vector2::ZERO;
             // tex2.size = tex2.tex_size();
-            textures.push(tex2)
+            number_textures.push(tex2);
         }
 
-
         // try to load symbols
+        let mut symbol_textures = HashMap::new();
         // x, %, ',', .,
         let chars = [
             ('x', "x"),
@@ -45,11 +53,9 @@ impl SkinnedNumber {
             (',', "comma"),
             ('%', "percent"),
         ];
-
-        let mut symbol_textures = HashMap::new();
         for (c, name) in chars {
-            let name = format!("{}-{}", tn, name);
-            if let Some(mut tex) = SkinManager::get_texture(name, true).await {
+            let name = format!("{texture_name}-{name}");
+            if let Some(mut tex) = skin_manager.get_texture(name, true).await {
                 tex.origin = Vector2::ZERO;
                 symbol_textures.insert(c, tex);
             }
@@ -62,11 +68,10 @@ impl SkinnedNumber {
             scale,
             origin: Vector2::ZERO,
             rotation,
-
             number,
 
             cache: Arc::new(RwLock::new((number, Self::number_as_text_base(number, floating_precision, &symbol)))),
-            number_textures: textures,
+            number_textures,
             symbol_textures,
             symbol,
             floating_precision,

@@ -43,18 +43,17 @@ pub struct OsuNote {
     hitsounds: Vec<Hitsound>,
 }
 impl OsuNote {
-    pub async fn new(def:NoteDef, ar:f32, color:Color, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
+    pub async fn new(def:NoteDef, ar:f32, combo_num:u16, scaling_helper: Arc<ScalingHelper>, standard_settings:Arc<OsuSettings>, hitsounds: Vec<Hitsound>) -> Self {
         let time = def.time;
         let time_preempt = map_difficulty(ar, 1800.0, 1200.0, PREEMPT_MIN);
 
         let pos = scaling_helper.scale_coords(def.pos);
         let radius = CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs;
         
-        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, if standard_settings.approach_combo_color { color } else { Color::WHITE }, scaling_helper.clone());
+        let approach_circle = ApproachCircle::new(def.pos, time, radius, time_preempt, scaling_helper.clone());
         let circle_image = HitCircleImageHelper::new(
             def.pos,
             scaling_helper.clone(),
-            color,
             combo_num
         ).await;
 
@@ -62,7 +61,7 @@ impl OsuNote {
             def,
             pos,
             time, 
-            color,
+            color: Color::WHITE,
             
             hit: false,
             missed: false,
@@ -164,9 +163,10 @@ impl HitObject for OsuNote {
     }
 
     
-    async fn reload_skin(&mut self) {
-        self.circle_image.reload_skin().await;
-        self.approach_circle.reload_texture().await;
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.circle_image.reload_skin(skin_manager).await;
+        self.approach_circle.reload_texture(skin_manager).await;
+
     }
 }
 
@@ -181,6 +181,16 @@ impl OsuHitObject for OsuNote {
     fn set_hitwindow_miss(&mut self, window: f32) {
         self.hitwindow_miss = window;
     }
+
+    fn new_combo(&self) -> bool { self.def.new_combo }
+    fn set_combo_color(&mut self, color: Color) { 
+        self.color = color;
+        
+        self.circle_image.set_color(color);
+        if self.standard_settings.approach_combo_color { 
+            self.approach_circle.set_color(color) 
+        }
+     }
 
     fn check_distance(&self, _mouse_pos: Vector2) -> bool {
         let distance = (self.pos.x - self.mouse_pos.x).powi(2) + (self.pos.y - self.mouse_pos.y).powi(2);

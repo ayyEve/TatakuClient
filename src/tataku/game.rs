@@ -21,7 +21,8 @@ pub struct Game {
     spectator_manager: Option<Box<SpectatorManager>>,
     multiplayer_manager: Option<Box<MultiplayerManager>>,
     multiplayer_data: MultiplayerData,
-
+    
+    skin_manager: SkinManager,
     beatmap_manager: BeatmapManager,
     song_manager: SongManager,
     score_manager: ScoreManager,
@@ -69,6 +70,9 @@ impl Game {
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
     ) -> Game {
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
+        let settings = Settings::get();
+        let skin_manager = SkinManager::new(&settings);
+        let skin = skin_manager.skin().clone();
 
         let mut g = Game {
             // engine
@@ -89,6 +93,8 @@ impl Game {
             score_manager: ScoreManager::new(),
             task_manager: TaskManager::new(),
             custom_menu_manager: CustomMenuManager::new(),
+            skin_manager,
+            cursor_manager: CursorManager::new(skin).await,
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -110,7 +116,6 @@ impl Game {
             game_start: Instant::now(),
             // register_timings: (0.0,0.0,0.0),
             game_event_receiver,
-            cursor_manager: CursorManager::new().await,
             last_skin: String::new(),
             background_loader: None,
 
@@ -298,7 +303,7 @@ impl Game {
             Ok(list) => {
                 for wall_file in list {
                     if let Ok(file) = wall_file {
-                        if let Some(wallpaper) = load_image(file.path().to_str().unwrap(), false, Vector2::ONE).await {
+                        if let Some(wallpaper) = self.skin_manager.get_texture_noskin(file.path().to_str().unwrap(), false).await {
                             self.wallpapers.push(wallpaper)
                         }
                     }
@@ -327,7 +332,7 @@ impl Game {
 
         let mut render_rate   = 1.0 / display_settings.fps_target as f64;
         let mut update_target = 1.0 / display_settings.update_target as f64;
-        
+
 
 
         loop {
@@ -371,7 +376,7 @@ impl Game {
 
                 let skin_changed = self.settings.current_skin != self.last_skin;
                 if skin_changed {
-                    SkinManager::change_skin(self.settings.current_skin.clone()).await;
+                    self.skin_manager.change_skin(self.settings.current_skin.clone()).await;
                     self.last_skin = self.settings.current_skin.clone();
                 }
 
@@ -403,7 +408,7 @@ impl Game {
                 // update game mode with new information
                 match &mut self.current_state {
                     GameState::Ingame(igm) => {
-                        if skin_changed { igm.reload_skin().await; }
+                        if skin_changed { igm.reload_skin(&mut self.skin_manager).await; }
                         igm.force_update_settings().await;
                     }
                     // GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager { 
@@ -933,7 +938,7 @@ impl Game {
                                 song.set_position(0.0);
                             }
                         }
-
+                        manager.reload_skin(&mut self.skin_manager).await;
                         manager.start().await;
                         let m = manager.metadata.clone();
                         let start_time = manager.start_time;
@@ -1528,16 +1533,17 @@ impl Game {
 
         // let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
         if let Some(menu) = self.custom_menu_manager.get_menu((id.to_string(), CustomMenuSource::Any)) {
-            self.queue_state_change(GameState::SetMenu(Box::new(menu.build().await)))
+            let menu = Box::new(menu.build(&mut self.skin_manager).await);
+            self.queue_state_change(GameState::SetMenu(menu));
         } else {
             let id = id.to_string();
             match &*id {
                 "none" => {}
+                "main_menu" => panic!("Main menu could not be loaded. did eve fuck up the main_menu.lua?"),
                 // "beatmap_select" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
                 _ => {
-                    error!("custom menu not found! {id}");
-                    error!("going to main menu instead");
-                    self.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)))
+                    error!("custom menu not found! {id}, going to main menu instead");
+                    self.actions.push(MenuMenuAction::SetMenu(format!("main_menu")));
                 }
             }
         }
@@ -1584,8 +1590,14 @@ impl Game {
     /// shortcut for setting the game's background texture to a beatmap's image
     pub async fn set_background_beatmap(&mut self) {
         let Ok(filename) = self.values.get_string("map.image_filename") else { return };
-        let f = load_image(filename, false, Vector2::ONE);
-        self.background_loader = Some(AsyncLoader::new(f));
+        // let f = self.skin_manager.get_texture_noskin(&filename, false);
+        // self.background_loader = Some(AsyncLoader::new(f));
+        self.background_image = self.skin_manager.get_texture_noskin(&filename, false).await;
+        self.background_image.ok_do_mut(|i| {
+            i.origin = Vector2::ZERO;
+        });
+
+        self.resize_bg();
     }
     /// shortcut for removing the game's background texture
     pub async fn remove_background_beatmap(&mut self) {

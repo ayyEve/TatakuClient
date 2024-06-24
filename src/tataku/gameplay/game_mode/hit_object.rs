@@ -18,7 +18,7 @@ pub trait HitObject: Send + Sync {
 
     async fn time_jump(&mut self, _new_time: f32) {}
 
-    async fn reload_skin(&mut self) {}
+    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 
     
     fn beat_happened(&mut self, _pulse_length: f32) {}

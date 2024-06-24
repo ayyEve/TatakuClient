@@ -15,22 +15,11 @@ pub struct PauseMenu {
 }
 impl PauseMenu {
     pub async fn new(manager: Box<IngameManager>, is_fail_menu: bool) -> PauseMenu {
-
-        let mut bg = if is_fail_menu {
-            SkinManager::get_texture("fail-background", true).await
-        } else {
-            SkinManager::get_texture("pause-overlay", true).await
-        };
-
-        if let Some(bg) = &mut bg {
-            bg.fit_to_bg_size(WindowSize::get().0, true);
-        }
-
         PauseMenu {
             actions: ActionQueue::new(),
             manager,
             is_fail_menu,
-            bg
+            bg: None
         }
     }
 
@@ -104,6 +93,18 @@ impl AsyncMenu for PauseMenu {
         self.actions.take()
     }
     
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        if self. is_fail_menu {
+            self.bg = skin_manager.get_texture("fail-background", true).await
+        } else {
+            self.bg = skin_manager.get_texture("pause-overlay", true).await
+        }
+
+        if let Some(bg) = &mut self.bg {
+            bg.fit_to_bg_size(WindowSize::get().0, true);
+        }
+    }
     // async fn draw(&mut self, list: &mut RenderableCollection) {
     //     let pos_offset = Vector2::ZERO;
 

@@ -37,7 +37,7 @@ pub struct UTypingNote {
     pub judgment: Option<UTypingHitJudgment>
 }
 impl UTypingNote {
-    pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>, diff_calc_only:bool) -> Self {
+    pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>) -> Self {
         // let y = settings.hit_position.y;
         // let a = GRAVITY_SCALING * 9.81;
         // let bounce_factor = (2000.0*y.sqrt()) as f32 / (a*(a.powi(2) + 2_000_000.0)).sqrt() * 10.0;
@@ -64,7 +64,7 @@ impl UTypingNote {
             missed: false,
 
             pos: Vector2::ZERO,
-            image: if diff_calc_only {None} else {HitCircleImageHelper::new(&settings).await},
+            image: None,
             settings,
             playfield,
             bounce_factor,
@@ -197,6 +197,10 @@ impl HitObject for UTypingNote {
         self.hit_index = 0;
         self.branches.reset();
     }
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.image = HitCircleImageHelper::new(&self.settings, skin_manager).await;
+    }
 }
 
 // utyping hitobject stuff
@@ -247,12 +251,12 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    async fn new(_settings: &Arc<TaikoSettings>) -> Option<Self> {
+    async fn new(_settings: &Arc<TaikoSettings>, skin_manager: &mut SkinManager) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
 
-        let mut circle = SkinManager::get_texture(hitcircle, true).await;
+        let mut circle = skin_manager.get_texture(hitcircle, true).await;
         if let Some(circle) = &mut circle {
             let scale = Vector2::ONE * scale;
 
@@ -261,7 +265,7 @@ impl HitCircleImageHelper {
             // circle.color = color;
         }
 
-        let mut overlay = SkinManager::get_texture(hitcircle.to_owned() + "overlay", true).await;
+        let mut overlay = skin_manager.get_texture(hitcircle.to_owned() + "overlay", true).await;
         if let Some(overlay) = &mut overlay {
             let scale = Vector2::ONE * scale;
 
@@ -270,7 +274,7 @@ impl HitCircleImageHelper {
             // overlay.color = color;
         }
 
-        if overlay.is_none() || circle.is_none() {return None}
+        if overlay.is_none() || circle.is_none() { return None }
 
         Some(Self {
             circle: circle.unwrap(),

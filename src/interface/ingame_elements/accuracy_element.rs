@@ -11,31 +11,15 @@ pub struct AccuracyElement {
 }
 impl AccuracyElement {
     pub async fn new() -> Self {
-        let mut acc_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", Some('%'), 2).await.ok();
-        
-        // get the bounds
-        // TODO: make it not rely on this shit
-        let bounds_size = if let Some(im) = &mut acc_image {
-            im.number = 100.0; 
-            im.measure_text()
-        } else {
-            Text::new(
-                Vector2::ZERO,
-                30.0,
-                "100.00%".to_owned(),
-                Color::BLACK,
-                Font::Main
-            ).measure_text()
-        };
-
         Self {
-            bounds_size,
-            acc_image,
+            bounds_size: Text::measure_text_raw(&[Font::Main], 30.0, "100.00%", Vector2::ONE, 0.0),
+            acc_image: None,
             acc: 0.0,
         }
     }
 }
 
+#[async_trait]
 impl InnerUIElement for AccuracyElement {
     fn display_name(&self) -> &'static str { "Accuracy" }
 
@@ -88,5 +72,19 @@ impl InnerUIElement for AccuracyElement {
             list.push(text);
         }
         
+    }
+
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.acc_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", Some('%'), 2, skin_manager).await.ok();
+        
+        // get the bounds
+        // TODO: make it not rely on this shit
+        self.bounds_size = if let Some(im) = &mut self.acc_image {
+            im.number = 100.0; 
+            im.measure_text()
+        } else {
+            Text::measure_text_raw(&[Font::Main], 30.0, "100.00%", Vector2::ONE, 0.0)
+        };
     }
 }

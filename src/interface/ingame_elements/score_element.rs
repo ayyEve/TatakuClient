@@ -1,6 +1,7 @@
 use crate::prelude::*;
 const PADDING:Vector2 = Vector2::new(3.0, 3.0);
 const WHITE_TEXT:bool = true;
+const NUMBER: u32 = 1_000_000_000;
 
 
 pub struct ScoreElement {
@@ -10,33 +11,15 @@ pub struct ScoreElement {
 }
 impl ScoreElement {
     pub async fn new() -> Self {
-        let number:u32 = 1_000_000_000;
-        let mut score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0).await.ok();
-
-        // get the bounds
-        // TODO: make it not rely on this shit
-        let bounds_size = if let Some(im) = &mut score_image {
-            im.number = number as f64; 
-            im.measure_text()
-        } else {
-            Text::new(
-                Vector2::ZERO,
-                30.0,
-                format_number(number),
-                Color::BLACK,
-                Font::Main
-            ).measure_text()
-        };
-
-
         Self {
-            bounds_size,
-            score_image,
+            bounds_size: Text::measure_text_raw(&[Font::Main], 30.0, &format_number(NUMBER), Vector2::ONE, 0.0),
+            score_image: None,
             score: 0
         }
     }
 }
 
+#[async_trait]
 impl InnerUIElement for ScoreElement {
     fn display_name(&self) -> &'static str { "Score" }
 
@@ -93,6 +76,18 @@ impl InnerUIElement for ScoreElement {
             list.push(text);
         }
 
+    }
+
+
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+        self.score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0, skin_manager).await.ok();
+
+        self.bounds_size = if let Some(im) = &mut self.score_image {
+            im.number = NUMBER as f64;
+            im.measure_text()
+        } else {
+            Text::measure_text_raw(&[Font::Main], 30.0, &format_number(NUMBER), Vector2::ONE, 0.0)
+        };
     }
 }
 

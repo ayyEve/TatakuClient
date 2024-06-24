@@ -19,7 +19,7 @@ pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
 
     
     async fn force_update_settings(&mut self, settings: &Settings);
-    async fn reload_skin(&mut self);
+    async fn reload_skin(&mut self, skin_manager: &mut SkinManager);
 
     async fn time_jump(&mut self, _new_time: f32) {}
     async fn apply_mods(&mut self, mods: Arc<ModManager>);
