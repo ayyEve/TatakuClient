@@ -166,7 +166,6 @@ impl HitObject for OsuNote {
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.circle_image.reload_skin(skin_manager).await;
         self.approach_circle.reload_texture(skin_manager).await;
-
     }
 }
 

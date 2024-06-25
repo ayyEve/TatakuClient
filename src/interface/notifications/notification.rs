@@ -26,4 +26,16 @@ impl Notification {
             onclick
         }
     }
+    pub fn new_text(text: impl ToString, color: Color, duration: f32) -> Self {
+        Self::new(text.to_string(), color, duration, NotificationOnClick::None)
+    }
+
+    pub fn new_error(text: impl ToString, err: impl Into<TatakuError>) -> Self {
+        Self::new(
+            text.to_string(),
+            Color::RED,
+            5_000.0, 
+            NotificationOnClick::None,
+        )
+    }
 }

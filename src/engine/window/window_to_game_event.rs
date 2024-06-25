@@ -11,6 +11,8 @@ pub enum Window2GameEvent {
 
     FileHover(PathBuf),
     FileDrop(PathBuf),
+
+    ScreenshotComplete(Vec<u8>, [u32; 2], ScreenshotInfo),
     
 
     // keyboard input

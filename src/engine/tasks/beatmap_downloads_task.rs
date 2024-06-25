@@ -23,7 +23,7 @@ impl BeatmapDownloadsCheckTask {
 
 #[async_trait]
 impl TatakuTask for BeatmapDownloadsCheckTask {
-    fn get_name(&self) -> String { format!("Beatmap Download Check") }
+    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Beatmap Download Check") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Continuous }
     fn get_state(&self) -> TatakuTaskState { TatakuTaskState::Running } // no real point in saying we arent running, since we run for one update every ~10s
 

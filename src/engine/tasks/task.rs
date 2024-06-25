@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait TatakuTask: Send + Sync  {
-    fn get_name(&self) -> String;
+    fn get_name(&self) -> Cow<'static, str>;
     fn get_type(&self) -> TatakuTaskType;
     fn get_state(&self) -> TatakuTaskState;
 

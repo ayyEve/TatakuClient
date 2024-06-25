@@ -22,29 +22,15 @@ impl IngameScore {
         }
     }
 
-    pub async fn get_replay(&self) -> Option<Replay> {
+    pub async fn get_replay(&self) -> TatakuResult<Replay> {
         info!("downloading: {:#?}", self.replay_location);
 
         match &self.replay_location {
-            ReplayLocation::Local => {
-                match get_local_replay_for_score(&self.score) {
-                    Ok(replay) => return Some(replay),
-                    Err(e) => NotificationManager::add_error_notification("Error loading replay", e).await,
-                }
-            }
-            ReplayLocation::Online(downloader) => {
-                match downloader.get_replay().await {
-                    Ok(replay) => return Some(replay),
-                    Err(e) => NotificationManager::add_error_notification("Error reading replay", e).await,
-                }
-            }
-            ReplayLocation::OnlineNotExist => {
-                // TODO: replay button should be hidden in this case, but im bad coder
-                NotificationManager::add_text_notification("Replay is not available :c", 5000.0, Color::RED).await
-            }
+            ReplayLocation::Local => get_local_replay_for_score(&self.score),
+            ReplayLocation::Online(downloader) => downloader.get_replay().await,
+            // TODO: replay button should be hidden in this case, but im bad coder
+            ReplayLocation::OnlineNotExist => Err(TatakuError::String(format!("Replay is not available :c"))),
         }
-
-        None
     }
 
     pub fn insert_stat(&mut self, stat: GameModeStat, value: f32) {

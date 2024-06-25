@@ -122,8 +122,6 @@ impl<'window> GameWindow<'window> {
     }
 
     fn update(&mut self) {
-
-
         // increment input frametime stuff
         let frametime = (self.input_timer.elapsed_and_reset() * 100.0).floor() as u32;
         INPUT_FRAMETIME.fetch_max(frametime, SeqCst);
@@ -315,8 +313,8 @@ impl<'window> GameWindow<'window> {
         let ctx:Result<ClipboardContext, Box<dyn std::error::Error>> = ClipboardProvider::new();
         
         Ok(ctx
-        .map_err(|e|TatakuError::String(e.to_string()))
-        .and_then(|mut ctx|ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
+            .map_err(|e|TatakuError::String(e.to_string()))
+            .and_then(|mut ctx| ctx.set_contents(content).map_err(|e|TatakuError::String(e.to_string())))?)
     }
 
 
@@ -540,10 +538,6 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 self.mouse_helper.set_system_cursor(false);
                 self.window().set_cursor_visible(false);
             }
-            // Game2WindowEvent::Redraw => {
-            //     self.redraw_requested = Instant::now();
-            //     self.window.request_redraw();
-            // }
 
             Game2WindowEvent::RequestAttention => self.window().request_user_attention(Some(winit::window::UserAttentionType::Informational)),
 
@@ -553,7 +547,10 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 let _ = self.game_event_sender.try_send(Window2GameEvent::Closed);
             }
 
-            Game2WindowEvent::TakeScreenshot(fuze) => self.graphics.screenshot(Box::new(move |(window_data, [width, height])| { let _ = fuze.send((window_data, width, height)); })),
+            Game2WindowEvent::TakeScreenshot(info) => self.graphics.screenshot(Box::new(move |(window_data, [width, height])| { 
+                // let _ = fuze.send((window_data, width, height)); 
+                todo!()
+            })),
             Game2WindowEvent::RefreshMonitors => self.refresh_monitors_inner(),
 
             Game2WindowEvent::AddEmitter(emitter) => self.graphics.add_emitter(emitter),
@@ -584,6 +581,10 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 self.mouse_helper.set_raw_input(settings.raw_mouse_input);
 
                 self.settings = settings;
+            }
+
+            Game2WindowEvent::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
+                error!("error copying to clipboard: {e:?}")
             }
         }
     }
@@ -620,9 +621,7 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         if self.close_pending { event_loop.exit(); }
 
         let event =  match event {
-            WindowEvent::Resized(new_size)
-            // | winit::event::WindowEvent::ScaleFactorChanged { new_inner_size:&mut new_size, .. } 
-            => {
+            WindowEvent::Resized(new_size) => {
                 self.graphics.resize([new_size.width, new_size.height]);
                 let new_size = Vector2::new(new_size.width as f32, new_size.height as f32);
                 
@@ -682,8 +681,6 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
                 }, .. 
             } => Some(Window2GameEvent::KeyRelease(KeyInput::from_event(e))),
             
-
-            
             // winit::event::WindowEvent::ModifiersChanged(_) => todo!(),
             // winit::event::WindowEvent::Ime(_) => todo!(),
             WindowEvent::CursorMoved { position, .. } => if let Some(new_pos) = self.mouse_helper.display_mouse_moved(Vector2::new(position.x as f32, position.y as f32)) {
@@ -701,8 +698,7 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
 
             WindowEvent::Touch(touch) => self.handle_touch_event(touch),
 
-
-            // winit::event::WindowEvent::Occluded(_) => todo!(),
+            WindowEvent::Occluded(_) => todo!(),
 
             WindowEvent::RedrawRequested => {
                 self.render();

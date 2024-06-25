@@ -130,10 +130,11 @@ impl ScoreMenu {
     async fn replay(&mut self) {
         if let Some(replay) = self.replay.clone() {
             self.do_replay(replay).await;
-        } else if let Some(replay) = self.score.get_replay().await {
-            self.do_replay(replay).await;
         } else {
-            warn!("no replay")
+            match self.score.get_replay().await {
+                Ok(replay) => self.do_replay(replay).await,
+                Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
+            }
         }
     }
 

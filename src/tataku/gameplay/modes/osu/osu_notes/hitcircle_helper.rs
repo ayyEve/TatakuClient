@@ -67,6 +67,7 @@ impl HitCircleImageHelper {
             overlay.pos = self.pos;
             overlay.scale = Vector2::ONE * self.scaling_helper.scaled_cs;
         }
+        
         self.combo_image = SkinnedNumber::new(
             self.pos, 
             self.combo_num as f64,
@@ -83,9 +84,7 @@ impl HitCircleImageHelper {
             combo.scale = Vector2::ONE * self.scaling_helper.scaled_cs * TEXT_SCALE;
             combo.center_text(&rect);
             self.combo_text = None;
-        } else if let Some(_text) = &mut self.combo_text {
-
-        } else {
+        } else if self.combo_text.is_none() {
             let mut text = Text::new(
                 self.pos,
                 radius,
@@ -159,10 +158,9 @@ impl HitCircleImageHelper {
             circle.color.a = self.alpha;
             list.push(circle);
         } else {
-            let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;
             list.push(Circle::new(
                 self.pos,
-                radius,
+                CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs,
                 self.color.alpha(self.alpha),
                 Some(Border::new(
                     Color::BLACK.alpha(self.alpha),

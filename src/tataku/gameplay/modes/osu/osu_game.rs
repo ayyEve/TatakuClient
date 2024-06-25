@@ -962,7 +962,6 @@ impl GameMode for OsuGame {
             self.game_settings.combo_colors.iter().map(|c| Color::from_hex(c)).collect()
         };
 
-
         self.apply_combo_colors(combo_colors);
 
         for n in self.notes.iter_mut() {

@@ -35,7 +35,7 @@ impl DiffCalcTask {
 
 #[async_trait]
 impl TatakuTask for DiffCalcTask {
-    fn get_name(&self) -> String { format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.playmode) }
+    fn get_name(&self) -> Cow<'static, str> { Cow::Owned(format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.playmode)) }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 

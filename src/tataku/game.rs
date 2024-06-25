@@ -126,7 +126,6 @@ impl Game {
             values: ValueCollection::new(),
             song_state: AudioState::Unknown,
         };
-        g.load_custom_menus();
 
         g.init().await;
 
@@ -261,6 +260,8 @@ impl Game {
 
     pub async fn init(&mut self) {
 
+        self.load_custom_menus();
+
         // init value collection
         self.init_value_collection();
         
@@ -340,6 +341,9 @@ impl Game {
                 match e {
                     Window2GameEvent::FileDrop(path) => self.handle_file_drop(path).await,
                     Window2GameEvent::Closed => { return self.close_game(); }
+                    Window2GameEvent::ScreenshotComplete(bytes, size, info) => if let Err(e) = self.finish_screenshot(bytes, size, info).await {
+                        self.actions.push(GameAction::AddNotification(Notification::new_error("Screenshot Error", e)));
+                    }
                     e => self.input_manager.handle_events(e),
                 }
             }
@@ -584,14 +588,10 @@ impl Game {
 
         // screenshot
         if keys_down.has_and_remove(Key::F12) {
-            let (f, b) = tokio::sync::oneshot::channel();
-            self.window_proxy.send_event(Game2WindowEvent::TakeScreenshot(f)).unwrap();
-
-            tokio::spawn(async move {
-                if let Err(e) = Self::await_screenshot(b, mods).await {
-                    NotificationManager::add_error_notification("Error saving screenshot", e).await;
-                }
-            });
+            self.window_proxy.send_event(Game2WindowEvent::TakeScreenshot(ScreenshotInfo {
+                // if shift is pressed, upload to server, and get link
+                upload: mods.shift,
+            })).unwrap();
         }
 
         // if keys_down.contains(&Key::D1) && mods.ctrl {
@@ -821,67 +821,6 @@ impl Game {
                 }
             }
             
-            // GameState::SetMenu(menu) => {
-
-            //     // // menu input events
-            //     // if window_size_updated {
-            //     //     menu.window_size_changed((*self.window_size).clone()).await;
-            //     // }
-            //         // let events = Events
-
-
-            //     // // clicks
-            //     // for b in mouse_down { 
-            //     //     menu.on_click(mouse_pos, b, mods, self).await;
-            //     // }
-            //     // for b in mouse_up { 
-            //     //     menu.on_click_release(mouse_pos, b, self).await;
-            //     // }
-
-            //     // // mouse move
-            //     // if mouse_moved {menu.on_mouse_move(mouse_pos, self).await}
-            //     // // mouse scroll
-            //     // if scroll_delta.abs() > 0.0 {menu.on_scroll(scroll_delta, self).await}
-
-
-            //     // // TODO: this is temp
-            //     // if keys_up.contains(&Key::S) && mods.ctrl { self.add_dialog(Box::new(SkinSelect::new().await), false) }
-            //     // // TODO: this too
-            //     // if keys_up.contains(&Key::G) && mods.ctrl { self.add_dialog(Box::new(GameImportDialog::new().await), false) }
-
-            //     // // check keys down
-            //     // for key in keys_down {menu.on_key_press(key, self, mods).await}
-            //     // // check keys up
-            //     // for key in keys_up {menu.on_key_release(key, self).await}
-
-
-            //     // // controller
-            //     // for (c, buttons) in controller_down {
-            //     //     for b in buttons {
-            //     //         menu.controller_down(self, &c, b).await;
-            //     //     }
-            //     // }
-            //     // for (c, buttons) in controller_up {
-            //     //     for b in buttons {
-            //     //         menu.controller_up(self, &c, b).await;
-            //     //     }
-            //     // }
-            //     // for (c, ad) in controller_axis {
-            //     //     menu.controller_axis(self, &c, ad).await;
-            //     // }
-
-
-            //     // // check text
-            //     // if text.len() > 0 { menu.on_text(text).await }
-
-            //     // // window focus change
-            //     // if let Some(has_focus) = window_focus_changed {
-            //     //     menu.on_focus_change(has_focus, self).await;
-            //     // }
-                
-            //     // menu.update(self).await;
-            // }
-
             // GameState::Spectating(manager) => {   
             //     let actions = manager.update().await;
             //     self.handle_menu_actions(actions).await;
@@ -916,7 +855,11 @@ impl Game {
                 self.settings.save().await;
                 self.current_state = GameState::Closing;
                 let _ = self.window_proxy.send_event(Game2WindowEvent::CloseGame);
+
+                // send logoff
+                OnlineManager::set_action(SetAction::Closing, None);
             }
+
 
             _ => {
                 // force close all dialogs
@@ -940,9 +883,10 @@ impl Game {
                         }
                         manager.reload_skin(&mut self.skin_manager).await;
                         manager.start().await;
+
+
                         let m = manager.metadata.clone();
                         let start_time = manager.start_time;
-
                         self.set_background_beatmap().await;
                         let action;
                         if let Some(manager) = &self.spectator_manager {
@@ -964,25 +908,10 @@ impl Game {
                             };
                         }
 
-
                         OnlineManager::set_action(action, Some(m.mode.clone()));
                     }
-                    GameState::SetMenu(_) => {
-                        if let GameState::SetMenu(menu) = &self.current_state {
-                            if menu.get_name() == "pause" {
-                                self.actions.push(SongAction::Play);
-                                // if let Some(song) = AudioManager::get_song().await {
-                                //     song.play(false);
-                                // }
-                            }
-                        }
-
-                        OnlineManager::set_action(SetAction::Idle, None);
-                    }
-                    GameState::Closing => {
-                        // send logoff
-                        OnlineManager::set_action(SetAction::Closing, None);
-                    }
+                    GameState::SetMenu(_) => OnlineManager::set_action(SetAction::Idle, None),
+                    
                     _ => {}
                 }
 
@@ -1025,7 +954,7 @@ impl Game {
             }
 
 
-            for host_id in std::mem::take(&mut manager.spectator_info.spectate_pending) {
+            for host_id in manager.spectator_info.spectate_pending.take() {
                 trace!("Speccing {host_id}");
                 manager.spectator_info.outgoing_frames.clear();
                 manager.spectator_info.incoming_frames.insert(host_id, Vec::new());
@@ -1404,6 +1333,8 @@ impl Game {
             TatakuAction::Game(GameAction::AddNotification(notif)) => NotificationManager::add_notification(notif).await,
             
             TatakuAction::Game(GameAction::UpdateBackground) => self.set_background_beatmap().await,
+            TatakuAction::Game(GameAction::CopyToClipboard(text)) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); } 
+
 
             // song actions
             TatakuAction::Song(song_action) => {
@@ -1780,8 +1711,7 @@ impl Game {
     }
 
 
-    async fn await_screenshot(b: tokio::sync::oneshot::Receiver<(Vec<u8>, u32, u32)>, mods: KeyModifiers) -> TatakuResult {
-        let Ok((data, width, height)) = b.await else { return Ok(()) };
+    async fn finish_screenshot(&mut self, bytes: Vec<u8>, [width, height]: [u32; 2], info: ScreenshotInfo) -> TatakuResult {
         
         // create file
         let date = chrono::Local::now();
@@ -1803,66 +1733,19 @@ impl Game {
         let mut encoder = png::Encoder::new(w, width, height);
         encoder.set_color(png::ColorType::Rgba);
 
-        let mut writer = encoder.write_header().map_err(|e|TatakuError::String(format!("{e}")))?;
-        writer.write_image_data(data.as_slice()).map_err(|e|TatakuError::String(format!("{e}")))?;
+        let mut writer = encoder.write_header().map_err(|e| TatakuError::String(format!("{e}")))?;
+        writer.write_image_data(&bytes).map_err(|e| TatakuError::String(format!("{e}")))?;
 
         // notify user
         let full_path = std::env::current_dir().unwrap().join(path).to_string_lossy().to_string();
-        NotificationManager::add_notification(Notification::new(
+        self.actions.push(GameAction::AddNotification(Notification::new(
             format!("Screenshot saved to {full_path}"), 
             Color::BLUE, 
             5000.0, 
             NotificationOnClick::File(full_path.clone())
-        )).await;
+        )));
 
-        // if shift is pressed, upload to server, and get link
-        if mods.shift {
-            NotificationManager::add_text_notification("Uploading screenshot...", 5000.0, Color::YELLOW).await;
-
-            let settings = SettingsHelper::new();
-            let url = format!("{}/screenshots?username={}&password={}", settings.score_url, settings.username, settings.password);
-
-            let data = match Io::read_file_async(full_path).await {
-                Err(e) => { NotificationManager::add_error_notification("Error loading screenshot to send to server", TatakuError::String(e.to_string())).await; return Ok(())},
-                Ok(data) => data,
-            };
-
-            let r = match reqwest::Client::new().post(url).body(data).send().await {
-                Err(e) => { NotificationManager::add_error_notification("Error sending screenshot request", TatakuError::String(e.to_string())).await; return Ok(())},
-                Ok(r) => r,
-            };
-            let b = match r.bytes().await {
-                Err(e) => { NotificationManager::add_error_notification("Error reading screenshot response", TatakuError::String(e.to_string())).await; return Ok(())},
-                Ok(b) => b, 
-            };
-            let s = match String::from_utf8(b.to_vec()) {
-                Err(e) => { NotificationManager::add_error_notification("Error parsing screenshot response", TatakuError::String(e.to_string())).await; return Ok(())},
-                Ok(s) => s,
-            };
-            let id = match s.parse::<i64>() {
-                Err(e) => { NotificationManager::add_error_notification("Error parsing screenshot id", TatakuError::String(e.to_string())).await; return Ok(())},
-                Ok(id) => id,
-            };
-
-            // copy to clipboard
-            let url = format!("{}/screenshots/{id}", settings.score_url);
-            if let Err(e) = GameWindow::set_clipboard(url.clone()) {
-                warn!("Error copying to clipboard: {e}");
-                NotificationManager::add_notification(Notification::new(
-                    format!("Screenshot uploaded {url}"), 
-                    Color::BLUE, 
-                    5000.0, 
-                    NotificationOnClick::Url(url)
-                )).await;
-            } else {
-                NotificationManager::add_notification(Notification::new(
-                    format!("Screenshot uploaded {url}\nLink copied to clipboard"), 
-                    Color::BLUE, 
-                    5000.0, 
-                    NotificationOnClick::Url(url)
-                )).await;
-            }
-        }
+        self.task_manager.add_task(Box::new(UploadScreenshotTask::new(full_path)));
 
         Ok(())
     }

@@ -36,6 +36,9 @@ pub enum GameAction {
 
     /// Update the game's background
     UpdateBackground,
+
+    /// Copy some text to the clipboard
+    CopyToClipboard(String),
 }
 
 impl From<GameAction> for TatakuAction {
@@ -57,6 +60,7 @@ impl core::fmt::Debug for GameAction {
             Self::HandleEvent(arg0, arg1) => f.debug_tuple("HandleEvent").field(arg0).field(arg1).finish(),
             Self::AddNotification(arg0) => f.debug_tuple("AddNotification").field(arg0).finish(),
             Self::UpdateBackground => write!(f, "UpdateBackground"),
+            Self::CopyToClipboard(arg0) => f.debug_tuple("CopyToClipboard").field(arg0).finish(),
         }
     }
 }

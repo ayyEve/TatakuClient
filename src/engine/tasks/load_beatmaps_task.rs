@@ -24,7 +24,7 @@ impl LoadBeatmapsTask {
 
 #[async_trait]
 impl TatakuTask for LoadBeatmapsTask {
-    fn get_name(&self) -> String { format!("Load Beatmap Task") }
+    fn get_name(&self) -> Cow<'static, str> { Cow::Borrowed("Load Beatmap Task") }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
