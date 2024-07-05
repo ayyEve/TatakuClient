@@ -53,11 +53,11 @@ pub struct TaikoGame {
 
     counter: FullAltCounter,
     
-    hit_windows: Vec<(TaikoHitJudgments, Range<f32>)>,
+    hit_windows: Vec<(HitJudgment, Range<f32>)>,
     hit_cache: HashMap<TaikoHit, f32>,
     miss_window: f32,
 
-    last_judgment: TaikoHitJudgments,
+    last_judgment: HitJudgment,
     current_mods: Arc<ModManager>,
     healthbar_swap_pending: bool,
 }
@@ -92,11 +92,11 @@ impl TaikoGame {
         let w_100 = map_difficulty(od, 120.0, 80.0, 50.0);
         let w_300 = map_difficulty(od, 50.0, 35.0, 20.0);
 
-        use TaikoHitJudgments::*;
+        // use TaikoHitJudgments::*;
         self.hit_windows = vec![
-            (X300, 0.0..w_300),
-            (X100, w_300..w_100),
-            (Miss, w_100..w_miss),
+            (TaikoHitJudgments::X300, 0.0..w_300),
+            (TaikoHitJudgments::X100, w_300..w_100),
+            (TaikoHitJudgments::Miss, w_100..w_miss),
         ];
         self.miss_window = w_miss;
 
@@ -113,7 +113,7 @@ impl TaikoGame {
 
     fn add_hit_indicator(
         time: f32, 
-        mut hit_value: &TaikoHitJudgments, 
+        mut hit_value: &HitJudgment, 
         finisher_hit: bool, 
         game_settings: &TaikoSettings, 
         playfield: &TaikoPlayfield,
@@ -127,14 +127,14 @@ impl TaikoGame {
             // remove the normal hit indicator, its being replaced with a finisher
             manager.judgement_indicators.pop();
 
-            if let &TaikoHitJudgments::X100 = hit_value {
+            if hit_value == &TaikoHitJudgments::X100 {
                 hit_value = &TaikoHitJudgments::Katu;
-            } else if let &TaikoHitJudgments::X300 = hit_value {
+            } else if hit_value == &TaikoHitJudgments::X300 {
                 hit_value = &TaikoHitJudgments::Geki;
             }
         }
 
-        let color = hit_value.color();
+        let color = hit_value.color;
         let mut image = if game_settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
@@ -232,7 +232,7 @@ impl GameMode for TaikoGame {
         let left_don_image = None;
         let right_don_image = None;
         let right_kat_image = None;
-        let judgement_helper = JudgmentImageHelper::new(DefaultHitJudgments::None).await;
+        let judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()).await;
 
         for i in [TaikoHit::LeftKat, TaikoHit::LeftDon, TaikoHit::RightDon, TaikoHit::RightKat] {
             hit_cache.insert(i, -999.9);
@@ -450,11 +450,22 @@ impl GameMode for TaikoGame {
             if !did_hit && self.last_judgment != TaikoHitJudgments::Miss {
                 if let Some(last_note) = queue.previous_note() {
                     if last_note.check_finisher(hit_type, time, manager.current_mods.get_speed()) {
-                        let j = match &self.last_judgment {
-                            TaikoHitJudgments::X300 | TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
-                            TaikoHitJudgments::X100 | TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
-                            _ => return, // this shouldnt happen, last judgment will always be one of the above
+
+                        // i cant match on these contants bc i dont use the derive macro :c
+                        // let j = match &self.last_judgment {
+                        //     &TaikoHitJudgments::X300 | &TaikoHitJudgments::Geki => &TaikoHitJudgments::Geki,
+                        //     &TaikoHitJudgments::X100 | &TaikoHitJudgments::Katu => &TaikoHitJudgments::Katu,
+                        //     _ => return, // this shouldnt happen, last judgment will always be one of the above
+                        // };
+                        let j = if [&TaikoHitJudgments::X300, &TaikoHitJudgments::Geki].contains(&&self.last_judgment) {
+                            &TaikoHitJudgments::Geki
+                        } else if [&TaikoHitJudgments::X100, &TaikoHitJudgments::Katu].contains(&&self.last_judgment) {
+                            &TaikoHitJudgments::Katu
+                        } else {
+                            return
                         };
+
+
                         
                         // add whatever the last judgment was as a finisher score
                         manager.add_judgment(j).await;
@@ -482,7 +493,7 @@ impl GameMode for TaikoGame {
                                 hit_type = note.hit_type();
                             }
 
-                            if let TaikoHitJudgments::Miss = judge {
+                            if judge == &TaikoHitJudgments::Miss {
                                 note.miss(time);
                             } else {
                                 note.hit(time);
@@ -539,7 +550,7 @@ impl GameMode for TaikoGame {
 
             // if we're using battery health
             if !self.current_mods.has_mod(NoBattery) {
-                let note_count = self.notes.iter().filter(|n|n.note_type() == NoteType::Note).count() as f32;
+                let note_count = self.notes.iter().filter(|n| n.note_type() == NoteType::Note).count() as f32;
 
                 const MAX_HEALTH:f32 = 200.0;
                 const PASS_HEALTH:f32 = MAX_HEALTH / 2.0;
@@ -573,7 +584,7 @@ impl GameMode for TaikoGame {
 
                 health.check_fail = Arc::new(move |s| s.current_health < PASS_HEALTH);
                 health.do_health = Arc::new(move |s, j, _score| {
-                    s.current_health += match j.as_str_internal() {
+                    s.current_health += match j.internal_id {
                         "x300" => health_per_300,
                         "x100" => health_per_100,
                         "xmiss" => health_per_miss,
@@ -636,10 +647,11 @@ impl GameMode for TaikoGame {
 
         Vec::new()
     }
-    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
+    
+    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
-        list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
+        list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
         
         // draw the hit area
         list.push(Circle::new(
@@ -664,14 +676,14 @@ impl GameMode for TaikoGame {
         });
 
         for note in note_list { 
-            note.draw(time, list).await 
+            note.draw(state.time, list).await 
         }
 
         // draw hit indicators
-        let lifetime_time = DRUM_LIFETIME_TIME * manager.game_speed();
+        let lifetime_time = DRUM_LIFETIME_TIME * state.mods.get_speed();
         for (hit_type, hit_time) in self.hit_cache.iter() {
-            if time - hit_time > lifetime_time { continue }
-            let alpha = 1.0 - (time - hit_time) / (lifetime_time * 4.0);
+            if state.time - hit_time > lifetime_time { continue }
+            let alpha = 1.0 - (state.time - hit_time) / (lifetime_time * 4.0);
             match hit_type {
                 TaikoHit::LeftKat => {
                     if let Some(kat) = &self.left_kat_image {
@@ -732,8 +744,8 @@ impl GameMode for TaikoGame {
             }
         }
 
-        if manager.current_mods.has_mod(Flashlight) {
-            let radius = match manager.score.combo {
+        if state.mods.has_mod(Flashlight) {
+            let radius = match state.score.combo {
                 0..=99 => 125.0,
                 100..=199 => 100.0,
                 _ => 75.0
@@ -946,7 +958,7 @@ impl GameMode for TaikoGame {
             self.left_kat_image = Some(lkat);
         }
 
-        self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::Miss).await;
+        self.judgement_helper = JudgmentImageHelper::new(TaikoHitJudgments::variants().to_vec()).await;
 
         for n in self.notes.iter_mut().chain(self.other_notes.iter_mut()) {
             n.reload_skin(skin_manager).await;
@@ -1196,9 +1208,7 @@ impl GameModeProperties for TaikoGame {
     fn timing_bar_things(&self) -> Vec<(f32,Color)> {
         self.hit_windows
             .iter()
-            .map(|(j, w) | {
-                (w.end, j.color())
-            })
+            .map(|(j, w)| (w.end, j.color))
             .collect()
     }
 

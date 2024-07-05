@@ -75,8 +75,8 @@ impl GameModeInfo for TaikoGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments> {
-        Box::new(super::TaikoHitJudgments::Miss)
+    fn get_judgments(&self) -> Vec<HitJudgment> {
+        super::TaikoHitJudgments::variants().to_vec()
     }
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
         let game = TaikoGame::new(beatmap, false).await?;

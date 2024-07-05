@@ -9,7 +9,7 @@ pub struct HealthHelper {
 
     pub check_fail_at_end: bool,
     pub check_fail: Arc<dyn (Fn(&Self) -> bool) + Send + Sync>,
-    pub do_health: Arc<dyn (Fn(&mut Self, &dyn HitJudgments, &IngameScore)) + Send + Sync>,
+    pub do_health: Arc<dyn (Fn(&mut Self, &HitJudgment, &IngameScore)) + Send + Sync>,
 }
 impl HealthHelper {
     pub fn new() -> Self {
@@ -51,8 +51,8 @@ impl HealthHelper {
     fn default_check_fail(&self) -> bool {
         self.current_health <= 0.0
     }
-    fn default_do_health(&mut self, j: &dyn HitJudgments, _: &IngameScore) {
-        self.current_health += j.get_health();
+    fn default_do_health(&mut self, j: &HitJudgment, _: &IngameScore) {
+        self.current_health += j.health;
         self.validate_health()
     }
 }

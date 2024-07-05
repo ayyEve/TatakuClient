@@ -9,7 +9,7 @@ pub trait OsuHitObject: HitObject {
     fn new_combo(&self) -> bool;
     fn set_combo_color(&mut self, color: Color);
 
-    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> { Vec::new() }
+    fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> { Vec::new() }
 
     async fn playfield_changed(&mut self, new_scale: Arc<ScalingHelper>);
     async fn set_settings(&mut self, settings: Arc<OsuSettings>);
@@ -31,11 +31,11 @@ pub trait OsuHitObject: HitObject {
 
     fn miss(&mut self);
     fn hit(&mut self, time: f32);
-    fn set_judgment(&mut self, _j:&OsuHitJudgments) {}
+    fn set_judgment(&mut self, _j:&HitJudgment) {}
     fn set_ar(&mut self, ar: f32);
 
     fn check_distance(&self, mouse_pos: Vector2) -> bool;
-    fn check_release_points(&mut self, _time: f32) -> OsuHitJudgments { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
+    fn check_release_points(&mut self, _time: f32) -> HitJudgment { OsuHitJudgments::Miss } // miss default, bc we only care about sliders
 
     fn shake(&mut self, _time: f32) {}
 }

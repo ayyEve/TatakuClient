@@ -34,7 +34,7 @@ pub struct UTypingNote {
 
     image: Option<HitCircleImageHelper>,
 
-    pub judgment: Option<UTypingHitJudgment>
+    pub judgment: Option<HitJudgment>
 }
 impl UTypingNote {
     pub async fn new(time:f32, text: String, settings:Arc<TaikoSettings>, playfield: Arc<UTypingPlayfield>) -> Self {

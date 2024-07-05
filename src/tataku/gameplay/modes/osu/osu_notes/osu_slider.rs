@@ -29,7 +29,7 @@ pub struct OsuSlider {
     hit_dots: Vec<SliderDot>,
 
     /// used for repeat sliders
-    pending_combo: Vec<(OsuHitJudgments, Vector2)>,
+    pending_combo: Vec<(HitJudgment, Vector2)>,
 
     /// start time
     time: f32,
@@ -57,7 +57,7 @@ pub struct OsuSlider {
     /// how many dots is there
     dot_count: usize,
     /// what did the user get on the start of the slider?
-    start_judgment: OsuHitJudgments,
+    start_judgment: HitJudgment,
 
     /// if the mouse is being held
     holding: bool,
@@ -892,7 +892,7 @@ impl OsuHitObject for OsuSlider {
         }
      }
 
-    fn set_judgment(&mut self, j: &OsuHitJudgments) {
+    fn set_judgment(&mut self, j: &HitJudgment) {
         self.start_checked = true;
         self.start_judgment = *j;
 
@@ -907,42 +907,36 @@ impl OsuHitObject for OsuSlider {
         }
     }
 
-    fn check_release_points(&mut self, time: f32) -> OsuHitJudgments {
+    fn check_release_points(&mut self, time: f32) -> HitJudgment {
         self.end_checked = true;
         self.sound_index = self.def.edge_sounds.len() - 1;
         let distance = self.mouse_pos.distance(self.time_end_pos); //((self.time_end_pos.x - self.mouse_pos.x).powi(2) + (self.time_end_pos.y - self.mouse_pos.y).powi(2)).sqrt();
         let ok_distance = self.radius * OK_RADIUS_MULT;
 
-        match self.start_judgment {
-            OsuHitJudgments::Miss => {
-                if self.dot_count == 0 {
-                    if distance > ok_distance || !self.holding {
-                        OsuHitJudgments::Miss
-                    } else {
-                        self.sound_index = self.def.edge_sounds.len() - 1;
-                        OsuHitJudgments::X100
-                    }
-
-                } else if self.dots_missed == self.dot_count {
+        if self.start_judgment == OsuHitJudgments::Miss {
+            if self.dot_count == 0 {
+                if distance > ok_distance || !self.holding {
                     OsuHitJudgments::Miss
-                } else if self.dots_missed == 0 {
-                    self.add_end_ripple(time);
-                    OsuHitJudgments::X100
                 } else {
-                    self.add_end_ripple(time);
-                    OsuHitJudgments::X50
+                    self.sound_index = self.def.edge_sounds.len() - 1;
+                    OsuHitJudgments::X100
                 }
-            }
 
-            _ => {
-                if self.dots_missed == 0 && self.holding && distance < ok_distance {
-                    self.add_end_ripple(time);
-                    OsuHitJudgments::X300
-                } else {
-                    self.add_end_ripple(time);
-                    OsuHitJudgments::X100
-                }
+            } else if self.dots_missed == self.dot_count {
+                OsuHitJudgments::Miss
+            } else if self.dots_missed == 0 {
+                self.add_end_ripple(time);
+                OsuHitJudgments::X100
+            } else {
+                self.add_end_ripple(time);
+                OsuHitJudgments::X50
             }
+        } else if self.dots_missed == 0 && self.holding && distance < ok_distance {
+            self.add_end_ripple(time);
+            OsuHitJudgments::X300
+        } else {
+            self.add_end_ripple(time);
+            OsuHitJudgments::X100
         }
     }
 
@@ -958,8 +952,8 @@ impl OsuHitObject for OsuSlider {
     }
 
 
-    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
-        std::mem::take(&mut self.pending_combo)
+    fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> {
+        self.pending_combo.take()
     }
 
 

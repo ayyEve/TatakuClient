@@ -11,7 +11,7 @@ impl GameMode for NoMode {
 
     async fn handle_replay_frame(&mut self, _:ReplayAction, _:f32, _:&mut GameplayManager) {}
     async fn update(&mut self, _:&mut GameplayManager, _: f32) -> Vec<ReplayAction> { Vec::new() }
-    async fn draw(&mut self, _:f32, _:&mut GameplayManager, _: &mut RenderableCollection) {}
+    async fn draw<'a>(&mut self, _:GameplayState<'a>, _: &mut RenderableCollection) {}
     fn skip_intro(&mut self, _: &mut GameplayManager) -> Option<f32> { None }
     async fn reset(&mut self, _:&Beatmap) {}
     async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}

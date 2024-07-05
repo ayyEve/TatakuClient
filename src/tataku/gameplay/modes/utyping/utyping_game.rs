@@ -272,10 +272,10 @@ impl GameMode for UTypingGame {
 
         autoplay_list
     }
-    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
-        list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
+        list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
 
         // draw the hit area
         list.push(Circle::new(
@@ -286,10 +286,10 @@ impl GameMode for UTypingGame {
         ));
 
         // draw timing lines
-        for tb in self.timing_bars.iter_mut() { tb.draw(time, list); }
+        for tb in self.timing_bars.iter_mut() { tb.draw(state.time, list); }
         
         // draw notes
-        for note in self.notes.iter_mut() { note.draw(time, list).await; }
+        for note in self.notes.iter_mut() { note.draw(state.time, list).await; }
     }
 
 

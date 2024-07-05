@@ -51,17 +51,17 @@ impl ScoreMenu {
     pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
         let hit_error = score.hit_error();
 
-        let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
+        let judgments = get_gamemode_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
         
         // map hit types to a display string
         let mut hit_counts = Vec::new();
         for judge in judgments.iter() {
-            let txt = judge.as_str_display();
+            let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.internal_id).map(|n|*n).unwrap_or_default();
 
-            let mut color = judge.color();
+            let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
 
             hit_counts.push((txt.to_owned(), count as u32, color));
@@ -162,17 +162,17 @@ impl ScoreMenu {
     async fn change_score(&mut self, score: IngameScore) {
         self.hit_error = score.hit_error();
 
-        let judgments = get_gamemode_info(&score.playmode).map(|i|i.get_judgments().variants()).unwrap_or_default();
+        let judgments = get_gamemode_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
         
         // map hit types to a display string
         self.hit_counts.clear();
         for judge in judgments.iter() {
-            let txt = judge.as_str_display();
+            let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.internal_id).map(|n|*n).unwrap_or_default();
 
-            let mut color = judge.color();
+            let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
 
             self.hit_counts.push((txt.to_owned(), count as u32, color));

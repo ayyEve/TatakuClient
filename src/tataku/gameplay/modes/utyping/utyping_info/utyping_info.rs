@@ -74,8 +74,8 @@ impl GameModeInfo for UTypingGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments> {
-        Box::new(super::UTypingHitJudgment::Miss)
+    fn get_judgments(&self) -> Vec<HitJudgment> {
+        UTypingHitJudgment::variants().to_vec()
     }
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
         let game = UTypingGame::new(beatmap, false).await?;

@@ -14,6 +14,8 @@ pub struct ManiaGame {
     // lists
     pub columns: Vec<Vec<Box<dyn ManiaHitObject>>>,
     timing_bars: Vec<TimingBar>,
+    hit_windows: Vec<(HitJudgment, Range<f32>)>,
+    miss_window: f32,
 
     position_function: Arc<Vec<PositionPoint>>,
 
@@ -36,9 +38,6 @@ pub struct ManiaGame {
 
     key_images_up: HashMap<u8, Image>,
     key_images_down: HashMap<u8, Image>,
-
-    hit_windows: Vec<(ManiaHitJudgments, Range<f32>)>,
-    miss_window: f32,
 }
 impl ManiaGame {
     pub fn get_color(&self, col:u8) -> Color {
@@ -208,8 +207,8 @@ impl ManiaGame {
 
 
 
-    fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut GameplayManager) {
-        let color = hit_value.color();
+    fn add_hit_indicator(time: f32, column: usize, hit_value: &HitJudgment, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut GameplayManager) {
+        let color = hit_value.color;
         let image = None;
         // let (color, image) = match hit_value {
         //     Miss => (Color::RED, None),
@@ -724,7 +723,7 @@ impl GameMode for ManiaGame {
                 *self.column_states.get_mut(col).unwrap() = true;
 
                 if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
-                    use ManiaHitJudgments::*;
+                    // use ManiaHitJudgments::*;
 
                     // tell the note it was hit
                     note.hit(time);
@@ -742,7 +741,7 @@ impl GameMode for ManiaGame {
                     if note.note_type() != NoteType::Hold { self.next_note(col); }
 
                     // if this was a miss, check if we failed
-                    if let Miss = judge {
+                    if judge == ManiaHitJudgments::Miss {
                         if manager.health.is_dead() {
                             manager.fail();
                         }
@@ -769,7 +768,6 @@ impl GameMode for ManiaGame {
                     let note_time = note.end_time(0.0);
 
                     if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
-                        use ManiaHitJudgments::*;
     
                         // tell the note it was hit
                         note.hit(time);
@@ -784,10 +782,8 @@ impl GameMode for ManiaGame {
                         self.next_note(col);
     
                         // if this was a miss, check if we failed
-                        if let Miss = judge {
-                            if manager.health.is_dead() {
-                                manager.fail();
-                            }
+                        if judge == ManiaHitJudgments::Miss && manager.health.is_dead() {
+                            manager.fail();
                         }
                     } else { // outside of any window, ignore
                         // play sound
@@ -846,7 +842,7 @@ impl GameMode for ManiaGame {
         Vec::new()
     }
     
-    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -854,7 +850,7 @@ impl GameMode for ManiaGame {
             Vector2::new(self.playfield.col_pos(0), bounds.pos.y),
             Vector2::new(self.playfield.total_width, bounds.size.y),
             Color::new(0.0, 0.0, 0.0, 0.8),
-            Some(Border::new(if manager.current_timing_point().kiai { Color::YELLOW } else { Color::BLACK }, 1.2))
+            Some(Border::new(if state.current_timing_point.kiai { Color::YELLOW } else { Color::BLACK }, 1.2))
         ));
 
 
@@ -862,7 +858,7 @@ impl GameMode for ManiaGame {
         self.draw_columns(bounds, list).await;
 
         // draw notes and timing bars
-        self.draw_notes(time, list).await;
+        self.draw_notes(state.time, list).await;
     }
 
     fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
@@ -1099,9 +1095,7 @@ impl GameModeProperties for ManiaGame {
     fn timing_bar_things(&self) -> Vec<(f32,Color)> {
         self.hit_windows
             .iter()
-            .map(|(j, w) | {
-                (w.end, j.color())
-            })
+            .map(|(j, w)| (w.end, j.color))
             .collect()
     }
 

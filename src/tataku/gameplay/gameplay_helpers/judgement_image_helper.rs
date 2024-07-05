@@ -2,30 +2,30 @@ use crate::prelude::*;
 
 pub struct JudgmentImageHelper {
     images: HashMap<String, Option<Animation>>,
-    variants: Vec<Box<dyn HitJudgments>>
+    variants: Vec<HitJudgment>
 }
 impl JudgmentImageHelper {
-    pub async fn new<J:HitJudgments>(judge: J) -> Self {
+    pub async fn new(variants: Vec<HitJudgment>) -> Self {
         Self {
             images: HashMap::new(),
-            variants: judge.variants()
+            variants
         }
     }
 
-    pub fn get_from_scorehit<J:HitJudgments>(&self, judge: &J) -> Option<Animation> {
-        self.images.get(judge.as_str_internal()).cloned().flatten()
+    pub fn get_from_scorehit(&self, judge: &HitJudgment) -> Option<Animation> {
+        self.images.get(judge.internal_id).cloned().flatten()
     }
 
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.images.clear();
         
         for i in self.variants.iter() {
-            let k = i.as_str_internal().to_owned();
-            let img = i.tex_name();
-            if img.is_empty() { continue }
-
+            let k = i.internal_id.to_owned();
+            if i.tex_name.is_empty() { continue }
+            
             // try to load an animation
             let mut textures = Vec::new();
+            let img = i.tex_name;
             loop {
                 let img = img.to_owned() + "-" + &textures.len().to_string();
                 if let Some(tex) = skin_manager.get_texture(img, true).await {

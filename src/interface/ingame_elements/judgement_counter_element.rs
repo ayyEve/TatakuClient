@@ -35,15 +35,15 @@ impl InnerUIElement for JudgementCounterElement {
 
         let load_colors = self.colors.is_empty();
 
-        for judge in manager.judgment_type.variants().iter() {
-            let txt = judge.as_str_display();
+        for judge in manager.judgments.iter() {
+            let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.as_str_internal()).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.internal_id).map(|n|*n).unwrap_or_default();
             self.hit_counts.push((txt.to_owned(), count as u32));
 
             if load_colors {
-                self.colors.insert(txt.to_owned(), judge.color());
+                self.colors.insert(txt.to_owned(), judge.color);
             }
         }
     }

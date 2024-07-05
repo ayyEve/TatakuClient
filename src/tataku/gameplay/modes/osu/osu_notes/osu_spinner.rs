@@ -49,7 +49,7 @@ pub struct OsuSpinner {
     /// gets smaller towards end of spinner, from 100% to 0%
     spinner_approach: Option<Image>,
 
-    points_queue: Vec<(OsuHitJudgments, Vector2)>
+    points_queue: Vec<(HitJudgment, Vector2)>
 }
 
 impl OsuSpinner {
@@ -337,7 +337,7 @@ impl OsuHitObject for OsuSpinner {
         // self.standard_settings = settings;
     }
 
-    fn pending_combo(&mut self) -> Vec<(OsuHitJudgments, Vector2)> {
-        std::mem::take(&mut self.points_queue)
+    fn pending_combo(&mut self) -> Vec<(HitJudgment, Vector2)> {
+        self.points_queue.take()
     }
 }

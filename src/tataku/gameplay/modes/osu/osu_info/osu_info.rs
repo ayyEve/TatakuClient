@@ -98,8 +98,8 @@ impl GameModeInfo for OsuGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Box<dyn crate::prelude::HitJudgments> {
-        Box::new(OsuHitJudgments::Miss)
+    fn get_judgments(&self) -> Vec<HitJudgment> {
+        OsuHitJudgments::variants().to_vec()
     }
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
         let game = OsuGame::new(beatmap, false).await?;

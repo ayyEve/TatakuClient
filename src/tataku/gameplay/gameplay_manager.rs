@@ -43,7 +43,7 @@ pub struct GameplayManager {
     pub score_multiplier: f32,
 
     pub health: HealthHelper,
-    pub judgment_type: Box<dyn HitJudgments>,
+    pub judgments: Vec<HitJudgment>,
     pub key_counter: KeyCounter,
     ui_elements: Vec<UIElement>,
 
@@ -175,7 +175,7 @@ impl GameplayManager {
             key_counter,
 
             lead_in_timer: Instant::now(),
-            judgment_type: gamemode_info.get_judgments(),
+            judgments: gamemode_info.get_judgments(),
             score: IngameScore::new(score, true, false),
 
             replay: Replay::new(),
@@ -690,9 +690,15 @@ impl GameplayManager {
         // draw gamemode
         if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
         
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        gamemode.draw(time, self, list).await;
-        self.gamemode = gamemode;
+
+        let state = GameplayState {
+            time,
+            gameplay_mode: &self.gameplay_mode,
+            current_timing_point: self.timing_points.timing_point(),
+            mods: &self.current_mods,
+            score: &self.score,
+        };
+        self.gamemode.draw(state, list).await;
 
 
         if self.fit_to_bounds.is_some() { list.pop_scissor(); }
@@ -767,21 +773,34 @@ impl GameplayManager {
     }
 
     /// add judgment, affects health and score, but not hit timings
-    pub async fn add_judgment<HJ:HitJudgments>(&mut self, judgment: &HJ) {
+    pub async fn add_judgment(&mut self, judgment: &HitJudgment) {
         // increment judgment, if applicable
-        if let Some(count) = self.score.judgments.get_mut(judgment.as_str_internal()) {
+        if let Some(count) = self.score.judgments.get_mut(judgment.internal_id) {
             *count += 1;
         }
 
         // do score 
         let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
-        match judgment.get_score(combo_mult) {
+        let score = judgment.base_score_value;
+
+        let score = match judgment.combo_multiplier {
+            ComboMultiplier::None => score,
+            ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
+            ComboMultiplier::Linear { combo, multiplier, combo_cap } => {
+                let combo_mult = combo_cap.map(|cap| combo_mult.min(cap)).unwrap_or(combo_mult);
+                let times = (combo_mult % combo).max(1) as f32;
+
+                (score as f32 * (multiplier * times)) as i32
+            }
+        };
+
+        match score {
             score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
             score @ 1.. => self.score.score.score += score as u64,
         }
 
         // do combo
-        match judgment.affects_combo() {
+        match judgment.affects_combo {
             AffectsCombo::Increment => {
                 self.score.combo += 1;
                 self.score.max_combo = self.score.max_combo.max(self.score.combo);
@@ -800,17 +819,17 @@ impl GameplayManager {
 
         // check sd/pf mods
         //TODO: if this happens, change the judgment to a miss
-        if self.current_mods.has_sudden_death() && judgment.fails_sudden_death() {
+        if self.current_mods.has_sudden_death() && judgment.fails_sudden_death {
             self.fail()
         }
-        if self.current_mods.has_perfect() && judgment.fails_perfect() {
+        if self.current_mods.has_perfect() && judgment.fails_perfect {
             self.fail()
         }
 
     }
 
     /// check and add to hit timings if found
-    pub async fn check_judgment<'a, HJ:HitJudgments>(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
+    pub async fn check_judgment<'a>(&mut self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HitJudgment> {
         if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
             self.add_judgment(hj).await;
             add_timing!(self, time, note_time);
@@ -837,9 +856,8 @@ impl GameplayManager {
     
     pub async fn check_judgment_condition<
         'a,
-        HJ:HitJudgments,
         F:Fn() -> bool,
-    >(&mut self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HJ) -> Option<&'a HJ> {
+    >(&mut self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HitJudgment) -> Option<&'a HitJudgment> {
         if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
             if cond() {
                 self.add_judgment(hj).await;
@@ -878,7 +896,7 @@ impl GameplayManager {
     }
 
     /// only check if the note + hit fit into a window, and if so, return the corresponding judgment
-    pub fn check_judgment_only<'a, HJ:HitJudgments>(&self, windows: &'a Vec<(HJ, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HJ> {
+    pub fn check_judgment_only<'a>(&self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HitJudgment> {
         let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
         for (hj, window) in windows.iter() {
             if window.contains(&diff) {
@@ -1144,9 +1162,8 @@ impl GameplayManager {
         self.ui_elements.iter_mut().for_each(|e| e.reset_element());
 
         // re-add judgments to score
-        for j in self.judgment_type.variants() {
-            let id = j.as_str_internal();
-            self.score.judgments.insert(id.to_owned(), 0);
+        for j in &self.judgments {
+            self.score.judgments.insert(j.internal_id.to_owned(), 0);
         }
 
         if self.gameplay_mode.should_load_scores() {
@@ -1627,7 +1644,7 @@ impl Default for GameplayManager {
 
             ui_changed: false,
 
-            judgment_type: Box::new(DefaultHitJudgments::None),
+            judgments: Vec::new(),
 
             settings: SettingsHelper::new(),
             window_size: WindowSize::get(),
@@ -1781,3 +1798,12 @@ impl GameplayMode {
     }
 }
 
+
+
+pub struct GameplayState<'a> {
+    pub time: f32,
+    pub gameplay_mode: &'a Box<GameplayMode>,
+    pub current_timing_point: &'a TimingPoint,
+    pub mods: &'a ModManager,
+    pub score: &'a IngameScore
+}

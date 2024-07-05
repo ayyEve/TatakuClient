@@ -11,7 +11,7 @@ pub struct OsuGame {
     pub notes: Vec<Box<dyn OsuHitObject>>,
 
     // hit timing bar stuff
-    hit_windows: Vec<(OsuHitJudgments, Range<f32>)>,
+    hit_windows: Vec<(HitJudgment, Range<f32>)>,
     miss_window: f32,
 
     mouse_pos: Vector2,
@@ -154,10 +154,10 @@ impl OsuGame {
     }
 
     
-    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut GameplayManager) {
-        if !hit_value.should_draw() { return }
+    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &HitJudgment, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut GameplayManager) {
+        if hit_value.tex_name.is_empty() { return }
 
-        let color = hit_value.color();
+        let color = hit_value.color;
         let mut image = if settings.use_skin_judgments { judgment_helper.get_from_scorehit(hit_value) } else { None };
         if let Some(image) = &mut image {
             image.pos = pos;
@@ -315,7 +315,7 @@ impl GameMode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock)).await);
 
-        let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::Miss).await;
+        let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
         let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default()).await;
@@ -563,7 +563,7 @@ impl GameMode for OsuGame {
                             Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                         }
 
-                        if let OsuHitJudgments::Miss = judge {
+                        if judge == &OsuHitJudgments::Miss {
                             // tell the note it was missed
                             note.miss();
                         } else {
@@ -742,7 +742,7 @@ impl GameMode for OsuGame {
                             Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
                         }
 
-                        if let OsuHitJudgments::Miss = judge {
+                        if judge == &OsuHitJudgments::Miss {
                             // // tell the note it was missed
                             // unecessary bc its told it was missed later lol
                             // info!("missed slider");
@@ -787,10 +787,10 @@ impl GameMode for OsuGame {
         pending_frames
     }
     
-    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
-        if !manager.get_mode().is_preview() {
+        if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
             let mut playfield = self.scaling_helper.playfield_scaled_with_cs_border.clone();
             playfield.color.a = alpha;
@@ -832,7 +832,7 @@ impl GameMode for OsuGame {
                 list.push(py_line);
             }
 
-            if manager.current_timing_point().kiai {
+            if state.current_timing_point.kiai {
                 playfield.border = Some(Border::new(Color::YELLOW.alpha(alpha), 2.0));
             }
             list.push(playfield);
@@ -849,14 +849,14 @@ impl GameMode for OsuGame {
         self.cursor.draw_below(list).await;
 
         // draw follow points
-        self.draw_follow_points(time, list);
+        self.draw_follow_points(state.time, list);
 
         // draw notes
         let mut spinners = Vec::new();
         for note in self.notes.iter_mut().rev() {
             match note.note_type() {
                 NoteType::Spinner => spinners.push(note),
-                _ => note.draw(time, list).await,
+                _ => note.draw(state.time, list).await,
             }
         }
 
@@ -864,7 +864,7 @@ impl GameMode for OsuGame {
         if has_flashlight {
             list.pop_scissor();
 
-            let radius = match manager.score.combo {
+            let radius = match state.score.combo {
                 0..=99 => 125.0,
                 100..=199 => 100.0,
                 _ => 75.0
@@ -883,11 +883,11 @@ impl GameMode for OsuGame {
         // spinners should be drawn last since they should be on top of everything
         // (we dont want notes or sliders drawn on top of the spinners)
         for i in spinners {
-            i.draw(time, list).await
+            i.draw(state.time, list).await
         }
 
         // need to draw the smoke particles on top of everything
-        self.smoke_emitter.ok_do(|e|e.draw(list));
+        self.smoke_emitter.ok_do(|e| e.draw(list));
 
         // draw the cursor on top of smoke tho
         self.cursor.draw_above(list).await;
@@ -1367,7 +1367,7 @@ impl GameModeProperties for OsuGame {
     fn timing_bar_things(&self) -> Vec<(f32, Color)> {
         self.hit_windows
             .iter()
-            .map(|(j, w)| (w.end, j.color()))
+            .map(|(j, w)| (w.end, j.color))
             .collect()
     }
 

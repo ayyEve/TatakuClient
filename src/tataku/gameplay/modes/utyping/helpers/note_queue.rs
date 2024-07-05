@@ -11,7 +11,7 @@ impl UTypingNoteQueue {
     pub fn next(&mut self) { self.index += 1; }
 
     /// this function is a little weird, as it only returns a judgment when the note has been complete, not on the first press
-    pub fn check(&mut self, input: char, time: f32, windows: &Vec<(UTypingHitJudgment, Range<f32>)>, manager: &GameplayManager) -> Option<UTypingHitJudgment> {
+    pub fn check(&mut self, input: char, time: f32, windows: &Vec<(HitJudgment, Range<f32>)>, manager: &GameplayManager) -> Option<HitJudgment> {
         let Some(current_note) = self.current_note() else { return None };
 
         let hit_ok = current_note.check_char(&input);
@@ -21,22 +21,35 @@ impl UTypingNoteQueue {
             let judgment = manager.check_judgment_only(windows, time, current_note.time());
 
             // this is the first time this note has been hit
-            match (hit_ok, judgment) {
-                // its not time to hit this note yet
-                (_, None) => { return None; }
+            let Some(judgment) = judgment else { return None }; // its not time to hit this note yet
 
-                // if we missed, 
-                (true, Some(&UTypingHitJudgment::Miss)) | (false, _) => {
-                    // insta miss
-                    current_note.miss(time);
+            if !hit_ok || hit_ok && judgment == &UTypingHitJudgment::Miss {
+                // insta miss
+                current_note.miss(time);
 
-                    self.next();
-                    return Some(UTypingHitJudgment::Miss);
-                }
-
-                // set the hitjudgment
-                (true, Some(j)) => current_note.judgment = Some(*j),
+                self.next();
+                return Some(UTypingHitJudgment::Miss);
             }
+
+            current_note.judgment = Some(*judgment);
+
+
+            // match (hit_ok, judgment) {
+            //     // its not time to hit this note yet
+            //     (_, None) => { return None; }
+
+            //     // if we missed, 
+            //     (true, Some(&UTypingHitJudgment::Miss)) | (false, _) => {
+            //         // insta miss
+            //         current_note.miss(time);
+
+            //         self.next();
+            //         return Some(UTypingHitJudgment::Miss);
+            //     }
+
+            //     // set the hitjudgment
+            //     (true, Some(j)) => current_note.judgment = Some(*j),
+            // }
         }
         
         if hit_ok {
