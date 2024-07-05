@@ -2,11 +2,11 @@ pub mod modes;
 
 // pub mod diff_calc;
 mod game_mode;
-mod ingame_manager;
+mod gameplay_manager;
 mod gameplay_helpers;
 
 pub use game_mode::*;
-pub use ingame_manager::*;
+pub use gameplay_manager::*;
 pub use gameplay_helpers::*;
 
 use crate::prelude::*;
@@ -50,7 +50,7 @@ pub async fn manager_from_playmode_path_hash(
     map_path: String, 
     map_hash: Md5Hash,
     mods: ModManager,
-) -> TatakuResult<IngameManager> {
+) -> TatakuResult<GameplayManager> {
     let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
     let playmode = beatmap.playmode(playmode);
 
@@ -59,14 +59,14 @@ pub async fn manager_from_playmode_path_hash(
 
     let gamemode = info.create_game(&beatmap).await?;
 
-    Ok(IngameManager::new(beatmap, gamemode, mods).await)
+    Ok(GameplayManager::new(beatmap, gamemode, mods).await)
 }
 
 pub async fn manager_from_playmode(
     playmode: String, 
     beatmap: &BeatmapMeta,
     mods: ModManager,
-) -> TatakuResult<IngameManager> {
+) -> TatakuResult<GameplayManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let playmode = beatmap.playmode(playmode);
 
@@ -75,7 +75,7 @@ pub async fn manager_from_playmode(
 
     let gamemode = info.create_game(&beatmap).await?;
 
-    Ok(IngameManager::new(beatmap, gamemode, mods).await)
+    Ok(GameplayManager::new(beatmap, gamemode, mods).await)
 }
 
 

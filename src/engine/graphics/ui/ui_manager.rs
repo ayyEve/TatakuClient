@@ -45,6 +45,7 @@ impl UiManager {
     pub fn set_menu(&mut self, menu: Box<dyn AsyncMenu>) {
         self.current_menu = MenuType::from_menu(&menu);
         self.application.as_mut().unwrap().menu = menu;
+        self.messages.retain(|m| !m.owner.is_menu())
     }
 
     pub fn get_menu(&self) -> MenuType {

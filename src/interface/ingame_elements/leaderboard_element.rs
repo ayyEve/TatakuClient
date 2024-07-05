@@ -27,7 +27,7 @@ impl InnerUIElement for LeaderboardElement {
     }
 
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         //TODO: make this better?
         self.scores = manager.all_scores().into_iter().map(|i|i.clone()).collect();
     }

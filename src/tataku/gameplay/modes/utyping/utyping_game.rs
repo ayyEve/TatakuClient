@@ -139,7 +139,7 @@ impl GameMode for UTypingGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, _time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, _time:f32, manager:&mut GameplayManager) {
         // if !manager.replaying {
         //     manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
         //     manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
@@ -188,7 +188,7 @@ impl GameMode for UTypingGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction> {
+    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction> {
         let mut autoplay_list = Vec::new();
 
         // do autoplay things
@@ -272,7 +272,7 @@ impl GameMode for UTypingGame {
 
         autoplay_list
     }
-    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(manager.current_timing_point().kiai));
@@ -362,7 +362,7 @@ impl GameMode for UTypingGame {
 
 
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
+    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
         // if self.note_index > 0 {return}
 
         let x_needed = WindowSize::get().x;
@@ -397,8 +397,8 @@ impl GameMode for UTypingGame {
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.update_playfield(Bounds::new(Vector2::ZERO, window_size.0));
     }
-    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
-        self.update_playfield(Bounds::new(pos, size));
+    async fn fit_to_area(&mut self, bounds: Bounds) {
+        self.update_playfield(bounds);
     }
 
     

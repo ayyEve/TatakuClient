@@ -25,7 +25,7 @@ impl CustomMenu {
 
         BuiltCustomMenu {
             id: self.id.clone(),
-            element: *self.element.build(skin_manager).await,
+            element: *self.element.build(skin_manager, MessageOwner::Menu).await,
             actions: ActionQueue::new(),
             components,
             events,
@@ -66,7 +66,7 @@ impl AsyncMenu for BuiltCustomMenu {
     fn get_custom_name(&self) -> Option<&String> { Some(&self.id) }
 
     fn view(&self, values: &mut ValueCollection) -> IcedElement {
-        let view = self.element.view(MessageOwner::new_menu(self), values);
+        let view = self.element.view(MessageOwner::Menu, values);
 
         if let Some(debug_color) = self.element.element.debug_color {
             view
@@ -86,8 +86,13 @@ impl AsyncMenu for BuiltCustomMenu {
     }
 
     async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
-
-        for i in self.components.iter_mut() {
+        
+        for i in self
+            .components
+            .iter_mut()
+            .map(|i| &mut **i)
+            .chain(std::iter::once(&mut self.element as &mut dyn Widgetable)) 
+            {
             let actions = i.handle_message(&message, values).await;
             if !actions.is_empty() {
                 self.actions.extend(actions);
@@ -122,10 +127,9 @@ impl AsyncMenu for BuiltCustomMenu {
 
     async fn handle_event(&mut self, event: TatakuEventType, event_value: Option<TatakuValue>, values: &mut ValueCollection) {
         let Some(events) = self.events.get(&event) else { return };
-        let owner = MessageOwner::new_menu(self);
 
         for i in events.iter() {
-            let Some(message) = i.resolve(owner, values, event_value.clone()) else { continue };
+            let Some(message) = i.resolve(MessageOwner::Menu, values, event_value.clone()) else { continue };
             match message.message_type {
                 MessageType::CustomMenuAction(action, passed_in) => {
                     let Some(a) = action.into_action(values, passed_in) else { continue };

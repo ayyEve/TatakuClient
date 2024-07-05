@@ -46,7 +46,7 @@ impl InnerUIElement for JudgementBarElement {
         )
     }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.game_time = manager.time();
         self.hitbar_timings = manager.hitbar_timings.clone()
     }

@@ -32,7 +32,7 @@ impl InnerUIElement for RemainingElement {
     fn display_name(&self) -> &'static str { "Time Remaining" }
     fn get_bounds(&self) -> Bounds { self.elapsed_bounds }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         // if the values arent set yet, set them
         if self.start_time == -1.0 {
             self.speed = manager.current_mods.get_speed();

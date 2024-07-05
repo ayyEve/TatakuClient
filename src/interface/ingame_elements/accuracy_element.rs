@@ -30,7 +30,7 @@ impl InnerUIElement for AccuracyElement {
         )
     }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.acc = manager.score.accuracy * 100.0;    
     }
 

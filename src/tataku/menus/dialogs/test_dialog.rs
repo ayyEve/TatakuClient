@@ -149,120 +149,120 @@ impl Dialog for TestDialog {
 
 
 
-pub struct StupidDialog {
-    num: usize, 
+// pub struct StupidDialog {
+//     num: usize, 
 
-    manager: GameplayPreview, //Option<IngameManager>,
-    should_close: bool,
+//     manager: GameplayPreview, //Option<IngameManager>,
+//     should_close: bool,
 
-    // last_offset: Vector2,
-    // size: Vector2,
+//     // last_offset: Vector2,
+//     // size: Vector2,
 
-    // beatmap: CurrentBeatmapHelper,
-    // mode: CurrentPlaymodeHelper,
-}
-impl StupidDialog {
-    pub async fn new() -> Self {
-        // let mode = CurrentPlaymodeHelper::new();
-        // let beatmap = CurrentBeatmapHelper::new();
+//     // beatmap: CurrentBeatmapHelper,
+//     // mode: CurrentPlaymodeHelper,
+// }
+// impl StupidDialog {
+//     pub async fn new() -> Self {
+//         // let mode = CurrentPlaymodeHelper::new();
+//         // let beatmap = CurrentBeatmapHelper::new();
 
-        // let size = Vector2::new(500.0, 500.0);
+//         // let size = Vector2::new(500.0, 500.0);
 
-        // let mut manager = if let Some(beatmap) = &beatmap.0 {
-        //     manager_from_playmode(mode.0.clone(), &beatmap).await.ok()
-        // } else { None };
+//         // let mut manager = if let Some(beatmap) = &beatmap.0 {
+//         //     manager_from_playmode(mode.0.clone(), &beatmap).await.ok()
+//         // } else { None };
 
-        // if let Some(manager) = &mut manager {
-        //     manager.make_menu_background();
-        //     manager.fit_to_area(Bounds::new(Vector2::ZERO, size)).await;
-        //     manager.start().await;
-        // }
+//         // if let Some(manager) = &mut manager {
+//         //     manager.make_menu_background();
+//         //     manager.fit_to_area(Bounds::new(Vector2::ZERO, size)).await;
+//         //     manager.start().await;
+//         // }
 
-        Self {
-            num: 0,
-            manager: GameplayPreview::new(true, true, Arc::new(|_|true)),
-            should_close: false,
-            // last_offset: Vector2::ZERO,
-            // size,
+//         Self {
+//             num: 0,
+//             manager: GameplayPreview::new(true, true, Arc::new(|_|true), MessageOwner::Dialog()),
+//             should_close: false,
+//             // last_offset: Vector2::ZERO,
+//             // size,
 
-            // beatmap,
-            // mode,
-        }
-    }
-}
+//             // beatmap,
+//             // mode,
+//         }
+//     }
+// }
 
-#[async_trait]
-#[allow(unused)]
-impl Dialog for StupidDialog {
-    fn name(&self) -> &'static str { "this is so dumb" }
-    fn title(&self) -> &'static str { "why did i make this" }
-    fn get_num(&self) -> usize { self.num }
-    fn set_num(&mut self, num: usize) { self.num = num }
+// #[async_trait]
+// #[allow(unused)]
+// impl Dialog for StupidDialog {
+//     fn name(&self) -> &'static str { "this is so dumb" }
+//     fn title(&self) -> &'static str { "why did i make this" }
+//     fn get_num(&self) -> usize { self.num }
+//     fn set_num(&mut self, num: usize) { self.num = num }
 
-    fn resizable(&self) -> bool { true }
+//     fn resizable(&self) -> bool { true }
 
-    fn should_close(&self) -> bool { self.should_close }
-    // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.size) }
-    // async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
-    //     // self.size = window_size.0;
-    // }
+//     fn should_close(&self) -> bool { self.should_close }
+//     // fn get_bounds(&self) -> Bounds { Bounds::new(Vector2::ZERO, self.size) }
+//     // async fn window_size_changed(&mut self, _window_size: Arc<WindowSize>) {
+//     //     // self.size = window_size.0;
+//     // }
     
-    // async fn resized(&mut self, new_size: Vector2) {
-    //     self.size = new_size;
+//     // async fn resized(&mut self, new_size: Vector2) {
+//     //     self.size = new_size;
         
-    //     if let Some(manager) = &mut self.manager {
-    //         manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
-    //     }
-    // }
+//     //     if let Some(manager) = &mut self.manager {
+//     //         manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
+//     //     }
+//     // }
 
     
-    async fn force_close(&mut self) { self.should_close = true; }
+//     async fn force_close(&mut self) { self.should_close = true; }
 
 
     
-    async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
-    }
+//     async fn handle_message(&mut self, _message: Message, _values: &mut ValueCollection) {
+//     }
 
-    // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<TatakuAction> { self.actions.take() }
+//     // async fn update(&mut self, _values: &mut ShuntingYardValues) -> Vec<TatakuAction> { self.actions.take() }
 
     
-    fn view(&self, _values: &mut ValueCollection) -> IcedElement {
-        use iced_elements::*;
-        self.manager.widget()
-    }
+//     fn view(&self, _values: &mut ValueCollection) -> IcedElement {
+//         use iced_elements::*;
+//         self.manager.widget()
+//     }
     
 
-    // async fn update(&mut self, _g:&mut Game) {
-    //     if self.beatmap.update() || self.mode.update() {
-    //         self.manager = if let Some(beatmap) = &self.beatmap.0 {
-    //             manager_from_playmode(self.mode.0.clone(), &beatmap).await.ok()
-    //         } else { None };
-    //         if let Some(manager) = &mut self.manager {
-    //             manager.make_menu_background();
-    //             manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
-    //             manager.start().    await;
-    //         }
-    //     }
+//     // async fn update(&mut self, _g:&mut Game) {
+//     //     if self.beatmap.update() || self.mode.update() {
+//     //         self.manager = if let Some(beatmap) = &self.beatmap.0 {
+//     //             manager_from_playmode(self.mode.0.clone(), &beatmap).await.ok()
+//     //         } else { None };
+//     //         if let Some(manager) = &mut self.manager {
+//     //             manager.make_menu_background();
+//     //             manager.fit_to_area(Bounds::new(self.last_offset, self.size)).await;
+//     //             manager.start().    await;
+//     //         }
+//     //     }
 
 
-    //     if let Some(manager) = &mut self.manager {
-    //         manager.update().await;
-    //     }
-    // }
+//     //     if let Some(manager) = &mut self.manager {
+//     //         manager.update().await;
+//     //     }
+//     // }
 
-    // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
-    //     list.push(Rectangle::new(offset, self.size, Color::GRAY.alpha(0.8), Some(Border::new(Color::BLACK, 2.0))));
+//     // async fn draw(&mut self, offset: Vector2, list: &mut RenderableCollection) {
+//     //     list.push(Rectangle::new(offset, self.size, Color::GRAY.alpha(0.8), Some(Border::new(Color::BLACK, 2.0))));
 
-    //     if let Some(manager) = &mut self.manager {
-    //         if offset != self.last_offset {
-    //             self.last_offset = offset;
-    //             // manager.window_size_changed()
-    //             manager.fit_to_area(Bounds::new(offset, self.size)).await;
-    //         }
+//     //     if let Some(manager) = &mut self.manager {
+//     //         if offset != self.last_offset {
+//     //             self.last_offset = offset;
+//     //             // manager.window_size_changed()
+//     //             manager.fit_to_area(Bounds::new(offset, self.size)).await;
+//     //         }
 
-    //         manager.draw(list).await;
-    //     }
+//     //         manager.draw(list).await;
+//     //     }
 
-    // }
+//     // }
 
-}
+// }

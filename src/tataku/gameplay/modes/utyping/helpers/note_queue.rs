@@ -11,7 +11,7 @@ impl UTypingNoteQueue {
     pub fn next(&mut self) { self.index += 1; }
 
     /// this function is a little weird, as it only returns a judgment when the note has been complete, not on the first press
-    pub fn check(&mut self, input: char, time: f32, windows: &Vec<(UTypingHitJudgment, Range<f32>)>, manager: &IngameManager) -> Option<UTypingHitJudgment> {
+    pub fn check(&mut self, input: char, time: f32, windows: &Vec<(UTypingHitJudgment, Range<f32>)>, manager: &GameplayManager) -> Option<UTypingHitJudgment> {
         let Some(current_note) = self.current_note() else { return None };
 
         let hit_ok = current_note.check_char(&input);

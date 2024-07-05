@@ -79,7 +79,7 @@ impl InnerUIElement for DonChan {
         )
     }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         let time = manager.time(); 
 
         // check init

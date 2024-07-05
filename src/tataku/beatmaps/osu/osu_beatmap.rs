@@ -455,9 +455,9 @@ impl TatakuBeatmap for OsuBeatmap {
 
 
     
-    fn get_events(&self) -> Vec<InGameEvent> {
+    fn get_events(&self) -> Vec<IngameEvent> {
         self.events.iter().filter_map(|i| match i {
-            OsuEvent::Break { start_time, end_time } => Some(InGameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
+            OsuEvent::Break { start_time, end_time } => Some(IngameEvent::Break { start: *start_time as f32, end: *end_time as f32 }),
             _ => None
         }).collect()
     }

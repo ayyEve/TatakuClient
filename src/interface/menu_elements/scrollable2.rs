@@ -468,10 +468,8 @@ impl Widget<Message, iced::Theme, IcedRenderer> for PanelScroll {
 
     fn children(&self) -> Vec<Tree> { self.children.iter().map(Tree::new).collect() }
     fn diff(&self, tree: &mut Tree) { tree.diff_children(&self.children) }
-    fn state(&self) -> iced_core::widget::tree::State {
-        println!("making panel scroll state");
-        iced_core::widget::tree::State::new(PanelState::default())
-    }
+    fn tag(&self) -> iced_core::widget::tree::Tag { iced_core::widget::tree::Tag::of::<PanelState>() }
+    fn state(&self) -> iced_core::widget::tree::State { iced_core::widget::tree::State::new(PanelState::default()) }
 
     fn on_event(
         &mut self,
@@ -484,10 +482,6 @@ impl Widget<Message, iced::Theme, IcedRenderer> for PanelScroll {
         shell: &mut Shell<'_, Message>,
         viewport: &iced::Rectangle,
     ) -> event::Status {
-        use iced_core::widget::tree::State;
-        if let &State::None = &tree.state {
-            tree.state = State::new(PanelState::default())
-        }
 
         // if we have a cursor pos, and the event is a mouse event, do our checks first
         if let (Some(cursor_pos), Event::Mouse(e)) = (cursor.position(), &event) {
@@ -698,7 +692,7 @@ fn scroll_to<T>(offset: AbsoluteOffset, relative: bool) -> impl Operation<T> {
 
 /// Produces an [`Operation`] that scrolls the widget with the given [`Id`] to
 /// the provided [`AbsoluteOffset`].
-pub fn scroll_to_id(target: &'static str, offset: AbsoluteOffset) -> IcedOperation {
+pub fn scroll_to_id(target: impl Into<Cow<'static, str>>, offset: AbsoluteOffset) -> IcedOperation {
     use iced::{ Vector, Rectangle };
     let id = Id::new(target);
 

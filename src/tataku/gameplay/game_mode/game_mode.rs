@@ -4,18 +4,18 @@ use crate::prelude::*;
 pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn new(beatmap:&Beatmap, diff_calc_only: bool) -> Result<Self, TatakuError> where Self:Sized;
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager);
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager);
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction>;
-    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection);
+    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction>;
+    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection);
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32>;
-    fn pause(&mut self, _manager:&mut IngameManager) {}
-    fn unpause(&mut self, _manager:&mut IngameManager) {}
+    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32>;
+    fn pause(&mut self, _manager:&mut GameplayManager) {}
+    fn unpause(&mut self, _manager:&mut GameplayManager) {}
     async fn reset(&mut self, beatmap:&Beatmap);
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>);
-    async fn fit_to_area(&mut self, _pos: Vector2, _size: Vector2);
+    async fn fit_to_area(&mut self, bounds: Bounds);
 
     
     async fn force_update_settings(&mut self, settings: &Settings);

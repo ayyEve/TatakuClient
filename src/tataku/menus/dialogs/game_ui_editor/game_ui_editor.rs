@@ -50,7 +50,7 @@ impl GameUIEditorDialog {
         }
     }
 
-    pub fn update_elements(&mut self, manager: &mut IngameManager) {
+    pub fn update_elements(&mut self, manager: &mut GameplayManager) {
         for i in self.elements.iter_mut() {
             i.update(manager)
         }

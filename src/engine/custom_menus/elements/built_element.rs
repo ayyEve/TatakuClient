@@ -27,6 +27,19 @@ impl Widgetable for BuiltElementDef {
             i.update(values, actions).await;
         }
     }
+
+    async fn handle_message(&mut self, message: &Message, values: &mut ValueCollection) -> Vec<TatakuAction> { 
+        let mut actions = Vec::new();
+
+        for i in self.children.iter_mut() {
+            actions = i.handle_message(message, values).await;
+            if !actions.is_empty() {
+                return actions
+            }
+        }
+        
+        actions
+    }
     
     fn view(&self, owner: MessageOwner, values: &mut ValueCollection) -> IcedElement {
         match &self.element.element {

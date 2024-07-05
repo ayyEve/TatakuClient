@@ -55,7 +55,7 @@ pub struct OsuGame {
     cursor: OsuCursor,
 }
 impl OsuGame {
-    async fn playfield_changed(&mut self) {
+    async fn recalculate_playfield(&mut self) {
         let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
         self.apply_playfield(new_scale).await
     }
@@ -154,7 +154,7 @@ impl OsuGame {
     }
 
     
-    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut IngameManager) {
+    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &OsuHitJudgments, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut GameplayManager) {
         if !hit_value.should_draw() { return }
 
         let color = hit_value.color();
@@ -505,7 +505,7 @@ impl GameMode for OsuGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
             KeyPress::Right,
@@ -631,7 +631,7 @@ impl GameMode for OsuGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time:f32) -> Vec<ReplayAction> {
+    async fn update(&mut self, manager:&mut GameplayManager, time:f32) -> Vec<ReplayAction> {
         let mut pending_frames = Vec::new();
 
         // disable the cursor particle emitter if this is a menu game
@@ -787,7 +787,7 @@ impl GameMode for OsuGame {
         pending_frames
     }
     
-    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
 
         // draw the playfield
         if !manager.get_mode().is_preview() {
@@ -911,7 +911,7 @@ impl GameMode for OsuGame {
         self.cursor.reset()
     }
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
+    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
         if self.notes.len() == 0 { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
@@ -922,13 +922,18 @@ impl GameMode for OsuGame {
 
     async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size;
-        self.playfield_changed().await;
+        self.recalculate_playfield().await;
     }
 
 
-    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
-        let playfield = ScalingHelper::new_offset_scale(self.cs, size, pos, 0.5, self.mods.has_mod(HardRock));
-        self.apply_playfield(Arc::new(playfield)).await;
+    async fn fit_to_area(&mut self, bounds: Bounds) {
+        self.apply_playfield(Arc::new(ScalingHelper::new_offset_scale(
+            self.cs, 
+            bounds.size, 
+            bounds.pos, 
+            0.5, 
+            self.mods.has_mod(HardRock)
+        ))).await;
     }
 
     async fn time_jump(&mut self, new_time:f32) {
@@ -1133,7 +1138,7 @@ impl GameMode for OsuGame {
     }
 
     
-    fn unpause(&mut self, _manager:&mut IngameManager) {
+    fn unpause(&mut self, _manager:&mut GameplayManager) {
         // info!("unpause");
         if self.use_controller_cursor {
             // info!("using to controller input");
@@ -1230,7 +1235,7 @@ impl GameModeInput for OsuGame {
                 settings.playfield_y_offset = change.y;
             }
 
-            self.playfield_changed().await;
+            self.recalculate_playfield().await;
             return None;
         }
         
@@ -1279,7 +1284,7 @@ impl GameModeInput for OsuGame {
                 settings.playfield_scale += delta / 40.0;
             }
 
-            self.playfield_changed().await;
+            self.recalculate_playfield().await;
         }
 
         None

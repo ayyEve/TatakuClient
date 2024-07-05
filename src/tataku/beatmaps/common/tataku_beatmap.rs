@@ -15,7 +15,7 @@ pub trait TatakuBeatmap:Send+Sync {
     // fn beat_length_at(&self, time:f32, allow_multiplier:bool) -> f32;
     // fn control_point_at(&self, time:f32) -> TimingPoint;
 
-    fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
+    fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
 
     async fn get_animation(&self, skin_manager: &mut SkinManager) -> Option<Box<dyn BeatmapAnimation>> { None }
 }

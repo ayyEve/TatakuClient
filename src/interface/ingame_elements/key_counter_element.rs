@@ -31,7 +31,7 @@ impl InnerUIElement for KeyCounterElement {
         )
     }
     
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.counter = manager.key_counter.clone();
     }
 

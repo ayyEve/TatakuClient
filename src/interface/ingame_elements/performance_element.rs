@@ -31,7 +31,7 @@ impl InnerUIElement for PerformanceElement {
         )
     }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.perf = manager.score.performance;
     }
 

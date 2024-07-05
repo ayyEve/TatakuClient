@@ -42,7 +42,7 @@ impl UIElement {
         }
     }
 
-    pub fn update(&mut self, manager: &mut IngameManager) {
+    pub fn update(&mut self, manager: &mut GameplayManager) {
         if !self.visible { return }
         self.inner.update(manager);
     }
@@ -78,7 +78,7 @@ impl UIElement {
 
 #[async_trait]
 pub trait InnerUIElement: Send + Sync {
-    fn update(&mut self, manager: &mut IngameManager);
+    fn update(&mut self, manager: &mut GameplayManager);
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection);
     fn get_bounds(&self) -> Bounds;
     fn reset(&mut self) {}

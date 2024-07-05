@@ -25,7 +25,7 @@ impl InnerUIElement for DurationBarElement {
         )
     }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.window_size = WindowSize::get();
         self.duration_ratio = manager.time() / manager.end_time
     }

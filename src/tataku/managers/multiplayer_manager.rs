@@ -20,7 +20,7 @@ pub struct MultiplayerManager {
     new_beatmap_helper: SyValueHelper,
 
     /// async beatmap loader
-    beatmap_loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,
+    beatmap_loader: Option<AsyncLoader<TatakuResult<GameplayManager>>>,
 
     /// have we sent that we've loaded the beatmap?
     load_complete_sent: bool,
@@ -45,7 +45,7 @@ impl MultiplayerManager {
 
     pub async fn update(
         &mut self,
-        manager: Option<&mut Box<IngameManager>>,
+        manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection
     ) -> Vec<TatakuAction> {
         let previous_map = self.current_beatmap.clone();
@@ -150,7 +150,7 @@ impl MultiplayerManager {
         &mut self, 
         values: &mut ValueCollection, 
         packet: &MultiplayerPacket,
-        mut manager: Option<&mut Box<IngameManager>>
+        mut manager: Option<&mut Box<GameplayManager>>
     ) -> TatakuResult {
         match packet {
 

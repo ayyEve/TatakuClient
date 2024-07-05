@@ -54,7 +54,7 @@ impl InnerUIElement for HealthBarElement {
     }
     
     
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.window_size = WindowSize::get();
 
         self.health_ratio = manager.health.get_ratio();

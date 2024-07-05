@@ -31,7 +31,7 @@ impl InnerUIElement for SpectatorsElement {
     }
 
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         if manager.spectator_info.spectators.updated {
             info!("updated spectator element list");
             self.spectators = manager.spectator_info.spectators.clone();

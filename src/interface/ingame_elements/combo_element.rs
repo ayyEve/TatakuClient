@@ -20,7 +20,7 @@ impl InnerUIElement for ComboElement {
 
     fn get_bounds(&self) -> Bounds { self.combo_bounds }
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.combo = manager.score.score.combo;
     }
 

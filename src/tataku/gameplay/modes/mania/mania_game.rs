@@ -208,7 +208,7 @@ impl ManiaGame {
 
 
 
-    fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut IngameManager) {
+    fn add_hit_indicator(time: f32, column: usize, hit_value: &ManiaHitJudgments, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut GameplayManager) {
         let color = hit_value.color();
         let image = None;
         // let (color, image) = match hit_value {
@@ -704,7 +704,7 @@ impl GameMode for ManiaGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut IngameManager) {
+    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager) {
         match frame {
             ReplayAction::Press(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
@@ -804,7 +804,7 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn update(&mut self, manager:&mut IngameManager, time: f32) -> Vec<ReplayAction> {
+    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction> {
         if manager.current_mods.has_autoplay() {
             let mut frames = Vec::new();
             self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
@@ -846,7 +846,7 @@ impl GameMode for ManiaGame {
         Vec::new()
     }
     
-    async fn draw(&mut self, time: f32, manager:&mut IngameManager, list: &mut RenderableCollection) {
+    async fn draw(&mut self, time: f32, manager:&mut GameplayManager, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -865,7 +865,7 @@ impl GameMode for ManiaGame {
         self.draw_notes(time, list).await;
     }
 
-    fn skip_intro(&mut self, manager: &mut IngameManager) -> Option<f32> {
+    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
         // make sure we havent hit a note yet
         for &c in self.column_indices.iter() {if c > 0 { return None }}
 
@@ -964,15 +964,15 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn fit_to_area(&mut self, pos: Vector2, size: Vector2) {
+    async fn fit_to_area(&mut self, bounds: Bounds) {
         let mut playfield = ManiaPlayfield::new(
             self.game_settings.playfield_settings[(self.column_count - 1) as usize].clone(), 
-            Bounds::new(pos, size), 
+            bounds, 
             self.column_count,
             self.mania_skin_settings.as_ref().map(|s|OSU_SIZE.y - s.hit_position).unwrap_or_default()
         );
 
-        playfield.settings.x_offset = pos.x;
+        playfield.settings.x_offset = bounds.pos.x;
 
         // if playfield.upside_down {
         //     playfield.settings.hit_pos -= pos.y
@@ -1006,9 +1006,7 @@ impl GameMode for ManiaGame {
         self.load_col_images(skin_manager).await;
     }
 
-    async fn apply_mods(&mut self, _mods: Arc<ModManager>) {
-
-    }
+    async fn apply_mods(&mut self, _mods: Arc<ModManager>) { }
 
     async fn beat_happened(&mut self, pulse_length: f32) {
         self.columns.iter_mut().flatten().for_each(|n|n.beat_happened(pulse_length))

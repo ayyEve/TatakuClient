@@ -25,7 +25,7 @@ macro_rules! add_timing {
     }}
 }
 
-pub struct IngameManager {
+pub struct GameplayManager {
     pub actions: ActionQueue,
 
     pub beatmap: Beatmap,
@@ -53,10 +53,15 @@ pub struct IngameManager {
     scores_loaded: bool,
     // score_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
 
+    // used for discord rich presence
+    pub start_time: i64,
     pub started: bool,
     pub completed: bool,
     pub failed: bool,
     pub failed_time: f32,
+    pub end_time: f32,
+    pub lead_in_time: f32,
+    pub lead_in_timer: Instant,
 
     /// has something about the ui been changed? 
     /// this will make the play unrankable and should not be saved
@@ -68,10 +73,8 @@ pub struct IngameManager {
     /// used for breaks. if the user tabs out during a break, a pause is pending, but we shouldnt pause until the break is over (or almost over i guess)
     pause_pending: bool,
     pause_start: Option<i64>,
+    restart_key_hold_start: Option<Instant>,
 
-    pub end_time: f32,
-    pub lead_in_time: f32,
-    pub lead_in_timer: Instant,
 
     // pub timing_points: Vec<TimingPoint>,
     // pub timing_point_index: usize,
@@ -90,38 +93,29 @@ pub struct IngameManager {
     /// list of judgement indicators to draw
     pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
-    /// if in replay mode, what replay frame are we at?
-    replay_frame: u64,
-
     pub common_game_settings: Arc<CommonGameplaySettings>,
     settings: SettingsHelper,
     window_size: Arc<WindowSize>,
     fit_to_bounds: Option<Bounds>,
 
     // spectator info
-    pub spectator_info: IngameSpectatorInfo,
+    pub spectator_info: GameplaySpectatorInfo,
 
 
     /// what should the game do on start?
     /// mainly a helper for spectator
     pub on_start: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 
-    pub events: Vec<InGameEvent>,
+    pub events: Vec<IngameEvent>,
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
 
-    restart_key_hold_start: Option<Instant>,
-
     map_diff: f32,
-
-    // used for discord rich presence
-    pub start_time: i64,
-
     song_time: f32,
 }
 
-impl IngameManager {
+impl GameplayManager {
     pub async fn new(beatmap: Beatmap, mut gamemode: Box<dyn GameMode>, mut current_mods: ModManager) -> Self {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
@@ -306,13 +300,13 @@ impl IngameManager {
         self.gamemode.get_ui_elements(self.window_size.0, &mut self.ui_elements).await;
     }
 
-    pub async fn apply_mods(&mut self, mut mods: ModManager) {
+    pub async fn apply_mods(&mut self, mut mods: ModManager, gamemode: &mut Box<dyn GameMode>) {
         if self.gameplay_mode.is_preview() {
             mods.add_mod(Autoplay);
         }
 
         self.current_mods = Arc::new(mods);
-        self.gamemode.apply_mods(self.current_mods.clone()).await;
+        gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
     pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
@@ -397,8 +391,6 @@ impl IngameManager {
             }
         }
 
-        let tp_updates = self.timing_points.update(time);
-
 
         // check if scores have been loaded
         // if let Some(loader) = self.score_loader.clone() {
@@ -408,18 +400,19 @@ impl IngameManager {
         //         self.score_loader = None;
         //     }
         // }
-        if !self.scores_loaded {
+        if !self.scores_loaded && self.gameplay_mode.should_load_scores() {
             if let Ok(list) = values.try_get::<Vec<Score>>("scores") {
                 self.scores_loaded = true;
                 self.score_list = list.into_iter().map(|s| {
                     let is_previous = s.username == self.score.username;
                     IngameScore::new(s, false, is_previous)
-            }   ).collect();
+                }).collect();
             }
         }
 
         
         let mut gamemode = std::mem::take(&mut self.gamemode);
+        let tp_updates = self.timing_points.update(time);
         for tp_update in tp_updates {
             match tp_update {
                 TimingPointUpdate::BeatHappened(pulse_length) => gamemode.beat_happened(pulse_length).await,
@@ -637,17 +630,8 @@ impl IngameManager {
         }
 
         for a in self.gameplay_actions.take() {
-            match a {
-                GameplayAction::Pause => self.pause(),
-                GameplayAction::Resume => self.start().await,
-                GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
-
-                GameplayAction::AddReplayAction { action, should_save } => {
-                    self.handle_frame(action, true, Some(time), should_save, &mut gamemode).await;
-                }
-            }
+            self.handle_action_inner(a, &mut gamemode).await;
         }
-
 
         if let Some(mut manager) = OnlineManager::try_get_mut() {
             // update our spectator list if we can
@@ -710,6 +694,7 @@ impl IngameManager {
         gamemode.draw(time, self, list).await;
         self.gamemode = gamemode;
 
+
         if self.fit_to_bounds.is_some() { list.pop_scissor(); }
 
 
@@ -737,10 +722,29 @@ impl IngameManager {
         // draw center text
         self.center_text_helper.draw(time, list);
     }
+
+    pub async fn handle_action(&mut self, action: GameplayAction) {
+        let mut gamemode = std::mem::take(&mut self.gamemode);
+        self.handle_action_inner(action, &mut gamemode).await;
+        self.gamemode = gamemode;
+    }
+
+    async fn handle_action_inner(&mut self, action: GameplayAction, gamemode: &mut Box<dyn GameMode>) {
+        match action {
+            GameplayAction::Pause => self.pause(),
+            GameplayAction::Resume => self.start().await,
+            GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
+            GameplayAction::ApplyMods(mods) => self.apply_mods(mods, gamemode).await,
+            GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds, gamemode).await,
+            GameplayAction::SetMode(mode) => self.set_mode(mode),
+
+            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, gamemode).await,
+        }
+    }
 }
 
 // judgment stuff
-impl IngameManager {
+impl GameplayManager {
 
     pub fn add_hit_timning(&mut self, time: f32, note_time: f32) {
         let diff = (time - note_time) / HIT_DIFF_FACTOR;
@@ -901,7 +905,7 @@ impl IngameManager {
 }
 
 // getters, setters, properties
-impl IngameManager {
+impl GameplayManager {
     pub fn all_scores(&self) -> Vec<&IngameScore> {
         let mut list = Vec::new();
         for score in self.score_list.iter() {
@@ -955,7 +959,7 @@ impl IngameManager {
 }
 
 // Events and States
-impl IngameManager {
+impl GameplayManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
 
@@ -1125,8 +1129,7 @@ impl IngameManager {
             });
         }
 
-
-        self.replay_frame = 0;
+ 
         if !self.gameplay_mode.is_replay() {
             // only reset the replay if we arent replaying
             self.replay = Replay::new();
@@ -1138,12 +1141,16 @@ impl IngameManager {
         }
 
         // reset elements
-        self.ui_elements.iter_mut().for_each(|e|e.reset_element());
+        self.ui_elements.iter_mut().for_each(|e| e.reset_element());
 
         // re-add judgments to score
         for j in self.judgment_type.variants() {
             let id = j.as_str_internal();
             self.score.judgments.insert(id.to_owned(), 0);
+        }
+
+        if self.gameplay_mode.should_load_scores() {
+            self.actions.push(GameAction::RefreshScores);
         }
         
     }
@@ -1256,19 +1263,15 @@ impl IngameManager {
         self.gameplay_mode = Box::new(mode);
     }
     
-    pub fn set_replay(&mut self, replay: Replay) {
-        error!("remove IngameManager::set_replay!");
-        self.set_mode(GameplayMode::replay(replay));
-    }
-
-    pub async fn fit_to_area(&mut self, bounds: Bounds) {
+    async fn fit_to_area(&mut self, bounds: Bounds, gamemode: &mut Box<dyn GameMode>) {
+        // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
-        self.gamemode.fit_to_area(bounds.pos, bounds.size).await;
+        gamemode.fit_to_area(bounds).await;
     }
 }
 
 // Input Handlers
-impl IngameManager {
+impl GameplayManager {
     async fn handle_frame(
         &mut self, 
         frame: ReplayAction, 
@@ -1289,14 +1292,14 @@ impl IngameManager {
         
         let add_frames = !(self.current_mods.has_autoplay() || self.gameplay_mode.is_replay());
 
-        if force || add_frames{
+        if force || add_frames {
             match frame {
                 ReplayAction::Press(k) => self.key_counter.key_down(k),
                 ReplayAction::Release(k) => self.key_counter.key_up(k),
                 _ => {}
             }
 
-            let time = force_time.unwrap_or_else(||self.time());
+            let time = force_time.unwrap_or_else(|| self.time());
             gamemode.handle_replay_frame(frame, time, self).await;
 
             if add_frames && should_add {
@@ -1507,7 +1510,7 @@ impl IngameManager {
 }
 
 // other misc stuff that isnt touched often and i just wanted it out of the way
-impl IngameManager {
+impl GameplayManager {
     fn should_skip_input(&self) -> bool {
         // never skip input for multi, because you can keep playing if you failed
         if self.gameplay_mode.is_multi() { return false }
@@ -1539,7 +1542,6 @@ impl IngameManager {
     }
 
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        info!("reloading skin");
         self.gamemode.reload_skin(skin_manager).await;
         self.hitsound_manager.reload_skin(&self.settings).await;
 
@@ -1558,13 +1560,13 @@ impl IngameManager {
     fn in_break(&self) -> bool {
         let time = self.time();
         #[allow(irrefutable_let_patterns)]
-        self.events.iter().find(|f| if let InGameEvent::Break { start, end } = f { time >= *start && time < *end } else { false }).is_some()
+        self.events.iter().find(|f| if let IngameEvent::Break { start, end } = f { time >= *start && time < *end } else { false }).is_some()
     }
 
 }
 
 // Spectator Stuff
-impl IngameManager {
+impl GameplayManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
         OnlineManager::send_spec_frames(vec![frame], false)
@@ -1576,7 +1578,7 @@ impl IngameManager {
 }
 
 // default
-impl Default for IngameManager {
+impl Default for GameplayManager {
     fn default() -> Self {
         Self { 
             actions: ActionQueue::new(),
@@ -1605,7 +1607,6 @@ impl Default for IngameManager {
             // timing_point_index: Default::default(),
             center_text_helper: Default::default(),
             hitbar_timings: Default::default(),
-            replay_frame: Default::default(),
             spectator_info: Default::default(),
             on_start: Box::new(|_|{}),
             animation: Box::new(EmptyAnimation),
@@ -1643,12 +1644,12 @@ impl Default for IngameManager {
 
 
 #[derive(Clone, Debug)]
-pub enum InGameEvent {
+pub enum IngameEvent {
     Break { start: f32, end: f32 }
 }
 
 #[derive(Default)]
-pub struct IngameSpectatorInfo {
+pub struct GameplaySpectatorInfo {
     /// when was the last time the score was synchronized?
     pub last_score_sync: f32,   
 
@@ -1658,7 +1659,7 @@ pub struct IngameSpectatorInfo {
 
 
 /// What gameplay method should we use for this gameplay manager?
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum GameplayMode {
     /// Just regular gameplay
     #[default]
@@ -1780,30 +1781,3 @@ impl GameplayMode {
     }
 }
 
-
-
-pub enum GameplayAction {
-    /// Pause the game
-    Pause,
-
-    /// Resume the game
-    Resume,
-
-    /// Jump to a certain time
-    JumpToTime {
-        time: f32,
-        skip_intro: bool,
-    },
-
-    /// Add a replay action
-    AddReplayAction {
-        /// Action to add
-        action: ReplayAction,
-
-        /// Should this action be saved to the replay?
-        /// 
-        /// Helpful for spammy actions to keep filesize low (ie cursor position)
-        should_save: bool,
-    },
-
-}

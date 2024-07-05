@@ -8,13 +8,13 @@ pub struct PauseMenu {
     actions: ActionQueue,
 
     // beatmap: Arc<Mutex<Beatmap>>,
-    manager: Box<IngameManager>,
+    manager: Box<GameplayManager>,
     is_fail_menu: bool,
 
     bg: Option<Image>
 }
 impl PauseMenu {
-    pub async fn new(manager: Box<IngameManager>, is_fail_menu: bool) -> PauseMenu {
+    pub async fn new(manager: Box<GameplayManager>, is_fail_menu: bool) -> PauseMenu {
         PauseMenu {
             actions: ActionQueue::new(),
             manager,
@@ -50,9 +50,9 @@ impl AsyncMenu for PauseMenu {
 
             // actual items
             col!(
-                Button::new(Text::new("Resume")).on_press(Message::new_menu(self, "resume", MessageType::Click)),
-                Button::new(Text::new("Retry")).on_press(Message::new_menu(self, "retry", MessageType::Click)),
-                Button::new(Text::new("Quit")).on_press(Message::new_menu(self, "quit", MessageType::Click));
+                Button::new(Text::new("Resume")).on_press(Message::new(MessageOwner::Menu, "resume", MessageType::Click)),
+                Button::new(Text::new("Retry")).on_press(Message::new(MessageOwner::Menu, "retry", MessageType::Click)),
+                Button::new(Text::new("Quit")).on_press(Message::new(MessageOwner::Menu, "quit", MessageType::Click));
                 
                 width = Fill,
                 height = Fill,

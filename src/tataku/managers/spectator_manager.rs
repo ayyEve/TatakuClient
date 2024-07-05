@@ -72,7 +72,7 @@ impl SpectatorManager {
         match manager_from_playmode_path_hash(playmode, map_path, hash, mods.clone()).await {
             Ok(mut manager) => {
                 // set manager things
-                manager.apply_mods(mods).await;
+                manager.handle_action(GameplayAction::ApplyMods(mods)).await;
                 manager.set_mode(GameplayMode::spectator(
                     self.host_id,
                     self.host_username.clone(),
@@ -112,7 +112,7 @@ impl SpectatorManager {
 
     pub async fn update(
         &mut self, 
-        manager: Option<&mut Box<IngameManager>>,
+        manager: Option<&mut Box<GameplayManager>>,
         values: &mut ValueCollection,
     ) -> Vec<TatakuAction> {
         // if manager.is_some() { return self.actions.take() }

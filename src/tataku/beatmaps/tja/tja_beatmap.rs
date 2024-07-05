@@ -159,7 +159,7 @@ impl TatakuBeatmap for TjaBeatmap {
     }
 
 
-    fn get_events(&self) -> Vec<InGameEvent> { Vec::new() }
+    fn get_events(&self) -> Vec<IngameEvent> { Vec::new() }
 }
 
 

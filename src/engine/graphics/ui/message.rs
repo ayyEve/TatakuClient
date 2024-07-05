@@ -3,11 +3,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone)]
 pub struct Message {
     pub owner: MessageOwner,
-    // pub menu_name: String,
-    // pub dialog_num: usize,
-
     pub tag: MessageTag,
-
     pub message_type: MessageType,
 }
 impl Message {
@@ -17,14 +13,6 @@ impl Message {
             tag: item_tag.into(),
             message_type: message,
         }
-    }
-
-    pub fn new_menu_raw(name: &'static str, item_tag: impl Into<MessageTag>, message: MessageType) -> Self {
-        Self::new(MessageOwner::Menu(name), item_tag, message)
-    }
-
-    pub fn new_menu(menu: &impl AsyncMenu, item_tag: impl Into<MessageTag>, message: MessageType) -> Self {
-        Self::new(MessageOwner::new_menu(menu), item_tag, message)
     }
 
     pub fn new_dialog(dialog: &impl Dialog, item_tag: impl Into<MessageTag>, message: MessageType) -> Self {
@@ -151,6 +139,7 @@ pub enum MessageType {
     Multi(Vec<Message>),
 
     Custom(Arc<dyn std::any::Any + Send + Sync>),
+    GameplayManagerId(Arc<u32>),
     CustomMenuAction(CustomMenuAction, Option<TatakuValue>),
 }
 #[allow(unused)]
@@ -183,26 +172,31 @@ impl MessageType {
         let Self::Custom(t) = self else { return None };
         t.downcast().ok()
     }
+
+    pub fn try_downcast_ref<T:Send+Sync+'static>(&self) -> Option<&Arc<T>> {
+        let Self::Custom(t) = self else { return None };
+        t.downcast_ref()
+    }
 }
 
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum MessageOwner {
-    Menu(&'static str),
+    #[default]
+    Menu,
     Dialog(&'static str, usize),
 }
 impl MessageOwner {
-    pub fn new_menu(menu: &impl AsyncMenu) -> Self {
-        Self::Menu(menu.get_name())
-    }
     pub fn new_dialog(dialog: &impl Dialog) -> Self {
         Self::Dialog(dialog.name(), dialog.get_num())
     }
 
-    pub fn check_menu(&self, menu: &Box<dyn AsyncMenu>) -> bool {
-        let Self::Menu(name) = self else { return false };
-        name == &menu.get_name()
+    pub fn is_menu(&self) -> bool {
+        match self {
+            Self::Menu => true,
+            _ => false
+        }
     }
 
     pub fn check_dialog(&self, dialog: &Box<dyn Dialog>) -> bool {

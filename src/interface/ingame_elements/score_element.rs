@@ -31,7 +31,7 @@ impl InnerUIElement for ScoreElement {
     }
 
 
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         self.score = manager.score.score.score;
     }
 

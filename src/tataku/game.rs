@@ -29,6 +29,8 @@ pub struct Game {
     task_manager: TaskManager,
     custom_menu_manager: CustomMenuManager,
 
+    gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
+
 
     // fps
     fps_display: FpsDisplay,
@@ -95,6 +97,7 @@ impl Game {
             custom_menu_manager: CustomMenuManager::new(),
             skin_manager,
             cursor_manager: CursorManager::new(skin).await,
+            gameplay_managers: HashMap::new(),
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -382,6 +385,11 @@ impl Game {
                 if skin_changed {
                     self.skin_manager.change_skin(self.settings.current_skin.clone()).await;
                     self.last_skin = self.settings.current_skin.clone();
+
+
+                    for (i, _) in self.gameplay_managers.values_mut() {
+                        i.reload_skin(&mut self.skin_manager).await;
+                    }
                 }
 
                 if self.settings.theme != last_theme {
@@ -427,6 +435,10 @@ impl Game {
                     // values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
                     values.update("settings.sort_by", TatakuVariableWriteSource::Game, self.settings.last_sort_by);
                     // values.set("settings.sort_by", format!("{:?}", self.settings.last_group_by));
+                }
+
+                for (i, _) in self.gameplay_managers.values_mut() {
+                    i.force_update_settings().await;
                 }
             }
 
@@ -481,7 +493,9 @@ impl Game {
         warn!("stopping game");
     }
 
-    async fn update(&mut self) {
+    async fn update(
+        &mut self
+    ) {
         let elapsed = self.game_start.as_millis();
         self.values.update("game.time", TatakuVariableWriteSource::Game, elapsed);
 
@@ -705,6 +719,17 @@ impl Game {
                 ].into_iter());
             }
         }
+
+        // update any ingame managers
+        self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
+        for (manager, _config) in self.gameplay_managers.values_mut() {
+            manager.update(&mut self.values).await;
+
+            if manager.completed {
+                manager.on_complete()
+            }
+        }
+
 
         // update the ui
         for key in keys_down.0.iter().filter_map(|i| i.as_key()) {
@@ -1016,6 +1041,23 @@ impl Game {
 
         // draw cursor ripples
         self.cursor_manager.draw_ripples(&mut render_queue);
+
+        // draw any gameplay managers
+        for (manager, config) in self.gameplay_managers.values_mut() {
+            let mut temp_render_queue = RenderableCollection::new();
+            if config.draw_function.is_some() {
+                std::mem::swap(&mut render_queue, &mut temp_render_queue);
+            }
+
+            manager.draw(&mut render_queue).await;
+
+            if let Some(draw_action) = &config.draw_function {
+                std::mem::swap(&mut render_queue, &mut temp_render_queue);
+                
+                let group = TransformGroup::from_collection(Vector2::ZERO, temp_render_queue);
+                (draw_action)(group);
+            }
+        }
         
 
         // mode
@@ -1140,7 +1182,7 @@ impl Game {
 
                         match manager_from_playmode_path_hash(mode, map_path, map_hash, mods.clone()).await {
                             Ok(mut manager) => {
-                                manager.apply_mods(mods).await;
+                                manager.handle_action(GameplayAction::ApplyMods(mods)).await;
                                 self.queue_state_change(GameState::Ingame(Box::new(manager)))
                             }
                             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
@@ -1303,8 +1345,8 @@ impl Game {
                 
                 match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash, mods).await {
                     Ok(mut manager) => {
-                        manager.set_replay(*replay);
-                        self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                        manager.set_mode(GameplayMode::replay(*replay));
+                        self.queue_state_change(GameState::Ingame(Box::new(manager)));
                     }
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
                 }
@@ -1335,6 +1377,64 @@ impl Game {
             TatakuAction::Game(GameAction::UpdateBackground) => self.set_background_beatmap().await,
             TatakuAction::Game(GameAction::CopyToClipboard(text)) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); } 
 
+
+            TatakuAction::Game(GameAction::NewGameplayManager(config)) => {
+                match match &config {
+                    NewManager { 
+                        mods, 
+                        map_hash: Some(map_hash), 
+                        path: Some(path), 
+                        playmode, 
+                        ..
+                    } => {
+                        let playmode = playmode.clone().unwrap_or_else(|| self.values.get_string("global.playmode_actual").ok().unwrap_or_else(|| format!("osu")));
+                        let mods = mods.clone().unwrap_or_else(|| self.values.try_get::<ModManager>("global.mods").unwrap_or_default());
+                        manager_from_playmode_path_hash(playmode, path.clone(), *map_hash, mods).await
+                    }
+                    NewManager { 
+                        mods, 
+                        map_hash, 
+                        playmode, 
+                        ..
+                    } => {
+                        let map_hash = map_hash.unwrap_or_else(|| self.values.try_get::<Md5Hash>("map.hash").unwrap_or_default());
+                        let Some(meta) = self.beatmap_manager.get_by_hash(&map_hash) else { return };
+                        let playmode = playmode.clone().unwrap_or_else(|| self.values.get_string("global.playmode_actual").ok().unwrap_or_else(|| format!("osu")));
+                        let mods = mods.clone().unwrap_or_else(|| self.values.try_get::<ModManager>("global.mods").unwrap_or_default());
+                        manager_from_playmode(playmode, &meta, mods).await
+                    }
+                } {
+                    Ok(mut manager) => {
+                        manager.reload_skin(&mut self.skin_manager).await;
+                        if let Some(mode) = config.gameplay_mode.clone() {
+                            manager.set_mode(mode);
+                        }
+                        if let Some(bounds) = config.area {
+                            manager.handle_action(GameplayAction::FitToArea(bounds)).await;
+                        }
+                        manager.reset().await;
+
+                        let id = Arc::new(self.gameplay_managers.keys().max().map(|a| **a + 1).unwrap_or_default());
+                        self.ui_manager.add_message(Message::new(
+                            config.owner, "gameplay_manager_create", MessageType::GameplayManagerId(id.clone())
+                        ));
+
+                        self.gameplay_managers.insert(id.clone(), (manager, config));
+                    }
+
+                    Err(e) => error!("Error creating gameplay manager: {e}"),
+                }
+            }
+
+            TatakuAction::Game(GameAction::DropGameplayManager(id)) => {
+                self.gameplay_managers.remove(&id);
+            }
+
+            TatakuAction::Game(GameAction::GameplayAction(id, action)) => {
+                let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
+                gameplay.handle_action(action).await;
+            }
+ 
 
             // song actions
             TatakuAction::Song(song_action) => {
@@ -1637,7 +1737,7 @@ impl Game {
     }
 
 
-    pub async fn ingame_complete(&mut self, manager: &mut Box<IngameManager>) {
+    pub async fn ingame_complete(&mut self, manager: &mut Box<GameplayManager>) {
         trace!("beatmap complete");
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
@@ -1745,7 +1845,9 @@ impl Game {
             NotificationOnClick::File(full_path.clone())
         )));
 
-        self.task_manager.add_task(Box::new(UploadScreenshotTask::new(full_path)));
+        if info.upload {
+            self.task_manager.add_task(Box::new(UploadScreenshotTask::new(full_path)));
+        }
 
         Ok(())
     }
@@ -1887,13 +1989,11 @@ pub enum GameState {
     #[default]
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
-    Ingame(Box<IngameManager>),
+    Ingame(Box<GameplayManager>),
     /// need to transition to the provided menu
     SetMenu(Box<dyn AsyncMenu>),
     /// Currently in a menu (this doesnt actually work currently, but it doesnt really matter)
     InMenu(MenuType),
-
-    // Spectating(Box<SpectatorManager>),
 }
 impl GameState {
     /// spec_check means if we're spectator, check the inner game
@@ -1918,7 +2018,7 @@ impl GameState {
     //     }
     // }
 
-    fn get_ingame(&mut self) -> Option<&mut Box<IngameManager>> {
+    fn get_ingame(&mut self) -> Option<&mut Box<GameplayManager>> {
         match self {
             GameState::Ingame(manager) => Some(manager),
             _ => None

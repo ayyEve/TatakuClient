@@ -23,7 +23,7 @@ impl UiApplication {
     }
 
     pub async fn handle_message(&mut self, message: Message, values: &mut ValueCollection) {
-        if message.owner.check_menu(&self.menu) {
+        if message.owner.is_menu() {
             self.menu.handle_message(message, values).await;
         } else {
             self.dialog_manager.handle_message(message, values).await;

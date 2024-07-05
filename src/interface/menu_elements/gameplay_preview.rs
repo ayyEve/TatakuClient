@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub struct GameplayPreview {
+    actions: ActionQueue,
     // current_mods: ModManagerHelper,
 
     beatmap: SyValueHelper,
@@ -9,7 +10,9 @@ pub struct GameplayPreview {
     song_time: SyValueHelper,
 
     settings: SettingsHelper,
-    pub manager: Option<IngameManager>,
+    manager: Option<GameplayId>,
+
+    owner: MessageOwner,
 
     pub visualization: Option<Box<dyn Visualization>>,
 
@@ -24,15 +27,15 @@ pub struct GameplayPreview {
     apply_rate: bool,
     check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>,
 
-    loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,
+    // loader: Option<AsyncLoader<TatakuResult<IngameManager>>>,
 
-    widget_sender: TripleBufferSender<Arc<dyn TatakuRenderable>>,
+    widget_sender: Arc<Mutex<TripleBufferSender<Arc<dyn TatakuRenderable>>>>,
     event_receiver: AsyncReceiver<Bounds>,
 
-    pub widget: GameplayPreviewWidget
+    widget: GameplayPreviewWidget
 }
 impl GameplayPreview {
-    pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>) -> Self {
+    pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>, owner: MessageOwner) -> Self {
         let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));   
         let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
         let (event_sender, event_receiver) = async_channel(5);
@@ -40,6 +43,7 @@ impl GameplayPreview {
         let widget = GameplayPreviewWidget::new(widget_receiver, event_sender);
         
         Self {
+            actions: ActionQueue::new(),
             // current_mods: ModManagerHelper::new(),
             beatmap: SyValueHelper::new("map.hash"),
             playmode: SyValueHelper::new("global.playmode_actual"),
@@ -48,26 +52,36 @@ impl GameplayPreview {
 
             visualization: None,
             handle_song_restart: false,
+            owner,
 
             settings: SettingsHelper::new(),
             manager: None,
             fit_to: None,
             use_global_playmode,
             apply_rate,
-            loader: None,
+            // loader: None,
             check_enabled,
 
-            widget_sender,
+            widget_sender: Arc::new(Mutex::new(widget_sender)),
             event_receiver,
             widget
         }
+    }
+
+    pub fn width(mut self, width: iced::Length) -> Self {
+        self.widget.width = width;
+        self
+    }
+    pub fn height(mut self, height: iced::Length) -> Self {
+        self.widget.height = height;
+        self
     }
 
     pub fn is_enabled(&self) -> bool {
         (self.check_enabled)(&self.settings)
     }
 
-    pub async fn setup(&mut self, values: &ValueCollection) {
+    pub async fn setup(&mut self, _values: &ValueCollection, actions: &mut ActionQueue) {
         // self.current_playmode.update();
         // self.current_beatmap.update();
         // self.current_mods.update();
@@ -76,27 +90,39 @@ impl GameplayPreview {
         // make sure we're enabled before doing anything else
         if !self.is_enabled() { return }
 
-        // get the map hash and path
-        let Ok(hash) = Md5Hash::try_from(self.beatmap.as_string()) else { return trace!("manager no map") };
-        let Ok(path) = values.get_string("map.path") else { return error!("no map path") };
-        // let Some(map) = &self.current_beatmap.0 else { return };
+        // // get the map hash and path
+        // let Ok(hash) = Md5Hash::try_from(self.beatmap.as_string()) else { return trace!("manager no map") };
+        // let Ok(path) = values.get_string("map.path") else { return error!("no map path") };
+        // // let Some(map) = &self.current_beatmap.0 else { return };
 
-        // get the mode
-        let mode = if self.use_global_playmode { 
-            self.playmode.as_string()
-            // self.current_playmode.as_ref().0.clone() 
-        } else { 
-            self.settings.background_game_settings.mode.clone() 
-        };
+        // // get the mode
+        // let mode = if self.use_global_playmode { 
+        //     self.playmode.as_string()
+        //     // self.current_playmode.as_ref().0.clone() 
+        // } else { 
+        //     self.settings.background_game_settings.mode.clone() 
+        // };
 
-        // abort the previous loading task
-        self.loader.ok_do(|i| i.abort());
+        // // abort the previous loading task
+        // self.loader.ok_do(|i| i.abort());
 
-        let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
+        // let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
 
         // let map = map.clone();
-        let f = async move { manager_from_playmode_path_hash(mode, path, hash, mods).await };
-        self.loader = Some(AsyncLoader::new(f));
+        // let f = async move { manager_from_playmode_path_hash(mode, path, hash, mods).await };
+        // self.loader = Some(AsyncLoader::new(f));
+
+        let draw_sender = self.widget_sender.clone();
+        actions.push(GameAction::NewGameplayManager(NewManager {
+            owner: self.owner,
+            playmode: (!self.use_global_playmode).then(|| self.settings.background_game_settings.mode.clone()),
+            gameplay_mode: Some(GameplayMode::Preview),
+            area: self.fit_to,
+            draw_function: Some(Arc::new(move |group| draw_sender.lock().write(Arc::new(group)))),
+
+            ..Default::default()
+        }));
+
 
         // match manager_from_playmode(mode, &map).await {
         //     Ok(mut manager) => {
@@ -126,81 +152,43 @@ impl GameplayPreview {
             if !self.is_enabled() && self.manager.is_some() {
                 self.manager = None;
             }
-            
-            if let Some(manager) = &mut self.manager {
-                manager.force_update_settings().await;
-            }
         }
 
-        // check for mods changes
-        // if self.current_mods.update() {
-        //     if let Some(manager) = &mut self.manager {
-        //         manager.apply_mods(self.current_mods.as_ref().clone()).await;
-        //     }
-        // }
-        if self.mods.check(values) {
-            if let Some(manager) = &mut self.manager {
-                if let Ok(mods) = ModManager::try_from(self.mods.deref()) {
-                    manager.apply_mods(mods).await;
-                }
-            }
-        }
 
         let last_song_time = self.song_time.as_f32().unwrap_or_default();
         if self.song_time.check(values) {
             if self.song_time.as_f32().unwrap_or_default() < last_song_time {
-                self.setup(values).await;
+                self.setup(values, actions).await;
             }
         }
 
 
         // check for map/mode changes
         if self.beatmap.check(values) | self.playmode.check(values) {
-            self.setup(values).await;
+            self.setup(values, actions).await;
         }
         // let mut refresh_map = self.current_playmode.update();
         // refresh_map |= self.current_beatmap.update();
         // if refresh_map { self.setup().await; }
 
         // check for new bounds
-        if let Some(new_bounds) = self.event_receiver.try_recv().ok().filter(|bounds|Some(bounds) != self.fit_to.as_ref()) {
+        if let Some(new_bounds) = self.event_receiver.try_recv().ok().filter(|bounds| Some(bounds) != self.fit_to.as_ref()) {
             self.fit_to_area(new_bounds).await;
         }
 
-        // update manager
-        if let Some(manager) = &mut self.manager {
-            manager.update(values).await;
+        // // update manager
+        // if let Some(manager) = &mut self.manager {
+        //     manager.update(values).await;
             
-            if manager.completed {
-                manager.on_complete();
-                self.manager = None;
-            }
-        }
+        //     if manager.completed {
+        //         manager.on_complete();
+        //         self.manager = None;
+        //     }
+        // }
 
         // update vis
         if let Some(vis) = &mut self.visualization {
             vis.update().await;
-        }
-
-        // check if beatmap loader has completed loading
-        if let Some(loader) = &self.loader {
-            if let Some(result) = loader.check().await {
-                self.loader = None;
-                
-                match result {
-                    Ok(mut manager) => {
-                        manager.set_mode(GameplayMode::Preview);
-
-                        if let Some(bounds) = self.fit_to {
-                            manager.fit_to_area(bounds).await
-                        }
-                        
-                        manager.start().await;
-                        self.manager = Some(manager);
-                    },
-                    Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await,
-                }
-            }
         }
         
         // check for state update
@@ -260,15 +248,17 @@ impl GameplayPreview {
         }
 
         // render to the drawable
-        self.draw().await
+        self.draw().await;
+
+        actions.extend(self.actions.take());
     }
 
     async fn draw(&mut self) {
         let mut list = RenderableCollection::new();
 
-        if let Some(manager) = &mut self.manager {
-            manager.draw(&mut list).await;
-        }
+        // if let Some(manager) = &mut self.manager {
+        //     manager.draw(&mut list).await;
+        // }
 
         // draw visualization if it exists
         if let Some((vis, bounds)) = self.visualization.as_mut().zip(self.fit_to) {
@@ -277,25 +267,25 @@ impl GameplayPreview {
 
         let mut group = TransformGroup::from_collection(Vector2::ZERO, list);
         group.set_scissor(self.fit_to.map(|b| b.into_scissor()));
-        self.widget_sender.write(Arc::new(group));
+        self.widget_sender.lock().write(Arc::new(group));
     }
 
-    pub async fn key_down(&mut self, key:KeyInput, mods:KeyModifiers) {
-        let Some(manager) = self.manager.as_mut() else { return };
-        manager.key_down(key, mods).await
-    }
+    // pub async fn key_down(&mut self, key:KeyInput, mods:KeyModifiers) {
+    //     let Some(manager) = self.manager.as_mut() else { return };
+    //     manager.key_down(key, mods).await
+    // }
 
-    pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
-        let Some(manager) = self.manager.as_mut() else { return };
-        manager.window_size_changed(window_size).await
-    }
+    // pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
+    //     let Some(manager) = self.manager.as_mut() else { return };
+    //     manager.window_size_changed(window_size).await
+    // }
 
     pub async fn fit_to_area(&mut self, bounds: Bounds) {
         // info!("fitting to area {bounds:?}");
         self.fit_to = Some(bounds);
 
-        let Some(manager) = self.manager.as_mut() else { return };
-        manager.fit_to_area(bounds).await;
+        let Some(manager) = self.manager.as_ref() else { return };
+        self.actions.push(GameAction::GameplayAction(manager.clone(), GameplayAction::FitToArea(bounds)));
     } 
 
     pub async fn skin_changed(&mut self, skin_manager: &mut SkinManager) {
@@ -304,28 +294,24 @@ impl GameplayPreview {
         }
     }
 
-    pub fn widget(&self) -> IcedElement {
-        self.widget.clone().into()
-    }
-}
-
-impl Drop for GameplayPreview {
-    fn drop(&mut self) {
-        if let Some(manager) = &mut self.manager {
-            manager.on_complete()
-        }
-    }
 }
 
 impl Clone for GameplayPreview {
     fn clone(&self) -> Self {
-        Self::new(self.use_global_playmode, self.apply_rate, self.check_enabled.clone())
+        Self::new(self.use_global_playmode, self.apply_rate, self.check_enabled.clone(), self.owner)
+    }
+}
+impl core::fmt::Debug for GameplayPreview {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GameplayPreview")
     }
 }
 
+
+
 /// this is the widget that gets added to the ui
 #[derive(Clone)]
-pub struct GameplayPreviewWidget {
+struct GameplayPreviewWidget {
     width: iced::Length,
     height: iced::Length,
 
@@ -341,20 +327,17 @@ impl GameplayPreviewWidget {
             event_sender,
         }
     }
-    pub fn width(&mut self, width: iced::Length) {
-        self.width = width;
-    }
-    pub fn height(&mut self, height: iced::Length) {
-        self.height = height;
-    }
 }
 
+use iced::advanced::widget::tree;
 impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPreviewWidget {
     fn size(&self) -> iced::Size<iced::Length> { iced::Size::new(self.width, self.height) }
+    fn tag(&self) -> tree::Tag { tree::Tag::of::<GameplayWidgetState>() }
+    fn state(&self) -> tree::State { tree::State::new(GameplayWidgetState::default()) }
 
     fn layout(
         &self,
-        _state: &mut iced_core::widget::Tree,
+        _state: &mut tree::Tree,
         _renderer: &IcedRenderer,
         limits: &iced_core::layout::Limits,
     ) -> iced_core::layout::Node {
@@ -365,9 +348,10 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPrev
         iced_core::layout::Node::new(limits.max())
     }
 
+
     fn draw(
         &self,
-        _state: &iced_core::widget::Tree,
+        tree: &iced_core::widget::Tree,
         renderer: &mut IcedRenderer,
         _theme: &iced::Theme,
         _style: &iced_core::renderer::Style,
@@ -375,7 +359,14 @@ impl iced::advanced::Widget<Message, iced::Theme, IcedRenderer> for GameplayPrev
         _cursor: iced_core::mouse::Cursor,
         _viewport: &iced::Rectangle,
     ) {
-        let _ = self.event_sender.try_send(layout.bounds().into());
+        let state = tree.state.downcast_ref::<GameplayWidgetState>();
+        let bounds = layout.bounds();
+        let mut state_bounds = state.bounds.lock();
+        if &*state_bounds != &bounds {
+            *state_bounds = bounds;
+            let _ = self.event_sender.try_send(bounds.into());
+        }
+
         renderer.add_renderable(self.draw_data.lock().read().clone());
     }
 }
@@ -386,22 +377,31 @@ impl Into<IcedElement> for GameplayPreviewWidget {
     }
 }
 
-
-
-impl core::fmt::Debug for GameplayPreview {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "GameplayPreview")
-    }
+#[derive(Default)]
+struct GameplayWidgetState {
+    bounds: Rc<Mutex<iced::Rectangle>>,
 }
 
 
 #[async_trait]
 impl Widgetable for GameplayPreview {
+    async fn handle_message(&mut self, message: &Message, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
+        let MessageTag::String(str) = &message.tag else { return self.actions.take() };
+        if str != "gameplay_manager_create" { return self.actions.take() }
+
+        let MessageType::GameplayManagerId(id) = &message.message_type else { return { error!("wrong type"); self.actions.take() } };
+        self.manager = Some(id.clone());
+
+        self.actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
+        
+        self.actions.take()
+    }
+
     async fn update(&mut self, values: &mut ValueCollection, actions: &mut ActionQueue) {
         GameplayPreview::update(self, values, actions).await
         // (self as &mut GameplayPreview).update().await
     }
     fn view(&self, _owner: MessageOwner, _values: &mut ValueCollection) -> IcedElement {
-        self.widget()
+        self.widget.clone().into()
     }
 }

@@ -365,13 +365,12 @@ impl ScoreMenu {
         use iced::widget::Text;
         use iced::widget::Button;
         let mut buttons = Vec::with_capacity(2);
-        let owner = MessageOwner::new_menu(self);
         
         // retry button
         if self.allow_retry {
             buttons.push(
                 Button::new(Text::new("Retry"))
-                    .on_press(Message::click(owner, "retry"))
+                    .on_press(Message::click(MessageOwner::Menu, "retry"))
                     .into_element()
             );
         }
@@ -380,14 +379,14 @@ impl ScoreMenu {
         if !self.menu_type.is_lobby() {
             buttons.push(
                 Button::new(Text::new("Replay"))
-                    .on_press(Message::click(owner, "replay"))
+                    .on_press(Message::click(MessageOwner::Menu, "replay"))
                     .into_element()
             );
         }
 
         buttons.push(
             Button::new(Text::new("Back"))
-                .on_press(Message::new_menu(self, "back", MessageType::Click))
+                .on_press(Message::new(MessageOwner::Menu, "back", MessageType::Click))
                 .into_element()
         );
 
@@ -456,7 +455,7 @@ impl AsyncMenu for ScoreMenu {
                 // multi scores
                 if let ScoreMenuType::Multiplayer {lobby_items, ..} = &*self.menu_type {
                     col!(
-                        lobby_items.iter().map(|l|l.view(self.get_name())).collect::<Vec<_>>(),
+                        lobby_items.iter().map(|l| l.view()).collect::<Vec<_>>(),
                         width = FillPortion(1),
                         height = Fill,
                         align_items = Alignment::End

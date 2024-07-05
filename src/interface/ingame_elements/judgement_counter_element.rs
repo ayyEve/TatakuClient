@@ -28,7 +28,7 @@ impl InnerUIElement for JudgementCounterElement {
         )
     }
     
-    fn update(&mut self, manager: &mut IngameManager) {
+    fn update(&mut self, manager: &mut GameplayManager) {
         // TODO: improve this
         self.hit_counts.clear();
         let score = &manager.score.score;

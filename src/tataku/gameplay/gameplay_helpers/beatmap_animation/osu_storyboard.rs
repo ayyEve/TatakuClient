@@ -39,7 +39,7 @@ impl OsuStoryboard {
 
 #[async_trait]
 impl BeatmapAnimation for OsuStoryboard {
-    async fn update(&mut self, time: f32, manager: &IngameManager) {
+    async fn update(&mut self, time: f32, manager: &GameplayManager) {
         self.time = time;
         for i in self.elements.iter_mut() {
             // if self.time < i.start_time || self.time > i.end_time + 5000.0 { continue }
@@ -281,7 +281,7 @@ impl Element {
         self.end_time = latest_end;
     }
 
-    fn update(&mut self, time: f32, _manager: &IngameManager) {
+    fn update(&mut self, time: f32, _manager: &GameplayManager) {
         // if time < self.start_time || time > self.end_time { 
         //     self.group.update(time as f64);
         //     return 

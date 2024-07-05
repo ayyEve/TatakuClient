@@ -123,7 +123,6 @@ impl ElementCondition {
                     Ok(false) => ElementResolve::False,
                     Err(e) => {
                         error!("Error with shunting yard calc. calc: '{calc_str}', error: {e:?}");
-                        println!("");
                         ElementResolve::Error(e)
                     }
                 }

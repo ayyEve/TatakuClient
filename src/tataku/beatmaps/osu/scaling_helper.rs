@@ -58,7 +58,7 @@ impl ScalingHelper {
         let circle_size = CIRCLE_RADIUS_BASE;
         let border_size = OSU_NOTE_BORDER_SIZE;
 
-        let settings_offset = settings_offset + (playfield_size-FIELD_SIZE) / 2.0; // make sure the other thing is centered as well
+        let settings_offset = settings_offset + (playfield_size - FIELD_SIZE) / 2.0; // make sure the other thing is centered as well // what other thing ??
         
         let scale = (window_size.y / playfield_size.y) * settings_scale;
         let scaled_pos_offset = (window_size - playfield_size * scale) / 2.0 + settings_offset;

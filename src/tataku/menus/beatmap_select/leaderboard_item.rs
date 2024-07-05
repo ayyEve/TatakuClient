@@ -18,7 +18,7 @@ impl LeaderboardComponent {
             score,
         }
     }
-    pub fn view(&self, menu: &'static str) -> IcedElement {
+    pub fn view(&self) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
         let score_mods = ModManager::short_mods_string(self.score.mods(), false, &self.score.playmode);
@@ -41,7 +41,7 @@ impl LeaderboardComponent {
                 .size(16.0);
         ))
             .width(Fill)
-            .on_press(Message::new_menu_raw(menu, "score", MessageType::Number(self.num)))
+            .on_press(Message::new(MessageOwner::Menu, "score", MessageType::Number(self.num)))
             .into_element()
     }
 }
