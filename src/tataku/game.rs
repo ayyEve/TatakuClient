@@ -788,8 +788,8 @@ impl Game {
         self.handle_actions(menu_actions).await;
 
         // run update on current state
-        match &mut current_state {
-            GameState::Ingame(manager) => {
+        match current_state.take() {
+            GameState::Ingame(mut manager) => {
                 if window_size_updated {
                     manager.window_size_changed((*self.window_size).clone()).await;
                 }
@@ -804,17 +804,17 @@ impl Game {
                 if !manager.failed && manager.can_pause() && (manager.should_pause || controller_pause) {
                     manager.pause();
                     let actions = manager.actions.take();
-                    let menu = PauseMenu::new(manager.take(), false).await;
-                    self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                     self.handle_actions(actions).await;
-                } else {
 
+                    let menu = PauseMenu::new(manager, false).await;
+                    self.queue_state_change(GameState::SetMenu(Box::new(menu)));
+                } else {
                     // inputs
                     // mouse
-                    if mouse_moved {manager.mouse_move(mouse_pos).await}
-                    for btn in mouse_down {manager.mouse_down(btn).await}
-                    for btn in mouse_up {manager.mouse_up(btn).await}
-                    if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta).await}
+                    if mouse_moved { manager.mouse_move(mouse_pos).await }
+                    for btn in mouse_down { manager.mouse_down(btn).await }
+                    for btn in mouse_up { manager.mouse_up(btn).await }
+                    if scroll_delta != 0.0 { manager.mouse_scroll(scroll_delta).await }
 
                     // kb
                     for k in keys_down.0 { manager.key_down(k, mods).await }
@@ -842,34 +842,23 @@ impl Game {
                     self.handle_actions(actions).await;
                     if manager.completed {
                         self.ingame_complete(manager).await;
+                        // a menu is queued up, we dont need to reapply current_state
+                    } else {
+                        current_state = GameState::Ingame(manager);
                     }
                 }
             }
             
-            // GameState::Spectating(manager) => {   
-            //     let actions = manager.update().await;
-            //     self.handle_menu_actions(actions).await;
-
-            //     if mouse_moved {manager.mouse_move(mouse_pos, self).await}
-            //     for btn in mouse_down {manager.mouse_down(mouse_pos, btn, mods, self).await}
-            //     for btn in mouse_up {manager.mouse_up(mouse_pos, btn, mods, self).await}
-            //     if scroll_delta != 0.0 {manager.mouse_scroll(scroll_delta, self).await}
-
-            //     for k in keys_down.iter() {manager.key_down(*k, mods, self).await}
-            //     for k in keys_up.iter() {manager.key_up(*k, mods, self).await}
-            // }
-
             GameState::None => {
                 // might be transitioning
                 if self.transition.is_some() && elapsed - self.transition_timer > TRANSITION_TIME / 2.0 {
-
                     let trans = self.transition.take();
                     self.queue_state_change(trans.unwrap());
                     self.transition_timer = elapsed;
                 }
             }
 
-            _ => {}
+            other => current_state = other
         }
         
         // update game mode
@@ -1737,7 +1726,7 @@ impl Game {
     }
 
 
-    pub async fn ingame_complete(&mut self, manager: &mut Box<GameplayManager>) {
+    pub async fn ingame_complete(&mut self, mut manager: Box<GameplayManager>) {
         trace!("beatmap complete");
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
@@ -1745,10 +1734,9 @@ impl Game {
         if manager.failed {
             trace!("player failed");
             if !manager.get_mode().is_multi() {
-                let manager2 = std::mem::take(manager);
-                self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(manager2, true).await)));
+                self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(manager, true).await)));
             }
-            
+
         } else {
             let mut score = manager.score.clone();
             score.accuracy = get_gamemode_info(&score.playmode).unwrap().calc_acc(&score);

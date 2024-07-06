@@ -207,7 +207,14 @@ impl ManiaGame {
 
 
 
-    fn add_hit_indicator(time: f32, column: usize, hit_value: &HitJudgment, column_count: u8, game_settings: &Arc<ManiaSettings>, playfield: &Arc<ManiaPlayfield>, manager: &mut GameplayManager) {
+    fn add_hit_indicator(
+        column: usize, 
+        hit_value: &HitJudgment, 
+        column_count: u8, 
+        game_settings: &Arc<ManiaSettings>, 
+        playfield: &Arc<ManiaPlayfield>, 
+        state: &mut GameplayStateForUpdate<'_>
+    ) {
         let color = hit_value.color;
         let image = None;
         // let (color, image) = match hit_value {
@@ -226,16 +233,16 @@ impl ManiaGame {
             x_offset + playfield.x_offset + if game_settings.judgements_per_column {
                 (playfield.column_width + playfield.column_spacing) * column as f32 + playfield.column_width / 2.0
             } else {
-            ((playfield.column_width + playfield.column_spacing) * column_count as f32) / 2.0
+                ((playfield.column_width + playfield.column_spacing) * column_count as f32) / 2.0
             },
 
             if playfield.upside_down {playfield.hit_pos + game_settings.judgement_indicator_offset} else {bounds.size.y - playfield.hit_pos - game_settings.judgement_indicator_offset}
         );
 
 
-        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+        state.add_indicator(BasicJudgementIndicator::new(
             pos, 
-            time,
+            state.time,
             playfield.column_width / 2.0 * (2.0 / 3.0),
             color,
             image
@@ -703,8 +710,12 @@ impl GameMode for ManiaGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager) {
-        match frame {
+    async fn handle_replay_frame<'a>(
+        &mut self, 
+        frame: ReplayFrame, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
+        match frame.action {
             ReplayAction::Press(key) => {
                 let Some(col) = Self::keypress2col(key) else { return };
                 // let hit_volume = Settings::get().get_effect_vol() * (manager.beatmap.timing_points[self.timing_point_index].volume as f32 / 100.0);
@@ -714,7 +725,8 @@ impl GameMode for ManiaGame {
                     // we need a hitsound though
                     let thing = self.columns[col].iter().last().unwrap();
 
-                    manager.play_note_sound(thing.get_hitsound()).await;
+                    state.play_note_sound(thing.get_hitsound().clone());
+
                     // play_sound!(sound);
                     return;
                 }
@@ -722,36 +734,45 @@ impl GameMode for ManiaGame {
                 let note_time = note.time();
                 *self.column_states.get_mut(col).unwrap() = true;
 
-                if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
                     // use ManiaHitJudgments::*;
 
                     // tell the note it was hit
-                    note.hit(time);
+                    note.hit(frame.time);
 
                     // add the judgment
-                    Self::add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
+                    Self::add_hit_indicator(
+                        col, 
+                        &judge, 
+                        self.column_count, 
+                        &self.game_settings, 
+                        &self.playfield, 
+                        state
+                    );
                     
                     // play the hit sound
-
-                    // we need a hitsound though
-                    manager.play_note_sound(note.get_hitsound()).await;
+                    state.play_note_sound(note.get_hitsound().clone());
                     // play_sound!(sound);
 
                     // incrememnt note index if this is not a slider
                     if note.note_type() != NoteType::Hold { self.next_note(col); }
 
-                    // if this was a miss, check if we failed
-                    if judge == ManiaHitJudgments::Miss {
-                        if manager.health.is_dead() {
-                            manager.fail();
-                        }
-                    }
+
+                    // TODO: is this necessary? 
+                    // this should be handled by the gameplay manager, not sure why its here
+                    
+                    // // if this was a miss, check if we failed
+                    // if judge == ManiaHitJudgments::Miss {
+                    //     if manager.health.is_dead() {
+                    //         manager.fail();
+                    //     }
+                    // }
                 } else { // outside of any window, ignore
                     // play sound
                     let thing = &self.columns[col][self.column_indices[col]];
 
                     // play_sound!(sound);
-                    manager.play_note_sound(thing.get_hitsound()).await;
+                    state.play_note_sound(thing.get_hitsound().clone());
                 }
             }
             ReplayAction::Release(key) => {
@@ -761,19 +782,26 @@ impl GameMode for ManiaGame {
                 if self.column_indices[col] >= self.columns[col].len() { return }
 
                 let note = &mut self.columns[col][self.column_indices[col]];
-                if time < note.time() - self.miss_window || time > note.end_time(self.miss_window) { return }
-                note.release(time);
+                if frame.time < note.time() - self.miss_window || frame.time > note.end_time(self.miss_window) { return }
+                note.release(frame.time);
 
                 if note.note_type() == NoteType::Hold {
                     let note_time = note.end_time(0.0);
 
-                    if let Some(&judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                    if let Some(&judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
     
                         // tell the note it was hit
-                        note.hit(time);
+                        note.hit(frame.time);
     
                         // add the judgment
-                        Self::add_hit_indicator(time, col, &judge, self.column_count, &self.game_settings, &self.playfield, manager);
+                        Self::add_hit_indicator(
+                            col, 
+                            &judge, 
+                            self.column_count, 
+                            &self.game_settings, 
+                            &self.playfield, 
+                            state
+                        );
                         
                         // // play the hit sound
                         // play_sound!(sound);
@@ -781,16 +809,18 @@ impl GameMode for ManiaGame {
                         // increment note index 
                         self.next_note(col);
     
-                        // if this was a miss, check if we failed
-                        if judge == ManiaHitJudgments::Miss && manager.health.is_dead() {
-                            manager.fail();
-                        }
+                        // TODO: again, is this necessary?
+
+                        // // if this was a miss, check if we failed
+                        // if judge == ManiaHitJudgments::Miss && manager.health.is_dead() {
+                        //     manager.fail();
+                        // }
                     } else { // outside of any window, ignore
                         // play sound
                         let thing = &self.columns[col][self.column_indices[col]];
 
                         // play_sound!(sound);
-                        manager.play_note_sound(thing.get_hitsound()).await;
+                        state.play_note_sound(thing.get_hitsound().clone());
                     }
                 }
             }
@@ -800,24 +830,30 @@ impl GameMode for ManiaGame {
     }
 
 
-    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction> {
-        if manager.current_mods.has_autoplay() {
+    async fn update<'a>(
+        &mut self, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
+        if state.mods.has_autoplay() {
             let mut frames = Vec::new();
-            self.auto_helper.update(&self.columns, &mut self.column_indices, time, &mut frames);
+            self.auto_helper.update(&self.columns, &mut self.column_indices, state.time, &mut frames);
             for frame in frames {
-                self.handle_replay_frame(frame, time, manager).await
+                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state).await
             }
         }
 
         // update notes
         for col in self.columns.iter_mut() {
-            for note in col.iter_mut() {note.update(time).await}
+            for note in col.iter_mut() { note.update(state.time).await }
         }
 
-        // show score screen if map is over
-        if time >= self.end_time {
-            manager.completed = true;
-            return Vec::new();
+        // dont continue if map is over
+        if state.time >= self.end_time {
+            if !state.complete() {
+                state.add_action(GamemodeAction::MapComplete);
+                // manager.completed = true;
+            }
+            return;
         }
 
         // check if we missed the current note
@@ -825,24 +861,22 @@ impl GameMode for ManiaGame {
             if self.column_indices[col] >= self.columns[col].len() { continue; }
             let note = &self.columns[col][self.column_indices[col]];
 
-            if note.end_time(self.miss_window) <= time {
+            if note.end_time(self.miss_window) <= state.time {
                 // TODO: do we need to check for holds?
                 // if note.note_type() != NoteType::Hold || note.was_hit() {}
 
-                let j = &ManiaHitJudgments::Miss;
-                manager.add_judgment(j).await;
-                Self::add_hit_indicator(time, col, j, self.column_count, &self.game_settings, &self.playfield, manager);
+                let j = ManiaHitJudgments::Miss;
+                state.add_judgment(j);
+                Self::add_hit_indicator(col, &j, self.column_count, &self.game_settings, &self.playfield, state);
                 self.next_note(col);
             }
-        }   
+        }
         
         // TODO: might move tbs to a (time, speed) tuple
-        for tb in self.timing_bars.iter_mut() { tb.update(time) }
-
-        Vec::new()
+        for tb in self.timing_bars.iter_mut() { tb.update(state.time) }
     }
     
-    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
         let bounds = self.playfield.bounds;
 
         // playfield
@@ -861,9 +895,9 @@ impl GameMode for ManiaGame {
         self.draw_notes(state.time, list).await;
     }
 
-    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
+    fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         // make sure we havent hit a note yet
-        for &c in self.column_indices.iter() {if c > 0 { return None }}
+        for &c in self.column_indices.iter() { if c > 0 { return None } }
 
         let mut time = self.end_time;
         for col in self.columns.iter() {
@@ -876,14 +910,14 @@ impl GameMode for ManiaGame {
         time -= 2000.0;
 
         if time < 0.0 { return None }
-        if manager.time() >= time { return None }
+        if game_time >= time { return None }
 
-        if manager.lead_in_time > 0.0 {
-            if time > manager.lead_in_time {
-                time -= manager.lead_in_time - 0.01;
-                manager.lead_in_time = 0.01;
-            }
-        }
+        // if manager.lead_in_time > 0.0 {
+        //     if time > manager.lead_in_time {
+        //         time -= manager.lead_in_time - 0.01;
+        //         manager.lead_in_time = 0.01;
+        //     }
+        // }
 
         Some(time)
     }

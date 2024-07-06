@@ -54,7 +54,10 @@ use crate::prelude::*;
 #[derive(Copy, Clone, Debug, Default)]
 pub struct HitJudgment {
     /// internal str for this judgment
-    pub internal_id: &'static str,
+    pub id: &'static str,
+
+    // does this alias as another id?
+    pub alias_id: Option<&'static str>,
 
     /// what does this judgment look like when displayed?
     pub display_name: &'static str,
@@ -100,7 +103,8 @@ impl HitJudgment {
         fails_sudden_death: bool,
     ) -> Self {
         Self {
-            internal_id,
+            id: internal_id,
+            alias_id: None,
             display_name,
             health,
             affects_combo,
@@ -116,16 +120,19 @@ impl HitJudgment {
 
 impl PartialEq for HitJudgment {
     fn eq(&self, other: &Self) -> bool {
-        self.internal_id == other.internal_id
+        self.id == other.id
     }
 }
 impl Eq for HitJudgment {}
 impl std::hash::Hash for HitJudgment {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.internal_id.hash(state);
+        self.id.hash(state);
     }
 }
 
+impl AsRef<str> for HitJudgment {
+    fn as_ref(&self) -> &str { self.id }
+}
 
 
 #[derive(Copy, Clone, Debug, Default)]

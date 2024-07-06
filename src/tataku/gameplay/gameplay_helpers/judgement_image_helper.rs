@@ -13,14 +13,14 @@ impl JudgmentImageHelper {
     }
 
     pub fn get_from_scorehit(&self, judge: &HitJudgment) -> Option<Animation> {
-        self.images.get(judge.internal_id).cloned().flatten()
+        self.images.get(judge.id).cloned().flatten()
     }
 
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.images.clear();
         
         for i in self.variants.iter() {
-            let k = i.internal_id.to_owned();
+            let k = i.id.to_owned();
             if i.tex_name.is_empty() { continue }
             
             // try to load an animation

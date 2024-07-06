@@ -59,7 +59,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.internal_id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }
@@ -170,7 +170,7 @@ impl ScoreMenu {
             let txt = judge.display_name;
             if txt.is_empty() { continue }
 
-            let count = score.judgments.get(judge.internal_id).map(|n|*n).unwrap_or_default();
+            let count = score.judgments.get(judge.id).map(|n|*n).unwrap_or_default();
 
             let mut color = judge.color;
             if color.a == 0.0 { color = Color::BLACK }

@@ -8,7 +8,7 @@ pub struct PauseMenu {
     actions: ActionQueue,
 
     // beatmap: Arc<Mutex<Beatmap>>,
-    manager: Box<GameplayManager>,
+    manager: Option<Box<GameplayManager>>,
     is_fail_menu: bool,
 
     bg: Option<Image>
@@ -17,18 +17,21 @@ impl PauseMenu {
     pub async fn new(manager: Box<GameplayManager>, is_fail_menu: bool) -> PauseMenu {
         PauseMenu {
             actions: ActionQueue::new(),
-            manager,
+            manager: Some(manager),
             is_fail_menu,
             bg: None
         }
     }
 
     pub fn unpause(&mut self) {
-        self.actions.push(GameAction::ResumeMap(self.manager.take()));
+        let Some(manager) = self.manager.take() else { return };
+        self.actions.push(GameAction::ResumeMap(manager));
     }
 
     async fn retry(&mut self) {
-        self.manager.reset().await;
+        if let Some(manager) = &mut self.manager {
+            manager.reset().await;
+        }
         self.unpause();
     }
 

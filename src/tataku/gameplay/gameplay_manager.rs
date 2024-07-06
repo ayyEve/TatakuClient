@@ -15,14 +15,31 @@ const HIT_DIFF_FACTOR:f32 = 1.0;
 
 pub const SCORE_SEND_TIME:f32 = 1_000.0;
 
-// bc im lazy
-macro_rules! add_timing {
-    ($self:ident, $time:expr, $note_time:expr) => {{
-        let diff = ($time - $note_time) / HIT_DIFF_FACTOR;
-        $self.add_stat(HitVarianceStat, diff);
-        // $self.score.hit_timings.push(diff);
-        $self.hitbar_timings.push(($time, diff));
-    }}
+// // bc im lazy
+// macro_rules! add_timing {
+//     ($self:ident, $time:expr, $note_time:expr) => {{
+//         let diff = ($time - $note_time) / HIT_DIFF_FACTOR;
+//         $self.add_stat(HitVarianceStat, diff);
+//         // $self.score.hit_timings.push(diff);
+//         $self.hitbar_timings.push(($time, diff));
+//     }}
+// }
+
+macro_rules! create_update_state {
+    ($self: ident, $time: expr) => {
+        GameplayStateForUpdate {
+            time: $time,
+            game_speed: $self.game_speed(),
+            completed: $self.completed,
+
+            mods: &$self.current_mods,
+            current_timing_point: $self.timing_points.timing_point(),
+            timing_points: &$self.timing_points,
+            gameplay_mode: &$self.gameplay_mode,
+            score: &$self.score,
+            actions: Vec::new(),
+        }
+    }
 }
 
 pub struct GameplayManager {
@@ -42,7 +59,7 @@ pub struct GameplayManager {
     pub replay: Replay,
     pub score_multiplier: f32,
 
-    pub health: HealthHelper,
+    pub health: Box<dyn HealthManager>,
     pub judgments: Vec<HitJudgment>,
     pub key_counter: KeyCounter,
     ui_elements: Vec<UIElement>,
@@ -110,6 +127,7 @@ pub struct GameplayManager {
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
+    pending_frames: Vec<ReplayFrame>,
 
     map_diff: f32,
     song_time: f32,
@@ -135,13 +153,8 @@ impl GameplayManager {
         score.speed = current_mods.speed;
 
 
-        let health = HealthHelper::new();
         // let score_loader = Some(SCORE_HELPER.read().await.get_scores(metadata.beatmap_hash, &playmode).await);
         let key_counter = KeyCounter::new(gamemode.get_possible_keys().into_iter().map(|a| (a.0, a.1.to_owned())).collect());
-
-        // let song = AudioManager::get_song().await.unwrap_or(AudioManager::empty_stream()); // temp until we get the audio file path
-
-        let center_text_helper = CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await;
 
         // hardcode for now
         let audio_playmode_prefix = match &*playmode {
@@ -167,14 +180,14 @@ impl GameplayManager {
         gamemode.apply_mods(current_mods.clone()).await;
 
         Self {
+            actions: ActionQueue::new(),
             metadata,
             timing_points: TimingPointHelper::new(timing_points, beatmap.slider_velocity()),
             // hitsound_cache,
             current_mods,
-            health,
+            health: Box::new(DefaultHealthManager::new()),
             key_counter,
 
-            lead_in_timer: Instant::now(),
             judgments: gamemode_info.get_judgments(),
             score: IngameScore::new(score, true, false),
 
@@ -186,14 +199,17 @@ impl GameplayManager {
             // song,
 
             lead_in_time: LEAD_IN_TIME,
+            lead_in_timer: Instant::now(),
             end_time: gamemode.end_time(),
 
-            center_text_helper,
+            center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await,
             beatmap_preferences,
 
             common_game_settings,
 
             gamemode,
+
+            scores_loaded: false,
             score_list: Vec::new(),
             // score_loader,
             settings,
@@ -201,8 +217,35 @@ impl GameplayManager {
             start_time: chrono::Utc::now().timestamp(),
 
             events,
-            // initialize defaults for anything else not specified
-            ..Self::default()
+
+
+            judgement_indicators: Vec::new(),
+            gameplay_mode: Box::new(GameplayMode::Normal),
+            gameplay_actions: Vec::new(),
+
+            failed: false,
+            failed_time: 0.0,
+            score_multiplier: 1.0,
+            started: false,
+            completed: false,
+
+            hitbar_timings: Vec::new(),
+            spectator_info: GameplaySpectatorInfo::default(),
+            on_start: Box::new(|_|{}),
+            fit_to_bounds: None,
+            should_pause: false,
+            pause_pending: false,
+            ui_elements: Vec::new(),
+            ui_editor: None,
+            ui_changed: false,
+
+            pending_time_jump: None,
+            pending_frames: Vec::new(),
+
+            restart_key_hold_start: None,
+            map_diff: 0.0,
+            pause_start: None,
+            song_time: 0.0,
         }
     }
 
@@ -300,13 +343,13 @@ impl GameplayManager {
         self.gamemode.get_ui_elements(self.window_size.0, &mut self.ui_elements).await;
     }
 
-    pub async fn apply_mods(&mut self, mut mods: ModManager, gamemode: &mut Box<dyn GameMode>) {
+    pub async fn apply_mods(&mut self, mut mods: ModManager) {
         if self.gameplay_mode.is_preview() {
             mods.add_mod(Autoplay);
         }
 
         self.current_mods = Arc::new(mods);
-        gamemode.apply_mods(self.current_mods.clone()).await;
+        self.gamemode.apply_mods(self.current_mods.clone()).await;
     }
 
     pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
@@ -411,16 +454,13 @@ impl GameplayManager {
         }
 
         
-        let mut gamemode = std::mem::take(&mut self.gamemode);
         let tp_updates = self.timing_points.update(time);
         for tp_update in tp_updates {
             match tp_update {
-                TimingPointUpdate::BeatHappened(pulse_length) => gamemode.beat_happened(pulse_length).await,
-                TimingPointUpdate::KiaiChanged(kiai) => gamemode.kiai_changed(kiai).await,
+                TimingPointUpdate::BeatHappened(pulse_length) => self.gamemode.beat_happened(pulse_length).await,
+                TimingPointUpdate::KiaiChanged(kiai) => self.gamemode.kiai_changed(kiai).await,
             }
         }
-
-        let mut pending_frames = Vec::new();
 
         // update hit timings bar
         self.hitbar_timings.retain(|(hit_time, _)| {time - hit_time < HIT_TIMING_DURATION});
@@ -429,8 +469,27 @@ impl GameplayManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        let update_frames = gamemode.update(self, time).await.into_iter().map(|f|ReplayFrame::new(time, f));
-        pending_frames.extend(update_frames);
+        let mut state = create_update_state!(self, time);
+
+        // let mut state = GameplayStateForUpdate {
+        //     time,
+        //     game_speed: self.game_speed(),
+        //     completed: self.completed,
+
+        //     mods: &self.current_mods,
+        //     current_timing_point: self.timing_points.timing_point(),
+        //     timing_points: &self.timing_points,
+        //     gameplay_mode: &self.gameplay_mode,
+        //     score: &self.score,
+        //     actions: Vec::new(),
+        // };
+
+        self.gamemode.update(&mut state).await;
+        for action in state.actions.take() {
+            self.handle_gamemode_action(action).await;
+        }
+        //.into_iter().map(|f| ReplayFrame::new(time, f));
+
 
 
         // if self.lead_in_time == 0.0 && values.get_bool("song.stopped").unwrap_or_default() {
@@ -460,8 +519,6 @@ impl GameplayManager {
                 // self.song.set_rate(new_rate);
             }
 
-            // put it back
-            self.gamemode = gamemode;
             return self.actions.take();
         }
 
@@ -471,7 +528,7 @@ impl GameplayManager {
             self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::Buffer));
 
             // check if we failed
-            if self.health.check_fail_at_end && self.health.is_dead() && !self.failed {
+            if self.health.is_dead(true) && !self.failed {
                 self.fail();
             }
         }
@@ -491,7 +548,7 @@ impl GameplayManager {
                     let frame = replay.frames[*current_frame];
                     if frame.time > time { break }
 
-                    pending_frames.push(frame);
+                    self.pending_frames.push(frame);
                     
                     *current_frame += 1;
                 }
@@ -593,7 +650,7 @@ impl GameplayManager {
                                 let frame = replay_frames[*current_frame];
                                 if frame.time > time { break }
 
-                                pending_frames.push(frame);
+                                self.pending_frames.push(frame);
                                 
                                 *current_frame += 1;
                             }
@@ -624,13 +681,11 @@ impl GameplayManager {
             }
 
 
-            _ => {
-
-            }
+            _ => {}
         }
 
         for a in self.gameplay_actions.take() {
-            self.handle_action_inner(a, &mut gamemode).await;
+            self.handle_action(a).await;
         }
 
         if let Some(mut manager) = OnlineManager::try_get_mut() {
@@ -654,12 +709,10 @@ impl GameplayManager {
         }
 
         // handle any frames
-        for ReplayFrame { time, action } in pending_frames {
-            self.handle_frame(action, true, Some(time), true, &mut gamemode).await;
+        for ReplayFrame { time, action } in self.pending_frames.take() {
+            self.handle_frame(action, true, Some(time), true).await;
         }
 
-        // put it back
-        self.gamemode = gamemode;
 
         // handle animation
         let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
@@ -691,7 +744,7 @@ impl GameplayManager {
         if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
         
 
-        let state = GameplayState {
+        let state = GameplayStateForDraw {
             time,
             gameplay_mode: &self.gameplay_mode,
             current_timing_point: self.timing_points.timing_point(),
@@ -730,196 +783,118 @@ impl GameplayManager {
     }
 
     pub async fn handle_action(&mut self, action: GameplayAction) {
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        self.handle_action_inner(action, &mut gamemode).await;
-        self.gamemode = gamemode;
-    }
-
-    async fn handle_action_inner(&mut self, action: GameplayAction, gamemode: &mut Box<dyn GameMode>) {
         match action {
             GameplayAction::Pause => self.pause(),
             GameplayAction::Resume => self.start().await,
             GameplayAction::JumpToTime { time, skip_intro } => self.jump_to_time(time, skip_intro),
-            GameplayAction::ApplyMods(mods) => self.apply_mods(mods, gamemode).await,
-            GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds, gamemode).await,
+            GameplayAction::ApplyMods(mods) => self.apply_mods(mods).await,
+            GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds).await,
             GameplayAction::SetMode(mode) => self.set_mode(mode),
 
-            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, gamemode).await,
+            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save).await,
         }
     }
-}
 
-// judgment stuff
-impl GameplayManager {
+    #[async_recursion::async_recursion]
+    async fn handle_gamemode_action(&mut self, action: GamemodeAction) {
+        match action {
+            GamemodeAction::AddJudgment(judgment) => {
 
-    pub fn add_hit_timning(&mut self, time: f32, note_time: f32) {
-        let diff = (time - note_time) / HIT_DIFF_FACTOR;
-        self.add_stat(HitVarianceStat, diff);
-        // $self.score.hit_timings.push(diff);
-        self.hitbar_timings.push((time, diff));
-    }
+                // increment judgment, if applicable
+                if let Some(count) = self.score.judgments.get_mut(judgment.id) {
+                    *count += 1;
+                }
 
-    // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
-    // essentially the same thing as judgments
-    pub async fn play_note_sound(&mut self, hitsounds: &Vec<Hitsound>) {
-        // let timing_point = self.beatmap.control_point_at(note_time);
+                // do score 
+                let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
+                let score = judgment.base_score_value;
 
+                let score = match judgment.combo_multiplier {
+                    ComboMultiplier::None => score,
+                    ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
+                    ComboMultiplier::Linear { combo, multiplier, combo_cap } => {
+                        let combo_mult = combo_cap.map(|cap| combo_mult.min(cap)).unwrap_or(combo_mult);
+                        let times = (combo_mult % combo).max(1) as f32;
 
-        // get volume
-        let mut vol = self.settings.get_effect_vol();
-        if self.gameplay_mode.is_preview() { vol *= self.settings.background_game_settings.hitsound_volume };
+                        (score as f32 * (multiplier * times)) as i32
+                    }
+                };
 
-        self.hitsound_manager.play_sound(hitsounds, vol);
-    }
+                match score {
+                    score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
+                    score @ 1.. => self.score.score.score += score as u64,
+                }
 
-    /// add judgment, affects health and score, but not hit timings
-    pub async fn add_judgment(&mut self, judgment: &HitJudgment) {
-        // increment judgment, if applicable
-        if let Some(count) = self.score.judgments.get_mut(judgment.internal_id) {
-            *count += 1;
-        }
+                // do combo
+                match judgment.affects_combo {
+                    AffectsCombo::Increment => {
+                        self.score.combo += 1;
+                        self.score.max_combo = self.score.max_combo.max(self.score.combo);
+                    },
+                    AffectsCombo::Reset => self.combo_break(), // self.actions.push(GamemodeAction::ComboBreak), 
+                    AffectsCombo::Ignore => {},
+                }
+                
+                // do health
+                self.health.apply_hit(&judgment, &self.score);
 
-        // do score 
-        let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
-        let score = judgment.base_score_value;
+                // check health
+                if self.health.is_dead(false) {
+                    // self.actions.push(GamemodeAction::FailGame);
+                    self.fail();
+                }
 
-        let score = match judgment.combo_multiplier {
-            ComboMultiplier::None => score,
-            ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
-            ComboMultiplier::Linear { combo, multiplier, combo_cap } => {
-                let combo_mult = combo_cap.map(|cap| combo_mult.min(cap)).unwrap_or(combo_mult);
-                let times = (combo_mult % combo).max(1) as f32;
-
-                (score as f32 * (multiplier * times)) as i32
+                // check sd/pf mods
+                //TODO: if this happens, change the judgment to a miss
+                if self.current_mods.has_sudden_death() && judgment.fails_sudden_death {
+                    // self.actions.push(GamemodeAction::FailGame);
+                    self.fail()
+                }
+                if self.current_mods.has_perfect() && judgment.fails_perfect {
+                    // self.actions.push(GamemodeAction::FailGame);
+                    self.fail()
+                }
             }
-        };
+            GamemodeAction::PlayHitsounds(sounds) => {
+                // TODO: old note?
+                // have a hitsound manager trait and hitsound_type trait, and have this pass the hitsound trait to a fn to get a sound, then play it
+                // essentially the same thing as judgments
 
-        match score {
-            score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
-            score @ 1.. => self.score.score.score += score as u64,
-        }
 
-        // do combo
-        match judgment.affects_combo {
-            AffectsCombo::Increment => {
-                self.score.combo += 1;
-                self.score.max_combo = self.score.max_combo.max(self.score.combo);
-            },
-            AffectsCombo::Reset => self.combo_break().await,
-            AffectsCombo::Ignore => {},
-        }
-        
-        // do health
-        (self.health.do_health.clone())(&mut self.health, judgment, &self.score);
+                // let timing_point = self.beatmap.control_point_at(note_time);
 
-        // check health
-        if !self.health.check_fail_at_end && self.health.is_dead() {
-            self.fail()
-        }
+                // get volume
+                let mut vol = self.settings.get_effect_vol();
+                if self.gameplay_mode.is_preview() { vol *= self.settings.background_game_settings.hitsound_volume };
 
-        // check sd/pf mods
-        //TODO: if this happens, change the judgment to a miss
-        if self.current_mods.has_sudden_death() && judgment.fails_sudden_death {
-            self.fail()
-        }
-        if self.current_mods.has_perfect() && judgment.fails_perfect {
-            self.fail()
-        }
-
-    }
-
-    /// check and add to hit timings if found
-    pub async fn check_judgment<'a>(&mut self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HitJudgment> {
-        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
-            self.add_judgment(hj).await;
-            add_timing!(self, time, note_time);
-
-            // return the hit judgment we got
-            Some(hj)
-        } else {
-            None
-        }
-
-        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
-        // for (hj, window) in windows.iter() {
-        //     if window.contains(&diff) {
-        //         self.add_judgment(hj).await;
-        //         add_timing!(self, time, note_time);
-
-        //         // return the hit judgment we got
-        //         return Some(hj)
-        //     }
-        // }
-
-        // None
-    }
-    
-    pub async fn check_judgment_condition<
-        'a,
-        F:Fn() -> bool,
-    >(&mut self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32, cond: F, if_bad: &'a HitJudgment) -> Option<&'a HitJudgment> {
-        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
-            if cond() {
-                self.add_judgment(hj).await;
-                add_timing!(self, time, note_time);
-                // return the hit judgment we got
-                Some(hj)
-            } else {
-                self.add_judgment(if_bad).await;
-                // return the hit judgment we got
-                Some(if_bad)
+                self.hitsound_manager.play_sound(&sounds, vol);
             }
-        } else {
-            None
-        }
-
-        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
-        // for (hj, window) in windows.iter() {
-        //     if window.contains(&diff) {
-        //         let is_okay = cond();
-        //         if is_okay {
-        //             self.add_judgment(hj).await;
-        //             add_timing!(self, time, note_time);
-        //             // return the hit judgment we got
-        //             return Some(hj)
-        //         } else {
-        //             self.add_judgment(if_bad).await;
-        //             // return the hit judgment we got
-        //             return Some(if_bad)
-        //         }
-
-        //     }
-        // }
-
-        // info!("no judgment");
-        // None
-    }
-
-    /// only check if the note + hit fit into a window, and if so, return the corresponding judgment
-    pub fn check_judgment_only<'a>(&self, windows: &'a Vec<(HitJudgment, Range<f32>)>, time: f32, note_time: f32) -> Option<&'a HitJudgment> {
-        let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
-        for (hj, window) in windows.iter() {
-            if window.contains(&diff) {
-                // return the hit judgment we got
-                return Some(hj)
+            
+            
+            GamemodeAction::AddTiming { hit_time, note_time } => {
+                let diff = (hit_time - note_time) / HIT_DIFF_FACTOR;
+                self.score.insert_stat(HitVarianceStat, diff);
+                // self.add_stat(HitVarianceStat, diff);
+                // $self.score.hit_timings.push(diff);
+                self.hitbar_timings.push((hit_time, diff));
             }
+
+            GamemodeAction::AddIndicator(mut indicator) => {
+                indicator.set_start_time(self.time());
+                indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration, &self.settings);
+                self.judgement_indicators.push(indicator)
+            }
+
+            GamemodeAction::AddStat { stat, value } => self.score.insert_stat(stat, value),
+            GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
+            GamemodeAction::ComboBreak => self.combo_break(),
+            GamemodeAction::FailGame => self.fail(),
+            GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true).await,
+            GamemodeAction::ResetHealth => self.health.reset(),
+            GamemodeAction::ReplaceHealth(new_health) => self.health = new_health,
+            GamemodeAction::MapComplete => self.completed = true,
         }
-
-        None
     }
-
-
-    pub fn add_judgement_indicator<HI:JudgementIndicator+'static>(&mut self, mut indicator: HI) {
-        indicator.set_start_time(self.time());
-        indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration, &self.settings);
-        self.judgement_indicators.push(Box::new(indicator))
-    }
-
-
-    pub fn add_stat(&mut self, stat: GameModeStat, value: f32) {
-        self.score.insert_stat(stat, value)
-    }
-
 }
 
 // getters, setters, properties
@@ -1004,7 +979,7 @@ impl GameplayManager {
         self.should_pause = false;
 
         // offset our start time by the duration of the pause
-        if let Some(pause_time) = std::mem::take(&mut self.pause_start) {
+        if let Some(pause_time) = self.pause_start.take() {
             self.start_time += chrono::Utc::now().timestamp() - pause_time
         }
 
@@ -1069,9 +1044,7 @@ impl GameplayManager {
             self.actions.push(SongAction::Play);
             // self.song.play(false);
 
-            let mut gamemode = std::mem::take(&mut self.gamemode);
-            gamemode.unpause(self);
-            self.gamemode = gamemode;
+            self.gamemode.unpause();
         }
     }
     pub fn pause(&mut self) {
@@ -1091,9 +1064,7 @@ impl GameplayManager {
         let time = self.time();
         self.outgoing_spectator_frame_force(SpectatorFrame::new(time, SpectatorAction::Pause));
 
-        let mut gamemode = self.gamemode.take();
-        gamemode.pause(self);
-        self.gamemode = gamemode;
+        self.gamemode.pause();
     }
     pub async fn reset(&mut self) {
         self.gamemode.reset(&self.beatmap).await;
@@ -1163,7 +1134,7 @@ impl GameplayManager {
 
         // re-add judgments to score
         for j in &self.judgments {
-            self.score.judgments.insert(j.internal_id.to_owned(), 0);
+            self.score.judgments.insert(j.id.to_owned(), 0);
         }
 
         if self.gameplay_mode.should_load_scores() {
@@ -1178,7 +1149,7 @@ impl GameplayManager {
         debug!("failed");
     }
 
-    pub async fn combo_break(&mut self) {
+    pub fn combo_break(&mut self) {
         // play hitsound
         if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
             let combobreak = Hitsound::new_simple("combobreak");
@@ -1280,10 +1251,10 @@ impl GameplayManager {
         self.gameplay_mode = Box::new(mode);
     }
     
-    async fn fit_to_area(&mut self, bounds: Bounds, gamemode: &mut Box<dyn GameMode>) {
+    async fn fit_to_area(&mut self, bounds: Bounds) {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
-        gamemode.fit_to_area(bounds).await;
+        self.gamemode.fit_to_area(bounds).await;
     }
 }
 
@@ -1295,11 +1266,19 @@ impl GameplayManager {
         force: bool, 
         force_time: Option<f32>, 
         should_add: bool,
-        gamemode: &mut Box<dyn GameMode>,
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
-            if let Some(time) = gamemode.skip_intro(self) {
+            if let Some(mut time) = self.gamemode.skip_intro(self.time()) {
+
+                // really not sure whats happening here lol
+                if self.lead_in_time > 0.0 {
+                    if time > self.lead_in_time {
+                        time -= self.lead_in_time - 0.01;
+                        self.lead_in_time = 0.01;
+                    }
+                }
+
                 self.actions.push(SongAction::SetPosition(time));
             }
             
@@ -1317,21 +1296,25 @@ impl GameplayManager {
             }
 
             let time = force_time.unwrap_or_else(|| self.time());
-            gamemode.handle_replay_frame(frame, time, self).await;
+            let frame = ReplayFrame::new(time, frame);
+
+            let mut state = create_update_state!(self, self.time());
+            self.gamemode.handle_replay_frame(frame, &mut state).await;
+
+            for action in state.actions.take() {
+                self.handle_gamemode_action(action).await;
+            }
 
             if add_frames && should_add {
-                self.replay.frames.push(ReplayFrame::new(time, frame));
-                self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction{ action: frame }));
+                self.replay.frames.push(frame);
+                self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction { action: frame.action }));
             }
         }
     }
 
     async fn handle_input(&mut self, frame: Option<ReplayAction>) {
         let Some(frame) = frame else { return };
-
-        let mut gamemode = std::mem::take(&mut self.gamemode);
-        self.handle_frame(frame, false, None, true, &mut gamemode).await;
-        self.gamemode = gamemode;
+        self.handle_frame(frame, false, None, true).await;
     }
 
     pub async fn key_down(&mut self, key_input: KeyInput, mods: KeyModifiers) {
@@ -1433,14 +1416,14 @@ impl GameplayManager {
         let frame = self.gamemode.key_up(key).await;
         self.handle_input(frame).await;
     }
-    pub async fn on_text(&mut self, text:&String, mods: &KeyModifiers) {
+    pub async fn on_text(&mut self, text: &String, mods: &KeyModifiers) {
         if self.should_skip_input() { return }
         let frame = self.gamemode.on_text(text, mods).await;
         self.handle_input(frame).await;
     }
     
     
-    pub async fn mouse_move(&mut self, pos:Vector2) {
+    pub async fn mouse_move(&mut self, pos: Vector2) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_move(pos, &mut ()).await;
         }
@@ -1450,7 +1433,7 @@ impl GameplayManager {
         let frame = self.gamemode.mouse_move(pos).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_down(&mut self, btn:MouseButton) {
+    pub async fn mouse_down(&mut self, btn: MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_down(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return
@@ -1460,7 +1443,7 @@ impl GameplayManager {
         let frame = self.gamemode.mouse_down(btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_up(&mut self, btn:MouseButton) {
+    pub async fn mouse_up(&mut self, btn: MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_up(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return
@@ -1470,7 +1453,7 @@ impl GameplayManager {
         let frame = self.gamemode.mouse_up(btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn mouse_scroll(&mut self, delta:f32) {
+    pub async fn mouse_scroll(&mut self, delta: f32) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_scroll(delta, &mut ()).await;
         } 
@@ -1491,7 +1474,7 @@ impl GameplayManager {
         let frame = self.gamemode.controller_release(c, btn).await;
         self.handle_input(frame).await;
     }
-    pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data:HashMap<Axis, (bool, f32)>) {
+    pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data: HashMap<Axis, (bool, f32)>) {
         if self.should_skip_input() { return }
         let frame = self.gamemode.controller_axis(c, axis_data).await;
         self.handle_input(frame).await;
@@ -1594,70 +1577,70 @@ impl GameplayManager {
     }
 }
 
-// default
-impl Default for GameplayManager {
-    fn default() -> Self {
-        Self { 
-            actions: ActionQueue::new(),
-            // song: AudioManager::empty_stream(),
-            judgement_indicators: Vec::new(),
-            hitsound_manager: HitsoundManager::new(String::new()),
-            gameplay_mode: Box::new(GameplayMode::Normal),
-            gameplay_actions: Vec::new(),
+// // default
+// impl Default for GameplayManager {
+//     fn default() -> Self {
+//         Self { 
+//             actions: ActionQueue::new(),
+//             // song: AudioManager::empty_stream(),
+//             judgement_indicators: Vec::new(),
+//             hitsound_manager: HitsoundManager::new(String::new()),
+//             gameplay_mode: Box::new(GameplayMode::Normal),
+//             gameplay_actions: Vec::new(),
 
-            failed: false,
-            failed_time: 0.0,
-            health: HealthHelper::default(),
-            beatmap: Default::default(),
-            metadata: Default::default(),
-            gamemode: Default::default(),
-            current_mods: Default::default(),
-            score: IngameScore::new(Default::default(), true, false),
-            score_multiplier: 1.0,
-            replay: Default::default(),
-            started: Default::default(),
-            completed: Default::default(),
-            end_time: Default::default(),
-            lead_in_time: Default::default(),
-            lead_in_timer: Instant::now(),
-            timing_points: Default::default(),
-            // timing_point_index: Default::default(),
-            center_text_helper: Default::default(),
-            hitbar_timings: Default::default(),
-            spectator_info: Default::default(),
-            on_start: Box::new(|_|{}),
-            animation: Box::new(EmptyAnimation),
-            fit_to_bounds: None,
+//             failed: false,
+//             failed_time: 0.0,
+//             health: HealthHelper::default(),
+//             beatmap: Default::default(),
+//             metadata: Default::default(),
+//             gamemode: Default::default(),
+//             current_mods: Default::default(),
+//             score: IngameScore::new(Default::default(), true, false),
+//             score_multiplier: 1.0,
+//             replay: Default::default(),
+//             started: Default::default(),
+//             completed: Default::default(),
+//             end_time: Default::default(),
+//             lead_in_time: Default::default(),
+//             lead_in_timer: Instant::now(),
+//             timing_points: Default::default(),
+//             // timing_point_index: Default::default(),
+//             center_text_helper: Default::default(),
+//             hitbar_timings: Default::default(),
+//             spectator_info: Default::default(),
+//             on_start: Box::new(|_|{}),
+//             animation: Box::new(EmptyAnimation),
+//             fit_to_bounds: None,
 
-            common_game_settings: Default::default(),
+//             common_game_settings: Default::default(),
 
-            score_list: Vec::new(),
-            scores_loaded: false,
-            // score_loader: None,
-            beatmap_preferences: Default::default(),
-            should_pause: false,
-            pause_pending: false,
-            events: Vec::new(),
-            ui_elements: Vec::new(),
-            ui_editor: None,
-            key_counter: KeyCounter::default(),
+//             score_list: Vec::new(),
+//             scores_loaded: false,
+//             // score_loader: None,
+//             beatmap_preferences: Default::default(),
+//             should_pause: false,
+//             pause_pending: false,
+//             events: Vec::new(),
+//             ui_elements: Vec::new(),
+//             ui_editor: None,
+//             key_counter: KeyCounter::default(),
 
-            ui_changed: false,
+//             ui_changed: false,
 
-            judgments: Vec::new(),
+//             judgments: Vec::new(),
 
-            settings: SettingsHelper::new(),
-            window_size: WindowSize::get(),
-            pending_time_jump: None,
+//             settings: SettingsHelper::new(),
+//             window_size: WindowSize::get(),
+//             pending_time_jump: None,
 
-            restart_key_hold_start: None,
-            map_diff: 0.0,
-            start_time: 0,
-            pause_start: None,
-            song_time: 0.0,
-        }
-    }
-}
+//             restart_key_hold_start: None,
+//             map_diff: 0.0,
+//             start_time: 0,
+//             pause_start: None,
+//             song_time: 0.0,
+//         }
+//     }
+// }
 
 
 #[derive(Clone, Debug)]
@@ -1799,11 +1782,239 @@ impl GameplayMode {
 }
 
 
-
-pub struct GameplayState<'a> {
+// TODO: rename this
+pub struct GameplayStateForDraw<'a> {
     pub time: f32,
     pub gameplay_mode: &'a Box<GameplayMode>,
     pub current_timing_point: &'a TimingPoint,
     pub mods: &'a ModManager,
-    pub score: &'a IngameScore
+    pub score: &'a IngameScore,
+}
+
+//TODO: rename this please god
+pub struct GameplayStateForUpdate<'a> {
+    /// current map time
+    pub time: f32,
+
+    /// current game speed
+    pub game_speed: f32,
+
+    /// private so we dont set this to true accidentally
+    /// need to use an action instead
+    completed: bool,
+    
+    /// current mods
+    pub mods: &'a ModManager,
+
+    /// the current timing point
+    pub current_timing_point: &'a TimingPoint,
+
+    /// the current gameplay mode
+    pub gameplay_mode: &'a Box<GameplayMode>,
+    
+    /// our current score
+    pub score: &'a IngameScore,
+
+    // all timing points
+    pub timing_points: &'a TimingPointHelper,
+    
+    /// list of actions to be performed
+    actions: Vec<GamemodeAction>,
+}
+impl<'a> GameplayStateForUpdate<'a> {
+    /// does the manager believe the map has been completed?
+    pub fn complete(&self) -> bool { self.completed }
+
+    pub fn add_action(&mut self, action: impl Into<GamemodeAction>) {
+        self.actions.push(action.into());
+    }
+    pub fn add_replay_action(&mut self, action: ReplayAction) {
+        self.actions.push(GamemodeAction::ReplayAction(ReplayFrame::new(self.time, action)));
+    }
+
+
+    /*
+    // fn add_timing(&mut self, time: f32, note_time: f32) {
+    //     let diff = (time - note_time) / HIT_DIFF_FACTOR;
+    //     self.add_stat(HitVarianceStat, diff);
+    //     // $self.score.hit_timings.push(diff);
+    //     self.hitbar_timings.push((time, diff));
+    // }
+    
+    // /// add judgment, affects health and score, but not hit timings
+    // pub async fn add_judgment(&mut self, judgment: &HitJudgment) {
+    //     // increment judgment, if applicable
+    //     if let Some(count) = self.score.judgments.get_mut(judgment.id) {
+    //         *count += 1;
+    //     }
+
+    //     // do score 
+    //     let combo_mult = (self.score.combo as f32 * self.score_multiplier).floor() as u16;
+    //     let score = judgment.base_score_value;
+
+    //     let score = match judgment.combo_multiplier {
+    //         ComboMultiplier::None => score,
+    //         ComboMultiplier::Custom(mult) => (score as f32 * mult) as i32,
+    //         ComboMultiplier::Linear { combo, multiplier, combo_cap } => {
+    //             let combo_mult = combo_cap.map(|cap| combo_mult.min(cap)).unwrap_or(combo_mult);
+    //             let times = (combo_mult % combo).max(1) as f32;
+
+    //             (score as f32 * (multiplier * times)) as i32
+    //         }
+    //     };
+
+    //     match score {
+    //         score @ i32::MIN..=0 => self.score.score.score -= score.abs() as u64,
+    //         score @ 1.. => self.score.score.score += score as u64,
+    //     }
+
+    //     // do combo
+    //     match judgment.affects_combo {
+    //         AffectsCombo::Increment => {
+    //             self.score.combo += 1;
+    //             self.score.max_combo = self.score.max_combo.max(self.score.combo);
+    //         },
+    //         AffectsCombo::Reset => self.actions.push(GamemodeAction::ComboBreak), // self.combo_break().await,
+    //         AffectsCombo::Ignore => {},
+    //     }
+        
+    //     // do health
+    //     (self.health.do_health.clone())(&mut self.health, judgment, &self.score);
+
+    //     // check health
+    //     if !self.health.check_fail_at_end && self.health.is_dead() {
+    //         self.actions.push(GamemodeAction::FailGame);
+    //         // self.fail()
+    //     }
+
+    //     // check sd/pf mods
+    //     //TODO: if this happens, change the judgment to a miss
+    //     if self.current_mods.has_sudden_death() && judgment.fails_sudden_death {
+    //         self.actions.push(GamemodeAction::FailGame);
+    //         // self.fail()
+    //     }
+    //     if self.current_mods.has_perfect() && judgment.fails_perfect {
+    //         self.actions.push(GamemodeAction::FailGame);
+    //         // self.fail()
+    //     }
+
+    // }
+
+    // */
+
+    /// check and add to hit timings if found
+    pub async fn check_judgment<'j>(
+        &mut self, 
+        windows: &'j Vec<(HitJudgment, Range<f32>)>, 
+        time: f32, 
+        note_time: f32
+    ) -> Option<&'j HitJudgment> {
+        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
+            self.actions.push(GamemodeAction::AddJudgment(*hj));
+            self.actions.push(GamemodeAction::AddTiming { hit_time: time, note_time });
+            // self.add_judgment(hj).await;
+            // self.add_timing(time, note_time);
+            // add_timing!(self, time, note_time);
+
+            // return the hit judgment we got
+            Some(hj)
+        } else {
+            None
+        }
+
+        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
+        // for (hj, window) in windows.iter() {
+        //     if window.contains(&diff) {
+        //         self.add_judgment(hj).await;
+        //         self.add_timing(time, note_time);
+        //         // add_timing!(self, time, note_time);
+
+        //         // return the hit judgment we got
+        //         return Some(hj)
+        //     }
+        // }
+
+        // None
+    }
+    
+    pub async fn check_judgment_condition<'j>(
+        &mut self,
+        windows: &'j Vec<(HitJudgment, Range<f32>)>, 
+        time: f32, 
+        note_time: f32, 
+        cond: impl Fn() -> bool, 
+        if_bad: &'j HitJudgment
+    ) -> Option<&'j HitJudgment> {
+        if let Some(hj) = self.check_judgment_only(windows, time, note_time) {
+            if cond() {
+                self.actions.push(GamemodeAction::AddJudgment(*hj));
+                self.actions.push(GamemodeAction::AddTiming { hit_time: time, note_time });
+                // self.add_judgment(hj).await;
+                // self.add_timing(time, note_time);
+                // add_timing!(self, time, note_time);
+                // return the hit judgment we got
+                Some(hj)
+            } else {
+                self.actions.push(GamemodeAction::AddJudgment(*if_bad));
+                // self.add_judgment(if_bad).await;
+                // return the hit judgment we got
+                Some(if_bad)
+            }
+        } else {
+            None
+        }
+
+        // let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed();
+        // for (hj, window) in windows.iter() {
+        //     if window.contains(&diff) {
+        //         let is_okay = cond();
+        //         if is_okay {
+        //             self.add_judgment(hj).await;
+        //             add_timing!(self, time, note_time);
+        //             // return the hit judgment we got
+        //             return Some(hj)
+        //         } else {
+        //             self.add_judgment(if_bad).await;
+        //             // return the hit judgment we got
+        //             return Some(if_bad)
+        //         }
+
+        //     }
+        // }
+
+        // info!("no judgment");
+        // None
+    }
+
+    /// only check if the note + hit fit into a window, and if so, return the corresponding judgment
+    pub fn check_judgment_only<'j>(
+        &self, 
+        windows: &'j Vec<(HitJudgment, Range<f32>)>, 
+        time: f32, 
+        note_time: f32
+    ) -> Option<&'j HitJudgment> {
+        let diff = (time - note_time).abs() / HIT_DIFF_FACTOR / self.game_speed;
+        for (hj, window) in windows.iter() {
+            if window.contains(&diff) {
+                // return the hit judgment we got
+                return Some(hj)
+            }
+        }
+
+        None
+    }
+
+    pub fn add_judgment(&mut self, judgment: HitJudgment) {
+        self.actions.push(GamemodeAction::AddJudgment(judgment));
+    }
+    pub fn add_indicator(&mut self, indicator: impl JudgementIndicator + 'static) {
+        self.actions.push(GamemodeAction::AddIndicator(Box::new(indicator)));
+    }
+    pub fn add_stat(&mut self, stat: GameModeStat, value: f32) {
+        self.actions.push(GamemodeAction::AddStat { stat, value });
+    }
+
+    pub fn play_note_sound(&mut self, hitsounds: Vec<Hitsound>) {
+        self.actions.push(GamemodeAction::PlayHitsounds(hitsounds));
+    }
 }

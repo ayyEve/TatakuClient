@@ -9,10 +9,10 @@ pub struct NoMode;
 impl GameMode for NoMode {
     async fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
-    async fn handle_replay_frame(&mut self, _:ReplayAction, _:f32, _:&mut GameplayManager) {}
-    async fn update(&mut self, _:&mut GameplayManager, _: f32) -> Vec<ReplayAction> { Vec::new() }
-    async fn draw<'a>(&mut self, _:GameplayState<'a>, _: &mut RenderableCollection) {}
-    fn skip_intro(&mut self, _: &mut GameplayManager) -> Option<f32> { None }
+    async fn handle_replay_frame<'a>(&mut self, _: ReplayFrame, _: &mut GameplayStateForUpdate<'a>) {}
+    async fn update<'a>(&mut self, _: &mut GameplayStateForUpdate<'a>) { }
+    async fn draw<'a>(&mut self, _:GameplayStateForDraw<'a>, _: &mut RenderableCollection) {}
+    fn skip_intro(&mut self, _: f32) -> Option<f32> { None }
     async fn reset(&mut self, _:&Beatmap) {}
     async fn window_size_changed(&mut self, _: Arc<WindowSize>) {}
     async fn fit_to_area(&mut self, _:Bounds) {}

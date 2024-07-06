@@ -34,6 +34,7 @@ pub struct OsuGame {
 
     /// autoplay helper
     auto_helper: StandardAutoHelper,
+    relax_manager: RelaxManager,
 
     /// list of note_indices which are new_combos
     new_combos: Vec<usize>,
@@ -154,7 +155,14 @@ impl OsuGame {
     }
 
     
-    fn add_judgement_indicator(pos: Vector2, time: f32, hit_value: &HitJudgment, scaling_helper: &Arc<ScalingHelper>, judgment_helper: &JudgmentImageHelper, settings: &OsuSettings, manager: &mut GameplayManager) {
+    fn add_judgement_indicator(
+        pos: Vector2, 
+        hit_value: &HitJudgment, 
+        scaling_helper: &Arc<ScalingHelper>, 
+        judgment_helper: &JudgmentImageHelper, 
+        settings: &OsuSettings, 
+        state: &mut GameplayStateForUpdate<'_>
+    ) {
         if hit_value.tex_name.is_empty() { return }
 
         let color = hit_value.color;
@@ -165,9 +173,9 @@ impl OsuGame {
             image.scale = scale;
         }
 
-        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+        state.add_indicator(BasicJudgementIndicator::new(
             pos, 
-            time,
+            state.time,
             CIRCLE_RADIUS_BASE * scaling_helper.scaled_cs * (1.0/3.0),
             color,
             image
@@ -298,6 +306,28 @@ impl OsuGame {
             combo_num += 1;
         }
     }
+
+    fn map_key(&self, key: &Key) -> Option<KeyPress> {
+        if key == &self.game_settings.left_key {
+            Some(KeyPress::Left)
+        } else if key == &self.game_settings.right_key {
+            Some(KeyPress::Right)
+        } else if key == &self.game_settings.smoke_key {
+            Some(KeyPress::Dash)
+        } else {
+            None
+        }
+    }
+    
+    fn map_btn(&self, btn: &MouseButton) -> Option<KeyPress> {
+        if btn == &MouseButton::Left {
+            Some(KeyPress::LeftMouse)
+        } else if btn == &MouseButton::Right {
+            Some(KeyPress::RightMouse)
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait]
@@ -348,6 +378,8 @@ impl GameMode for OsuGame {
         
                     game_settings: std_settings.clone(),
                     auto_helper: StandardAutoHelper::new(),
+                    relax_manager: RelaxManager::new(),
+                    
                     new_combos: Vec::new(),
                     stack_leniency,
                     window_size,
@@ -505,7 +537,11 @@ impl GameMode for OsuGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager) {
+    async fn handle_replay_frame<'a>(
+        &mut self, 
+        frame: ReplayFrame, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
         const ALLOWED_PRESSES:&[KeyPress] = &[
             KeyPress::Left, 
             KeyPress::Right,
@@ -514,7 +550,7 @@ impl GameMode for OsuGame {
             KeyPress::RightMouse,
         ];
 
-        match frame {
+        match frame.action {
             ReplayAction::Press(key) if ALLOWED_PRESSES.contains(&key) => {
                 self.hold_count += 1;
 
@@ -532,11 +568,11 @@ impl GameMode for OsuGame {
                 let mut visible_notes = Vec::new();
 
                 for note in self.notes.iter_mut() {
-                    note.press(time);
+                    note.press(frame.time);
                     // check if note is in hitwindow, has not yet been hit, and is not a spinner
                     let note_time = note.time();
-                    let in_hitwindow = (time - note_time).abs() <= self.miss_window;
-                    let is_visible = time > note_time - note.get_preempt() && time < note_time;
+                    let in_hitwindow = (frame.time - note_time).abs() <= self.miss_window;
+                    let is_visible = frame.time > note_time - note.get_preempt() && frame.time < note_time;
 
                     if (in_hitwindow || is_visible) && !note.was_hit() && note.note_type() != NoteType::Spinner {
                         if in_hitwindow {
@@ -554,13 +590,20 @@ impl GameMode for OsuGame {
                     if !note.check_distance(self.mouse_pos) { continue }
                     let note_time = note.time();
                     
-                    if let Some(judge) = manager.check_judgment(&self.hit_windows, time, note_time).await {
+                    if let Some(judge) = state.check_judgment(&self.hit_windows, frame.time, note_time).await {
                         note.set_judgment(judge);
 
                         if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
                             // dont show the judgment
                         } else {
-                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
+                            Self::add_judgement_indicator(
+                                note.point_draw_pos(frame.time), 
+                                judge, 
+                                &self.scaling_helper, 
+                                &self.judgment_helper, 
+                                &self.game_settings, 
+                                state
+                            );
                         }
 
                         if judge == &OsuHitJudgments::Miss {
@@ -568,11 +611,10 @@ impl GameMode for OsuGame {
                             note.miss();
                         } else {
                             // tell the note it was hit
-                            note.hit(time);
+                            note.hit(frame.time);
 
                             // play the sound
-                            let hitsound = note.get_hitsound();
-                            manager.play_note_sound(&hitsound).await;
+                            state.play_note_sound(note.get_hitsound());
                         }
 
                         return;
@@ -584,7 +626,7 @@ impl GameMode for OsuGame {
                 for note in visible_notes {
                     if !note.check_distance(self.mouse_pos) { continue }
 
-                    note.shake(time);
+                    note.shake(frame.time);
                     break
                 }
             }
@@ -596,7 +638,7 @@ impl GameMode for OsuGame {
                     KeyPress::Left | KeyPress::LeftMouse => self.cursor.left_pressed(false),
                     KeyPress::Right | KeyPress::RightMouse => self.cursor.right_pressed(false),
                     KeyPress::Dash => {
-                        self.smoke_emitter.ok_do_mut(|i|i.should_emit = false);
+                        self.smoke_emitter.ok_do_mut(|i| i.should_emit = false);
                         return;
                     }
                     _ => {}
@@ -606,7 +648,7 @@ impl GameMode for OsuGame {
                 for note in self.notes.iter_mut() {
                     // if this is the last key to be released
                     if self.hold_count == 0 {
-                        note.release(time)
+                        note.release(frame.time)
                     }
 
                     // // check if note is in hitwindow
@@ -619,7 +661,7 @@ impl GameMode for OsuGame {
                 // scale the coords from playfield to window
                 let pos = self.scaling_helper.scale_coords(Vector2::new(x, y));
                 self.mouse_pos = pos;
-                self.smoke_emitter.ok_do_mut(|i|i.position = pos);
+                self.smoke_emitter.ok_do_mut(|i| i.position = pos);
                 self.cursor.cursor_pos(pos);
 
                 for note in self.notes.iter_mut() {
@@ -631,138 +673,184 @@ impl GameMode for OsuGame {
     }
 
 
-    async fn update(&mut self, manager:&mut GameplayManager, time:f32) -> Vec<ReplayAction> {
-        let mut pending_frames = Vec::new();
+    async fn update<'a>(
+        &mut self, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
+        // let mut pending_frames = Vec::new();
 
         // disable the cursor particle emitter if this is a menu game
         // the emitter nukes perf so its best to keep it off unless needed
-        if manager.get_mode().is_preview() && self.cursor.emitter_enabled {
+        if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update(time).await;
+        self.cursor.update(state.time).await;
 
-        let has_autoplay = self.mods.has_autoplay();
-        let has_relax = self.mods.has_mod(Relax);
+        let has_autoplay = state.mods.has_autoplay();
+        let has_relax = state.mods.has_mod(Relax);
 
         // do autoplay things
         if has_autoplay {
-            self.auto_helper.update(time, &self.notes, &self.scaling_helper, &mut pending_frames);
+            let mut pending_frames = Vec::new();
+            self.auto_helper.update(state.time, &self.notes, &self.scaling_helper, &mut pending_frames);
 
             // // handle presses and mouse movements now, and releases later
+            for action in pending_frames {
+                state.add_replay_action(action);
+            }
             // for frame in pending_frames.iter() {
             //     self.handle_replay_frame(*frame, time, manager).await;
             // }
         }
+        
+        if has_relax {
+            self.relax_manager.update(state.time);
+        }
 
         // update emitter
-        self.smoke_emitter.ok_do_mut(|e|e.update(time));
-
-
+        self.smoke_emitter.ok_do_mut(|e| e.update(state.time));
 
         // if the map is over, say it is
-        if time >= self.end_time {
-            manager.completed = true;
-            return Vec::new();
+        if state.time >= self.end_time {
+            if !state.complete() {
+                state.add_action(GamemodeAction::MapComplete);
+                // manager.completed = true;
+            }
+            return;
         }
 
         // update notes
-        for note in self.notes.iter_mut() {
-            note.update(time).await;
+        for (note_index, note) in self.notes.iter_mut().enumerate() {
+            note.update(state.time).await;
             let end_time = note.end_time(self.miss_window);
 
             // play queued sounds
             for hitsound in note.get_sound_queue() {
-                manager.play_note_sound(&hitsound).await;
+                state.play_note_sound(hitsound);
             }
 
-            for (add_combo, pos) in note.pending_combo() {
-                manager.add_judgment(&add_combo).await;
-                Self::add_judgement_indicator(pos, time, &add_combo, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
+            for (judgment, pos) in note.pending_combo() {
+                state.add_judgment(judgment);
+                Self::add_judgement_indicator(
+                    pos, 
+                    &judgment, 
+                    &self.scaling_helper, 
+                    &self.judgment_helper, 
+                    &self.game_settings, 
+                    state
+                );
             }
 
-
+            // check relax stuff
             if has_relax && !has_autoplay {
-                // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
-                if time >= note.time() && time < end_time && !note.was_hit() && note.check_distance(self.mouse_pos) {
-                    let key = KeyPress::LeftMouse;
+                self.relax_manager.check_note(
+                    self.mouse_pos,
+                    end_time,
+                    note,
+                    note_index,
+                    state,
+                );
 
-                    match note.note_type() {
-                        NoteType::Note => {
-                            pending_frames.push(ReplayAction::Press(key));
-                            pending_frames.push(ReplayAction::Release(key));
-                        }
-                        NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
-                            // make sure we're not already holding
-                            if let Some(false) = manager.key_counter.keys.get(&key).map(|a|a.held) {
-                                pending_frames.push(ReplayAction::Press(key));
-                            }
-                        }
-                    }
-                }
+                // // if its time to hit the note, the not hasnt been hit yet, and we're within the note's radius
+                // if state.time >= note.time() && state.time < end_time && !note.was_hit() && note.check_distance(self.mouse_pos) {
+                //     let key = KeyPress::LeftMouse;
 
-                if time >= end_time && !note.was_hit() {
-                    let key = KeyPress::LeftMouse;
+                //     match note.note_type() {
+                //         NoteType::Note => {
+                //             pending_frames.push(ReplayAction::Press(key));
+                //             pending_frames.push(ReplayAction::Release(key));
+                //         }
+                //         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
+                //             // make sure we're not already holding
+                //             if let Some(false) = state.key_counter.keys.get(&key).map(|a| a.held) {
+                //                 state.add_replay_action(ReplayAction::Press(key));
+                //                 // pending_frames.push(ReplayAction::Press(key));
+                //             }
+                //         }
+                //     }
+                // }
 
-                    match note.note_type() {
-                        NoteType::Note => {}
-                        NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
-                            // assume we're holding i guess?
-                            pending_frames.push(ReplayAction::Release(key));
-                        }
-                    }
-                }
+                // if state.time >= end_time && !note.was_hit() {
+                //     let key = KeyPress::LeftMouse;
+
+                //     match note.note_type() {
+                //         NoteType::Note => {}
+                //         NoteType::Slider | NoteType::Spinner | NoteType::Hold => {
+                //             // assume we're holding i guess?
+                //             state.add_replay_action(ReplayAction::Release(key));
+                //             // pending_frames.push(ReplayAction::Release(key));
+                //         }
+                //     }
+                // }
             }
-
 
             // check if note was missed
             
             // if the time is leading in, we dont want to check if any notes have been missed
-            if time < 0.0 { continue }
+            if state.time < 0.0 { continue }
 
             // check if note is in hitwindow
-            if time >= end_time && !note.was_hit() {
+            if state.time >= end_time && !note.was_hit() {
 
                 // check if we missed the current note
                 match note.note_type() {
                     NoteType::Note => {
                         let j = OsuHitJudgments::Miss;
-                        manager.add_judgment(&j).await;
+                        state.add_judgment(j);
 
-                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
+                        Self::add_judgement_indicator(
+                            note.point_draw_pos(state.time), 
+                            &j, 
+                            &self.scaling_helper, 
+                            &self.judgment_helper, 
+                            &self.game_settings, 
+                            state
+                        );
                     }
                     NoteType::Slider => {
                         // check slider release points
                         // internally checks distance
-                        let judge = &note.check_release_points(time);
-                        manager.add_judgment(judge).await;
+                        let judge = note.check_release_points(state.time);
+                        state.add_judgment(judge);
                         
-                        if judge == &OsuHitJudgments::X300 && !self.game_settings.show_300s {
-                            // dont show the judgment
-                        } else {
-                            Self::add_judgement_indicator(note.point_draw_pos(time), time, judge, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
+                        if !(judge == OsuHitJudgments::X300 && !self.game_settings.show_300s) {
+                            Self::add_judgement_indicator(
+                                note.point_draw_pos(state.time), 
+                                &judge, 
+                                &self.scaling_helper, 
+                                &self.judgment_helper, 
+                                &self.game_settings, 
+                                state
+                            );
                         }
 
-                        if judge == &OsuHitJudgments::Miss {
+                        if judge == OsuHitJudgments::Miss {
                             // // tell the note it was missed
                             // unecessary bc its told it was missed later lol
                             // info!("missed slider");
                             // note.miss();
                         } else {
                             // tell the note it was hit
-                            note.hit(time);
+                            note.hit(state.time);
 
                             // play the sound
-                            let hitsound = note.get_hitsound();
                             // let hitsamples = note.get_hitsamples().clone();
-                            manager.play_note_sound(&hitsound).await;
+                            state.play_note_sound(note.get_hitsound());
                         }
                     }
 
                     NoteType::Spinner => {
                         let j = OsuHitJudgments::SpinnerMiss;
-                        manager.add_judgment(&j).await;
+                        state.add_judgment(j);
 
-                        Self::add_judgement_indicator(note.point_draw_pos(time), time, &j, &self.scaling_helper, &self.judgment_helper, &self.game_settings, manager);
+                        Self::add_judgement_indicator(
+                            note.point_draw_pos(state.time), 
+                            &j,
+                            &self.scaling_helper, 
+                            &self.judgment_helper, 
+                            &self.game_settings, 
+                            state
+                        );
                     }
 
                     _ => {},
@@ -773,22 +861,27 @@ impl GameMode for OsuGame {
             }
         }
 
-        // // handle note releases
-        // // required because autoplay frames are checked after the frame is processed
-        // // so if the key is released on the same frame its checked, it will count as not held
-        // // which makes sense, but we dont want that
-        if manager.current_mods.has_autoplay() {
-            pending_frames.extend(self.auto_helper.get_release_queue());
+        // handle note releases
+        // required because autoplay frames are checked after the frame is processed
+        // so if the key is released on the same frame its checked, it will count as not held
+        // which makes sense, but we dont want that
+        if has_autoplay {
+            for action in self.auto_helper.get_release_queue() {
+                state.add_replay_action(action);
+            }
+            // pending_frames.extend();
             // for frame in self.auto_helper.get_release_queue() {
             //     self.handle_replay_frame(frame, time, manager).await;
             // }
         }
 
-        pending_frames
     }
     
-    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
-
+    async fn draw<'a>(
+        &mut self, 
+        state: GameplayStateForDraw<'a>, 
+        list: &mut RenderableCollection
+    ) {
         // draw the playfield
         if !state.gameplay_mode.is_preview() {
             let alpha = self.game_settings.playfield_alpha;
@@ -911,11 +1004,11 @@ impl GameMode for OsuGame {
         self.cursor.reset()
     }
 
-    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
+    fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         if self.notes.len() == 0 { return None }
 
         let time = self.notes[0].time() - self.notes[0].get_preempt();
-        if time < manager.time() || time < 0.0 { return None }
+        if time < game_time || time < 0.0 { return None }
         
         Some(time)
     }
@@ -1138,7 +1231,7 @@ impl GameMode for OsuGame {
     }
 
     
-    fn unpause(&mut self, _manager:&mut GameplayManager) {
+    fn unpause(&mut self) {
         // info!("unpause");
         if self.use_controller_cursor {
             // info!("using to controller input");
@@ -1160,7 +1253,7 @@ impl GameMode for OsuGame {
 
 #[async_trait]
 impl GameModeInput for OsuGame {
-    async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
+    async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
         // playfield adjustment
         if key == Key::LControl {
             let old = self.game_settings.get_playfield();
@@ -1168,18 +1261,15 @@ impl GameModeInput for OsuGame {
             return None;
         }
 
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+        let key = self.map_key(&key)?;
 
-        if key == self.game_settings.left_key {
-            Some(ReplayAction::Press(KeyPress::Left))
-        } else if key == self.game_settings.right_key {
-            Some(ReplayAction::Press(KeyPress::Right))
-        } else if key == self.game_settings.smoke_key {
-            Some(ReplayAction::Press(KeyPress::Dash))
-        } else {
-            None
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax) {
+            if !self.game_settings.manual_input_with_relax { return None; }
+            self.relax_manager.key_pressed(key);
         }
+
+        Some(ReplayAction::Press(key))
     }
     
     async fn key_up(&mut self, key:Key) -> Option<ReplayAction> {
@@ -1189,22 +1279,19 @@ impl GameModeInput for OsuGame {
             return None;
         }
 
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+        let key = self.map_key(&key)?;
 
-        if key == self.game_settings.left_key {
-            Some(ReplayAction::Release(KeyPress::Left))
-        } else if key == self.game_settings.right_key {
-            Some(ReplayAction::Release(KeyPress::Right))
-        } else if key == self.game_settings.smoke_key {
-            Some(ReplayAction::Release(KeyPress::Dash))
-        } else {
-            None
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax) {
+            if !self.game_settings.manual_input_with_relax { return None; }
+            self.relax_manager.key_released(key);
         }
+
+        Some(ReplayAction::Release(key))
     }
     
 
-    async fn mouse_move(&mut self, pos:Vector2) -> Option<ReplayAction> {
+    async fn mouse_move(&mut self, pos: Vector2) -> Option<ReplayAction> {
         if self.use_controller_cursor {
             // info!("switched to mouse");
             self.use_controller_cursor = false;
@@ -1245,36 +1332,34 @@ impl GameModeInput for OsuGame {
         Some(ReplayAction::MousePos(pos.x as f32, pos.y as f32))
     }
     
-    async fn mouse_down(&mut self, btn:MouseButton) -> Option<ReplayAction> {
+    async fn mouse_down(&mut self, btn: MouseButton) -> Option<ReplayAction> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
+        
+        let button = self.map_btn(&btn)?;
 
         // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
-        
-        if btn == MouseButton::Left {
-            Some(ReplayAction::Press(KeyPress::LeftMouse))
-        } else if btn == MouseButton::Right {
-            Some(ReplayAction::Press(KeyPress::RightMouse))
-        } else {
-            None
+        if self.mods.has_mod(Relax) {
+            if !self.game_settings.manual_input_with_relax { return None; }
+            self.relax_manager.key_pressed(button);
         }
+
+        Some(ReplayAction::Press(button))
     }
     
     async fn mouse_up(&mut self, btn:MouseButton) -> Option<ReplayAction> {
         // if the user has mouse input disabled, return
         if self.game_settings.ignore_mouse_buttons { return None }
 
-        // if relax is enabled, and the user doesn't want manual input, return
-        if self.mods.has_mod(Relax) && !self.game_settings.manual_input_with_relax { return None; }
+        let button = self.map_btn(&btn)?;
 
-        if btn == MouseButton::Left {
-            Some(ReplayAction::Release(KeyPress::LeftMouse))
-        } else if btn == MouseButton::Right {
-            Some(ReplayAction::Release(KeyPress::RightMouse))
-        } else {
-            None
+        // if relax is enabled, and the user doesn't want manual input, return
+        if self.mods.has_mod(Relax) {
+            if !self.game_settings.manual_input_with_relax { return None; }
+            self.relax_manager.key_released(button);
         }
+
+        Some(ReplayAction::Release(button))
     }
 
     async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayAction> {

@@ -10,3 +10,11 @@ pub use take::*;
 pub use shunting_yard::*;
 pub use sy_change_check::*;
 pub use tataku_variables::*;
+
+
+pub trait Nope {
+    fn nope(self);
+}
+impl<T> Nope for T {
+    fn nope(self) {}
+}

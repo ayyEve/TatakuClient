@@ -62,7 +62,13 @@ pub struct TaikoGame {
     healthbar_swap_pending: bool,
 }
 impl TaikoGame {
-    async fn play_sound(&self, manager: &mut GameplayManager, note_time:f32,  hit_type: HitType, finisher: bool) {
+    async fn play_sound (
+        &self, 
+        state: &mut GameplayStateForUpdate<'_>, 
+        note_time: f32, 
+        hit_type: HitType, 
+        finisher: bool,
+    ) {
         let hitsound;
         match (hit_type, finisher) {
             (HitType::Don, false) => hitsound = 1, // normal is don
@@ -79,9 +85,14 @@ impl TaikoGame {
             filename: None,
         };
 
-        let hitsound = Hitsound::from_hitsamples(hitsound, samples, false, manager.timing_point_at(note_time, true));
-
-        manager.play_note_sound(&hitsound).await;
+        let hitsound = Hitsound::from_hitsamples(
+            hitsound, 
+            samples, 
+            false, 
+            state.timing_points.timing_point_at(note_time, true)
+        );
+        state.add_action(GamemodeAction::play_hitsounds(hitsound));
+        // manager.play_note_sound(&hitsound).await;
     }
 
     async fn setup_hitwindows(&mut self) {
@@ -112,20 +123,20 @@ impl TaikoGame {
 
 
     fn add_hit_indicator(
-        time: f32, 
         mut hit_value: &HitJudgment, 
         finisher_hit: bool, 
         game_settings: &TaikoSettings, 
         playfield: &TaikoPlayfield,
         judgment_helper: &JudgmentImageHelper, 
-        manager: &mut GameplayManager
+        state: &mut GameplayStateForUpdate<'_>
     ) {
         let pos = playfield.hit_position + Vector2::with_y(game_settings.judgement_indicator_offset);
 
         // if finisher, upgrade to geki or katu
         if finisher_hit {
             // remove the normal hit indicator, its being replaced with a finisher
-            manager.judgement_indicators.pop();
+            state.add_action(GamemodeAction::RemoveLastJudgment);
+            // manager.judgement_indicators.pop();
 
             if hit_value == &TaikoHitJudgments::X100 {
                 hit_value = &TaikoHitJudgments::Katu;
@@ -143,9 +154,9 @@ impl TaikoGame {
             image.scale = Vector2::ONE * (radius * 2.0) / TAIKO_JUDGEMENT_TEX_SIZE;
         }
 
-        manager.add_judgement_indicator(BasicJudgementIndicator::new(
+        state.add_indicator(BasicJudgementIndicator::new(
             pos, 
-            time,
+            state.time,
             game_settings.note_radius * 0.5 * if finisher_hit { game_settings.big_note_multiplier } else { 1.0 },
             color,
             image
@@ -411,8 +422,12 @@ impl GameMode for TaikoGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, time:f32, manager:&mut GameplayManager) {
-        let ReplayAction::Press(key) = frame else { return };
+    async fn handle_replay_frame<'a>(
+        &mut self, 
+        frame: ReplayFrame, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
+        let ReplayAction::Press(key) = frame.action else { return };
 
         // turn the keypress into a hit type
         let taiko_hit_type = match key {
@@ -424,11 +439,11 @@ impl GameMode for TaikoGame {
         };
         let is_left = taiko_hit_type == TaikoHit::LeftKat || taiko_hit_type == TaikoHit::LeftDon;
         
-        if is_left { manager.add_stat(TaikoStatLeftPresses, 1.0) }
-        else { manager.add_stat(TaikoStatRightPresses, 1.0) }
+        if is_left { state.add_stat(TaikoStatLeftPresses, 1.0) }
+        else { state.add_stat(TaikoStatRightPresses, 1.0) }
 
         // check fullalt
-        if manager.current_mods.has_mod(FullAlt) {
+        if state.mods.has_mod(FullAlt) {
             if !self.counter.add_hit(taiko_hit_type) {
                 return;
             }
@@ -438,8 +453,8 @@ impl GameMode for TaikoGame {
         let mut finisher_sound = false;
         // let mut sound = match hit_type {HitType::Don => "don", HitType::Kat => "kat"};
 
-        let mut hit_time = time;
-        let has_relax = manager.current_mods.has_mod(Relax);
+        let mut hit_time = frame.time;
+        let has_relax = state.mods.has_mod(Relax);
 
         let mut did_hit = false;
         for queue in [&mut self.notes, &mut self.other_notes] {
@@ -449,7 +464,7 @@ impl GameMode for TaikoGame {
             // check for finisher 2nd hit. 
             if !did_hit && self.last_judgment != TaikoHitJudgments::Miss {
                 if let Some(last_note) = queue.previous_note() {
-                    if last_note.check_finisher(hit_type, time, manager.current_mods.get_speed()) {
+                    if last_note.check_finisher(hit_type, frame.time, state.game_speed) {
 
                         // i cant match on these contants bc i dont use the derive macro :c
                         // let j = match &self.last_judgment {
@@ -465,14 +480,19 @@ impl GameMode for TaikoGame {
                             return
                         };
 
-
-                        
                         // add whatever the last judgment was as a finisher score
-                        manager.add_judgment(j).await;
-                        Self::add_hit_indicator(time, j, true, &self.taiko_settings, &self.playfield, &self.judgement_helper, manager);
+                        state.add_judgment(*j);
+                        Self::add_hit_indicator(
+                            j, 
+                            true, 
+                            &self.taiko_settings, 
+                            &self.playfield, 
+                            &self.judgement_helper, 
+                            state
+                        );
 
                         // draw drum
-                        *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = time;
+                        *self.hit_cache.get_mut(&taiko_hit_type).unwrap() = state.time;
 
                         return; // return and note continue because we dont want the 2nd finisher press to count towards anything
                     }
@@ -486,7 +506,15 @@ impl GameMode for TaikoGame {
                     NoteType::Note => {
                         let cond = || note.hit_type() == hit_type || has_relax;
 
-                        if let Some(judge) = manager.check_judgment_condition(&self.hit_windows, time, note_time, cond, &TaikoHitJudgments::Miss).await {
+                        let hit_maybe = state.check_judgment_condition(
+                            &self.hit_windows, 
+                            frame.time, 
+                            note_time, 
+                            cond, 
+                            &TaikoHitJudgments::Miss
+                        ).await;
+
+                        if let Some(judge) = hit_maybe {
                             // if note.finisher_sound() { sound = match hit_type { HitType::Don => "bigdon", HitType::Kat => "bigkat" } }
                             finisher_sound = note.finisher_sound();
                             if has_relax {
@@ -494,21 +522,21 @@ impl GameMode for TaikoGame {
                             }
 
                             if judge == &TaikoHitJudgments::Miss {
-                                note.miss(time);
+                                note.miss(state.time);
                             } else {
-                                note.hit(time);
+                                note.hit(state.time);
                             }
 
-                            Self::add_hit_indicator(time, judge, false, &self.taiko_settings, &self.playfield, &self.judgement_helper, manager);
+                            Self::add_hit_indicator(judge, false, &self.taiko_settings, &self.playfield, &self.judgement_helper, state);
                             
                             self.last_judgment = *judge;
                             queue.next();
                         }
-                    },
+                    }
 
                     // slider or spinner, special hit stuff
-                    NoteType::Slider  if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SliderPoint).await,
-                    NoteType::Spinner if note.hit(time) => manager.add_judgment(&TaikoHitJudgments::SpinnerPoint).await,
+                    NoteType::Slider  if note.hit(state.time) => state.add_judgment(TaikoHitJudgments::SliderPoint),
+                    NoteType::Spinner if note.hit(state.time) => state.add_judgment(TaikoHitJudgments::SpinnerPoint),
                     _ => {}
                 }
 
@@ -531,14 +559,14 @@ impl GameMode for TaikoGame {
         };
 
         // draw drum
-        *self.hit_cache.get_mut(&new_hit_type).unwrap() = time;
+        *self.hit_cache.get_mut(&new_hit_type).unwrap() = frame.time;
 
         // play sound
-        self.play_sound(manager, hit_time, hit_type, finisher_sound).await;
+        self.play_sound(state, hit_time, hit_type, finisher_sound).await;
     }
 
 
-    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction> {
+    async fn update<'a>(&mut self, state: &mut GameplayStateForUpdate<'a>) {
 
         // check healthbar swap
         if self.healthbar_swap_pending {
@@ -546,14 +574,13 @@ impl GameMode for TaikoGame {
             // println!("swapping health");
 
             // reset health helper to default
-            manager.health = Default::default();
+            state.add_action(GamemodeAction::ResetHealth); // manager.health = Default::default();
 
             // if we're using battery health
             if !self.current_mods.has_mod(NoBattery) {
                 let note_count = self.notes.iter().filter(|n| n.note_type() == NoteType::Note).count() as f32;
 
                 const MAX_HEALTH:f32 = 200.0;
-                const PASS_HEALTH:f32 = MAX_HEALTH / 2.0;
 
                 // this is essentially stolen from peppy's 2016 osu code
                 let normal_health = MAX_HEALTH / (0.06 * 6.0 * note_count * map_difficulty(self.metadata.hp, 0.5, 0.75, 0.98));
@@ -575,29 +602,34 @@ impl GameMode for TaikoGame {
                 // println!("health_per_100: {health_per_100}");
                 // println!("health_per_miss: {health_per_miss}");
 
+                state.add_action(GamemodeAction::replace_health(TaikoBatteryHealthManager::new(
+                    health_per_300,
+                    health_per_100,
+                    health_per_miss
+                )));
 
-                let health = &mut manager.health;
-                health.max_health = MAX_HEALTH;
-                health.current_health = 0.0;
-                health.initial_health = 0.0;
-                health.check_fail_at_end = true;
+                // let health = &mut manager.health;
+                // health.max_health = MAX_HEALTH;
+                // health.current_health = 0.0;
+                // health.initial_health = 0.0;
+                // health.check_fail_at_end = true;
 
-                health.check_fail = Arc::new(move |s| s.current_health < PASS_HEALTH);
-                health.do_health = Arc::new(move |s, j, _score| {
-                    s.current_health += match j.internal_id {
-                        "x300" => health_per_300,
-                        "x100" => health_per_100,
-                        "xmiss" => health_per_miss,
-                        _ => return
-                    };
+                // health.check_fail = Arc::new(move |s| s.current_health < PASS_HEALTH);
+                // health.do_health = Arc::new(move |s, j, _score| {
+                //     s.current_health += match j.id {
+                //         "x300" => health_per_300,
+                //         "x100" => health_per_100,
+                //         "xmiss" => health_per_miss,
+                //         _ => return
+                //     };
 
-                    s.validate_health()
-                });
+                //     s.validate_health()
+                // });
             }
         }
 
         // do autoplay things
-        if manager.current_mods.has_autoplay() {
+        if state.mods.has_autoplay() {
             let mut pending_frames = Vec::new();
             let mut queues = vec![
                 std::mem::take(&mut self.notes),
@@ -605,37 +637,45 @@ impl GameMode for TaikoGame {
             ];
 
             // get auto inputs
-            self.auto_helper.update(time, &mut queues, &mut pending_frames);
+            self.auto_helper.update(state.time, &mut queues, &mut pending_frames);
 
             self.notes = queues.remove(0);
             self.other_notes = queues.remove(0);
 
-            for frame in pending_frames.iter() {
-                self.handle_replay_frame(*frame, time, manager).await;
+            for frame in pending_frames.into_iter() {
+                self.handle_replay_frame(ReplayFrame::new(state.time, frame), state).await;
             }
 
         }
         
         for queue in [&mut self.notes, &mut self.other_notes] {
             for note in queue.notes.iter_mut() {
-                note.update(time).await;
+                note.update(state.time).await;
             }
 
             if queue.done() {
-                if !manager.completed && time > self.end_time {
-                    manager.completed = true;
+                if !state.complete() && state.time > self.end_time {
+                    state.add_action(GamemodeAction::MapComplete);
+                    // manager.completed = true;
                 }
 
                 continue;
             }
 
-            if let Some(do_miss) = queue.check_missed(time, self.miss_window) {
+            if let Some(do_miss) = queue.check_missed(state.time, self.miss_window) {
                 if do_miss {
                     // queue.current_note().miss(time); // done in check_missed
 
-                    let j = &TaikoHitJudgments::Miss;
-                    manager.add_judgment(j).await;
-                    Self::add_hit_indicator(time, j, false, &self.taiko_settings, &self.playfield, &self.judgement_helper, manager);
+                    let j = TaikoHitJudgments::Miss;
+                    state.add_judgment(j);
+                    Self::add_hit_indicator(
+                        &j, 
+                        false, 
+                        &self.taiko_settings, 
+                        &self.playfield, 
+                        &self.judgement_helper, 
+                        state
+                    );
                 }
 
                 queue.next()
@@ -643,12 +683,11 @@ impl GameMode for TaikoGame {
         }
 
         // TODO: might move tbs to a (time, speed) tuple
-        for tb in self.timing_bars.iter_mut() { tb.update(time); }
+        for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
 
-        Vec::new()
     }
     
-    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state: GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -762,7 +801,7 @@ impl GameMode for TaikoGame {
         }
     }
 
-    async fn reset(&mut self, beatmap:&Beatmap) {
+    async fn reset(&mut self, beatmap: &Beatmap) {
         let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
 
         for queue in [&mut self.notes, &mut self.other_notes] {
@@ -825,7 +864,7 @@ impl GameMode for TaikoGame {
         self.healthbar_swap_pending = true;
     }
 
-    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
+    fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         let x_needed = self.playfield.pos.x + self.playfield.size.x;
         let mut time = self.end_time; //manager.time();
         
@@ -839,14 +878,14 @@ impl GameMode for TaikoGame {
 
         }
 
-        if manager.time() >= time { return None }
+        if game_time >= time { return None }
 
-        if manager.lead_in_time > 0.0 {
-            if time > manager.lead_in_time {
-                time -= manager.lead_in_time - 0.01;
-                manager.lead_in_time = 0.01;
-            }
-        }
+        // if manager.lead_in_time > 0.0 {
+        //     if time > manager.lead_in_time {
+        //         time -= manager.lead_in_time - 0.01;
+        //         manager.lead_in_time = 0.01;
+        //     }
+        // }
         
         if time < 0.0 { return None }
         Some(time)

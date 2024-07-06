@@ -139,20 +139,15 @@ impl GameMode for UTypingGame {
         Ok(s)
     }
 
-    async fn handle_replay_frame(&mut self, frame:ReplayAction, _time:f32, manager:&mut GameplayManager) {
-        // if !manager.replaying {
-        //     manager.replay.frames.push(ReplayFrame::new(time, frame.clone()));
-        //     manager.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction {action:frame}));
-        // }
-
-        let input_char;
+    async fn handle_replay_frame<'a>(
+        &mut self, 
+        frame: ReplayFrame,
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
         // utyping uses chars for input, so we encode it in the mouse pos
-        if let ReplayAction::MousePos(c, _) = &frame {
-            // c is actually a u8 encoded as an f32
-            input_char = (*c as u8) as char
-        } else {
-            return;
-        }
+        let ReplayAction::MousePos(c, _) = &frame.action else { return };
+        // c is actually a u8 encoded as an f32
+        let input_char = (*c as u8) as char;
 
 
         // let mut hit_volume = Settings::get().get_effect_vol() * (manager.current_timing_point().volume as f32 / 100.0);
@@ -171,9 +166,8 @@ impl GameMode for UTypingGame {
             (UTypingHitJudgment::Miss, self.hitwindow_100..self.hitwindow_miss), 
         ];
 
-        let time = manager.time();
-        if let Some(judgment) = self.notes.check(input_char, time, &hit_windows, manager) {
-            manager.add_judgment(&judgment).await;
+        if let Some(judgment) = self.notes.check(input_char, frame.time, &hit_windows, state) {
+            state.add_judgment(judgment);
         }
 
         // // draw drum
@@ -188,20 +182,22 @@ impl GameMode for UTypingGame {
     }
 
 
-    async fn update(&mut self, manager:&mut GameplayManager, time: f32) -> Vec<ReplayAction> {
-        let mut autoplay_list = Vec::new();
+    async fn update<'a>(
+        &mut self, 
+        state: &mut GameplayStateForUpdate<'a>
+    ) {
 
         // do autoplay things
-        if manager.current_mods.has_autoplay() {
+        if state.mods.has_autoplay() {
             let mut next_note_time = self.notes.next_note().map(|n|n.time()).unwrap_or(0.0);
 
 
             if let Some((queue, delay, last_hit)) = &mut self.autoplay_queue {
-                if time - *last_hit > *delay {
-                    *last_hit = time;
+                if state.time - *last_hit > *delay {
+                    *last_hit = state.time;
 
                     let char = queue.remove(0);
-                    autoplay_list.push(ReplayAction::MousePos(char as u8 as f32, 0.0));
+                    state.add_replay_action(ReplayAction::MousePos(char as u8 as f32, 0.0));
                 }
 
                 if queue.len() == 0 {
@@ -209,14 +205,14 @@ impl GameMode for UTypingGame {
                 }
             } else {
                 if let Some(current_note) = self.notes.current_note() {
-                    if current_note.time() <= time {
+                    if current_note.time() <= state.time {
                         let chars = current_note.get_chars();
                         let len = (chars.len() * 2 + 1) as f32;
 
                         if next_note_time == 0.0 { next_note_time = current_note.time() + 500.0; }
                         let delay = (next_note_time - current_note.time()) / len;
 
-                        self.autoplay_queue = Some((chars, delay, time - delay));
+                        self.autoplay_queue = Some((chars, delay, state.time - delay));
                     }
 
                 }
@@ -243,12 +239,12 @@ impl GameMode for UTypingGame {
         // check missed notes
         if let Some(next_note) = self.notes.next_note() {
             // if its time to hit the next note
-            if next_note.time() <= time {
+            if next_note.time() <= state.time {
                 // force miss the current note
-                self.notes.current_note().unwrap().miss(time);
+                self.notes.current_note().unwrap().miss(state.time);
 
                 // add a miss judgment
-                manager.add_judgment(&UTypingHitJudgment::Miss).await;
+                state.add_judgment(UTypingHitJudgment::Miss);
 
                 // increment the note index
                 self.notes.next();
@@ -257,22 +253,23 @@ impl GameMode for UTypingGame {
         
 
         // update notes
-        for note in self.notes.iter_mut() { note.update(time).await }
+        for note in self.notes.iter_mut() { note.update(state.time).await }
 
         // if theres no more notes to hit, show score screen
         if let Some(note) = self.notes.last() {
-            if time > note.end_time(self.hitwindow_miss) && note.was_hit() {
-                manager.completed = true;
-                return autoplay_list;
+            if state.time > note.end_time(self.hitwindow_miss) && note.was_hit() {
+                if !state.complete() {
+                    state.add_action(GamemodeAction::MapComplete);
+                    // manager.completed = true;
+                }
+                return;
             }
         }
         
         // TODO: might move tbs to a (time, speed) tuple
-        for tb in self.timing_bars.iter_mut() { tb.update(time); }
-
-        autoplay_list
+        for tb in self.timing_bars.iter_mut() { tb.update(state.time); }
     }
-    async fn draw<'a>(&mut self, state:GameplayState<'a>, list: &mut RenderableCollection) {
+    async fn draw<'a>(&mut self, state:GameplayStateForDraw<'a>, list: &mut RenderableCollection) {
 
         // draw the playfield
         list.push(self.playfield.get_rectangle(state.current_timing_point.kiai));
@@ -362,7 +359,7 @@ impl GameMode for UTypingGame {
 
 
 
-    fn skip_intro(&mut self, manager: &mut GameplayManager) -> Option<f32> {
+    fn skip_intro(&mut self, game_time: f32) -> Option<f32> {
         // if self.note_index > 0 {return}
 
         let x_needed = WindowSize::get().x;
@@ -379,14 +376,14 @@ impl GameMode for UTypingGame {
         //     time += 1.0;
         // }
 
-        if manager.time() >= time { return None }
+        if game_time >= time { return None }
 
-        if manager.lead_in_time > 0.0 {
-            if time > manager.lead_in_time {
-                time -= manager.lead_in_time - 0.01;
-                manager.lead_in_time = 0.01;
-            }
-        }
+        // if manager.lead_in_time > 0.0 {
+        //     if time > manager.lead_in_time {
+        //         time -= manager.lead_in_time - 0.01;
+        //         manager.lead_in_time = 0.01;
+        //     }
+        // }
         
         if time < 0.0 { return None }
         Some(time)
