@@ -3,7 +3,7 @@ stages:
 
 build-windows-linux:
   stage: build-client
-  image: ayyeve/tataku-client-build:v1.1
+  image: ayyeve/tataku-client-build:v1.2
   rules:
     # - if: $TATAKU_RELEASE_KEY != null
     # - if: $CI_COMMIT_REF_PROTECTED != "true"
