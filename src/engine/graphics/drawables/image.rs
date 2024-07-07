@@ -17,6 +17,8 @@ pub struct Image {
     pub pos: Vector2,
     pub scale: Vector2,
     pub rotation: f32,
+
+    pub draw_debug: bool,
 }
 impl Image {
     pub fn new(pos:Vector2, tex:TextureReference, base_scale: Vector2) -> Image {
@@ -39,7 +41,8 @@ impl Image {
             tex,
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
-            base_scale
+            base_scale,
+            draw_debug: false,
         }
     }
 
@@ -121,6 +124,30 @@ impl TatakuRenderable for Image {
             .trans(self.pos) // move to pos
         ;
 
-        g.draw_tex(&self.tex, self.color.alpha(alpha), h_flip, v_flip, transform, self.blend_mode);
+        g.draw_tex(
+            &self.tex, 
+            self.color.alpha(alpha), 
+            h_flip, 
+            v_flip, 
+            transform, 
+            self.blend_mode
+        );
+
+        if self.draw_debug {
+
+            // if alpha < 0.4 {
+            //     println!("low alpha!!")
+            // }
+            // let size = self.size();
+
+            // g.draw_rect(
+            //     [self.pos.x, self.pos.y, size.x, size.y], 
+            //     Some(Border::new(Color::RED, 5.0)), 
+            //     Shape::Square, 
+            //     Color::TRANSPARENT_WHITE, 
+            //     transform, 
+            //     BlendMode::AlphaBlending
+            // )
+        }
     }
 }

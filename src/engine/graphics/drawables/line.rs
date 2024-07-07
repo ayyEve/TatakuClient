@@ -38,7 +38,13 @@ impl TatakuRenderable for Line {
     fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
         let transform = transform * Matrix::identity().trans(self.p1);
 
-        g.draw_line(self.p2 - self.p1, self.thickness, self.color.alpha(alpha), transform, self.blend_mode);
+        g.draw_line(
+            self.p2 - self.p1, 
+            self.thickness, 
+            self.color.alpha(alpha), 
+            transform, 
+            self.blend_mode
+        );
 
         // graphics::Line::new(
         //     self.color.alpha(alpha).into(), 

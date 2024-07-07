@@ -171,11 +171,6 @@ impl GameplayManager {
         // println!("loaded events {events:?}");
         let gamemode_info = get_gamemode_info(&score.playmode).unwrap();
 
-        #[cfg(feature="storyboards")]
-        let animation = beatmap.get_animation().await.unwrap_or_else(||Box::new(EmptyAnimation));
-        #[cfg(not(feature="storyboards"))]
-        let animation = Box::new(EmptyAnimation);
-
         // make sure the gamemode has the correct mods applied
         gamemode.apply_mods(current_mods.clone()).await;
 
@@ -193,7 +188,7 @@ impl GameplayManager {
 
             replay: Replay::new(),
             beatmap,
-            animation,
+            animation: Box::new(EmptyAnimation),
 
             hitsound_manager,
             // song,
@@ -830,7 +825,7 @@ impl GameplayManager {
                     AffectsCombo::Increment => {
                         self.score.combo += 1;
                         self.score.max_combo = self.score.max_combo.max(self.score.combo);
-                    },
+                    }
                     AffectsCombo::Reset => self.combo_break(), // self.actions.push(GamemodeAction::ComboBreak), 
                     AffectsCombo::Ignore => {},
                 }
@@ -1255,6 +1250,7 @@ impl GameplayManager {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
         self.gamemode.fit_to_area(bounds).await;
+        self.animation.fit_to_area(bounds);
     }
 }
 
@@ -1545,6 +1541,12 @@ impl GameplayManager {
         self.gamemode.reload_skin(skin_manager).await;
         self.hitsound_manager.reload_skin(&self.settings).await;
 
+        #[cfg(feature="storyboards")]
+        if let Some(anim) = self.beatmap.get_animation(skin_manager).await {
+            self.animation = anim;
+        }
+        // self.animation = beatmap.get_animation().await.unwrap_or_else(|| Box::new(EmptyAnimation));
+
         for i in self.ui_elements.iter_mut() {
             i.reload_skin(skin_manager).await;
         }
@@ -1552,8 +1554,19 @@ impl GameplayManager {
 
 
     /// helper since most texture loads will look something like this
-    pub async fn load_texture_maybe(name: impl AsRef<str> + Send + Sync, grayscale:bool, skin_manager: &mut SkinManager, mut on_loaded: impl FnMut(&mut Image)) -> Option<Image> {
-        skin_manager.get_texture_grayscale(name, true, grayscale).await.map(|mut i| {on_loaded(&mut i); i})
+    pub async fn load_texture_maybe(
+        name: impl AsRef<str> + Send + Sync, 
+        grayscale: bool, 
+        skin_manager: &mut SkinManager, 
+        mut on_loaded: impl FnMut(&mut Image)
+    ) -> Option<Image> {
+        skin_manager
+            .get_texture_grayscale(name, true, grayscale)
+            .await
+            .map(|mut i| { 
+                on_loaded(&mut i); 
+                i 
+            })
     }
 
 

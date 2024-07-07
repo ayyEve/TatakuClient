@@ -1145,7 +1145,7 @@ impl Game {
     #[async_recursion::async_recursion]
     pub async fn handle_action(&mut self, action: impl Into<TatakuAction> + Send + 'static) {
         let action = action.into();
-        debug!("performing action: {action:?}");
+        // debug!("performing action: {action:?}");
         match action {
             TatakuAction::None => return,
             

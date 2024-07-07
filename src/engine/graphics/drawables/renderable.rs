@@ -12,7 +12,13 @@ pub trait TatakuRenderable: Sync + Send {
     fn with_blend_mode(mut self, blend_mode: BlendMode) -> Self where Self:Sized { self.set_blend_mode(blend_mode); self }
 
     fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine);
-    fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw_with_transparency(
+        &self, 
+        _alpha: f32,
+        _border_alpha: f32, 
+        transform: Matrix, 
+        g: &mut dyn GraphicsEngine,
+    ) {
         self.draw(transform, g)
     }
 }

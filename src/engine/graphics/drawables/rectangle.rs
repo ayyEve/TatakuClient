@@ -71,7 +71,14 @@ impl TatakuRenderable for Rectangle {
             .trans(self.inner.pos) // move to pos
         ;
 
-        g.draw_rect([0.0, 0.0, self.inner.size.x, self.inner.size.y], border, self.shape, self.color.alpha(alpha), transform, self.blend_mode)
+        g.draw_rect(
+            [0.0, 0.0, self.inner.size.x, self.inner.size.y], 
+            border, 
+            self.shape, 
+            self.color.alpha(alpha), 
+            transform, 
+            self.blend_mode
+        );
     }
 }
 

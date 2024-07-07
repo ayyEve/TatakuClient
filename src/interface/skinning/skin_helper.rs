@@ -111,7 +111,7 @@ impl SkinManager {
         None
     }
 
-    pub async fn get_texture_noskin(&mut self, name:&str, grayscale: bool) -> Option<Image> {
+    pub async fn get_texture_noskin(&mut self, name: &str, grayscale: bool) -> Option<Image> {
         let name = name.to_owned();
         if let Some(tex) = self.texture_cache.get(&name).cloned() { return tex }
 

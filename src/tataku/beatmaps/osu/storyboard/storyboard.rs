@@ -76,17 +76,17 @@ impl StoryboardElementDef {
         let Some(layer) = split.next().and_then(|i|Layer::from_str(i)) else { return None };
         let Some(origin) = split.next().and_then(|i|Origin::from_str(i)) else { return None };
         let Some(filepath) = split.next() else { return None };
-        let Some(x) = split.next().and_then(|s|s.parse::<i32>().ok()) else { return None };
-        let Some(y) = split.next().and_then(|s|s.parse::<i32>().ok()) else { return None };
+        let Some(x) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
+        let Some(y) = split.next().and_then(|s| s.parse::<i32>().ok()) else { return None };
         let pos = Vector2::new(x as f32, y as f32);
         let filepath = filepath.trim_matches('"').to_owned();
 
         match ele {
             "Sprite" => Some(StoryboardElementDef::Sprite(StoryboardSpriteDef { layer, origin, filepath, pos })),
             "Animation" => {
-                let Some(frame_count) = split.next().and_then(|s|s.parse::<u16>().ok()) else { return None };
-                let Some(frame_delay) = split.next().and_then(|s|s.parse::<f32>().ok()) else { return None };
-                let loop_type = split.next().and_then(|i|LoopType::from_str(i)).unwrap_or(LoopType::LoopForever);
+                let Some(frame_count) = split.next().and_then(|s| s.parse::<u16>().ok()) else { return None };
+                let Some(frame_delay) = split.next().and_then(|s| s.parse::<f32>().ok()) else { return None };
+                let loop_type = split.next().and_then(|i| LoopType::from_str(i)).unwrap_or(LoopType::LoopForever);
 
                 Some(StoryboardElementDef::Animation(StoryboardAnimationDef { layer, origin, filepath, pos, frame_count, frame_delay, loop_type }))
             }
@@ -124,6 +124,21 @@ impl Origin {
             "8" | "BottomLeft" => Some(Self::BottomLeft),
             "9" | "BottomRight" => Some(Self::BottomRight),
             _ => None,
+        }
+    }
+
+    pub fn resolve(&self, size: Vector2) -> Vector2 {
+        match self {
+            Origin::TopLeft => Vector2::ZERO,
+            Origin::Centre => size / 2.0, // default
+            Origin::CentreLeft => Vector2::new(0.0, size.y / 2.0),
+            Origin::TopRight => Vector2::new(size.x, 0.0),
+            Origin::BottomCentre => Vector2::new(size.x / 2.0, size.y),
+            Origin::TopCentre => Vector2::new(size.x / 2.0, 0.0),
+            Origin::Custom => Vector2::ZERO,
+            Origin::CentreRight => Vector2::new(size.x, size.y / 2.0),
+            Origin::BottomLeft => Vector2::new(0.0, size.y),
+            Origin::BottomRight => size,
         }
     }
 }
@@ -201,7 +216,7 @@ impl StoryboardDef {
                         if DEBUG { println!("[loop] adding event {event:?}"); }
                         event.start_time += time;
                         event.end_time += time;
-                        entry.commands.push(event)
+                        entry.commands.push(event);
                     }
                 }
             }
@@ -209,11 +224,11 @@ impl StoryboardDef {
 
 
         // are we reading a loop event list? if so, what are the params
-        let mut loop_def:Option<TempLoopDef> = None;
+        let mut loop_def: Option<TempLoopDef> = None;
 
         let mut trigger_def: Option<usize> = None;
 
-        for line in lines {
+        for (n, line) in lines.into_iter().enumerate() {
             if line.len() == 0 || line.starts_with("//") { continue }
 
             // check if there's a new element
@@ -268,13 +283,13 @@ impl StoryboardDef {
             // helper because this code was already ugly
             macro_rules! parse_or_continue {
                 ($name: ident, $T:ty) => {
-                    let Some($name) = split.next().and_then(|s|s.parse::<$T>().ok()) else { println!("error reading {}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| s.parse::<$T>().ok()) else { error!("error reading {}, line {n}", stringify!($name)); continue };
                 };
                 ($name: ident, $T:ty, $default: ident) => {
-                    let $name = split.next().and_then(|s|s.parse::<$T>().ok()).unwrap_or($default);
+                    let $name = split.next().and_then(|s| s.parse::<$T>().ok()).unwrap_or($default);
                 };
                 ($name: ident, $T:ty, _) => {
-                    let Some($name) = split.next().and_then(|s|<$T>::from_str(s)) else { println!("error reading {}", stringify!($name)); continue };
+                    let Some($name) = split.next().and_then(|s| <$T>::from_str(s)) else { error!("error reading {}, line {n}", stringify!($name)); continue };
                 };
             }
 

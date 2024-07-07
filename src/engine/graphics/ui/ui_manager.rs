@@ -189,7 +189,7 @@ impl UiManager {
         }
 
         for (event, param) in tataku_events {
-            debug!("handling event {event:?}");
+            // debug!("handling event {event:?}");
             app.handle_event(event, param, &mut values).await;
         }
 

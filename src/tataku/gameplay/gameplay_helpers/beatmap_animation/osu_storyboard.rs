@@ -11,7 +11,11 @@ pub struct OsuStoryboard {
 }
 
 impl OsuStoryboard {
-    pub async fn new(def: StoryboardDef, dir: String, skin_manager: &mut SkinManager) -> TatakuResult<Self> {
+    pub async fn new(
+        def: StoryboardDef, 
+        dir: String, 
+        skin_manager: &mut SkinManager,
+    ) -> TatakuResult<Self> {
         let settings = Settings::get().osu_settings.clone();
         let window_size = WindowSize::get();
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
@@ -21,6 +25,7 @@ impl OsuStoryboard {
         for e in def.entries.clone() {
             elements.push(Element::new(e, &dir, &mut image_cache, &scaling_helper, skin_manager).await?);
         }
+        elements.reverse();
         elements.sort_by(Element::sort);
 
         for i in elements.iter_mut() {
@@ -34,6 +39,8 @@ impl OsuStoryboard {
             elements
         })
     }
+
+    // pub fn resize(&mut self, )
 }
 
 
@@ -69,6 +76,20 @@ impl BeatmapAnimation for OsuStoryboard {
         }
     }
 
+    fn fit_to_area(&mut self, bounds: Bounds) {
+        self.scaling_helper = Arc::new(ScalingHelper::new_offset_scale(
+            5.0, 
+            bounds.size, 
+            bounds.pos, 
+            0.5, 
+            false,
+        ));
+
+        for i in self.elements.iter_mut() {
+            i.window_size_changed(&self.scaling_helper)
+        }
+    }
+
     fn reset(&mut self) {
         for i in self.elements.iter_mut() {
             i.reset();
@@ -87,60 +108,109 @@ struct Element {
     group: TransformGroup,
 }
 impl Element {
-    async fn new(def: StoryboardEntryDef, parent_dir: &String, image_cache: &mut HashMap<String, Image>, scale: &ScalingHelper, skin_manager: &mut SkinManager) -> TatakuResult<Self> {
+    async fn new(
+        def: StoryboardEntryDef, 
+        parent_dir: &String, 
+        image_cache: &mut HashMap<String, Image>, 
+        scale: &ScalingHelper, 
+        skin_manager: &mut SkinManager
+    ) -> TatakuResult<Self> {
         let layer;
 
+        let mut blend_mode = None;
+        for i in def.commands.iter() {
+            if let StoryboardEvent::Parameter { param: Param::AdditiveBlending } = i.event {
+                blend_mode = Some(BlendMode::AdditiveBlending);
+                break;
+            }
+        }
+
+        
         let mut group = TransformGroup::new(Vector2::ZERO).border_alpha(0.0).alpha(0.0);
         let image = match def.element.clone() {
             StoryboardElementDef::Sprite(sprite) => {
-                let filepath = format!("{parent_dir}/{}", sprite.filepath);
-                let mut image = if let Some(image) = image_cache.get(&filepath).cloned() {
-                    image
-                } else if let Some(i) = skin_manager.get_texture_noskin(&filepath, false).await {
-                    image_cache.insert(filepath, i.clone());
-                    i
-                } else {
-                    return Err(TatakuError::String("Image not found: {filepath}".to_owned()))
-                };
+                let filepath = format!("{parent_dir}/{}", sprite.filepath)
+                    .replace("\\\\", "/")
+                    .replace("\\", "/")
+                ;
+
+                let mut image = try_load_image(&filepath, image_cache, skin_manager).await?;
+                // let mut image = if let Some(image) = image_cache.get(&filepath).cloned() {
+                //     image
+                // } else if let Some(i) = skin_manager.get_texture_noskin(&filepath, false).await {
+                //     image_cache.insert(filepath, i.clone());
+                //     i
+                // } else {
+                //     // try to find a file with the same name but different case
+                //     let file_path = Path::new(&filepath).canonicalize().unwrap();
+                //     let parent = file_path.parent().unwrap();
+
+                //     let files = std::fs::read_dir(parent)?;
+                //     let mut found = None;
+                //     for file in files.filter_map(Result::ok) {
+                //         if file.file_name().to_ascii_lowercase() != file_path.file_name().unwrap().to_ascii_lowercase() { continue }
+
+                //         found = skin_manager.get_texture_noskin(&filepath, false).await;
+                //         break;
+                //     }
+
+                //     let Some(image) = found else {
+                //         return Err(TatakuError::String(format!("Image not found: {filepath}")))
+                //     };
+
+                //     image
+                // };
 
                 // apply origin
-                let size = image.tex_size();
-                match sprite.origin {
-                    Origin::Custom => image.origin = Vector2::ZERO,
+                image.origin = sprite.origin.resolve(image.tex_size());
 
-                    Origin::TopCentre => image.origin.y = 0.0,
-                    Origin::TopLeft => image.origin = Vector2::ZERO,
-                    Origin::TopRight => image.origin = Vector2::new(size.x, 0.0),
+                // let size = image.tex_size();
+                // match sprite.origin {
+                //     Origin::Custom => image.origin = Vector2::ZERO,
 
-                    Origin::CentreLeft => image.origin.x = 0.0,
-                    Origin::Centre => image.origin = size / 2.0, // default
-                    Origin::CentreRight => image.origin.x = size.x,
+                //     Origin::TopCentre => image.origin.y = 0.0,
+                //     Origin::TopLeft => image.origin = Vector2::ZERO,
+                //     Origin::TopRight => image.origin = Vector2::new(size.x, 0.0),
+
+                //     Origin::CentreLeft => image.origin.x = 0.0,
+                //     Origin::Centre => image.origin = size / 2.0, // default
+                //     Origin::CentreRight => image.origin.x = size.x,
                     
-                    Origin::BottomLeft => image.origin = Vector2::new(0.0, size.y),
-                    Origin::BottomCentre => image.origin.y = size.y,
-                    Origin::BottomRight => image.origin = size,
-                }
+                //     Origin::BottomLeft => image.origin = Vector2::new(0.0, size.y),
+                //     Origin::BottomCentre => image.origin.y = size.y,
+                //     Origin::BottomRight => image.origin = size,
+                // }
 
                 layer = sprite.layer;
+                blend_mode.map(|b| image.set_blend_mode(b));
+
+                if sprite.filepath == "sb\\glow.png" {
+                    image.draw_debug = true;
+                }
 
                 group.items.push(Arc::new(image.clone()));
                 ElementImage::Sprite(image)
             }
             StoryboardElementDef::Animation(anim) => {
-                let Some(ext_ind) = anim.filepath.chars().enumerate().filter(|(_, c)|*c == '.').map(|(n, _)|n).last() else { return Err(TatakuError::String("no extention on anim image".to_owned())); };
-                let (filename, ext) = anim.filepath.split_at(ext_ind);
+                let filepath = Path::new(&anim.filepath);
+                let Some(ext) = filepath.extension() else { return Err(TatakuError::String("no extention on anim image".to_owned())); };
+                let ext = ext.to_str().unwrap();
+                let filename = filepath.to_str().unwrap().trim_end_matches(&format!(".{ext}"));
+
+                // let Some(ext_ind) = anim.filepath.chars().enumerate().filter(|(_, c)| *c == '.').map(|(n, _)|n).last() else { return Err(TatakuError::String("no extention on anim image".to_owned())); };
+                // let (filename, ext) = anim.filepath.split_at(ext_ind);
 
                 let mut frames = Vec::new();
                 let mut counter = 0;
                 loop {
-                    let filepath = format!("{parent_dir}/{filename}{counter}.{ext}");
-                    let image = if let Some(image) = image_cache.get(&filepath).cloned() {
-                        image
-                    } else if let Some(i) = skin_manager.get_texture_noskin(&filepath, false).await {
-                        image_cache.insert(filepath, i.clone());
-                        i
-                    } else {
-                        break
+                    let filepath = format!("{parent_dir}/{filename}{counter}.{ext}")
+                        .replace("\\\\", "/")
+                        .replace("\\", "/")
+                    ;
+
+                    let Ok(image) = try_load_image(&filepath, image_cache, skin_manager).await else { 
+                        if counter == 0 { error!("image not found: {filepath}"); }
+                        break 
                     };
 
                     frames.push(image.tex);
@@ -149,24 +219,14 @@ impl Element {
                 if frames.len() == 0 { return Err(TatakuError::String("anim has no frames!".to_owned())) }
 
                 let delays = vec![anim.frame_delay; frames.len()];
-
+                let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
                 let mut animation = Animation::new(Vector2::ZERO, Vector2::ONE, frames, delays, Vector2::ONE);
                 animation.scale = Vector2::ONE;
-                animation.free_on_drop = true;
+                // animation.free_on_drop = true;
+                animation.draw_debug = true;
+                blend_mode.map(|b| animation.set_blend_mode(b));
                 
-                let size = animation.size();
-                match anim.origin {
-                    Origin::TopLeft => animation.origin = Vector2::ZERO,
-                    Origin::Centre => animation.origin = size / 2.0, // default
-                    Origin::CentreLeft => animation.origin.x = 0.0,
-                    Origin::TopRight => animation.origin = Vector2::new(size.x, 0.0),
-                    Origin::BottomCentre => animation.origin.y = size.y,
-                    Origin::TopCentre => animation.origin.y = 0.0,
-                    Origin::Custom => animation.origin = Vector2::ZERO,
-                    Origin::CentreRight => animation.origin.x = size.x,
-                    Origin::BottomLeft => animation.origin = Vector2::new(0.0, size.y),
-                    Origin::BottomRight => animation.origin = size,
-                }
+                animation.origin = anim.origin.resolve(tex_size);
 
                 layer = anim.layer;
                 group.items.push(Arc::new(animation.clone()));
@@ -189,7 +249,7 @@ impl Element {
         Ok(s)
     }
 
-    fn apply_commands(&mut self, _scale: &ScalingHelper) {
+    fn apply_commands(&mut self, scale: &ScalingHelper) {
         self.group.transforms.clear();
 
         let pos = match &self.def {
@@ -198,9 +258,14 @@ impl Element {
         };
         self.group.pos.current = pos;
 
+        // let origin = match &self.element_image {
+        //     ElementImage::Sprite(i) => i.origin,
+        //     ElementImage::Anim(a) => a.origin,
+        // };
+
         // TODO: 
-        // if these are wrong, they will be updated next frame anyways
-        // self.group.pos.current = scale.scale_coords(pos);
+        // //if these are wrong, they will be updated next frame anyways
+        // self.group.pos.both(scale.scale_coords(pos));
         // self.group.scale.both(Vector2::ONE * scale.scale);
 
         // match &mut self.element_image {
@@ -220,54 +285,77 @@ impl Element {
         let mut latest_end:f32 = 0.0;
 
         for i in self.commands.iter() {
+            let offset = i.start_time;
+            let mut duration = i.end_time - i.start_time;
+
+            if duration < 0.0 {
+                // error!("duration < 0.0: duration: {duration}, offset: {offset}, type: {trans_type:?}");
+                // continue
+                duration = duration.abs();
+            }
+
+            // duration = duration.max(500.0);
+
+            earliest_start = earliest_start.min(i.start_time);
+            latest_end = latest_end.max(i.end_time);
+
+
             let trans_type = match i.event {
+                // // raw
+                // StoryboardEvent::Move { start, end } => TransformType::Position { start, end },
+                // StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { start: start_x, end: end_x },
+                // StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { start: start_y, end: end_y },
+
+                // scaling
                 StoryboardEvent::Move { start, end } => TransformType::Position { 
-                    start,
-                    end,
+                    start: scale.scale_coords(start), 
+                    end:   scale.scale_coords(end)
                 },
                 StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { 
-                    start: start_x, 
-                    end:   end_x,
+                    start: scale.scale_coords(Vector2::with_x(start_x)).x, 
+                    end:   scale.scale_coords(Vector2::with_x(end_x)).x 
                 },
                 StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { 
-                    start: start_y, 
-                    end:   end_y,
+                    start: scale.scale_coords(Vector2::with_y(start_y)).y, 
+                    end:   scale.scale_coords(Vector2::with_y(end_y)).y 
                 },
+
+                // // scaling + origin offset 
                 // StoryboardEvent::Move { start, end } => TransformType::Position { 
-                //     start: scale.scale_coords(start), 
-                //     end:   scale.scale_coords(end) 
+                //     start: scale.scale_coords(start - origin), 
+                //     end:   scale.scale_coords(end - origin)
                 // },
                 // StoryboardEvent::MoveX { start_x, end_x } => TransformType::PositionX { 
-                //     start: scale.scale_coords(Vector2::with_x(start_x as f64)).x, 
-                //     end:   scale.scale_coords(Vector2::with_x(end_x as f64)).x 
+                //     start: scale.scale_coords(Vector2::with_x(start_x) - origin).x, 
+                //     end:   scale.scale_coords(Vector2::with_x(end_x) - origin).x 
                 // },
                 // StoryboardEvent::MoveY { start_y, end_y } => TransformType::PositionY { 
-                //     start: scale.scale_coords(Vector2::with_y(start_y as f64)).y, 
-                //     end:   scale.scale_coords(Vector2::with_y(end_y as f64)).y 
+                //     start: scale.scale_coords(Vector2::with_y(start_y) - origin).y, 
+                //     end:   scale.scale_coords(Vector2::with_y(end_y) - origin).y 
                 // },
-                
-                // uncomment these
-                // StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale as f64, end: end_scale as f64 },
-                // StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale, end: end_scale },
 
-                StoryboardEvent::Fade { start, end } => TransformType::Transparency { start: start, end: end },
+
+
+                // uncomment these
+                // StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale, end: end_scale },
+                // StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale, end: end_scale },
+                StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale * scale.scale, end: end_scale * scale.scale },
+                StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale * scale.scale, end: end_scale * scale.scale },
+
+                StoryboardEvent::Fade { start, end } => TransformType::Transparency { start, end },
+
                 StoryboardEvent::Rotate { start_rotation, end_rotation } => TransformType::Rotation { start: start_rotation, end: end_rotation },
                 StoryboardEvent::Color { start_color, end_color } => TransformType::Color { start: start_color, end: end_color },
                 StoryboardEvent::Parameter { param } => match param {
                     Param::FlipHorizontal => { self.group.image_flip_horizonal = true; continue; },
                     Param::FlipVertial => { self.group.image_flip_vertical = true; continue; },
                     _ => continue
-                }
+                } 
                 StoryboardEvent::Loop { loop_count:_ } => continue,
-
 
                 _ => continue
             };
 
-            let offset = i.start_time;
-            let duration = i.end_time - i.start_time;
-            earliest_start = earliest_start.min(i.start_time);
-            latest_end = latest_end.max(i.end_time);
             self.group.transforms.push(Transformation::new(
                 offset, 
                 duration,
@@ -321,16 +409,70 @@ impl Element {
 
         // if size > 
 
-        b.layer.cmp(&a.layer) // should be correct
-        // a.layer.cmp(&b.layer)
+        // b.layer.cmp(&a.layer) // should be correct // was not correct
+        a.layer.cmp(&b.layer)
     }
 
 }
+
+// impl Drop for Element {
+//     fn drop(&mut self) {
+//         match &self.element_image {
+//             ElementImage::Sprite(i) => {
+//                 GameWindow::free_texture(i.tex);
+//             }
+//             ElementImage::Anim(a) => {
+//                 for i in &a.frames {
+//                     GameWindow::free_texture(*i);
+//                 }
+//             },
+//         }
+//     }
+// }
 
 
 enum ElementImage {
     Sprite(Image),
     Anim(Animation),
+}
+
+
+async fn try_load_image(
+    filepath: &String,
+    image_cache: &mut HashMap<String, Image>, 
+    skin_manager: &mut SkinManager
+) -> TatakuResult<Image> {
+    if let Some(image) = image_cache.get(filepath).cloned() {
+        Ok(image)
+    } else if let Some(i) = skin_manager.get_texture_noskin(filepath, false).await {
+        image_cache.insert(filepath.clone(), i.clone());
+        Ok(i)
+    } else {
+        // try to find a file with the same name but different case
+        let file_path = Path::new(&filepath);
+        let parent = file_path.parent().unwrap();
+        let filename = file_path.file_name().unwrap().to_ascii_lowercase();
+
+        let files = std::fs::read_dir(parent)?;
+        let mut found = None;
+        for file in files.filter_map(Result::ok) {
+            if file.file_name().to_ascii_lowercase() != filename { continue }
+            // let filename = file.file_name().to_str().unwrap();
+            let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
+            found = skin_manager.get_texture_noskin(&filepath2, false).await;
+            if found.is_some() {
+                warn!("using file {filepath2} instead of {filepath} for storyboard");
+            }
+
+            break;
+        }
+
+        let Some(image) = found else {
+            return Err(TatakuError::String(format!("Image not found: {filepath}")))
+        };
+
+        Ok(image)
+    }
 }
 
 // /// peppy fns

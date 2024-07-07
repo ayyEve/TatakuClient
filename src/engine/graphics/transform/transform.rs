@@ -35,7 +35,10 @@ impl Transformation {
         let elapsed = (current_game_time - begin_time).clamp(0.0, self.duration);
 
         // % for interpolation
-        let factor = elapsed / self.duration;
+        let mut factor = elapsed / self.duration;
+        if self.duration == 0.0 {
+            factor = 1.0;
+        }
 
         match self.trans_type {
             TransformType::Position { start, end }

@@ -461,16 +461,22 @@ impl TatakuBeatmap for OsuBeatmap {
             _ => None
         }).collect()
     }
-    async fn get_animation(&self, skin_manager: &mut SkinManager) -> Option<Box<dyn BeatmapAnimation>> {
-        if let Some(storyboard) = &self.storyboard {
-            let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
-            
-            match OsuStoryboard::new(storyboard.clone(), parent_dir, skin_manager).await {
-                Ok(sb) => Some(Box::new(sb)),
-                Err(_e) => None
+    async fn get_animation(&self, skin_manager: &mut SkinManager) -> Option<Box<dyn BeatmapAnimation>> {     
+        let Some(storyboard) = &self.storyboard else { return None };
+        let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();
+        match OsuStoryboard::new(
+            storyboard.clone(), 
+            parent_dir, 
+            skin_manager,
+        ).await {
+            Ok(sb) => {
+                info!("made anim");
+                Some(Box::new(sb))
             }
-        } else {
-            None
+            Err(e) => {
+                error!("error loading anim: {e:?}");
+                None
+            }
         }
     }
 }
