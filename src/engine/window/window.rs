@@ -251,13 +251,19 @@ impl<'window> GameWindow<'window> {
 
         #[cfg(target_os = "windows")]
         let hwnd = {
-            use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-            let handle = match self.window.raw_window_handle() {
-                RawWindowHandle::Win32(h) => h,
-                // RawWindowHandle::WinRt(h) => h,
-                _ => unreachable!(),
+            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            let handle = match self.window.get().unwrap().window_handle() {
+                Ok(h) =>  match h.as_raw() {
+                    RawWindowHandle::Win32(h) => h,
+                    // RawWindowHandle::WinRt(h) => h,
+                    _ => unreachable!(),
+                }
+                Err(e) => {
+                    error!("error getting raw window handle: {e:?}");
+                    return
+                }
             };
-            Some(handle.hwnd)
+            Some(handle.hwnd.get() as *mut std::ffi::c_void)
         };
 
         let config = PlatformConfig {
