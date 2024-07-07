@@ -335,8 +335,6 @@ impl Element {
                 // },
 
 
-
-                // uncomment these
                 // StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale, end: end_scale },
                 // StoryboardEvent::VectorScale { start_scale, end_scale } => TransformType::VectorScale { start: start_scale, end: end_scale },
                 StoryboardEvent::Scale { start_scale, end_scale } => TransformType::Scale { start: start_scale * scale.scale, end: end_scale * scale.scale },

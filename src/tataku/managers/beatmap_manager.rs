@@ -43,7 +43,6 @@ impl BeatmapManager {
             played: Vec::new(),
             play_index: 0,
 
-
             unfiltered_groups: Vec::new(),
             filtered_groups: Vec::new(),
             selected_set: 0,
@@ -239,8 +238,8 @@ impl BeatmapManager {
         &mut self, 
         // game:&mut Game, 
         values: &mut ValueCollection,
-        beatmap:&Arc<BeatmapMeta>, 
-        use_preview_time:bool, 
+        beatmap: &Arc<BeatmapMeta>, 
+        use_preview_time: bool, 
         restart_song: bool
     ) {
         trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
@@ -293,6 +292,16 @@ impl BeatmapManager {
         self.actions.push(SongAction::Play);
         // make sure to update the background
         self.actions.push(GameAction::UpdateBackground);
+
+        // make sure we have the selected set and selected map values up to date
+        for (n, i) in self.filtered_groups.iter().enumerate() {
+            if let Some(j) = i.has_hash(&beatmap.beatmap_hash) {
+                self.selected_set = n;
+                self.selected_map = j;
+                break
+            }
+        }
+        self.update_values(values, beatmap.beatmap_hash);
     }
     #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self, values: &mut ValueCollection) {
