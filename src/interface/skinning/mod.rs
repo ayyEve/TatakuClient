@@ -1,7 +1,7 @@
 mod theme;
 mod skin_config;
-mod skin_helper;
+mod skin_manager;
 
 pub use theme::*;
-pub use skin_helper::*;
 pub use skin_config::*;
+pub use skin_manager::*;

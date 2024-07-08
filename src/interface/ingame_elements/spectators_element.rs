@@ -59,6 +59,4 @@ impl InnerUIElement for SpectatorsElement {
             ))
         }
     }
-
-    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

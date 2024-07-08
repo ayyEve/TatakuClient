@@ -136,6 +136,12 @@ impl Beatmap {
     pub fn from_metadata(meta: &BeatmapMeta) -> TatakuResult<Beatmap> {
         Self::load_single(&meta.file_path, meta)
     }
+
+    pub fn get_parent_dir(&self) -> Option<PathBuf> {
+        if let Self::None = self { return None }
+
+        (**self).get_beatmap_meta().get_parent_dir()
+    }
 }
 
 impl Deref for Beatmap {

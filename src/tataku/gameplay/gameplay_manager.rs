@@ -131,6 +131,8 @@ pub struct GameplayManager {
 
     map_diff: f32,
     song_time: f32,
+
+    cleaned_up_textures: bool,
 }
 
 impl GameplayManager {
@@ -241,6 +243,8 @@ impl GameplayManager {
             map_diff: 0.0,
             pause_start: None,
             song_time: 0.0,
+
+            cleaned_up_textures: false,
         }
     }
 
@@ -944,6 +948,14 @@ impl GameplayManager {
         self.timing_points.timing_point_at(time, allow_inherited)
     }
 
+
+    pub fn should_hide_cursor(&self) -> bool {
+        !(
+            self.gamemode.show_cursor() 
+            || self.gameplay_mode.is_preview() 
+            || self.gameplay_mode.is_replay()
+        )
+    }
 }
 
 // Events and States
@@ -951,10 +963,10 @@ impl GameplayManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
 
-        if self.gamemode.show_cursor() || self.gameplay_mode.is_preview() {
-            CursorManager::set_visible(true)
+        if self.should_hide_cursor() {
+            self.actions.push(CursorAction::SetVisible(false));
         } else {
-            CursorManager::set_visible(false)
+            self.actions.push(CursorAction::SetVisible(true));
         }
 
         // if !self.gamemode.show_cursor() {
@@ -1044,9 +1056,14 @@ impl GameplayManager {
     }
     pub fn pause(&mut self) {
         // make sure the cursor is visible
-        CursorManager::set_visible(true);
+        self.actions.push(CursorAction::SetVisible(true));
         // undo any cursor override
-        CursorManager::set_ripple_override(None);
+        self.actions.push(CursorAction::OverrideRippleRadius(None));
+
+        // // make sure the cursor is visible
+        // CursorManager::set_visible(true);
+        // // undo any cursor override
+        // CursorManager::set_ripple_override(None);
 
         // self.song.pause();
         self.actions.push(SongAction::Pause);
@@ -1170,9 +1187,11 @@ impl GameplayManager {
 
     pub fn on_complete(&mut self) {
         // make sure the cursor is visible
-        CursorManager::set_visible(true);
+        // CursorManager::set_visible(true);
+        self.actions.push(CursorAction::SetVisible(true));
         // undo any cursor override
-        CursorManager::set_ripple_override(None);
+        // CursorManager::set_ripple_override(None);
+        self.actions.push(CursorAction::OverrideRippleRadius(None));
 
         match &mut *self.gameplay_mode {
             GameplayMode::Spectator {
@@ -1251,6 +1270,14 @@ impl GameplayManager {
         self.fit_to_bounds = Some(bounds);
         self.gamemode.fit_to_area(bounds).await;
         self.animation.fit_to_area(bounds);
+    }
+
+    pub fn cleanup_textures(&mut self, skin_manager: &mut SkinManager) {
+        self.cleaned_up_textures = true;
+        skin_manager.free_by_usage(SkinUsage::Beatmap);
+        
+        let path = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
+        skin_manager.free_by_source(TextureSource::Beatmap(path));
     }
 }
 
@@ -1359,7 +1386,10 @@ impl GameplayManager {
                 ui_editor.should_close = true;
 
                 // re-disable cursor
-                CursorManager::set_visible(false);
+                if self.should_hide_cursor() {
+                    self.actions.push(CursorAction::SetVisible(false));
+                    // CursorManager::set_visible(false);
+                }
             }
         } else if key == Key::F9 {
             self.ui_editor = Some(GameUIEditorDialog::new(std::mem::take(&mut self.ui_elements)));
@@ -1372,7 +1402,8 @@ impl GameplayManager {
                 self.current_mods = Arc::new(new_mods);
             }
             
-            CursorManager::set_visible(true);
+            self.actions.push(CursorAction::SetVisible(true));
+            // CursorManager::set_visible(true);
         }
 
         // check for offset changing keys
@@ -1538,7 +1569,8 @@ impl GameplayManager {
     }
 
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.gamemode.reload_skin(skin_manager).await;
+        let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
+        let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
         self.hitsound_manager.reload_skin(&self.settings).await;
 
         #[cfg(feature="storyboards")]
@@ -1548,27 +1580,9 @@ impl GameplayManager {
         // self.animation = beatmap.get_animation().await.unwrap_or_else(|| Box::new(EmptyAnimation));
 
         for i in self.ui_elements.iter_mut() {
-            i.reload_skin(skin_manager).await;
+            i.reload_skin(&source, skin_manager).await;
         }
     }
-
-
-    /// helper since most texture loads will look something like this
-    pub async fn load_texture_maybe(
-        name: impl AsRef<str> + Send + Sync, 
-        grayscale: bool, 
-        skin_manager: &mut SkinManager, 
-        mut on_loaded: impl FnMut(&mut Image)
-    ) -> Option<Image> {
-        skin_manager
-            .get_texture_grayscale(name, true, grayscale)
-            .await
-            .map(|mut i| { 
-                on_loaded(&mut i); 
-                i 
-            })
-    }
-
 
     fn in_break(&self) -> bool {
         let time = self.time();
@@ -1590,70 +1604,14 @@ impl GameplayManager {
     }
 }
 
-// // default
-// impl Default for GameplayManager {
-//     fn default() -> Self {
-//         Self { 
-//             actions: ActionQueue::new(),
-//             // song: AudioManager::empty_stream(),
-//             judgement_indicators: Vec::new(),
-//             hitsound_manager: HitsoundManager::new(String::new()),
-//             gameplay_mode: Box::new(GameplayMode::Normal),
-//             gameplay_actions: Vec::new(),
 
-//             failed: false,
-//             failed_time: 0.0,
-//             health: HealthHelper::default(),
-//             beatmap: Default::default(),
-//             metadata: Default::default(),
-//             gamemode: Default::default(),
-//             current_mods: Default::default(),
-//             score: IngameScore::new(Default::default(), true, false),
-//             score_multiplier: 1.0,
-//             replay: Default::default(),
-//             started: Default::default(),
-//             completed: Default::default(),
-//             end_time: Default::default(),
-//             lead_in_time: Default::default(),
-//             lead_in_timer: Instant::now(),
-//             timing_points: Default::default(),
-//             // timing_point_index: Default::default(),
-//             center_text_helper: Default::default(),
-//             hitbar_timings: Default::default(),
-//             spectator_info: Default::default(),
-//             on_start: Box::new(|_|{}),
-//             animation: Box::new(EmptyAnimation),
-//             fit_to_bounds: None,
-
-//             common_game_settings: Default::default(),
-
-//             score_list: Vec::new(),
-//             scores_loaded: false,
-//             // score_loader: None,
-//             beatmap_preferences: Default::default(),
-//             should_pause: false,
-//             pause_pending: false,
-//             events: Vec::new(),
-//             ui_elements: Vec::new(),
-//             ui_editor: None,
-//             key_counter: KeyCounter::default(),
-
-//             ui_changed: false,
-
-//             judgments: Vec::new(),
-
-//             settings: SettingsHelper::new(),
-//             window_size: WindowSize::get(),
-//             pending_time_jump: None,
-
-//             restart_key_hold_start: None,
-//             map_diff: 0.0,
-//             start_time: 0,
-//             pause_start: None,
-//             song_time: 0.0,
-//         }
-//     }
-// }
+impl Drop for GameplayManager {
+    fn drop(&mut self) {
+        if !self.cleaned_up_textures {
+            error!("gameplay manager dropped without cleaning up textures !!!!!!!!!!!");
+        }
+    }
+}
 
 
 #[derive(Clone, Debug)]

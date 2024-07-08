@@ -114,9 +114,12 @@ impl Dialog for SettingsMenu {
                 CullingColumn::with_children(
                     props.into_iter()
                         .zip(vals.into_iter())
-                        .map(|(p,v)|row!(p,v; align_items = Alignment::Center, spacing = 5.0))
+                        .map(|(p,v)| 
+                            row!(p, v; align_items = Alignment::Center, spacing = 5.0))
                         .collect()
-                ).spacing(5.0).into_element()
+                )
+                .spacing(5.0)
+                .into_element()
             ]
         ).flatten().collect();
 
@@ -131,7 +134,7 @@ impl Dialog for SettingsMenu {
             // search text
             TextInput::new("Search", &self.filter_text)
                 .size(30.0)
-                .on_input(move|t|Message::new(owner, "search", MessageType::Text(t))),
+                .on_input(move |t| Message::new(owner, "search", MessageType::Text(t))),
 
             // space
             Text::new(" ").size(40.0),

@@ -242,10 +242,10 @@ impl Visualization for MenuVisualization {
     }
 
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        if let Some(cookie) = skin_manager.get_texture("menu-osu", true).await {
+        if let Some(cookie) = skin_manager.get_texture("menu-osu", &TextureSource::Skin, SkinUsage::Game, false).await {
             self.cookie = Some(cookie);
         } else {
-            self.cookie = skin_manager.get_texture_noskin("./resources/icon.png", false).await;
+            self.cookie = skin_manager.get_texture("./resources/icon.png", &TextureSource::Raw, SkinUsage::Game, false).await;
         }
     }
 

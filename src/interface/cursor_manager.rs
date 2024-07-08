@@ -1,13 +1,7 @@
 /**
  * Cursor Manager
- * 
- * this uses an mpsc channel because it may be inaccessible to things that need access
- * ie, a gamemode might want to hide the cursor, however it does not have direct access to the cursor field in game
  */
 use crate::prelude::*;
-use tokio::sync::mpsc::{Sender, Receiver, channel};
-
-static CURSOR_EVENT_QUEUE:OnceCell<Sender<CursorEvent>> = OnceCell::const_new();
 
 pub struct CursorManager {
     /// position of the visible cursor
@@ -22,10 +16,6 @@ pub struct CursorManager {
 
     cursor_rotation: f32,
 
-    // event_receiver: Arc<Receiver<CursorEvent>>,
-    event_receiver: Receiver<CursorEvent>,
-
-
     /// should the cursor be visible?
     visible: bool,
 
@@ -36,13 +26,14 @@ pub struct CursorManager {
     current_skin: Arc<SkinSettings>,
 
     ripples: Vec<TransformGroup>,
-    time: Instant,
+    // time: Instant,
+    time: f32,
 }
 
 impl CursorManager {
     pub async fn new(skin: Arc<SkinSettings>) -> Self {
-        let (sender, event_receiver) = channel(1000);
-        CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
+        // let (sender, event_receiver) = channel(1000);
+        // CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
 
         let settings = SettingsHelper::new();
         Self {
@@ -54,7 +45,7 @@ impl CursorManager {
             current_skin: skin,
             cursor_rotation: 0.0,
 
-            event_receiver,
+            // event_receiver,
 
             left_pressed: false,
             right_pressed: false,
@@ -63,7 +54,8 @@ impl CursorManager {
             settings,
 
             ripples: Vec::new(),
-            time: Instant::now(),
+            time: 0.0
+            // time: Instant::now(),
         }
     }
 
@@ -80,7 +72,7 @@ impl CursorManager {
             CursorMode::Pointer,
             CursorMode::Text
         ] {
-            if let Some(image) = skin_manager.get_texture(mode.tex_name(), true).await {
+            if let Some(image) = skin_manager.get_texture(mode.tex_name(), &TextureSource::Skin, SkinUsage::Game, true).await {
                 self.cursor_images.insert(mode, image);
             }
         }
@@ -93,27 +85,25 @@ impl CursorManager {
     }
 
 
-    pub async fn update(&mut self, _time: f32, cursor_pos: Vector2) {
+    pub async fn update(&mut self, time: f32, cursor_pos: Vector2) {
+        self.time = time;
         self.pos = cursor_pos;
 
         // check settings update 
         self.settings.update();
 
 
-        // work through the event queue
-        while let Ok(event) = self.event_receiver.try_recv() {
-            match event {
-                CursorEvent::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
-                CursorEvent::SetVisible(show) => self.visible = show,
-            }
-        }
+        // // work through the event queue
+        // while let Ok(event) = self.event_receiver.try_recv() {
+            
+        // }
 
         // if self.current_skin.cursor_rotate {
         //     self.cursor_rotation = (time / 2000.0) % (PI * 2.0);
         // }
 
         // update ripples
-        let time = self.time.as_millis();
+        // let time = self.time.as_millis();
         self.ripples.retain_mut(|ripple| {
             ripple.update(time);
             ripple.visible()
@@ -187,7 +177,7 @@ impl CursorManager {
     fn add_ripple(&mut self) {
         let mut group = TransformGroup::new(self.pos).alpha(0.0).border_alpha(1.0);
         let duration = 500.0;
-        let time = self.time.as_millis();
+        // let time = self.time.as_millis();
 
         // if let Some(mut ripple) = self.ripple_image.clone() {
 
@@ -223,40 +213,33 @@ impl CursorManager {
                 Color::WHITE.alpha(0.5),
                 Some(Border::new(Color::WHITE, 2.0 / end_scale))
             ));
-            group.ripple(0.0, duration, time, end_scale, true, Some(0.2));
+            group.ripple(0.0, duration, self.time, end_scale, true, Some(0.2));
         // }
 
 
         self.ripples.push(group);
     }
 
-}
 
-impl CursorManager {
-    fn add_event(event: CursorEvent) {
-        // should always be okay
-        if let Some(q) = CURSOR_EVENT_QUEUE.get() {
-            if let Err(e) = q.try_send(event) {
-                error!("cursor channel error: {e}")
-            }
+    pub fn handle_cursor_action(&mut self, action: CursorAction) {
+        match action {
+            CursorAction::OverrideRippleRadius(radius_maybe) => self.ripple_radius_override = radius_maybe,
+            CursorAction::SetVisible(show) => self.visible = show,
         }
     }
-
-
-    pub fn set_visible(visible: bool) {
-        Self::add_event(CursorEvent::SetVisible(visible));
-    }
-    pub fn set_ripple_override(radius: Option<f32>) {
-        Self::add_event(CursorEvent::OverrideRippleRadius(radius));
-    }
 }
 
-
-#[derive(Copy, Clone)]
-enum CursorEvent {
+#[derive(Copy, Clone, Debug)]
+pub enum CursorAction {
     SetVisible(bool),
     OverrideRippleRadius(Option<f32>),
 }
+impl From<CursorAction> for TatakuAction {
+    fn from(value: CursorAction) -> Self {
+        Self::CursorAction(value)
+    }
+}
+
 
 #[allow(unused)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

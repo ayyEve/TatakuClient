@@ -66,7 +66,7 @@ impl InnerUIElement for LeaderboardElement {
 
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.image = skin_manager.get_texture("menu-button-background", true).await;
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.image = skin_manager.get_texture("menu-button-background", source, SkinUsage::Gamemode, false).await;
     }
 }

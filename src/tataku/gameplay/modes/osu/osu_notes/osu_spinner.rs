@@ -253,28 +253,28 @@ impl HitObject for OsuSpinner {
         self.points_queue.clear();
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;
 
-        self.spinner_circle = GameplayManager::load_texture_maybe("spinner-circle", false, skin_manager, |i| {
+        self.spinner_circle = skin_manager.get_texture_then("spinner-circle", source, SkinUsage::Gamemode, false, |i| {
             // const SIZE:f64 = 700.0;
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_background = GameplayManager::load_texture_maybe("spinner-background", false, skin_manager, |i| {
+        self.spinner_background = skin_manager.get_texture_then("spinner-background", source, SkinUsage::Gamemode, false, |i| {
             // const SIZE:f64 = 667.0;
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_bottom = GameplayManager::load_texture_maybe("spinner-bottom", false, skin_manager, |i| {
+        self.spinner_bottom = skin_manager.get_texture_then("spinner-bottom", source, SkinUsage::Gamemode, false, |i| {
             i.pos = pos;
             i.scale = scale;
         }).await;
 
-        self.spinner_approach = GameplayManager::load_texture_maybe("spinner-approachcircle", false, skin_manager, |i| {
+        self.spinner_approach = skin_manager.get_texture_then("spinner-approachcircle", source, SkinUsage::Gamemode, false, |i| {
             // const SIZE:f64 = 320.0;
             i.pos = pos;
             i.scale = scale;

@@ -302,21 +302,21 @@ impl Game {
         // // check git updates
         // self.add_dialog(Box::new(ChangelogDialog::new().await));
 
-        // load background images
-        match std::fs::read_dir("resources/wallpapers") {
-            Ok(list) => {
-                for wall_file in list {
-                    if let Ok(file) = wall_file {
-                        if let Some(wallpaper) = self.skin_manager.get_texture_noskin(file.path().to_str().unwrap(), false).await {
-                            self.wallpapers.push(wallpaper)
-                        }
-                    }
-                }
-            }
-            Err(_e) => {
-                // NotificationManager::add_error_notification("Error loading wallpaper", e).await
-            }
-        }
+        // // load background images
+        // match std::fs::read_dir("resources/wallpapers") {
+        //     Ok(list) => {
+        //         for wall_file in list {
+        //             if let Ok(file) = wall_file {
+        //                 if let Some(wallpaper) = self.skin_manager.get_texture(&TextureSource::Raw, SkinUsage::Game, file.path().to_str().unwrap(), false).await {
+        //                     self.wallpapers.push(wallpaper)
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     Err(_e) => {
+        //         // NotificationManager::add_error_notification("Error loading wallpaper", e).await
+        //     }
+        // }
 
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
@@ -383,7 +383,7 @@ impl Game {
 
                 let skin_changed = self.settings.current_skin != self.last_skin;
                 if skin_changed {
-                    self.skin_manager.change_skin(self.settings.current_skin.clone()).await;
+                    self.skin_manager.change_skin(self.settings.current_skin.clone());
                     self.last_skin = self.settings.current_skin.clone();
 
 
@@ -653,7 +653,7 @@ impl Game {
         // custom menu list
         if keys_down.has_key(Key::M) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::M);
-            self.actions.push(MenuMenuAction::SetMenu("menu_list".to_owned()));
+            self.actions.push(MenuAction::set_menu("menu_list"));
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
         if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
@@ -721,12 +721,31 @@ impl Game {
         }
 
         // update any ingame managers
-        self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
-        for (manager, _config) in self.gameplay_managers.values_mut() {
+        let mut did_cleanup = false; 
+        for (a, (manager, _config)) in self.gameplay_managers.iter_mut() {
+            if Arc::strong_count(a) == 1 {
+                manager.cleanup_textures(&mut self.skin_manager);
+                did_cleanup = true;
+                continue;
+            }
+
             manager.update(&mut self.values).await;
 
             if manager.completed {
                 manager.on_complete()
+            }
+        }
+        self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
+
+        // TODO: figure out a better way to do this. textures are getting dropped even though they're about to be used again. 
+        // (ie preview is dropped, but another is created, the drop happens after the create, causing empty textures)
+        if did_cleanup {
+            if let Some(m) = self.current_state.get_ingame() {
+                m.reload_skin(&mut self.skin_manager).await;
+            }
+
+            for (i, _) in self.gameplay_managers.values_mut() {
+                i.reload_skin(&mut self.skin_manager).await;
             }
         }
 
@@ -1150,12 +1169,12 @@ impl Game {
             TatakuAction::None => return,
             
             // menu actions
-            TatakuAction::Menu(MenuMenuAction::SetMenu(id)) => self.handle_custom_menu(id).await,
+            TatakuAction::Menu(MenuAction::SetMenu(id)) => self.handle_custom_menu(id).await,
 
-            TatakuAction::Menu(MenuMenuAction::PreviousMenu(current_menu)) => self.handle_previous_menu(current_menu).await,
+            TatakuAction::Menu(MenuAction::PreviousMenu(current_menu)) => self.handle_previous_menu(current_menu).await,
             
             // TatakuAction::Menu(MenuMenuAction::AddDialog(dialog, allow_duplicates)) => self.add_dialog(dialog, allow_duplicates),
-            TatakuAction::Menu(MenuMenuAction::AddDialogCustom(dialog, allow_duplicates)) => self.handle_custom_dialog(dialog, allow_duplicates).await,
+            TatakuAction::Menu(MenuAction::AddDialogCustom(dialog, allow_duplicates)) => self.handle_custom_dialog(dialog, allow_duplicates).await,
             
             // beatmap actions
             TatakuAction::Beatmap(action) => {
@@ -1184,7 +1203,7 @@ impl Game {
                         if let Some(multi) = &mut self.multiplayer_manager {
                             // go back to the lobby before any checks
                             // this way if for some reason something down below fails, the user is in the lobby and not stuck in limbo
-                            self.actions.push(MenuMenuAction::SetMenu("lobby_menu".to_owned()));
+                            self.actions.push(MenuAction::set_menu("lobby_menu"));
 
                             if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
                             
@@ -1423,6 +1442,9 @@ impl Game {
                 let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
                 gameplay.handle_action(action).await;
             }
+            TatakuAction::Game(GameAction::FreeGameplay(mut gameplay)) => {
+                gameplay.cleanup_textures(&mut self.skin_manager);
+            }
  
 
             // song actions
@@ -1487,17 +1509,13 @@ impl Game {
             TatakuAction::Multiplayer(MultiplayerAction::ExitMultiplayer) => {
                 self.handle_action(MultiplayerAction::LeaveLobby).await;
 
-                // TODO: check if ingame, and if yes, dont change state
+                // if ingame, dont change state. this way the user can keep playing the map
                 if !self.current_state.is_ingame() {
                     self.handle_custom_menu("main_menu").await;
-                    // self.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
                 }
             }
-            TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer) => {
-                // TODO: move to custom menu
-                self.handle_custom_menu("lobby_select").await;
-                // self.queue_state_change(GameState::SetMenu(Box::new(LobbyMenu::new().await)));
-            }
+            TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer) => self.handle_custom_menu("lobby_select").await,
+            
             TatakuAction::Multiplayer(MultiplayerAction::CreateLobby { name, password, private, players }) => {
                 self.multiplayer_data.lobby_creation_pending = true;
 
@@ -1506,7 +1524,7 @@ impl Game {
             TatakuAction::Multiplayer(MultiplayerAction::LeaveLobby) => {
                 self.multiplayer_manager = None;
                 OnlineManager::send_packet_static(MultiplayerPacket::Client_LeaveLobby);
-                self.handle_action(MenuMenuAction::SetMenu("lobby_select".to_owned())).await;
+                self.handle_action(MenuAction::set_menu("lobby_select")).await;
             }
             TatakuAction::Multiplayer(MultiplayerAction::JoinLobby { lobby_id, password }) => {
                 self.multiplayer_data.lobby_join_pending = true;
@@ -1544,6 +1562,9 @@ impl Game {
             // task actions
             TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),
             
+            // cursor action
+            TatakuAction::CursorAction(action) => self.cursor_manager.handle_cursor_action(action),
+
             // UI operation
             TatakuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
         }
@@ -1563,7 +1584,7 @@ impl Game {
                 // "beatmap_select" => self.queue_state_change(GameState::SetMenu(Box::new(BeatmapSelectMenu::new().await))),
                 _ => {
                     error!("custom menu not found! {id}, going to main menu instead");
-                    self.actions.push(MenuMenuAction::SetMenu(format!("main_menu")));
+                    self.actions.push(MenuAction::set_menu("main_menu"));
                 }
             }
         }
@@ -1612,7 +1633,7 @@ impl Game {
         let Ok(filename) = self.values.get_string("map.image_filename") else { return };
         // let f = self.skin_manager.get_texture_noskin(&filename, false);
         // self.background_loader = Some(AsyncLoader::new(f));
-        self.background_image = self.skin_manager.get_texture_noskin(&filename, false).await;
+        self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false).await;
         self.background_image.ok_do_mut(|i| {
             i.origin = Vector2::ZERO;
         });
@@ -1735,8 +1756,8 @@ impl Game {
             trace!("player failed");
             if !manager.get_mode().is_multi() {
                 self.queue_state_change(GameState::SetMenu(Box::new(PauseMenu::new(manager, true).await)));
+                return;
             }
-
         } else {
             let mut score = manager.score.clone();
             score.accuracy = get_gamemode_info(&score.playmode).unwrap().calc_acc(&score);
@@ -1785,6 +1806,8 @@ impl Game {
                 }
             }
         }
+
+        manager.cleanup_textures(&mut self.skin_manager);
     }
 
 

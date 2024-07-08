@@ -36,7 +36,9 @@ impl PauseMenu {
     }
 
     async fn exit(&mut self) {
-        self.actions.push(MenuMenuAction::SetMenu("beatmap_select".to_owned()));
+        let Some(manager) = self.manager.take() else { return };
+        self.actions.push(GameAction::FreeGameplay(manager));
+        self.actions.push(MenuAction::set_menu("beatmap_select"));
     }
 }
 
@@ -99,9 +101,9 @@ impl AsyncMenu for PauseMenu {
 
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         if self. is_fail_menu {
-            self.bg = skin_manager.get_texture("fail-background", true).await
+            self.bg = skin_manager.get_texture("fail-background", &TextureSource::Skin, SkinUsage::Game, false).await
         } else {
-            self.bg = skin_manager.get_texture("pause-overlay", true).await
+            self.bg = skin_manager.get_texture("pause-overlay", &TextureSource::Skin, SkinUsage::Game, false).await
         }
 
         if let Some(bg) = &mut self.bg {

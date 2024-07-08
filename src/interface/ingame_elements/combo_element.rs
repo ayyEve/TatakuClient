@@ -49,8 +49,8 @@ impl InnerUIElement for ComboElement {
         }
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.combo_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0, skin_manager).await.ok()
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.combo_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0, skin_manager, source, SkinUsage::Gamemode).await.ok()
     }
 }
 

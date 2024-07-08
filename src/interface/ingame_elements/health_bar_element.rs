@@ -41,12 +41,12 @@ impl InnerUIElement for HealthBarElement {
         )
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         // peppy calls the healthbar texture "scorebar"
-        self.healthbar_image = skin_manager.get_texture("scorebar-colour", true).await;
-        self.healthbar_bg_image = skin_manager.get_texture("scorebar-bg", true).await;
+        self.healthbar_image = skin_manager.get_texture("scorebar-colour", source, SkinUsage::Gamemode, false).await;
+        self.healthbar_bg_image = skin_manager.get_texture("scorebar-bg", source, SkinUsage::Gamemode, false).await;
 
-        for i in [&mut self.healthbar_image, &mut self.healthbar_bg_image] {
+        for i in [ &mut self.healthbar_image, &mut self.healthbar_bg_image ] {
             let Some(i) = i else { continue };
             i.origin = Vector2::ZERO;
             i.color = Color::WHITE;

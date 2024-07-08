@@ -54,6 +54,8 @@ pub struct OsuSettings {
     #[Setting(text="Use Skin Judgments")]
     pub use_skin_judgments: bool,
 
+    #[Setting(text="Use beatmap skin")]
+    pub beatmap_skin: bool,
 
     /// min is 0.00001 because @ 0.0 it shows the shoddy slider rendering (try it and see!)
     #[Setting(text="Slider Body Alpha", min=0.00001, max=1.0)]
@@ -106,6 +108,7 @@ impl Default for OsuSettings {
             slider_tick_ripples: true,
             slider_tick_ripples_above: true,
             approach_combo_color: true,
+            beatmap_skin: true,
 
             use_beatmap_combo_colors: true,
             use_skin_judgments: true,

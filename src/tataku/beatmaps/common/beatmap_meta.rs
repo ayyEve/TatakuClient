@@ -80,6 +80,11 @@ impl BeatmapMeta {
     pub fn comp_hash(&self, other: Md5Hash) -> bool {
         self.beatmap_hash == other
     }
+
+
+    pub fn get_parent_dir(&self) -> Option<PathBuf> {
+        Some(Path::new(&self.file_path).parent()?.to_path_buf())
+    }
 }
 
 // getter helpers

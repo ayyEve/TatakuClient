@@ -1,12 +1,12 @@
 use crate::prelude::*;
 
 #[derive(Debug)]
-pub enum MenuMenuAction {
+pub enum MenuAction {
     // /// Set the current menu
     // SetMenu(Box<dyn AsyncMenu>),
 
     /// Set the menu to a custom menu with the provided identifier
-    SetMenu(String),
+    SetMenu(Cow<'static, str>),
 
     /// Go to the previous menu
     /// 
@@ -21,7 +21,12 @@ pub enum MenuMenuAction {
     /// Set the menu to a custom menu with the provided identifier
     AddDialogCustom(String, bool),
 }
+impl MenuAction {
+    pub fn set_menu(menu: impl Into<Cow<'static, str>>) -> Self {
+        Self::SetMenu(menu.into())
+    }
+}
 
-impl From<MenuMenuAction> for TatakuAction {
-    fn from(value: MenuMenuAction) -> Self { Self::Menu(value) }
+impl From<MenuAction> for TatakuAction {
+    fn from(value: MenuAction) -> Self { Self::Menu(value) }
 }

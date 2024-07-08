@@ -98,7 +98,7 @@ impl InnerUIElement for JudgementCounterElement {
         }
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.button_image = skin_manager.get_texture("inputoverlay-key", true).await
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false).await
     }
 }

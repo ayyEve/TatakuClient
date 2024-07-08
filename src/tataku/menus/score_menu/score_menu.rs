@@ -111,7 +111,7 @@ impl ScoreMenu {
     }
 
     async fn close(&mut self) {
-        self.actions.push(MenuMenuAction::PreviousMenu(self.get_name()));
+        self.actions.push(MenuAction::PreviousMenu(self.get_name()));
 
         // let menu: Box<dyn AsyncMenu>;
         // match &*self.menu_type {

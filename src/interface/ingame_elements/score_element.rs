@@ -79,8 +79,8 @@ impl InnerUIElement for ScoreElement {
     }
 
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0, skin_manager).await.ok();
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0, skin_manager, source, SkinUsage::Gamemode).await.ok();
 
         self.bounds_size = if let Some(im) = &mut self.score_image {
             im.number = NUMBER as f64;

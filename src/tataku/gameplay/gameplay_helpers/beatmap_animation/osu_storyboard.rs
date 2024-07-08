@@ -442,7 +442,7 @@ async fn try_load_image(
 ) -> TatakuResult<Image> {
     if let Some(image) = image_cache.get(filepath).cloned() {
         Ok(image)
-    } else if let Some(i) = skin_manager.get_texture_noskin(filepath, false).await {
+    } else if let Some(i) = skin_manager.get_texture(filepath, &TextureSource::Raw, SkinUsage::Beatmap, false).await {
         image_cache.insert(filepath.clone(), i.clone());
         Ok(i)
     } else {
@@ -457,7 +457,7 @@ async fn try_load_image(
             if file.file_name().to_ascii_lowercase() != filename { continue }
             // let filename = file.file_name().to_str().unwrap();
             let filepath2 = parent.join(file.file_name()).to_string_lossy().to_string();
-            found = skin_manager.get_texture_noskin(&filepath2, false).await;
+            found = skin_manager.get_texture(&filepath2, &TextureSource::Raw, SkinUsage::Beatmap, false).await;
             if found.is_some() {
                 warn!("using file {filepath2} instead of {filepath} for storyboard");
             }

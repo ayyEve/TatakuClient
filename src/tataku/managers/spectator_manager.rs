@@ -213,8 +213,7 @@ impl SpectatorManager {
         // check if we need to close something
         if key == Key::Escape {
 
-            self.actions.push(MenuMenuAction::SetMenu(format!("main_menu")));
-            // let menu = game.menus.get("main").unwrap().clone();
+            self.actions.push(MenuAction::set_menu("main_menu"));
             // game.queue_state_change(GameState::SetMenu(Box::new(MainMenu::new().await)));
             // resume song if paused
 

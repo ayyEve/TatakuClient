@@ -33,11 +33,11 @@ impl CustomMenuAction {
             Self::None => None,
             Self::AddDialog(dialog) => {
                 let Some(val) = dialog.resolve(values, passed_in) else { return None };
-                Some(TatakuAction::Menu(MenuMenuAction::AddDialogCustom(val.as_string(), true)))
+                Some(TatakuAction::Menu(MenuAction::AddDialogCustom(val.as_string(), true)))
             }
             Self::SetMenu(menu) =>  {
                 let Some(val) = menu.resolve(values, passed_in) else { return None };
-                Some(TatakuAction::Menu(MenuMenuAction::SetMenu(val.as_string())))
+                Some(TatakuAction::Menu(MenuAction::set_menu(val.as_string())))
             }
 
             Self::Map(action) => action.into_action(values, passed_in).map(|a| TatakuAction::Beatmap(a)),

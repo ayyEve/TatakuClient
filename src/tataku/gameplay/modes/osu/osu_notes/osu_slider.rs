@@ -813,26 +813,26 @@ impl HitObject for OsuSlider {
         }
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.skin = skin_manager.skin().clone();
-        self.start_circle_image.reload_skin(skin_manager).await;
-        self.end_circle_image = skin_manager.get_texture("sliderendcircle", true).await;
-        self.slider_reverse_image = skin_manager.get_texture("reversearrow", true).await;
-        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", true).await;
+        self.start_circle_image.reload_skin(source, skin_manager).await;
+        self.end_circle_image = skin_manager.get_texture("sliderendcircle", source, SkinUsage::Gamemode, false).await;
+        self.slider_reverse_image = skin_manager.get_texture("reversearrow", source, SkinUsage::Gamemode, false).await;
+        self.follow_circle_image = skin_manager.get_texture("sliderfollowcircle", source, SkinUsage::Gamemode, false).await;
 
-        self.approach_circle.reload_texture(skin_manager).await;
+        self.approach_circle.reload_texture(source, skin_manager).await;
 
         for dot in self.hit_dots.iter_mut() {
-            dot.reload_skin(skin_manager).await;
+            dot.reload_skin(source, skin_manager).await;
         }
 
         // slider ball
-        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", true).await;
+        self.sliderball_under_image = skin_manager.get_texture("sliderb-nd", source, SkinUsage::Gamemode, false).await;
 
         let mut i = 0;
         let mut images = Vec::new();
         loop {
-            let Some(image) = skin_manager.get_texture(format!("sliderb{i}"), true).await else { break };
+            let Some(image) = skin_manager.get_texture(format!("sliderb{i}"), source, SkinUsage::Gamemode, false).await else { break };
             images.push(image);
             i += 1;
         }
@@ -1074,11 +1074,10 @@ impl SliderDot {
                 Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE * self.scale))
             ));
         }
-
     }
 
-    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.dot_image = skin_manager.get_texture("sliderscorepoint", true).await;
+    pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
     }
 }
 

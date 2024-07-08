@@ -94,7 +94,7 @@ impl NotificationManager {
     }
 
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.notification_image = skin_manager.get_texture("notification", true).await;
+        self.notification_image = skin_manager.get_texture("notification", &TextureSource::Skin, SkinUsage::Game, true).await;
     }
 
     pub fn draw(&self, list: &mut RenderableCollection) {

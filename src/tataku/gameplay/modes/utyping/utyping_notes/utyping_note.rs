@@ -198,8 +198,8 @@ impl HitObject for UTypingNote {
         self.branches.reset();
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.image = HitCircleImageHelper::new(&self.settings, skin_manager).await;
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager).await;
     }
 }
 
@@ -251,28 +251,22 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
-    async fn new(_settings: &Arc<TaikoSettings>, skin_manager: &mut SkinManager) -> Option<Self> {
+    async fn new(_settings: &Arc<TaikoSettings>, source: &TextureSource, skin_manager: &mut SkinManager) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";
 
 
-        let mut circle = skin_manager.get_texture(hitcircle, true).await;
-        if let Some(circle) = &mut circle {
-            let scale = Vector2::ONE * scale;
-
-            circle.pos = Vector2::ZERO;
-            circle.scale = scale;
+        let scale = Vector2::ONE * scale;
+        let circle = skin_manager.get_texture_then(hitcircle, source, SkinUsage::Gamemode, false, |i| {
+            i.pos = Vector2::ZERO;
+            i.scale = scale;
             // circle.color = color;
-        }
-
-        let mut overlay = skin_manager.get_texture(hitcircle.to_owned() + "overlay", true).await;
-        if let Some(overlay) = &mut overlay {
-            let scale = Vector2::ONE * scale;
-
-            overlay.pos = Vector2::ZERO;
-            overlay.scale = scale;
+        }).await;
+        let overlay = skin_manager.get_texture_then(format!("{hitcircle}overlay"), source, SkinUsage::Gamemode, false, |i| {
+            i.pos = Vector2::ZERO;
+            i.scale = scale;
             // overlay.color = color;
-        }
+        }).await;
 
         if overlay.is_none() || circle.is_none() { return None }
 

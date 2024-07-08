@@ -332,7 +332,7 @@ impl OsuGame {
 
 #[async_trait]
 impl GameMode for OsuGame {
-    async fn new(map:&Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
+    async fn new(map: &Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::new(Default::default());
         let window_size = WindowSize::get();
@@ -348,7 +348,9 @@ impl GameMode for OsuGame {
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
-        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default()).await;
+
+        let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
+        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default(), parent_dir).await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
@@ -1047,10 +1049,12 @@ impl GameMode for OsuGame {
         }
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
+        let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.clone()) } else { TextureSource::Skin };
+
         self.cursor.reload_skin(skin_manager).await;
         self.judgment_helper.reload_skin(skin_manager).await;
-        self.follow_point_image = skin_manager.get_texture("followpoint", true).await;
+        self.follow_point_image = skin_manager.get_texture("followpoint", &source, SkinUsage::Gamemode, false).await;
 
         let combo_colors = if self.game_settings.use_beatmap_combo_colors && self.beatmap_combo_colors.len() > 0 {
             self.beatmap_combo_colors.clone()
@@ -1063,10 +1067,10 @@ impl GameMode for OsuGame {
         self.apply_combo_colors(combo_colors);
 
         for n in self.notes.iter_mut() {
-            n.reload_skin(skin_manager).await;
+            n.reload_skin(&source, skin_manager).await;
         }
 
-        let smoke = skin_manager.get_texture("cursor-smoke", true).await.map(|i| i.tex).unwrap_or_default();
+        let smoke = skin_manager.get_texture("cursor-smoke", &source, SkinUsage::Gamemode, false).await.map(|i| i.tex).unwrap_or_default();
         if let Some(emitter) = &mut self.smoke_emitter {
             emitter.image = smoke;
         } else {
@@ -1084,6 +1088,8 @@ impl GameMode for OsuGame {
 
             self.smoke_emitter = Some(emitter);
         }
+
+        source
     }
 
     async fn apply_mods(&mut self, mods: Arc<ModManager>) {

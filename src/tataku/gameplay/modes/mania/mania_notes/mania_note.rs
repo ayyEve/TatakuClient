@@ -93,11 +93,11 @@ impl HitObject for ManiaNote {
         self.position_function_index = 0;
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.note_image = None;
         let Some(settings) = &self.mania_skin_settings else { return }; 
         let Some(path) = settings.note_image.get(&self.column) else { return };
-        let Some(mut img) = skin_manager.get_texture_grayscale(path, true, true).await else { return };
+        let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Gamemode, true).await else { return };
         
         self.playfield.note_image(&mut img);
         img.color = self.color;

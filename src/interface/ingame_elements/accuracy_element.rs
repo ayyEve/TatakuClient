@@ -75,8 +75,8 @@ impl InnerUIElement for AccuracyElement {
     }
 
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.acc_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", Some('%'), 2, skin_manager).await.ok();
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.acc_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", Some('%'), 2, skin_manager, source, SkinUsage::Gamemode).await.ok();
         
         // get the bounds
         // TODO: make it not rely on this shit

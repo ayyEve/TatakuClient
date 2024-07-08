@@ -151,7 +151,7 @@ impl DirectMenu {
         // }
 
         // let menu = game.menus.get("main").unwrap().clone();
-        self.actions.push(MenuMenuAction::SetMenu("main_menu".to_owned()));
+        self.actions.push(MenuAction::set_menu("main_menu"));
         // game.queue_state_change(GameState::(Box::new(MainMenu::new().await)));
     }
 }

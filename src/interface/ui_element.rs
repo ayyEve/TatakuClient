@@ -71,8 +71,8 @@ impl UIElement {
         self.inner.reset();
     }
 
-    pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.inner.reload_skin(skin_manager).await;
+    pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.inner.reload_skin(source, skin_manager).await;
     }
 }
 
@@ -83,7 +83,7 @@ pub trait InnerUIElement: Send + Sync {
     fn get_bounds(&self) -> Bounds;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager);
+    async fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut SkinManager) {}
 }
 
 #[allow(unused)]

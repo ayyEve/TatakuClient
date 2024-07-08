@@ -44,6 +44,9 @@ pub enum GameAction {
     NewGameplayManager(NewManager),
     DropGameplayManager(GameplayId),
     GameplayAction(GameplayId, GameplayAction),
+
+    /// free up an existing gameplay manager (clean up its textures)
+    FreeGameplay(Box<GameplayManager>),
 }
 
 impl From<GameAction> for TatakuAction {
@@ -69,6 +72,7 @@ impl core::fmt::Debug for GameAction {
             Self::NewGameplayManager(arg0) => f.debug_tuple("NewGameplayManager").field(arg0).finish(),
             Self::DropGameplayManager(arg0) => f.debug_tuple("DropGameplayManager").field(arg0).finish(),
             Self::GameplayAction(arg0, arg1) => f.debug_tuple("GameplayAction").field(arg0).field(arg1).finish(),
+            Self::FreeGameplay(_) => write!(f, "FreeGameplay"),
         }
     }
 }

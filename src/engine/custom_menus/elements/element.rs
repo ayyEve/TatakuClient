@@ -45,7 +45,7 @@ impl ElementDef {
             ElementIdentifier::StyledContent { element, image, built_image, .. } 
                 => {
                     if let Some(image) = image {
-                        *built_image = skin_manager.get_texture(image, true).await;
+                        *built_image = skin_manager.get_texture(image, &TextureSource::Skin, SkinUsage::Game, true).await;
                     }
                     built.children.push(element.build(skin_manager, owner).await)
                 },

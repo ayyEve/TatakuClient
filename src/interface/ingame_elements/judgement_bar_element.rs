@@ -106,7 +106,4 @@ impl InnerUIElement for JudgementBarElement {
 
         
     }
-
-
-    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

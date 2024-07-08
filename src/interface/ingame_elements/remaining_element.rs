@@ -64,6 +64,4 @@ impl InnerUIElement for RemainingElement {
         text.center_text(&bounds);
         list.push(text);
     }
-
-    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

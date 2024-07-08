@@ -400,10 +400,11 @@ impl GameMode for UTypingGame {
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, _beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
         for i in self.notes.iter_mut() {
-            i.reload_skin(skin_manager).await;
+            i.reload_skin(&TextureSource::Skin, skin_manager).await;
         }
+        TextureSource::Skin
     }
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) {}

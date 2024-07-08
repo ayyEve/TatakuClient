@@ -109,8 +109,8 @@ impl InnerUIElement for KeyCounterElement {
 
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", true);
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {
         //     image.current_rotation = 90f64.to_radians();
         //     image.origin = Vector2::new(image.size().x, 0.0);
@@ -118,6 +118,6 @@ impl InnerUIElement for KeyCounterElement {
         //     image.depth = -100.0;
         // }
 
-        self.button_image = skin_manager.get_texture("inputoverlay-key", true).await;
+        self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false).await;
     }
 }

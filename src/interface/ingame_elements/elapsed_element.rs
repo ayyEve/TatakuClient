@@ -65,6 +65,4 @@ impl InnerUIElement for ElapsedElement {
         list.push(text);
     }
 
-
-    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

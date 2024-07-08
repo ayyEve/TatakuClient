@@ -130,7 +130,7 @@ impl ManiaGame {
         }
     }
     
-    async fn load_col_images(&mut self, skin_manager: &mut SkinManager) {
+    async fn load_col_images(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         let Some(settings) = &self.mania_skin_settings else { return };
         self.key_images_down.clear();
         self.key_images_up.clear();
@@ -148,7 +148,7 @@ impl ManiaGame {
                 (&settings.key_image_d, &mut self.key_images_down),
             ] {
                 let Some(path) = path_map.get(&col) else { continue };
-                let Some(mut img) = skin_manager.get_texture(path, true).await else { continue };
+                let Some(mut img) = skin_manager.get_texture(path, source, SkinUsage::Beatmap, true).await else { continue };
                 self.playfield.column_image(&mut img);
                 img.pos = Vector2::new(x, y);
 
@@ -1017,7 +1017,9 @@ impl GameMode for ManiaGame {
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
+    async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
+        let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: add setting option
+
         // reload skin settings
         let all_mania_skin_settings = &skin_manager.skin().mania_settings;
         for i in all_mania_skin_settings.iter() {
@@ -1029,11 +1031,13 @@ impl GameMode for ManiaGame {
         
         for c in self.columns.iter_mut() {
             for n in c.iter_mut() {
-                n.reload_skin(skin_manager).await;
+                n.reload_skin(&source, skin_manager).await;
             }
         }
         
-        self.load_col_images(skin_manager).await;
+        self.load_col_images(&source, skin_manager).await;
+
+        source
     }
 
     async fn apply_mods(&mut self, _mods: Arc<ModManager>) { }

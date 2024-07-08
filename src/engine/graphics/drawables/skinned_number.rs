@@ -25,11 +25,14 @@ impl SkinnedNumber {
     pub async fn new<TN: AsRef<str>>(
         pos: Vector2, 
         number: f64, 
-        color:Color, 
+        color: Color, 
         texture_name: TN, 
         symbol: Option<char>, 
         floating_precision: usize, 
-        skin_manager: &mut SkinManager
+        skin_manager: &mut SkinManager,
+
+        source: &TextureSource,
+        usage: SkinUsage,
     ) -> TatakuResult<Self> {
         let texture_name = texture_name.as_ref();
         let rotation = 0.0;
@@ -38,10 +41,12 @@ impl SkinnedNumber {
         let mut number_textures = Vec::new();
         for i in 0..10 {
             let tex = format!("{texture_name}-{i}");
-            let mut tex2 = skin_manager.get_texture(&tex, true).await.ok_or(TatakuError::String(format!("texture does not exist: {}", &tex)))?;
-            tex2.origin = Vector2::ZERO;
-            // tex2.size = tex2.tex_size();
-            number_textures.push(tex2);
+            let tex = skin_manager.get_texture_then(&tex, source, usage, false, |i| {
+                i.origin = Vector2::ZERO;
+                // i.size = i.tex_size();
+            }).await.ok_or(TatakuError::String(format!("texture does not exist: {tex}")))?;
+
+            number_textures.push(tex);
         }
 
         // try to load symbols
@@ -55,10 +60,9 @@ impl SkinnedNumber {
         ];
         for (c, name) in chars {
             let name = format!("{texture_name}-{name}");
-            if let Some(mut tex) = skin_manager.get_texture(name, true).await {
-                tex.origin = Vector2::ZERO;
-                symbol_textures.insert(c, tex);
-            }
+            let Some(mut tex) = skin_manager.get_texture(name, source, usage, false).await else { continue }; 
+            tex.origin = Vector2::ZERO;
+            symbol_textures.insert(c, tex);
         }
 
 

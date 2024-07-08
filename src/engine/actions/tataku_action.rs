@@ -8,7 +8,7 @@ pub enum TatakuAction {
     None,
 
     /// Perform a menu operation
-    Menu(MenuMenuAction),
+    Menu(MenuAction),
 
     /// Perform a game operation
     Game(GameAction),
@@ -27,6 +27,9 @@ pub enum TatakuAction {
 
     /// Perform a task action
     Task(TaskAction),
+
+    /// Perform a cursor action
+    CursorAction(CursorAction),
 }
 impl std::fmt::Debug for TatakuAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -39,6 +42,7 @@ impl std::fmt::Debug for TatakuAction {
             Self::PerformOperation(_) => write!(f, "PerformOperation"),
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),
             Self::Task(task) => write!(f, "Task({task:?})"),
+            Self::CursorAction(action) => write!(f, "CursorAction({action:?})"),
         }
     }
 }

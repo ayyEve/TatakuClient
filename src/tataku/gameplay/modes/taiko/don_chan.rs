@@ -26,6 +26,7 @@ impl DonChan {
     pub async fn new() -> Self {
         Self {
             state: DonChanState::Normal,
+
             normal_anim: None,
             combo_anim: None,
             kiai_anim: None,
@@ -197,19 +198,23 @@ impl InnerUIElement for DonChan {
         self.combo_anim_last_index = 0;
     }
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.normal_anim = load_anim("idle", skin_manager).await;
-        self.combo_anim = load_anim("clear", skin_manager).await;
-        self.kiai_anim = load_anim("kiai", skin_manager).await;
-        self.fail_anim = load_anim("fail", skin_manager).await;
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.normal_anim = load_anim("idle", source, skin_manager).await;
+        self.combo_anim = load_anim("clear", source, skin_manager).await;
+        self.kiai_anim = load_anim("kiai", source, skin_manager).await;
+        self.fail_anim = load_anim("fail", source, skin_manager).await;
     }
 }
 
-async fn load_anim(name: &str, skin_manager: &mut SkinManager) -> Option<Animation> {
+async fn load_anim(
+    name: &str, 
+    source: &TextureSource,
+    skin_manager: &mut SkinManager,
+) -> Option<Animation> {
     let mut frames = Vec::new();
     let mut current = 0;
 
-    while let Some(tex) = skin_manager.get_texture(format!("pippidon{name}{current}"), true).await {
+    while let Some(tex) = skin_manager.get_texture(format!("pippidon{name}{current}"), source, SkinUsage::Gamemode, false).await {
         current += 1;
         frames.push(tex.tex);
     }

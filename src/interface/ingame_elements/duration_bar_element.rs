@@ -47,6 +47,4 @@ impl InnerUIElement for DurationBarElement {
             Some(Border::new(self.common_game_settings.duration_border_color, 1.8 * scale.x))
         ));
     }
-
-    async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
 }

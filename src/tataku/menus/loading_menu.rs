@@ -191,7 +191,7 @@ impl AsyncMenu for LoadingMenu {
 
         // loading complete, move to the main menu
         self.actions.push(BeatmapAction::Next);
-        self.actions.push(MenuMenuAction::SetMenu("main_menu".to_owned()));
+        self.actions.push(MenuAction::set_menu("main_menu"));
         self.actions.take()
     }
 

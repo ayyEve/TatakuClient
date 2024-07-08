@@ -83,8 +83,8 @@ impl InnerUIElement for PerformanceElement {
     }
 
 
-    async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.perf_image = SkinnedNumber::new(Vector2::ZERO, self.perf as f64, Color::WHITE, "score", None, 2, skin_manager).await.ok();
+    async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
+        self.perf_image = SkinnedNumber::new(Vector2::ZERO, self.perf as f64, Color::WHITE, "score", None, 2, skin_manager, source, SkinUsage::Gamemode).await.ok();
 
         self.bounds_size = if let Some(im) = &mut self.perf_image {
             im.number = NUMBER as f64;

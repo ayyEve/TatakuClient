@@ -37,6 +37,7 @@ pub struct OsuCursor {
 
     settings: SettingsHelper,
     skin: SkinSettings,
+    beatmap_path: String,
 
     ripples: Vec<TransformGroup>,
     time: Instant,
@@ -50,6 +51,7 @@ impl OsuCursor {
     pub async fn new(
         note_radius: f32,
         skin: SkinSettings,
+        beatmap_path: String,
     ) -> Self {
         let a = PI / 4.0;
         let builder = EmitterBuilder::new()
@@ -93,6 +95,7 @@ impl OsuCursor {
             note_radius,
             settings,
             skin,
+            beatmap_path,
 
             ripples: Vec::new(),
             time: Instant::now(),
@@ -342,9 +345,11 @@ impl CustomCursor for OsuCursor {
 
 
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        self.cursor_image = skin_manager.get_texture("cursor", true).await;
-        self.cursor_trail_image = skin_manager.get_texture("cursortrail", true).await;
-        self.cursor_middle_image = skin_manager.get_texture("cursormiddle", false).await;
+        let source = if self.settings.osu_settings.beatmap_skin { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
+
+        self.cursor_image = skin_manager.get_texture("cursor", &source, SkinUsage::Gamemode, false).await;
+        self.cursor_trail_image = skin_manager.get_texture("cursortrail", &source, SkinUsage::Gamemode, false).await;
+        self.cursor_middle_image = skin_manager.get_texture("cursormiddle", &source, SkinUsage::Gamemode, false).await;
 
         let (trail_create_timer, trail_fadeout_timer_start, trail_fadeout_timer_duration) = if self.cursor_middle_image.is_some() {
             (TRAIL_CREATE_TIMER_IF_MIDDLE, TRAIL_FADEOUT_TIMER_START_IF_MIDDLE, TRAIL_FADEOUT_TIMER_DURATION_IF_MIDDLE)
@@ -359,7 +364,7 @@ impl CustomCursor for OsuCursor {
         self.cursor_rotation = 0.0;
 
         
-        let tex = skin_manager.get_texture("star2", true).await.map(|t|t.tex).unwrap_or_default();
+        let tex = skin_manager.get_texture("star2", &source, SkinUsage::Gamemode, false).await.map(|t| t.tex).unwrap_or_default();
         self.left_emitter.image = tex;
         self.right_emitter.image = tex;
     }
