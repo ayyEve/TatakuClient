@@ -1,0 +1,2 @@
+[registries.tataku-registry]
+index = "https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"

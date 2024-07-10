@@ -30,7 +30,7 @@ no_media_control = []
 graphics = ["wgpu", "bytemuck", "lyon_tessellation"]
 
 [dependencies]
-tataku-common = { git="https://gitlab.ayyeve.dev/tataku/tataku-common" }
+tataku-common = { version = "0.10.2", registry = "tataku-registry" }
 # tataku-common = { path="../tataku-common" }
 tataku-client-proc-macros = { path = "./proc_macros" }
 
@@ -119,5 +119,4 @@ strfmt = "0.2.4"
 
 
 [build-dependencies]
-tataku-common = { git="https://gitlab.ayyeve.dev/tataku/tataku-common" }
-# tataku-common = { path="../tataku-common" }
+tataku-common = { version = "0.10.2", registry = "tataku-registry" }

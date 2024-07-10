@@ -4970,12 +4970,24 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.10.1"
-source = "git+https://gitlab.ayyeve.dev/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
+version = "0.10.2"
+source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
+checksum = "d2a0941ed0778d1bb69742359bb67e22858d4f60ad7724d6ecfdb92bdfd026fd"
 dependencies = [
  "serde",
  "serde_json",
- "tataku-proc-macros",
+ "tataku-common-proc-macros",
+]
+
+[[package]]
+name = "tataku-common-proc-macros"
+version = "0.1.3"
+source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
+checksum = "41608634320cc3cfd1597a864f9e1e5fcb9e918324f96f823647a73da8281657"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -4988,16 +5000,6 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot 0.12.3",
-]
-
-[[package]]
-name = "tataku-proc-macros"
-version = "0.1.0"
-source = "git+https://gitlab.ayyeve.dev/tataku/tataku-common#a8cacb8917845b64bc004b88f79d60aecd4d5db1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
