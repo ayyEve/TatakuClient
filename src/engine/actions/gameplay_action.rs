@@ -29,4 +29,6 @@ pub enum GameplayAction {
     ApplyMods(ModManager),
     SetMode(GameplayMode),
     FitToArea(Bounds),
+
+    SetHitsoundsEnabled(bool),
 }

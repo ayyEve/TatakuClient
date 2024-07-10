@@ -49,13 +49,19 @@ impl AsyncMenu for PauseMenu {
     fn view(&self, _values: &mut ValueCollection) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
+        let resume_button: IcedElement = if !self.is_fail_menu { 
+            Button::new(Text::new("Resume")).on_press(Message::new(MessageOwner::Menu, "resume", MessageType::Click)).into() 
+        } else { 
+            EmptyElement.into() 
+        };
+
         let menu = row!(
             // left space so the middle column is centered with a width of 1/3 the total width
             Space::new(Fill, Fill),
 
             // actual items
             col!(
-                Button::new(Text::new("Resume")).on_press(Message::new(MessageOwner::Menu, "resume", MessageType::Click)),
+                resume_button,
                 Button::new(Text::new("Retry")).on_press(Message::new(MessageOwner::Menu, "retry", MessageType::Click)),
                 Button::new(Text::new("Quit")).on_press(Message::new(MessageOwner::Menu, "quit", MessageType::Click));
                 
@@ -100,7 +106,7 @@ impl AsyncMenu for PauseMenu {
     
 
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
-        if self. is_fail_menu {
+        if self.is_fail_menu {
             self.bg = skin_manager.get_texture("fail-background", &TextureSource::Skin, SkinUsage::Game, false).await
         } else {
             self.bg = skin_manager.get_texture("pause-overlay", &TextureSource::Skin, SkinUsage::Game, false).await

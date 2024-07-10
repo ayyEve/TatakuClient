@@ -149,8 +149,6 @@ impl GameplayManager {
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
-        let common_game_settings = Arc::new(settings.common_game_settings.clone());
-
         let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone());
         score.speed = current_mods.speed;
 
@@ -202,7 +200,7 @@ impl GameplayManager {
             center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await,
             beatmap_preferences,
 
-            common_game_settings,
+            common_game_settings: Arc::new(settings.common_game_settings.clone()),
 
             gamemode,
 
@@ -352,15 +350,23 @@ impl GameplayManager {
     }
 
     pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
-        self.song_time = values.get_f32("song.position").unwrap_or_default();
+        let new_time = values.get_f32("song.position").unwrap_or_default();
+
+        // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
+        if new_time - self.song_time > 1000.0 {
+            self.hitsound_manager.enabled = false;
+        }
+
+        self.song_time = new_time;
 
         // update settings
         self.settings.update();
         
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
-            self.gamemode.time_jump(time).await;
+            self.hitsound_manager.enabled = false; // try to mitigate spamming the user's ears with hitsounds
             self.pending_time_jump = None;
+            self.gamemode.time_jump(time).await;
         }
 
         // check map restart
@@ -470,21 +476,9 @@ impl GameplayManager {
         // update gamemode
         let mut state = create_update_state!(self, time);
 
-        // let mut state = GameplayStateForUpdate {
-        //     time,
-        //     game_speed: self.game_speed(),
-        //     completed: self.completed,
-
-        //     mods: &self.current_mods,
-        //     current_timing_point: self.timing_points.timing_point(),
-        //     timing_points: &self.timing_points,
-        //     gameplay_mode: &self.gameplay_mode,
-        //     score: &self.score,
-        //     actions: Vec::new(),
-        // };
 
         self.gamemode.update(&mut state).await;
-        for action in state.actions.take() {
+        for action in state.actions {
             self.handle_gamemode_action(action).await;
         }
         //.into_iter().map(|f| ReplayFrame::new(time, f));
@@ -663,9 +657,7 @@ impl GameplayManager {
                     }
 
                     _ => {}
-
                 }
-
             }
 
             GameplayMode::Multiplayer { 
@@ -679,10 +671,10 @@ impl GameplayManager {
                 }
             }
 
-
             _ => {}
         }
 
+        // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
             self.handle_action(a).await;
         }
@@ -729,6 +721,14 @@ impl GameplayManager {
             values.set("score", TatakuVariable::new_game(score_data.finish()));
         }
 
+
+        // unpause the hitsound manager next frame if it was paused earlier this frame
+        // hopefully this helps with the osu note spam sounds. i think the OsuHitObject::get_pending_combo is whats spamming audio
+        if !self.hitsound_manager.enabled {
+            // self.hitsound_manager.enabled = false;
+            self.gameplay_actions.push(GameplayAction::SetHitsoundsEnabled(true));
+        }
+
         self.actions.take()
     }
 
@@ -741,7 +741,6 @@ impl GameplayManager {
 
         // draw gamemode
         if let Some(bounds) = self.fit_to_bounds { list.push_scissor([bounds.pos.x, bounds.pos.y, bounds.size.x, bounds.size.y]); }
-        
 
         let state = GameplayStateForDraw {
             time,
@@ -791,6 +790,7 @@ impl GameplayManager {
             GameplayAction::SetMode(mode) => self.set_mode(mode),
 
             GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save).await,
+            GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
         }
     }
 
@@ -962,6 +962,10 @@ impl GameplayManager {
 impl GameplayManager {
     // can be from either paused or new
     pub async fn start(&mut self) {
+        // if !self.gameplay_mode.is_preview() {
+        //     self.hitsound_manager.enabled = false;
+        // }
+
 
         if self.should_hide_cursor() {
             self.actions.push(CursorAction::SetVisible(false));
@@ -1335,10 +1339,6 @@ impl GameplayManager {
         }
     }
 
-    async fn handle_input(&mut self, frame: Option<ReplayAction>) {
-        let Some(frame) = frame else { return };
-        self.handle_frame(frame, false, None, true).await;
-    }
 
     pub async fn key_down(&mut self, key_input: KeyInput, mods: KeyModifiers) {
         let Some(key) = key_input.as_key() else { return };
@@ -1422,13 +1422,13 @@ impl GameplayManager {
 
 
         // skip intro
-        let frame = if key == Key::Space {
+        let Some(frame) = (if key == Key::Space {
             Some(ReplayAction::Press(KeyPress::SkipIntro))
         } else {
             self.gamemode.key_down(key).await
-        };
+        }) else { return };
 
-        self.handle_input(frame).await;
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn key_up(&mut self, key_input: KeyInput) {
         if self.should_skip_input() { return }
@@ -1440,13 +1440,13 @@ impl GameplayManager {
             return;
         }
 
-        let frame = self.gamemode.key_up(key).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.key_up(key).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn on_text(&mut self, text: &String, mods: &KeyModifiers) {
         if self.should_skip_input() { return }
-        let frame = self.gamemode.on_text(text, mods).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.on_text(text, mods).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     
     
@@ -1456,9 +1456,9 @@ impl GameplayManager {
         }
 
         // !self.should_handle_input() { return }
-
-        let frame = self.gamemode.mouse_move(pos).await;
-        self.handle_input(frame).await;
+ 
+        let Some(frame) = self.gamemode.mouse_move(pos).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_down(&mut self, btn: MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
@@ -1467,18 +1467,18 @@ impl GameplayManager {
         }
 
         if self.should_skip_input() { return }
-        let frame = self.gamemode.mouse_down(btn).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.mouse_down(btn).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_up(&mut self, btn: MouseButton) {
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_up(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
-            return
+            return;
         }
 
         if self.should_skip_input() { return }
-        let frame = self.gamemode.mouse_up(btn).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.mouse_up(btn).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_scroll(&mut self, delta: f32) {
         if let Some(ui_editor) = &mut self.ui_editor {
@@ -1486,25 +1486,25 @@ impl GameplayManager {
         } 
 
         if self.should_skip_input() { return }
-        let frame = self.gamemode.mouse_scroll(delta).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.mouse_scroll(delta).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
 
 
     pub async fn controller_press(&mut self, c: &GamepadInfo, btn: ControllerButton) {
         if self.should_skip_input() { return }
-        let frame = self.gamemode.controller_press(c, btn).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.controller_press(c, btn).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn controller_release(&mut self, c: &GamepadInfo, btn: ControllerButton) {
         if self.should_skip_input() { return }
-        let frame = self.gamemode.controller_release(c, btn).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.controller_release(c, btn).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
     pub async fn controller_axis(&mut self, c: &GamepadInfo, axis_data: HashMap<Axis, (bool, f32)>) {
         if self.should_skip_input() { return }
-        let frame = self.gamemode.controller_axis(c, axis_data).await;
-        self.handle_input(frame).await;
+        let Some(frame) = self.gamemode.controller_axis(c, axis_data).await else { return };
+        self.handle_frame(frame, false, None, true).await;
     }
 
     pub fn window_focus_lost(&mut self, got_focus: bool) {
