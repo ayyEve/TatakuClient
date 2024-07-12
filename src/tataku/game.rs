@@ -30,10 +30,10 @@ pub struct Game {
     
     #[cfg(feature="graphics")]
     skin_manager: SkinManager,
-    beatmap_manager: BeatmapManager,
-    song_manager: SongManager,
-    score_manager: ScoreManager,
-    task_manager: TaskManager,
+    pub beatmap_manager: BeatmapManager,
+    pub song_manager: SongManager,
+    pub score_manager: ScoreManager,
+    pub task_manager: TaskManager,
     #[cfg(feature="graphics")]
     custom_menu_manager: CustomMenuManager,
 
@@ -63,7 +63,7 @@ pub struct Game {
     // register_timings: (f32,f32,f32),
 
 
-    settings: SettingsHelper,
+    pub settings: SettingsHelper,
     #[cfg(feature="graphics")]
     window_size: WindowSizeHelper,
     #[cfg(feature="graphics")]

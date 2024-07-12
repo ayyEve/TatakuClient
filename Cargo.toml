@@ -1,6 +1,6 @@
 [package]
 name = "tataku-client"
-version = "0.4.1"
+version = "0.4.2"
 authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
