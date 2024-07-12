@@ -47,7 +47,7 @@ pub(crate) fn impl_settings_deserializer(ast: &syn::DeriveInput) -> proc_macro::
 
     // output
     let str = de_impl.join("\n");
-    {
+    #[cfg(feature="extra_debugging")] {
         std::fs::create_dir_all("debug").unwrap();
         std::fs::write(format!("debug/{struct_name}"), &str).unwrap();
     }

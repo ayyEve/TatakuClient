@@ -415,10 +415,10 @@ pub(crate) fn impl_settings(ast: &syn::DeriveInput) -> proc_macro2::TokenStream 
         }}
     "#);
 
-    // #[cfg(feature="extra_debugging")] {
+    #[cfg(feature="extra_debugging")] {
         std::fs::create_dir_all("./debug").unwrap();
         std::fs::write(format!("./debug/{struct_name}-settings_impl.rs", ), &all_lines).unwrap();
-    // }
+    }
 
     let impl_tokens = all_lines.parse::<proc_macro2::TokenStream>().unwrap();
     quote! { #impl_tokens }
