@@ -7,6 +7,10 @@ const SETTINGS_FILE:&str = "settings.json";
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[serde(default)]
 pub struct Settings {
+    #[serde(skip)]
+    pub save_path: String,
+
+
     // audio
     // #[Setting(text="Master Volume", category="Audio Settings")]
     pub master_vol: f32,
@@ -133,13 +137,22 @@ impl Settings {
 
 
     pub async fn load() -> Self {
-        let mut s = match std::fs::read_to_string(SETTINGS_FILE).map(|s| serde_json::from_str(&s).map_err(|e|e.to_string())).map_err(|e|e.to_string()) {
-            Ok(Ok(settings)) => settings,
+        Self::load_from(SETTINGS_FILE).await
+    }
+    pub async fn load_from(path: impl AsRef<Path>) -> Self {
+        let path = path.as_ref();
+
+        let mut s = match std::fs::read_to_string(path).map(|s| serde_json::from_str::<Settings>(&s).map_err(|e| e.to_string())).map_err(|e| e.to_string()) {
+            Ok(Ok(mut settings)) => {
+                settings.save_path = path.to_string_lossy().to_string();
+                settings
+            }
+
             Err(e) | Ok(Err(e)) => {
                 // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
                 warn!("Error reading settings.json\nLoading defaults, {e}");
-                if let Some(saved_as) = Self::backup_settings().await {
-                    info!("Old settings saved t {saved_as}");
+                if let Some(saved_as) = Self::backup_settings(path).await {
+                    info!("Old settings saved to {saved_as}");
                 }
                 Self::default()
             }
@@ -156,53 +169,57 @@ impl Settings {
         s.save().await;
         s
     }
+
     pub async fn save(&self) {
         debug!("Saving settings");
         let str = serde_json::to_string_pretty(self).unwrap();
-        match std::fs::write(SETTINGS_FILE, str) {
+        match std::fs::write(&self.save_path, str) {
             Ok(_) => trace!("settings saved successfully"),
             Err(e) => NotificationManager::add_error_notification("Error saving settings", e).await,
         }
     }
 
-    pub fn get_effect_vol(&self) -> f32 {self.effect_vol * self.master_vol}
-    pub fn get_music_vol(&self) -> f32 {self.music_vol * self.master_vol}
+
+
+    pub fn get_effect_vol(&self) -> f32 { self.effect_vol * self.master_vol }
+    pub fn get_music_vol(&self) -> f32 { self.music_vol * self.master_vol }
 
     pub fn check_hashes(&mut self) {
-        if self.osu_password.len() > 0 {self.osu_password = check_md5(self.osu_password.clone())}
-        if self.password.len() > 0 {self.password = check_sha512(self.password.clone())}
+        if self.osu_password.len() > 0 { self.osu_password = check_md5(self.osu_password.clone()) }
+        if self.password.len() > 0 { self.password = check_sha512(self.password.clone()) }
     }
 
     // make a backup of the setting before they're overwritten (when the file fails to load)
-    async fn backup_settings() -> Option<String> {
-        if Io::exists(SETTINGS_FILE) {
-            let mut counter = 0;
-            let mut file = format!("{SETTINGS_FILE}.bak_{counter}");
-            while Io::exists(&file) {
-                counter += 1;
-                file = format!("{SETTINGS_FILE}.bak_{counter}")
-            }
-            std::fs::copy(SETTINGS_FILE, &file).expect("An error occurred while backing up the old settings.json");
-            // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
-            //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
-            // } else {
-            //     NotificationManager::add_text_notification(
-            //         &format!("Backup saved as {file}"),
-            //         5000.0,
-            //         Color::YELLOW
-            //     ).await;
-            // }
+    async fn backup_settings(settings_path: &Path) -> Option<String> {
+        if !Io::exists(settings_path) { return None }
+        let settings_path = settings_path.to_string_lossy().to_string();
 
-            Some(file)
-        } else {
-            None
+        let mut counter = 0;
+        let mut file = format!("{settings_path}.bak_{counter}");
+        while Io::exists(&file) {
+            counter += 1;
+            file = format!("{settings_path}.bak_{counter}")
         }
+        std::fs::copy(&settings_path, &file).expect("An error occurred while backing up the old settings.json");
+        // if let Err(e) = std::fs::copy(SETTINGS_FILE, &file) {
+        //     NotificationManager::add_error_notification("Error backing up settings.json", e).await
+        // } else {
+        //     NotificationManager::add_text_notification(
+        //         &format!("Backup saved as {file}"),
+        //         5000.0,
+        //         Color::YELLOW
+        //     ).await;
+        // }
+
+        Some(file)
     }
 
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            save_path: String::new(),
+
             // audio
             music_vol: 0.5,
             effect_vol: 0.5,

@@ -4901,7 +4901,7 @@ checksum = "e1fc403891a21bcfb7c37834ba66a547a8f402146eba7265b5a6d88059c9ff2f"
 
 [[package]]
 name = "tataku-client"
-version = "0.4.2"
+version = "0.4.5"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -4969,9 +4969,7 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.12.2"
-source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
-checksum = "4fd2a51eaad6953c0ee0a552654e8605754ac21321ffe79a5a260e5340c1b1ee"
+version = "0.12.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -4981,8 +4979,6 @@ dependencies = [
 [[package]]
 name = "tataku-common-proc-macros"
 version = "0.2.4"
-source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
-checksum = "ea649063a703a6c6ff9ac699f26f0e33e53639b544f69c04c75148445d5a80ee"
 dependencies = [
  "proc-macro2",
  "quote",

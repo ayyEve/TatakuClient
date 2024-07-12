@@ -27,6 +27,13 @@ impl AudioManager {
         //     }
         // }
 
+        // initialize null audio if nothing else works
+        if api.is_none() {
+            #[cfg(feature = "gameplay")]
+            warn!("Audio failed to initialize, using null audio");
+            api = Some(Arc::new(super::null_audio::NullAudio));
+        }
+
 
         if let Some(api) = api {
             *CURRENT_API.write() = api;
