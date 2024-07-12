@@ -1,6 +1,6 @@
 [package]
 name = "tataku-client"
-version = "0.4.0"
+version = "0.4.1"
 authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
@@ -13,8 +13,9 @@ build = "build/mod.rs"
 
 [features]
 default = ["gameplay"]
-as_crate = ["no_media_control"]
-gameplay = ["bass_audio", "graphics"]
+as_crate = []
+gameplay = [ "bass_audio", "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite" ]
+discord = [ "discord-rich-presence" ]
 bass_audio = ["bass-rs"]
 # kira_audio = ["rustfft", "uuid"]
 debug_sliders = []
@@ -25,9 +26,12 @@ load_internal_menus_from_file = [] # whether to load builtin menus at runtime (i
 
 storyboards = []
 texture_arrays = []
-no_media_control = []
+media_control = [ "souvlaki" ]
+wgpu_graphics = [ "wgpu", "lyon_tessellation", "bytemuck" ]
+ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
+
 # removes as much graphics-side stuff as possible
-graphics = ["wgpu", "bytemuck", "lyon_tessellation", "iced", "iced_winit", "iced_runtime"]
+graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
 
 [dependencies]
 tataku-common = { version = "0.12.2", registry = "tataku-registry" }
@@ -42,31 +46,31 @@ rusqlite = { version = "0.31.0", features = ["bundled"] }
 futures-util = { version = "0.3.30", features = ["async-await", "sink", "std"] }
 async-trait = "0.1.80"
 async-recursion = "1.1.1"
-triple_buffer = "7.0.0"
+triple_buffer = { version = "7.0.0", optional = true }
 crossbeam = "0.8.4"
 global_value_manager = "0.1.1"
 
 # image stuff
-png = "0.17.13"
-image = "0.25.1"
-fontdue = "0.9.0"
+png = { version = "0.17.13", optional = true }
+image = { version = "0.25.1", optional = true }
+fontdue = { version = "0.9.0", optional = true }
 
 # math stuff
 cgmath = "0.18.0"
-guillotiere = "0.6.2"
-lyon_tessellation = { version="1.0.15", optional = true }
+guillotiere = { version = "0.6.2", optional = true }
+lyon_tessellation = { version = "1.0.15", optional = true }
 
 # windowing
 wgpu = { version="0.20.1", optional = true }
 bytemuck = { version = "1.16.0", features = [ "derive" ], optional = true }
-winit = { version = "0.30.2", features = ["serde"] }
-raw-window-handle = "0.6.2"
-clipboard = "0.5.0"
+winit = { version = "0.30.2", features = ["serde"], optional = true }
+raw-window-handle = { version = "0.6.2", optional = true }
+clipboard = { version = "0.5.0", optional = true }
 
 # gamepad input
-gilrs = { version = "0.10.7", features = ["serde-serialize"] }
+gilrs = { version = "0.10.7", features = ["serde-serialize"], optional = true }
 # media controls
-souvlaki = { version = "0.7.3", default-features = false, features = ["use_zbus"] }
+souvlaki = { version = "0.7.3", default-features = false, features = ["use_zbus"], optional = true }
 
 # gui
 iced = { version="0.13.0-dev", registry="tataku-registry", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
@@ -85,9 +89,9 @@ bass-rs = { version="0.2.3", optional = true }
 
 # networking
 sha2 = "0.10.8"
-tokio-tungstenite = { version = "0.22.0", features = ["rustls-tls-native-roots"] }
+tokio-tungstenite = { version = "0.22.0", features = ["rustls-tls-native-roots"], optional = true }
 reqwest = { version = "0.12.4", features = ["json"] }
-discord-rich-presence = "0.2.4"
+discord-rich-presence = { version = "0.2.4", optional = true }
 
 # serde
 serde = { version = "1.0.203", features = ["derive"] }
@@ -109,7 +113,7 @@ rand = "0.8.5"
 chrono = "0.4.38"
 fs_extra = "1.3.0"
 uuid = { version = "1.8.0", features = ["v4"] }
-rlua = "0.20.0"
+rlua = { version = "0.20.0", optional = true }
 
 
 # logging

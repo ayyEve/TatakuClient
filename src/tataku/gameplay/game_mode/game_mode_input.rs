@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 #[async_trait]
+#[cfg(feature="graphics")]
 pub trait GameModeInput: Send + Sync {
     async fn key_down(&mut self, key:Key) -> Option<ReplayAction>;
     async fn key_up(&mut self, key:Key) -> Option<ReplayAction>;
@@ -18,3 +19,6 @@ pub trait GameModeInput: Send + Sync {
     async fn controller_axis(&mut self, _c: &GamepadInfo, _axis_data:HashMap<Axis, (bool, f32)>) -> Option<ReplayAction> { None }
 }
 
+
+#[cfg(not(feature="graphics"))] 
+pub trait GameModeInput {}

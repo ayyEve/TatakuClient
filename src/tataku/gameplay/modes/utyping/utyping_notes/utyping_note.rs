@@ -198,6 +198,7 @@ impl HitObject for UTypingNote {
         self.branches.reset();
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.image = HitCircleImageHelper::new(&self.settings, source, skin_manager).await;
     }
@@ -251,6 +252,7 @@ struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
+    #[cfg(feature="graphics")]
     async fn new(_settings: &Arc<TaikoSettings>, source: &TextureSource, skin_manager: &mut SkinManager) -> Option<Self> {
         let scale = 1.0;
         let hitcircle = "taikohitcircle";

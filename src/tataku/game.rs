@@ -6,22 +6,29 @@ const TRANSITION_TIME:f32 = 500.0;
 
 pub struct Game {
     // engine things
+    #[cfg(feature="graphics")]
     input_manager: InputManager,
     volume_controller: VolumeControl,
     current_state: GameState,
     queued_state: GameState,
+    #[cfg(feature="graphics")]
     game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
 
+    #[cfg(feature="graphics")]
     window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
 
 
     // managers
 
     /// if some, will handle spectator stuff
+    #[cfg(feature="gameplay")]
     spectator_manager: Option<Box<SpectatorManager>>,
+    #[cfg(feature="gameplay")]
     multiplayer_manager: Option<Box<MultiplayerManager>>,
+    #[cfg(feature="gameplay")]
     multiplayer_data: MultiplayerData,
     
+    #[cfg(feature="graphics")]
     skin_manager: SkinManager,
     beatmap_manager: BeatmapManager,
     song_manager: SongManager,
@@ -35,9 +42,13 @@ pub struct Game {
 
 
     // fps
+    #[cfg(feature="graphics")]
     fps_display: FpsDisplay,
+    #[cfg(feature="graphics")]
     update_display: FpsDisplay,
+    #[cfg(feature="graphics")]
     render_display: AsyncFpsDisplay,
+    #[cfg(feature="graphics")]
     input_display: AsyncFpsDisplay,
 
     // transition
@@ -53,7 +64,9 @@ pub struct Game {
 
 
     settings: SettingsHelper,
+    #[cfg(feature="graphics")]
     window_size: WindowSizeHelper,
+    #[cfg(feature="graphics")]
     cursor_manager: CursorManager,
     last_skin: String,
 
@@ -71,17 +84,17 @@ pub struct Game {
     song_state: AudioState,
 }
 impl Game {
+    #[cfg(feature="graphics")]
     pub async fn new(
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
-    ) -> Game {
-        #[cfg(feature="graphics")]
+    ) -> Self {
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
         let settings = Settings::get();
         let skin_manager = SkinManager::new(&settings);
         let skin = skin_manager.skin().clone();
 
-        let mut g = Game {
+        let mut g = Self {
             // engine
             window_proxy,
             input_manager: InputManager::new(),
@@ -99,11 +112,9 @@ impl Game {
             song_manager: SongManager::new(),
             score_manager: ScoreManager::new(),
             task_manager: TaskManager::new(),
-            #[cfg(feature="graphics")]
             custom_menu_manager: CustomMenuManager::new(),
             skin_manager,
             cursor_manager: CursorManager::new(skin).await,
-            #[cfg(feature="graphics")]
             gameplay_managers: HashMap::new(),
 
             // menus: HashMap::new(),
@@ -129,10 +140,8 @@ impl Game {
             last_skin: String::new(),
             background_loader: None,
 
-            #[cfg(feature="graphics")]
             ui_manager: UiManager::new(),
             actions: ActionQueue::new(),
-            #[cfg(feature="graphics")]
             queued_events: Vec::new(),
 
             values: ValueCollection::new(),
@@ -143,6 +152,55 @@ impl Game {
 
         g
     }
+
+    #[cfg(not(feature="graphics"))]
+    pub async fn new() -> Self {
+        let settings = Settings::get();
+
+        let mut g = Self {
+            volume_controller: VolumeControl::new().await,
+            // dialogs: Vec::new(),
+            background_image: None,
+            wallpapers: Vec::new(),
+            settings: SettingsHelper::new(),
+            #[cfg(feature="gameplay")]
+            spectator_manager: None,
+            #[cfg(feature="gameplay")]
+            multiplayer_manager: None,
+            #[cfg(feature="gameplay")]
+            multiplayer_data: MultiplayerData::default(),
+
+            beatmap_manager: BeatmapManager::new(),
+            song_manager: SongManager::new(),
+            score_manager: ScoreManager::new(),
+            task_manager: TaskManager::new(),
+
+            // menus: HashMap::new(),
+            current_state: GameState::None,
+            queued_state: GameState::None,
+            spec_watch_action: SpectatorWatchAction::FullMenu,
+
+            // transition
+            transition: None,
+            transition_last: None,
+            transition_timer: 0.0,
+
+            // misc
+            game_start: Instant::now(),
+            // register_timings: (0.0,0.0,0.0),
+            last_skin: String::new(),
+            background_loader: None,
+
+            actions: ActionQueue::new(),
+
+            values: ValueCollection::new(),
+            song_state: AudioState::Unknown,
+        };
+
+        g.init().await;
+
+        g
+    }   
 
     #[cfg(feature="graphics")]
     fn load_custom_menus(&mut self) {
@@ -285,7 +343,7 @@ impl Game {
         let now = std::time::Instant::now();
 
         // online loop
-        #[cfg(feature="graphics")]
+        #[cfg(feature="gameplay")]
         tokio::spawn(async move {
             loop {
                 OnlineManager::start().await;
@@ -301,6 +359,7 @@ impl Game {
         self.last_skin = settings.current_skin.clone();
 
         // setup double tap protection
+        #[cfg(feature="gameplay")]
         self.input_manager.set_double_tap_protection(settings.enable_double_tap_protection.then(|| settings.double_tap_protection_duration));
 
         // beatmap manager loop
@@ -1222,6 +1281,7 @@ impl Game {
                         }
                     }
 
+                    #[cfg(feature="gameplay")]
                     BeatmapAction::ConfirmSelected => {
                         // TODO: could we use this to send map requests from ingame to the spec host?
 
@@ -1251,19 +1311,23 @@ impl Game {
                     BeatmapAction::SetFromHash(hash, options) => {
                         if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
                             self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
-                        
-                        } else if self.multiplayer_manager.is_some() {
+                            return;
+                        } 
+
+                        #[cfg(feature="gameplay")]
+                        if self.multiplayer_manager.is_some() {
                             // if we're in a multiplayer lobby, and the map doesnt exist, remove the map
                             // self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
                             self.handle_action(BeatmapAction::Remove).await;
-                        } else {
-                            match options.if_none {
-                                MapActionIfNone::ContinueCurrent => {},
-                                MapActionIfNone::SetNone => self.handle_action(BeatmapAction::Remove).await, //self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
-                                MapActionIfNone::Random(preview) => {
-                                    let Some(map) = self.beatmap_manager.random_beatmap() else { return };
-                                    self.handle_action(BeatmapAction::SetFromHash(map.beatmap_hash, options.use_preview_point(preview))).await;
-                                }
+                            return
+                        } 
+
+                        match options.if_none {
+                            MapActionIfNone::ContinueCurrent => {},
+                            MapActionIfNone::SetNone => self.handle_action(BeatmapAction::Remove).await, //self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
+                            MapActionIfNone::Random(preview) => {
+                                let Some(map) = self.beatmap_manager.random_beatmap() else { return };
+                                self.handle_action(BeatmapAction::SetFromHash(map.beatmap_hash, options.use_preview_point(preview))).await;
                             }
                         }
 
@@ -1420,7 +1484,9 @@ impl Game {
             TatakuAction::Game(GameAction::HandleEvent(event, param)) => self.queued_events.push((event, param)),
             TatakuAction::Game(GameAction::AddNotification(notif)) => NotificationManager::add_notification(notif).await,
             
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::UpdateBackground) => self.set_background_beatmap().await,
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::CopyToClipboard(text)) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); } 
 
 
@@ -1483,6 +1549,7 @@ impl Game {
                 let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
                 gameplay.handle_action(action).await;
             }
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::FreeGameplay(mut gameplay)) => {
                 gameplay.cleanup_textures(&mut self.skin_manager);
             }
@@ -1559,16 +1626,19 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer) => self.handle_custom_menu("lobby_select").await,
             
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::CreateLobby { name, password, private, players }) => {
                 self.multiplayer_data.lobby_creation_pending = true;
 
                 OnlineManager::send_packet_static(MultiplayerPacket::Client_CreateLobby { name, password, private, players });
             }
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::LeaveLobby) => {
                 self.multiplayer_manager = None;
                 OnlineManager::send_packet_static(MultiplayerPacket::Client_LeaveLobby);
                 self.handle_action(MenuAction::set_menu("lobby_select")).await;
             }
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::JoinLobby { lobby_id, password }) => {
                 self.multiplayer_data.lobby_join_pending = true;
                 if let Some(multi_manager) = &mut self.multiplayer_manager {
@@ -1582,20 +1652,24 @@ impl Game {
                 OnlineManager::send_packet_static(MultiplayerPacket::Client_JoinLobby { lobby_id, password });
             }
 
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::SetBeatmap { hash, mode }) => {
                 let Some(map) = self.beatmap_manager.get_by_hash(&hash) else { return };
                 let mode = mode.unwrap_or_default();
                 tokio::spawn(OnlineManager::update_lobby_beatmap(map, mode));
             }
 
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::InviteUser { user_id }) => {
                 tokio::spawn(OnlineManager::invite_user(user_id));
             }
 
             // lobby actions
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::LobbyAction(LobbyAction::Leave)) => {
                 self.handle_action(MultiplayerAction::LeaveLobby).await;
             }
+            #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::LobbyAction(action)) => {
                 let Some(multi_manager) = &mut self.multiplayer_manager else { return };
                 multi_manager.handle_lobby_action(action).await;
@@ -1606,6 +1680,7 @@ impl Game {
             TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),
             
             // cursor action
+            #[cfg(feature="graphics")]
             TatakuAction::CursorAction(action) => self.cursor_manager.handle_cursor_action(action),
 
             // UI operation
@@ -1681,6 +1756,7 @@ impl Game {
     }
 
     /// shortcut for setting the game's background texture to a beatmap's image
+    #[cfg(feature="graphics")]
     pub async fn set_background_beatmap(&mut self) {
         let Ok(filename) = self.values.get_string("map.image_filename") else { return };
         // let f = self.skin_manager.get_texture_noskin(&filename, false);
@@ -1697,6 +1773,7 @@ impl Game {
         self.background_image = None;
     }
 
+    #[cfg(feature="graphics")]
     fn resize_bg(&mut self) {   
         let Some(bg) = &mut self.background_image else { return };
         bg.fit_to_bg_size(self.window_size.0, false);
@@ -1878,6 +1955,7 @@ impl Game {
     }
 
 
+    #[cfg(feature="graphics")]
     async fn finish_screenshot(&mut self, bytes: Vec<u8>, [width, height]: [u32; 2], info: ScreenshotInfo) -> TatakuResult {
         
         // create file
@@ -1920,6 +1998,7 @@ impl Game {
     }
 
 
+    #[cfg(feature="gameplay")]
     async fn handle_multiplayer_packet(&mut self, packet: MultiplayerPacket) -> TatakuResult {
         // if we have a multi manager, pass the packet onto it as well
         if let Some(multi_manager) = &mut self.multiplayer_manager {

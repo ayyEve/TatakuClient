@@ -404,6 +404,7 @@ impl OsuSlider {
 
 
         // draw it to the render target
+        #[cfg(feature="graphics")]
         if self.use_render_targets() {
             if let Some(target) = self.slider_body_render_target.clone() {
                 GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
@@ -813,6 +814,7 @@ impl HitObject for OsuSlider {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.skin = skin_manager.skin().clone();
         self.start_circle_image.reload_skin(source, skin_manager).await;
@@ -1076,6 +1078,7 @@ impl SliderDot {
         }
     }
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.dot_image = skin_manager.get_texture("sliderscorepoint", source, SkinUsage::Gamemode, false).await;
     }

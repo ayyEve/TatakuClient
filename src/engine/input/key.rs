@@ -187,6 +187,7 @@ pub enum Key {
     Cut,
 }
 
+#[cfg(feature="graphics")]
 impl Key {
     pub fn from_input(input: &KeyInput) -> Option<Self> {
         use winit::keyboard::KeyLocation::*;
@@ -349,6 +350,7 @@ impl Key {
 
 }
 
+#[cfg(feature="graphics")]
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct KeyInput {
     pub physical: winit::keyboard::PhysicalKey,
@@ -357,6 +359,7 @@ pub struct KeyInput {
     pub text: Option<winit::keyboard::SmolStr>,
     pub repeat: bool,
 }
+#[cfg(feature="graphics")]
 impl KeyInput {
     pub fn from_event(event: winit::event::KeyEvent) -> Self {
         Self {
@@ -377,7 +380,9 @@ impl KeyInput {
 }
 
 
+#[cfg(feature="graphics")]
 pub struct KeyCollection(pub Vec<KeyInput>);
+#[cfg(feature="graphics")]
 impl KeyCollection {
     pub fn new(v: Vec<KeyInput>) -> Self {
         Self(v)

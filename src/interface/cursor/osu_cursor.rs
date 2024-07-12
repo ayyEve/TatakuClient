@@ -344,6 +344,7 @@ impl CustomCursor for OsuCursor {
     }
 
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         let source = if self.settings.osu_settings.beatmap_skin { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
 

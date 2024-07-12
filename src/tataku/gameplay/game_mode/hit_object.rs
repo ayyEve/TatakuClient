@@ -18,6 +18,7 @@ pub trait HitObject: Send + Sync {
 
     async fn time_jump(&mut self, _new_time: f32) {}
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut SkinManager) {}
 
     

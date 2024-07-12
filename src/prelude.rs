@@ -17,14 +17,18 @@ pub use std::sync::mpsc::{ Sender, SyncSender, Receiver, sync_channel, channel }
 pub use async_trait::async_trait;
 
 // triple buffer imports
+#[cfg(feature = "ui")]
 pub use triple_buffer::TripleBuffer;
+#[cfg(feature = "ui")]
 pub use triple_buffer::Input as TripleBufferSender;
+#[cfg(feature = "ui")]
 pub use triple_buffer::Output as TripleBufferReceiver;
 
 pub use crossbeam::sync::{ ShardedLock, ShardedLockReadGuard, ShardedLockWriteGuard };
 pub use global_value_manager::{ GlobalValue, GlobalValueManager, GlobalValueMut };
 
-// piston imports
+// winit imports
+#[cfg(feature="graphics")]
 pub use winit::event::MouseButton;
 
 // tokio imports
@@ -37,6 +41,7 @@ pub use parking_lot::{ Mutex, RwLock };
 // serde imports
 pub use serde::{ Serialize, Deserialize };
 
+#[cfg(feature = "gameplay")]
 pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
 
 #[cfg(feature="graphics")]

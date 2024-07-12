@@ -158,6 +158,7 @@ impl EmitterVal {
 pub struct EmitterRef(pub Weak<RwLock<Pool<Particle>>>, pub EmitterInfo);
 impl EmitterRef {
     fn create(pool: Weak<RwLock<Pool<Particle>>>, info: EmitterInfo) {
+        #[cfg(feature="graphics")]
         GameWindow::send_event(Game2WindowEvent::AddEmitter(Self(pool, info)));
     }
 }

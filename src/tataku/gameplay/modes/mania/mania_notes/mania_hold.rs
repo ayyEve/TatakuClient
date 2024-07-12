@@ -224,6 +224,7 @@ impl HitObject for ManiaHold {
         self.position_function_index = 0;
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.start_image = None;
         self.middle_image = None;

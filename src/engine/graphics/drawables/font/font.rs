@@ -1,17 +1,20 @@
 use crate::prelude::*;
 
+#[cfg(feature = "graphics")]
 lazy_static::lazy_static! {
     static ref MAIN_FONT:ActualFont = ActualFont::load("resources/fonts/main.ttf").expect("Error loading main font");
     static ref FALLBACK_FONT:ActualFont = ActualFont::load("resources/fonts/main_fallback.ttf").expect("Error loading fallback font");
     static ref FONT_AWESOME:ActualFont = ActualFont::load("resources/fonts/font_awesome_6_regular.otf").expect("Error loading font awesome");
 }
 
+#[cfg(feature = "graphics")]
 pub fn preload_fonts() {
     for i in [&*MAIN_FONT, &*FALLBACK_FONT, &*FONT_AWESOME] {
         i.load_font_size(30.0, true);
     }
 }
 
+#[cfg(feature = "graphics")]
 #[derive(Clone)]
 pub struct ActualFont {
     pub name: Arc<String>,
@@ -24,6 +27,7 @@ pub struct ActualFont {
     // if the size is loaded but the char isnt found, dont try to load the font
     queued_for_load: Arc<RwLock<HashSet<u32>>>,
 }
+#[cfg(feature = "graphics")]
 impl ActualFont {
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
         let data = Io::read_file(&path).ok()?;
@@ -140,6 +144,7 @@ pub enum Font {
     // #[allow(unused)]
     // Custom(Box<ActualFont>)
 }
+#[cfg(feature = "graphics")]
 impl Deref for Font {
     type Target = ActualFont;
     fn deref(&self) -> &Self::Target {

@@ -16,6 +16,7 @@ impl JudgmentImageHelper {
         self.images.get(judge.id).cloned().flatten()
     }
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.images.clear();
         

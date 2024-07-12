@@ -63,6 +63,7 @@ pub struct HitCircleImageHelper {
     overlay: Image,
 }
 impl HitCircleImageHelper {
+    #[cfg(feature="graphics")]
     pub async fn new(
         settings: &Arc<TaikoSettings>, 
         hit_type: HitType, 

@@ -12,6 +12,7 @@ pub struct RenderTarget {
 
     drop_check: Arc<()>
 }
+#[cfg(feature = "graphics")]
 impl RenderTarget {
     pub async fn new(
         width: u32, 
@@ -46,6 +47,7 @@ impl RenderTarget {
     // }
 
 }
+#[cfg(feature = "graphics")]
 impl Drop for RenderTarget {
     fn drop(&mut self) {
         if Arc::strong_count(&self.drop_check) == 1 {

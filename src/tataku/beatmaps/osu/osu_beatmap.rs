@@ -461,6 +461,7 @@ impl TatakuBeatmap for OsuBeatmap {
             _ => None
         }).collect()
     }
+    #[cfg(feature="graphics")]
     async fn get_animation(&self, skin_manager: &mut SkinManager) -> Option<Box<dyn BeatmapAnimation>> {     
         let Some(storyboard) = &self.storyboard else { return None };
         let parent_dir = Path::new(&self.metadata.file_path).parent()?.to_string_lossy().to_string();

@@ -318,7 +318,7 @@ impl OsuGame {
             None
         }
     }
-    
+    #[cfg(feature = "graphics")]
     fn map_btn(&self, btn: &MouseButton) -> Option<KeyPress> {
         if btn == &MouseButton::Left {
             Some(KeyPress::LeftMouse)
@@ -1049,6 +1049,7 @@ impl GameMode for OsuGame {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
         let source = if self.game_settings.beatmap_skin { TextureSource::Beatmap(beatmap_path.clone()) } else { TextureSource::Skin };
 
@@ -1258,6 +1259,7 @@ impl GameMode for OsuGame {
 }
 
 #[async_trait]
+#[cfg(feature="graphics")]
 impl GameModeInput for OsuGame {
     async fn key_down(&mut self, key: Key) -> Option<ReplayAction> {
         // playfield adjustment
@@ -1439,6 +1441,10 @@ impl GameModeInput for OsuGame {
     }
 
 }
+
+
+#[cfg(not(feature="graphics"))]
+impl GameModeInput for OsuGame {}
 
 #[async_trait]
 impl GameModeProperties for OsuGame {

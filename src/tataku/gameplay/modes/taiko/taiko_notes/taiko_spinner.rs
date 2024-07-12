@@ -117,6 +117,7 @@ impl HitObject for TaikoSpinner {
         self.complete = false;
     }
     
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.spinner_image = skin_manager.get_texture("spinner-warning", source, SkinUsage::Gamemode, false).await;
     }

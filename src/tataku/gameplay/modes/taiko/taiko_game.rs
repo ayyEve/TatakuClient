@@ -972,6 +972,7 @@ impl GameMode for TaikoGame {
 
     }
     
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
         let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: yeah
 
@@ -1096,6 +1097,7 @@ impl GameMode for TaikoGame {
 }
 
 #[async_trait]
+#[cfg(feature="graphics")]
 impl GameModeInput for TaikoGame {
     async fn key_down(&mut self, key:Key) -> Option<ReplayAction> {
         // // dont accept key input when autoplay is enabled, or a replay is being watched
@@ -1233,6 +1235,10 @@ impl GameModeInput for TaikoGame {
     }
 
 }
+
+
+#[cfg(not(feature="graphics"))]
+impl GameModeInput for TaikoGame {}
 
 #[async_trait]
 impl GameModeProperties for TaikoGame {

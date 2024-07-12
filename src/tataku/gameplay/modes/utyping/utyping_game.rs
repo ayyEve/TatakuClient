@@ -400,6 +400,7 @@ impl GameMode for UTypingGame {
 
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
         for i in self.notes.iter_mut() {
             i.reload_skin(&TextureSource::Skin, skin_manager).await;
@@ -413,6 +414,7 @@ impl GameMode for UTypingGame {
     async fn kiai_changed(&mut self, _is_kiai: bool) {}
 }
 
+#[cfg(feature="graphics")]
 #[async_trait]
 impl GameModeInput for UTypingGame {
     async fn key_down(&mut self, _key:Key) -> Option<ReplayAction> { None }
@@ -427,6 +429,9 @@ impl GameModeInput for UTypingGame {
         }
     }
 }
+
+#[cfg(not(feature="graphics"))]
+impl GameModeInput for UTypingGame {}
 
 impl GameModeProperties for UTypingGame {
     fn playmode(&self) -> String {"utyping".to_owned()}

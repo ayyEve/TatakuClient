@@ -93,6 +93,7 @@ impl HitObject for ManiaNote {
         self.position_function_index = 0;
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.note_image = None;
         let Some(settings) = &self.mania_skin_settings else { return }; 

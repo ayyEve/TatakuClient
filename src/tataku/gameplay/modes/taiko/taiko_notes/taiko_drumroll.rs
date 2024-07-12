@@ -148,6 +148,7 @@ impl HitObject for TaikoDrumroll {
         self.end_x = 0.0;
     }
     
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         let radius = self.settings.note_radius * if self.finisher { self.settings.big_note_multiplier } else { 1.0 };
 

@@ -22,6 +22,7 @@ pub struct SkinnedNumber {
     cache: Arc<RwLock<(f64, String)>>,
 }
 impl SkinnedNumber {
+    #[cfg(feature = "graphics")]
     pub async fn new<TN: AsRef<str>>(
         pos: Vector2, 
         number: f64, 

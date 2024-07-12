@@ -63,6 +63,7 @@ pub struct GameplayManager {
     pub key_counter: KeyCounter,
     ui_elements: Vec<UIElement>,
 
+    #[cfg(feature="graphics")]
     animation: Box<dyn BeatmapAnimation>,
 
     pub score_list: Vec<IngameScore>,
@@ -187,6 +188,7 @@ impl GameplayManager {
             score: IngameScore::new(score, true, false),
 
             beatmap,
+            #[cfg(feature="graphics")]
             animation: Box::new(EmptyAnimation),
 
             hitsound_manager,
@@ -450,6 +452,7 @@ impl GameplayManager {
         //         self.score_loader = None;
         //     }
         // }
+        #[cfg(feature="gameplay")]
         if !self.scores_loaded && self.gameplay_mode.should_load_scores() {
             if let Ok(list) = values.try_get::<Vec<Score>>("scores") {
                 self.scores_loaded = true;
@@ -499,6 +502,7 @@ impl GameplayManager {
 
         // do fail things
         // TODO: handle edge cases, like replays, spec, autoplay, etc
+        #[cfg(feature="gameplay")]
         if self.failed && !self.gameplay_mode.is_multi() {
             let new_rate = f32::lerp(self.game_speed(), 0.0, (self.time() - self.failed_time) / 1000.0);
 
@@ -519,7 +523,10 @@ impl GameplayManager {
 
         // send map completed packets
         if self.completed {
+            #[cfg(feature="gameplay")]
             self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::ScoreSync {score: self.score.score.clone()}));
+            
+            #[cfg(feature="gameplay")]
             self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::Buffer));
 
             // check if we failed
@@ -551,6 +558,7 @@ impl GameplayManager {
                 }
             }
 
+            #[cfg(feature="gameplay")]
             GameplayMode::Spectator { 
                 state, 
                 frames, 
@@ -664,6 +672,7 @@ impl GameplayManager {
                 }
             }
 
+            #[cfg(feature="gameplay")]
             GameplayMode::Multiplayer { 
                 last_escape_press: _,
                 score_send_timer,
@@ -683,6 +692,7 @@ impl GameplayManager {
             self.handle_action(a).await;
         }
 
+        #[cfg(feature="gameplay")]
         if let Some(mut manager) = OnlineManager::try_get_mut() {
             // update our spectator list if we can
             if let Some(our_list) = manager.spectator_info.our_spectator_list() {
@@ -696,6 +706,7 @@ impl GameplayManager {
         }
 
         // if its time to send another score sync packet
+        #[cfg(feature="gameplay")]
         if self.spectator_info.last_score_sync + SPECTATOR_SCORE_SYNC_INTERVAL <= time {
             self.spectator_info.last_score_sync = time;
             
@@ -710,9 +721,11 @@ impl GameplayManager {
 
 
         // handle animation
-        let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
-        anim.update(time, self).await;
-        self.animation = anim;
+        #[cfg(feature="graphics")] {
+            let mut anim = std::mem::replace(&mut self.animation, Box::new(EmptyAnimation));
+            anim.update(time, self).await;
+            self.animation = anim;
+        }
 
         // update value collection
         {
@@ -931,6 +944,7 @@ impl GameplayManager {
     // is this game pausable
     pub fn can_pause(&mut self) -> bool {
         // never allow pausing in multi
+        #[cfg(feature="gameplay")]
         if self.gameplay_mode.is_multi() { return false; }
         self.should_pause || !(self.current_mods.has_autoplay() || self.gameplay_mode.is_replay() || self.failed)
     }
@@ -1009,6 +1023,7 @@ impl GameplayManager {
 
             //TODO: probably want to skip other things as well
             if !self.gameplay_mode.is_replay() {
+                #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
@@ -1057,6 +1072,7 @@ impl GameplayManager {
             
             let frame = SpectatorAction::UnPause;
             let time = self.time();
+            #[cfg(feature="gameplay")]
             self.outgoing_spectator_frame(SpectatorFrame::new(time, frame));
             self.actions.push(SongAction::Play);
             // self.song.play(false);
@@ -1084,6 +1100,7 @@ impl GameplayManager {
         // might mess with lead-in but meh
 
         let time = self.time();
+        #[cfg(feature="gameplay")]
         self.outgoing_spectator_frame_force(SpectatorFrame::new(time, SpectatorAction::Pause));
 
         self.gamemode.pause();
@@ -1179,6 +1196,7 @@ impl GameplayManager {
             self.score.judgments.insert(j.id.to_owned(), 0);
         }
 
+        #[cfg(feature="gameplay")]
         if self.gameplay_mode.should_load_scores() {
             self.actions.push(GameAction::RefreshScores);
         }
@@ -1223,6 +1241,7 @@ impl GameplayManager {
         // CursorManager::set_ripple_override(None);
         self.actions.push(CursorAction::OverrideRippleRadius(None));
 
+        #[cfg(feature="gameplay")]
         match &mut *self.gameplay_mode {
             GameplayMode::Spectator {
                 buffered_score_frames,
@@ -1286,12 +1305,14 @@ impl GameplayManager {
             }
 
             // in a multi match
+            #[cfg(feature="gameplay")]
             GameplayMode::Multiplayer { .. } => {
                 // self.score_loader = None;
 
             }
 
             // handling spec
+            #[cfg(feature="gameplay")]
             GameplayMode::Spectator { host_username, .. } => {
                 self.score.username = host_username.clone();
                 // self.replay.score_data.as_mut().unwrap().username = host_username.clone();
@@ -1305,9 +1326,11 @@ impl GameplayManager {
         // info!("fitting to area: {bounds:?}");
         self.fit_to_bounds = Some(bounds);
         self.gamemode.fit_to_area(bounds).await;
+        #[cfg(feature="graphics")]
         self.animation.fit_to_area(bounds);
     }
 
+    #[cfg(feature="graphics")]
     pub fn cleanup_textures(&mut self, skin_manager: &mut SkinManager) {
         self.cleaned_up_textures = true;
         skin_manager.free_by_usage(SkinUsage::Beatmap);
@@ -1315,10 +1338,7 @@ impl GameplayManager {
         let path = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
         skin_manager.free_by_source(TextureSource::Beatmap(path));
     }
-}
 
-// Input Handlers
-impl GameplayManager {
     async fn handle_frame(
         &mut self, 
         frame: ReplayAction, 
@@ -1366,11 +1386,17 @@ impl GameplayManager {
 
             if add_frames && should_add {
                 self.score.replay.ok_do_mut(|r| r.frames.push(frame));
+                #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction { action: frame.action }));
             }
         }
     }
 
+}
+
+// Input Handlers
+#[cfg(feature="graphics")]
+impl GameplayManager {
 
     pub async fn key_down(&mut self, key_input: KeyInput, mods: KeyModifiers) {
         let Some(key) = key_input.as_key() else { return };
@@ -1576,6 +1602,7 @@ impl GameplayManager {
 
 // other misc stuff that isnt touched often and i just wanted it out of the way
 impl GameplayManager {
+    #[cfg(feature="gameplay")]
     fn should_skip_input(&self) -> bool {
         // never skip input for multi, because you can keep playing if you failed
         if self.gameplay_mode.is_multi() { return false }
@@ -1632,6 +1659,7 @@ impl GameplayManager {
 }
 
 // Spectator Stuff
+#[cfg(feature="gameplay")]
 impl GameplayManager {
     pub fn outgoing_spectator_frame(&mut self, frame: SpectatorFrame) {
         if !self.gameplay_mode.should_send_spec_frames() { return }
@@ -1687,6 +1715,7 @@ pub enum GameplayMode {
         current_frame: usize,
     },
 
+    #[cfg(feature="gameplay")]
     /// We're handling spectating someone
     Spectator {
         /// What is the current spec state
@@ -1716,6 +1745,7 @@ pub enum GameplayMode {
         buffered_score_frames: Vec<(f32, Score)>,
     },
 
+    #[cfg(feature="gameplay")]
     /// The player is in a multiplayer match
     Multiplayer {
         /// when was escape pressed last
@@ -1734,6 +1764,7 @@ impl GameplayMode {
             current_frame: 0,
         }
     }
+    #[cfg(feature="gameplay")]
     pub fn spectator(
         host_id: u32,
         host_username: String,
@@ -1756,6 +1787,7 @@ impl GameplayMode {
         }
     }
 
+    #[cfg(feature="gameplay")]
     pub fn multi() -> Self {
         Self::Multiplayer { 
             last_escape_press: Instant::now(), 
@@ -1765,9 +1797,11 @@ impl GameplayMode {
 
     // convenience fns
     pub fn is_preview(&self) -> bool { if let &Self::Preview = self { true } else { false } }
+    #[cfg(feature="gameplay")]
     pub fn is_multi(&self) -> bool { if let &Self::Multiplayer {..} = self { true } else { false } }
     pub fn is_replay(&self) -> bool { if let &Self::Replaying {..} = self { true } else { false } }
 
+    #[cfg(feature="gameplay")]
     fn should_load_scores(&self) -> bool {
         match self {
             Self::Normal | Self::Spectator {..} | Self::Replaying {..} => true,
@@ -1775,6 +1809,7 @@ impl GameplayMode {
         }
     }
 
+    #[cfg(feature="gameplay")]
     fn should_send_spec_frames(&self) -> bool {
         match self {
             // send spec frames for normal gameplay and multi, not for anything else
@@ -1783,6 +1818,7 @@ impl GameplayMode {
         }
     }
 
+    #[cfg(feature="gameplay")]
     fn skip_input(&self) -> bool {
         match self {
             Self::Replaying { .. } | Self::Preview { .. } | Self::Spectator { .. } => true,

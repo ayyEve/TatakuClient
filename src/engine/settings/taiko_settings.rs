@@ -16,6 +16,7 @@ pub struct TaikoSettings {
     pub right_kat: Key,
     #[cfg_attr(feature="graphics", Setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
+    #[cfg(feature = "gameplay")]
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
     // sv
@@ -80,6 +81,7 @@ impl Default for TaikoSettings {
             right_don: Key::J,
             right_kat: Key::K,
             ignore_mouse_buttons: false,
+            #[cfg(feature = "gameplay")]
             controller_config: HashMap::new(),
 
             // sv
@@ -107,6 +109,7 @@ impl Default for TaikoSettings {
 }
 
 
+#[cfg(feature = "gameplay")]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TaikoControllerConfig {
     pub left_kat: ControllerInputConfig,
@@ -114,6 +117,7 @@ pub struct TaikoControllerConfig {
     pub right_don: ControllerInputConfig,
     pub right_kat: ControllerInputConfig,
 }
+#[cfg(feature = "gameplay")]
 impl TaikoControllerConfig {
     fn new_default<I:Into<ControllerInputConfig>>(left_kat: I, left_don: I, right_don: I, right_kat: I) -> Self {
         Self {

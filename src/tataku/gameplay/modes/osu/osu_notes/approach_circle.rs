@@ -42,6 +42,7 @@ impl ApproachCircle {
         self.pos = self.scaling_helper.scale_coords(self.base_pos);
         self.radius = new_radius;
     }
+    #[cfg(feature="graphics")]
     pub async fn reload_texture(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.image = skin_manager.get_texture("approachcircle", source, SkinUsage::Gamemode, false).await;
     }

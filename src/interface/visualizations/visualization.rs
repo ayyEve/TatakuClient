@@ -6,6 +6,7 @@ pub trait Visualization: Send + Sync {
     fn lerp_factor(&self) -> f32 { 20.0 }
     async fn draw(&mut self, bounds:Bounds, list: &mut RenderableCollection);
     async fn update(&mut self) {}
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _skin_manager: &mut SkinManager) {}
     fn reset(&mut self) {}
 

@@ -1,9 +1,11 @@
+
+#[cfg(feature = "graphics")]
 use guillotiere::*;
 
 pub type TextureReference = AtlasData;
-
 pub const ATLAS_PADDING:u32 = 2;
 
+#[cfg(feature = "graphics")]
 pub struct Atlas {
     available_width: u32,
     available_height: u32,
@@ -12,9 +14,10 @@ pub struct Atlas {
 
     empty_tex: TextureReference,
 }
+#[cfg(feature = "graphics")]
 impl Atlas {
     pub fn new(width: u32, height: u32, layers: u32) -> Self {
-        let allocators =  (0..layers).map(|_|AtlasAllocator::new(size2(width as i32, height as i32))).collect();
+        let allocators =  (0..layers).map(|_| AtlasAllocator::new(size2(width as i32, height as i32))).collect();
         
         Self {
             available_width: width,
@@ -41,6 +44,7 @@ impl Atlas {
 
 #[derive(Copy, Clone, Debug)]
 pub struct AtlasData {
+    #[cfg(feature = "graphics")]
     id: AllocId,
 
     pub x: u32,
@@ -52,6 +56,7 @@ pub struct AtlasData {
     pub uvs: Uvs,
 }
 impl AtlasData {
+    #[cfg(feature = "graphics")]
     fn new(alloc_info: Allocation, layer: u32, total_width: u32, total_height:u32) -> Self {
         let [x, y] = alloc_info.rectangle.min.to_array();
         let [x2, y2] = alloc_info.rectangle.max.to_array();
@@ -79,6 +84,7 @@ impl AtlasData {
 
     pub fn empty() -> Self {
         Self {
+            #[cfg(feature = "graphics")]
             id: AllocId::deserialize(0),
             x: 0,
             y: 0,

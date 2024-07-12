@@ -22,6 +22,7 @@ pub struct OnlineManager {
     pub connected: bool,
     pub users: HashMap<u32, Arc<Mutex<OnlineUser>>>, // user id is key
     pub friends: HashSet<u32>, // userid is key
+    #[cfg(feature = "discord")]
     pub discord: Option<Discord>,
 
     pub user_id: u32, // this user's id
@@ -61,6 +62,7 @@ impl OnlineManager {
             logged_in: false,
             users: HashMap::new(),
             friends: HashSet::new(),
+            #[cfg(feature = "discord")]
             discord: None,
             // chat: Chat::new(),
             writer: None,
@@ -73,6 +75,7 @@ impl OnlineManager {
         }
     }
 
+    #[cfg(feature = "discord")]
     pub async fn init_discord() {
         match Discord::new() {
             Ok(discord) => OnlineManager::get_mut().await.discord = Some(discord),
@@ -479,6 +482,7 @@ impl OnlineManager {
             }
 
 
+            #[cfg(feature = "discord")]
             if let Some(discord) = &s.discord {
                 discord.change_status(&action_info, incoming_mode).await;
             }

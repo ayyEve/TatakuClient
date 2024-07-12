@@ -77,6 +77,12 @@ impl Text {
     // }
 
     
+    
+    #[cfg(not(feature = "graphics"))]
+    pub fn measure_text_raw(_: &[Font], _: f32, _: &str, _: Vector2, _: f32) -> Vector2 {
+        Vector2::ZERO
+    }
+    #[cfg(feature = "graphics")]
     pub fn measure_text_raw(fonts: &[Font], font_size: f32, text: &str, scale: Vector2, line_spacing: f32) -> Vector2 {
         if fonts.len() == 0 { return Vector2::ZERO }
 
@@ -107,7 +113,7 @@ impl Text {
 
 }
 impl TatakuRenderable for Text {
-    fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|f.get_name()).collect::<Vec<String>>().join(", "), self.font_size) }
+    fn get_name(&self) -> String { format!("Text '{}' with fonts {} and size {}", self.text, self.fonts.iter().map(|f|format!("{f:?}")).collect::<Vec<String>>().join(", "), self.font_size) }
     fn get_bounds(&self) -> Bounds { Bounds::new(self.pos, self.measure_text()) }
     
     
@@ -120,6 +126,10 @@ impl TatakuRenderable for Text {
         self.draw_with_transparency(self.color.a, 0.0, transform, g)
     }
 
+    #[cfg(not(feature = "graphics"))]
+    fn draw_with_transparency(&self, _: f32, _: f32, _: Matrix, _: &mut dyn GraphicsEngine) {}
+    
+    #[cfg(feature = "graphics")]
     fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut dyn GraphicsEngine) {
         if self.fonts.len() == 0 { return error!("NO FONT FOR TEXT {}", self.text); }
         let scale = self.scale * self.text_scale;

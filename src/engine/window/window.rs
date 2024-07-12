@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use image::RgbaImage;
-#[cfg(feature="graphics")]
 use winit::{
     event::*,
     event_loop::ControlFlow,
@@ -25,14 +24,12 @@ lazy_static::lazy_static! {
 
 
 pub struct GameWindow<'window> {
-    #[cfg(feature="graphics")]
     window: &'window std::cell::OnceCell<WinitWindow>,
     window_creation_barrier: Arc<tokio::sync::Barrier>,
 
     runtime: Rc<tokio::runtime::Runtime>,
 
     
-    #[cfg(feature="graphics")]
     graphics: Box<dyn GraphicsEngine + 'window>,
     settings: DisplaySettings,
     integration_settings: IntegrationSettings,
@@ -55,10 +52,9 @@ pub struct GameWindow<'window> {
     touch_pos: Option<(u64, Vector2)>,
 
 
-    #[cfg(not(feature="graphics"))]
-    _phantom_data: std::marker::PhantomData<&'window ()>
+    #[cfg(not(feature = "graphics"))]
+    _phantom_data: std::marker::PhantomData<&'window ()>,
 }
-#[cfg(feature="graphics")]
 impl<'window> GameWindow<'window> {
 
     pub async fn new(
@@ -292,12 +288,10 @@ impl<'window> GameWindow<'window> {
         MEDIA_CONTROLS.get().cloned().unwrap()
     }
 
-    #[cfg(feature="graphics")]
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window().available_monitors().filter_map(|m|m.name()).collect();
     }
 
-    #[cfg(feature="graphics")]
     fn set_fullscreen(&mut self, monitor: FullscreenMonitor) {
         if let FullscreenMonitor::Monitor(monitor_num) = monitor {
             if let Some((_, monitor)) = self.window().available_monitors().enumerate().find(|(n, _)|*n == monitor_num) {
@@ -313,7 +307,6 @@ impl<'window> GameWindow<'window> {
         self.window().set_outer_position(winit::dpi::PhysicalPosition::new(x, y))
     }
 
-    #[cfg(feature="graphics")]
     fn set_vsync(&mut self, vsync: Vsync) {
         self.graphics.set_vsync(vsync);
     }
@@ -328,7 +321,6 @@ impl<'window> GameWindow<'window> {
     }
 
 
-    #[cfg(feature="graphics")]
     fn handle_touch_event(&mut self, touch: Touch) -> Option<Window2GameEvent> {
         match touch {
             Touch { phase:TouchPhase::Started, location, id, .. } => {
@@ -391,7 +383,6 @@ impl<'window> GameWindow<'window> {
         }
     }
 
-    #[cfg(feature="graphics")]
     fn post_cursor_move(&mut self) {
         // if self.mouse_helper.check_bounds(&self.window) {
         //     let Ok(pos) = self.window.inner_position() else { return };
@@ -409,10 +400,8 @@ impl<'window> GameWindow<'window> {
 impl<'window> GameWindow<'window> {
     pub fn send_event(event: Game2WindowEvent) {
         // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
-        #[cfg(feature="graphics")] {
-            let Some(proxy) = WINDOW_PROXY.get() else { return };
-            let _ = proxy.send_event(event);
-        }
+        let Some(proxy) = WINDOW_PROXY.get() else { return };
+        let _ = proxy.send_event(event);
         // WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 

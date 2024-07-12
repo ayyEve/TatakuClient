@@ -18,6 +18,7 @@ impl GameMode for NoMode {
     async fn fit_to_area(&mut self, _:Bounds) {}
     async fn force_update_settings(&mut self, _: &Settings) {}
     
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _beatmap_folder: &String, _skin_manager: &mut SkinManager) -> TextureSource { TextureSource::Raw }
     async fn apply_mods(&mut self, _: Arc<ModManager>) {}
 
@@ -26,11 +27,15 @@ impl GameMode for NoMode {
     async fn kiai_changed(&mut self, _is_kiai: bool) {}
 }
 
+#[cfg(feature="graphics")]
 #[async_trait]
 impl GameModeInput for NoMode {
     async fn key_down(&mut self, _:Key) -> Option<ReplayAction> { None }
     async fn key_up(&mut self, _:Key) -> Option<ReplayAction> { None }
 }
+#[cfg(not(feature="graphics"))]
+impl GameModeInput for NoMode {}
+
 
 impl GameModeProperties for NoMode {
     fn playmode(&self) -> String {"none".to_owned()}

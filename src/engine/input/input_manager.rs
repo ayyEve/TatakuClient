@@ -41,6 +41,7 @@ pub struct InputManager {
     /// last key pressed, time it was pressed, was it a double tap? (need to know if it was a double tap for release check)
     last_key_press: HashMap<KeyInput, (Instant, bool)>,
 }
+
 impl InputManager {
     pub fn new() -> InputManager {
         InputManager {
@@ -395,7 +396,6 @@ pub struct AxisConfig {
     pub axis_id: Axis,
     pub threshhold: f64
 }
-
 
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ControllerInputConfig {

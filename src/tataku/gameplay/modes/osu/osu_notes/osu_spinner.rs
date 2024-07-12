@@ -253,6 +253,7 @@ impl HitObject for OsuSpinner {
         self.points_queue.clear();
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         let pos = self.scaling_helper.scale_coords(FIELD_SIZE / 2.0);
         let scale = Vector2::ONE * self.scaling_helper.scale;

@@ -1,6 +1,5 @@
 use std::{fmt::Display, io::Error as IOError};
 
-use image::ImageError;
 
 use serde_json::Error as JsonError;
 use tataku_common::SerializationError;
@@ -19,7 +18,8 @@ pub enum TatakuError {
     Serde(JsonError),
 
     Audio(AudioError),
-    Image(ImageError),
+    #[cfg(feature = "graphics")]
+    Image(image::ImageError),
     Graphics(GraphicsError),
 
     String(String),
@@ -29,6 +29,7 @@ pub enum TatakuError {
 
     ShuntingYardError(ShuntingYardError),
 
+    #[cfg(feature = "ui")]
     Lua(rlua::Error)
 }
 impl TatakuError {
@@ -44,6 +45,7 @@ impl Display for TatakuError {
             Self::Beatmap(e) => write!(f, "{:?}", e),
             Self::Serde(e) => write!(f, "{:?}", e),
             Self::IO(e) => write!(f, "{}", e),
+            #[cfg(feature = "graphics")]
             Self::Image(e) => write!(f, "{:?}", e),
             Self::Audio(e) => write!(f, "{:?}", e),
             Self::String(e) => write!(f, "{:?}", e),
@@ -53,6 +55,7 @@ impl Display for TatakuError {
             Self::DownloadError(e) => write!(f, "{:?}", e),
             Self::Graphics(e) => write!(f, "{:?}", e),
             Self::ShuntingYardError(e) => write!(f, "{:?}", e),
+            #[cfg(feature = "ui")]
             Self::Lua(e) => write!(f, "{:?}", e),
         }
     }
@@ -65,8 +68,9 @@ impl From<JsonError> for TatakuError {
 impl From<IOError> for TatakuError {
     fn from(e: IOError) -> Self {Self::IO(e)}
 }
-impl From<ImageError> for TatakuError {
-    fn from(e: ImageError) -> Self {Self::Image(e)}
+#[cfg(feature = "graphics")]
+impl From<image::ImageError> for TatakuError {
+    fn from(e: image::ImageError) -> Self {Self::Image(e)}
 }
 impl From<AudioError> for TatakuError {
     fn from(e: AudioError) -> Self {Self::Audio(e)}
@@ -94,6 +98,7 @@ impl From<ShuntingYardError> for TatakuError {
     fn from(value: ShuntingYardError) -> Self { Self::ShuntingYardError(value) }
 }
 
+#[cfg(feature = "ui")]
 impl From<rlua::Error> for TatakuError {
     fn from(value: rlua::Error) -> Self { Self::Lua(value) }
 }

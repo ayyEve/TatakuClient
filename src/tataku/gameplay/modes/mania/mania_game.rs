@@ -130,6 +130,7 @@ impl ManiaGame {
         }
     }
     
+    #[cfg(feature="graphics")]
     async fn load_col_images(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         let Some(settings) = &self.mania_skin_settings else { return };
         self.key_images_down.clear();
@@ -1017,6 +1018,7 @@ impl GameMode for ManiaGame {
     
     async fn force_update_settings(&mut self, _settings: &Settings) {}
     
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, beatmap_path: &String, skin_manager: &mut SkinManager) -> TextureSource {
         let source = TextureSource::Beatmap(beatmap_path.clone()); // TODO: add setting option
 
@@ -1051,6 +1053,7 @@ impl GameMode for ManiaGame {
 }
 
 
+#[cfg(feature="graphics")]
 #[async_trait]
 impl GameModeInput for ManiaGame {
 
@@ -1103,6 +1106,12 @@ impl GameModeInput for ManiaGame {
     }
 
 }
+
+
+#[cfg(not(feature="graphics"))]
+impl GameModeInput for ManiaGame {}
+
+
 
 #[async_trait]
 impl GameModeProperties for ManiaGame {

@@ -205,6 +205,7 @@ impl VolumeControl {
         }
     }
 
+    #[cfg(feature="graphics")]
     pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods:KeyModifiers) -> bool {
         let elapsed = self.elapsed();
 

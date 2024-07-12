@@ -60,6 +60,7 @@ impl CursorManager {
     }
 
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         self.cursor_images.clear();
         self.current_skin = skin_manager.skin().clone();

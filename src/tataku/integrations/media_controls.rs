@@ -22,6 +22,7 @@ impl MediaControlHelper {
     pub fn new(event_sender: AsyncUnboundedSender<MediaControlHelperEvent>) -> Self {
         let (sender, receiver) = async_unbounded_channel();
         let controls_enabled = Settings::get().integrations.media_controls;
+        #[cfg(feature="graphics")]
         if controls_enabled {
             Self::bind(sender.clone());
         }
@@ -38,6 +39,7 @@ impl MediaControlHelper {
         }
     }
 
+    #[cfg(feature="graphics")]
     pub async fn update(&mut self, song_state: MediaPlaybackState, enabled: bool) {
         if enabled != self.controls_enabled {
             self.controls_enabled = enabled;
@@ -85,6 +87,7 @@ impl MediaControlHelper {
         Self::set_metadata(&self.current_metadata);
     }
 
+    #[cfg(feature="graphics")]
     fn bind(sender: AsyncUnboundedSender<MediaControlEvent>) {
         if !Settings::get().integrations.media_controls { return }
         let controls = GameWindow::get_media_controls();
@@ -108,6 +111,7 @@ impl MediaControlHelper {
                 duration: meta.duration.map(|d|Duration::from_millis(d as u64))
             };
 
+            #[cfg(feature="graphics")]
             if let Err(e) = GameWindow::get_media_controls().lock().set_metadata(info) {
                 warn!("Error setting metadata: {e:?}");
             }
@@ -116,6 +120,7 @@ impl MediaControlHelper {
     pub fn set_playback(state: MediaPlayback) {
         if !Settings::get().integrations.media_controls { return }
 
+    #[cfg(feature="graphics")]
         tokio::task::spawn_blocking(move || {
             if let Err(e) = GameWindow::get_media_controls().lock().set_playback(state) {
                 warn!("Error setting playback state: {e:?}");

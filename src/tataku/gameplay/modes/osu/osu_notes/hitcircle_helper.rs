@@ -51,6 +51,7 @@ impl HitCircleImageHelper {
         }
     }
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.skin_settings = skin_manager.skin().clone();
         let radius = CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs;

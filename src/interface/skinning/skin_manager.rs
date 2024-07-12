@@ -17,12 +17,14 @@ lazy_static::lazy_static! {
     };
 }
 
+#[cfg(feature="graphics")]
 pub struct SkinManager {
     skin_name: String,
     current_skin_config: Arc<SkinSettings>,
     textures: HashMap<(String, bool), HashMap<TextureSource, TextureEntry>>,
 }
 
+#[cfg(feature="graphics")]
 // static
 impl SkinManager {
     pub fn refresh_skins() {
