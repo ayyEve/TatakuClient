@@ -1,31 +1,31 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, PartialEq)]
-#[derive(Settings, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[cfg_attr(feature="graphics", derive(Settings))]
 #[serde(default)]
 pub struct TaikoSettings {
     // input
-    #[Setting(text="Left Kat")]
+    #[cfg_attr(feature="graphics", Setting(text="Left Kat"))]
     pub left_kat: Key,
-    #[Setting(text="Left Don")]
+    #[cfg_attr(feature="graphics", Setting(text="Left Don"))]
     pub left_don: Key,
-    #[Setting(text="Right Don")]
+    #[cfg_attr(feature="graphics", Setting(text="Right Don"))]
     pub right_don: Key,
-    #[Setting(text="Right Kat")]
+    #[cfg_attr(feature="graphics", Setting(text="Right Kat"))]
     pub right_kat: Key,
-    #[Setting(text="Ignore Mouse Buttons")]
+    #[cfg_attr(feature="graphics", Setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
     // sv
-    #[Setting(text="SV Multiplier", min=1, max=2)]
+    #[cfg_attr(feature="graphics", Setting(text="SV Multiplier", min=1, max=2))]
     pub sv_multiplier: f32,
 
     // size stuff
-    #[Setting(text="Note Radius", min=1, max=100)]
+    #[cfg_attr(feature="graphics", Setting(text="Note Radius", min=1, max=100))]
     pub note_radius: f32,
-    #[Setting(text="Big Note Scale", min=1, max=5)]
+    #[cfg_attr(feature="graphics", Setting(text="Big Note Scale", min=1, max=5))]
     pub big_note_multiplier: f32,
 
     // /// hit area, but calculated before use
@@ -33,29 +33,29 @@ pub struct TaikoSettings {
     // pub hit_position: Vector2,
     pub hit_position_relative_to_window_size: bool,
     pub hit_position_relative_height_div: f32,
-    #[Setting(text="Playfield Horizontal Offset", min=0, max=500)]
+    #[cfg_attr(feature="graphics", Setting(text="Playfield Horizontal Offset", min=0, max=500))]
     pub playfield_x_offset: f32,
-    #[Setting(text="Playfield Vertical Offset", min=0, max=200)]
+    #[cfg_attr(feature="graphics", Setting(text="Playfield Vertical Offset", min=0, max=200))]
     pub playfield_y_offset: f32,
 
     /// hit area raidus multiplier, 1.0 = note radius
-    #[Setting(text="Hit Area Radius Scale", min=1, max=5)]
+    #[cfg_attr(feature="graphics", Setting(text="Hit Area Radius Scale", min=1, max=5))]
     pub hit_area_radius_mult: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
-    #[Setting(text="Playfield Vertical Padding", min=0, max=20)]
+    #[cfg_attr(feature="graphics", Setting(text="Playfield Vertical Padding", min=0, max=20))]
     pub playfield_height_padding: f32,
     /// playfield = note_radius * max(hit_area_radius_mult, big_note_mult) + this
 
-    #[Setting(text="Don Color")]
+    #[cfg_attr(feature="graphics", Setting(text="Don Color"))]
     pub don_color: SettingsColor,
-    #[Setting(text="Kat Color")]
+    #[cfg_attr(feature="graphics", Setting(text="Kat Color"))]
     pub kat_color: SettingsColor,
 
-    #[Setting(text="Use Skin Judgments")]
+    #[cfg_attr(feature="graphics", Setting(text="Use Skin Judgments"))]
     pub use_skin_judgments: bool,
     
     /// how far above the hit position should hit indicators be?
-    #[Setting(text="Hit Judgment Y-Offset", min=0, max=100)]
+    #[cfg_attr(feature="graphics", Setting(text="Hit Judgment Y-Offset", min=0, max=100))]
     pub judgement_indicator_offset: f32,
 }
 // impl TaikoSettings {

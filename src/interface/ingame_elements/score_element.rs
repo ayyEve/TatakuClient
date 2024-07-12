@@ -35,6 +35,7 @@ impl InnerUIElement for ScoreElement {
         self.score = manager.score.score.score;
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         // score
         if let Some(score) = &mut self.score_image {
@@ -79,6 +80,7 @@ impl InnerUIElement for ScoreElement {
     }
 
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.score_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", None, 0, skin_manager, source, SkinUsage::Gamemode).await.ok();
 

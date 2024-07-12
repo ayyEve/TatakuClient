@@ -1,6 +1,6 @@
 [package]
 name = "tataku-client"
-version = "0.1.0"
+version = "0.4.0"
 authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
@@ -27,12 +27,12 @@ storyboards = []
 texture_arrays = []
 no_media_control = []
 # removes as much graphics-side stuff as possible
-graphics = ["wgpu", "bytemuck", "lyon_tessellation"]
+graphics = ["wgpu", "bytemuck", "lyon_tessellation", "iced", "iced_winit", "iced_runtime"]
 
 [dependencies]
-tataku-common = { version = "0.10.2", registry = "tataku-registry" }
+tataku-common = { version = "0.12.2", registry = "tataku-registry" }
 # tataku-common = { path="../tataku-common" }
-tataku-client-proc-macros = { path = "./proc_macros" }
+tataku-client-proc-macros = { version = "0.1.0", path = "./proc_macros", registry = "tataku-registry" }
 
 # framework stuff
 lazy_static = "1.4.0"
@@ -66,12 +66,15 @@ clipboard = "0.5.0"
 # gamepad input
 gilrs = { version = "0.10.7", features = ["serde-serialize"] }
 # media controls
-souvlaki = { version = "0.6", default-features = false, features = ["use_zbus"], git = "https://github.com/ayyEve/souvlaki.git" }
+souvlaki = { version = "0.7.3", default-features = false, features = ["use_zbus"] }
 
 # gui
-iced = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false }
-iced_runtime = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
-iced_winit = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
+iced = { version="0.13.0-dev", registry="tataku-registry", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
+iced_runtime = { version="0.13.0-dev", registry="tataku-registry", optional = true }
+iced_winit = { version="0.13.1-dev", registry="tataku-registry", optional = true }
+# iced = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false }
+# iced_runtime = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
+# iced_winit = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
 
 # bass audio
 bass-rs = { version="0.2.3", optional = true }
@@ -110,7 +113,7 @@ rlua = "0.20.0"
 
 
 # logging
-tataku-logging = { git = "https://gitlab.ayyeve.dev/tataku/tataku-logging" }
+tataku-logging = { version = "0.2.0", registry = "tataku-registry" }
 log = "0.4.16"
 num-format = "0.4.4"
 strfmt = "0.2.4"
@@ -119,4 +122,4 @@ strfmt = "0.2.4"
 
 
 [build-dependencies]
-tataku-common = { version = "0.10.2", registry = "tataku-registry" }
+tataku-common = { version = "0.12.2", registry = "tataku-registry" }

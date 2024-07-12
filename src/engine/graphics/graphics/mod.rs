@@ -1,4 +1,5 @@
 
+#[cfg(feature="graphics")]
 mod state;
 
 mod vsync;
@@ -13,6 +14,7 @@ mod particle_system;
 mod slider_render;
 mod flashlight_render;
 
+#[cfg(feature="graphics")]
 pub use state::*;
 
 pub use vsync::*;

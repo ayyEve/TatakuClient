@@ -130,13 +130,13 @@ pub async fn _download_file(url: impl reqwest::IntoUrl, download_path: impl AsRe
 }
 
 
-pub async fn read_replay_path(path: impl AsRef<Path>) -> TatakuResult<Replay> {
+pub async fn read_replay_path(path: impl AsRef<Path>) -> TatakuResult<Score> {
     let path = path.as_ref();
 
-    match path.extension().and_then(|s|s.to_str()) {
+    match path.extension().and_then(|s| s.to_str()) {
 
         // tataku replay
-        Some("ttkr") => Ok(open_database(path.to_str().unwrap())?.read::<Replay>()?),
+        Some("ttkr") => Ok(Replay::try_read_replay(&mut open_database(path.to_str().unwrap())?).map_err(|e| TatakuError::String(format!("{e:?}")))?),
 
         // osu replay
         Some("osr") => Ok(convert_osu_replay(path)?),

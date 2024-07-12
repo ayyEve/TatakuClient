@@ -35,6 +35,7 @@ impl InnerUIElement for KeyCounterElement {
         self.counter = manager.key_counter.clone();
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         // let pad = if let Some((btn, bg)) = self.button_image.as_ref().zip(self.background_image.as_ref()) {
         //     let btn_size = btn.size();
@@ -109,6 +110,7 @@ impl InnerUIElement for KeyCounterElement {
 
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         // let mut background_image = SKIN_MANAGER.write().get_texture("inputoverlay-background", false;
         // if let Some(image) = &mut background_image {

@@ -39,6 +39,7 @@ pub use serde::{ Serialize, Deserialize };
 
 pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
 
+#[cfg(feature="graphics")]
 pub use iced::advanced::graphics::core as iced_core;
 
 // tataku-common imports
@@ -64,6 +65,7 @@ pub use tataku_common::serialization::*;
 
 
 // iced imports, in its own mod since it has some comflicting names
+#[cfg(feature="graphics")]
 pub mod iced_elements {
     // macro imports
     pub use crate::row;

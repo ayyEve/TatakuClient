@@ -1,3 +1,5 @@
+
+#[cfg(feature="graphics")]
 mod ui;
 mod api;
 mod color;
@@ -7,6 +9,7 @@ mod transform;
 mod drawables;
 mod renderable_collection;
 
+#[cfg(feature="graphics")]
 pub use ui::*;
 pub use api::*;
 pub use color::*;

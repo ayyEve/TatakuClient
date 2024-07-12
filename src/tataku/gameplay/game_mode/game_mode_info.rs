@@ -11,7 +11,7 @@ pub trait GameModeInfo {
     fn bug_report_url(&self) -> &str { "No bug report url" }
 
     
-    fn calc_acc(&self, score: &Score) -> f64;
+    fn calc_acc(&self, score: &Score) -> f32;
     fn get_perf_calc(&self) -> PerformanceCalc {
         Box::new(|diff, acc| {
             let perf = diff * (acc / 0.99).powi(6);
@@ -28,5 +28,6 @@ pub trait GameModeInfo {
     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>>;
     async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>>;
 
+    #[cfg(feature="graphics")]
     fn stats_from_groups(&self, _data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { Vec::new() }
 }

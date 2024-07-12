@@ -31,7 +31,7 @@ impl From<&Score> for TatakuValue {
         
         // map.set("mods_short", ));
 
-        map.set("mods", TatakuVariable::new(ModManager::new().with_mods(score.mods()).with_speed(score.speed)).display(ModManager::short_mods_string(score.mods(), false, &score.playmode)));
+        map.set("mods", TatakuVariable::new(ModManager::new().with_mods(score.mods.iter()).with_speed(score.speed)).display(ModManager::short_mods_string(&score.mods, false, &score.playmode)));
         map.set("hit_timings", TatakuVariable::new((TatakuVariableAccess::ReadOnly, score.hit_timings.clone())));
 
         
@@ -75,14 +75,16 @@ impl TryInto<Score> for &TatakuValue {
                 score.judgments.insert(j.clone(), c as u16);
             }
         }
-        score.accuracy = map.get("accuracy").ok_or_else(|| format!("no accuracy"))?.as_f32().map_err(|e| format!("{e:?}"))? as f64;
+        score.accuracy = map.get("accuracy").ok_or_else(|| format!("no accuracy"))?.as_f32().map_err(|e| format!("{e:?}"))?;
         score.speed = GameSpeed::from_u16(map.get("speed").ok_or_else(|| format!("no speed"))?.as_u32().map_err(|e| format!("{e:?}"))? as u16);
         score.performance = map.get("performance").ok_or_else(|| format!("no performance"))?.as_f32().map_err(|e| format!("{e:?}"))?;
         
+        let ok_mods = ModManager::mods_for_playmode_as_hashmap(&score.playmode);
+
         let mods = ModManager::try_from(
             &map.get("mods").ok_or_else(|| format!("no mods"))?.value
         ).map_err(|_| format!("bad mods"))?;
-        mods.mods.into_iter().for_each(|m|score.add_mod(m));
+        mods.mods.iter().filter_map(|m| ok_mods.get(m)).for_each(|m| score.mods.push((*m).into()));
 
         if let TatakuValue::List(list) = &map.get("hit_timings").ok_or_else(|| format!("no hit_timings"))?.value {
             for i in list {

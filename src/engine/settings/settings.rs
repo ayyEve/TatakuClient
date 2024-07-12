@@ -3,9 +3,8 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-#[derive(Clone, Serialize, PartialEq)]
-#[derive(Settings)] 
-#[derive(SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[cfg_attr(feature="graphics", derive(Settings))]
 #[serde(default)]
 pub struct Settings {
     // audio
@@ -15,102 +14,102 @@ pub struct Settings {
     pub music_vol: f32,
     // #[Setting(text="Effect Volume")]
     pub effect_vol: f32,
-    #[Setting(text="Global Offset", min=-100.0, max=100.0, category="Audio Settings")]
+    #[cfg_attr(feature="graphics", Setting(text="Global Offset", min=-100.0, max=100.0, category="Audio Settings"))]
     pub global_offset: f32,
     
     // login
-    #[Setting(text="Tataku Username", category="Tataku Server Settings")]
+    #[cfg_attr(feature="graphics", Setting(text="Tataku Username", category="Tataku Server Settings"))]
     pub username: String,
-    #[Setting(text="Tataku Password", password=true)]
+    #[cfg_attr(feature="graphics", Setting(text="Tataku Password", password=true))]
     pub password: String,
-    #[Setting(text="Tataku Server Url")]
+    #[cfg_attr(feature="graphics", Setting(text="Tataku Server Url"))]
     pub server_url: String,
-    #[Setting(text="Tataku Score Url")]
+    #[cfg_attr(feature="graphics", Setting(text="Tataku Score Url"))]
     pub score_url: String,
     
     // osu login (for direct)
-    #[Setting(text="Osu Username", category="Osu Integration")]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Username", category="Osu Integration"))]
     pub osu_username: String,
-    #[Setting(text="Osu Password", password=true)]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Password", password=true))]
     pub osu_password: String,
-    #[Setting(text="Osu Api Key", password=true)]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Api Key", password=true))]
     pub osu_api_key: String,
     
     // game settings
     #[serde(alias="standard_settings")]
-    #[Subsetting(category="Osu Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Osu Settings"))]
     pub osu_settings: OsuSettings,
-    #[Subsetting(category="Taiko Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Taiko Settings"))]
     pub taiko_settings: TaikoSettings,
     // #[Subsetting(category="Catch Settings")]
     pub catch_settings: CatchSettings,
-    #[Subsetting(category="Mania Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Mania Settings"))]
     pub mania_settings: ManiaSettings,
-    #[Subsetting(category="Background Game Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Background Game Settings"))]
     pub background_game_settings: BackgroundGameSettings,
-    #[Subsetting(category="Common Game Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Common Game Settings"))]
     pub common_game_settings: CommonGameplaySettings,
 
     pub last_played_mode: String,
     pub last_score_retreival_method: ScoreRetreivalMethod,
     pub last_sort_by: SortBy,
     
-    #[Setting(text="Beatmap Hitsounds")]
+    #[cfg_attr(feature="graphics", Setting(text="Beatmap Hitsounds"))]
     pub beatmap_hitsounds: bool,
 
-    #[Setting(text="Enable Difficulty Calculation")]
+    #[cfg_attr(feature="graphics", Setting(text="Enable Difficulty Calculation"))]
     pub enable_diffcalc: bool,
 
-    #[Subsetting(category="Display Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Display Settings"))]
     pub display_settings: DisplaySettings,
     
 
     // cursor
-    #[Setting(text="Cursor Color", category="Cursor Settings")]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Color", category="Cursor Settings"))]
     pub cursor_color: SettingsColor,
-    #[Setting(text="Cursor Scale", min=0.1, max=10.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Scale", min=0.1, max=10.0))]
     pub cursor_scale: f32,
-    #[Setting(text="Cursor Border", min=0.1, max=5.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Border", min=0.1, max=5.0))]
     pub cursor_border: f32,
-    #[Setting(text="Cursor Border Color")]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Border Color"))]
     pub cursor_border_color: SettingsColor,
 
-    #[Setting(text="Cursor Ripples")]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripples"))]
     pub cursor_ripples: bool,
-    #[Setting(text="Cursor Ripple Color")]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripple Color"))]
     pub cursor_ripple_color: SettingsColor,
-    #[Setting(text="Cursor Ripple Scale")]
+    #[cfg_attr(feature="graphics", Setting(text="Cursor Ripple Scale"))]
     pub cursor_ripple_final_scale: f32,
 
     // skin settings
-    #[Setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings")]
+    #[cfg_attr(feature="graphics", Setting(text="Skin", dropdown="SkinDropdownable", category="Skin Settings"))]
     pub current_skin: String,
 
     #[serde(skip)]
-    #[Setting(text="Refresh Skins", action="SkinManager::refresh_skins()")]
+    #[cfg_attr(feature="graphics", Setting(text="Refresh Skins", action="SkinManager::refresh_skins()"))]
     refresh_skins_button: (),
 
-    #[Setting(text="Theme", dropdown="SelectedTheme")]
+    #[cfg_attr(feature="graphics", Setting(text="Theme", dropdown="SelectedTheme"))]
     pub theme: SelectedTheme,
 
     // #[Setting(text="UI Scale")] // not ready yet
     pub ui_scale: f64,
-    #[Setting(text="Background Dim", min=0, max=1)]
+    #[cfg_attr(feature="graphics", Setting(text="Background Dim", min=0, max=1))]
     pub background_dim: f32,
 
     // misc keybinds
-    #[Setting(text="User Panel Key", category="Common Keybinds")]
+    #[cfg_attr(feature="graphics", Setting(text="User Panel Key", category="Common Keybinds"))]
     pub key_user_panel: Key,
 
     // double tap protection
-    #[Setting(text="Enable DoubleTap Protection", category="DoubleTap Protection")]
+    #[cfg_attr(feature="graphics", Setting(text="Enable DoubleTap Protection", category="DoubleTap Protection"))]
     pub enable_double_tap_protection: bool,
-    #[Setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0)]
+    #[cfg_attr(feature="graphics", Setting(text="DoubleTap Protection Leniency", min=10.0, max=200.0))]
     pub double_tap_protection_duration: f32,
 
 
     // integrations
-    #[Subsetting(category="Integrations")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Integrations"))]
     pub integrations: IntegrationSettings,
 
 
@@ -118,7 +117,7 @@ pub struct Settings {
     pub last_git_hash: String,
     pub external_games_folders: Vec<String>,
     
-    #[Subsetting(category="Log Settings")]
+    #[cfg_attr(feature="graphics", Subsetting(category="Log Settings"))]
     pub logging_settings: LoggingSettings,
 
     #[serde(skip)]

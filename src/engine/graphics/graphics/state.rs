@@ -10,7 +10,6 @@ pub const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
 const GFX_CLEAR_COLOR:Color = Color::BLACK;
-pub type Scissor = Option<[f32; 4]>;
 
 macro_rules! get_render_buffer {
     ($self: ident, $t: ident) => {{
@@ -48,7 +47,6 @@ pub struct GraphicsState<'window> {
 impl<'window> GraphicsState<'window> {
 
     // Creating some of the wgpu types requires async code
-    #[cfg(feature="graphics")]
     pub async fn new(window: &'window winit::window::Window, settings: &DisplaySettings) -> Self {
         use wgpu::PipelineCompilationOptions;
 
@@ -1533,16 +1531,6 @@ impl<'a> RenderableSurface<'a> {
     }
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, Dropdown, Eq, PartialEq)]
-pub enum PerformanceMode {
-    PowerSaver,
-    HighPerformance,
-}
-impl Display for PerformanceMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
 
 
 fn cast_from_rgba_bytes(bytes: &[u8], format: wgpu::TextureFormat) -> [u8; 4] {

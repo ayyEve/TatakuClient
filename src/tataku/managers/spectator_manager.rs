@@ -161,11 +161,11 @@ impl SpectatorManager {
             // debug!("Packet: {action:?}");
             match action {
                 SpectatorAction::Play { beatmap_hash, mode, mods, speed, map_game, map_link:_} => {
-                    info!("got play: {beatmap_hash}, {mode}, {mods}");
+                    info!("got play: {beatmap_hash}, {mode}, {mods:?}");
                     let beatmap_hash = beatmap_hash.try_into().unwrap();
 
 
-                    self.host_map = Some(HostMap { map_hash: beatmap_hash, playmode: mode, mods: ModManager::new().with_speed(speed).with_mods(Score::mods_from_string(mods)) });
+                    self.host_map = Some(HostMap { map_hash: beatmap_hash, playmode: mode, mods: ModManager::new().with_speed(speed).with_mods(mods.iter()) });
                     self.actions.push(BeatmapAction::SetFromHash(beatmap_hash, SetBeatmapOptions::new().restart_song(true)));
 
                     // self.start_game(beatmap_hash, mode, mods, 0.0, speed).await;
@@ -244,7 +244,7 @@ impl SpectatorManager {
                             let url = format!("https://osu.ppy.sh/d/{}.osz?u={username}&h={password}", map_info.beatmapset_id);
                             
                             let path = format!("downloads/{}.osz", map_info.beatmapset_id);
-                            perform_download(url, path, Default::default())
+                            crate::perform_download(url, path, Default::default())
                         } else {
                             warn!("not downloading map, osu user or password missing")
                         }

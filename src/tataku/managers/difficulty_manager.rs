@@ -149,7 +149,7 @@ fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32
     if Io::exists(DIFF_FILE) {
         let data = Io::read_file(DIFF_FILE)?;
         let mut reader = SerializationReader::new(data);
-        Ok(reader.read()?)
+        Ok(reader.read("diffs")?)
     } else {
         Ok(Default::default())
     }
@@ -184,8 +184,8 @@ impl DifficultyEntry {
 
 impl Serializable for DifficultyEntry {
     fn read(sr:&mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
-        let map_hash = sr.read_u128()?.into();
-        let mods = sr.read_u128()?.into();
+        let map_hash = sr.read::<u128>("map_hash")?.into();
+        let mods = sr.read::<u128>("mods")?.into();
 
         Ok(Self {
             map_hash,

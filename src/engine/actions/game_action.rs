@@ -11,7 +11,7 @@ pub enum GameAction {
     ResumeMap(Box<GameplayManager>),
 
     /// Watch a replay
-    WatchReplay(Box<Replay>),
+    WatchReplay(Box<Score>),
 
     /// Update a value 
     SetValue(String, TatakuValue),
@@ -23,12 +23,14 @@ pub enum GameAction {
     ViewScoreId(usize),
 
     /// Handle a message
+    #[cfg(feature="graphics")]
     HandleMessage(Message),
 
     /// Refresh the scores list
     RefreshScores,
 
     /// Handle an event
+    #[cfg(feature="graphics")]
     HandleEvent(TatakuEventType, Option<TatakuValue>),
 
     /// Add a notification
@@ -41,6 +43,7 @@ pub enum GameAction {
     CopyToClipboard(String),
 
     ///
+    #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
     DropGameplayManager(GameplayId),
     GameplayAction(GameplayId, GameplayAction),
@@ -63,12 +66,15 @@ impl core::fmt::Debug for GameAction {
             Self::SetValue(arg0, arg1) => f.debug_tuple("SetValue").field(arg0).field(arg1).finish(),
             Self::ViewScore(arg0) => write!(f, "ViewScore {}", arg0.hash()),
             Self::ViewScoreId(arg0) => f.debug_tuple("ViewScoreId").field(arg0).finish(),
+            #[cfg(feature="graphics")]
             Self::HandleMessage(arg0) => f.debug_tuple("HandleMessage").field(arg0).finish(),
             Self::RefreshScores => write!(f, "RefreshScores"),
+            #[cfg(feature="graphics")]
             Self::HandleEvent(arg0, arg1) => f.debug_tuple("HandleEvent").field(arg0).field(arg1).finish(),
             Self::AddNotification(arg0) => f.debug_tuple("AddNotification").field(arg0).finish(),
             Self::UpdateBackground => write!(f, "UpdateBackground"),
             Self::CopyToClipboard(arg0) => f.debug_tuple("CopyToClipboard").field(arg0).finish(),
+            #[cfg(feature="graphics")]
             Self::NewGameplayManager(arg0) => f.debug_tuple("NewGameplayManager").field(arg0).finish(),
             Self::DropGameplayManager(arg0) => f.debug_tuple("DropGameplayManager").field(arg0).finish(),
             Self::GameplayAction(arg0, arg1) => f.debug_tuple("GameplayAction").field(arg0).field(arg1).finish(),
@@ -79,6 +85,7 @@ impl core::fmt::Debug for GameAction {
 pub type GameplayId = Arc<u32>;
 
 
+#[cfg(feature="graphics")]
 #[derive(Default, Clone)]
 pub struct NewManager {
     /// who is requesting the manager?
@@ -98,6 +105,7 @@ pub struct NewManager {
     /// if there is a different draw function that should be used (mainly for widgets)
     pub draw_function: Option<Arc<dyn Fn(TransformGroup) + Send + Sync + 'static>>,
 }
+#[cfg(feature="graphics")]
 impl std::fmt::Debug for NewManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NewManager")

@@ -12,7 +12,7 @@ pub struct ScoreMenu {
 
     score: IngameScore,
     beatmap: Arc<BeatmapMeta>,
-    pub replay: Option<Replay>,
+    // pub replay: Option<Replay>,
 
     menu_type: Box<ScoreMenuType>,
 
@@ -48,7 +48,7 @@ pub struct ScoreMenu {
     // close_sender: Option<AsyncSender<()>>,
 }
 impl ScoreMenu {
-    pub fn new(score:&IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
+    pub fn new(score: &IngameScore, beatmap: Arc<BeatmapMeta>, allow_retry: bool) -> ScoreMenu {
         let hit_error = score.hit_error();
 
         let judgments = get_gamemode_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
@@ -68,7 +68,7 @@ impl ScoreMenu {
         }
 
         // extract mods
-        let mut score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
+        let mut score_mods = ModManager::short_mods_string(&score.mods, false, &score.playmode);
         if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
 
         let mut stats = Vec::new();
@@ -88,7 +88,7 @@ impl ScoreMenu {
                 
             score: score.clone(),
             score_mods,
-            replay: None,
+            // replay: None,
             beatmap,
             hit_error,
 
@@ -128,24 +128,24 @@ impl ScoreMenu {
     }
 
     async fn replay(&mut self) {
-        if let Some(replay) = self.replay.clone() {
-            self.do_replay(replay).await;
+        if self.score.replay.is_some() {
+            self.do_replay((*self.score).clone()).await;
         } else {
             match self.score.get_replay().await {
-                Ok(replay) => self.do_replay(replay).await,
+                Ok(score) => self.do_replay(score).await,
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
         }
     }
 
-    async fn do_replay(&mut self, mut replay: Replay) {
+    async fn do_replay(&mut self, score: Score) {
         // make sure the replay has score data
         // i dont think it should ever not, but just in case
-        if replay.score_data.is_none() {
-            replay.score_data = Some(self.score.score.clone());
-        }
+        // if replay.score_data.is_none() {
+        //     replay.score_data = Some(self.score.score.clone());
+        // }
 
-        self.actions.push(GameAction::WatchReplay(Box::new(replay)));
+        self.actions.push(GameAction::WatchReplay(Box::new(score)));
         // match manager_from_playmode(self.score.playmode.clone(), &self.beatmap).await {
         //     Ok(mut manager) => {
         //         manager.set_replay(replay);
@@ -179,7 +179,7 @@ impl ScoreMenu {
         }
 
         // extract mods
-        self.score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
+        self.score_mods = ModManager::short_mods_string(&score.mods, false, &score.playmode);
         if self.score_mods.len() > 0 { self.score_mods = format!("Mods: {}", self.score_mods); }
 
         // stats
@@ -227,13 +227,13 @@ impl ScoreMenu {
     }
   
     async fn save_replay(&mut self) {
-        let Some(replay) = &self.replay else { 
+        let Some(replay) = &self.score.replay else { 
             NotificationManager::add_text_notification("There is no replay to save!", 5_000.0, Color::RED).await;
             return;
         };
         
         // save the replay
-        match save_replay(replay, &self.score) {
+        match save_replay(&self.score) {
             Ok(saved_path) => {
                 let saved_path = Path::new(&saved_path);
 

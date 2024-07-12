@@ -48,6 +48,7 @@ impl InnerUIElement for JudgementCounterElement {
         }
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let box_size = self.button_image.as_ref().map(|b|b.size()).unwrap_or(BOX_SIZE) * scale;
         
@@ -98,6 +99,7 @@ impl InnerUIElement for JudgementCounterElement {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.button_image = skin_manager.get_texture("inputoverlay-key", source, SkinUsage::Gamemode, false).await
     }

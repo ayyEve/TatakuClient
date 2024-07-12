@@ -47,6 +47,7 @@ impl UIElement {
         self.inner.update(manager);
     }
 
+    #[cfg(feature="graphics")]
     pub fn draw(&mut self, list: &mut RenderableCollection) {
         if !self.visible { return }
         self.inner.draw(self.pos_offset, self.scale, list);
@@ -71,6 +72,7 @@ impl UIElement {
         self.inner.reset();
     }
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.inner.reload_skin(source, skin_manager).await;
     }
@@ -79,10 +81,12 @@ impl UIElement {
 #[async_trait]
 pub trait InnerUIElement: Send + Sync {
     fn update(&mut self, manager: &mut GameplayManager);
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection);
     fn get_bounds(&self) -> Bounds;
     fn reset(&mut self) {}
     fn display_name(&self) -> &'static str;
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, _source: &TextureSource, _skin_manager: &mut SkinManager) {}
 }
 

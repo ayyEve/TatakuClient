@@ -94,11 +94,13 @@ impl Into<[f32;2]> for Vector2 {
     }
 }
 
+#[cfg(feature="graphics")]
 impl From<iced::Point> for Vector2 {
     fn from(value: iced::Point) -> Self {
         Self::new(value.x, value.y)
     }
 }
+#[cfg(feature="graphics")]
 impl From<iced::Size> for Vector2 {
     fn from(value: iced::Size) -> Self {
         Self::new(value.width, value.height)

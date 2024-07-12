@@ -7,7 +7,7 @@ pub trait TatakuBeatmap:Send+Sync {
     fn get_timing_points(&self) -> Vec<TimingPoint>;
     fn get_beatmap_meta(&self) -> Arc<BeatmapMeta>;
 
-    fn playmode(&self, incoming:String) -> String;
+    fn playmode(&self, incoming: String) -> String;
 
     fn slider_velocity(&self) -> f32 { 1.0 }
     

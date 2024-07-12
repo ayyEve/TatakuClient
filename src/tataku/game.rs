@@ -27,8 +27,10 @@ pub struct Game {
     song_manager: SongManager,
     score_manager: ScoreManager,
     task_manager: TaskManager,
+    #[cfg(feature="graphics")]
     custom_menu_manager: CustomMenuManager,
 
+    #[cfg(feature="graphics")]
     gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
 
 
@@ -57,9 +59,11 @@ pub struct Game {
 
     background_loader: Option<AsyncLoader<Option<Image>>>,
     spec_watch_action: SpectatorWatchAction,
+    #[cfg(feature="graphics")]
     ui_manager: UiManager,
 
     pub actions: ActionQueue,
+    #[cfg(feature="graphics")]
     pub queued_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
 
     pub values: ValueCollection,
@@ -71,6 +75,7 @@ impl Game {
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
     ) -> Game {
+        #[cfg(feature="graphics")]
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
         let settings = Settings::get();
         let skin_manager = SkinManager::new(&settings);
@@ -94,9 +99,11 @@ impl Game {
             song_manager: SongManager::new(),
             score_manager: ScoreManager::new(),
             task_manager: TaskManager::new(),
+            #[cfg(feature="graphics")]
             custom_menu_manager: CustomMenuManager::new(),
             skin_manager,
             cursor_manager: CursorManager::new(skin).await,
+            #[cfg(feature="graphics")]
             gameplay_managers: HashMap::new(),
 
             // menus: HashMap::new(),
@@ -122,8 +129,10 @@ impl Game {
             last_skin: String::new(),
             background_loader: None,
 
+            #[cfg(feature="graphics")]
             ui_manager: UiManager::new(),
             actions: ActionQueue::new(),
+            #[cfg(feature="graphics")]
             queued_events: Vec::new(),
 
             values: ValueCollection::new(),
@@ -135,6 +144,7 @@ impl Game {
         g
     }
 
+    #[cfg(feature="graphics")]
     fn load_custom_menus(&mut self) {
         if self.custom_menu_manager.clear_menus(CustomMenuSource::Any) {
             debug!("Reloading custom menus");
@@ -263,6 +273,7 @@ impl Game {
 
     pub async fn init(&mut self) {
 
+        #[cfg(feature="graphics")]
         self.load_custom_menus();
 
         // init value collection
@@ -274,6 +285,7 @@ impl Game {
         let now = std::time::Instant::now();
 
         // online loop
+        #[cfg(feature="graphics")]
         tokio::spawn(async move {
             loop {
                 OnlineManager::start().await;
@@ -296,7 +308,9 @@ impl Game {
         // BeatmapManager::download_check_loop();
 
         // == menu setup ==
+        #[cfg(feature="graphics")]
         let mut loading_menu = LoadingMenu::new().await;
+        #[cfg(feature="graphics")]
         loading_menu.load().await;
 
         // // check git updates
@@ -317,12 +331,14 @@ impl Game {
         //         // NotificationManager::add_error_notification("Error loading wallpaper", e).await
         //     }
         // }
-
+        
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
+        #[cfg(feature="graphics")]
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
     }
     
+    #[cfg(feature="gameplay")]
     pub async fn game_loop(mut self) {
         let mut update_timer = Instant::now();
         let mut draw_timer = Instant::now();
@@ -342,6 +358,7 @@ impl Game {
         loop {
             while let Ok(e) = self.game_event_receiver.try_recv() {
                 match e {
+                    #[cfg(feature="graphics")]
                     Window2GameEvent::FileDrop(path) => self.handle_file_drop(path).await,
                     Window2GameEvent::Closed => { return self.close_game(); }
                     Window2GameEvent::ScreenshotComplete(bytes, size, info) => if let Err(e) = self.finish_screenshot(bytes, size, info).await {
@@ -382,11 +399,12 @@ impl Game {
 
 
                 let skin_changed = self.settings.current_skin != self.last_skin;
+                #[cfg(feature="graphics")]
                 if skin_changed {
                     self.skin_manager.change_skin(self.settings.current_skin.clone());
                     self.last_skin = self.settings.current_skin.clone();
 
-
+                    
                     for (i, _) in self.gameplay_managers.values_mut() {
                         i.reload_skin(&mut self.skin_manager).await;
                     }
@@ -437,6 +455,7 @@ impl Game {
                     // values.set("settings.sort_by", format!("{:?}", self.settings.last_group_by));
                 }
 
+                #[cfg(feature="graphics")]
                 for (i, _) in self.gameplay_managers.values_mut() {
                     i.force_update_settings().await;
                 }
@@ -493,6 +512,7 @@ impl Game {
         warn!("stopping game");
     }
 
+    #[cfg(feature="gameplay")]
     async fn update(
         &mut self
     ) {
@@ -1133,6 +1153,7 @@ impl Game {
         // if elapsed > 1000.0/144.0 {warn!("render took a while: {elapsed}")}
     }
     
+    #[cfg(feature="graphics")]
     async fn handle_previous_menu(&mut self, current_menu: &str)  {
         let in_multi = self.multiplayer_manager.is_some();
         let in_spec = self.spectator_manager.is_some();
@@ -1169,16 +1190,20 @@ impl Game {
             TatakuAction::None => return,
             
             // menu actions
+            #[cfg(feature="graphics")]
             TatakuAction::Menu(MenuAction::SetMenu(id)) => self.handle_custom_menu(id).await,
 
+            #[cfg(feature="graphics")]
             TatakuAction::Menu(MenuAction::PreviousMenu(current_menu)) => self.handle_previous_menu(current_menu).await,
             
+            #[cfg(feature="graphics")]
             // TatakuAction::Menu(MenuMenuAction::AddDialog(dialog, allow_duplicates)) => self.add_dialog(dialog, allow_duplicates),
             TatakuAction::Menu(MenuAction::AddDialogCustom(dialog, allow_duplicates)) => self.handle_custom_dialog(dialog, allow_duplicates).await,
             
             // beatmap actions
             TatakuAction::Beatmap(action) => {
                 match action {
+                    #[cfg(feature="gameplay")]
                     BeatmapAction::PlaySelected => {
                         let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
                         let Ok(mode) = self.values.get_string("global.playmode") else { return };
@@ -1188,7 +1213,7 @@ impl Game {
                         // play the map
                         let Ok(map_path) = self.values.get_string("map.path") else { return };
 
-                        match manager_from_playmode_path_hash(mode, map_path, map_hash, mods.clone()).await {
+                        match manager_from_playmode_path_hash(&mode, map_path, map_hash, mods.clone()).await {
                             Ok(mut manager) => {
                                 manager.handle_action(GameplayAction::ApplyMods(mods)).await;
                                 self.queue_state_change(GameState::Ingame(Box::new(manager)))
@@ -1308,6 +1333,8 @@ impl Game {
                         }
                     }
 
+                    #[cfg(not(feature="gameplay"))]
+                    _ => {}
                 }
 
                 // if self.value_checker.beatmap.check(&self.values) {
@@ -1329,20 +1356,28 @@ impl Game {
 
             
             // game actions
+            #[cfg(feature="gameplay")]
             TatakuAction::Game(GameAction::Quit) => self.queue_state_change(GameState::Closing),
-
+            
+            #[cfg(feature="gameplay")]
             TatakuAction::Game(GameAction::ResumeMap(manager)) => {
                 self.queue_state_change(GameState::Ingame(manager));
             }
+            #[cfg(feature="gameplay")]
             TatakuAction::Game(GameAction::StartGame(mut manager)) => {
                 manager.start().await;
                 self.queue_state_change(GameState::Ingame(manager));
             }
-            TatakuAction::Game(GameAction::WatchReplay(replay)) => {
-                let Some((map, mode)) = replay.score_data.as_ref().map(|s|(s.beatmap_hash, s.playmode.clone())) else {
-                    NotificationManager::add_text_notification("Replay has no score data", 5000.0, Color::RED).await;
-                    return;
-                };
+            #[cfg(feature="gameplay")]
+            TatakuAction::Game(GameAction::WatchReplay(score)) => {
+                
+                let map = score.beatmap_hash;
+                let mode = &score.playmode;
+
+                // let Some((map, mode)) = replay.score_data.as_ref().map(|s|(s.beatmap_hash, s.playmode.clone())) else {
+                //     NotificationManager::add_text_notification("Replay has no score data", 5000.0, Color::RED).await;
+                //     return;
+                // };
 
                 let Some(beatmap) = self.beatmap_manager.get_by_hash(&map) else {
                     NotificationManager::add_text_notification("You don't have that map!", 5000.0, Color::RED).await;
@@ -1353,7 +1388,7 @@ impl Game {
                 
                 match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash, mods).await {
                     Ok(mut manager) => {
-                        manager.set_mode(GameplayMode::replay(*replay));
+                        manager.set_mode(GameplayMode::replay(*score));
                         self.queue_state_change(GameState::Ingame(Box::new(manager)));
                     }
                     Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
@@ -1364,6 +1399,7 @@ impl Game {
                 // self.values.try_insert(&key, || TatakuVariable::new(value, None, true, TatakuVariableAccess::Any));
                 // self.values.update(&key, TatakuVariableWriteSource::Menu, value);
             }
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::ViewScore(score)) => {
                 if let Some(beatmap) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) {
                     let menu = ScoreMenu::new(&score, beatmap, false);
@@ -1372,6 +1408,7 @@ impl Game {
                     error!("Could not find map from score!")
                 }
             }
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::HandleMessage(message)) => self.ui_manager.add_message(message),
             TatakuAction::Game(GameAction::RefreshScores) => self.score_manager.force_update = true,
             TatakuAction::Game(GameAction::ViewScoreId(id)) => {
@@ -1379,6 +1416,7 @@ impl Game {
                     self.handle_action(GameAction::ViewScore(score.clone())).await;
                 }
             }
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::HandleEvent(event, param)) => self.queued_events.push((event, param)),
             TatakuAction::Game(GameAction::AddNotification(notif)) => NotificationManager::add_notification(notif).await,
             
@@ -1386,6 +1424,7 @@ impl Game {
             TatakuAction::Game(GameAction::CopyToClipboard(text)) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); } 
 
 
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::NewGameplayManager(config)) => {
                 match match &config {
                     NewManager { 
@@ -1397,7 +1436,7 @@ impl Game {
                     } => {
                         let playmode = playmode.clone().unwrap_or_else(|| self.values.get_string("global.playmode_actual").ok().unwrap_or_else(|| format!("osu")));
                         let mods = mods.clone().unwrap_or_else(|| self.values.try_get::<ModManager>("global.mods").unwrap_or_default());
-                        manager_from_playmode_path_hash(playmode, path.clone(), *map_hash, mods).await
+                        manager_from_playmode_path_hash(&playmode, path.clone(), *map_hash, mods).await
                     }
                     NewManager { 
                         mods, 
@@ -1434,10 +1473,12 @@ impl Game {
                 }
             }
 
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::DropGameplayManager(id)) => {
                 self.gameplay_managers.remove(&id);
             }
 
+            #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::GameplayAction(id, action)) => {
                 let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
                 gameplay.handle_action(action).await;
@@ -1506,6 +1547,7 @@ impl Game {
             }
 
             // multiplayer actions
+            #[cfg(feature="graphics")]
             TatakuAction::Multiplayer(MultiplayerAction::ExitMultiplayer) => {
                 self.handle_action(MultiplayerAction::LeaveLobby).await;
 
@@ -1514,6 +1556,7 @@ impl Game {
                     self.handle_custom_menu("main_menu").await;
                 }
             }
+            #[cfg(feature="graphics")]
             TatakuAction::Multiplayer(MultiplayerAction::StartMultiplayer) => self.handle_custom_menu("lobby_select").await,
             
             TatakuAction::Multiplayer(MultiplayerAction::CreateLobby { name, password, private, players }) => {
@@ -1566,10 +1609,17 @@ impl Game {
             TatakuAction::CursorAction(action) => self.cursor_manager.handle_cursor_action(action),
 
             // UI operation
+            #[cfg(feature="graphics")]
             TatakuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
+
+
+
+            #[cfg(not(feature="graphics"))]
+            _ => {}
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn handle_custom_menu(&mut self, id: impl ToString) {
 
         // let menu = self.custom_menus.iter().rev().find(|cm| cm.id == id);
@@ -1590,6 +1640,7 @@ impl Game {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn handle_custom_dialog(&mut self, id: String, _allow_duplicates: bool) {
         match &*id {
             "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
@@ -1611,6 +1662,7 @@ impl Game {
         }
     }
 
+    #[cfg(feature="gameplay")]
     pub fn queue_state_change(&mut self, state:GameState) { 
         match state {
             GameState::SetMenu(menu) => {
@@ -1650,6 +1702,7 @@ impl Game {
         bg.fit_to_bg_size(self.window_size.0, false);
     }
 
+    #[cfg(feature="graphics")]
     pub fn add_dialog(&mut self, dialog: Box<dyn Dialog>, allow_duplicates: bool) {
         let dialog_manager = &mut self.ui_manager.application().dialog_manager;
 
@@ -1663,6 +1716,7 @@ impl Game {
         dialog_manager.add_dialog(dialog)
     }
 
+    #[cfg(feature="graphics")]
     pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();
 
@@ -1710,7 +1764,7 @@ impl Game {
                 // tataku | osu replay
                 "ttkr" | "osr" => {
                     match read_replay_path(path).await {
-                        Ok(replay) => self.try_open_replay(replay).await,
+                        Ok(score) => self.try_open_replay(score).await,
                         Err(e) => NotificationManager::add_error_notification("Error opening replay", e).await,
                     }
                 }
@@ -1726,11 +1780,12 @@ impl Game {
         }
     }
 
-    pub async fn try_open_replay(&mut self, replay: Replay) {
-        let Some(score) = &replay.score_data else {
-            NotificationManager::add_text_notification("Replay does not contain score data (too old?)", 5_000.0, Color::RED).await;
-            return;
-        };
+    #[cfg(feature="graphics")]
+    pub async fn try_open_replay(&mut self, score: Score) {
+        // let Some(score) = &replay.score_data else {
+        //     NotificationManager::add_text_notification("Replay does not contain score data (too old?)", 5_000.0, Color::RED).await;
+        //     return;
+        // };
 
         let Some(map) = self.beatmap_manager.get_by_hash(&score.beatmap_hash) else {
             NotificationManager::add_text_notification("You don't have this beatmap!", 5_000.0, Color::RED).await;
@@ -1740,13 +1795,14 @@ impl Game {
         self.beatmap_manager.set_current_beatmap(&mut self.values, &map, true, true).await;
 
         // move to a score menu with this as the score
-        let score = IngameScore::new(score.clone(), false, false);
-        let mut menu = ScoreMenu::new(&score, map, false);
-        menu.replay = Some(replay);
+        let score = IngameScore::new(score, false, false);
+        let menu = ScoreMenu::new(&score, map, false);
+        // menu.replay = Some(replay);
         self.queued_state = GameState::SetMenu(Box::new(menu));
     }
 
 
+    #[cfg(feature="graphics")]
     pub async fn ingame_complete(&mut self, mut manager: Box<GameplayManager>) {
         trace!("beatmap complete");
         manager.on_complete();
@@ -1762,15 +1818,15 @@ impl Game {
             let mut score = manager.score.clone();
             score.accuracy = get_gamemode_info(&score.playmode).unwrap().calc_acc(&score);
 
-            let mut replay = manager.replay.clone();
-            replay.score_data = Some(score.score.clone());
+            // let mut replay = manager.score.replay.clone().unwrap();
+            // replay.score_data = Some(score.score.clone());
 
 
             let mut score_submit = None;
             if manager.should_save_score() {
                 // save score
                 Database::save_score(&score).await;
-                match save_replay(&replay, &score) {
+                match save_replay(&score) {
                     Ok(_)=> trace!("replay saved ok"),
                     Err(e) => NotificationManager::add_error_notification("error saving replay", e).await,
                 }
@@ -1779,7 +1835,7 @@ impl Game {
 
                 // submit score
                 let submit = ScoreSubmitHelper::new(
-                    replay.clone(), 
+                    (*score).clone(), 
                     &self.settings,
                     &map
                 );
@@ -1800,7 +1856,7 @@ impl Game {
                 _ => {
                     // show score menu
                     let mut menu = ScoreMenu::new(&score, manager.metadata.clone(), true);
-                    menu.replay = Some(replay.clone());
+                    // menu.replay = Some(replay.clone());
                     menu.score_submit = score_submit;
                     self.queue_state_change(GameState::SetMenu(Box::new(menu)));
                 }
@@ -1890,6 +1946,7 @@ impl Game {
                 let manager = MultiplayerManager::new(info);
                 manager.update_values(&mut self.values);
                 self.multiplayer_manager = Some(Box::new(manager));
+                #[cfg(feature="graphics")]
                 self.handle_custom_menu("lobby_menu").await;
 
 
@@ -1912,6 +1969,7 @@ impl Game {
                 let manager = MultiplayerManager::new(info);
                 manager.update_values(&mut self.values);
                 self.multiplayer_manager = Some(Box::new(manager));
+                #[cfg(feature="graphics")]
                 self.handle_custom_menu("lobby_menu").await;
             }
 
@@ -2001,6 +2059,7 @@ pub enum GameState {
     None, // use this as the inital game mode, but be sure to change it after
     Closing,
     Ingame(Box<GameplayManager>),
+    #[cfg(feature="graphics")]
     /// need to transition to the provided menu
     SetMenu(Box<dyn AsyncMenu>),
     /// Currently in a menu (this doesnt actually work currently, but it doesnt really matter)
@@ -2049,6 +2108,7 @@ pub enum MenuType {
     Internal(&'static str),
     Custom(String)
 }
+#[cfg(feature="graphics")]
 impl MenuType {
     pub fn from_menu(menu: &Box<dyn AsyncMenu>) -> Self {
         let Some(custom) = menu.get_custom_name() else { return Self::Internal(menu.get_name()) };

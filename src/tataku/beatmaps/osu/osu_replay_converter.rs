@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use std::convert::TryInto;
 
-pub fn convert_osu_replay(filepath: impl AsRef<Path>) -> TatakuResult<Replay> {
+pub fn convert_osu_replay(filepath: impl AsRef<Path>) -> TatakuResult<Score> {
     let osu_replay = read_osu_replay(filepath)?;
     Ok(osu_replay.get_replay())
 }
@@ -273,31 +273,42 @@ impl OsuReplay {
         
         // mods
         {
-            let mods = score.mods_mut();
-            if self.mods.contains(&OsuMods::Easy) { mods.insert("easy".to_owned()); }
-            if self.mods.contains(&OsuMods::HardRock) { mods.insert("hard_rock".to_owned()); }
-            if self.mods.contains(&OsuMods::Autoplay) { mods.insert("autoplay".to_owned()); }
-            if self.mods.contains(&OsuMods::NoFail) { mods.insert("no_fail".to_owned()); }
-        }
+            let ok_mods = ModManager::mods_for_playmode_as_hashmap(&self.game_mode);
+
+            let mut mods = Vec::new(); //score.mods_mut();
+            if self.mods.contains(&OsuMods::Easy) { mods.push("easy"); }
+            if self.mods.contains(&OsuMods::HardRock) { mods.push("hard_rock"); }
+            if self.mods.contains(&OsuMods::Autoplay) { mods.push("autoplay"); }
+            if self.mods.contains(&OsuMods::NoFail) { mods.push("no_fail"); }
+
+            for i in mods {
+                let Some(m) = ok_mods.get(i) else { continue };
+                score.mods.push((*m).into());
+            }
+
+        }       
 
         score
     }
 
 
-    pub fn get_replay(&self) -> Replay {
-        let mut replay = Self::parse_frames(&self.game_mode, &self.replay_frames);
-        replay.score_data = Some(self.get_score());
-        replay
+    pub fn get_replay(&self) -> Score {
+        // let mut replay = Self::parse_frames(&self.game_mode, &self.replay_frames);
+        // replay.score_data = Some(self.get_score());
+        // replay
+        self.get_score()
     }
 
     
 
-    pub fn replay_from_score_and_lzma(score: &Score, lzma: &mut impl std::io::BufRead) -> TatakuResult<Replay> {
+    pub fn replay_from_score_and_lzma(score: &Score, lzma: &mut impl std::io::BufRead) -> TatakuResult<Score> {
         let frames = parse_lzma_stream(lzma)?;
         let mut replay = Self::parse_frames(&score.playmode, &frames);
-        replay.score_data = Some(score.clone());
+        // replay.score_data = Some(score.clone());
+        let mut score = score.clone();
+        score.replay = Some(replay);
 
-        Ok(replay)
+        Ok(score)
     }
 
 

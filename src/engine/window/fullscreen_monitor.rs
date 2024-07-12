@@ -6,6 +6,7 @@ pub enum FullscreenMonitor {
     None,
     Monitor(usize),
 }
+#[cfg(feature="graphics")]
 impl Dropdownable2 for FullscreenMonitor {
     type T = Self;
     fn variants() -> Vec<Self::T> {

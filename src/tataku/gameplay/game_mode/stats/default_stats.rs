@@ -25,6 +25,7 @@ const DEFAULT_STAT_GROUPS: &'static [StatGroup] = &[
 pub fn default_stat_groups() -> Vec<StatGroup> { DEFAULT_STAT_GROUPS.to_vec() }
 
 
+#[cfg(feature="graphics")]
 pub fn default_stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
     let mut info = Vec::new();
 

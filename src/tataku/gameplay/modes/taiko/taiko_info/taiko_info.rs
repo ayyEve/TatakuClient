@@ -7,10 +7,10 @@ impl GameModeInfo for TaikoGameInfo {
     fn new() -> Self { Self }
     fn display_name(&self) -> &'static str { "Taiko" }
 
-    fn calc_acc(&self, score: &Score) -> f64 {
-        let x100 = score.judgments.get("x100").copy_or_default() as f64;
-        let x300 = score.judgments.get("x300").copy_or_default() as f64;
-        let miss = score.judgments.get("xmiss").copy_or_default() as f64;
+    fn calc_acc(&self, score: &Score) -> f32 {
+        let x100 = score.judgments.get("x100").copy_or_default() as f32;
+        let x300 = score.judgments.get("x300").copy_or_default() as f32;
+        let miss = score.judgments.get("xmiss").copy_or_default() as f32;
 
         (x100 / 2.0 + x300) 
         / (miss + x100 + x300)
@@ -88,6 +88,7 @@ impl GameModeInfo for TaikoGameInfo {
     }
 
 
+    #[cfg(feature="graphics")]
     fn stats_from_groups(&self, data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
         let mut info = Vec::new();
 

@@ -32,6 +32,10 @@ const FIRST_MAPS: &[u32] = &[
     727903, // galaxy collapse (taiko)
 ];
 
+#[cfg(not(feature="gameplay"))]
+fn main() { panic!("should not be running main when not built for gameplay") }
+
+#[cfg(feature="gameplay")]
 fn main() {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -42,6 +46,7 @@ fn main() {
     runtime.block_on(startup());
 
 
+    #[cfg(feature="gameplay")]
     start_game(&runtime);
 }
 
@@ -77,6 +82,7 @@ fn main() {
 
 // }
 
+#[cfg(feature="gameplay")]
 fn start_game(runtime: &tokio::runtime::Runtime) {
     // let main_thread = tokio::task::LocalSet::new();
 
@@ -136,6 +142,7 @@ fn start_game(runtime: &tokio::runtime::Runtime) {
     
     
     trace!("window running");
+    #[cfg(feature="graphics")]
     game_window.run(e);
 
     // wait for game to finish
@@ -275,3 +282,4 @@ pub fn init_logging() {
         }
     }
 }
+

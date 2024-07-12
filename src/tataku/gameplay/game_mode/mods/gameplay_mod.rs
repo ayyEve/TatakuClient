@@ -1,15 +1,5 @@
 #![allow(non_upper_case_globals)]
-// pub trait GameplayMod: Send + Sync {
-//     fn name(&self) -> &'static str;
-//     fn short_name(&self) -> &'static str;
-//     fn display_name(&self) -> &'static str;
-
-//     fn description(&self) -> &'static str { "No description provided :c" }
-//     fn texture_name(&self) -> &'static str { self.name() }
-    
-//     fn score_multiplier(&self) -> f32 { 1.0 }
-//     fn removes(&self) -> &'static [&'static str] { &[] }
-// }
+use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayMod {
@@ -90,6 +80,18 @@ impl AsRef<str> for GameplayMod {
 impl std::fmt::Display for GameplayMod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.display_name)
+    }
+}
+
+impl Into<ModDefinition> for GameplayMod {
+    fn into(self) -> ModDefinition {
+        ModDefinition {
+            name: self.name.to_owned(),
+            short_name: self.short_name.to_owned(),
+            display_name: self.display_name.to_owned(),
+            adjusts_difficulty: self.adjusts_difficulty,
+            score_multiplier: self.score_multiplier,
+        }
     }
 }
 

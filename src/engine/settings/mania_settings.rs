@@ -4,29 +4,29 @@ const WIDTH2:f32 = 550.0;
 const OFFSET:f32 = 25.0;
 const OFFSET2:f32 = 5.0;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-#[derive(Settings, SettingsDeserialize)]
+#[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]
+#[cfg_attr(feature="graphics", derive(Settings))]
+#[cfg_attr(feature="graphics", Setting(get_items="get_key_items", from_menu="keys_from_menu"))]
 #[serde(default)]
-#[Setting(get_items="get_key_items", from_menu="keys_from_menu")]
 pub struct ManiaSettings {
     // sv
-    #[Setting(text="Static SV")]
+    #[cfg_attr(feature="graphics", Setting(text="Static SV"))]
     pub static_sv: bool,
-    #[Setting(text="SV Multiplier", min=0.1, max=10.0)]
+    #[cfg_attr(feature="graphics", Setting(text="SV Multiplier", min=0.1, max=10.0))]
     pub sv_multiplier: f32,
 
     /// how much to change the sv by when a sv change key is pressed
-    #[Setting(text="SV Change Amount", min=0.1, max=10.0)]
+    #[cfg_attr(feature="graphics", Setting(text="SV Change Amount", min=0.1, max=10.0))]
     pub sv_change_delta: f32,
 
-    #[Setting(text="Per-Column Judjments")]
+    #[cfg_attr(feature="graphics", Setting(text="Per-Column Judjments"))]
     pub judgements_per_column: bool,
     
     /// how far from the hit position should hit indicators be?
-    #[Setting(text="Judgment Offset", min=-200.0, max=200.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Judgment Offset", min=-200.0, max=200.0))]
     pub judgement_indicator_offset: f32,
     
-    #[Setting(text="Use Skin Judgments")]
+    #[cfg_attr(feature="graphics", Setting(text="Use Skin Judgments"))]
     pub use_skin_judgments: bool,
 
     // playfield settings
@@ -36,6 +36,7 @@ pub struct ManiaSettings {
     /// ie for 4k, key 2: mania_keys\[3]\[1]
     pub keys: Vec<Vec<Key>>,
 }
+    #[cfg(feature="graphics")]
 impl ManiaSettings {
     pub fn get_key_items(&self, p: Vector2, prefix: String, sender: Arc<SyncSender<()>>) -> Vec<Box<dyn ScrollableItem>> {
 

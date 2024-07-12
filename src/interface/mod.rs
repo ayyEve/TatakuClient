@@ -2,6 +2,7 @@ mod cursor;
 mod skinning;
 mod ui_element;
 mod fps_display;
+#[cfg(feature="graphics")]
 mod menu_elements;
 mod notifications;
 mod visualizations;
@@ -15,6 +16,7 @@ pub use cursor::*;
 pub use skinning::*;
 pub use ui_element::*;
 pub use fps_display::*;
+#[cfg(feature="graphics")]
 pub use menu_elements::*;
 pub use notifications::*;
 pub use visualizations::*;

@@ -1,14 +1,14 @@
 use crate::prelude::*;
 
-#[derive(Clone, Serialize, PartialEq)]
-#[derive(Settings, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[cfg_attr(feature="graphics", derive(Settings))]
 #[serde(default)]
 pub struct IntegrationSettings {
-    #[Setting(text="Discord Integration")]
+    #[cfg_attr(feature="graphics", Setting(text="Discord Integration"))]
     pub discord: bool,
-    #[Setting(text="LastFM Integration")]
+    #[cfg_attr(feature="graphics", Setting(text="LastFM Integration"))]
     pub lastfm: bool,
-    #[Setting(text="OS Media Controls")]
+    #[cfg_attr(feature="graphics", Setting(text="OS Media Controls"))]
     pub media_controls: bool,
 }
 impl Default for IntegrationSettings {

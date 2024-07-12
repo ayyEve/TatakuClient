@@ -12,6 +12,7 @@ mod instant;
 mod actions;
 mod graphics;
 mod settings;
+#[cfg(feature="graphics")]
 mod custom_menus;
 
 pub use io::*;
@@ -27,5 +28,6 @@ pub use locale::*;
 pub use instant::*;
 pub use actions::*;
 pub use settings::*;
+#[cfg(feature="graphics")]
 pub use custom_menus::*;
 pub use self::graphics::*;

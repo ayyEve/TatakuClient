@@ -15,8 +15,6 @@ pub struct HealthBarElement {
 }
 impl HealthBarElement {
     pub async fn new(common_game_settings: Arc<CommonGameplaySettings>) -> Self {
-
-
         Self {
             common_game_settings,
             health_ratio: 0.0,
@@ -41,6 +39,7 @@ impl InnerUIElement for HealthBarElement {
         )
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         // peppy calls the healthbar texture "scorebar"
         self.healthbar_image = skin_manager.get_texture("scorebar-colour", source, SkinUsage::Gamemode, false).await;
@@ -74,6 +73,7 @@ impl InnerUIElement for HealthBarElement {
         }
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let percent = self.health_ratio;
         let bg_size = Vector2::new(self.window_size.x / 2.0, DURATION_HEIGHT) * scale;

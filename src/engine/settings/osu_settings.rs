@@ -1,22 +1,22 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
-#[derive(Settings, SettingsDeserialize)]
+#[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]
+#[cfg_attr(feature="graphics", derive(Settings))]
 #[serde(default)]
 pub struct OsuSettings {
     // input
-    #[Setting(text="Osu Key 1")]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Key 1"))]
     pub left_key: Key,
-    #[Setting(text="Osu Key 2")]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Key 2"))]
     pub right_key: Key,
-    #[Setting(text="Osu Smoke Key")]
+    #[cfg_attr(feature="graphics", Setting(text="Osu Smoke Key"))]
     pub smoke_key: Key,
 
-    #[Setting(text="Ignore Mouse Buttons")]
+    #[cfg_attr(feature="graphics", Setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
 
-    #[Setting(text="Allow manual input with Relax")]
+    #[cfg_attr(feature="graphics", Setting(text="Allow manual input with Relax"))]
     pub manual_input_with_relax: bool,
     
 
@@ -28,47 +28,47 @@ pub struct OsuSettings {
     pub playfield_movelines_thickness: f32,
 
     // display
-    #[Setting(text="Follow Points")]
+    #[cfg_attr(feature="graphics", Setting(text="Follow Points"))]
     pub draw_follow_points: bool,
     pub combo_colors: Vec<String>,
-    #[Setting(text="Show x300s")]
+    #[cfg_attr(feature="graphics", Setting(text="Show x300s"))]
     pub show_300s: bool,
 
     // special effects
-    #[Setting(text="Hit Ripples")]
+    #[cfg_attr(feature="graphics", Setting(text="Hit Ripples"))]
     pub hit_ripples: bool,
-    #[Setting(text="Slider Tick Ripples")]
+    #[cfg_attr(feature="graphics", Setting(text="Slider Tick Ripples"))]
     pub slider_tick_ripples: bool,
-    #[Setting(text="Ripple HitCircles")]
+    #[cfg_attr(feature="graphics", Setting(text="Ripple HitCircles"))]
     pub ripple_hitcircles: bool,
-    #[Setting(text="Ripple Scale", min=0.1, max=5.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Ripple Scale", min=0.1, max=5.0))]
     pub ripple_scale: f32,
-    #[Setting(text="Slider Tick Ripples Above")]
+    #[cfg_attr(feature="graphics", Setting(text="Slider Tick Ripples Above"))]
     pub slider_tick_ripples_above: bool,
-    #[Setting(text="Combo Color Approach Circles")]
+    #[cfg_attr(feature="graphics", Setting(text="Combo Color Approach Circles"))]
     pub approach_combo_color: bool,
 
-    #[Setting(text="Beatmap Combo Colors")]
+    #[cfg_attr(feature="graphics", Setting(text="Beatmap Combo Colors"))]
     pub use_beatmap_combo_colors: bool,
 
-    #[Setting(text="Use Skin Judgments")]
+    #[cfg_attr(feature="graphics", Setting(text="Use Skin Judgments"))]
     pub use_skin_judgments: bool,
 
-    #[Setting(text="Use beatmap skin")]
+    #[cfg_attr(feature="graphics", Setting(text="Use beatmap skin"))]
     pub beatmap_skin: bool,
 
     /// min is 0.00001 because @ 0.0 it shows the shoddy slider rendering (try it and see!)
-    #[Setting(text="Slider Body Alpha", min=0.00001, max=1.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Slider Body Alpha", min=0.00001, max=1.0))]
     pub slider_body_alpha: f32,
-    #[Setting(text="Slider Border Alpha", min=0.0, max=1.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Slider Border Alpha", min=0.0, max=1.0))]
     pub slider_border_alpha: f32,
-    #[Setting(text="Use Skin Slider Body Color")]
+    #[cfg_attr(feature="graphics", Setting(text="Use Skin Slider Body Color"))]
     pub use_skin_slider_body_color: bool,
 
-    #[Setting(text="Playfield Alpha", min=0.0, max=1.0)]
+    #[cfg_attr(feature="graphics", Setting(text="Playfield Alpha", min=0.0, max=1.0))]
     pub playfield_alpha: f32,
 
-    #[Setting(text="Slider Render Targets")]
+    #[cfg_attr(feature="graphics", Setting(text="Slider Render Targets"))]
     pub slider_render_targets: bool,
 }
 impl OsuSettings {

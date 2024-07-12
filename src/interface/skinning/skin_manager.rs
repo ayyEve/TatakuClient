@@ -20,7 +20,6 @@ lazy_static::lazy_static! {
 pub struct SkinManager {
     skin_name: String,
     current_skin_config: Arc<SkinSettings>,
-
     textures: HashMap<(String, bool), HashMap<TextureSource, TextureEntry>>,
 }
 
@@ -322,6 +321,7 @@ enum TextureLoadState {
 
 
 pub struct SkinDropdownable;
+#[cfg(feature="graphics")]
 impl Dropdownable2 for SkinDropdownable {
     type T = String;
     fn variants() -> Vec<String> {

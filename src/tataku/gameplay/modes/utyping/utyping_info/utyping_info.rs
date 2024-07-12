@@ -7,10 +7,10 @@ impl GameModeInfo for UTypingGameInfo {
     fn new() -> Self { Self }
     fn display_name(&self) -> &'static str { "UTyping" }
 
-    fn calc_acc(&self, score: &Score) -> f64 {
-        let x100 = score.judgments.get("x100").copy_or_default() as f64;
-        let x300 = score.judgments.get("x300").copy_or_default() as f64;
-        let miss = score.judgments.get("xmiss").copy_or_default() as f64;
+    fn calc_acc(&self, score: &Score) -> f32 {
+        let x100 = score.judgments.get("x100").copy_or_default() as f32;
+        let x300 = score.judgments.get("x300").copy_or_default() as f32;
+        let miss = score.judgments.get("xmiss").copy_or_default() as f32;
 
         (x100 / 2.0 + x300) 
         / (miss + x100 + x300)
@@ -84,27 +84,5 @@ impl GameModeInfo for UTypingGameInfo {
     async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
         let calc = UTypingDifficultyCalculator::new(map).await?;
         Ok(Box::new(calc))
-    }
-
-
-    fn stats_from_groups(&self, _data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
-        let info = Vec::new();
-
-        // macro_rules! get_or_return {
-        //     ($data: expr, $thing:expr) => {
-        //         if let Some(val) = $data.get(&$thing.name().to_owned()) { val } else { return info }
-        //     }
-        // }
-
-        // if let Some(press_counters) = data.get(&"press_counters".to_owned()) {
-        //     let left_presses:f32 = get_or_return!(press_counters, TaikoStatLeftPresses).iter().sum();
-        //     let right_presses:f32 = get_or_return!(press_counters, TaikoStatRightPresses).iter().sum();
-        //     info.push(MenuStatsInfo::new("Presses", GraphType::Pie, vec![
-        //         MenuStatsEntry::new_f32("Left Presses", left_presses, Color::BLUE, true, true),
-        //         MenuStatsEntry::new_f32("Right Presses", right_presses, Color::RED, true, true),
-        //     ]))
-        // }
-
-        info
     }
 }

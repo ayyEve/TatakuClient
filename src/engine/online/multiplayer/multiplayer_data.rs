@@ -120,7 +120,7 @@ impl Into<TatakuValue> for &CurrentLobbyInfo {
                 // this should always resolve
                 if let Some(player) = players.get(user) {
                     let mut player_map = ValueCollectionMapHelper::default();
-                    let mods = ModManager::new().with_mods(player.mods.clone()).with_speed(player.speed);
+                    let mods = ModManager::new().with_mods(player.mods.iter()).with_speed(player.speed);
                     player_map.set("mods", TatakuVariable::new(mods));
                     player_map.set("username", TatakuVariable::new(username));
                     player_map.set("user_id", TatakuVariable::new(*user));

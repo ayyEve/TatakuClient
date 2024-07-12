@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+pub type Scissor = Option<[f32; 4]>;
+
 #[derive(Default)]
 pub struct RenderableCollection {
     pub list: Vec<Arc<dyn TatakuRenderable>>,

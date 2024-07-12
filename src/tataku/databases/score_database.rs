@@ -52,14 +52,16 @@ impl Database {
             score.speed = r.get::<&str, f32>("speed").map(|s|GameSpeed::from_f32(s)).unwrap_or_default();
             score.hit_timings = Vec::new();
             score.judgments = judgments;
-            
+
+
+            // TODO: reimplement
             if let Some(mods_string) = mods_string {
-                // old mods format, json
-                if mods_string.contains("{") {
-                    *score.mods_mut() = Score::mods_from_old_string(mods_string);
-                } else {
-                    *score.mods_mut() = Score::mods_from_string(mods_string);
-                }
+                // // old mods format, json
+                // if mods_string.contains("{") {
+                //     *score.mods_mut() = Score::mods_from_old_string(mods_string);
+                // } else {
+                //     *score.mods_mut() = Score::mods_from_string(mods_string);
+                // }
             }
 
 
@@ -129,17 +131,17 @@ impl Database {
 }
 
 /// returns the path of the replay
-pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<String> {
+pub fn save_replay(score: &Score) -> TatakuResult<String> {
     // make sure the replay has score data set
-    let mut r = r.clone();
-    if r.score_data.is_none() {
-        r.score_data = Some(s.clone());
-    }
+    // let mut r = r.clone();
+    // if r.score_data.is_none() {
+    //     r.score_data = Some(s.clone());
+    // }
 
     let mut writer = SerializationWriter::new();
-    writer.write(&r);
+    writer.write(score);
 
-    let hash = s.hash();
+    let hash = score.hash();
     let actual_hash = format!("{:x}", md5::compute(hash));
     let filename = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("Saving replay as {}, judgments: {}", filename, s.judgment_string());
@@ -147,16 +149,16 @@ pub fn save_replay(r:&Replay, s:&Score) -> TatakuResult<String> {
     Ok(filename)
 }
 
-pub fn get_local_replay(score_hash:String) -> TatakuResult<Replay> {
+pub fn get_local_replay(score_hash: String) -> TatakuResult<Score> {
     let actual_hash = format!("{:x}", md5::compute(score_hash));
     let fullpath = format!("{}/{}.ttkr", REPLAYS_DIR, actual_hash);
     // info!("loading replay: {fullpath}");
     
     let mut reader = open_database(&fullpath)?;
-    Ok(reader.read()?)
+    Ok(reader.read("score")?)
 }
 
-pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Replay> {
+pub fn get_local_replay_for_score(score: &Score) -> TatakuResult<Score> {
     // info!("Loading replay, judgments: {:#?}", score.hash());
     get_local_replay(score.hash())
 }

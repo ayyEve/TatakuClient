@@ -8,15 +8,15 @@ impl GameModeInfo for ManiaGameInfo {
     fn display_name(&self) -> &'static str { "Mania" }
 
     /// from https://wiki.quavergame.com/docs/gameplay#accuracy
-    fn calc_acc(&self, score: &Score) -> f64 {
-        let marv = score.judgments.get("geki").copy_or_default() as f64;
-        let perf = score.judgments.get("x300").copy_or_default() as f64;
-        let great = score.judgments.get("katu").copy_or_default() as f64;
-        let good = score.judgments.get("x100").copy_or_default() as f64;
-        let okay  = score.judgments.get("x50").copy_or_default() as f64;
-        let miss = score.judgments.get("xmiss").copy_or_default() as f64;
+    fn calc_acc(&self, score: &Score) -> f32 {
+        let marv = score.judgments.get("geki").copy_or_default() as f32;
+        let perf = score.judgments.get("x300").copy_or_default() as f32;
+        let great = score.judgments.get("katu").copy_or_default() as f32;
+        let good = score.judgments.get("x100").copy_or_default() as f32;
+        let okay  = score.judgments.get("x50").copy_or_default() as f32;
+        let miss = score.judgments.get("xmiss").copy_or_default() as f32;
     
-        let top:f64 = [
+        let top:f32 = [
             marv * 1.0, // 100%
             perf * 0.9825, // 98.25%
             great * 0.65, // 65%
@@ -25,7 +25,7 @@ impl GameModeInfo for ManiaGameInfo {
             miss * -0.50, // -50%
         ].iter().sum();
     
-        let bottom:f64 = [
+        let bottom:f32 = [
             marv, 
             perf, 
             great, 

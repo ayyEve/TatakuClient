@@ -43,6 +43,7 @@ impl InnerUIElement for RemainingElement {
         self.elapsed = manager.time() / self.speed;
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let mut bounds = self.elapsed_bounds;
         bounds.pos = pos_offset;

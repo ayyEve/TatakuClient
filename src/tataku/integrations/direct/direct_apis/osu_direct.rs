@@ -126,7 +126,7 @@ impl DirectDownloadable for OsuDirectDownloadable {
         let password = &settings.osu_password;
         let url = format!("https://osu.ppy.sh/d/{}?u={}&h={}", self.filename, username, password);
 
-        perform_download(url, download_dir, self.progress.clone());
+        crate::perform_download(url, download_dir, self.progress.clone());
     }
 
     fn audio_preview(&self) -> Option<String> {

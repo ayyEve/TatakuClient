@@ -1,4 +1,3 @@
-use super::super::Scissor;
 use wgpu::{
     BindGroup,
     Buffer,

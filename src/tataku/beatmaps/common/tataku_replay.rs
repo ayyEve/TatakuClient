@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait ReplayDownloader: Send + Sync + std::fmt::Debug {
-    async fn get_replay(&self) -> TatakuResult<Replay>;
+    async fn get_replay(&self) -> TatakuResult<Score>;
 }
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl TatakuReplayDownloader {
 
 #[async_trait]
 impl ReplayDownloader for TatakuReplayDownloader {
-    async fn get_replay(&self) -> TatakuResult<Replay> {
+    async fn get_replay(&self) -> TatakuResult<Score> {
         let base = Settings::get().score_url.clone();
 
         let url = if let Some(hash) = &self.1 {
@@ -36,7 +36,7 @@ impl ReplayDownloader for TatakuReplayDownloader {
             return Err(TatakuError::String("Downloaded file was empty".to_owned()));
         }
 
-        let replay = SerializationReader::new(bytes.to_vec()).read()?;
-        Ok(replay)
+        let score = Score::read(&mut SerializationReader::new(bytes.to_vec()))?;
+        Ok(score)
     }
 }

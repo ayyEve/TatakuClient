@@ -30,6 +30,17 @@ impl ScoreManager {
         }
     }
 
+    fn check_mods(score_mods: &Vec<ModDefinition>, mod_manager: &ModManager) -> bool {
+        if score_mods.len() != mod_manager.mods.len() { return false }
+
+        for i in score_mods.iter() {
+            if !mod_manager.has_mod(i.as_ref()) { return false }
+        }
+
+        true
+    }
+
+
     pub async fn get_scores(&mut self, values: &mut ValueCollection) -> TatakuResult {
         if self.current_loader.take().is_some() {
             if let Some(abort) = self.abort_handle.take() {
@@ -56,10 +67,9 @@ impl ScoreManager {
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
                     let mut local_scores = Database::get_scores(&map_hash, playmode).await;
-                    let mods = mods.mods;
 
                     if method.filter_by_mods() {
-                        local_scores.retain(|s| s.mods() == mods);
+                        local_scores.retain(|s| Self::check_mods(&s.mods, &mods));
                     }
                     
                     let mut thing = scores_clone.write().await;
@@ -78,9 +88,8 @@ impl ScoreManager {
                     let map_hash = map_hash.to_string();
                     let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
 
-                    let mods = mods.mods;
                     if method.filter_by_mods() {
-                        online_scores.retain(|s| s.mods() == mods);
+                        online_scores.retain(|s| Self::check_mods(&s.mods, &mods));
                     }
 
                     let mut thing = scores_clone.write().await;
@@ -204,7 +213,7 @@ pub struct ScoreLoaderHelper {
 
 
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Dropdown, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ScoreRetreivalMethod {
     #[default]
     Local,
@@ -393,6 +402,8 @@ mod osu {
         hash: Md5Hash,
         playmode: &String
     ) -> TatakuResult<Vec<IngameScore>> {
+        let ok_mods = ModManager::mods_for_playmode_as_hashmap(playmode);
+
         let mode = match &**playmode {
             "osu" => 0,
             "taiko" => 1,
@@ -441,7 +452,11 @@ mod osu {
                         let peppy_fuck = s.enabled_mods.parse::<u64>().unwrap_or_default();
                         macro_rules! check { 
                             ($i: ident, $n: expr) => { 
-                                if (peppy_fuck & Mods::$i) > 0 { score.mods_mut().insert($n.to_owned()); } 
+                                if (peppy_fuck & Mods::$i) > 0 { 
+                                    if let Some(m) = ok_mods.get($n) {
+                                        score.mods.push((*m).into()); 
+                                    }
+                                } 
                             }; 
                         }
 
@@ -508,6 +523,8 @@ mod quaver {
     }
 
     async fn get_scores_internal(map_hash: &String) -> TatakuResult<Vec<IngameScore>> {
+        let ok_mods = ModManager::mods_for_playmode_as_hashmap("mania");
+
 
         // need to fetch the beatmap id, because peppy doesnt allow getting scores by hash :/
         let Some(id) = fetch_beatmap_id(map_hash).await else {return Err(TatakuError::String("no osu map".to_owned()))};
@@ -535,7 +552,8 @@ mod quaver {
             score.max_combo = s.max_combo as u16;
             score.judgments = judgments;
             score.speed = GameSpeed::default();
-            score.accuracy = s.accuracy as f64 / 100.0;
+            score.accuracy = s.accuracy / 100.0;
+
             // check mods
             for m in s.mods_string.split(", ") {
                 if m.ends_with("x") {
@@ -545,7 +563,11 @@ mod quaver {
                     }
                 }
 
-                score.mods_mut().insert(m.to_lowercase());
+                if let Some(m) = ok_mods.get(m) {
+                    score.mods.push((*m).into()); 
+                }
+
+                // score.mods_mut().insert(m.to_lowercase());
             }
             
 

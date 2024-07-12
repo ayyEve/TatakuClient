@@ -228,6 +228,7 @@ pub enum SelectedTheme {
 }
 
 
+#[cfg(feature="graphics")]
 impl Dropdownable2 for SelectedTheme {
     type T = Self;
     fn variants() -> Vec<Self::T> {

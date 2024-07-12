@@ -36,6 +36,7 @@ impl Bounds {
 }
 
 
+#[cfg(feature="graphics")]
 impl From<iced::Rectangle> for Bounds {
     fn from(value: iced::Rectangle) -> Self {
         Self::new(

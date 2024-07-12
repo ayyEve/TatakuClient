@@ -17,13 +17,17 @@ impl InnerUIElement for LeaderboardElement {
     fn display_name(&self) -> &'static str { "Leaderboard" }
 
     fn get_bounds(&self) -> Bounds {
-        Bounds::new(
+        #[cfg(feature="graphics")]
+        return Bounds::new(
             Vector2::ZERO,
             Vector2::new(
                 LEADERBOARD_ITEM_SIZE.x,
                 LEADERBOARD_ITEM_SIZE.y * 10.0
             )
-        )
+        );
+
+        #[cfg(not(feature="graphics"))]
+        Bounds::default()
     }
 
 
@@ -32,6 +36,7 @@ impl InnerUIElement for LeaderboardElement {
         self.scores = manager.all_scores().into_iter().map(|i|i.clone()).collect();
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         // draw scores
         // let args = RenderArgs {
@@ -66,6 +71,7 @@ impl InnerUIElement for LeaderboardElement {
 
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.image = skin_manager.get_texture("menu-button-background", source, SkinUsage::Gamemode, false).await;
     }

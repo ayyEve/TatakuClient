@@ -24,6 +24,7 @@ impl InnerUIElement for ComboElement {
         self.combo = manager.score.score.combo;
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let mut combo_bounds = self.combo_bounds;
         combo_bounds.pos = pos_offset;
@@ -49,6 +50,7 @@ impl InnerUIElement for ComboElement {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.combo_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "combo", Some('x'), 0, skin_manager, source, SkinUsage::Gamemode).await.ok()
     }

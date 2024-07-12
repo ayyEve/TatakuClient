@@ -149,6 +149,7 @@ impl InnerUIElement for DonChan {
         }
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         match self.state {
             DonChanState::Normal => {
@@ -198,6 +199,7 @@ impl InnerUIElement for DonChan {
         self.combo_anim_last_index = 0;
     }
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.normal_anim = load_anim("idle", source, skin_manager).await;
         self.combo_anim = load_anim("clear", source, skin_manager).await;
@@ -206,6 +208,7 @@ impl InnerUIElement for DonChan {
     }
 }
 
+#[cfg(feature="graphics")]
 async fn load_anim(
     name: &str, 
     source: &TextureSource,

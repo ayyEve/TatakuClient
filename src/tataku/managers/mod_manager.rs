@@ -26,7 +26,7 @@ impl ModManager {
             .flatten()
             .collect::<Vec<_>>()
     }
-    pub fn mods_for_playmode_as_hashmap(playmode: &String) -> HashMap<String, GameplayMod> {
+    pub fn mods_for_playmode_as_hashmap(playmode: &str) -> HashMap<String, GameplayMod> {
         let Some(info) = get_gamemode_info(playmode) else { return HashMap::new() };
 
         default_mod_groups()
@@ -38,7 +38,7 @@ impl ModManager {
             .collect()
     }
 
-    pub fn short_mods_string(mods: HashSet<String>, none_if_empty: bool, playmode: &String) -> String {
+    pub fn short_mods_string(mods: &Vec<ModDefinition>, none_if_empty: bool, playmode: &String) -> String {
         if mods.len() == 0 {
             if none_if_empty { return "None".to_owned() }
             return String::new();
@@ -48,7 +48,7 @@ impl ModManager {
 
         let mut list = Vec::new();
         for m in mods.iter() {
-            if let Some(m) = ok_mods.get(m) {
+            if let Some(m) = ok_mods.get(m.as_ref()) {
                 list.push(m.short_name)
             }
         }
@@ -77,6 +77,15 @@ impl ModManager {
         list.join(" ")
     }
 
+
+    pub fn map_mods_to_thing(&self, playmode: &str) -> Vec<ModDefinition> {
+        let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
+
+        self.mods.iter()
+            .filter_map(|m| ok_mods.get(m))
+            .map(|m| (*m).into())
+            .collect()
+    }
 }
 
 // instance
@@ -131,8 +140,8 @@ impl ModManager {
         self
     }
     /// set all mods
-    pub fn with_mods(mut self, mods: HashSet<String>) -> Self {
-        self.mods = mods;
+    pub fn with_mods(mut self, mods: impl Iterator<Item=impl AsRef<str>>) -> Self {
+        self.mods = mods.map(|i| i.as_ref().to_owned()).collect();
         self
     }
     /// set the speed

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub struct ScoreSubmitHelper {
-    pub replay: Replay,
+    pub score: Score,
     // settings: Settings,
     username: String,
     password: String,
@@ -13,12 +13,12 @@ pub struct ScoreSubmitHelper {
 
 impl ScoreSubmitHelper {
     pub fn new(
-        replay: Replay, 
+        score: Score, 
         settings: &Settings,
         beatmap: &BeatmapMeta,
     ) -> Arc<Self> {
         Arc::new(Self { 
-            replay, 
+            score, 
             // settings: settings.clone(), 
             beatmap_type: beatmap.beatmap_type,
             username: settings.username.clone(),
@@ -31,8 +31,6 @@ impl ScoreSubmitHelper {
     pub fn submit(self: Arc<Self>) {
         tokio::spawn(async move {
             trace!("submitting score");
-            let replay = &self.replay;
-            let score = replay.score_data.as_ref().unwrap();
 
             let username = self.username.clone();
             let password = self.password.clone();
@@ -52,14 +50,14 @@ impl ScoreSubmitHelper {
             // };
             let map_info = ScoreMapInfo {
                 game: self.beatmap_type.into(),
-                map_hash: score.beatmap_hash.clone(),
-                playmode: score.playmode.clone(),
+                map_hash: self.score.beatmap_hash.clone(),
+                playmode: self.score.playmode.clone(),
             };
             let score_submit = ScoreSubmit {
                 username,
                 password,
                 game: "tataku".to_owned(),
-                replay: replay.clone(),
+                score: self.score.clone(),
                 map_info
             };
 

@@ -51,6 +51,7 @@ impl InnerUIElement for JudgementBarElement {
         self.hitbar_timings = manager.hitbar_timings.clone()
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         // TODO: rework this garbage lmao
         // // draw hit timings bar

@@ -7,6 +7,7 @@ pub const DIRECT_ITEM_SIZE:Vector2 = Vector2::new(500.0, 80.0);
 const DIALOG_ITEM_SIZE:Vector2 = Vector2::new(300.0, 40.0);
 
 
+#[cfg(feature="graphics")]
 #[derive(Clone, ScrollableGettersSetters)]
 pub struct DirectItem {
     pos: Vector2,
@@ -19,6 +20,7 @@ pub struct DirectItem {
     pub downloading: bool,
     last_progress: f32,
 }
+#[cfg(feature="graphics")]
 impl DirectItem {
     pub fn new(item: Arc<dyn DirectDownloadable>, in_dialog: bool) -> DirectItem {
         let size = if in_dialog {DIALOG_ITEM_SIZE} else {DIRECT_ITEM_SIZE};
@@ -38,6 +40,7 @@ impl DirectItem {
     }
 }
 
+#[cfg(feature="graphics")]
 impl ScrollableItem for DirectItem {
     fn get_value(&self) -> Box<dyn std::any::Any> { Box::new(self.item.clone()) }
     fn update(&mut self) {

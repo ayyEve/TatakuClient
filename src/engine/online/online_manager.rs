@@ -32,6 +32,7 @@ pub struct OnlineManager {
     pub writer: Option<Arc<Mutex<WsWriter>>>,
 
     // ====== chat ======
+    #[cfg(feature="graphics")]
     pub chat_messages: HashMap<ChatChannel, Vec<ChatMessage>>,
 
     // ====== spectator ======
@@ -43,8 +44,11 @@ pub struct OnlineManager {
 
 impl OnlineManager {
     pub fn new() -> OnlineManager {
+        #[cfg(feature="graphics")]
         let mut messages = HashMap::new();
+        #[cfg(feature="graphics")]
         let channel = ChatChannel::Channel{name: "general".to_owned()};
+        #[cfg(feature="graphics")]
         messages.insert(channel.clone(), vec![ChatMessage::new(
             "System".to_owned(),
             channel,
@@ -61,6 +65,7 @@ impl OnlineManager {
             // chat: Chat::new(),
             writer: None,
             connected: false,
+            #[cfg(feature="graphics")]
             chat_messages: messages,
             spectator_info: OnlineSpectatorInfo::new(0),
 
@@ -75,6 +80,7 @@ impl OnlineManager {
         }
     }
 
+    #[cfg(feature="gameplay")]
     pub async fn start() {
         info!("starting network connection");
         let mut settings = SettingsHelper::new();
@@ -188,12 +194,13 @@ impl OnlineManager {
     }
 
     /// handle an incoming server packet
+    #[cfg(feature="gameplay")]
     async fn handle_packet(data:Vec<u8>, log_settings: &LoggingSettings) -> TatakuResult<()> {
         let mut reader = SerializationReader::new(data);
 
         while reader.can_read() {
             // info!("reading packet from server");
-            let packet:PacketId = reader.read()?;
+            let packet:PacketId = reader.read("packet id")?;
             // if log_settings.extra_online_logging { info!("Got packet {:?}", packet); };
 
             match packet {
@@ -330,6 +337,7 @@ impl OnlineManager {
         Ok(())
     }
 
+    #[cfg(feature="gameplay")]
     async fn handle_chat_packet(packet: ChatPacket, log_settings: &LoggingSettings) -> TatakuResult<()> {
         match packet {
             ChatPacket::Server_SendMessage {sender_id, message, channel}=> {

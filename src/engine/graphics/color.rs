@@ -713,16 +713,19 @@ impl Into<String> for Color {
     }
 }
 
+#[cfg(feature="graphics")]
 impl From<iced::Color> for Color {
     fn from(value: iced::Color) -> Self {
         Self::new(value.r, value.g, value.b, value.a)
     }
 }
+#[cfg(feature="graphics")]
 impl From<&iced::Color> for Color {
     fn from(value: &iced::Color) -> Self {
         Self::new(value.r, value.g, value.b, value.a)
     }
 }
+#[cfg(feature="graphics")]
 impl Into<iced::Color> for Color {
     fn into(self) -> iced::Color {
         iced::Color::from_rgba(self.r, self.g, self.b, self.a)

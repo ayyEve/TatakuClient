@@ -1,4 +1,4 @@
-use super::super::{BlendMode, Scissor};
+use super::super::BlendMode;
 use wgpu::{
     Buffer,
     Device

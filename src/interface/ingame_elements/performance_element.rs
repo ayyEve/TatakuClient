@@ -35,6 +35,7 @@ impl InnerUIElement for PerformanceElement {
         self.perf = manager.score.performance;
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let bounds_x = self.bounds_size.x_portion();
 
@@ -83,6 +84,7 @@ impl InnerUIElement for PerformanceElement {
     }
 
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.perf_image = SkinnedNumber::new(Vector2::ZERO, self.perf as f64, Color::WHITE, "score", None, 2, skin_manager, source, SkinUsage::Gamemode).await.ok();
 

@@ -5,7 +5,7 @@ const WHITE_TEXT:bool = true;
 
 pub struct AccuracyElement {
     acc_image: Option<SkinnedNumber>,
-    acc: f64,
+    acc: f32,
 
     bounds_size: Vector2,
 }
@@ -34,11 +34,12 @@ impl InnerUIElement for AccuracyElement {
         self.acc = manager.score.accuracy * 100.0;    
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset: Vector2, scale: Vector2, list: &mut RenderableCollection) {
         let bounds_x = self.bounds_size.x_portion();
 
         if let Some(mut acc) = self.acc_image.clone() {
-            acc.number = self.acc;
+            acc.number = self.acc as f64;
             acc.scale = scale;
 
             // let size = acc.measure_text();
@@ -75,6 +76,7 @@ impl InnerUIElement for AccuracyElement {
     }
 
 
+    #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, source: &TextureSource, skin_manager: &mut SkinManager) {
         self.acc_image = SkinnedNumber::new(Vector2::ZERO, 0.0, Color::WHITE, "score", Some('%'), 2, skin_manager, source, SkinUsage::Gamemode).await.ok();
         

@@ -31,11 +31,12 @@ impl DiffCalcSummary {
 }
 
 
-pub fn calc_acc(score: &Score) -> f64 {
+pub fn calc_acc(score: &Score) -> f32 {
     get_gamemode_info(&score.playmode)
-        .map(|i|i.calc_acc(score))
+        .map(|i| i.calc_acc(score))
         .unwrap_or_default()
         .normal_or(1.0)
+        as f32
 }
 
 pub fn gamemode_display_name(playmode: &str) -> &'static str {
@@ -45,14 +46,15 @@ pub fn gamemode_display_name(playmode: &str) -> &'static str {
 }
 
 
-pub async fn manager_from_playmode_path_hash(
-    playmode: String, 
+pub async fn manager_from_playmode_path_hash<'a>(
+    playmode: impl ToString, 
     map_path: String, 
     map_hash: Md5Hash,
     mods: ModManager,
 ) -> TatakuResult<GameplayManager> {
+    let playmode = playmode.to_string();
     let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
-    let playmode = beatmap.playmode(playmode);
+    let playmode = beatmap.playmode(playmode.clone());
 
     let info = get_gamemode_info(&playmode)
         .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))?;

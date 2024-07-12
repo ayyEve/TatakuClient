@@ -56,7 +56,6 @@ pub struct GameplayManager {
 
 
     pub score: IngameScore,
-    pub replay: Replay,
     pub score_multiplier: f32,
 
     pub health: Box<dyn HealthManager>,
@@ -124,6 +123,7 @@ pub struct GameplayManager {
     pub on_start: Box<dyn FnOnce(&mut Self) + Send + Sync>,
 
     pub events: Vec<IngameEvent>,
+    #[cfg(feature="graphics")]
     ui_editor: Option<GameUIEditorDialog>,
 
     pending_time_jump: Option<f32>,
@@ -186,7 +186,6 @@ impl GameplayManager {
             judgments: gamemode_info.get_judgments(),
             score: IngameScore::new(score, true, false),
 
-            replay: Replay::new(),
             beatmap,
             animation: Box::new(EmptyAnimation),
 
@@ -231,6 +230,7 @@ impl GameplayManager {
             should_pause: false,
             pause_pending: false,
             ui_elements: Vec::new(),
+            #[cfg(feature="graphics")]
             ui_editor: None,
             ui_changed: false,
 
@@ -246,6 +246,7 @@ impl GameplayManager {
         }
     }
 
+    #[cfg(feature="graphics")]
     async fn init_ui(&mut self) {
         if self.ui_editor.is_some() { return }
         
@@ -400,21 +401,22 @@ impl GameplayManager {
         }
 
         // update ui editor
-        let mut ui_editor = std::mem::take(&mut self.ui_editor);
-        let mut should_close = false;
-        if let Some(ui_editor) = &mut ui_editor {
-            ui_editor.update().await;
-            ui_editor.update_elements(self);
+        #[cfg(feature="graphics")] {
+            let mut ui_editor = std::mem::take(&mut self.ui_editor);
+            let mut should_close = false;
+            if let Some(ui_editor) = &mut ui_editor {
+                ui_editor.update().await;
+                ui_editor.update_elements(self);
 
-            if ui_editor.should_close() {
-                self.ui_elements = std::mem::take(&mut ui_editor.elements);
-                should_close = true
+                if ui_editor.should_close() {
+                    self.ui_elements = std::mem::take(&mut ui_editor.elements);
+                    should_close = true
+                }
+            }
+            if !should_close {
+                self.ui_editor = ui_editor;
             }
         }
-        if !should_close {
-            self.ui_editor = ui_editor;
-        }
-        
         // get the time with offsets
         let time = self.time();
 
@@ -531,9 +533,11 @@ impl GameplayManager {
         match &mut *self.gameplay_mode {
             // read inputs from replay if replaying
             GameplayMode::Replaying { 
-                replay, 
+                score, 
                 current_frame 
             } /* if !self.current_mods.has_autoplay() */ => {
+                let Some(replay) = &score.replay else { unreachable!() };
+
                 // read any frames that need to be read
                 loop {
                     if *current_frame >= replay.frames.len() { break }
@@ -732,6 +736,7 @@ impl GameplayManager {
         self.actions.take()
     }
 
+    #[cfg(feature="graphics")]
     pub async fn draw(&mut self, list: &mut RenderableCollection) {
         let time = self.time();
 
@@ -996,6 +1001,7 @@ impl GameplayManager {
 
         // re init ui because pointers may not be valid anymore
         self.ui_elements.clear();
+        #[cfg(feature="graphics")]
         self.init_ui().await;
 
         if !self.started {
@@ -1006,7 +1012,7 @@ impl GameplayManager {
                 self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
                     mode: self.gamemode.playmode(),
-                    mods: self.score.mods_string_sorted(),
+                    mods: self.score.mods.clone(),
                     speed: self.current_mods.speed.as_u16(),
                     map_game: self.metadata.beatmap_type.into(),
                     map_link: None
@@ -1117,32 +1123,52 @@ impl GameplayManager {
         self.timing_points.reset();
 
         {
-            *self.score.mods_mut() = self.current_mods.mods.clone();
+            // get all available mods for this playmode
             let playmode = self.gamemode.playmode();
 
-            // get all available mods for this playmode
-            let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
-            
-            // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
-            self.score.mods_mut().retain(|m| {
-                if let Some(m) = ok_mods.get(m) {
-                    self.score_multiplier *= m.score_multiplier;
-                    true
-                } else {
-                    false
-                }
-            });
-        }
+            self.score.mods = self.current_mods.map_mods_to_thing(&playmode);
+            for m in &self.score.mods {
+                self.score_multiplier *= m.score_multiplier;
+            }
 
+            // let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
+
+            // for i in self.current_mods.mods.iter() {
+            //     let Some(m) = ok_mods.get(i) else { continue };
+            //     self.score.mods.push((*m).into());
+            //     self.score_multiplier *= m.score_multiplier;
+            // }
+
+
+            // self.score.mods = self.current_mods.mods.iter().map(ModDefinition::from).collect();
+            // let playmode = self.gamemode.playmode();
+
+            // // get all available mods for this playmode
+            // let ok_mods = ModManager::mods_for_playmode_as_hashmap(&playmode);
+            
+            // // purge any non-gamemode mods, and get the score multiplier for mods that are enabled
+            // self.score.mods.retain(|m| {
+            //     if let Some(m) = ok_mods.get(m) {
+            //         self.score_multiplier *= m.score_multiplier;
+            //         true
+            //     } else {
+            //         false
+            //     }
+            // });
+        }
+        if self.score.replay.is_none() {
+            self.score.replay = Some(Replay::new());
+        }
  
         if !self.gameplay_mode.is_replay() {
             // only reset the replay if we arent replaying
-            self.replay = Replay::new();
+            self.score.replay = Some(Replay::new());
+            // self.replay = Replay::new();
             self.score.speed = self.current_mods.speed;
         } else {
-            if let Some(score) = &self.replay.score_data {
-                self.score.username = score.username.clone();
-            }
+            // if let Some(score) = &self.replay.score_data {
+            //     self.score.username = score.username.clone();
+            // }
         }
 
         // reset elements
@@ -1228,21 +1254,26 @@ impl GameplayManager {
                 // dont think there's anything to do for this one, since its the default
             }
             
-            GameplayMode::Replaying { replay, .. } => {
+            GameplayMode::Replaying { score, .. } => {
                 // load speed from score
-                if let Some(score) = &replay.score_data {
-                    let mods = ModManager {
-                        mods: score.mods(),
-                        speed: score.speed,
-                    };
+                let mods = ModManager {
+                    mods: score.mods.iter().map(|m| m.name.clone()).collect(),
+                    speed: score.speed,
+                };
+                self.current_mods = Arc::new(mods);
+
+                self.score.mods = self.current_mods.map_mods_to_thing(&self.gamemode.playmode());
+                self.score.username = score.username.clone();
+
+                // if let Some(score) = &replay.score_data {
         
-                    self.current_mods = Arc::new(mods);
-                    *self.score.mods_mut() = self.current_mods.mods.clone();
+                //     self.current_mods = Arc::new(mods);
+                //     *self.score.mods_mut() = self.current_mods.mods.clone();
         
-                    self.score.username = score.username.clone()
-                } else {
-                    self.score.username = "Unknown user".to_owned();
-                }
+                //     self.score.username = score.username.clone()
+                // } else {
+                //     self.score.username = "Unknown user".to_owned();
+                // }
             }
 
             GameplayMode::Preview => {
@@ -1262,7 +1293,8 @@ impl GameplayManager {
 
             // handling spec
             GameplayMode::Spectator { host_username, .. } => {
-                self.replay.score_data.as_mut().unwrap().username = host_username.clone();
+                self.score.username = host_username.clone();
+                // self.replay.score_data.as_mut().unwrap().username = host_username.clone();
             }
         }
 
@@ -1333,7 +1365,7 @@ impl GameplayManager {
             }
 
             if add_frames && should_add {
-                self.replay.frames.push(frame);
+                self.score.replay.ok_do_mut(|r| r.frames.push(frame));
                 self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ReplayAction { action: frame.action }));
             }
         }
@@ -1380,6 +1412,7 @@ impl GameplayManager {
 
 
         
+        #[cfg(feature="graphics")]
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_key_press(key_input, &mods, &mut ()).await;
             if key == Key::F9 {
@@ -1451,6 +1484,7 @@ impl GameplayManager {
     
     
     pub async fn mouse_move(&mut self, pos: Vector2) {
+        #[cfg(feature="graphics")]
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_move(pos, &mut ()).await;
         }
@@ -1461,6 +1495,7 @@ impl GameplayManager {
         self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_down(&mut self, btn: MouseButton) {
+        #[cfg(feature="graphics")]
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_down(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return
@@ -1471,6 +1506,7 @@ impl GameplayManager {
         self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_up(&mut self, btn: MouseButton) {
+        #[cfg(feature="graphics")]
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_up(Vector2::ZERO, btn, &KeyModifiers::default(), &mut ()).await;
             return;
@@ -1481,6 +1517,7 @@ impl GameplayManager {
         self.handle_frame(frame, false, None, true).await;
     }
     pub async fn mouse_scroll(&mut self, delta: f32) {
+        #[cfg(feature="graphics")]
         if let Some(ui_editor) = &mut self.ui_editor {
             ui_editor.on_mouse_scroll(delta, &mut ()).await;
         } 
@@ -1519,6 +1556,7 @@ impl GameplayManager {
     }
 
 
+    #[cfg(feature="graphics")]
     pub async fn window_size_changed(&mut self, window_size: Arc<WindowSize>) {
         self.window_size = window_size.clone();
         self.gamemode.window_size_changed(window_size).await;
@@ -1568,6 +1606,7 @@ impl GameplayManager {
         self.gamemode.force_update_settings(&self.settings).await;
     }
 
+    #[cfg(feature="graphics")]
     pub async fn reload_skin(&mut self, skin_manager: &mut SkinManager) {
         let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
         let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
@@ -1641,8 +1680,8 @@ pub enum GameplayMode {
 
     /// This manager is watching a replay
     Replaying {
-        /// What replay are we watching?
-        replay: Replay,
+        /// What score+replay are we watching?
+        score: Score,
 
         /// What frame index are we at?
         current_frame: usize,
@@ -1689,9 +1728,9 @@ impl GameplayMode {
     pub fn normal() -> Self {
         Self::Normal
     }
-    pub fn replay(replay: Replay) -> Self {
+    pub fn replay(score: Score) -> Self {
         Self::Replaying { 
-            replay, 
+            score, 
             current_frame: 0,
         }
     }

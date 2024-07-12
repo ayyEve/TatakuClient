@@ -22,7 +22,7 @@ impl IngameScore {
         }
     }
 
-    pub async fn get_replay(&self) -> TatakuResult<Replay> {
+    pub async fn get_replay(&self) -> TatakuResult<Score> {
         info!("downloading: {:#?}", self.replay_location);
 
         match &self.replay_location {

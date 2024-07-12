@@ -21,7 +21,7 @@ impl LeaderboardComponent {
     pub fn view(&self) -> IcedElement {
         use crate::prelude::iced_elements::*;
 
-        let score_mods = ModManager::short_mods_string(self.score.mods(), false, &self.score.playmode);
+        let score_mods = ModManager::short_mods_string(&self.score.mods, false, &self.score.playmode);
 
         let now = chrono::Utc::now().timestamp() as u64;
         let time_diff = now as i64 - self.score.time as i64;
@@ -75,7 +75,7 @@ impl LeaderboardItem {
 
         let tag = score.hash(); //username.clone();
         let font = Font::Main;
-        let score_mods = ModManager::short_mods_string(score.mods(), false, &score.playmode);
+        let score_mods = ModManager::short_mods_string(&score.mods, false, &score.playmode);
 
         LeaderboardItem {
             pos,

@@ -1,5 +1,6 @@
 mod cli;
 mod game;
+#[cfg(feature="graphics")]
 mod menus;
 mod helpers;
 mod managers;
@@ -10,6 +11,7 @@ pub mod beatmaps;
 
 pub use cli::*;
 pub use game::*;
+#[cfg(feature="graphics")]
 pub use menus::*;
 pub use helpers::*;
 pub use managers::*;

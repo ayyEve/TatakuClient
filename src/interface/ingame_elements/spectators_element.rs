@@ -39,6 +39,7 @@ impl InnerUIElement for SpectatorsElement {
         }
     }
 
+    #[cfg(feature="graphics")]
     fn draw(&mut self, pos_offset:Vector2, scale:Vector2, list: &mut RenderableCollection) {
         if self.spectators.list.is_empty() { return }
 

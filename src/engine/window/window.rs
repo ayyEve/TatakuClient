@@ -53,6 +53,10 @@ pub struct GameWindow<'window> {
     finger_touches: HashSet<u64>,
     // what finger id started the touch, and where is the floating touch location
     touch_pos: Option<(u64, Vector2)>,
+
+
+    #[cfg(not(feature="graphics"))]
+    _phantom_data: std::marker::PhantomData<&'window ()>
 }
 #[cfg(feature="graphics")]
 impl<'window> GameWindow<'window> {
@@ -405,9 +409,10 @@ impl<'window> GameWindow<'window> {
 impl<'window> GameWindow<'window> {
     pub fn send_event(event: Game2WindowEvent) {
         // tokio::sync::mpsc::UnboundedReceiver::poll_recv(&mut self, cx)
-        #[cfg(feature="graphics")]
-        let Some(proxy) = WINDOW_PROXY.get() else { return };
-        let _ = proxy.send_event(event);
+        #[cfg(feature="graphics")] {
+            let Some(proxy) = WINDOW_PROXY.get() else { return };
+            let _ = proxy.send_event(event);
+        }
         // WINDOW_EVENT_QUEUE.get().unwrap().send(event).ok().unwrap();
     }
 
@@ -471,6 +476,7 @@ impl<'window> GameWindow<'window> {
 }
 
 
+#[cfg(feature="graphics")]
 impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameWindow<'window> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if self.window.get().is_some() { return }

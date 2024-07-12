@@ -518,6 +518,7 @@ impl BeatmapManager {
         self.selected_set = set_num;
         self.select_map(0, values);
 
+        #[cfg(feature="graphics")]
         self.actions.push(TatakuAction::PerformOperation(
             snap_to_id(
             "beatmap_scroll", 
