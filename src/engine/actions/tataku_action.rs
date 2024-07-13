@@ -19,6 +19,8 @@ pub enum TatakuAction {
     /// Perform an operation on the current song
     Song(SongAction),
 
+    Mods(ModAction),
+
     #[cfg(feature="graphics")]
     /// Perform a widget operation
     PerformOperation(IcedOperation),
@@ -40,6 +42,7 @@ impl std::fmt::Debug for TatakuAction {
             Self::Game(game) => write!(f, "Game({game:?})"),
             Self::Beatmap(map) => write!(f, "Beatmap({map:?})"),
             Self::Song(song) => write!(f, "Song({song:?})"),
+            Self::Mods(mods) => write!(f, "Mods({mods:?})"),
             #[cfg(feature="graphics")]
             Self::PerformOperation(_) => write!(f, "PerformOperation"),
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),

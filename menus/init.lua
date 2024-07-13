@@ -174,6 +174,12 @@ function dialog_action(dialog)
         dialog = dialog
     }
 end
+function mod_action(mods)
+    return {
+        id = "action",
+        mods = mods
+    }
+end
 function no_action()
     return {
         id = "none",

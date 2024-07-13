@@ -15,6 +15,9 @@ pub enum CustomMenuAction {
     /// Perform a map action
     Map(CustomMenuMapAction),
 
+    /// Perform a mods action
+    Mods(CustomModAction),
+
     /// Perform a song action
     Song(CustomMenuSongAction),
 
@@ -40,10 +43,12 @@ impl CustomMenuAction {
                 Some(TatakuAction::Menu(MenuAction::set_menu(val.as_string())))
             }
 
-            Self::Map(action) => action.into_action(values, passed_in).map(|a| TatakuAction::Beatmap(a)),
-            Self::Song(action) => action.into_action(values).map(|a| TatakuAction::Song(a)),
-            Self::Game(action) => action.into_action(values, passed_in).map(|a| TatakuAction::Game(a)),
-            Self::Multiplayer(action) => action.into_action(values).map(|a| TatakuAction::Multiplayer(a)),
+            Self::Map(action) => action.into_action(values, passed_in).map(TatakuAction::Beatmap),
+            Self::Mods(action) => action.into_action(values).map(TatakuAction::Mods),
+            
+            Self::Song(action) => action.into_action(values).map(TatakuAction::Song),
+            Self::Game(action) => action.into_action(values, passed_in).map(TatakuAction::Game),
+            Self::Multiplayer(action) => action.into_action(values).map(TatakuAction::Multiplayer),
             
             Self::SetValue(key, val) => Some(TatakuAction::Game(GameAction::SetValue(key, val))),
         }
@@ -53,6 +58,7 @@ impl CustomMenuAction {
     pub fn build(&mut self, values: &ValueCollection) {
         match self {
             Self::Map(action) => action.build(values),
+            Self::Mods(action) => action.build(values),
             Self::Song(action) => action.build(values),
             Self::Game(action) => action.build(values),
             Self::Multiplayer(action) => action.build(values),
@@ -92,6 +98,10 @@ impl CustomMenuAction {
         // beatmap actions
         else if let Some(map_action) = table.get::<_, Option<CustomMenuMapAction>>("map")? {
             Ok(Self::Map(map_action))
+        }
+        // mod actions
+        else if let Some(mod_action) = table.get::<_, Option<_>>("mods")? {
+            Ok(Self::Mods(mod_action))
         }
         // song actions
         else if let Some(song_action) = table.get::<_, Option<CustomMenuSongAction>>("song")? {

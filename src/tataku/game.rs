@@ -1685,6 +1685,29 @@ impl Game {
                 multi_manager.handle_lobby_action(action).await;
             }
 
+            TatakuAction::Mods(mod_action) => {
+                let mut mods:ModManager = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+                match mod_action {
+                    ModAction::AddMod(mod_name) => mods.add_mod(mod_name).nope(),
+                    ModAction::RemoveMod(mod_name) => mods.remove_mod(mod_name),
+                    ModAction::ToggleMod(mod_name) => mods.toggle_mod(mod_name).nope(),
+                    ModAction::SetSpeed(speed) => mods.set_speed(speed),
+                    ModAction::AddSpeed(speed) => mods.set_speed(mods.get_speed() + speed),
+                }
+
+                // update value collection
+                self.values.update_or_insert("global.mods", TatakuVariableWriteSource::Game, mods.clone(), || TatakuVariable::new_game(mods.clone()));
+            
+                // update the song's rate
+                self.actions.push(SongAction::SetRate(mods.get_speed()));
+
+                // apply mods to all gameplay managers
+                for (m, i) in self.gameplay_managers.values_mut() {
+                    if i.mods.is_some() { continue }
+                    m.apply_mods(mods.clone()).await;
+                }
+            }
+
 
             // task actions
             TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),

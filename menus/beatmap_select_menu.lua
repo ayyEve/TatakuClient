@@ -120,7 +120,14 @@ local menu = {
         --[[next map]] key_event("Down", map_action("next_map")),
         --[[next map]] key_event("Escape", { id = "action", menu = "main_menu" }),
 
-        --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods"))
+        --[[mods dialog]] key_event("M", {"ctrl"}, dialog_action("mods")),
+
+        -- mods
+        --[[nofail]] key_event("N", {"ctrl"}, mod_action({ toggle = "no_fail" })),
+        --[[autoplay]] key_event("A", {"ctrl"}, mod_action({ toggle = "autoplay" })),
+
+        --[[add speed]] key_event("Equals", {"ctrl"}, mod_action({ add_speed = 0.1 })),
+        --[[remove speed]] key_event("Minus", {"ctrl"}, mod_action({ add_speed = -0.1 })),
     },
 
     -- the beatmap select menu is broken up into rows
