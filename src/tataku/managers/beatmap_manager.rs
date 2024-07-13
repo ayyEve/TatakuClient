@@ -170,7 +170,11 @@ impl BeatmapManager {
         }
     }
 
-    pub async fn add_beatmap(&mut self, beatmap:&Arc<BeatmapMeta>, add_to_db: bool, values: &mut ValueCollection) {
+    pub async fn add_beatmap(
+        &mut self, beatmap: &Arc<BeatmapMeta>, 
+        add_to_db: bool, 
+        values: &mut ValueCollection
+    ) {
         // check if we already have this map
         if self.beatmaps_by_hash.contains_key(&beatmap.beatmap_hash) {
             // see if this beatmap is being added from another source
@@ -193,6 +197,10 @@ impl BeatmapManager {
         if self.initialized { 
             debug!("adding beatmap {}", beatmap.version_string());
             values.update("global.new_map_hash", TatakuVariableWriteSource::Game, beatmap.beatmap_hash);
+
+            #[cfg(feature="graphics")]
+            self.actions.push(GameAction::HandleEvent(TatakuEventType::MapAdded, Some(beatmap.beatmap_hash.into())));
+            self.refresh_maps(values).await;
         }
 
         if add_to_db {
@@ -236,18 +244,17 @@ impl BeatmapManager {
     #[async_recursion::async_recursion]
     pub async fn set_current_beatmap(
         &mut self, 
-        // game:&mut Game, 
         values: &mut ValueCollection,
         beatmap: &Arc<BeatmapMeta>, 
         use_preview_time: bool, 
         restart_song: bool
     ) {
-        trace!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
+        debug!("Setting current beatmap to {} ({})", beatmap.beatmap_hash, beatmap.file_path);
         self.current_beatmap = Some(beatmap.clone());
         self.played.push(beatmap.clone());
         self.play_index += 1;
 
-        // update shunting yard values
+        // update value collection
         {
             let map: TatakuValue = beatmap.deref().into();
             let mut map = map.as_map_helper().unwrap();
@@ -301,8 +308,10 @@ impl BeatmapManager {
                 break
             }
         }
+
         self.update_values(values, beatmap.beatmap_hash);
     }
+    
     #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self, values: &mut ValueCollection) {
         trace!("Setting current beatmap to None");

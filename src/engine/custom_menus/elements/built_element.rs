@@ -66,11 +66,15 @@ impl Widgetable for BuiltElementDef {
                 let value = values.get_string(&variable).unwrap_or_default();
                 let variable = variable.clone();
 
-                let on_input:Box<dyn Fn(String) -> Message> = match on_input.clone() {
+                let mut input_action = on_input.clone();
+                input_action.ok_do_mut(|a| a.resolve_pre(values)); 
+
+                let on_input:Box<dyn Fn(String) -> Message> = match input_action {
                     Some(on_input) => {
                         Box::new(move |t| {
                             let value = TatakuValue::String(t);
-                            match on_input.resolve(owner, &mut ValueCollection::new(), Some(value.clone())) {
+
+                            match on_input.resolve_post(owner, Some(value.clone())) {
                                 Some(resolved) => Message::new(owner, "", MessageType::Multi(vec![
                                     Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None)),
                                     resolved,
@@ -88,7 +92,6 @@ impl Widgetable for BuiltElementDef {
 
                 iced_elements::TextInput::new(&placeholder, &value)
                     .on_input(on_input)
-                    // .on_input(move |t| Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), TatakuValue::String(t)), None)))
                     .width(self.element.width)
                     .secure(*is_password)
                     .chain_maybe(on_submit.as_ref().and_then(|e| e.resolve(owner, values, None)), |t, m| t.on_submit(m))
@@ -96,7 +99,7 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::Row { padding, margin, .. } => {
-                Row::with_children(self.children.iter().map(|e|e.view(owner, values)).collect::<Vec<_>>())
+                Row::with_children(self.children.iter().map(|e| e.view(owner, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -104,7 +107,7 @@ impl Widgetable for BuiltElementDef {
                     .into_element()
             }
             ElementIdentifier::Column { padding, margin, .. } => {
-                Column::with_children(self.children.iter().map(|e|e.view(owner, values)).collect::<Vec<_>>())
+                Column::with_children(self.children.iter().map(|e| e.view(owner, values)).collect::<Vec<_>>())
                     .width(self.element.width)
                     .height(self.element.height)
                     .chain_maybe(*padding, |s, p| s.padding(p))
@@ -226,11 +229,13 @@ impl Widgetable for BuiltElementDef {
                 let selected_key = selected_key.clone();
 
                 // println!("a: {on_select:?}");
+                let mut on_select = on_select.clone();
+                on_select.ok_do_mut(|on_select| on_select.resolve_pre(values));
+
                 let on_select:Box<dyn Fn(Test)->Message> = match on_select.clone() {
                     Some(action) => Box::new(move |t: Test| 
-                        action.resolve(
+                        action.resolve_post(
                             owner, 
-                            &mut ValueCollection::new(),
                             Some(TatakuValue::String(t.id))
                         )
                         .unwrap_or_else(move || Message::new(owner, "", MessageType::Value(TatakuValue::None)))

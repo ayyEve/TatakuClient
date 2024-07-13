@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 
 pub struct CustomMenuManager {
-    menu_list: Vec<(CustomMenuSource, CustomMenu)>,
+    menu_list: Vec<CustomMenuEntry>,
 }
 impl CustomMenuManager {
     pub fn new() -> Self {
@@ -11,31 +11,106 @@ impl CustomMenuManager {
         }
     }
 
-    pub fn load_menu(&mut self, path: String, source: CustomMenuSource) -> TatakuResult {
+
+    fn load_menu_inner(
+        path: Option<String>, 
+        name: Option<String>, 
+        bytes: Vec<u8>, 
+        source: CustomMenuSource
+    ) -> TatakuResult<CustomMenuEntry> {
         let mut parser = CustomMenuParser::new()?;
-        match parser.load_menu(&path) {
-            Ok(menu) => self.menu_list.push((source, menu)),
-            Err(e) => error!("error loading custom menu: {path}: {e}"),
-        }
-        
+        let name = name.unwrap_or_else(|| path.clone().unwrap_or_default());
+
+        let menu =  parser.load_menu_from_bytes(&bytes, &name)?;
+
+        Ok(CustomMenuEntry {
+            path,
+            source,
+            menu,
+            bytes,
+        })
+    }
+
+    pub fn load_menu(&mut self, path: String, source: CustomMenuSource) -> TatakuResult {
+        let bytes = std::fs::read(&path)?;
+
+        let menu = Self::load_menu_inner(
+            Some(path),
+            None,
+            bytes,
+            source
+        )?;
+
+        self.menu_list.push(menu);
         Ok(())
+
+        // let mut parser = CustomMenuParser::new()?;
+        // match parser.load_menu_from_bytes(&bytes, &path) {
+        //     Ok(menu) => {
+        //         self.menu_list.push(CustomMenuEntry {
+        //             path: Some(path),
+        //             source,
+        //             menu,
+        //             bytes,
+        //         })
+        //     }
+        //     Err(e) => error!("error loading custom menu: {path}: {e}"),
+        // }
+        
+        // Ok(())
     }
     pub fn load_menu_from_bytes(&mut self, bytes: &[u8], name: String, source: CustomMenuSource) -> TatakuResult {
-        let mut parser = CustomMenuParser::new()?;
-        match parser.load_menu_from_bytes(bytes, &name) {
-            Ok(menu) => self.menu_list.push((source, menu)),
-            Err(e) => error!("error loading custom menu: {name}: {e}"),
-        }
         
+        let menu = Self::load_menu_inner(
+            None, 
+            Some(name), 
+            bytes.to_vec(), 
+            source
+        )?;
+
+        self.menu_list.push(menu);
+        Ok(())
+        
+
+        
+        // let mut parser = CustomMenuParser::new()?;
+        // match parser.load_menu_from_bytes(bytes, &name) {
+        //     Ok(menu) => self.menu_list.push(CustomMenuEntry {
+        //         path: None,
+        //         source,
+        //         menu,
+        //         bytes: bytes.to_vec(),
+        //     }),
+        //     Err(e) => error!("error loading custom menu: {name}: {e}"),
+        // }
+        
+        // Ok(())
+    }
+
+    pub fn load_menu_from_bytes_and_path(
+        &mut self, 
+        bytes: &[u8], 
+        path: String, 
+        source: CustomMenuSource
+    ) -> TatakuResult {
+        let menu = Self::load_menu_inner(
+            Some(path), 
+            None, 
+            bytes.to_vec(), 
+            source
+        )?;
+
+        self.menu_list.push(menu);
         Ok(())
     }
+    
 
 
     pub fn get_menu(&self, selector: impl Into<CustomMenuSelector>) -> Option<&CustomMenu> {
-        let selector:CustomMenuSelector = selector.into();
+        let selector: CustomMenuSelector = selector.into();
 
-        for (src, menu) in self.menu_list.iter().rev() {
-            if menu.id == selector.name && src.check(&selector.source) {
+        for CustomMenuEntry { source, menu, .. } in self.menu_list.iter().rev() {
+            if menu.id == selector.name && source.check(&selector.source) {
                 return Some(menu)
             }
         }
@@ -43,10 +118,37 @@ impl CustomMenuManager {
         None
     }
 
+    pub fn reload_menus(&mut self, source: CustomMenuSource) -> bool {
+        let mut reloaded = false;
+
+        for i in self.menu_list.iter_mut().filter(|m| !m.source.check(&source) ) {
+            let Some(path) = &i.path else { continue };
+            let Ok(bytes) = std::fs::read(&path) else { continue };
+
+            match Self::load_menu_inner(
+                Some(path.clone()), 
+                None, 
+                bytes, 
+                i.source
+            ) {
+                Ok(menu) => {
+                    reloaded = true;
+                    i.menu = menu.menu;
+                    i.bytes = menu.bytes;
+                }
+                Err(e) => {
+                    error!("error reloading custom menu {path}: {e:?}")
+                }
+            }
+        }
+
+        reloaded
+    }
+
     pub fn clear_menus(&mut self, source: CustomMenuSource) -> bool {
         let has_entries = !self.menu_list.is_empty();
 
-        self.menu_list.retain(|(src, _)| src.check(&source));
+        self.menu_list.retain(|src| src.source.check(&source));
 
         has_entries
     }
@@ -55,7 +157,7 @@ impl CustomMenuManager {
     pub fn update_values(&self, values: &mut ValueCollection) {
         let menu_names = self.menu_list
             .iter()
-            .map(|(_src, m)| m.id.clone())
+            .map(|m| m.menu.id.clone())
             .collect::<Vec<_>>();
 
         values.update_or_insert(
@@ -67,6 +169,14 @@ impl CustomMenuManager {
     }
 }
 
+
+struct CustomMenuEntry {
+    source: CustomMenuSource,
+    menu: CustomMenu,
+    
+    path: Option<String>,
+    bytes: Vec<u8>,
+}
 
 #[derive(Default)]
 pub struct CustomMenuSelector {

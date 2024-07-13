@@ -54,23 +54,25 @@ impl CustomMenuAction {
         match self {
             Self::Map(action) => action.build(values),
             Self::Song(action) => action.build(values),
-            Self::Game(action) => action.build(values, None),
-            Self::Multiplayer(action) => action.build(values, None),
+            Self::Game(action) => action.build(values),
+            Self::Multiplayer(action) => action.build(values),
 
 
             Self::SetMenu(menu) => {
-                if let Some(val) = menu.resolve(values, None) {
-                    *menu = CustomEventValueType::Value(val);
-                } else {
-                    error!("failed to resolve menu from variable: {menu:?}")
-                }
+                menu.resolve_pre(values);
+                // if let Some(val) = menu.resolve_pre(values) {
+                //     *menu = CustomEventValueType::Value(val);
+                // } else {
+                //     error!("failed to resolve menu from variable: {menu:?}")
+                // }
             }
             Self::AddDialog(dialog) => {
-                if let Some(val) = dialog.resolve(values, None) {
-                    *dialog = CustomEventValueType::Value(val);
-                } else {
-                    error!("failed to resolve dialog from variable: {dialog:?}")
-                }
+                dialog.resolve_pre(values);
+                // if let Some(val) = dialog.resolve_pre(values) {
+                //     *dialog = CustomEventValueType::Value(val);
+                // } else {
+                //     error!("failed to resolve dialog from variable: {dialog:?}")
+                // }
             }
 
             _ => {}

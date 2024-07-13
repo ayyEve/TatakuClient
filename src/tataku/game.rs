@@ -204,8 +204,12 @@ impl Game {
 
     #[cfg(feature="graphics")]
     fn load_custom_menus(&mut self) {
-        if self.custom_menu_manager.clear_menus(CustomMenuSource::Any) {
+        if self.custom_menu_manager.reload_menus(CustomMenuSource::Any) {
             debug!("Reloading custom menus");
+            self.custom_menu_manager.update_values(&mut self.values);
+
+            debug!("Done reloading custom menus");
+            return;
         }
 
         // macro to help
@@ -217,7 +221,11 @@ impl Game {
                 }
                 #[cfg(not(any(debug_assertions, load_internal_menus_from_file)))] {
                     const BYTES:&[u8] = include_bytes!(concat!("../", $path));
-                    result = $self.custom_menu_manager.load_menu_from_bytes(BYTES, $path.to_owned(), CustomMenuSource::Game);
+                    result = $self.custom_menu_manager.load_menu_from_bytes_and_path(
+                        BYTES, 
+                        $path.to_owned(), 
+                        CustomMenuSource::Game
+                    );
                 }
 
                 if let Err(e) = result {
@@ -882,6 +890,7 @@ impl Game {
             ingame: self.current_state.is_ingame(),
             game_time: self.game_start.as_millis() as u64,
         };
+
         menu_actions.extend(self.task_manager.update(&mut self.values, game_state).await);
         self.handle_actions(menu_actions).await;
 
@@ -1204,7 +1213,7 @@ impl Game {
         self.cursor_manager.draw(&mut render_queue);
 
         // toss the items to the window to render
-        self.window_proxy.send_event(Game2WindowEvent::RenderData(render_queue.take())).unwrap();
+        let _ = self.window_proxy.send_event(Game2WindowEvent::RenderData(render_queue.take()));
         
         self.fps_display.increment();
 
@@ -1235,6 +1244,8 @@ impl Game {
 
     pub async fn handle_actions(&mut self, actions: Vec<TatakuAction>) {
         self.actions.extend(actions);
+
+        // self.actions.extend(actions);
         for action in self.actions.take() {
             self.handle_action(action).await
         }
@@ -1244,7 +1255,6 @@ impl Game {
     #[async_recursion::async_recursion]
     pub async fn handle_action(&mut self, action: impl Into<TatakuAction> + Send + 'static) {
         let action = action.into();
-        // debug!("performing action: {action:?}");
         match action {
             TatakuAction::None => return,
             
@@ -1312,7 +1322,7 @@ impl Game {
                         if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
                             self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
                             return;
-                        } 
+                        }
 
                         #[cfg(feature="gameplay")]
                         if self.multiplayer_manager.is_some() {
@@ -1738,7 +1748,7 @@ impl Game {
     }
 
     #[cfg(feature="gameplay")]
-    pub fn queue_state_change(&mut self, state:GameState) { 
+    pub fn queue_state_change(&mut self, state: GameState) { 
         match state {
             GameState::SetMenu(menu) => {
                 self.queued_state = GameState::InMenu(MenuType::from_menu(&menu));
@@ -1796,6 +1806,7 @@ impl Game {
     #[cfg(feature="graphics")]
     pub async fn handle_file_drop(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();
+        println!("file dropped: {path:?}");
 
         if let Some(ext) = path.extension() {
             let ext = ext.to_str().unwrap();

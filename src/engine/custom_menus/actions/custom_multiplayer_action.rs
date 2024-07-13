@@ -44,10 +44,11 @@ impl CustomMenuMultiplayerAction {
         }
     }
     
-    pub fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    pub fn build(&mut self, values: &ValueCollection) {
         match self {
             Self::SlotAction(slot_action) => {
-                slot_action.build(values, passed_in);
+                slot_action.slot.resolve_pre(values);
+                // slot_action.build(values, passed_in);
             }
 
             _ => {}
@@ -146,19 +147,19 @@ impl CustomMultiplayerSlot {
         }
     }
 
-    fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
-        let Some(slot) = self.slot.resolve(values, passed_in) else {
-            error!("Couldn't resolve slot: {:?} ({:?})", self.slot, self.action);
-            return;
-        };
+    // fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    //     let Some(slot) = self.slot.resolve(values, passed_in) else {
+    //         error!("Couldn't resolve slot: {:?} ({:?})", self.slot, self.action);
+    //         return;
+    //     };
 
-        let Ok(slot_num) = slot.as_u32() else {
-            warn!("Couldn't cast slot to u32");
-            return;
-        };
+    //     let Ok(slot_num) = slot.as_u32() else {
+    //         warn!("Couldn't cast slot to u32");
+    //         return;
+    //     };
 
-        self.slot = CustomEventValueType::Value(TatakuVariable::new_any(TatakuValue::U32(slot_num)));
-    }
+    //     self.slot = CustomEventValueType::Value(TatakuVariable::new_any(TatakuValue::U32(slot_num)));
+    // }
 
     fn get_action(&self) -> Option<LobbySlotAction> {
         let slot = match &self.slot {

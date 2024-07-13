@@ -110,6 +110,10 @@ local menu = {
             }
         },
 
+        -- automatically select new maps
+        { event = "map_added", action = map_action("select_map", { map_hash = passed_in() }) },
+
+
         --[[previous set]] key_event("Left", map_action("previous_set")),
         --[[next set]] key_event("Right", map_action("next_set")),
         --[[previous map]] key_event("Up", map_action("previous_map")),

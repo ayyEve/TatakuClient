@@ -96,6 +96,8 @@ local menu = {
         -- on song end, play next song
         { event = "song_end", action = map_action("next") },
 
+        { event = "map_added", action = map_action("select_map", { map_hash = passed_in() }) },
+
         -- notify_now_playing,
 
         --[[previous map]] key_event("Left", map_action("previous")),

@@ -17,7 +17,12 @@ pub enum TatakuEventType {
 
     /// A key press
     KeyPress(CustomMenuKeyEvent),
+
+    /// a key release
     KeyRelease(CustomMenuKeyEvent),
+
+    /// a new beatmap has been added
+    MapAdded
 }
 impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
     fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> LuaResult<Self> {
@@ -32,6 +37,7 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
                     "song_pause" => Ok(Self::SongPause),
                     "song_end" => Ok(Self::SongEnd),
                     "menu_enter" => Ok(Self::MenuEnter),
+                    "map_added" | "beatmap_added" => Ok(Self::MapAdded),
 
                     other => Err(FromLuaConversionError { from: "String", to: "TatakuEventType", message: Some(format!("unknown event: '{other}'")) })
                 }

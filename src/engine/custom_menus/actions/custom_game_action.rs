@@ -34,7 +34,7 @@ impl CustomMenuGameAction {
         }
     }
     
-    pub fn build(&mut self, values: &ValueCollection, passed_in: Option<TatakuValue>) {
+    pub fn build(&mut self, values: &ValueCollection) {
         let thing = match self {
             Self::ViewScore(score) => score,
             Self::ShowNotification { text, duration, .. } => {
@@ -47,12 +47,14 @@ impl CustomMenuGameAction {
             Self::Quit => return,
         };
 
-        let Some(resolved) = thing.resolve(values, passed_in) else {
-            error!("Couldn't resolve: {self:?}");
-            return;
-        };
+        thing.resolve_pre(values);
 
-        *thing = CustomEventValueType::Value(resolved);
+        // let Some(resolved) = thing.resolve(values, passed_in) else {
+        //     error!("Couldn't resolve: {self:?}");
+        //     return;
+        // };
+
+        // *thing = CustomEventValueType::Value(resolved);
     }
 }
 impl<'lua> FromLua<'lua> for CustomMenuGameAction {

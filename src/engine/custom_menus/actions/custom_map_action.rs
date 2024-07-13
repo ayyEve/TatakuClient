@@ -104,12 +104,13 @@ impl CustomMenuMapAction {
             _ => return,
         };
 
-        let Some(resolved) = thing.resolve(values, None) else {
-            error!("Couldn't resolve: {:?}", self);
-            return;
-        };
+        thing.resolve_pre(values);
+        // let Some(resolved) = thing.resolve_pre(values) else {
+        //     error!("Couldn't resolve: {:?}", self);
+        //     return;
+        // };
 
-        *thing = CustomEventValueType::Value(resolved);
+        // *thing = CustomEventValueType::Value(resolved);
     }
 }
 impl<'lua> FromLua<'lua> for CustomMenuMapAction {

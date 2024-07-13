@@ -47,6 +47,34 @@ impl ButtonAction {
         }
     }
 
+    pub fn resolve_pre(&mut self, values: &ValueCollection) {
+        match self {
+            Self::SetValue { value, ..} => {
+                value.resolve_pre(values);
+            }
+            Self::CustomAction { value, .. } => {
+                value.resolve_pre(values);
+            }
+            Self::Conditional { if_true, if_false, .. } => {
+                if_true.resolve_pre(values);
+                if_false.ok_do_mut(|f| f.resolve_pre(values));
+                
+                // Self::Conditional { cond, if_true, if_false }
+            }
+
+            Self::Multiple(list) => {
+                list.iter_mut().for_each(|i| i.resolve_pre(values));
+                // Self::Multiple(list.into_iter().map(|a| Box::new(a.resolve_pre(values))).collect())
+            }
+
+            _ => {}
+            // other => other,
+        }
+    }
+    pub fn resolve_post(&self, owner: MessageOwner, passed_in: Option<TatakuValue>) -> Option<Message> {
+        self.resolve(owner, &mut ValueCollection::new(), passed_in)
+    }
+
     pub fn resolve(&self, owner: MessageOwner, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<Message> {
         match self {
             Self::MenuAction(action) => {
@@ -151,6 +179,23 @@ pub enum CustomEventValueType {
 }
 
 impl CustomEventValueType {
+
+    /// pre-emptively resolve variables. used when the element's event requires values to be moved
+    pub fn resolve_pre(&mut self, values: &ValueCollection) {
+        match self {
+            Self::Variable(var) => {
+                let Some(val) = values.get_raw(var).ok() else {
+                    error!("custom event value is none! {var}");
+                    *self = Self::None;
+                    return;
+                };
+                *self = Self::Value(val.clone())
+            }
+            // Self::None and Self::Passed are ignored, nothing to do here for Self::Value
+            _ => {}
+        }
+    }
+
     pub fn resolve(&self, values: &ValueCollection, passed_in: Option<TatakuValue>) -> Option<TatakuVariable> {
         match self {
             Self::None => None,
@@ -172,7 +217,7 @@ impl CustomEventValueType {
             Ok(Self::Value(TatakuVariable::new_any(value)))
         } else if let Some(var) = table.get::<_, Option<String>>("variable")? {
             Ok(Self::Variable(var))
-        } else if let Some(_) = table.get::<_, Option<bool>>("passed_in")?{
+        } else if let Some(_) = table.get::<_, Option<bool>>("passed_in")? {
             Ok(Self::PassedIn)
         } else { 
             Ok(Self::None)

@@ -130,6 +130,7 @@ impl AsyncMenu for BuiltCustomMenu {
 
         for i in events.iter() {
             let Some(message) = i.resolve(MessageOwner::Menu, values, event_value.clone()) else { continue };
+            
             match message.message_type {
                 MessageType::CustomMenuAction(action, passed_in) => {
                     let Some(a) = action.into_action(values, passed_in) else { continue };

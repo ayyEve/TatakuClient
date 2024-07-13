@@ -33,13 +33,16 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
 
         // check if we need to add any beatmaps
         if let Some(map) = self.maps_to_add.pop() {
+            info!("adding map {}", map.version_string());
             actions.push(BeatmapAction::AddBeatmap { map, add_to_db: true });
             return 
         }
 
         // check if we're processing any files
         if let Some(file) = self.files.next() {
+            info!("checking file {file:?}");
             let Some(file) = file.to_str() else { return };
+            info!("file ok {file}");
             
             if AVAILABLE_MAP_EXTENSIONS.iter().find(|e| file.ends_with(**e)).is_some() {
                 // // check file paths first
@@ -54,11 +57,15 @@ impl TatakuTask for BeatmapDownloadsCheckTask {
                 //         continue;
                 //     }
                 // }
-
                 match Beatmap::load_multiple_metadata(file) {
-                    Ok(maps) => self.maps_to_add = maps,
+                    Ok(maps) => {
+                        info!("map loaded ok");
+                        self.maps_to_add.extend(maps);
+                    }
                     Err(e) => error!("error loading beatmap '{file}': {e}"),
                 }
+            } else {
+                warn!("map ext not found!")
             }
 
             return;

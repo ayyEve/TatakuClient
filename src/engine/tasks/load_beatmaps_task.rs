@@ -54,7 +54,8 @@ impl TatakuTask for LoadBeatmapsTask {
 
             // if that was the last map, tell the beatmap manager it has been initialized
             if self.existing_maps.is_empty() {
-                actions.push(BeatmapAction::InitializeManager);
+                debug!("all existing maps loaded");
+                // actions.push(BeatmapAction::InitializeManager);
             }
 
             return;
@@ -100,6 +101,7 @@ impl TatakuTask for LoadBeatmapsTask {
 
         // otherwise, we're done!
         info!("done adding maps");
+        actions.push(BeatmapAction::InitializeManager);
         self.status.write().complete = true;
         self.state = TatakuTaskState::Complete;
     }

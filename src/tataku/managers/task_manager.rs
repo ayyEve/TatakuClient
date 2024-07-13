@@ -23,7 +23,11 @@ impl TaskManager {
         })
     }
 
-    pub async fn update(&mut self, values: &mut ValueCollection, state: TaskGameState) -> Vec<TatakuAction> {
+    pub async fn update(
+        &mut self, 
+        values: &mut ValueCollection, 
+        state: TaskGameState
+    ) -> Vec<TatakuAction> {
         let mut actions = ActionQueue::new();
         let mut task_count = 0;
 
