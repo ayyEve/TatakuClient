@@ -21,7 +21,7 @@ impl CustomMenuManager {
         let mut parser = CustomMenuParser::new()?;
         let name = name.unwrap_or_else(|| path.clone().unwrap_or_default());
 
-        let menu =  parser.load_menu_from_bytes(&bytes, &name)?;
+        let menu = parser.load_menu_from_bytes(&bytes, &name)?;
 
         Ok(CustomMenuEntry {
             path,

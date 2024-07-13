@@ -25,11 +25,20 @@ use iced::advanced::{
 /// how far the
 const DRAG_THRESHOLD:f32 = 5.0;
 
-pub fn make_scrollable(children: Vec<IcedElement>, id: impl Into<std::borrow::Cow<'static, str>>) -> Scrollable<'static, Message, iced::Theme, IcedRenderer> {
+pub fn make_scrollable(
+    children: Vec<IcedElement>, 
+    id: impl Into<Cow<'static, str>>
+) -> Scrollable<'static, Message, iced::Theme, IcedRenderer> {
     // Scrollable::new(CullingColumn::with_children(children).spacing(5.0).into_element()).id(iced::widget::scrollable::Id::new(id))
-    Scrollable::new(iced_elements::Column::with_children(children).spacing(5.0).clip(true).into_element()).id(iced::widget::scrollable::Id::new(id))
+    Scrollable::new(
+        iced_elements::Column::with_children(children)
+        .spacing(5.0)
+        .clip(true)
+        .into_element())
+        .id(iced::widget::scrollable::Id::new(id)
+    )
 }
-pub fn make_panel_scroll(children: Vec<IcedElement>, id: impl Into<std::borrow::Cow<'static, str>>) -> PanelScroll {
+pub fn make_panel_scroll(children: Vec<IcedElement>, id: impl Into<Cow<'static, str>>) -> PanelScroll {
     PanelScroll::with_children(vec![make_scrollable(children, id).into_element()])
         // .id(iced::advanced::widget::Id::new(id))
         .spacing(5.0)

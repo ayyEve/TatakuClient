@@ -165,10 +165,16 @@ impl Widgetable for BuiltElementDef {
                 // values.remove(&var);
 
                 if *scrollable {
-                    make_scrollable(children, "a")
-                        .width(self.element.width)
-                        .height(self.element.height)
+                    iced::widget::Scrollable::new(
+                        iced_elements::Column::with_children(children)
+                        .spacing(5.0)
+                        // .clip(true)
                         .into_element()
+                    )
+                    .id(iced::widget::scrollable::Id::new("a"))
+                    .width(self.element.width)
+                    .height(self.element.height)
+                    .into_element()
                 } else {
                     Column::with_children(children)
                         .width(self.element.width)
@@ -215,7 +221,6 @@ impl Widgetable for BuiltElementDef {
                 //     error!("Value not exist for {options_display_key}");
                 //     return EmptyElement.into_element()
                 // };
-                let selected = values.get_string(selected_key).ok();
 
                 let list2 = list
                     .iter()
@@ -223,7 +228,9 @@ impl Widgetable for BuiltElementDef {
                     .map(|id| Test { id: id.as_string(), display: id.get_display()} )
                     .collect::<Vec<_>>();
 
-                let selected = selected
+                let selected = values
+                    .get_string(selected_key)
+                    .ok()
                     .and_then(|s| list2.iter().find(|i| i.id == s))
                     .cloned();
                 let selected_key = selected_key.clone();

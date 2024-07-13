@@ -35,8 +35,11 @@ impl IcedRenderer {
 
 impl iced::advanced::Renderer for IcedRenderer {
     fn start_layer(&mut self, bounds: iced::Rectangle) {
-        let mut a = TransformGroup::new(bounds.position().into());
-        // a.set_scissor(Some([ bounds.x, bounds.y, bounds.width, bounds.height ]));
+        // let mut a = TransformGroup::new(bounds.position().into());
+        let mut a = TransformGroup::new(Vector2::ZERO);
+
+        let bounds:Bounds = bounds.into();
+        a.set_scissor(Some(bounds.into_scissor()));
         self.object_stack.push(a);
     }
 
@@ -44,8 +47,8 @@ impl iced::advanced::Renderer for IcedRenderer {
     fn end_transformation(&mut self) { self.pop_last() }
 
     fn start_transformation(&mut self, transformation: iced::Transformation) {
-        let trans = transformation.translation();
-        let a = TransformGroup::new(Vector2::new(trans.x, trans.y))
+        let trans = transformation.translation().into();
+        let a = TransformGroup::new(trans)
             .scale(Vector2::ONE * transformation.scale_factor());
         self.object_stack.push(a);
     }
@@ -102,7 +105,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
                 color.into(),
                 text.font
             );
-            out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
+            // out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
 
             match text.alignment.0 {
                 iced::alignment::Horizontal::Left => {}
@@ -148,7 +151,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
             color.into(),
             text.font
         );
-        out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
+        // out_text.set_scissor(Some([clip_bounds.x, clip_bounds.y, clip_bounds.width, clip_bounds.height]));
 
         match text.vertical_alignment {
             iced::alignment::Vertical::Bottom => out_text.pos.y -= height,
