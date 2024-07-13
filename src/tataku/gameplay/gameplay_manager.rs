@@ -523,8 +523,11 @@ impl GameplayManager {
 
         // send map completed packets
         if self.completed {
-            #[cfg(feature="gameplay")]
-            self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::ScoreSync {score: self.score.score.clone()}));
+            #[cfg(feature="gameplay")] {
+                let mut score = self.score.score.clone();
+                score.replay = None;
+                self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::ScoreSync { score }));
+            }
             
             #[cfg(feature="gameplay")]
             self.outgoing_spectator_frame_force(SpectatorFrame::new(self.end_time + 10.0, SpectatorAction::Buffer));
@@ -711,7 +714,10 @@ impl GameplayManager {
             self.spectator_info.last_score_sync = time;
             
             // create and send the packet
-            self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ScoreSync {score: self.score.score.clone()}))
+
+            let mut score = self.score.score.clone();
+            score.replay = None;
+            self.outgoing_spectator_frame(SpectatorFrame::new(time, SpectatorAction::ScoreSync { score }))
         }
 
         // handle any frames

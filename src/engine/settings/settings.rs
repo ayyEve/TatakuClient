@@ -143,11 +143,7 @@ impl Settings {
         let path = path.as_ref();
 
         let mut s = match std::fs::read_to_string(path).map(|s| serde_json::from_str::<Settings>(&s).map_err(|e| e.to_string())).map_err(|e| e.to_string()) {
-            Ok(Ok(mut settings)) => {
-                settings.save_path = path.to_string_lossy().to_string();
-                settings
-            }
-
+            Ok(Ok(settings)) => settings,
             Err(e) | Ok(Err(e)) => {
                 // NotificationManager::add_error_notification("Error reading settings.json\nLoading defaults", e).await;
                 warn!("Error reading settings.json\nLoading defaults, {e}");
@@ -157,6 +153,7 @@ impl Settings {
                 Self::default()
             }
         };
+        s.save_path = path.to_string_lossy().to_string();
 
         // check password hashes
         s.check_hashes();

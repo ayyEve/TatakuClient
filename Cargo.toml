@@ -1,6 +1,6 @@
 [package]
 name = "tataku-client"
-version = "0.4.5"
+version = "0.4.6"
 authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
@@ -34,9 +34,9 @@ ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
 graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
 
 [dependencies]
-tataku-common = { version = "0.12.3", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+tataku-common = { version = "0.12.4", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
 # tataku-common = { path="../tataku-common" }
-tataku-client-proc-macros = { version = "0.1.0", path = "./proc_macros", registry = "tataku-registry" }
+tataku-client-proc-macros = { version = "0.1.1", path = "./proc_macros", registry = "tataku-registry" }
 
 # framework stuff
 lazy_static = "1.4.0"

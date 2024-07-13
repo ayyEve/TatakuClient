@@ -4901,7 +4901,7 @@ checksum = "e1fc403891a21bcfb7c37834ba66a547a8f402146eba7265b5a6d88059c9ff2f"
 
 [[package]]
 name = "tataku-client"
-version = "0.4.5"
+version = "0.4.6"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -4959,7 +4959,7 @@ dependencies = [
 
 [[package]]
 name = "tataku-client-proc-macros"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "lazy_static",
  "proc-macro2",
@@ -4969,7 +4969,7 @@ dependencies = [
 
 [[package]]
 name = "tataku-common"
-version = "0.12.3"
+version = "0.12.4"
 dependencies = [
  "serde",
  "serde_json",
