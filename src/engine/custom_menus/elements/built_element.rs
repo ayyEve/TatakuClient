@@ -67,21 +67,18 @@ impl Widgetable for BuiltElementDef {
                 let variable = variable.clone();
 
                 let mut input_action = on_input.clone();
-                input_action.ok_do_mut(|a| a.resolve_pre(values)); 
+                input_action.ok_do_mut(|a| a.resolve_variables(values)); 
 
                 let on_input:Box<dyn Fn(String) -> Message> = match input_action {
                     Some(on_input) => {
                         Box::new(move |t| {
                             let value = TatakuValue::String(t);
+                            let m = Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None));
 
-                            match on_input.resolve_post(owner, Some(value.clone())) {
-                                Some(resolved) => Message::new(owner, "", MessageType::Multi(vec![
-                                    Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None)),
-                                    resolved,
-                                ])),
-                            
-                                None => Message::new(owner, "", MessageType::CustomMenuAction(CustomMenuAction::SetValue(variable.clone(), value.clone()), None))
-                            }
+                            on_input
+                                .resolve_passed_in(owner, Some(value))
+                                .map(|resolved| Message::new(owner, "", MessageType::Multi(vec![ m.clone(), resolved ])))
+                                .unwrap_or_else(|| m)
                         })
                     }
                     None => {
@@ -237,11 +234,11 @@ impl Widgetable for BuiltElementDef {
 
                 // println!("a: {on_select:?}");
                 let mut on_select = on_select.clone();
-                on_select.ok_do_mut(|on_select| on_select.resolve_pre(values));
+                on_select.ok_do_mut(|on_select| on_select.resolve_variables(values));
 
                 let on_select:Box<dyn Fn(Test)->Message> = match on_select.clone() {
                     Some(action) => Box::new(move |t: Test| 
-                        action.resolve_post(
+                        action.resolve_passed_in(
                             owner, 
                             Some(TatakuValue::String(t.id))
                         )
@@ -263,6 +260,20 @@ impl Widgetable for BuiltElementDef {
                 .chain_maybe(font_size.as_ref(), |t, f| t.text_size(*f))
                 .chain_maybe(font.as_ref().and_then(map_font), |s, font| s.font(font))
                 
+                .into_element()
+            }
+
+            ElementIdentifier::PanelScroll { padding, margin, .. } => {
+                make_panel_scroll(
+                    self.children.iter()
+                        .map(|e| e.view(owner, values))
+                        .collect(),
+                    Cow::Owned(self.element.id.clone())
+                )
+                .width(self.element.width)
+                .height(self.element.height)
+                .chain_maybe(padding.as_ref(), |panel, pad| panel.padding(*pad))
+                .chain_maybe(margin.as_ref(), |panel, margin| panel.padding(*margin))
                 .into_element()
             }
 

@@ -139,11 +139,16 @@ impl UiManager {
                     if needs_render || true {
                         needs_render = false;
 
-                        ui.draw(&mut renderer, &iced::Theme::Dark, &Default::default(), iced::mouse::Cursor::Available(mouse_pos));
+                        ui.draw(
+                            &mut renderer, 
+                            &iced::Theme::Dark, 
+                            &Default::default(), 
+                            iced::mouse::Cursor::Available(mouse_pos)
+                        );
 
                         // renderer.with_primitives(|_b, p| p.iter().for_each(|p| group.push_arced(into_renderable(p))));
                         last_draw = renderer.finish();
-                        last_draw.raw_draw = true;
+                        // last_draw.raw_draw = true;
                     }
 
                     let _ = callback.send(UiDrawData {

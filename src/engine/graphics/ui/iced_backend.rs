@@ -92,7 +92,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         text: &Self::Paragraph,
         position: iced::Point,
         color: iced::Color,
-        clip_bounds: iced::Rectangle,
+        _clip_bounds: iced::Rectangle,
     ) {
         let height = text.line_height.to_absolute(text.font_size).0;
         let mut pos:Vector2 = position.into();
@@ -140,7 +140,7 @@ impl iced::advanced::text::Renderer for IcedRenderer {
         text: iced_core::Text<String, Self::Font>,
         position: iced::Point,
         color: iced::Color,
-        clip_bounds: iced::Rectangle,
+        _clip_bounds: iced::Rectangle,
     ) {
         let height = text.line_height.to_absolute(text.size).0;
         
@@ -265,12 +265,14 @@ impl iced::advanced::text::Paragraph for IcedParagraph {
         for (counter, char) in self.text_raw.char_indices() {
             // get the font character
             let Some(c) = self.font.get_character(self.font_size.0, char) else { continue };
-            
-            width += c.advance_width() / 2.0;
+
+            let a = c.advance_width() / 2.0;
+
+            width += a;
             
             if point.x < width { return Some(CharOffset(counter)); }
 
-            width += c.advance_width() / 2.0;
+            width += a;
         }
 
         Some(CharOffset(self.lines.len()))
@@ -320,7 +322,6 @@ pub struct IcedEditor {
     text: String,
     bounds: iced::Size
 }
-
 impl iced::advanced::text::Editor for IcedEditor {
     type Font = Font;
 
@@ -335,13 +336,9 @@ impl iced::advanced::text::Editor for IcedEditor {
         iced_core::text::editor::Cursor::Caret(iced::Point::new(0.0, 0.0))
     }
 
-    fn cursor_position(&self) -> (usize, usize) {
-        (0, 0)
-    }
+    fn cursor_position(&self) -> (usize, usize) { (0, 0) }
 
-    fn selection(&self) -> Option<String> {
-        None
-    }
+    fn selection(&self) -> Option<String> { None }
 
     fn line(&self, index: usize) -> Option<&str> {
         if index == 0 {
@@ -350,39 +347,29 @@ impl iced::advanced::text::Editor for IcedEditor {
         None
     }
 
-    fn line_count(&self) -> usize {
-        1
-    }
+    fn line_count(&self) -> usize { 1 }
 
-    fn perform(&mut self, action: iced_core::text::editor::Action) {
-        
-    }
+    fn perform(&mut self, _action: iced_core::text::editor::Action) { }
 
-    fn bounds(&self) -> iced::Size {
-        self.bounds
-    }
+    fn bounds(&self) -> iced::Size { self.bounds }
 
-    fn min_bounds(&self) -> iced::Size {
-        self.bounds
-    }
+    fn min_bounds(&self) -> iced::Size { self.bounds }
  
     fn update(
         &mut self,
         new_bounds: iced::Size,
-        new_font: Self::Font,
-        new_size: iced::Pixels,
-        new_line_height: iced_core::text::LineHeight,
-        new_highlighter: &mut impl iced_core::text::Highlighter,
+        _new_font: Self::Font,
+        _new_size: iced::Pixels,
+        _new_line_height: iced_core::text::LineHeight,
+        _new_highlighter: &mut impl iced_core::text::Highlighter,
     ) {
         self.bounds = new_bounds;
     }
 
     fn highlight<H: iced_core::text::Highlighter>(
         &mut self,
-        font: Self::Font,
-        highlighter: &mut H,
-        format_highlight: impl Fn(&H::Highlight) -> iced_core::text::highlighter::Format<Self::Font>,
-    ) {
-        
-    }
+        _font: Self::Font,
+        _highlighter: &mut H,
+        _format_highlight: impl Fn(&H::Highlight) -> iced_core::text::highlighter::Format<Self::Font>,
+    ) { }
 }

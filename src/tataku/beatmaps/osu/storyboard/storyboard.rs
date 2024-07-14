@@ -372,16 +372,16 @@ impl StoryboardDef {
                 }
 
                 "C" => {
-                    continue;
-                    // parse_or_continue!(start_r, u8);
-                    // parse_or_continue!(start_g, u8);
-                    // parse_or_continue!(start_b, u8);
-                    // parse_or_continue!(end_r, u8, start_r);
-                    // parse_or_continue!(end_g, u8, start_g);
-                    // parse_or_continue!(end_b, u8, start_b);
-                    // let start_color = color_from_byte(start_r, start_g, start_b);
-                    // let end_color = color_from_byte(end_r, end_g, end_b);
-                    // StoryboardEvent::Color { start_color, end_color }
+                    // continue;
+                    parse_or_continue!(start_r, u8);
+                    parse_or_continue!(start_g, u8);
+                    parse_or_continue!(start_b, u8);
+                    parse_or_continue!(end_r, u8, start_r);
+                    parse_or_continue!(end_g, u8, start_g);
+                    parse_or_continue!(end_b, u8, start_b);
+                    let start_color = Color::from_rgb8(start_r, start_g, start_b);
+                    let end_color = Color::from_rgb8(end_r, end_g, end_b);
+                    StoryboardEvent::Color { start_color, end_color }
                 }
 
                 "P" => {

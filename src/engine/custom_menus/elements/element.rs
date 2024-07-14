@@ -35,8 +35,9 @@ impl ElementDef {
             }
             ElementIdentifier::Column { elements, .. }
             | ElementIdentifier::Row { elements, .. } 
-                => for i in elements.iter_mut() {
-                    built.children.push(i.build(skin_manager, owner).await)
+            | ElementIdentifier::PanelScroll { elements, .. }
+                => for i in elements.iter() {
+                    built.children.push(i.build(skin_manager, owner).await);
                 }
 
             ElementIdentifier::Animatable { triggers:_, actions:_, element }
@@ -125,6 +126,18 @@ impl<'lua> FromLua<'lua> for ElementDef {
             "col" | "column" => Ok(Self {
                 id,
                 element: ElementIdentifier::Column { 
+                    elements: table.get("elements")?,
+                    padding: table.get("padding")?,
+                    margin: parse_from_multiple(&table, &["margin", "spacing"])?,
+                },
+                width: width.unwrap_or(Length::Shrink),
+                height: height.unwrap_or(Length::Shrink),
+                debug_color,
+            }),
+
+            "panel_scroll" => Ok(Self {
+                id,
+                element: ElementIdentifier::PanelScroll { 
                     elements: table.get("elements")?,
                     padding: table.get("padding")?,
                     margin: parse_from_multiple(&table, &["margin", "spacing"])?,

@@ -12,6 +12,7 @@ pub enum ButtonAction {
         /// What to set it to
         value: CustomEventValueType
     },
+
     /// Perform a custom action (to be handled by a component)
     CustomAction {
         /// Tag of this action
@@ -19,6 +20,7 @@ pub enum ButtonAction {
         /// Value passed on
         value: CustomEventValueType
     },
+
     /// A regular menu action
     MenuAction(CustomMenuAction),
 
@@ -31,7 +33,7 @@ pub enum ButtonAction {
         /// What to do if false
         if_false: Option<Box<Self>>,
     },
-
+    
     Multiple(Vec<Box<Self>>),
 }
 impl ButtonAction {
@@ -47,7 +49,8 @@ impl ButtonAction {
         }
     }
 
-    pub fn resolve_pre(&mut self, values: &ValueCollection) {
+    /// resolve CustomEventValueType::Variable to CustomEventValueType::Value
+    pub fn resolve_variables(&mut self, values: &ValueCollection) {
         match self {
             Self::SetValue { value, ..} => {
                 value.resolve_pre(values);
@@ -56,14 +59,14 @@ impl ButtonAction {
                 value.resolve_pre(values);
             }
             Self::Conditional { if_true, if_false, .. } => {
-                if_true.resolve_pre(values);
-                if_false.ok_do_mut(|f| f.resolve_pre(values));
+                if_true.resolve_variables(values);
+                if_false.ok_do_mut(|f| f.resolve_variables(values));
                 
                 // Self::Conditional { cond, if_true, if_false }
             }
 
             Self::Multiple(list) => {
-                list.iter_mut().for_each(|i| i.resolve_pre(values));
+                list.iter_mut().for_each(|i| i.resolve_variables(values));
                 // Self::Multiple(list.into_iter().map(|a| Box::new(a.resolve_pre(values))).collect())
             }
 
@@ -71,7 +74,8 @@ impl ButtonAction {
             // other => other,
         }
     }
-    pub fn resolve_post(&self, owner: MessageOwner, passed_in: Option<TatakuValue>) -> Option<Message> {
+    /// resolve CustomEventValueType::PassedIn to CustomEventValueType::Value
+    pub fn resolve_passed_in(&self, owner: MessageOwner, passed_in: Option<TatakuValue>) -> Option<Message> {
         self.resolve(owner, &mut ValueCollection::new(), passed_in)
     }
 

@@ -219,13 +219,14 @@ impl<'window> GameWindow<'window> {
         let transform = Matrix::identity();
         
         self.graphics.begin_render();
+        let options = DrawOptions::default();
         self.render_data.iter().for_each(|d| {
             let scissor = d.get_scissor();
             if let Some(scissor) = scissor {
                 self.graphics.push_scissor(scissor);
             }
             
-            d.draw(transform, &mut *self.graphics);
+            d.draw(&options, transform, &mut *self.graphics);
 
             if scissor.is_some() {
                 self.graphics.pop_scissor();

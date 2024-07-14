@@ -122,16 +122,23 @@ impl TatakuRenderable for Text {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
  
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw_with_transparency(self.color.a, 0.0, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    // }
 
     #[cfg(not(feature = "graphics"))]
-    fn draw_with_transparency(&self, _: f32, _: f32, _: Matrix, _: &mut dyn GraphicsEngine) {}
+    fn draw(&self, _: &DrawOptions, _: Matrix, _: &mut dyn GraphicsEngine) {}
     
     #[cfg(feature = "graphics")]
-    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw(
+        &self, 
+        options: &DrawOptions, 
+        mut transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
         if self.fonts.len() == 0 { return error!("NO FONT FOR TEXT {}", self.text); }
+
+        let color = options.color_with_alpha(self.color);
         let scale = self.scale * self.text_scale;
 
         transform = transform * Matrix::identity()
@@ -144,9 +151,12 @@ impl TatakuRenderable for Text {
 
         let text:Vec<(char, Color)>;
         if self.text_colors.is_empty() {
-            text = self.text.chars().map(|c| (c, self.color.alpha(alpha))).collect();
+            text = self.text.chars().map(|c| (c, color)).collect();
         } else {
-            text = self.text.chars().enumerate().map(|(i, c)| (c, self.text_colors[i % self.text_colors.len()].alpha(alpha))).collect();
+            text = self.text.chars().enumerate().map(|(i, c)| {
+                let color = self.text_colors[i % self.text_colors.len()];
+                (c, color.alpha(options.alpha(color.a)))
+            }).collect();
         }
 
         let mut x = 0.0;
@@ -165,19 +175,18 @@ impl TatakuRenderable for Text {
 
             'find_font: for i in self.fonts.iter() {
                 // if its not loaded, we want to skip because otherwise we lock the main thread and break everything
-                if i.has_char_loaded(ch, self.font_size) {
-                    i.draw_character_image(
-                        self.font_size, 
-                        ch, 
-                        [&mut x, &mut y], 
-                        scale,
-                        color, 
-                        self.blend_mode,
-                        transform, 
-                        g
-                    );
-                    break 'find_font;
-                }
+                if !i.has_char_loaded(ch, self.font_size) { continue }
+                i.draw_character_image(
+                    self.font_size, 
+                    ch, 
+                    [&mut x, &mut y], 
+                    scale,
+                    color, 
+                    self.blend_mode,
+                    transform, 
+                    g
+                );
+                break 'find_font;
             }
         }
     }

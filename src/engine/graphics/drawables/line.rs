@@ -31,17 +31,23 @@ impl TatakuRenderable for Line {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw_with_transparency(self.color.a, 0.0, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    // }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw(
+        &self, 
+        options: &DrawOptions, 
+        transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
+        let color = options.color_with_alpha(self.color);
         let transform = transform * Matrix::identity().trans(self.p1);
 
         g.draw_line(
             self.p2 - self.p1, 
             self.thickness, 
-            self.color.alpha(alpha), 
+            color, 
             transform, 
             self.blend_mode
         );

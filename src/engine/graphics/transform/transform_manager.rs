@@ -8,6 +8,9 @@ pub struct TransformManager {
     pub alpha: InitialCurrent<f32>,
     pub border_alpha: InitialCurrent<f32>,
 
+    pub color: Option<InitialCurrent<Color>>,
+    pub border_color: Option<InitialCurrent<Color>>,
+
     pub origin: Vector2,
 
     pub image_flip_horizonal: bool,
@@ -25,6 +28,9 @@ impl TransformManager {
             rotation: InitialCurrent::new(0.0),
             alpha: InitialCurrent::new(1.0),
             border_alpha: InitialCurrent::new(1.0),
+
+            color: None,
+            border_color: None,
 
             origin: Vector2::ZERO,
             
@@ -130,6 +136,14 @@ impl TransformManager {
             TransformType::BorderTransparency { .. } => {
                 let val:f64 = val.into();
                 self.border_alpha.current = val as f32;
+            }
+
+            TransformType::Color { .. } => {
+                let color:Color = val.into();
+                match &mut self.color {
+                    Some(a) => a.current = color,
+                    None => self.color = Some(InitialCurrent::new(color)),
+                }
             }
 
             _ => {}

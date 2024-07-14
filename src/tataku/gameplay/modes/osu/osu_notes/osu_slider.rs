@@ -406,10 +406,11 @@ impl OsuSlider {
         // draw it to the render target
         #[cfg(feature="graphics")]
         if self.use_render_targets() {
+            let options = DrawOptions::default();
             if let Some(target) = self.slider_body_render_target.clone() {
                 GameWindow::update_render_target(target, Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                     transform = transform.trans(offset); 
-                    drawables.into_iter().for_each(|d| d.draw(transform, g))
+                    drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
                 })).await;
             } else {
                 let rt = RenderTarget::new(
@@ -417,7 +418,7 @@ impl OsuSlider {
                     size.y as u32, 
                     Box::new(move |g: &mut dyn GraphicsEngine, mut transform: Matrix| {
                         transform = transform.trans(offset); 
-                        drawables.into_iter().for_each(|d| d.draw(transform, g))
+                        drawables.into_iter().for_each(|d| d.draw(&options, transform, g))
                     })
                 ).await;
 

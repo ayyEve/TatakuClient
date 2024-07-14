@@ -169,12 +169,17 @@ impl TatakuRenderable for SkinnedNumber {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw_with_transparency(self.color.a, 0.0, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    // }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, mut transform: Matrix, g: &mut dyn GraphicsEngine) {
-        let color = self.color.alpha(alpha);
+    fn draw(
+        &self, 
+        options: &DrawOptions, 
+        mut transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
+        let color = options.color_with_alpha(self.color);
         let x_spacing = self.spacing_override.unwrap_or_default() * self.scale.x;
 
 
@@ -200,7 +205,7 @@ impl TatakuRenderable for SkinnedNumber {
             t.color = color;
             // t.set_scissor(self.scissor);
             t.set_blend_mode(self.blend_mode);
-            t.draw(transform.trans(current_pos), g);
+            t.draw(options, transform.trans(current_pos), g);
             current_pos.x += t.size().x * self.scale.x + x_spacing;
         }
         

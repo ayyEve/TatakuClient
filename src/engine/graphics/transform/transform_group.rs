@@ -9,7 +9,7 @@ pub struct TransformGroup {
     pub scissor: Scissor,
     pub blend_mode: BlendMode,
 
-    pub raw_draw: bool,
+    // pub raw_draw: bool,
 
     size: Vector2,
 }
@@ -22,7 +22,7 @@ impl TransformGroup {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
             size: Vector2::ZERO,
-            raw_draw: false,
+            // raw_draw: false,
         }
     }
 
@@ -34,7 +34,7 @@ impl TransformGroup {
             scissor: None,
             blend_mode: BlendMode::AlphaBlending,
             size: Vector2::ZERO,
-            raw_draw: true,
+            // raw_draw: true,
         }
     }
 
@@ -88,7 +88,21 @@ impl TatakuRenderable for TransformGroup {
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode; }
 
 
-    fn draw(&self, mut transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw(
+        &self, 
+        options: &DrawOptions, 
+        mut transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
+        let options = options.merge(DrawOptions {
+            alpha: Some(self.alpha.current),
+            border_alpha: Some(self.border_alpha.current),
+
+            color: self.color.map(|c| c.current),
+            border_color: None,
+            // border_color: self.border_color,
+        });
+
         transform = transform * self.transform_manager.matrix();
 
         self.items.iter().for_each(|i| {
@@ -97,21 +111,17 @@ impl TatakuRenderable for TransformGroup {
                 g.push_scissor(scissor)
             }
 
-            if self.raw_draw {
-                i.draw(transform, g);
-            } else {
-                i.draw_with_transparency(*self.alpha, *self.border_alpha, transform, g);
-            }
-
+            i.draw(&options, transform, g);
+            
             if i.get_scissor().is_some() {
                 g.pop_scissor()
             }
         });
     }
 
-    fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw(transform, g)
-    }
+    // fn draw_with_transparency(&self, _alpha: f32, _border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw(transform, g)
+    // }
 }
 
 

@@ -33,18 +33,24 @@ impl TatakuRenderable for HalfCircle {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw_with_transparency(self.color.a, 0.0, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw_with_transparency(self.color.a, 0.0, transform, g)
+    // }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw(
+        &self, 
+        options: &DrawOptions,
+        transform: Matrix,
+        g: &mut dyn GraphicsEngine
+    ) {
+        let color = options.color_with_alpha(self.color);
         let start_angle = if self.left_side { PI / 2.0 } else { PI * 1.5 };
 
         g.draw_arc(
             start_angle, 
             start_angle+PI, 
             self.radius, 
-            self.color.alpha(alpha), 
+            color, 
             20, 
             transform.trans(self.pos), 
             self.blend_mode

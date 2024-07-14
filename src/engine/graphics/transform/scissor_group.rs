@@ -57,29 +57,29 @@ impl TatakuRenderable for ScissorGroup {
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) { }
 
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.items.iter().for_each(|i| {
+    //         // need to scissor internal items manually
+    //         if let Some(scissor) = i.get_scissor() {
+    //             g.push_scissor(scissor)
+    //         }
+
+    //         i.draw(transform, g);
+
+    //         if i.get_scissor().is_some() {
+    //             g.pop_scissor()
+    //         }
+    //     });
+    // }
+
+    fn draw(&self, options: &DrawOptions, transform: Matrix, g: &mut dyn GraphicsEngine) {
         self.items.iter().for_each(|i| {
             // need to scissor internal items manually
             if let Some(scissor) = i.get_scissor() {
                 g.push_scissor(scissor)
             }
 
-            i.draw(transform, g);
-
-            if i.get_scissor().is_some() {
-                g.pop_scissor()
-            }
-        });
-    }
-
-    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.items.iter().for_each(|i| {
-            // need to scissor internal items manually
-            if let Some(scissor) = i.get_scissor() {
-                g.push_scissor(scissor)
-            }
-
-            i.draw_with_transparency(alpha, border_alpha, transform, g);
+            i.draw(options, transform, g);
             
             if i.get_scissor().is_some() {
                 g.pop_scissor()

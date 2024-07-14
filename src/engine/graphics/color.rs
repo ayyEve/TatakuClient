@@ -84,7 +84,7 @@ impl Color {
     }
 
     #[inline(always)]
-    pub fn from_rgb_bytes(r:u8, g:u8, b:u8) -> Color {
+    pub fn from_rgb8(r:u8, g:u8, b:u8) -> Color {
         Color::new(
             r as f32 / 255.0,
             g as f32 / 255.0,

@@ -53,15 +53,20 @@ impl TatakuRenderable for Rectangle {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
-        self.draw_with_transparency(self.color.a, border_alpha, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     let border_alpha = self.border.map(|b|b.color.a).unwrap_or_default();
+    //     self.draw_with_transparency(self.color.a, border_alpha, transform, g)
+    // }
 
-    fn draw_with_transparency(&self, alpha: f32, border_alpha: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        // TODO: shapes
-        // r.shape = self.shape;
-        let border = self.border.map(|mut b|{b.color.a = border_alpha; b});
+    fn draw(
+        &self, 
+        options: &DrawOptions, 
+        transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
+        let color = options.color_with_alpha(self.color);
+        
+        let border = self.border.map(|mut b|{ b.color = options.border_color_with_alpha(b.color); b });
         
         let transform = transform * Matrix::identity()
             .trans(-self.origin) // apply origin
@@ -75,7 +80,7 @@ impl TatakuRenderable for Rectangle {
             [0.0, 0.0, self.inner.size.x, self.inner.size.y], 
             border, 
             self.shape, 
-            self.color.alpha(alpha), 
+            color, 
             transform, 
             self.blend_mode
         );

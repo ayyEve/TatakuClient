@@ -101,22 +101,24 @@ impl TatakuRenderable for Animation {
     fn get_blend_mode(&self) -> BlendMode { self.blend_mode }
     fn set_blend_mode(&mut self, blend_mode: BlendMode) { self.blend_mode = blend_mode }
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        self.draw_with_transparency(self.color.a, 0.0, transform, g)
-    }
+    // fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    //     self.draw_with_transparency(&DrawOptions::default(), transform, g)
+    // }
 
-    fn draw_with_transparency(&self, alpha: f32, _: f32, transform: Matrix, g: &mut dyn GraphicsEngine) {
-        let scale = self.scale;
+    fn draw(&self, options: &DrawOptions, transform: Matrix, g: &mut dyn GraphicsEngine) {
+        let color = options.color_with_alpha(self.color);
+
         let transform = transform
             .trans(-self.origin) // apply origin
             .rot(self.rotation) // rotate
-            .scale(scale * self.base_scale) // scale
+            .scale(self.scale * self.base_scale) // scale
             .trans(self.pos) // move to pos
         ;
 
         let image = &self.frames[self.frame_index];
-        g.draw_tex(image, self.color.alpha(alpha), false, false, transform, self.blend_mode);
+        g.draw_tex(image, color, false, false, transform, self.blend_mode);
 
+        
         if self.draw_debug {
             let size = self.size();
 

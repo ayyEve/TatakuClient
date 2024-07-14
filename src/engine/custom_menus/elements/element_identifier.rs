@@ -8,20 +8,31 @@ pub enum ElementIdentifier {
         padding: Option<ElementPadding>,
         margin: Option<f32>,
     },
+
     /// id = col
     Column {
         elements: Vec<ElementDef>,
         padding: Option<ElementPadding>,
         margin: Option<f32>,
     },
+
+    /// id = panel_scroll
+    PanelScroll {
+        elements: Vec<ElementDef>,
+        padding: Option<ElementPadding>,
+        margin: Option<f32>,
+    },
+
     /// id = space
     Space,
+
     /// id = button
     Button {
         element: Box<ElementDef>,
         action: ButtonAction,
         padding: Option<ElementPadding>,
     },
+
     /// id = text
     Text {
         text: CustomElementText,
@@ -29,6 +40,7 @@ pub enum ElementIdentifier {
         font_size: Option<f32>,
         font: Option<String>,
     },
+
     /// id = text_input
     TextInput {
         placeholder: CustomElementText,
@@ -37,16 +49,19 @@ pub enum ElementIdentifier {
         on_submit: Option<ButtonAction>,
         is_password: bool,
     },
+
     /// id = gameplay_preview
     GameplayPreview {
         visualization: Option<String>,
     },
+
     /// id = animatable
     Animatable {
         triggers: Vec<AnimatableTrigger>,
         actions: HashMap<String, Vec<AnimatableAction>>,
         element: Box<ElementDef>,
     },
+
     /// id = styled_content
     StyledContent {
         element: Box<ElementDef>,
@@ -87,7 +102,6 @@ pub enum ElementIdentifier {
         font_size: Option<f32>,
         font: Option<String>,
     },
-
 }
 
 

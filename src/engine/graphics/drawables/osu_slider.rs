@@ -22,7 +22,12 @@ impl TatakuRenderable for SliderDrawable {
     fn get_blend_mode(&self) -> BlendMode { BlendMode::Slider }
     fn set_blend_mode(&mut self, _blend_mode: BlendMode) {}
 
-    fn draw(&self, transform: Matrix, g: &mut dyn GraphicsEngine) {
+    fn draw(
+        &self, 
+        _options: &DrawOptions,
+        transform: Matrix, 
+        g: &mut dyn GraphicsEngine
+    ) {
         let quad = [
             Vector2::ZERO,
             Vector2::new(0.0, 1.0),
