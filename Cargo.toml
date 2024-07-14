@@ -34,7 +34,7 @@ ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
 graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
 
 [dependencies]
-tataku-common = { version = "0.12.4", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+tataku-common = { version = "0.12.4", registry = "tataku-registry" }
 # tataku-common = { path="../tataku-common" }
 tataku-client-proc-macros = { version = "0.1.1", path = "./proc_macros", registry = "tataku-registry" }
 
@@ -126,4 +126,4 @@ strfmt = "0.2.4"
 
 
 [build-dependencies]
-tataku-common = { version = "0.12.3", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+tataku-common = { version = "0.12.3", registry = "tataku-registry" }
