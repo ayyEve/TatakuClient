@@ -1062,7 +1062,7 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
 
         // create a projection and render target
         let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
-        let target = RenderTarget::new_main_thread(w, h, atlased, projection, clear_color);
+        let target = RenderTarget::new_main_thread(w, h, Arc::new(atlased), projection, clear_color);
 
         // queue rendering the data to it
         self.update_render_target(target.clone(), do_render);
@@ -1073,7 +1073,7 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
     fn update_render_target(&mut self, target: RenderTarget, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) {
         // get the texture this target was written to
         let textures = self.atlas_texture.textures.clone();
-        let Some((atlas_tex, _)) = textures.get(target.texture.layer as usize) else { return };
+        let Some((atlas_tex, _)) = textures.get(target.image.tex.layer as usize) else { return };
 
         // write the projection matrix
         self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
@@ -1131,8 +1131,8 @@ impl<'w> GraphicsEngine for GraphicsState<'w> {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target copy encoder") });
 
         let mut dest = atlas_tex.as_image_copy();
-        dest.origin.x = target.texture.x;
-        dest.origin.y = target.texture.y;
+        dest.origin.x = target.image.tex.x;
+        dest.origin.y = target.image.tex.y;
 
         encoder.copy_texture_to_texture(texture.as_image_copy(), dest, Extent3d { width, height, depth_or_array_layers: 1 });
         self.queue.submit([encoder.finish()]);

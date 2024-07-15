@@ -1448,7 +1448,7 @@ impl GameModeInput for OsuGame {}
 
 #[async_trait]
 impl GameModeProperties for OsuGame {
-    fn playmode(&self) -> String { "osu".to_owned() }
+    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("osu") }
     fn end_time(&self) -> f32 { self.end_time }
     fn show_cursor(&self) -> bool { false } // we have our own cursor
 

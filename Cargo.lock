@@ -4970,6 +4970,8 @@ dependencies = [
 [[package]]
 name = "tataku-common"
 version = "0.12.4"
+source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
+checksum = "deb24d137237b5b3d86b61dafacf9bc001d39eb972aa70019ced47352ae3ddfb"
 dependencies = [
  "serde",
  "serde_json",
@@ -4979,6 +4981,8 @@ dependencies = [
 [[package]]
 name = "tataku-common-proc-macros"
 version = "0.2.4"
+source = "registry+https://gitlab.ayyeve.dev/tataku/tataku-rust-registry.git"
+checksum = "ea649063a703a6c6ff9ac699f26f0e33e53639b544f69c04c75148445d5a80ee"
 dependencies = [
  "proc-macro2",
  "quote",

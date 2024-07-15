@@ -593,7 +593,7 @@ impl Game {
 
                 // unload the old image so the atlas can reuse the space
                 if let Some(old_img) = std::mem::take(&mut self.background_image) {
-                    GameWindow::free_texture(old_img.tex);
+                    GameWindow::free_texture(*old_img.tex);
                 }
 
                 self.background_image = image;
@@ -614,7 +614,6 @@ impl Game {
 
         // let timer = Instant::now();
         self.update_display.increment();
-        let mut current_state = std::mem::take(&mut self.current_state);
 
         // update counters
         self.fps_display.update().await;
@@ -808,11 +807,9 @@ impl Game {
         }
 
         // update any ingame managers
-        let mut did_cleanup = false; 
         for (a, (manager, _config)) in self.gameplay_managers.iter_mut() {
             if Arc::strong_count(a) == 1 {
                 manager.cleanup_textures(&mut self.skin_manager);
-                did_cleanup = true;
                 continue;
             }
 
@@ -823,19 +820,6 @@ impl Game {
             }
         }
         self.gameplay_managers.retain(|a, _| Arc::strong_count(a) > 1);
-
-        // TODO: figure out a better way to do this. textures are getting dropped even though they're about to be used again. 
-        // (ie preview is dropped, but another is created, the drop happens after the create, causing empty textures)
-        if did_cleanup {
-            if let Some(m) = self.current_state.get_ingame() {
-                m.reload_skin(&mut self.skin_manager).await;
-            }
-
-            for (i, _) in self.gameplay_managers.values_mut() {
-                i.reload_skin(&mut self.skin_manager).await;
-            }
-        }
-
 
         // update the ui
         for key in keys_down.0.iter().filter_map(|i| i.as_key()) {
@@ -873,11 +857,11 @@ impl Game {
 
         // update spec and multi managers
         if let Some(spec) = &mut self.spectator_manager { 
-            let manager = current_state.get_ingame();
+            let manager = self.current_state.get_ingame();
             menu_actions.extend(spec.update(manager, &mut self.values).await);
         }
         if let Some(multi) = &mut self.multiplayer_manager { 
-            let manager = current_state.get_ingame();
+            let manager = self.current_state.get_ingame();
             menu_actions.extend(multi.update(manager, &mut self.values).await);
         }
 
@@ -895,7 +879,7 @@ impl Game {
         self.handle_actions(menu_actions).await;
 
         // run update on current state
-        match current_state.take() {
+        match self.current_state.take() {
             GameState::Ingame(mut manager) => {
                 if window_size_updated {
                     manager.window_size_changed((*self.window_size).clone()).await;
@@ -951,7 +935,7 @@ impl Game {
                         self.ingame_complete(manager).await;
                         // a menu is queued up, we dont need to reapply current_state
                     } else {
-                        current_state = GameState::Ingame(manager);
+                        self.current_state = GameState::Ingame(manager);
                     }
                 }
             }
@@ -965,13 +949,13 @@ impl Game {
                 }
             }
 
-            other => current_state = other
+            other => self.current_state = other
         }
         
         // update game mode
         match &self.queued_state {
             // queued mode didnt change, set the unlocked's mode to the updated mode
-            GameState::None => self.current_state = current_state,
+            GameState::None => {} //self.current_state = current_state,
             GameState::Closing => {
                 self.settings.save().await;
                 self.current_state = GameState::Closing;
@@ -1005,10 +989,9 @@ impl Game {
                         manager.reload_skin(&mut self.skin_manager).await;
                         manager.start().await;
 
-
-                        let m = manager.metadata.clone();
+                        let m = &manager.metadata;
                         let start_time = manager.start_time;
-                        self.set_background_beatmap().await;
+
                         let action;
                         if let Some(manager) = &self.spectator_manager {
                             action = SetAction::Spectating { 
@@ -1030,6 +1013,7 @@ impl Game {
                         }
 
                         OnlineManager::set_action(action, Some(m.mode.clone()));
+                        self.set_background_beatmap().await;
                     }
                     GameState::SetMenu(_) => OnlineManager::set_action(SetAction::Idle, None),
                     
@@ -1037,7 +1021,7 @@ impl Game {
                 }
 
                 let mut do_transition = true;
-                match &current_state {
+                match &self.current_state {
                     GameState::None => do_transition = false,
                     GameState::SetMenu(menu) if menu.get_name() == "pause" => do_transition = false,
                     _ => {}
@@ -1045,11 +1029,9 @@ impl Game {
 
                 if do_transition {
                     // do a transition
-
-                    let qm = std::mem::take(&mut self.queued_state);
-                    self.transition = Some(qm);
+                    self.transition = Some(self.queued_state.take());
                     self.transition_timer = elapsed;
-                    self.transition_last = Some(current_state);
+                    self.transition_last = Some(self.current_state.take());
                     self.queued_state = GameState::None;
                     self.current_state = GameState::None;
                 } else {
@@ -1562,6 +1544,10 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::FreeGameplay(mut gameplay)) => {
                 gameplay.cleanup_textures(&mut self.skin_manager);
+                
+                if let Some(manager) = self.current_state.get_ingame() {
+                    manager.reload_skin(&mut self.skin_manager).await;
+                }
             }
  
 

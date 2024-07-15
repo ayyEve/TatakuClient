@@ -59,29 +59,59 @@ impl SkinManager {
 
         // free up the last skin's images in the atlas for reuse
         self.free_by_source(TextureSource::Skin);
+        self.free_all_unused();
     }
 
     pub fn free_by_source(&mut self, source: TextureSource) {
+        let mut warned = false;
+
         for i in self.textures.values_mut() {
             let Some(a) = i.get_mut(&source) else { continue };
 
-            if let TextureLoadState::Success(i) = &a.image {
-                GameWindow::free_texture(i.tex);
+            if let TextureState::Success(i) = &a.image {
+                if i.reference_count() > 1 {
+                    if !warned {
+                        debug!("Texture(s) still have references, not freeing: {source:?}");
+                        warned = true;
+                    }
+                    continue
+                }
+
+                GameWindow::free_texture(*i.tex);
             }
 
-            a.image = TextureLoadState::Unloaded;
+            a.image = TextureState::Unloaded;
         }
     }
     pub fn free_by_usage(&mut self, usage: SkinUsage) {
-        for entries in self.textures.values_mut() {
-            for entry in entries.values_mut() {
-                if entry.usage != usage { continue }
+        let mut warned = false;
 
-                if let TextureLoadState::Success(i) = &entry.image {
-                    GameWindow::free_texture(i.tex);
+        for entry in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+            if entry.usage != usage { continue }
+
+            if let TextureState::Success(i) = &entry.image {
+                if i.reference_count() > 1 {
+                    if !warned {
+                        debug!("Texture(s) still have references, not freeing: {usage:?}");
+                        warned = true;
+                    }
+
+                    continue
                 }
 
-                entry.image = TextureLoadState::Unloaded;
+                GameWindow::free_texture(*i.tex);
+            }
+
+            entry.image = TextureState::Unloaded;
+        }
+    }
+
+    pub fn free_all_unused(&mut self) {
+        for i in self.textures.values_mut().map(HashMap::values_mut).flatten() {
+            if let TextureState::Success(im) = &i.image {
+                if im.reference_count() > 1 { continue }
+                GameWindow::free_texture(*im.tex);
+                i.image = TextureState::Unloaded;
             }
         }
     }
@@ -101,7 +131,7 @@ impl SkinManager {
         }
         
         // try to get the exact source if it exists
-        let Some(entry) = self.textures.get_mut(&texture_key) else { unreachable!() };
+        let entry = self.textures.get_mut(&texture_key).unwrap();
         
         // try to get the texture with the source, and if that doesnt work, try the fallback, and if that doesnt work, try it's fallback, etc
         let mut try_source = Some(source.clone());
@@ -112,21 +142,21 @@ impl SkinManager {
                 // loading from this source has not been attempted yet, try loading it
                 None
                 // this image has been unloaded, try loading it
-                | Some(TextureEntry { image: TextureLoadState::Unloaded, .. })
+                | Some(TextureEntry { image: TextureState::Unloaded, .. })
                 => {
                     // try to load the texture
                     let result = Self::load_texture(&source, name, grayscale, &self.skin_name).await;
                     entry.insert(source, TextureEntry { usage, image: result.clone() });
 
                     match result {
-                        TextureLoadState::Success(image) => return Some(image),
-                        TextureLoadState::Failed => continue,
-                        TextureLoadState::Unloaded => unreachable!(),
+                        TextureState::Success(image) => return Some(image.clone()),
+                        TextureState::Failed => continue,
+                        TextureState::Unloaded => unreachable!(),
                     }
                 }
 
-                Some(TextureEntry { image: TextureLoadState::Failed, .. }) => continue,
-                Some(TextureEntry { image: TextureLoadState::Success(image), .. }) => return Some(image.clone()),
+                Some(TextureEntry { image: TextureState::Failed, .. }) => continue,
+                Some(TextureEntry { image: TextureState::Success(image), .. }) => return Some(image.clone()),
             }
 
         }
@@ -161,7 +191,7 @@ impl SkinManager {
         grayscale: bool,
 
         skin_name: &str
-    ) -> TextureLoadState {
+    ) -> TextureState {
         let name = name.as_ref();
         
         // get paths to check for this source
@@ -211,8 +241,8 @@ impl SkinManager {
 
                     // send the bytes to the gpu to load into the texture atlas
                     let tex = GameWindow::load_texture_data(img).await.expect("no atlas");
-                    let image = Image::new(Vector2::ZERO, tex, scale);
-                    return TextureLoadState::Success(image);
+                    let image = Image::new(Vector2::ZERO, Arc::new(tex), scale);
+                    return TextureState::Success(image);
 
                     // // create image from the texture
                     // let _image = Image::new(Vector2::ZERO, tex, scale);
@@ -234,10 +264,36 @@ impl SkinManager {
             // }
         }
 
-        TextureLoadState::Failed
+        TextureState::Failed
     }
 
+
+    // pub async fn load_texture_async(
+    //     &self, 
+    //     source: &TextureSource,
+    //     name: impl AsRef<str> + Send + Sync, 
+    //     grayscale: bool,
+    // ) -> AsyncTextureLoader {
+    //     let f = async move {
+
+    //     };
+
+
+    // }
+
 }
+
+
+// #[derive(Default)]
+// pub struct AsyncTextureLoader {
+//     loader: AsyncLoader<Vec<(TextureSource, TextureLoadState)>>,
+// }
+// impl AsyncTextureLoader {
+//     pub async fn check(&mut self, skin_manager: &mut SkinManager) -> Option<Image> {
+//         let Some(result) = self.loader.check().await else { return None };
+
+//     }
+// }
 
 
 
@@ -301,11 +357,11 @@ pub enum SkinUsage {
 struct TextureEntry {
     // source: TextureSource,
     usage: SkinUsage,
-    image: TextureLoadState,
+    image: TextureState,
 }
 
 #[derive(Default, Clone, Debug)]
-enum TextureLoadState {
+enum TextureState {
     // Image was loaded successfully
     Success(Image),
 

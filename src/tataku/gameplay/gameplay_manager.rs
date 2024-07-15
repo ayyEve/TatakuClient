@@ -132,8 +132,6 @@ pub struct GameplayManager {
 
     map_diff: f32,
     song_time: f32,
-
-    cleaned_up_textures: bool,
 }
 
 impl GameplayManager {
@@ -150,7 +148,7 @@ impl GameplayManager {
         if current_mods.get_speed() == 0.0 { current_mods.set_speed(1.0); }
         let current_mods = Arc::new(current_mods);
 
-        let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone());
+        let mut score =  Score::new(beatmap.hash(), settings.username.clone(), playmode.clone().into_owned());
         score.speed = current_mods.speed;
 
 
@@ -243,8 +241,6 @@ impl GameplayManager {
             map_diff: 0.0,
             pause_start: None,
             song_time: 0.0,
-
-            cleaned_up_textures: false,
         }
     }
 
@@ -1032,7 +1028,7 @@ impl GameplayManager {
                 #[cfg(feature="gameplay")]
                 self.outgoing_spectator_frame(SpectatorFrame::new(0.0, SpectatorAction::Play {
                     beatmap_hash: self.beatmap.hash(),
-                    mode: self.gamemode.playmode(),
+                    mode: self.gamemode.playmode().clone().into_owned(),
                     mods: self.score.mods.clone(),
                     speed: self.current_mods.speed.as_u16(),
                     map_game: self.metadata.beatmap_type.into(),
@@ -1139,8 +1135,10 @@ impl GameplayManager {
         self.failed = false;
         self.lead_in_time = LEAD_IN_TIME / self.current_mods.get_speed();
         self.lead_in_timer = Instant::now();
-        self.map_diff = get_diff(&self.beatmap.get_beatmap_meta(), &self.gamemode.playmode(), &self.current_mods).unwrap_or_default();
-        self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), self.gamemode.playmode()), true, false);
+
+        let playmode = self.gamemode.playmode().into_owned();
+        self.map_diff = get_diff(&self.beatmap.get_beatmap_meta(), &playmode, &self.current_mods).unwrap_or_default();
+        self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), playmode), true, false);
         self.score.speed = self.current_mods.speed;
         self.score_multiplier = 1.0;
         self.timing_points.reset();
@@ -1338,7 +1336,9 @@ impl GameplayManager {
 
     #[cfg(feature="graphics")]
     pub fn cleanup_textures(&mut self, skin_manager: &mut SkinManager) {
-        self.cleaned_up_textures = true;
+        // drop all texture references by dropping the gamemode
+        // this should be fine since we shouldnt be re-using this gamemode at this time anyways
+        self.gamemode = Box::new(NoMode);
         skin_manager.free_by_usage(SkinUsage::Beatmap);
         
         let path = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
@@ -1680,7 +1680,7 @@ impl GameplayManager {
 
 impl Drop for GameplayManager {
     fn drop(&mut self) {
-        if !self.cleaned_up_textures {
+        if self.gamemode.playmode() != "none" {
             error!("gameplay manager dropped without cleaning up textures !!!!!!!!!!!");
         }
     }

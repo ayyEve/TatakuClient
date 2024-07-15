@@ -24,7 +24,7 @@ pub struct Emitter {
 
     pub color: Color,
 
-    pub image: TextureReference,
+    pub image: Arc<TextureReference>,
     pub blend_mode: BlendMode,
     
     pool: Arc<RwLock<Pool<Particle>>>,
@@ -44,13 +44,13 @@ impl Emitter {
         rotation: EmitterVal,
     
         color: Color,
-        image: TextureReference,
+        image: Arc<TextureReference>,
         blend_mode: BlendMode,
     ) -> Self {
         let capacity = (life.end * spawn_delay) as usize;
 
         let mut particle = Particle::default();
-        particle.image = image;
+        particle.image = *image;
         let pool = Arc::new(RwLock::new(Pool::new_cloning(capacity, particle)));
         let info = EmitterInfo::new(&scale, &opacity, &rotation);
         EmitterRef::create(Arc::downgrade(&pool), info);
@@ -104,7 +104,7 @@ impl Emitter {
 
                 let opacity = Self::init_val(&self.opacity, &mut rng);
                 particle.color = self.color.alpha(opacity);
-                particle.image = self.image;
+                particle.image = *self.image;
             }
 
         }
@@ -114,7 +114,7 @@ impl Emitter {
         let lock = self.pool.read();
 
         for i in lock.iter_used() {
-            let mut image = Image::new(i.position, i.image, Vector2::ONE);
+            let mut image = Image::new(i.position, Arc::new(i.image), Vector2::ONE);
             image.color = i.color;
             image.scale = Vector2::ONE * i.scale;
             image.set_blend_mode(self.blend_mode);

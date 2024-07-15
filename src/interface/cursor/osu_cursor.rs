@@ -366,7 +366,7 @@ impl CustomCursor for OsuCursor {
 
         
         let tex = skin_manager.get_texture("star2", &source, SkinUsage::Gamemode, false).await.map(|t| t.tex).unwrap_or_default();
-        self.left_emitter.image = tex;
+        self.left_emitter.image = tex.clone();
         self.right_emitter.image = tex;
     }
 }

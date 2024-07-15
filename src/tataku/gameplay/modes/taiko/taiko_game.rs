@@ -1242,7 +1242,7 @@ impl GameModeInput for TaikoGame {}
 
 #[async_trait]
 impl GameModeProperties for TaikoGame {
-    fn playmode(&self) -> String {"taiko".to_owned()}
+    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("taiko") }
     fn end_time(&self) -> f32 {self.end_time}
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {

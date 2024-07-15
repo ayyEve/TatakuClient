@@ -434,7 +434,7 @@ impl GameModeInput for UTypingGame {
 impl GameModeInput for UTypingGame {}
 
 impl GameModeProperties for UTypingGame {
-    fn playmode(&self) -> String {"utyping".to_owned()}
+    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("utyping") }
     fn end_time(&self) -> f32 {self.end_time}
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {Vec::new()}

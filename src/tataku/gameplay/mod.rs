@@ -81,9 +81,9 @@ pub async fn manager_from_playmode(
 }
 
 
-pub fn perfcalc_for_playmode(playmode: &String) -> PerformanceCalc {{
-    get_gamemode_info(&playmode)
-        .map(|i|i.get_perf_calc())
+pub fn perfcalc_for_playmode(playmode: &str) -> PerformanceCalc {{
+    get_gamemode_info(playmode)
+        .map(|i| i.get_perf_calc())
         .unwrap_or(Box::new(|diff, acc| {
             let perf = diff * (acc / 0.99).powi(6);
             #[cfg(feature="debug_perf_rating")]

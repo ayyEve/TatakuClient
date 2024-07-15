@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 pub struct Image {
     // pub size: Vector2,
-    pub tex: TextureReference,
+    pub tex: Arc<TextureReference>,
     /// underlying scale of this image, mainly used for 2x res sprites
     pub base_scale: Vector2,
 
@@ -21,7 +21,7 @@ pub struct Image {
     pub draw_debug: bool,
 }
 impl Image {
-    pub fn new(pos:Vector2, tex:TextureReference, base_scale: Vector2) -> Image {
+    pub fn new(pos: Vector2, tex: Arc<TextureReference>, base_scale: Vector2) -> Image {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(tex.width as f32, tex.height as f32);
 
@@ -87,6 +87,10 @@ impl Image {
             self.origin = Vector2::ZERO;
             self.pos = (size - self.size()) / 2.0;
         }
+    }
+
+    pub fn reference_count(&self) -> usize {
+        Arc::strong_count(&self.tex)
     }
 }
 

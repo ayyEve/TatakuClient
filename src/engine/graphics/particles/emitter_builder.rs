@@ -18,7 +18,7 @@ pub struct EmitterBuilder {
     opacity: EmitterVal,
     rotation: EmitterVal,
     color: Color,
-    image: TextureReference,
+    image: Arc<TextureReference>,
     should_emit: bool,
     blend_mode: BlendMode,
 }
@@ -40,7 +40,7 @@ impl EmitterBuilder {
     chain!(opacity, EmitterVal);
     chain!(rotation, EmitterVal);
     chain!(color, Color);
-    chain!(image, TextureReference);
+    chain!(image, Arc<TextureReference>);
     chain!(should_emit, bool);
     chain!(blend_mode, BlendMode);
 }

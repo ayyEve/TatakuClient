@@ -13,7 +13,7 @@ pub struct Animation {
     /// 
     /// hooray for terrible explanations
     pub frame_start_time: f32,
-    pub frames: Vec<TextureReference>,
+    pub frames: Vec<Arc<TextureReference>>,
     pub frame_index: usize,
     pub frame_delays: Vec<f32>,
 
@@ -29,7 +29,7 @@ pub struct Animation {
     pub draw_debug: bool,
 }
 impl Animation {
-    pub fn new(pos: Vector2, size: Vector2, frames: Vec<TextureReference>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
+    pub fn new(pos: Vector2, size: Vector2, frames: Vec<Arc<TextureReference>>, frame_delays: Vec<f32>, base_scale: Vector2) -> Self {
         // let scale = Vector2::new(tex.get_width() as f64 / size.x, tex.get_height() as f64 / size.y);
         let tex_size = Vector2::new(frames[0].width as f32, frames[0].height as f32);
         let scale = size / tex_size;

@@ -1115,7 +1115,7 @@ impl GameModeInput for ManiaGame {}
 
 #[async_trait]
 impl GameModeProperties for ManiaGame {
-    fn playmode(&self) -> String { "mania".to_owned() }
+    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("mania") }
 
     fn end_time(&self) -> f32 { self.end_time }
     
@@ -1139,7 +1139,7 @@ impl GameModeProperties for ManiaGame {
         list
     }
 
-    fn timing_bar_things(&self) -> Vec<(f32,Color)> {
+    fn timing_bar_things(&self) -> Vec<(f32, Color)> {
         self.hit_windows
             .iter()
             .map(|(j, w)| (w.end, j.color))

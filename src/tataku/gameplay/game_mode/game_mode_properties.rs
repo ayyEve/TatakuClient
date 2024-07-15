@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[async_trait]
 pub trait GameModeProperties: Send + Sync {
     /// playmode for this game mode
-    fn playmode(&self) -> String;
+    fn playmode(&self) -> Cow<'static, str>;
     /// should the cursor be visible (ie, osu yes, taiko/mania no)
     fn show_cursor(&self) -> bool { false }
     

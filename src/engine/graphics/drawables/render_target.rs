@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 #[derive(Clone)]
 pub struct RenderTarget {
-    pub texture: TextureReference,
     pub projection: Matrix,
     pub clear_color: Color,
 
@@ -10,7 +9,7 @@ pub struct RenderTarget {
     pub height: u32,
     pub image: Image,
 
-    drop_check: Arc<()>
+    // drop_check: Arc<()>
 }
 #[cfg(feature = "graphics")]
 impl RenderTarget {
@@ -22,22 +21,21 @@ impl RenderTarget {
         GameWindow::create_render_target((width, height), callback).await
     }
 
-    pub fn new_main_thread(width: u32, height: u32, tex: TextureReference, projection: Matrix, clear_color: Color) -> Self {
+    pub fn new_main_thread(width: u32, height: u32, texture: Arc<TextureReference>, projection: Matrix, clear_color: Color) -> Self {
         let image = Image::new(
             Vector2::ZERO,
-            tex,
+            texture,
             Vector2::ONE
         );
 
         Self {
             width,
             height,
-            texture: tex,
             projection,
             clear_color,
             image,
 
-            drop_check: Arc::new(()),
+            // drop_check: Arc::new(()),
             // image: Image::new()
         }
     }
@@ -50,9 +48,14 @@ impl RenderTarget {
 #[cfg(feature = "graphics")]
 impl Drop for RenderTarget {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.drop_check) == 1 {
+        // 2 because we keep a reference
+        if self.image.reference_count() == 1 {
             // info!("render target dropped");
-            GameWindow::free_texture(self.texture);
+            GameWindow::free_texture(*self.image.tex);
         }
+        // if Arc::strong_count(&self.drop_check) == 1 {
+        //     // info!("render target dropped");
+        //     GameWindow::free_texture(*self.texture);
+        // }
     }
 }

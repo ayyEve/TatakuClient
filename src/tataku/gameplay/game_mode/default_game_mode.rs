@@ -38,7 +38,7 @@ impl GameModeInput for NoMode {}
 
 
 impl GameModeProperties for NoMode {
-    fn playmode(&self) -> String {"none".to_owned()}
+    fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("none") }
     fn end_time(&self) -> f32 {0.0}
     
     // fn combo_bounds(&self) -> Rectangle {SimpleRectangle::new(Vector2::ZERO, Vector2::ZERO)}
