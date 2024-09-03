@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Reflect)]
 pub enum SortBy {
     #[default]
     Title,

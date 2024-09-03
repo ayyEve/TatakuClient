@@ -14,6 +14,7 @@ mod graphics;
 mod settings;
 #[cfg(feature="graphics")]
 mod custom_menus;
+mod tataku_event;
 
 pub use io::*;
 pub use data::*;
@@ -30,4 +31,5 @@ pub use actions::*;
 pub use settings::*;
 #[cfg(feature="graphics")]
 pub use custom_menus::*;
+pub use tataku_event::*;
 pub use self::graphics::*;

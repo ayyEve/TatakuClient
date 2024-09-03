@@ -50,7 +50,7 @@ impl TatakuValue {
             Self::String(s) => Err(ShuntingYardError::ValueIsntANumber(s.clone())),
             Self::List(_) => Err(ShuntingYardError::ValueIsntANumber("<vec>".to_owned())),
             Self::Map(_) => Err(ShuntingYardError::ValueIsntANumber("<map>".to_owned())),
-        } 
+        }
     }
 
     pub fn as_u32(&self) -> Result<u32, ShuntingYardError> {
@@ -89,10 +89,10 @@ impl TatakuValue {
 
             Self::List(a) => a.iter().map(|a| a.as_string()).collect::<Vec<_>>().join(" "),
             Self::Map(a) => a.iter().map(|(a, b)| format!("({a}: {})", b.as_string())).collect::<Vec<_>>().join(" "),
-        } 
+        }
     }
     pub fn as_number(&self) -> Option<TatakuNumber> {
-        match self {    
+        match self {
             Self::F32(n) => Some(TatakuNumber::F32(*n)),
             Self::U32(n) => Some(TatakuNumber::U32(*n)),
             Self::U64(n) => Some(TatakuNumber::U64(*n)),
@@ -100,16 +100,39 @@ impl TatakuValue {
         }
     }
 
+    pub fn from_reflection(value: &dyn Reflect) -> Option<Self> {
+        if let Some(n) = value.downcast_ref() {
+            Some(Self::F32(*n))
+        } else if let Some(n) = value.downcast_ref() {
+            Some(Self::U32(*n))
+        } else if let Some(n) = value.downcast_ref() {
+            Some(Self::U64(*n))
+        } else if let Some(b) = value.downcast_ref() {
+            Some(Self::Bool(*b))
+        } else if let Some(s) = value.downcast_ref::<String>() {
+            Some(Self::String(s.clone()))
+        } else {
+            None
+        }
+    }
+
+
+    pub fn to_map(self) -> HashMap<String, TatakuVariable> {
+        let Self::Map(map) = self else { panic!("not a map"); };
+        map
+    }
     pub fn as_map(&self) -> Option<&HashMap<String, TatakuVariable>> {
         let Self::Map(map) = self else { return None };
         Some(map)
     }
-    pub fn as_map_helper(self) -> Option<ValueCollectionMapHelper> {
+    pub fn as_map_mut(&mut self) -> Option<&mut HashMap<String, TatakuVariable>> {
         let Self::Map(map) = self else { return None };
-        Some(ValueCollectionMapHelper(map))
+        Some(map)
     }
-
-
+    // pub fn as_map_helper(self) -> Option<ValueCollectionMapHelper> {
+    //     let Self::Map(map) = self else { return None };
+    //     Some(ValueCollectionMapHelper(map))
+    // }
 
     pub fn string_maybe(&self) -> Option<&String> {
         let Self::String(s) = self else { return None };
@@ -118,6 +141,19 @@ impl TatakuValue {
     pub fn list_maybe(&self) -> Option<&Vec<TatakuVariable>> {
         let Self::List(list) = self else { return None };
         Some(list)
+    }
+
+    pub fn type_name(&self) -> &str {
+        match self {
+            TatakuValue::None => "None",
+            TatakuValue::F32(_) => "f32",
+            TatakuValue::U32(_) => "u32",
+            TatakuValue::U64(_) => "u64",
+            TatakuValue::Bool(_) => "Bool",
+            TatakuValue::String(_) => "String",
+            TatakuValue::List(_) => "List",
+            TatakuValue::Map(_) => "Map",
+        }
     }
 }
 impl strfmt::DisplayStr for TatakuValue {
@@ -151,6 +187,25 @@ impl From<TatakuNumber> for TatakuValue {
         }
     }
 }
+impl From<HashMap<String, TatakuVariable>> for TatakuValue {
+    fn from(value: HashMap<String, TatakuVariable>) -> Self {
+        Self::Map(value)
+    }
+}
+
+impl Into<Option<Box<dyn Reflect>>> for TatakuValue {
+    fn into(self) -> Option<Box<dyn Reflect>> {
+        match self {
+            Self::Bool(b) => Some(Box::new(b)),
+            Self::F32(n) => Some(Box::new(n)),
+            Self::U32(n) => Some(Box::new(n)),
+            Self::U64(n) => Some(Box::new(n)),
+            Self::String(s) => Some(Box::new(s)),
+
+            _ => None
+        }
+    }
+}
 
 
 macro_rules! impl_math {
@@ -169,20 +224,20 @@ macro_rules! impl_math {
 
                     (TatakuValue::U32(lhs), TatakuValue::U64(rhs)) => TatakuValue::U64((*lhs as u64).$func(rhs)),
                     (TatakuValue::U64(lhs), TatakuValue::U32(rhs)) => TatakuValue::U64(lhs.$func(*rhs as u64)),
-                    
+
 
                     (TatakuValue::U32(lhs), TatakuValue::F32(rhs)) => TatakuValue::F32((*lhs as f32).$func(rhs)),
                     (TatakuValue::U64(lhs), TatakuValue::F32(rhs)) => TatakuValue::F32((*lhs as f32).$func(rhs)),
-                    
+
                     (TatakuValue::F32(lhs), TatakuValue::U32(rhs)) => TatakuValue::F32(lhs.$func(*rhs as f32)),
                     (TatakuValue::F32(lhs), TatakuValue::U64(rhs)) => TatakuValue::F32(lhs.$func(*rhs as f32)),
-                    
+
                     // hopefully you arent doing other operations on a string
                     (TatakuValue::String(lhs), rhs) => TatakuValue::String(format!("{lhs}{}", &rhs.as_string())),
                     (lhs, TatakuValue::String(rhs)) => TatakuValue::String(format!("{}{rhs}", lhs.as_string())),
 
 
-                    _ => panic!("nope") 
+                    _ => panic!("nope")
                 }
             }
         }
@@ -209,14 +264,14 @@ impl PartialOrd for TatakuValue {
 
             (TatakuValue::U32(lhs), TatakuValue::U64(rhs)) => (*lhs as u64).cmp(rhs),
             (TatakuValue::U64(lhs), TatakuValue::U32(rhs)) => lhs.cmp(&(*rhs as u64)),
-            
+
 
             (TatakuValue::U32(lhs), TatakuValue::F32(rhs)) => (*lhs as f32).partial_cmp(rhs).unwrap_or(Ordering::Equal),
             (TatakuValue::U64(lhs), TatakuValue::F32(rhs)) => (*lhs as f32).partial_cmp(rhs).unwrap_or(Ordering::Equal),
-            
+
             (TatakuValue::F32(lhs), TatakuValue::U32(rhs)) => lhs.partial_cmp(&(*rhs as f32)).unwrap_or(Ordering::Equal),
             (TatakuValue::F32(lhs), TatakuValue::U64(rhs)) => lhs.partial_cmp(&(*rhs as f32)).unwrap_or(Ordering::Equal),
-            
+
             // // hopefully you arent doing other operations on a string
             // (TatakuValue::String(lhs), rhs) => TatakuValue::String(format!("{lhs}{}", &rhs.as_string())),
             // (lhs, TatakuValue::String(rhs)) => TatakuValue::String(format!("{}{rhs}", lhs.as_string())),
@@ -248,7 +303,7 @@ impl TatakuNumber {
             Self::U32(n) => Self::F32((*n as f32).sin()),
             Self::U64(n) => Self::F32((*n as f32).sin()),
         }
-    }    
+    }
     pub fn tan(&self) -> Self {
         match self {
             Self::F32(n) => Self::F32(n.sin()),
@@ -256,7 +311,7 @@ impl TatakuNumber {
             Self::U64(n) => Self::F32((*n as f32).sin()),
         }
     }
-    
+
     pub fn abs(&self) -> Self {
         match self {
             Self::F32(n) => Self::F32(n.abs()),
@@ -278,6 +333,70 @@ macro_rules! impl_from {
         }
         impl From<&$t> for TatakuValue {
             fn from(value: &$t) -> Self { Self::$e(value.clone()) }
+        }
+
+        impl From<$t> for TatakuVariable {
+            fn from(value: $t) -> Self { Self::new_game(TatakuValue::$e(value)) }
+        }
+        impl From<&$t> for TatakuVariable {
+            fn from(value: &$t) -> Self { Self::new_game(TatakuValue::$e(value.clone())) }
+        }
+
+        impl<'a> TryFrom<&'a TatakuValue> for $t {
+            type Error = TatakuValueError<'a>;
+
+            fn try_from(value: &'a TatakuValue) -> Result<Self, Self::Error> {
+                match value {
+                    TatakuValue::$e(v) => Ok(v.clone()),
+                    _ => Err(Self::Error::ValueWrongType {
+                        expected: Cow::Borrowed(stringify!($t)),
+                        received: Cow::Borrowed(value.type_name())
+                    })
+                }
+            }
+        }
+
+        impl<'a> TryFrom<&'a TatakuValue> for &'a $t {
+            type Error = TatakuValueError<'a>;
+
+            fn try_from(value: &'a TatakuValue) -> Result<Self, Self::Error> {
+                match value {
+                    TatakuValue::$e(v) => Ok(v),
+                    _ => Err(Self::Error::ValueWrongType {
+                        expected: Cow::Borrowed(stringify!($t)),
+                        received: Cow::Borrowed(value.type_name())
+                    })
+                }
+            }
+        }
+
+
+        impl<'a> TryFrom<&'a TatakuVariable> for $t {
+            type Error = TatakuValueError<'a>;
+
+            fn try_from(value: &'a TatakuVariable) -> Result<Self, Self::Error> {
+                match &value.value {
+                    TatakuValue::$e(v) => Ok(v.clone()),
+                    _ => Err(Self::Error::ValueWrongType {
+                        expected: Cow::Borrowed(stringify!($t)),
+                        received: Cow::Borrowed(value.type_name())
+                    })
+                }
+            }
+        }
+
+        impl<'a> TryFrom<&'a TatakuVariable> for &'a $t {
+            type Error = TatakuValueError<'a>;
+
+            fn try_from(value: &'a TatakuVariable) -> Result<Self, Self::Error> {
+                match &value.value {
+                    TatakuValue::$e(v) => Ok(v),
+                    _ => Err(Self::Error::ValueWrongType {
+                        expected: Cow::Borrowed(stringify!($t)),
+                        received: Cow::Borrowed(value.type_name())
+                    })
+                }
+            }
         }
     }
 }
@@ -308,9 +427,9 @@ impl<T:Into<TatakuValue>+Clone> From<(TatakuVariableAccess, &[T])> for TatakuVal
 //     }
 // }
 
-impl<'a, T> TryFrom<&'a TatakuValue> for Vec<T> 
-where 
-    &'a TatakuValue: TryInto<T>, 
+impl<'a, T> TryFrom<&'a TatakuValue> for Vec<T>
+where
+    &'a TatakuValue: TryInto<T>,
     <&'a TatakuValue as TryInto<T>>::Error: ToString
 {
     type Error = String;
@@ -327,17 +446,44 @@ where
     }
 }
 
-#[derive(Default)]
-pub struct ValueCollectionMapHelper(HashMap<String, TatakuVariable>);
-impl ValueCollectionMapHelper {
-    pub fn set(&mut self, key: impl ToString, val: impl Into<TatakuVariable>) {
-        self.0.insert(key.to_string(), val.into());
+// #[derive(Default)]
+// pub struct ValueCollectionMapHelper(HashMap<String, TatakuVariable>);
+// impl ValueCollectionMapHelper {
+//     pub fn set(&mut self, key: impl ToString, val: impl Into<TatakuVariable>) {
+//         self.0.insert(key.to_string(), val.into());
+//     }
+//     pub fn insert(mut self, key: impl ToString, val: impl Into<TatakuVariable>) -> Self {
+//         self.set(key, val);
+//         self
+//     }
+//     pub fn finish(self) -> TatakuValue {
+//         TatakuValue::Map(self.0)
+//     }
+
+//     pub fn try_get<'a, T: TryFrom<&'a TatakuValue, Error=TatakuValueError<'a>>>(&'a self, key: &str) -> Result<T, TatakuValueError> {
+//         let entry = self.0.get(key).ok_or_else(|| TatakuValueError::EntryDoesntExist { entry: Cow::Owned(key.to_owned()) })?;
+//         T::try_from(&entry.value)
+//     }
+// }
+
+
+pub trait TatakuVariableMap {
+    fn set_value(&mut self, key: impl ToString, val: impl Into<TatakuVariable>);
+    fn insert_value(mut self, key: impl ToString, val: impl Into<TatakuVariable>) -> Self where Self:Sized {
+        self.set_value(key, val);
+        self
     }
-    pub fn finish(self) -> TatakuValue {
-        TatakuValue::Map(self.0)
-    }
+
+    fn try_get<'a, T: TryFrom<&'a TatakuValue, Error=TatakuValueError<'a>>>(&'a self, key: &str) -> Result<T, TatakuValueError>;
 }
 
+impl TatakuVariableMap for HashMap<String, TatakuVariable> {
+    fn set_value(&mut self, key: impl ToString, val: impl Into<TatakuVariable>) {
+        self.insert(key.to_string(), val.into());
+    }
 
-
-
+    fn try_get<'a, T: TryFrom<&'a TatakuValue, Error=TatakuValueError<'a>>>(&'a self, key: &str) -> Result<T, TatakuValueError> {
+        let entry = self.get(key).ok_or_else(|| TatakuValueError::EntryDoesntExist { entry: Cow::Owned(key.to_owned()) })?;
+        T::try_from(&entry.value)
+    }
+}

@@ -12,11 +12,11 @@ build = "build/mod.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["gameplay"]
+default = [ "gameplay" ]
 as_crate = []
-gameplay = [ "bass_audio", "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite" ]
+gameplay = [ "bass_audio", "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel" ]
 discord = [ "discord-rich-presence" ]
-bass_audio = ["bass-rs"]
+bass_audio = [ "bass-rs" ]
 # kira_audio = ["rustfft", "uuid"]
 debug_sliders = []
 debug_hitsounds = []
@@ -34,7 +34,8 @@ ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
 graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
 
 [dependencies]
-tataku-common = { version = "0.12.4", registry = "tataku-registry" }
+tataku-common = { version = "0.13.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+tataku-common-proc-macros = { version = "0.3.0", registry = "tataku-registry" }
 # tataku-common = { path="../tataku-common" }
 tataku-client-proc-macros = { version = "0.1.1", path = "./proc_macros", registry = "tataku-registry" }
 
@@ -49,6 +50,7 @@ async-recursion = "1.1.1"
 triple_buffer = { version = "7.0.0", optional = true }
 crossbeam = "0.8.4"
 global_value_manager = "0.1.1"
+ipc-channel = { version = "0.18.1", optional = true }
 
 # image stuff
 png = { version = "0.17.13", optional = true }
@@ -91,7 +93,7 @@ bass-rs = { version="0.2.3", optional = true }
 sha2 = "0.10.8"
 tokio-tungstenite = { version = "0.22.0", features = ["rustls-tls-native-roots"], optional = true }
 reqwest = { version = "0.12.4", features = ["json"] }
-discord-rich-presence = { version = "0.2.4", optional = true }
+discord-rich-presence = { version = "0.2.4", optional = true, registry = "tataku-registry" }
 
 # serde
 serde = { version = "1.0.203", features = ["derive"] }
@@ -126,4 +128,4 @@ strfmt = "0.2.4"
 
 
 [build-dependencies]
-tataku-common = { version = "0.12.3", registry = "tataku-registry" }
+tataku-common = { version = "0.13.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }

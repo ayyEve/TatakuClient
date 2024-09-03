@@ -19,6 +19,7 @@ pub enum TatakuAction {
     /// Perform an operation on the current song
     Song(SongAction),
 
+    /// Perform a mods action
     Mods(ModAction),
 
     #[cfg(feature="graphics")]
@@ -33,6 +34,9 @@ pub enum TatakuAction {
 
     /// Perform a cursor action
     CursorAction(CursorAction),
+
+    /// Perform a window action
+    WindowAction(WindowAction),
 }
 impl std::fmt::Debug for TatakuAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,6 +52,7 @@ impl std::fmt::Debug for TatakuAction {
             Self::Multiplayer(multi) => write!(f, "Multiplayer({multi:?})"),
             Self::Task(task) => write!(f, "Task({task:?})"),
             Self::CursorAction(action) => write!(f, "CursorAction({action:?})"),
+            Self::WindowAction(action) => write!(f, "WindowAction({action:?})"),
         }
     }
 }

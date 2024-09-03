@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 /// helper struct for menu actions
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ActionQueue(Vec<TatakuAction>);
 impl ActionQueue {
     pub fn new() -> Self {

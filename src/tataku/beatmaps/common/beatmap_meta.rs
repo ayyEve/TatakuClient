@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 // contains beatmap info unrelated to notes and timing points, etc
 #[derive(Clone, Debug, Default)]
+#[derive(Reflect)]
 pub struct BeatmapMeta {
     pub file_path: String,
     pub beatmap_hash: Md5Hash,
@@ -105,7 +106,15 @@ impl BeatmapMeta {
 
 }
 
-#[derive(Clone)]
+impl std::cmp::PartialEq for BeatmapMeta {
+    fn eq(&self, other: &Self) -> bool {
+        self.beatmap_hash == other.beatmap_hash 
+    }
+}
+
+
+#[derive(Clone, Debug)]
+#[derive(Reflect)]
 pub struct BeatmapMetaWithDiff {
     pub meta: Arc<BeatmapMeta>,
     pub sort_pending: bool,

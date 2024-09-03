@@ -86,7 +86,6 @@ fn main() {
 fn start_game(runtime: &tokio::runtime::Runtime) {
     // let main_thread = tokio::task::LocalSet::new();
 
-    
     let window_runtime = Rc::new(tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

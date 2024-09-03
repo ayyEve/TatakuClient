@@ -1,7 +1,10 @@
 use std::fmt::Display;
+use crate::prelude::*;
 use std::ops::{Add, Div, Mul, Neg, Sub, Rem, AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Reflect)]
 #[serde(from = "String", into = "String")]
 pub struct Color {
     pub r: f32,

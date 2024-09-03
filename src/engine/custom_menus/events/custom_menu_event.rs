@@ -3,10 +3,10 @@ use crate::prelude::*;
 #[derive(Clone, Debug)]
 pub struct CustomMenuEvent {
     pub event_type: TatakuEventType,
-    pub actions: Vec<ButtonAction>,
+    pub actions: Vec<LuaAction>,
 }
 impl CustomMenuEvent {
-    pub fn get_actions(&self) -> Vec<ButtonAction> {
+    pub fn get_actions(&self) -> Vec<LuaAction> {
         self.actions.clone()
     }
 }
@@ -16,8 +16,8 @@ impl<'lua> rlua::FromLua<'lua> for CustomMenuEvent {
         
         let rlua::Value::Table(table) = lua_value else { return Err(rlua::Error::ToLuaConversionError { from: lua_value.type_name(), to: "CustomMenuEvent", message: Some("Not a table".to_owned()) }) };
         
-        let action: Option<ButtonAction> = table.get("action")?;
-        let actions: Option<Vec<ButtonAction>> = table.get("actions")?;
+        let action: Option<LuaAction> = table.get("action")?;
+        let actions: Option<Vec<LuaAction>> = table.get("actions")?;
 
         let mut actions = actions.unwrap_or_default();
         action.map(|a| actions.push(a));

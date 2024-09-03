@@ -159,13 +159,14 @@ impl CustomMenuManager {
             .iter()
             .map(|m| m.menu.id.clone())
             .collect::<Vec<_>>();
+        values.global.menu_list = menu_names;
 
-        values.update_or_insert(
-            "global.menu_list", 
-            TatakuVariableWriteSource::Game, 
-            (TatakuVariableAccess::GameOnly, menu_names),
-            || TatakuVariable::new_game(TatakuValue::None)
-        );
+        // values.update_or_insert(
+        //     "global.menu_list", 
+        //     TatakuVariableWriteSource::Game, 
+        //     (TatakuVariableAccess::GameOnly, menu_names),
+        //     || TatakuVariable::new_game(TatakuValue::None)
+        // );
     }
 }
 

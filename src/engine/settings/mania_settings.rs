@@ -4,9 +4,10 @@ const WIDTH2:f32 = 550.0;
 const OFFSET:f32 = 25.0;
 const OFFSET2:f32 = 5.0;
 
-#[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 #[cfg_attr(feature="graphics", derive(Settings))]
 #[cfg_attr(feature="graphics", Setting(get_items="get_key_items", from_menu="keys_from_menu"))]
+#[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct ManiaSettings {
     // sv
@@ -139,6 +140,7 @@ impl Default for ManiaSettings {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Reflect)]
 #[serde(default)]
 pub struct ManiaPlayfieldSettings {
     /// name of this config

@@ -63,7 +63,8 @@ impl Widgetable for BuiltElementDef {
             }
             ElementIdentifier::TextInput { placeholder, variable,  on_input, on_submit,is_password } => {
                 let placeholder = placeholder.to_string(values);
-                let value = values.get_string(&variable).unwrap_or_default();
+                let value = values.as_dyn().reflect_get::<String>(variable).cloned().unwrap_or_default();
+                // let value = values.get_string(&variable).unwrap_or_default();.unwrap_or_default();
                 let variable = variable.clone();
 
                 let mut input_action = on_input.clone();
@@ -134,31 +135,21 @@ impl Widgetable for BuiltElementDef {
             }
 
             ElementIdentifier::List { list_var, scrollable, variable, .. } => {
-                let Ok(TatakuValue::List(list)) = values.get_raw(list_var).map(|r| r.value.clone()) else { 
-                    error!("list variable doesnt exist! {list_var}");
-                    return EmptyElement.into_element() 
-                };
-
-                
-                let var = if let Some(var) = variable {
-                    var.clone()
-                } else {
-                    let mut i = 0;
-                    loop {
-                        let v = format!("i{i}");
-                        if !values.exists(&v) { break v }
-                        i += 1;
-                    }
-                };
-                // info!("using variable: {var}");
+                // info!("using variable: {variable}");
 
                 let ele = self.children.first().unwrap();
                 let mut children = Vec::new();
 
-                for value in list {
-                    values.set(&var, value);
-                    children.push(ele.view(owner, values));
-                }
+                let Ok(iter) = values.as_dyn().reflect_iter(list_var) else {
+                    error!("list variable doesnt exist! {list_var}");
+                    return EmptyElement.into_element() 
+                };
+
+                // TODO:!!!!
+                // for value in iter {
+                //     values.as_dyn_mut().reflect_insert(variable, value);
+                //     children.push(ele.view(owner, values));
+                // }
                 // values.remove(&var);
 
                 if *scrollable {
@@ -210,25 +201,39 @@ impl Widgetable for BuiltElementDef {
                     }
                 }
 
-                let Ok(Some(list)) = values.get_raw(options_key).map(|s| s.list_maybe()) else { 
+
+                let Ok(iter) = values.as_dyn().reflect_iter(options_key) else {
                     error!("Value not exist for {options_key}");
-                    return EmptyElement.into_element() 
+                    return EmptyElement.into_element()
                 };
+                let mut list2 = iter
+                    .filter_map(|id| Some(Test { id: id.downcast_ref::<String>()?.clone(), display: String::new()}) )
+                    .collect::<Vec<_>>();
+
+                // let Ok(Some(list)) = values.get_raw(options_key).map(|s| s.list_maybe()) else { 
+                //     error!("Value not exist for {options_key}");
+                //     return EmptyElement.into_element() 
+                // };
                 // let Ok(Some(display_list)) = values.get_raw(options_display_key).map(|s| s.list_maybe()) else { 
                 //     error!("Value not exist for {options_display_key}");
                 //     return EmptyElement.into_element()
                 // };
 
-                let list2 = list
-                    .iter()
-                    // .zip(display_list.iter())
-                    .map(|id| Test { id: id.as_string(), display: id.get_display()} )
-                    .collect::<Vec<_>>();
+                // let list2 = list
+                //     .iter()
+                //     // .zip(display_list.iter())
+                //     .map(|id| Test { id: id.as_string(), display: id.get_display()} )
+                //     .collect::<Vec<_>>();
 
-                let selected = values
-                    .get_string(selected_key)
-                    .ok()
-                    .and_then(|s| list2.iter().find(|i| i.id == s))
+                let Ok(selected) = values
+                    .as_dyn().reflect_get::<Option<String>>(selected_key) else {
+                        error!("dropdown selected wrong type or not exist");
+                        return EmptyElement.into_element()
+                    };
+
+                let selected = selected
+                    .as_ref()
+                    .and_then(|s| list2.iter().find(|i| &i.id == s))
                     .cloned();
                 let selected_key = selected_key.clone();
 

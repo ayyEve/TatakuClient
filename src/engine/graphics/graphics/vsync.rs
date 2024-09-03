@@ -6,6 +6,7 @@ use wgpu::PresentMode;
 pub static AVAILABLE_PRESENT_MODES:OnceCell<Vec<Vsync>> = OnceCell::const_new();
 
 #[derive(Copy, Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Reflect)]
 pub enum Vsync {
     AutoVsync,
     #[default]

@@ -12,6 +12,7 @@ pub type IcedOverlay<'a> = iced::overlay::Element<'a, Message, iced::Theme, Iced
 pub type IcedOperation = Box<dyn Operation<Message> + Send + Sync>;
 
 pub struct UiManager {
+    pub force_refresh: bool,
     message_channel: (AsyncSender<Message>, AsyncReceiver<Message>),
     ui_sender: Sender<UiAction>,
 
@@ -32,6 +33,7 @@ impl UiManager {
 
         Self {
             // ui
+            force_refresh: false,
             message_channel: async_channel(10),
             ui_sender,
 
@@ -87,10 +89,11 @@ impl UiManager {
                     mut messages, 
                     events, 
                     operations, 
-                    mut values 
+                    mut values ,
+                    force_refresh,
                 } => {
                     // rebuild ui with the new application
-                    if rebuild_next || application.menu.get_name() != last_menu {
+                    if force_refresh || rebuild_next || application.menu.get_name() != last_menu {
                         last_menu = application.menu.get_name().to_owned();
                         rebuild_next = false;
                         needs_render = true;
@@ -110,10 +113,7 @@ impl UiManager {
 
                     // perform operations
                     for mut operation in operations {
-                        ui.operate(
-                            &renderer,
-                            &mut *operation
-                        )
+                        ui.operate(&renderer, &mut *operation)
                     }
 
                     mouse_pos = iced::Point::new(events.mouse_pos.x, events.mouse_pos.y);
@@ -180,11 +180,15 @@ impl UiManager {
             events: state.into_events(),
             operations: self.queued_operations.take(),
             values,
+            force_refresh: self.force_refresh,
             // we should probably return an error instead
-        }) else { return (Vec::new(), ValueCollection::default()); };
+        }) else { panic!("fucked up"); };
+        self.force_refresh = false;
 
         // we should probably return an error instead
-        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { return (Vec::new(), ValueCollection::default()); };
+        let Ok(UiUpdateData { application, messages, mut values }) = callback.await else { 
+            panic!("fucked up"); 
+        };
 
         std::mem::swap(&mut self.application, &mut Some(application));
 
@@ -320,7 +324,8 @@ enum UiAction {
         events: SendEvents,
         operations: Vec<IcedOperation>,
 
-        values: ValueCollection
+        values: ValueCollection,
+        force_refresh: bool,
     },
     Draw {
         application: UiApplication,

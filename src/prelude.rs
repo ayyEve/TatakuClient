@@ -65,8 +65,9 @@ pub use tataku_client_proc_macros::*;
 
 // online imports
 pub use tataku_common::packets::*;
+pub use tataku_common::reflection::*;
 pub use tataku_common::serialization::*;
-
+pub use tataku_common_proc_macros::Reflect;
 
 
 // iced imports, in its own mod since it has some comflicting names

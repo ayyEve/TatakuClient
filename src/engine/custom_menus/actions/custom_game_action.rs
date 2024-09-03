@@ -86,7 +86,7 @@ impl<'lua> FromLua<'lua> for CustomMenuGameAction {
                     "show_notification" => Ok(Self::ShowNotification {
                         text: table.get("text")?,
                         color: table.get::<_, Option<Color>>("color")?.unwrap_or(Color::SKY_BLUE),
-                        duration: table.get::<_, Option<_>>("duration")?.unwrap_or(CustomEventValueType::Value(TatakuVariable::new_any(TatakuValue::F32(5_000.0)))),
+                        duration: table.get::<_, Option<_>>("duration")?.unwrap_or(CustomEventValueType::new_value(5_000.0)),
                         // onclick: NotificationOnClick::None,
                     }),
 

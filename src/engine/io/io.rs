@@ -244,3 +244,9 @@ impl<T:Send + Sync + 'static> AsyncLoader<T> {
         }
     }
 }
+
+impl<T> std::fmt::Debug for AsyncLoader<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AsyncLoader")
+    }
+}

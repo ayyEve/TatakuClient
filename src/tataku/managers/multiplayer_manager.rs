@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+#[derive(Debug)]
 pub struct MultiplayerManager {
     /// list of actions to send back to the game object
     actions: ActionQueue,
@@ -8,16 +9,16 @@ pub struct MultiplayerManager {
     pub lobby: CurrentLobbyInfo,
 
     /// what is the current beatmap we have selected?
-    current_beatmap: SyValueHelper,
+    current_beatmap: SyValueHelper<Md5Hash>,
     
     /// what playmode is selected by the host?
     selected_mode: Option<String>,
 
     /// what mods are currently enabled?
-    current_mods: SyValueHelper,
+    current_mods: SyValueHelper<ModManager>,
 
     /// helper to get new beatmaps
-    new_beatmap_helper: SyValueHelper,
+    new_beatmap_helper: SyValueHelper<Md5Hash>,
 
     /// async beatmap loader
     beatmap_loader: Option<AsyncLoader<TatakuResult<GameplayManager>>>,
@@ -49,7 +50,7 @@ impl MultiplayerManager {
         values: &mut ValueCollection
     ) -> Vec<TatakuAction> {
         let previous_map = self.current_beatmap.clone();
-        if self.current_beatmap.check(values) {
+        if let Ok(Some(_)) = self.current_beatmap.update(values) {
 
             // if we're the host, the map update was us selecting a map
             // so, update the lobby with the selected map
@@ -65,9 +66,9 @@ impl MultiplayerManager {
                 // }
             } else {
                 // otherwise, the lobby map was updated
-                if let Ok(hash) = self.current_beatmap.deref().try_into() {
+                if let Some(hash) = self.current_beatmap.as_ref() {
                     // if the map is valid, select it
-                    self.actions.push(BeatmapAction::SetFromHash(hash, SetBeatmapOptions::new().restart_song(true)));
+                    self.actions.push(BeatmapAction::SetFromHash(*hash, SetBeatmapOptions::new().restart_song(true)));
                     tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::NotReady));
                 } else {
                     // otherwise, remove the current map
@@ -96,24 +97,20 @@ impl MultiplayerManager {
         }
 
         // if our mods changed, let the lobby know
-        if self.current_mods.check(values) {
-            if let Ok(mods) = ModManager::try_from(self.current_mods.deref()) {
-                let speed = mods.speed;
-                let mods = mods.mods;
-                tokio::spawn(OnlineManager::lobby_update_mods(mods, speed.as_u16()));
-            }
+        if let Ok(Some(mods)) = self.current_mods.update(values) {
+            let speed = mods.speed;
+            let mods = mods.mods.clone();
+            tokio::spawn(OnlineManager::lobby_update_mods(mods, speed.as_u16()));
         }
     
         // check if a new beatmap was added
-        if self.new_beatmap_helper.check(values) && manager.is_none() {
+        if let Some(Some(new_hash)) = self.new_beatmap_helper.update(values).ok().filter(|_| manager.is_none()) {
 
             // if the map that was just added is the lobby's map, set it as our current map
             if let Some(beatmap) = &self.lobby.current_beatmap {
 
-                if let Ok(new_hash) = TryInto::<Md5Hash>::try_into(self.new_beatmap_helper.deref()) {
-                    if new_hash == beatmap.hash {
-                        self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
-                    }
+                if new_hash == &beatmap.hash {
+                    self.actions.push(BeatmapAction::SetFromHash(beatmap.hash, SetBeatmapOptions::new().restart_song(true)));
                 }
 
                 // let beatmap_manager = BEATMAP_MANAGER.read().await;
@@ -132,18 +129,20 @@ impl MultiplayerManager {
         debug!("multi manager value update");
         // TODO: optimize this
 
-        let lobby_info:TatakuValue = (&self.lobby).into();
-        let mut map = lobby_info.as_map_helper().unwrap();
-        map.set("has_beatmap", TatakuVariable::new_game(self.current_beatmap_is_selected()));
+        // let lobby_info:TatakuValue = (&self.lobby).into();
+        // let mut map = lobby_info.to_map();
+        // map.set_value("has_beatmap", TatakuVariable::new_game(self.current_beatmap_is_selected()));
 
-        values.set("lobby", TatakuVariable::new_game(map.finish()));
+        // values.set("lobby", TatakuVariable::new_game(map));
+
+        values.lobby = Some(self.lobby.clone());
     }
 
     
     fn current_beatmap_is_selected(&self) -> bool {
-        let Ok(current_hash) = self.current_beatmap.deref().try_into() else { return false };
+        let Some(current_hash) = self.current_beatmap.as_ref() else { return false };
         let Some(selected) = &self.lobby.current_beatmap else { return false };
-        selected.hash == current_hash
+        &selected.hash == current_hash
     }
 
     pub async fn handle_packet(
@@ -204,10 +203,18 @@ impl MultiplayerManager {
                     // only load map if we have it selected
                     if self.current_beatmap_is_selected() {
                         let Some(mode) = self.selected_mode.clone() else { return Ok(()) };
-                        let Ok(hash) = values.try_get("map.hash") else { return Ok(()) };
-                        let Ok(path) = values.get_string("map.path") else { return Ok(()) };
-                        let Ok(mods) = values.try_get("global.mods") else { return Ok(()) };
-                        let f = manager_from_playmode_path_hash(mode, path, hash, mods);
+                        let Some(map) = &values.beatmap_manager.current_beatmap else { return Ok(()) };
+                        
+                        // let Ok(hash) = values.try_get("map.hash") else { return Ok(()) };
+                        // let Ok(path) = values.get_string("map.path") else { return Ok(()) };
+                        // let Ok(mods) = values.try_get("global.mods") else { return Ok(()) };
+                        let mods = values.mods.clone();
+                        let f = manager_from_playmode_path_hash(
+                            mode, 
+                            map.file_path.clone(), 
+                            map.beatmap_hash, 
+                            mods
+                        );
                         self.beatmap_loader = Some(AsyncLoader::new(f));
                     } else {
                         warn!("not loading map: current != selected");

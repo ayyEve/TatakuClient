@@ -2,50 +2,50 @@ use crate::prelude::*;
 
 impl From<&Score> for TatakuValue {
     fn from(score: &Score) -> Self {
-        let mut map = ValueCollectionMapHelper::default();
+        let mut map = HashMap::default();
 
-        map.set("username", TatakuVariable::new(score.username.clone()));
-        map.set("beatmap_hash", TatakuVariable::new(score.beatmap_hash));
-        map.set("playmode", TatakuVariable::new(&score.playmode));
-        map.set("time", TatakuVariable::new(score.time));
+        map.set_value("username", TatakuVariable::new(score.username.clone()));
+        map.set_value("beatmap_hash", TatakuVariable::new(score.beatmap_hash));
+        map.set_value("playmode", TatakuVariable::new(&score.playmode));
+        map.set_value("time", TatakuVariable::new(score.time));
         
-        map.set("score", TatakuVariable::new(score.score).display(format_number(score.score)));
-        map.set("combo", TatakuVariable::new(score.combo as u32).display(format_number(score.combo)));
-        map.set("max_combo", TatakuVariable::new(score.max_combo as u32).display(format_number(score.max_combo)));
+        map.set_value("score", TatakuVariable::new(score.score).display(format_number(score.score)));
+        map.set_value("combo", TatakuVariable::new(score.combo as u32).display(format_number(score.combo)));
+        map.set_value("max_combo", TatakuVariable::new(score.max_combo as u32).display(format_number(score.max_combo)));
 
         // judgments 
         {
-            let mut judgments = ValueCollectionMapHelper::default();
+            let mut judgments = HashMap::default();
             for (judge, count) in &score.judgments {
-                judgments.set(judge, TatakuVariable::new(*count as u32))
+                judgments.set_value(judge, TatakuVariable::new(*count as u32))
             }
-            map.set("judgments", TatakuVariable::new(judgments.finish()));
+            map.set_value("judgments", TatakuVariable::new(judgments));
         }
 
-        map.set("accuracy", TatakuVariable::new(score.accuracy as f32).display(format!("{:.2}", score.accuracy * 100.0)));
-        map.set("speed", TatakuVariable::new(score.speed.as_u16() as u32));
+        map.set_value("accuracy", TatakuVariable::new(score.accuracy as f32).display(format!("{:.2}", score.accuracy * 100.0)));
+        map.set_value("speed", TatakuVariable::new(score.speed.as_u16() as u32));
 
-        map.set("performance", TatakuVariable::new(score.performance).display(format!("{:.2}", score.performance)));
+        map.set_value("performance", TatakuVariable::new(score.performance).display(format!("{:.2}", score.performance)));
 
 
         
         // map.set("mods_short", ));
 
-        map.set("mods", TatakuVariable::new(ModManager::new().with_mods(score.mods.iter()).with_speed(score.speed)).display(ModManager::short_mods_string(&score.mods, false, &score.playmode)));
-        map.set("hit_timings", TatakuVariable::new((TatakuVariableAccess::ReadOnly, score.hit_timings.clone())));
+        map.set_value("mods", TatakuVariable::new(ModManager::new().with_mods(score.mods.iter()).with_speed(score.speed)).display(ModManager::short_mods_string(&score.mods, false, &score.playmode)));
+        map.set_value("hit_timings", TatakuVariable::new((TatakuVariableAccess::ReadOnly, score.hit_timings.clone())));
 
         
 
         // stats
         {
-            let mut stats = ValueCollectionMapHelper::default();
+            let mut stats = HashMap::default();
             for (stat, list) in &score.stat_data {
-                stats.set(stat, TatakuVariable::new((TatakuVariableAccess::ReadOnly, list.clone())));
+                stats.set_value(stat, TatakuVariable::new((TatakuVariableAccess::ReadOnly, list.clone())));
             }
-            map.set("stats", TatakuVariable::new(stats.finish()));
+            map.set_value("stats", TatakuVariable::new(stats));
         }
 
-        map.finish()
+        TatakuValue::Map(map)
     }
 }
 

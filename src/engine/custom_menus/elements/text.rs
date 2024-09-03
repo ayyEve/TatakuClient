@@ -35,9 +35,9 @@ impl CustomElementText {
 
     pub fn to_string(&self, values: &ValueCollection) -> String {
         match self {
-            Self::Variable(t) => values.get_string(t).unwrap_or_else(|_| format!("Invalid property: '{t}'")),
+            Self::Variable(t) => values.as_dyn().reflect_get::<String>(t).cloned().unwrap_or_else(|_| format!("Invalid property: '{t}'")),
             Self::Text(t) | Self::Locale(t) => t.clone(),
-            
+
             Self::CalcParsed(calc, calc_str) => {
                 match calc.resolve(values) {
                     Ok(val) => val.as_string(),
@@ -100,10 +100,10 @@ impl<'lua> FromLua<'lua> for CustomElementText {
             Value::Integer(n) => {
                 #[cfg(feature="debug_custom_menus")] info!("Is Integer");
                 let Some(char) = char::from_u32(n as u32) else {
-                    return Err(FromLuaConversionError { 
-                        from: "Integer", 
-                        to: "CustomElementText", 
-                        message: Some("Failed to cast int to char".to_owned()) 
+                    return Err(FromLuaConversionError {
+                        from: "Integer",
+                        to: "CustomElementText",
+                        message: Some("Failed to cast int to char".to_owned())
                     })
                 };
 

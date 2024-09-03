@@ -1,21 +1,28 @@
 use crate::prelude::*;
 
 /// used for ingame_manager leaderboard
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
+#[derive(Reflect)]
 pub struct IngameScore {
     pub score: Score,
+
+    pub health: f32,
+
     /// is this the current score
     pub is_current: bool,
+
     /// is this a user's previous score?
     pub is_previous: bool,
 
     /// is this score from the internet? (ie not local)
+    #[reflect(skip)]
     pub replay_location: ReplayLocation,
 }
 impl IngameScore {
     pub fn new(score: Score, is_current: bool, is_previous: bool) -> Self {
         Self {
             score, 
+            health: 1.0,
             is_current,
             is_previous,
             replay_location: ReplayLocation::Local,
@@ -79,8 +86,9 @@ impl From<&IngameScore> for TatakuValue {
 
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum ReplayLocation {
+    #[default]
     Local,
     // url, extention
     Online(Arc<dyn ReplayDownloader>),

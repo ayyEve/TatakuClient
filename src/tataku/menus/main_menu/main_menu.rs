@@ -27,8 +27,8 @@ pub struct MainMenu {
     settings: SettingsHelper,
     // window_size: Arc<WindowSize>,
     song_display: CurrentSongDisplay,
-    beatmap: SyValueHelper,
-    new_map: SyValueHelper,
+    beatmap: SyValueHelper<Arc<BeatmapMeta>>,
+    new_map: SyValueHelper<Arc<BeatmapMeta>>,
 
     music_box: MusicBox,
     media_controls: MediaControlHelper,

@@ -2,12 +2,12 @@ use std::hash::Hash;
 use crate::prelude::*;
 
 #[derive(Clone, Default, PartialEq, Serialize, Deserialize, Eq, Debug)]
+#[derive(Reflect)]
 #[serde(default)]
 pub struct ModManager {
     /// use get/set_speed instead of direct access to this
     pub speed: GameSpeed,
-    
-    pub mods: HashSet<String>
+    pub mods: HashSet<String>,
 }
 
 // static 
@@ -232,9 +232,9 @@ impl TryFrom<&TatakuValue> for ModManager {
 
 impl Into<TatakuValue> for ModManager {
     fn into(self) -> TatakuValue {
-        let mut map = ValueCollectionMapHelper::default();
-        map.set("speed", TatakuVariable::new_game(TatakuValue::U32(self.speed.as_u16() as u32)));
-        map.set("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, self.mods.iter().collect::<Vec<_>>())));
-        map.finish()
+        let mut map = HashMap::default();
+        map.set_value("speed", TatakuVariable::new_game(TatakuValue::U32(self.speed.as_u16() as u32)));
+        map.set_value("mods", TatakuVariable::new_game((TatakuVariableAccess::GameOnly, self.mods.iter().collect::<Vec<_>>())));
+        TatakuValue::Map(map)
     }
 }

@@ -53,11 +53,13 @@ pub trait AudioInstance: Send + Sync {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Reflect)]
 pub enum AudioState {
     Playing,
     Paused,
     Stopped,
+    #[default]
     Unknown,
 }
 

@@ -219,7 +219,8 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Reflect)]
 pub enum SelectedTheme {
     Tataku,
     Osu,

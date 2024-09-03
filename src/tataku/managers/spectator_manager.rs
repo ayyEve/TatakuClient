@@ -18,8 +18,8 @@ pub struct SpectatorManager {
 
     /// list of id,username for other spectators
     pub spectator_cache: HashMap<u32, String>,
-    new_map: SyValueHelper,
-    own_beatmap: SyValueHelper,
+    new_map: SyValueHelper<Md5Hash>,
+    own_beatmap: SyValueHelper<Arc<BeatmapMeta>>,
 }
 impl SpectatorManager {
     pub async fn new(host_id: u32, host_username: String) -> Self {
@@ -65,8 +65,9 @@ impl SpectatorManager {
         // mods.mods = Score::mods_from_string(mods_str);
 
         // see if our current map is the host's map
-        let Ok(map_path) = values.get_string("map.file_path") else { return };
-        let Ok(hash) = values.try_get("map.hash") else { return };
+        let Some(map) = values.beatmap_manager.current_beatmap.as_ref() else { return };
+        let map_path = map.file_path.clone();
+        let hash = map.beatmap_hash;
         if hash != map_hash { return }
 
         match manager_from_playmode_path_hash(playmode, map_path, hash, mods.clone()).await {
@@ -123,7 +124,7 @@ impl SpectatorManager {
         }
 
         // handle new maps
-        if self.new_map.check(values) {
+        if let Ok(Some(_)) = self.new_map.update(values) {
             // let new_map_hash:Md5Hash = self.new_map.deref().try_into().unwrap_or_default();
             // info!("got new map: {new_map_hash:?}");
 
@@ -151,9 +152,9 @@ impl SpectatorManager {
             // }
         }
 
-        if self.own_beatmap.check(values) && self.host_map.is_some() && manager.is_none() {
+        // if self.own_beatmap.update(values) && self.host_map.is_some() && manager.is_none() {
 
-        }
+        // }
 
         // check all incoming frames
         while let Some(SpectatorFrame { time, action }) = self.frames.pop_front() {

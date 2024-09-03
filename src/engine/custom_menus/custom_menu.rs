@@ -14,7 +14,7 @@ impl CustomMenu {
             components.push(i.build().await);
         }
 
-        let mut events:HashMap<TatakuEventType, Vec<ButtonAction>> = HashMap::new();
+        let mut events:HashMap<TatakuEventType, Vec<LuaAction>> = HashMap::new();
         for event in self.events.clone() {
             let list = events.entry(event.event_type).or_default();
             for mut action in event.get_actions() {
@@ -57,7 +57,7 @@ pub struct BuiltCustomMenu {
     pub element: BuiltElementDef,
     pub actions: ActionQueue,
     pub components: Vec<Box<dyn Widgetable>>,
-    pub events: HashMap<TatakuEventType, Vec<ButtonAction>>,
+    pub events: HashMap<TatakuEventType, Vec<LuaAction>>,
 }
 
 #[async_trait]
@@ -103,7 +103,10 @@ impl AsyncMenu for BuiltCustomMenu {
         match message.message_type {
             MessageType::Text(incoming) => {
                 let Some(variable) = message.tag.as_string() else { return };
-                values.update_or_insert(&variable, TatakuVariableWriteSource::Menu, incoming, || TatakuVariable::new_any(TatakuValue::None));
+                // values.update_or_insert(&variable, TatakuVariableWriteSource::Menu, incoming, || TatakuVariable::new_any(TatakuValue::None));
+                if let Err(e) = values.as_dyn_mut().reflect_insert(&variable, Box::new(incoming)) {
+                    error!("error inserting into values: {e:?}");
+                }
 
                 // values.set(variable, incoming);
             }

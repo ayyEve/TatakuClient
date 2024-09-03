@@ -31,16 +31,18 @@ pub enum CustomMenuAction {
     SetValue(String, TatakuValue),
 }
 impl CustomMenuAction {
-    pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<TatakuAction> {
+    pub fn into_action<'a>(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<TatakuAction> {
         match self {
             Self::None => None,
             Self::AddDialog(dialog) => {
                 let Some(val) = dialog.resolve(values, passed_in) else { return None };
-                Some(TatakuAction::Menu(MenuAction::AddDialogCustom(val.as_string(), true)))
+                let str = val.string_maybe()?;
+                Some(TatakuAction::Menu(MenuAction::AddDialogCustom(str.clone(), true)))
             }
             Self::SetMenu(menu) =>  {
                 let Some(val) = menu.resolve(values, passed_in) else { return None };
-                Some(TatakuAction::Menu(MenuAction::set_menu(val.as_string())))
+                let str = val.string_maybe()?;
+                Some(TatakuAction::Menu(MenuAction::set_menu(str.clone())))
             }
 
             Self::Map(action) => action.into_action(values, passed_in).map(TatakuAction::Beatmap),

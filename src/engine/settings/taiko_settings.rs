@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
+#[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct TaikoSettings {
     // input
@@ -17,6 +18,7 @@ pub struct TaikoSettings {
     #[cfg_attr(feature="graphics", Setting(text="Ignore Mouse Buttons"))]
     pub ignore_mouse_buttons: bool,
     #[cfg(feature = "gameplay")]
+    #[reflect(skip)] // TaikoControllerConfig isnt reflectable
     pub controller_config: HashMap<String, TaikoControllerConfig>,
 
     // sv

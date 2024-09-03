@@ -19,6 +19,9 @@ pub enum Game2WindowEvent {
 
     SettingsUpdated(DisplaySettings),
     IntegrationsChanged(IntegrationSettings),
+
+    WindowAction(WindowAction),
+    MediaControlEvent(souvlaki::MediaControlEvent),
 }
 
 impl std::fmt::Debug for Game2WindowEvent {

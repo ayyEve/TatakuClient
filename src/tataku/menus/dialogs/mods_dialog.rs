@@ -69,13 +69,12 @@ impl ModDialog {
     //     }
     // }
 
-    fn toggle_mod(&self, m:GameplayMod, values: &mut ValueCollection) {
+    fn toggle_mod(&self, m: GameplayMod, values: &mut ValueCollection) {
         let removes:HashSet<String> = m.removes.iter().map(|m| m.to_string()).collect();
 
-        let mut mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
+        let mut mods = &mut values.mods;
         mods.toggle_mod(m);
         mods.mods.retain(|m| !removes.contains(m));
-        values.update("global.mods", TatakuVariableWriteSource::Game, mods);
     }
 }
 
@@ -96,7 +95,7 @@ impl Dialog for ModDialog {
 
     fn view(&self, values: &mut ValueCollection) -> IcedElement {
         use iced_elements::*;
-        let mods = values.try_get::<ModManager>("global.mods").unwrap_or_default();
+        let mods = &values.mods;
         let owner = MessageOwner::new_dialog(self);
 
         let mut items = Vec::new();

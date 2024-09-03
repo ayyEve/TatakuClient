@@ -9,7 +9,6 @@ use souvlaki::{ MediaControls, PlatformConfig };
 use tokio::sync::mpsc::{ unbounded_channel, Sender };
 
 static WINDOW_PROXY: OnceCell<winit::event_loop::EventLoopProxy<Game2WindowEvent>> = OnceCell::const_new();
-static MEDIA_CONTROLS:OnceCell<Arc<Mutex<MediaControls>>> = OnceCell::const_new();
 
 
 lazy_static::lazy_static! {
@@ -28,7 +27,6 @@ pub struct GameWindow<'window> {
     window_creation_barrier: Arc<tokio::sync::Barrier>,
 
     runtime: Rc<tokio::runtime::Runtime>,
-
     
     graphics: Box<dyn GraphicsEngine + 'window>,
     settings: DisplaySettings,
@@ -51,6 +49,7 @@ pub struct GameWindow<'window> {
     // what finger id started the touch, and where is the floating touch location
     touch_pos: Option<(u64, Vector2)>,
 
+    media_controls: Option<MediaControls>,
 
     #[cfg(not(feature = "graphics"))]
     _phantom_data: std::marker::PhantomData<&'window ()>,
@@ -70,10 +69,11 @@ impl<'window> GameWindow<'window> {
             window,
             window_creation_barrier,
             runtime,
-
+            
             graphics: Box::new(DummyGraphicsEngine),
             settings: settings.display_settings.clone(),
             integration_settings: settings.integrations.clone(),
+            media_controls: None,
             
             game_event_sender: Arc::new(game_event_sender),
             // window_event_receiver,
@@ -245,15 +245,15 @@ impl<'window> GameWindow<'window> {
     }
 
 
-    fn init_media_controls(&self) {
+    fn init_media_controls(_window: &WinitWindow) -> MediaControls {
         info!("init media controls");
         #[cfg(not(target_os = "windows"))]
         let hwnd = None;
 
         #[cfg(target_os = "windows")]
         let hwnd = {
-            use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-            let handle = match self.window.get().unwrap().window_handle() {
+            use raw_window_handle::{ HasWindowHandle, RawWindowHandle };
+            let handle = match _window.get().unwrap().window_handle() {
                 Ok(h) =>  match h.as_raw() {
                     RawWindowHandle::Win32(h) => h,
                     // RawWindowHandle::WinRt(h) => h,
@@ -266,15 +266,12 @@ impl<'window> GameWindow<'window> {
             };
             Some(handle.hwnd.get() as *mut std::ffi::c_void)
         };
-
-        let config = PlatformConfig {
+        
+        MediaControls::new(PlatformConfig {
             dbus_name: "tataku.player",
             display_name: "Tataku!",
             hwnd,
-        };
-        
-        let controls = MediaControls::new(config).unwrap();
-        let _ = MEDIA_CONTROLS.set(Arc::new(Mutex::new(controls)));
+        }).unwrap()
     }
 
 
@@ -285,10 +282,6 @@ impl<'window> GameWindow<'window> {
 
 // input and state stuff
 impl<'window> GameWindow<'window> {
-    pub fn get_media_controls() -> Arc<Mutex<MediaControls>> {
-        MEDIA_CONTROLS.get().cloned().unwrap()
-    }
-
     fn refresh_monitors_inner(&mut self) {
         *MONITORS.write() = self.window().available_monitors().filter_map(|m|m.name()).collect();
     }
@@ -503,6 +496,7 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         }
 
         self.window.set(window).unwrap();
+        self.media_controls = Some(Self::init_media_controls(self.window.get().unwrap()));
         info!("Window created");
 
 
@@ -516,7 +510,7 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
         });
 
 
-        self.init_media_controls();
+        // self.init_media_controls();
         self.window().set_min_inner_size(Some(to_size(self.settings.window_size.into())));
         self.refresh_monitors_inner();
         self.set_fullscreen(self.settings.fullscreen_monitor);
@@ -563,12 +557,12 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
             }
 
             Game2WindowEvent::IntegrationsChanged(integrations) => {
-                if integrations.media_controls && !self.integration_settings.media_controls {
-                    MediaControlHelper::set_metadata(&Default::default());
-                    MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
-                    let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
-                }
-                self.integration_settings = integrations;
+                // if integrations.media_controls && !self.integration_settings.media_controls {
+                //     MediaControlHelper::set_metadata(&Default::default());
+                //     MediaControlHelper::set_playback(souvlaki::MediaPlayback::Stopped);
+                //     let _ = MEDIA_CONTROLS.get().unwrap().lock().detach();
+                // }
+                // self.integration_settings = integrations;
             }
 
             Game2WindowEvent::SettingsUpdated(settings) => {
@@ -587,6 +581,25 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
 
             Game2WindowEvent::CopyToClipboard(text) => if let Err(e) = Self::set_clipboard(text) {
                 error!("error copying to clipboard: {e:?}")
+            }
+        
+            Game2WindowEvent::WindowAction(action) => {
+                match action {
+                    WindowAction::MediaControlAction(action) => 
+                        if let Some(media_controls) = &mut self.media_controls {
+                            match action {
+                                MediaControlAction::Attach => media_controls.attach(|e| WINDOW_PROXY.get().unwrap().send_event(Game2WindowEvent::MediaControlEvent(e)).nope()).nope(),
+                                
+                                MediaControlAction::Detatch => media_controls.detach().nope(),
+                                MediaControlAction::SetPlayback(playback) => media_controls.set_playback(playback.into()).nope(),
+                                MediaControlAction::SetMetadata(meta) => media_controls.set_metadata((&meta).into()).nope(),
+                            }
+                        },
+                }
+            }
+
+            Game2WindowEvent::MediaControlEvent(event) => {
+
             }
         }
     }
@@ -716,6 +729,14 @@ impl<'window> winit::application::ApplicationHandler<Game2WindowEvent> for GameW
 
     fn exiting(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         warn!("window closing");
+    }
+}
+
+impl Drop for GameWindow<'_> {
+    fn drop(&mut self) {
+        if let Some(media_controls) = &mut self.media_controls {
+            media_controls.detach().nope();
+        }
     }
 }
 

@@ -2,22 +2,22 @@ use crate::prelude::*;
 
 impl From<&BeatmapMeta> for TatakuValue {
     fn from(beatmap: &BeatmapMeta) -> Self {
-        let mut map = ValueCollectionMapHelper::default();
+        let mut map = HashMap::default();
 
-        map.set("artist", TatakuVariable::new(&beatmap.artist));
-        map.set("title", TatakuVariable::new(&beatmap.title));
-        map.set("creator", TatakuVariable::new(&beatmap.creator));
-        map.set("version", TatakuVariable::new(&beatmap.version));
-        map.set("playmode", TatakuVariable::new(&beatmap.mode).display(gamemode_display_name(&beatmap.mode)));
-        map.set("game", TatakuVariable::new(format!("{:?}", beatmap.beatmap_type)));
-        map.set("hash", TatakuVariable::new(&beatmap.beatmap_hash.to_string()));
-        map.set("audio_path", TatakuVariable::new(&beatmap.audio_filename));
-        map.set("preview_time", TatakuVariable::new(beatmap.audio_preview));
-        map.set("image_filename", TatakuVariable::new(&beatmap.image_filename));
-        map.set("path", TatakuVariable::new(&beatmap.file_path));
+        map.set_value("artist", TatakuVariable::new(&beatmap.artist));
+        map.set_value("title", TatakuVariable::new(&beatmap.title));
+        map.set_value("creator", TatakuVariable::new(&beatmap.creator));
+        map.set_value("version", TatakuVariable::new(&beatmap.version));
+        map.set_value("playmode", TatakuVariable::new(&beatmap.mode).display(gamemode_display_name(&beatmap.mode)));
+        map.set_value("game", TatakuVariable::new(format!("{:?}", beatmap.beatmap_type)));
+        map.set_value("hash", TatakuVariable::new(&beatmap.beatmap_hash.to_string()));
+        map.set_value("audio_path", TatakuVariable::new(&beatmap.audio_filename));
+        map.set_value("preview_time", TatakuVariable::new(beatmap.audio_preview));
+        map.set_value("image_filename", TatakuVariable::new(&beatmap.image_filename));
+        map.set_value("path", TatakuVariable::new(&beatmap.file_path));
         // map.set("display_mode", TatakuVariable::new_readonly());
-        map.set("beatmap_type", TatakuVariable::new(&beatmap.beatmap_type));
-        map.finish()
+        map.set_value("beatmap_type", TatakuVariable::new(&beatmap.beatmap_type));
+        TatakuValue::Map(map)
     }
 }
 impl TryInto<BeatmapMeta> for &TatakuValue {

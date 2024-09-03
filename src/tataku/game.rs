@@ -17,7 +17,6 @@ pub struct Game {
     #[cfg(feature="graphics")]
     window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
 
-
     // managers
 
     /// if some, will handle spectator stuff
@@ -30,15 +29,21 @@ pub struct Game {
     
     #[cfg(feature="graphics")]
     skin_manager: SkinManager,
-    pub beatmap_manager: BeatmapManager,
     pub song_manager: SongManager,
-    pub score_manager: ScoreManager,
     pub task_manager: TaskManager,
     #[cfg(feature="graphics")]
     custom_menu_manager: CustomMenuManager,
 
     #[cfg(feature="graphics")]
     gameplay_managers: HashMap<GameplayId, (GameplayManager, NewManager)>,
+
+    #[cfg(feature="graphics")]
+    ui_manager: UiManager,
+
+    score_manager: ScoreManager,
+
+    integrations: Vec<Box<dyn TatakuIntegration>>,
+    media_controls: MediaControlsManager,
 
 
     // fps
@@ -72,15 +77,12 @@ pub struct Game {
 
     background_loader: Option<AsyncLoader<Option<Image>>>,
     spec_watch_action: SpectatorWatchAction,
-    #[cfg(feature="graphics")]
-    ui_manager: UiManager,
 
     pub actions: ActionQueue,
     #[cfg(feature="graphics")]
     pub queued_events: Vec<(TatakuEventType, Option<TatakuValue>)>,
 
     pub values: ValueCollection,
-
     song_state: AudioState,
 }
 impl Game {
@@ -93,6 +95,20 @@ impl Game {
         let settings = Settings::get();
         let skin_manager = SkinManager::new(&settings);
         let skin = skin_manager.skin().clone();
+
+        let mut integrations = Vec::<Box<dyn TatakuIntegration>>::new();
+
+        #[cfg(feature="discord")]
+        if let Err(e) = Discord::new().map(|discord| integrations.push(Box::new(discord))) {
+            error!("error initializing discord: {e:?}")
+        };
+
+        let values = GameValues {
+            settings: settings.deref().clone(),
+            beatmap_manager: BeatmapManager::new(),
+
+            ..Default::default()
+        };
 
         let mut g = Self {
             // engine
@@ -108,7 +124,6 @@ impl Game {
             multiplayer_manager: None,
             multiplayer_data: MultiplayerData::default(),
 
-            beatmap_manager: BeatmapManager::new(),
             song_manager: SongManager::new(),
             score_manager: ScoreManager::new(),
             task_manager: TaskManager::new(),
@@ -116,6 +131,9 @@ impl Game {
             skin_manager,
             cursor_manager: CursorManager::new(skin).await,
             gameplay_managers: HashMap::new(),
+
+            integrations,
+            media_controls: MediaControlsManager::new(),
 
             // menus: HashMap::new(),
             current_state: GameState::None,
@@ -144,7 +162,10 @@ impl Game {
             actions: ActionQueue::new(),
             queued_events: Vec::new(),
 
-            values: ValueCollection::new(),
+            values: ValueCollection {
+                values,
+                custom: DynMap::default()
+            },
             song_state: AudioState::Unknown,
         };
 
@@ -216,10 +237,10 @@ impl Game {
         macro_rules! load_menu {
             ($self:ident, $path: expr) => {{
                 let result;
-                #[cfg(any(debug_assertions, load_internal_menus_from_file))] {
+                #[cfg(any(debug_assertions, feature = "load_internal_menus_from_file"))] {
                     result = $self.custom_menu_manager.load_menu($path.to_owned(), CustomMenuSource::Game);
                 }
-                #[cfg(not(any(debug_assertions, load_internal_menus_from_file)))] {
+                #[cfg(not(any(debug_assertions, feature = "load_internal_menus_from_file")))] {
                     const BYTES:&[u8] = include_bytes!(concat!("../", $path));
                     result = $self.custom_menu_manager.load_menu_from_bytes_and_path(
                         BYTES, 
@@ -249,84 +270,69 @@ impl Game {
     /// initialize all the values in our value collection
     /// doubles as a list of available values because i know i'm going to forget to put them in the doc at some point
     fn init_value_collection(&mut self) {
-        use TatakuVariableAccess as Access;
+        // use TatakuVariableAccess as Access;
 
-        let values = &mut self.values;
+        // let values = &mut self.values;
 
         // game values
-        {
-            let mut game = ValueCollectionMapHelper::default();
-            game.set("time", TatakuVariable::new_game(0.0));
 
-            values.set("game", TatakuVariable::new_game(game.finish()));
-        }
+        // // global variables
+        // {
+        //     let mut global = HashMap::default();
 
-        // global variables
-        {
-            let mut global = ValueCollectionMapHelper::default();
+        //     // // playmode, we want this to be writable by the game only, since we also need to update the display value on change
+        //     // global.set_value("playmode", TatakuVariable::new_game("osu").display("Osu"));
 
-            // playmode, we want this to be writable by the game only, since we also need to update the display value on change
-            global.set("playmode", TatakuVariable::new_game("osu").display("Osu"));
+        //     // // playmode with map's mode override
+        //     // global.set_value("playmode_actual", TatakuVariable::new_game("osu").display("Osu"));
 
-            // playmode with map's mode override
-            global.set("playmode_actual", TatakuVariable::new_game("osu").display("Osu"));
+        //     // global.set_value("mods", TatakuVariable::new_game(ModManager::new()));
+        //     // global.set_value("username", TatakuVariable::new_game("Guest"));
+        //     // global.set_value("user_id", TatakuVariable::new_game(0u32));
+        //     // global.set_value("new_map_hash", TatakuVariable::new_game(String::new()));
+        //     global.set_value("lobbies", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
+        //     // global.set_value("menu_list", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
 
-            global.set("mods", TatakuVariable::new_game(ModManager::new()));
-            global.set("username", TatakuVariable::new_game("Guest"));
-            global.set("user_id", TatakuVariable::new_game(0u32));
-            global.set("new_map_hash", TatakuVariable::new_game(String::new()));
-            global.set("lobbies", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
-            global.set("menu_list", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
+        //     values.set("global", TatakuVariable::new_game(global));
+        // }
 
-            values.set("global", TatakuVariable::new_game(global.finish()));
-        }
 
-        // settings
-        {
-            let mut settings = ValueCollectionMapHelper::default();
-            settings.set("sort_by", TatakuVariable::new_any(self.settings.last_sort_by));
-            settings.set("group_by", TatakuVariable::new_any(GroupBy::Set));
-            settings.set("score_method", TatakuVariable::new_any(self.settings.last_score_retreival_method));
+        // // enums (for use with dropdowns)
+        // {
+        //     // technically just lists but whatever
+        //     let mut enums = HashMap::default();
+        //     enums.set_value("sort_by", TatakuVariable::new((Access::ReadOnly, SortBy::list())));
+        //     enums.set_value("group_by", TatakuVariable::new((Access::ReadOnly, GroupBy::list())));
+        //     enums.set_value("score_methods", TatakuVariable::new((Access::ReadOnly, ScoreRetreivalMethod::list())));
 
-            values.set("settings", TatakuVariable::new_any(settings.finish()).display("Settings"));
-        }
-
-        // enums (for use with dropdowns)
-        {
-            // technically just lists but whatever
-            let mut enums = ValueCollectionMapHelper::default();
-            enums.set("sort_by", TatakuVariable::new((Access::ReadOnly, SortBy::list())));
-            enums.set("group_by", TatakuVariable::new((Access::ReadOnly, GroupBy::list())));
-            enums.set("score_methods", TatakuVariable::new((Access::ReadOnly, ScoreRetreivalMethod::list())));
-
-            let playmodes = AVAILABLE_PLAYMODES
-                .iter()
-                .map(|m| TatakuVariable::new(*m).display(gamemode_display_name(*m)))
-                .collect::<Vec<_>>();
-            enums.set("playmodes", TatakuVariable::new(TatakuValue::List(playmodes)));
+        //     let playmodes = AVAILABLE_PLAYMODES
+        //         .iter()
+        //         .map(|m| TatakuVariable::new(*m).display(gamemode_display_name(*m)))
+        //         .collect::<Vec<_>>();
+        //     enums.set_value("playmodes", TatakuVariable::new(TatakuValue::List(playmodes)));
         
-            values.set("enums", TatakuVariable::new_game(enums.finish()));
-        }
+        //     values.set("enums", TatakuVariable::new_game(enums));
+        // }
 
-        // song values
-        {
-            let mut song = ValueCollectionMapHelper::default();
-            song.set("exists", TatakuVariable::new_game(false));
-            song.set("playing", TatakuVariable::new_game(false));
-            song.set("paused", TatakuVariable::new_game(false));
-            song.set("stopped", TatakuVariable::new_game(false));
-            song.set("position", TatakuVariable::new_game(0.0));
+        // // song values
+        // {
+        //     let mut song = HashMap::default();
+        //     song.set_value("exists", TatakuVariable::new_game(false));
+        //     song.set_value("playing", TatakuVariable::new_game(false));
+        //     song.set_value("paused", TatakuVariable::new_game(false));
+        //     song.set_value("stopped", TatakuVariable::new_game(false));
+        //     song.set_value("position", TatakuVariable::new_game(0.0));
 
-            values.set("song", TatakuVariable::new_game(song.finish()));
-        }
+        //     values.set("song", TatakuVariable::new_game(song));
+        // }
 
-        values.set("beatmap_list", TatakuVariable::new_game(TatakuValue::Map(Default::default())));
+        // values.set("beatmap_list", TatakuVariable::new_game(TatakuValue::Map(Default::default())));
 
         // // map is set in BeatmapManager
         // values.set("new_map", TatakuValue::None);
 
         // score values
-        values.set("score", TatakuVariable::new_game(&Score::default()));
+        // values.set("score", TatakuVariable::new_game(&Score::default()));
         // values.set("score.score", 0.0);
         // values.set("score.combo", 0.0);
         // values.set("score.max_combo", 0.0);
@@ -400,6 +406,13 @@ impl Game {
         // }
         
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
+
+        for i in self.integrations.iter_mut() {
+            if let Err(e) = i.init(&self.settings) {
+                error!("error initializing integration: {e}");
+            }
+        }
+
 
         #[cfg(feature="graphics")]
         self.queue_state_change(GameState::SetMenu(Box::new(loading_menu)));
@@ -515,13 +528,6 @@ impl Game {
                     _ => {}
                 }
 
-                {
-                    let values = &mut self.values;
-                    // values.set("global.playmode", CurrentPlaymodeHelper::new().0.clone());
-                    values.update("settings.sort_by", TatakuVariableWriteSource::Game, self.settings.last_sort_by);
-                    // values.set("settings.sort_by", format!("{:?}", self.settings.last_group_by));
-                }
-
                 #[cfg(feature="graphics")]
                 for (i, _) in self.gameplay_managers.values_mut() {
                     i.force_update_settings().await;
@@ -584,7 +590,7 @@ impl Game {
         &mut self
     ) {
         let elapsed = self.game_start.as_millis();
-        self.values.update("game.time", TatakuVariableWriteSource::Game, elapsed);
+        self.values.game.time = elapsed;
 
         // check bg loaded
         if let Some(loader) = self.background_loader.clone() {
@@ -732,7 +738,7 @@ impl Game {
         // meme
         if keys_down.has_key(Key::PageUp) && mods.ctrl {
             keys_down.remove_key(Key::PageUp);
-            debug!("{:#?}", self.values);
+            debug!("{:#?}", self.values.values);
             // self.add_dialog(Box::new(DraggableDialog::new(Vector2::ZERO, Box::new(StupidDialog::new().await))), true);
         }
 
@@ -744,7 +750,7 @@ impl Game {
         }
         if keys_down.has_key(Key::H) && mods.ctrl && mods.shift {
             keys_down.remove_key(Key::H);
-            warn!("{:#?}", self.values);
+            warn!("{:#?}", self.values.values);
         }
 
 
@@ -756,7 +762,7 @@ impl Game {
         if keys_down.has_key(Key::F5) && mods.ctrl {
             keys_down.remove_key(Key::F5);
             NotificationManager::add_text_notification("Doing a full refresh, the game will freeze for a bit", 5000.0, Color::RED).await;
-            self.beatmap_manager.full_refresh(&mut self.values).await;
+            self.beatmap_manager.full_refresh().await;
             // tokio::spawn(async {
             //     BEATMAP_MANAGER.write().await.full_refresh().await;
             // });
@@ -777,32 +783,18 @@ impl Game {
         // update our global values
         {
             let values = &mut self.values;
-            values.update("song.position", TatakuVariableWriteSource::Game, self.song_manager.position());
+            values.song.position = self.song_manager.position();
 
             if let Some(audio) = self.song_manager.instance() {
-                let song_state = audio.get_state();
-                if self.song_state != song_state {
-                    self.song_state = song_state;
-
-                    match self.song_state {
+                if self.values.song.set_state(audio.get_state()) {
+                    match self.values.song.state {
                         AudioState::Stopped | AudioState::Unknown => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongEnd, None)),
                         AudioState::Playing => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongStart, None)),
                         AudioState::Paused => self.actions.push(GameAction::HandleEvent(TatakuEventType::SongPause, None)),
                     }
-
-                    values.update_multiple(TatakuVariableWriteSource::Game, [
-                        ("song.playing", audio.is_playing()),
-                        ("song.paused", audio.is_paused()),
-                        ("song.stopped", audio.is_stopped()),
-                    ].into_iter());
                 }
-
             } else {
-                values.update_multiple(TatakuVariableWriteSource::Game, [
-                    ("song.playing", false),
-                    ("song.paused", false),
-                    ("song.stopped", false),
-                ].into_iter());
+                self.values.song.set_state(AudioState::Unknown);
             }
         }
 
@@ -1051,9 +1043,8 @@ impl Game {
         let mut multi_packets = Vec::new();
         if let Some(mut manager) = OnlineManager::try_get_mut() {
 
-            //TODO: not run this all the time
-            if manager.logged_in && manager.user_id > 0 {
-                self.values.update("global.user_id", TatakuVariableWriteSource::Game, manager.user_id);
+            if manager.logged_in && manager.user_id > 0 && self.values.global.user_id == 0 {
+                self.values.global.user_id = manager.user_id;
             }
 
 
@@ -1256,15 +1247,11 @@ impl Game {
                 match action {
                     #[cfg(feature="gameplay")]
                     BeatmapAction::PlaySelected => {
-                        let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
-                        let Ok(mode) = self.values.get_string("global.playmode") else { return };
-                        // let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return };
-                        let mods = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+                        let Some(map) = self.beatmap_manager.current_beatmap.clone() else { return };
+                        let mods = self.mods.clone();
+                        let mode = self.global.playmode.clone();
 
-                        // play the map
-                        let Ok(map_path) = self.values.get_string("map.path") else { return };
-
-                        match manager_from_playmode_path_hash(&mode, map_path, map_hash, mods.clone()).await {
+                        match manager_from_playmode(mode, &map, mods.clone()).await {
                             Ok(mut manager) => {
                                 manager.handle_action(GameplayAction::ApplyMods(mods)).await;
                                 self.queue_state_change(GameState::Ingame(Box::new(manager)))
@@ -1284,11 +1271,14 @@ impl Game {
 
                             if !multi.is_host() { return warn!("trying to set lobby beatmap while not the host ??") };
                             
-                            let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return warn!("no/bad map.hash") };
-                            let Ok(playmode) = self.values.get_string("global.playmode") else { return warn!("no/bad global.playmode") };
-                            let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return warn!("no map?") };
+                            // let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return warn!("no/bad map.hash") };
+                            // let Ok(playmode) = self.values.get_string("global.playmode") else { return warn!("no/bad global.playmode") };
+                            // let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return warn!("no map?") };
 
-                            tokio::spawn(OnlineManager::update_lobby_beatmap(map, playmode));
+                            let Some(map) = self.values.beatmap_manager.current_beatmap.clone() else { return };
+                            let playmode = self.values.global.playmode.clone();
+
+                            tokio::spawn(OnlineManager::update_lobby_beatmap((*map).clone(), playmode));
                         } else {
                             // play map
                             self.handle_action(BeatmapAction::PlaySelected).await
@@ -1302,7 +1292,14 @@ impl Game {
                     }
                     BeatmapAction::SetFromHash(hash, options) => {
                         if let Some(beatmap) = self.beatmap_manager.get_by_hash(&hash) {
-                            self.beatmap_manager.set_current_beatmap(&mut self.values, &beatmap, options.use_preview_point, options.restart_song).await;
+                            let config = self.create_select_beatmap_config(
+                                options.restart_song,
+                                options.use_preview_point, 
+                            );
+                            self.beatmap_manager.set_current_beatmap(
+                                &beatmap, 
+                                config
+                            ).await;
                             return;
                         }
 
@@ -1329,63 +1326,104 @@ impl Game {
 
                     BeatmapAction::Random(use_preview) => {
                         let Some(random) = self.beatmap_manager.random_beatmap() else { return };
-                        self.beatmap_manager.set_current_beatmap(&mut self.values, &random, use_preview, true).await;
+                        let config = self.create_select_beatmap_config(
+                            true,
+                            use_preview
+                        );
+                        self.beatmap_manager.set_current_beatmap(
+                            &random, 
+                            config
+                        ).await;
                     }
                     BeatmapAction::Remove => {
-                        self.beatmap_manager.remove_current_beatmap(&mut self.values).await;
-                        // warn!("removeing beatmap");
+                        self.beatmap_manager.remove_current_beatmap().await;
+                        // warn!("removing beatmap");
                         self.remove_background_beatmap().await;
                     }
 
                     BeatmapAction::Delete(hash) => {
-                        self.beatmap_manager.delete_beatmap(hash, &mut self.values, PostDelete::Next).await;
+                        let config = self.create_select_beatmap_config(
+                            true, true
+                        );
+
+                        self.beatmap_manager.delete_beatmap(
+                            hash, 
+                            PostDelete::Next, 
+                            config,
+                        ).await;
                     }
                     BeatmapAction::DeleteCurrent(post_delete) => {
-                        let Ok(map_hash) = self.values.try_get::<Md5Hash>("map.hash") else { return };
-
-                        self.beatmap_manager.delete_beatmap(map_hash, &mut self.values, post_delete).await;
+                        let Some(map_hash) = self.values.current_beatmap_prop(|b| b.beatmap_hash) else { return };
+                        let config = self.create_select_beatmap_config(
+                            true, true
+                        );
+                        self.beatmap_manager.delete_beatmap(
+                            map_hash, 
+                            post_delete, 
+                            config
+                        ).await;
                     }
                     BeatmapAction::Next => {
-                        self.beatmap_manager.next_beatmap(&mut self.values).await;
+                        let config = self.create_select_beatmap_config(true, false);
+                        self.beatmap_manager.next_beatmap(config).await;
                     }
                     BeatmapAction::Previous(if_none) => {
-                        if self.beatmap_manager.previous_beatmap(&mut self.values).await { return }
+                        let mut config = self.create_select_beatmap_config(true, false);
+
+                        if self.beatmap_manager.previous_beatmap(config.clone()).await { return }
                         
                         // no previous map availble, handle accordingly
                         match if_none {
                             MapActionIfNone::ContinueCurrent => return,
                             MapActionIfNone::Random(use_preview) => {
+                                config.use_preview_time = use_preview;
+
                                 let Some(random) = self.beatmap_manager.random_beatmap() else { return };
-                                self.beatmap_manager.set_current_beatmap(&mut self.values, &random, use_preview, true).await;
+                                self.beatmap_manager.set_current_beatmap(&random, config).await;
                             }
-                            MapActionIfNone::SetNone => self.beatmap_manager.remove_current_beatmap(&mut self.values).await,
+                            MapActionIfNone::SetNone => self.beatmap_manager.remove_current_beatmap().await,
                         }
                     }
 
                     BeatmapAction::InitializeManager => { 
-                        self.beatmap_manager.initialize(&mut self.values).await; 
+                        let sort_by = self.values.settings.last_sort_by;
+                        self.beatmap_manager.initialize(sort_by).await; 
                     }
                     BeatmapAction::AddBeatmap { map, add_to_db } => {
-                        self.beatmap_manager.add_beatmap(&map, add_to_db, &mut self.values).await;
+                        self.beatmap_manager.add_beatmap(&map, add_to_db).await;
+
+                        let mods = self.mods.clone();
+                        let playmode = self.global.playmode.clone();
+                        let sort_by = self.values.settings.last_sort_by;
+                        self.beatmap_manager.refresh_maps(&mods, &playmode, sort_by).await;
                     }
                     
 
                     // beatmap list actions
                     BeatmapAction::ListAction(list_action) => {
                         match list_action {
-                            BeatmapListAction::Refresh => self.beatmap_manager.refresh_maps(&mut self.values).await,
+                            BeatmapListAction::Refresh => {
+                                let mods = self.mods.clone();
+                                let playmode = self.global.playmode.clone();
+                                let sort_by = self.values.settings.last_sort_by;
+                                self.beatmap_manager.refresh_maps(&mods, &playmode, sort_by).await;
+                            }
                             
                             BeatmapListAction::ApplyFilter { filter } => {
-                                self.values.update("beatmap_list.search_text", TatakuVariableWriteSource::Game, filter.unwrap_or_default());
-                                self.beatmap_manager.refresh_maps(&mut self.values).await;
+                                self.beatmap_manager.filter_text = filter.unwrap_or_default();
+                                // self.values.update("beatmap_list.search_text", TatakuVariableWriteSource::Game, filter.unwrap_or_default());
+                                let mods = self.mods.clone();
+                                let playmode = self.global.playmode.clone();
+                                let sort_by = self.values.settings.last_sort_by;
+                                self.beatmap_manager.refresh_maps(&mods, &playmode, sort_by).await;
                             }
-                            BeatmapListAction::NextMap => self.beatmap_manager.next_map(&mut self.values),
-                            BeatmapListAction::PrevMap => self.beatmap_manager.prev_map(&mut self.values),
+                            BeatmapListAction::NextMap => self.beatmap_manager.next_map(),
+                            BeatmapListAction::PrevMap => self.beatmap_manager.prev_map(),
 
-                            BeatmapListAction::NextSet => self.beatmap_manager.next_set(&mut self.values),
-                            BeatmapListAction::PrevSet => self.beatmap_manager.prev_set(&mut self.values),
+                            BeatmapListAction::NextSet => self.beatmap_manager.next_set(),
+                            BeatmapListAction::PrevSet => self.beatmap_manager.prev_set(),
 
-                            BeatmapListAction::SelectSet(set_id) => self.beatmap_manager.select_set(set_id, &mut self.values),
+                            BeatmapListAction::SelectSet(set_id) => self.beatmap_manager.select_set(set_id),
                         }
                     }
 
@@ -1440,7 +1478,7 @@ impl Game {
                     return;
                 };
 
-                let mods = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+                let mods = self.values.mods.clone();
                 
                 match manager_from_playmode_path_hash(mode, beatmap.file_path.clone(), beatmap.beatmap_hash, mods).await {
                     Ok(mut manager) => {
@@ -1451,7 +1489,20 @@ impl Game {
                 }
             }
             TatakuAction::Game(GameAction::SetValue(key, value)) => {
-                self.values.update_or_insert(&key, TatakuVariableWriteSource::Menu, value, || TatakuVariable::new_any(TatakuValue::None));
+                let r = match value {
+                    TatakuValue::F32(n) => self.values.as_dyn_mut().reflect_insert(&key, n),
+                    TatakuValue::U32(n) => self.values.as_dyn_mut().reflect_insert(&key, n),
+                    TatakuValue::U64(n) => self.values.as_dyn_mut().reflect_insert(&key, n),
+                    TatakuValue::Bool(b) => self.values.as_dyn_mut().reflect_insert(&key, b),
+                    TatakuValue::String(s) => self.values.as_dyn_mut().reflect_insert(&key, s),
+                    
+                    _ => Ok(())
+                };
+                if let Err(e) = r {
+                    error!("error updating values: {e:?}")
+                }
+                
+                // self.values.update_or_insert(&key, TatakuVariableWriteSource::Menu, value, || TatakuVariable::new_any(TatakuValue::None));
                 // self.values.try_insert(&key, || TatakuVariable::new(value, None, true, TatakuVariableAccess::Any));
                 // self.values.update(&key, TatakuVariableWriteSource::Menu, value);
             }
@@ -1481,6 +1532,27 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::CopyToClipboard(text)) => { let _ = self.window_proxy.send_event(Game2WindowEvent::CopyToClipboard(text)); } 
 
+            TatakuAction::Game(GameAction::ForceUiRefresh) => {
+                self.ui_manager.force_refresh = true;
+            }
+
+            TatakuAction::Game(GameAction::RefreshPlaymodeValues) => {
+                let playmode = self.global.playmode.clone();
+                self.values.global.update_playmode(playmode.clone());
+
+                let actual = self
+                    .beatmap_manager
+                    .current_beatmap
+                    .as_ref()
+                    .map(|b| b.check_mode_override(playmode.clone()))
+                    .unwrap_or(playmode);
+
+                self.values.global.update_playmode(actual);
+            }
+            TatakuAction::Game(GameAction::UpdatePlaymodeActual(actual)) => {
+                self.values.global.update_playmode(actual);
+            }
+
 
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::NewGameplayManager(config)) => {
@@ -1492,8 +1564,8 @@ impl Game {
                         playmode, 
                         ..
                     } => {
-                        let playmode = playmode.clone().unwrap_or_else(|| self.values.get_string("global.playmode_actual").ok().unwrap_or_else(|| format!("osu")));
-                        let mods = mods.clone().unwrap_or_else(|| self.values.try_get::<ModManager>("global.mods").unwrap_or_default());
+                        let playmode = playmode.clone().unwrap_or_else(|| self.values.global.playmode.clone());
+                        let mods = mods.clone().unwrap_or_else(|| self.values.mods.clone());
                         manager_from_playmode_path_hash(&playmode, path.clone(), *map_hash, mods).await
                     }
                     NewManager { 
@@ -1501,11 +1573,11 @@ impl Game {
                         map_hash, 
                         playmode, 
                         ..
-                    } => {
-                        let map_hash = map_hash.unwrap_or_else(|| self.values.try_get::<Md5Hash>("map.hash").unwrap_or_default());
+                    } => { 
+                        let map_hash = map_hash.unwrap_or_else(|| self.values.current_beatmap_prop(|b| b.beatmap_hash).unwrap_or_default());
                         let Some(meta) = self.beatmap_manager.get_by_hash(&map_hash) else { return };
-                        let playmode = playmode.clone().unwrap_or_else(|| self.values.get_string("global.playmode_actual").ok().unwrap_or_else(|| format!("osu")));
-                        let mods = mods.clone().unwrap_or_else(|| self.values.try_get::<ModManager>("global.mods").unwrap_or_default());
+                        let playmode = playmode.clone().unwrap_or_else(|| self.values.global.playmode_actual.clone());
+                        let mods = mods.clone().unwrap_or_else(|| self.values.mods.clone());
                         manager_from_playmode(playmode, &meta, mods).await
                     }
                 } {
@@ -1592,21 +1664,23 @@ impl Game {
                 // }
 
                 // update song state
-                if let Some(audio) = self.song_manager.instance() {
-                    self.values.update_multiple(TatakuVariableWriteSource::Game, [
-                        ("song.exists", true),
-                        ("song.playing", audio.is_playing()),
-                        ("song.paused", audio.is_paused()),
-                        ("song.stopped", audio.is_stopped()),
-                    ].into_iter());
-                } else {
-                    self.values.update_multiple(TatakuVariableWriteSource::Game, [
-                        ("song.exists", false),
-                        ("song.playing", false),
-                        ("song.paused", false),
-                        ("song.stopped", false),
-                    ].into_iter());
-                }
+                self.values.song.update(self.song_manager.instance());
+                // if let Some(audio) = self.song_manager.instance() {
+
+                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
+                //         ("song.exists", true),
+                //         ("song.playing", audio.is_playing()),
+                //         ("song.paused", audio.is_paused()),
+                //         ("song.stopped", audio.is_stopped()),
+                //     ].into_iter());
+                // } else {
+                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
+                //         ("song.exists", false),
+                //         ("song.playing", false),
+                //         ("song.paused", false),
+                //         ("song.stopped", false),
+                //     ].into_iter());
+                // }
             }
 
             // multiplayer actions
@@ -1672,7 +1746,7 @@ impl Game {
             }
 
             TatakuAction::Mods(mod_action) => {
-                let mut mods:ModManager = self.values.try_get::<ModManager>("global.mods").unwrap_or_default();
+                let mut mods = &mut self.values.mods;
                 match mod_action {
                     ModAction::AddMod(mod_name) => mods.add_mod(mod_name).nope(),
                     ModAction::RemoveMod(mod_name) => mods.remove_mod(mod_name),
@@ -1680,17 +1754,14 @@ impl Game {
                     ModAction::SetSpeed(speed) => mods.set_speed(speed),
                     ModAction::AddSpeed(speed) => mods.set_speed(mods.get_speed() + speed),
                 }
-
-                // update value collection
-                self.values.update_or_insert("global.mods", TatakuVariableWriteSource::Game, mods.clone(), || TatakuVariable::new_game(mods.clone()));
             
                 // update the song's rate
-                self.actions.push(SongAction::SetRate(mods.get_speed()));
+                self.actions.push(SongAction::SetRate(self.values.mods.get_speed()));
 
                 // apply mods to all gameplay managers
                 for (m, i) in self.gameplay_managers.values_mut() {
                     if i.mods.is_some() { continue }
-                    m.apply_mods(mods.clone()).await;
+                    m.apply_mods(self.values.mods.clone()).await;
                 }
             }
 
@@ -1706,7 +1777,9 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::PerformOperation(op) => self.ui_manager.add_operation(op),
 
-
+            
+            #[cfg(feature="graphics")]
+            TatakuAction::WindowAction(action) => self.window_proxy.send_event(Game2WindowEvent::WindowAction(action)).nope(),
 
             #[cfg(not(feature="graphics"))]
             _ => {}
@@ -1741,11 +1814,9 @@ impl Game {
             "create_lobby" => self.add_dialog(Box::new(CreateLobbyDialog::new()), false),
             "mods" => {
                 let mut groups = Vec::new();
-                let playmode = self.values
-                    .get_string("global.playmode_actual")
-                    .unwrap_or_else(|_| format!("osu"));
+                let playmode = &self.values.global.playmode_actual;
 
-                if let Some(info) = get_gamemode_info(&playmode) {
+                if let Some(info) = get_gamemode_info(playmode) {
                     groups = info.get_mods();
                 }
 
@@ -1777,7 +1848,7 @@ impl Game {
     /// shortcut for setting the game's background texture to a beatmap's image
     #[cfg(feature="graphics")]
     pub async fn set_background_beatmap(&mut self) {
-        let Ok(filename) = self.values.get_string("map.image_filename") else { return };
+        let Some(filename) = self.values.current_beatmap_prop(|b| b.image_filename.clone()) else { return };
         // let f = self.skin_manager.get_texture_noskin(&filename, false);
         // self.background_loader = Some(AsyncLoader::new(f));
         self.background_image = self.skin_manager.get_texture(&filename, &TextureSource::Raw, SkinUsage::Background, false).await;
@@ -1826,7 +1897,10 @@ impl Game {
                         Err(e) => NotificationManager::add_error_notification("Error extracting file",  e).await,
                         Ok(path) => {
                             // load the map
-                            let Some(last) = self.beatmap_manager.check_folder(path, HandleDatabase::YesAndReturnNewMaps, &mut self.values).await.and_then(|l|l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
+                            let Some(last) = self.beatmap_manager.check_folder(
+                                path, 
+                                HandleDatabase::YesAndReturnNewMaps, 
+                            ).await.and_then(|l| l.last().cloned()) else { warn!("didnt get any beatmaps from beatmap file drop"); return };
                             // set it as current map if wanted
                             let mut use_preview_time = true;
                             let change_map = match &self.current_state {
@@ -1836,8 +1910,23 @@ impl Game {
                                 }
                                 _ => false,
                             };
+
                             if change_map {
-                                self.beatmap_manager.set_current_beatmap(&mut self.values, &last, use_preview_time, false).await;
+                                self.actions.push(BeatmapAction::Set(
+                                    last.clone(), 
+                                    SetBeatmapOptions::new()
+                                        .use_preview_point(use_preview_time)
+                                        .restart_song(false)
+                                ));
+                                // let mods = self.mods.clone();
+                                // self.beatmap_manager.set_current_beatmap(
+                                //     &last, 
+                                //     SelectCurrentBeatmapConfig::new(
+                                //         mods,
+                                //         false,
+                                //         use_preview_time
+                                //     )
+                                // ).await;
                             }
                         }
                     }
@@ -1889,7 +1978,11 @@ impl Game {
             return;
         };
 
-        self.beatmap_manager.set_current_beatmap(&mut self.values, &map, true, true).await;
+        let config = self.create_select_beatmap_config(true, true);
+        self.beatmap_manager.set_current_beatmap(
+            &map, 
+            config
+        ).await;
 
         // move to a score menu with this as the score
         let score = IngameScore::new(score, false, false);
@@ -2035,7 +2128,7 @@ impl Game {
             MultiplayerPacket::Server_CreateLobby { success, lobby } => {
                 let Some(lobby) = lobby.filter(|_| success) else { warn!("no success or lobby"); return Ok(()) };
                 if !self.multiplayer_data.lobby_creation_pending { warn!("no join pending"); return Ok(()) }
-                let Ok(our_id) = self.values.get_u32("global.user_id") else { warn!("no global.user_id"); return Ok(()) };
+                let our_id = self.global.user_id;
                 if our_id == 0 { warn!("user_id == 0"); return Ok(()) }
 
 
@@ -2050,16 +2143,16 @@ impl Game {
 
 
                 // try to update the server with our current map and mode
-                let Ok(map_hash) = self.values.try_get("map.hash") else { return Ok(()) };
+                let Some(map_hash) = self.values.current_beatmap_prop(|b| b.beatmap_hash) else { return Ok(()) };
                 let Some(map) = self.beatmap_manager.get_by_hash(&map_hash) else { return Ok(()) };
 
-                let Ok(mode) = self.values.get_string("global.playmode") else { return Ok(()) };
+                let mode = self.global.playmode.clone();
                 OnlineManager::update_lobby_beatmap(map, mode).await;
             }
             MultiplayerPacket::Server_JoinLobby { success, lobby } => {
                 let Some(lobby) = lobby.filter(|_| success) else { return Ok(()) };
                 if !self.multiplayer_data.lobby_join_pending { return Ok(()) }
-                let Ok(our_id) = self.values.get_u32("global.user_id") else { return Ok(()) };
+                let our_id = self.global.user_id;
                 if our_id == 0 { return Ok (()) }
 
                 let mut info = CurrentLobbyInfo::new(lobby, our_id);
@@ -2133,24 +2226,44 @@ impl Game {
         if !AVAILABLE_PLAYMODES.contains(&&*playmode) { return warn!("Trying to set invalid playmode: {playmode}") }
 
         // set playmode and playmode display
-        let Some(mut info) = get_gamemode_info(&playmode) else { return };
-        self.values.update_display("global.playmode", TatakuVariableWriteSource::Game, &playmode, Some(info.display_name()));
+        self.values.global.update_playmode(playmode.clone());
 
         // if we have a beatmap, get the override mode and update the playmode_actual values
         if let Some(map) = &self.beatmap_manager.current_beatmap {
             playmode = map.check_mode_override(playmode);
-            let Some(info2) = get_gamemode_info(&playmode) else { return };
-            info = info2;
         }
+        self.values.global.update_playmode_actual(playmode);
         
-        self.values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &playmode, Some(info.display_name()));
-    
-
         // update mods list as well
     
     }
+
+
+    fn create_select_beatmap_config(
+        &self, 
+        restart_song: bool, 
+        use_preview_time: bool,
+    ) -> SelectBeatmapConfig {
+        SelectBeatmapConfig::new(
+            self.mods.clone(),
+            self.global.playmode.clone(),
+            restart_song,
+            use_preview_time,
+        )
+    }
 }
 
+impl Deref for Game {
+    type Target = GameValues;
+    fn deref(&self) -> &Self::Target {
+        &self.values.values
+    }
+}
+impl DerefMut for Game {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.values.values
+    }
+}
 
 #[derive(Default)]
 pub enum GameState {

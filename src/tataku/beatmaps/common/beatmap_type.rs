@@ -1,6 +1,7 @@
-use crate::prelude::MapGame;
+use crate::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Reflect)]
 pub enum BeatmapType {
     Unknown,
     Adofai,

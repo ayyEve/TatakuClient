@@ -250,7 +250,12 @@ impl<'lua> FromLua<'lua> for ElementDef {
                     list_var: table.get("list")?,
                     scrollable: table.get::<_, Option<bool>>("scroll")?.unwrap_or_default(),
                     element: Box::new(table.get("element")?),
-                    variable: parse_from_multiple(&table, &["var", "variable"])?,
+                    variable: parse_from_multiple(&table, &["var", "variable"])?
+                        .ok_or(rlua::Error::FromLuaConversionError { 
+                            from: "_", 
+                            to: "list", 
+                            message: Some(format!("variable parameter not provided"))
+                        })?,
                 },
                 width: width.unwrap_or(Length::Fill),
                 height: height.unwrap_or(Length::Shrink),

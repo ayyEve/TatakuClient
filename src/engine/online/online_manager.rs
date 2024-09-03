@@ -482,10 +482,10 @@ impl OnlineManager {
             }
 
 
-            #[cfg(feature = "discord")]
-            if let Some(discord) = &s.discord {
-                discord.change_status(&action_info, incoming_mode).await;
-            }
+            // #[cfg(feature = "discord")]
+            // if let Some(discord) = &s.discord {
+            //     discord.change_status(&action_info, incoming_mode).await;
+            // }
 
             if Settings::get().integrations.lastfm {
                 match &action_info {

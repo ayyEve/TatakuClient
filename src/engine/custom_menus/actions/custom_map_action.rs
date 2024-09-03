@@ -38,7 +38,7 @@ pub enum CustomMenuMapAction {
     PrevSet,
 }
 impl CustomMenuMapAction {
-    pub fn into_action(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
+    pub fn into_action<'a>(self, values: &mut ValueCollection, passed_in: Option<TatakuValue>) -> Option<BeatmapAction> {
         match self {
             Self::Play => Some(BeatmapAction::PlaySelected),
             Self::Next => Some(BeatmapAction::Next),
@@ -54,13 +54,13 @@ impl CustomMenuMapAction {
 
 
             Self::SetPlaymode(CustomEventValueType::None) => None,
-            Self::SetPlaymode(CustomEventValueType::Value(v)) => Some(BeatmapAction::SetPlaymode(v.as_string())),
+            Self::SetPlaymode(CustomEventValueType::Value(v)) => Some(BeatmapAction::SetPlaymode(v.string_maybe()?.clone())),
             Self::SetPlaymode(CustomEventValueType::Variable(var)) => {
-                let val = values.get_raw(&var).ok()?.as_string();
-                Some(BeatmapAction::SetPlaymode(val))
+                let val = values.as_dyn().reflect_get::<String>(&var).ok()?;
+                Some(BeatmapAction::SetPlaymode(val.clone()))
             },
             Self::SetPlaymode(CustomEventValueType::PassedIn) => {
-                let val = passed_in?.as_string();
+                let val = passed_in?.string_maybe()?.clone();
                 Some(BeatmapAction::SetPlaymode(val))
             }
 
@@ -71,13 +71,23 @@ impl CustomMenuMapAction {
                 //     CustomEventValueType::Variable(var) => values.get_raw(&var).ok()?.as_u64().ok()?,
                 //     CustomEventValueType::PassedIn => passed_in?.as_u64().ok()?,
                 // };
-                let num = set.resolve(values, passed_in)?.as_u64().ok()?;
+                let num = set.resolve(values, passed_in)?.as_u32().ok()?;
                 Some(BeatmapAction::ListAction(BeatmapListAction::SelectSet(num as usize)))
             }
-        
-            Self::SelectMap(map) => {
 
-                let hash = Md5Hash::try_from(map.resolve(values, passed_in)?.string_maybe()?).ok()?;
+            Self::SelectMap(map) => {
+                // let mut hash = None;
+
+                let hash = map.resolve(values, passed_in)?.string_maybe()?.try_into().ok()?;
+                // if let Some(str) = map.resolve(values, passed_in)?.string_maybe()? {
+                //     hash = Md5Hash::try_from(str).ok();
+                // }
+
+                // if hash.is_none() {
+                //     hash = map.resolve(values, passed_in)?.downcast_ref::<Md5Hash>().copied();
+                // }
+                // let hash = hash?;
+
                 // let hash = match map {
                 //     CustomEventValueType::None => return None,
                 //     CustomEventValueType::Value(v) => Md5Hash::try_from(v.string_maybe()?).ok()?,
@@ -95,7 +105,7 @@ impl CustomMenuMapAction {
         }
     }
 
-    
+
     pub fn build(&mut self, values: &ValueCollection) {
         let thing = match self {
             Self::SelectGroup(group) => group,
@@ -126,7 +136,7 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
                     "confirm" => Ok(Self::Confirm),
                     "random" => Ok(Self::Random(table.get::<_, Option<bool>>("use_preview")?.unwrap_or(true))),
                     "refres" | "refresh_list" => Ok(Self::RefreshList),
-                    
+
                     "next_map" => Ok(Self::NextMap),
                     "next_set" => Ok(Self::NextSet),
                     "previous_map" | "prev_map" => Ok(Self::PrevMap),
@@ -175,6 +185,6 @@ impl<'lua> FromLua<'lua> for CustomMenuMapAction {
 
             other => Err(FromLuaConversionError { from: other.type_name(), to: "CustomMenuMapAction", message: None })
         }
-    
+
     }
 }

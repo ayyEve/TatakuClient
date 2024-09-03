@@ -349,7 +349,7 @@ impl GameplayManager {
     }
 
     pub async fn update(&mut self, values: &mut ValueCollection) -> Vec<TatakuAction> {
-        let new_time = values.get_f32("song.position").unwrap_or_default();
+        let new_time = values.song.position;
 
         // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
         if new_time - self.song_time > 1000.0 {
@@ -449,13 +449,12 @@ impl GameplayManager {
         //     }
         // }
         #[cfg(feature="gameplay")]
-        if !self.scores_loaded && self.gameplay_mode.should_load_scores() {
-            if let Ok(list) = values.try_get::<Vec<Score>>("scores") {
-                self.scores_loaded = true;
-                self.score_list = list.into_iter().map(|s| {
-                    let is_previous = s.username == self.score.username;
-                    IngameScore::new(s, false, is_previous)
-                }).collect();
+        if !self.scores_loaded && self.gameplay_mode.should_load_scores() && values.score_list.loaded {
+            self.score_list = values.score_list.scores.clone();
+            self.scores_loaded = true;
+
+            for s in self.score_list.iter_mut() {
+                s.is_previous = s.username == self.score.username;
             }
         }
 
@@ -731,13 +730,13 @@ impl GameplayManager {
 
         // update value collection
         {
-            let score:TatakuValue = (&self.score).into();
-            let mut score_data = score.as_map_helper().unwrap();
+            // let score:TatakuValue = (&self.score).into();
+            // let mut score_data = score.to_map();
 
-            score_data.set("health", TatakuVariable::new_game(self.health.get_ratio()));
+            // score_data.set_value("health", TatakuVariable::new_game(self.health.get_ratio()));
             // TODO: placing
-
-            values.set("score", TatakuVariable::new_game(score_data.finish()));
+            values.score = self.score.clone();
+            // values.set("score", TatakuVariable::new_game(score_data));
         }
 
 
@@ -856,6 +855,7 @@ impl GameplayManager {
                 
                 // do health
                 self.health.apply_hit(&judgment, &self.score);
+                self.score.health = self.health.get_ratio();
 
                 // check health
                 if self.health.is_dead(false) {

@@ -2,28 +2,39 @@ use crate::prelude::*;
 use tokio::task::AbortHandle;
 
 
+#[derive(Reflect)]
+#[derive(Debug)]
 pub struct ScoreManager {
-    current_scores: Vec<IngameScore>,
+    pub scores: Vec<IngameScore>,
+    pub loaded: bool,
 
+    #[reflect(skip)]
     current_loader: Option<Arc<AsyncRwLock<ScoreLoaderHelper>>>,
+    #[reflect(skip)]
     abort_handle: Option<AbortHandle>,
 
     pub force_update: bool,
 
-    beatmap: SyValueHelper,
-    playmode: SyValueHelper,
-    score_method: SyValueHelper,
-    mods: SyValueHelper,
+    #[reflect(skip)]
+    beatmap: SyValueHelper<Md5Hash>,
+    #[reflect(skip)]
+    playmode: SyValueHelper<String>,
+    #[reflect(skip)]
+    score_method: SyValueHelper<ScoreRetreivalMethod>,
+    #[reflect(skip)]
+    mods: SyValueHelper<ModManager>,
 }
 impl ScoreManager {
     pub fn new() -> Self {
         Self {
+            scores: Vec::new(),
+            loaded: false,
+
             current_loader: None,
             abort_handle: None,
-            current_scores: Vec::new(),
             force_update: false,
 
-            beatmap: SyValueHelper::new("map.hash"),
+            beatmap: SyValueHelper::new("beatmaps.current.hash"),
             playmode: SyValueHelper::new("global.playmode_actual"),
             score_method: SyValueHelper::new("settings.score_method"),
             mods: SyValueHelper::new("global.mods"),
@@ -51,8 +62,8 @@ impl ScoreManager {
         // let playmode = values.get_string("global.playmode_actual").ok()?;
         // let map_hash = values.try_get::<Md5Hash>("map.hash").ok()?;
         // let method = values.try_get("settings.score_method").unwrap_or_default();
-        let playmode = self.playmode.as_string();
-        let map_hash:Md5Hash = self.beatmap.deref().try_into()?;
+        let playmode = self.playmode.try_get()?.clone();
+        let map_hash:Md5Hash = *self.beatmap.try_get()?;
         let method = self.score_method();
 
         let scores = Arc::new(AsyncRwLock::new(ScoreLoaderHelper::default()));
@@ -62,7 +73,7 @@ impl ScoreManager {
         match self.score_method() {
             ScoreRetreivalMethod::Local 
             | ScoreRetreivalMethod::LocalMods => {
-                let mods = ModManager::try_from(self.mods.deref()).unwrap_or_default();
+                let mods = self.mods.as_ref().cloned().unwrap_or_default();
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
@@ -81,7 +92,7 @@ impl ScoreManager {
             }
             ScoreRetreivalMethod::Global
             | ScoreRetreivalMethod::GlobalMods => {
-                let mods = ModManager::try_from(self.mods.deref()).unwrap_or_default();
+                let mods = self.mods.as_ref().cloned().unwrap_or_default();
                 // let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
 
                 let handle = tokio::spawn(async move {
@@ -102,8 +113,14 @@ impl ScoreManager {
 
             ScoreRetreivalMethod::OgGame
             | ScoreRetreivalMethod::OgGameMods => {
-                let beatmap_type = values.try_get::<BeatmapType>("map.beatmap_type")?;
-                let osu_api_key = values.get_string("settings.osu_api_key")?;
+                let beatmap_type = values
+                    .beatmap_manager
+                    .current_beatmap
+                    .as_ref()
+                    .map(|b| b.beatmap_type)
+                    .ok_or(TatakuError::String(format!("no beatmap")))?;
+                
+                let osu_api_key = values.settings.osu_api_key.clone();
 
                 let handle = tokio::spawn(async move {
                     let mut online_scores = Vec::new();
@@ -144,31 +161,31 @@ impl ScoreManager {
     }
 
     fn score_method(&self) -> ScoreRetreivalMethod {
-        ScoreRetreivalMethod::try_from(self.score_method.deref()).unwrap_or_default()
+        self.score_method.as_ref().copied().unwrap_or_default()
     }
 
-    fn update_values(&self, values: &mut ValueCollection, loaded: bool) {
-        let list = self.current_scores.iter().enumerate().map(|(n, score)| {
-            let score:TatakuValue = score.into();
-            let mut data = score.as_map_helper().unwrap();
-            data.set("id", TatakuVariable::new(n as u64));
+    // fn update_values(&self, values: &mut ValueCollection, loaded: bool) {
+    //     let list = self.current_scores.iter().enumerate().map(|(n, score)| {
+    //         let score:TatakuValue = score.into();
+    //         let mut data = score.to_map();
+    //         data.set_value("id", TatakuVariable::new(n as u64));
 
-            TatakuVariable::new_game(data.finish())
-        }).collect::<Vec<_>>();
+    //         TatakuVariable::new_game(data)
+    //     }).collect::<Vec<_>>();
 
-        let mut score_list = ValueCollectionMapHelper::default();
-        score_list.set("loaded", TatakuVariable::new_game(loaded));
-        score_list.set("empty", TatakuVariable::new_game(list.is_empty()));
-        score_list.set("scores", TatakuVariable::new_game(TatakuValue::List(list)));
-        values.set("score_list", TatakuVariable::new_game(score_list.finish()));
-    }
+    //     let mut score_list = HashMap::default();
+    //     score_list.set_value("loaded", TatakuVariable::new_game(loaded));
+    //     score_list.set_value("empty", TatakuVariable::new_game(list.is_empty()));
+    //     score_list.set_value("scores", TatakuVariable::new_game(TatakuValue::List(list)));
+    //     values.set("score_list", TatakuVariable::new_game(score_list));
+    // }
     
     pub async fn update(&mut self, values: &mut ValueCollection) {
         let did_update = 
-            self.beatmap.check(values) // if the map changed
-            | self.playmode.check(values) // or the actual playmode changed
-            | self.score_method.check(values) // or the score method changed
-            | (self.mods.check(values) && self.score_method().filter_by_mods()) // or the mods changed and the score method filters by mods
+            self.beatmap.update(values).unwrap().is_some() // if the map changed
+            | self.playmode.update(values).unwrap().is_some() // or the actual playmode changed
+            | self.score_method.update(values).unwrap().is_some() // or the score method changed
+            | (self.mods.update(values).unwrap().is_some() && self.score_method().filter_by_mods()) // or the mods changed and the score method filters by mods
             | self.force_update
             ;
 
@@ -177,8 +194,8 @@ impl ScoreManager {
             self.force_update = false;
 
             // clear scores and update values
-            self.current_scores.clear();
-            self.update_values(values, false);
+            self.scores.clear();
+            self.loaded = false;
 
             // and then get new scores
             if let Err(e) = self.get_scores(values).await {
@@ -190,10 +207,10 @@ impl ScoreManager {
             if let Ok(loader) = loader.try_read() {
                 if !loader.done { return } 
 
-                self.current_scores = loader.scores.clone();
+                self.scores = loader.scores.clone();
                 self.current_loader = None;
                 self.abort_handle = None;
-                self.update_values(values, true);
+                self.loaded = true;
             }
         }
 
@@ -201,11 +218,18 @@ impl ScoreManager {
 
 
     pub fn get_score(&self, id: usize) -> Option<&IngameScore> {
-        self.current_scores.get(id)
+        self.scores.get(id)
+    }
+}
+
+impl Default for ScoreManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[derive(Default)]
+#[derive(Debug)]
 pub struct ScoreLoaderHelper {
     pub scores: Vec<IngameScore>,
     pub done: bool,
@@ -214,6 +238,7 @@ pub struct ScoreLoaderHelper {
 
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Reflect)]
 pub enum ScoreRetreivalMethod {
     #[default]
     Local,

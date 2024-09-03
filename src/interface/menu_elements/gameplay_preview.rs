@@ -4,10 +4,10 @@ pub struct GameplayPreview {
     actions: ActionQueue,
     // current_mods: ModManagerHelper,
 
-    beatmap: SyValueHelper,
-    playmode: SyValueHelper,
-    mods: SyValueHelper,
-    song_time: SyValueHelper,
+    beatmap: SyValueHelper<Arc<BeatmapMeta>>,
+    playmode: SyValueHelper<String>,
+    mods: SyValueHelper<ModManager>,
+    song_time: SyValueHelper<f32>,
 
     settings: SettingsHelper,
     manager: Option<GameplayId>,
@@ -36,12 +36,12 @@ pub struct GameplayPreview {
 }
 impl GameplayPreview {
     pub fn new(use_global_playmode: bool, apply_rate: bool, check_enabled: Arc<dyn Fn(&Settings) -> bool + Send + Sync>, owner: MessageOwner) -> Self {
-        let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));   
+        let a: Arc<dyn TatakuRenderable> = Arc::new(TransformGroup::new(Vector2::ZERO));
         let (widget_sender, widget_receiver) = TripleBuffer::new(&a).split();
         let (event_sender, event_receiver) = async_channel(5);
 
         let widget = GameplayPreviewWidget::new(widget_receiver, event_sender);
-        
+
         Self {
             actions: ActionQueue::new(),
             // current_mods: ModManagerHelper::new(),
@@ -96,11 +96,11 @@ impl GameplayPreview {
         // // let Some(map) = &self.current_beatmap.0 else { return };
 
         // // get the mode
-        // let mode = if self.use_global_playmode { 
+        // let mode = if self.use_global_playmode {
         //     self.playmode.as_string()
-        //     // self.current_playmode.as_ref().0.clone() 
-        // } else { 
-        //     self.settings.background_game_settings.mode.clone() 
+        //     // self.current_playmode.as_ref().0.clone()
+        // } else {
+        //     self.settings.background_game_settings.mode.clone()
         // };
 
         // // abort the previous loading task
@@ -131,7 +131,7 @@ impl GameplayPreview {
         //         if let Some((pos, size)) = self.fit_to {
         //             manager.gamemode.fit_to_area(pos, size).await
         //         }
-                
+
         //         manager.start().await;
         //         trace!("manager started");
 
@@ -155,17 +155,21 @@ impl GameplayPreview {
         }
 
 
-        let last_song_time = self.song_time.as_f32().unwrap_or_default();
-        if self.song_time.check(values) {
-            if self.song_time.as_f32().unwrap_or_default() < last_song_time {
+        let last_song_time = self.song_time.unwrap_or_default();
+        if let Ok(Some(time)) = self.song_time.update(values) {
+            if time < &last_song_time {
                 self.setup(values, actions).await;
             }
         }
 
 
         // check for map/mode changes
-        if self.beatmap.check(values) | self.playmode.check(values) {
-            self.setup(values, actions).await;
+        let a = self.beatmap.update(values);
+        let b = self.playmode.update(values);
+        match (a, b) {
+            (Ok(Some(_)), _)
+            | (_, Ok(Some(_))) => self.setup(values, actions).await,
+            _=> {}
         }
         // let mut refresh_map = self.current_playmode.update();
         // refresh_map |= self.current_beatmap.update();
@@ -179,7 +183,7 @@ impl GameplayPreview {
         // // update manager
         // if let Some(manager) = &mut self.manager {
         //     manager.update(values).await;
-            
+
         //     if manager.completed {
         //         manager.on_complete();
         //         self.manager = None;
@@ -190,19 +194,19 @@ impl GameplayPreview {
         if let Some(vis) = &mut self.visualization {
             vis.update().await;
         }
-        
+
         // check for state update
         if self.handle_song_restart {
-            let stopped = values.get_bool("song.stopped").unwrap();
-            let playing = values.get_bool("song.playing").unwrap();
-            let paused = values.get_bool("song.paused").unwrap();
+            let stopped = values.song.stopped;
+            let playing = values.song.playing;
+            let paused = values.song.paused;
             let exists = stopped || playing || paused;
 
-            let speed = ModManager::try_from(self.mods.deref()).map(|m| m.get_speed()).unwrap_or(1.0);
+            let speed = self.mods.as_ref().map(|m| m.get_speed()).unwrap_or(1.0);
 
             if exists {
                 if stopped {
-                    if let Ok(preview) = values.get_f32("map.preview_time") {
+                    if let Some(preview) = values.beatmap_manager.current_beatmap.as_ref().map(|b| b.audio_preview) {
                         actions.push(SongAction::SetPosition(preview));
                         if self.apply_rate {
                             actions.push(SongAction::SetRate(speed));
@@ -212,10 +216,10 @@ impl GameplayPreview {
                     }
                 }
             } else {
-                if let Some(path) = values.get_string("map.audio_path").ok().filter(|s| !s.is_empty()) {
-                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(path, SongPlayData {
+                if let Some(beatmap) = &values.beatmap_manager.current_beatmap {
+                    actions.push(SongAction::Set(SongMenuSetAction::FromFile(beatmap.file_path.clone(), SongPlayData {
                         play: true,
-                        position: values.get_f32("map.preview_time").ok(),
+                        position: Some(beatmap.audio_preview),
                         rate: self.apply_rate.then_some(speed),
                         volume: Some(self.settings.get_music_vol()),
 
@@ -230,7 +234,7 @@ impl GameplayPreview {
             //         if let Some(map) = &self.current_beatmap.clone().0 {
             //             let _ = song.set_position(map.audio_preview);
             //             if self.apply_rate { song.set_rate(self.current_mods.get_speed()); }
-                        
+
             //             song.play(false);
             //             self.setup().await;
             //         }
@@ -286,7 +290,7 @@ impl GameplayPreview {
 
         let Some(manager) = self.manager.as_ref() else { return };
         self.actions.push(GameAction::GameplayAction(manager.clone(), GameplayAction::FitToArea(bounds)));
-    } 
+    }
 
     pub async fn skin_changed(&mut self, skin_manager: &mut SkinManager) {
         if let Some(vis) = &mut self.visualization {
@@ -385,7 +389,7 @@ struct GameplayWidgetState {
 
 #[async_trait]
 impl Widgetable for GameplayPreview {
-    async fn handle_message(&mut self, message: &Message, _values: &mut ValueCollection) -> Vec<TatakuAction> { 
+    async fn handle_message(&mut self, message: &Message, _values: &mut ValueCollection) -> Vec<TatakuAction> {
         let MessageTag::String(str) = &message.tag else { return self.actions.take() };
         if str != "gameplay_manager_create" { return self.actions.take() }
 
@@ -393,7 +397,7 @@ impl Widgetable for GameplayPreview {
         self.manager = Some(id.clone());
 
         self.actions.push(GameAction::GameplayAction(id.clone(), GameplayAction::Resume));
-        
+
         self.actions.take()
     }
 

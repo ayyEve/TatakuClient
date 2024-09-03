@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
+#[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct CommonGameplaySettings {
     #[cfg_attr(feature="graphics", Setting(text="Increase Offset"))]

@@ -3,7 +3,7 @@ use std::{fmt::Display, io::Error as IOError};
 
 use serde_json::Error as JsonError;
 use tataku_common::SerializationError;
-use crate::prelude::ShuntingYardError;
+use crate::prelude::*;
 
 use super::*;
 
@@ -30,7 +30,9 @@ pub enum TatakuError {
     ShuntingYardError(ShuntingYardError),
 
     #[cfg(feature = "ui")]
-    Lua(rlua::Error)
+    Lua(rlua::Error),
+
+    ReflectError(ReflectError<'static>)
 }
 impl TatakuError {
     pub fn from_err(e: impl std::error::Error) -> Self {
@@ -57,6 +59,7 @@ impl Display for TatakuError {
             Self::ShuntingYardError(e) => write!(f, "{:?}", e),
             #[cfg(feature = "ui")]
             Self::Lua(e) => write!(f, "{:?}", e),
+            Self::ReflectError(e) => write!(f, "{:?}", e),
         }
     }
 }
@@ -105,7 +108,11 @@ impl From<rlua::Error> for TatakuError {
 impl From<GraphicsError> for TatakuError {
     fn from(value: GraphicsError) -> Self { Self::Graphics(value) }
 }
-
+impl<'a> From<ReflectError<'a>> for TatakuError {
+    fn from(value: ReflectError<'a>) -> Self {
+        Self::ReflectError(value.to_owned())
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum GameModeError {

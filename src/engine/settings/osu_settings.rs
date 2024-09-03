@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use tataku_client_proc_macros::Settings;
 
-#[derive(Clone, Debug, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 #[cfg_attr(feature="graphics", derive(Settings))]
+#[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct OsuSettings {
     // input

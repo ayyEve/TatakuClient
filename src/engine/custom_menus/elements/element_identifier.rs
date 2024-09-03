@@ -29,7 +29,7 @@ pub enum ElementIdentifier {
     /// id = button
     Button {
         element: Box<ElementDef>,
-        action: ButtonAction,
+        action: LuaAction,
         padding: Option<ElementPadding>,
     },
 
@@ -45,8 +45,8 @@ pub enum ElementIdentifier {
     TextInput {
         placeholder: CustomElementText,
         variable: String,
-        on_input: Option<ButtonAction>,
-        on_submit: Option<ButtonAction>,
+        on_input: Option<LuaAction>,
+        on_submit: Option<LuaAction>,
         is_password: bool,
     },
 
@@ -86,7 +86,7 @@ pub enum ElementIdentifier {
         list_var: String,
         scrollable: bool,
         element: Box<ElementDef>,
-        variable: Option<String>,
+        variable: String,
     },
 
     /// id = dropdown
@@ -95,7 +95,7 @@ pub enum ElementIdentifier {
         options_display_key: Option<String>,
         selected_key: String,
         
-        on_select: Option<ButtonAction>,
+        on_select: Option<LuaAction>,
 
         padding: Option<ElementPadding>,
         placeholder: Option<String>,

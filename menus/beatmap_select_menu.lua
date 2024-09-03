@@ -42,7 +42,7 @@ local beatmap_list = {
             "shrink",
             5.0
         ),
-        
+
         -- map items
         cond(
             "_group.selected", -- if this group is selected
@@ -64,7 +64,7 @@ local beatmap_list = {
                         button(
                             text(
                                 text_list({ calc("display(_map.playmode)"), " - ", variable("_map.version") }),
-                                20, 
+                                20,
                                 WHITE
                             ),
                             cond(
@@ -82,7 +82,7 @@ local beatmap_list = {
                     })
 
                 })
-                
+
             }
         )
     })
@@ -100,13 +100,13 @@ local menu = {
                 cond("!song.playing", song_action("play")),
             }
         },
-        
+
         -- on song end, restart map
-        { 
-            event = "song_end", 
-            actions = { 
+        {
+            event = "song_end",
+            actions = {
                 song_action({ position = variable("map.preview_time")}),
-                song_action("play") 
+                song_action("play")
             }
         },
 
@@ -191,7 +191,7 @@ local menu = {
                 shape = { round = 5.0 },
                 width = "fill",
                 height = "fill",
-        
+
                 element = cond(
                     "!score_list.loaded", -- if not loaded...
                     text("Loading..."), -- show loading text
@@ -222,9 +222,9 @@ local menu = {
                 element = beatmap_list
             },
         }),
-        
+
     })
-    
+
 }
 
 add_menu(menu)

@@ -1,7 +1,8 @@
-use crate::prelude::Key;
+use crate::prelude::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Reflect)]
 #[serde(default)]
 pub struct CatchSettings {
     // keys

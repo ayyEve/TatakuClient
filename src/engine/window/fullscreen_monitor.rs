@@ -3,7 +3,8 @@
 use super::MONITORS;
 use crate::prelude::*;
 
-#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Reflect)]
 pub enum FullscreenMonitor {
     None,
     Monitor(usize),

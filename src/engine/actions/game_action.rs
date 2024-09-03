@@ -42,6 +42,15 @@ pub enum GameAction {
     /// Copy some text to the clipboard
     CopyToClipboard(String),
 
+    /// Force a refresh of the ui, ie if the values map changed
+    ForceUiRefresh,
+
+    /// Force a refresh of global.playmode and global.playmode_actual (+display) variables
+    RefreshPlaymodeValues,
+
+    /// Set the actual playmode for the current beatmap
+    UpdatePlaymodeActual(String),
+
     ///
     #[cfg(feature="graphics")]
     NewGameplayManager(NewManager),
@@ -79,6 +88,9 @@ impl core::fmt::Debug for GameAction {
             Self::DropGameplayManager(arg0) => f.debug_tuple("DropGameplayManager").field(arg0).finish(),
             Self::GameplayAction(arg0, arg1) => f.debug_tuple("GameplayAction").field(arg0).field(arg1).finish(),
             Self::FreeGameplay(_) => write!(f, "FreeGameplay"),
+            Self::ForceUiRefresh => write!(f, "ForceUiRefresh"),
+            Self::RefreshPlaymodeValues => write!(f, "RefreshPlaymodeValues"),
+            Self::UpdatePlaymodeActual(arg0) => f.debug_tuple("UpdatePlaymodeActual").field(arg0).finish(),
         }
     }
 }

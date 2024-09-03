@@ -1,8 +1,9 @@
 use crate::prelude::*;
 
 
-#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
+#[derive(Reflect, SettingsDeserialize)]
 #[serde(default)]
 pub struct DisplaySettings {
     pub window_pos: [i32; 2],
@@ -33,6 +34,7 @@ pub struct DisplaySettings {
     pub performance_mode: PerformanceMode,
     
     #[serde(skip)]
+    #[reflect(skip)]
     #[cfg_attr(feature="graphics", Setting(text="Refresh Monitors", action="GameWindow::refresh_monitors()"))]
     refresh_monitors_button: (),
 }
@@ -63,6 +65,7 @@ impl Default for DisplaySettings {
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
 #[cfg_attr(feature="graphics", derive(Dropdown))]
+#[derive(Reflect)]
 pub enum PerformanceMode {
     PowerSaver,
     HighPerformance,

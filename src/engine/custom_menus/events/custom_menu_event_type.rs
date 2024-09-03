@@ -60,8 +60,6 @@ impl<'lua> rlua::FromLua<'lua> for TatakuEventType {
     }
 }
 
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct CustomMenuKeyEvent {
     /// what key?

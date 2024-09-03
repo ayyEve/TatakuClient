@@ -3,8 +3,9 @@ use tataku_client_proc_macros::Settings;
 
 const SETTINGS_FILE:&str = "settings.json";
 
-#[derive(Clone, Serialize, PartialEq, SettingsDeserialize)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 #[cfg_attr(feature="graphics", derive(Settings))]
+#[derive(SettingsDeserialize, Reflect)]
 #[serde(default)]
 pub struct Settings {
     #[serde(skip)]
@@ -90,6 +91,7 @@ pub struct Settings {
     pub current_skin: String,
 
     #[serde(skip)]
+    #[reflect(skip)]
     #[cfg_attr(feature="graphics", Setting(text="Refresh Skins", action="SkinManager::refresh_skins()"))]
     refresh_skins_button: (),
 
@@ -291,6 +293,7 @@ impl Default for Settings {
 /// helper for colors inside settings
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
+#[derive(Reflect)]
 #[serde(from="Color", into="Color")]
 pub struct SettingsColor {
     pub string: String,

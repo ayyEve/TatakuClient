@@ -20,4 +20,12 @@ pub enum ShuntingYardError {
 
     ConversionError(String),
     InvalidType(String),
+
+    ReflectError(ReflectError<'static>)
+}
+
+impl<'a> From<ReflectError<'a>> for ShuntingYardError {
+    fn from(value: ReflectError<'a>) -> Self {
+        Self::ReflectError(value.to_owned())
+    }
 }
