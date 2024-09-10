@@ -1,0 +1,17 @@
+use crate::prelude::*;
+
+#[async_trait]
+pub trait AsyncMenu:Send+Sync {
+    fn get_name(&self) -> &'static str { "none" }
+    fn get_custom_name(&self) -> Option<&String> { None }
+
+    fn view(&self, values: &mut dyn Reflect) -> IcedElement;
+    
+    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect);
+    async fn update(&mut self, _values: &mut dyn Reflect) -> Vec<TatakuAction> { Vec::new() }
+    async fn on_change(&mut self, _into: bool) {}// when the menu is "loaded"(into) or "unloaded"(!into)
+
+    async fn reload_skin(&mut self, _skin_manager: &mut dyn SkinProvider) {}
+
+    async fn handle_event(&mut self, _event: TatakuEventType, _event_value: Option<TatakuValue>, _values: &mut dyn Reflect) {}
+}

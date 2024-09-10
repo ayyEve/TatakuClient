@@ -1,0 +1,106 @@
+[package]
+name = "tataku-engine"
+version = "0.5.0"
+authors.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = [ "gameplay" ]
+as_crate = []
+gameplay = [ "bass_audio", "graphics", "gilrs", "media_control", "ipc-channel" ]
+bass_audio = []
+# kira_audio = ["rustfft", "uuid"]
+debug_sliders = []
+debug_hitsounds = []
+debug_perf_rating = []
+debug_custom_menus = []
+load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
+
+storyboards = []
+texture_arrays = []
+media_control = [ "souvlaki" ]
+ui = [ "iced", "iced_runtime", "rlua", "triple_buffer" ]
+
+# removes as much graphics-side stuff as possible
+graphics = [ "winit", "ui", "clipboard", "raw-window-handle", "fontdue", "image" ]
+
+[dependencies]
+tataku-common = { workspace = true }
+tataku-client-proc-macros = { workspace = true }
+
+tataku-resources = { workspace = true }
+tataku-client-common = { workspace = true }
+
+# framework stuff
+lazy_static =  { workspace = true }
+parking_lot = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+rusqlite = { workspace = true, features = ["bundled"] }
+futures-util = { workspace = true, features = ["async-await", "sink", "std"] }
+async-trait = { workspace = true }
+async-recursion = { workspace = true }
+triple_buffer = { workspace = true, optional = true }
+crossbeam = { workspace = true }
+global_value_manager = { workspace = true }
+ipc-channel = { workspace = true, optional = true }
+
+# image stuff
+# png = { workspace = true, optional = true }
+image = { workspace = true, optional = true }
+fontdue = { workspace = true, optional = true }
+
+# math stuff
+# cgmath = { workspace = true }
+# guillotiere = { workspace = true, optional = true }
+
+# windowing
+winit = { workspace = true, features = ["serde"], optional = true }
+raw-window-handle = { workspace = true, optional = true }
+clipboard = { workspace = true, optional = true }
+
+# gamepad input
+gilrs = { workspace = true, features = ["serde-serialize"], optional = true }
+# media controls
+souvlaki = { workspace = true, default-features = false, features = ["use_zbus"], optional = true }
+
+# gui
+iced = { workspace = true, features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
+iced_runtime = { workspace = true, optional = true }
+# iced_winit = { workspace = true, optional = true }
+
+# networking
+sha2 = { workspace = true }
+# tokio-tungstenite = { workspace = true, features = ["rustls-tls-native-roots"], optional = true }
+reqwest = { workspace = true, features = ["json"] }
+
+# serde
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# decoding/encoding/zip stuff
+zip = { workspace = true }
+md5 = { workspace = true }
+lzma-rs = { workspace = true }
+base64 = { workspace = true }
+encoding_rs = { workspace = true }
+
+native-tls = { workspace = true }
+tokio-native-tls = { workspace = true }
+
+# other stuff
+rand = { workspace = true }
+chrono = { workspace = true }
+fs_extra = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+rlua = { workspace = true, optional = true }
+
+
+# logging
+log = { workspace = true }
+num-format = { workspace = true }
+strfmt = { workspace = true }
+
+# battery_level = { git = "https://gitlab.ayyeve.dev/ayyEve/battery-level-rs" }

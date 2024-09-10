@@ -1,43 +1,60 @@
-[package]
-name = "tataku-client"
-version = "0.4.6"
+[workspace.package]
 authors = [
     "Eve <hi.its.eve@gmail.com>",
     "~Nebula~ <stefanb1289@gmail.com>"
 ]
 edition = "2021"
-build = "build/mod.rs"
+
+[workspace]
+members = ["crates/*", "gamemodes/*"]
+default-members = ["crates/tataku-client"]
+
+# # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# [features]
+# default = [ "gameplay" ]
+# as_crate = []
+# gameplay = [ "bass_audio", "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel" ]
+# discord = [ "discord-rich-presence" ]
+# bass_audio = [ "bass-rs" ]
+# # kira_audio = ["rustfft", "uuid"]
+# debug_sliders = []
+# debug_hitsounds = []
+# debug_perf_rating = []
+# debug_custom_menus = []
+# load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
+
+# storyboards = []
+# texture_arrays = []
+# media_control = [ "souvlaki" ]
+# wgpu_graphics = [ "wgpu", "lyon_tessellation", "bytemuck" ]
+# ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
+
+# # removes as much graphics-side stuff as possible
+# graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
+
+[workspace.dependencies]
+tataku-common = { version = "0.13.2", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
+# tataku-common-proc-macros = { version = "0.3.2", registry = "tataku-registry", path = "../tataku-common/tataku-common" }
+
+tataku-client-proc-macros = { version = "0.1.1", path = "crates/proc_macros", registry = "tataku-registry" }
+
+tataku-engine = { path = "crates/tataku-engine" }
+tataku-game = { path = "crates/tataku-game" }
+tataku-resources = { path = "crates/tataku-resources" }
+tataku-client = { path = "crates/tataku-client" }
+tataku-client-common = { path = "crates/common" }
+
+tataku-wgpu = { path = "crates/tataku-wgpu" }
+tataku-bass = { path = "crates/tataku-bass" }
 
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+gamemode-osu.path = "gamemodes/osu"
+gamemode-taiko.path = "gamemodes/taiko"
+gamemode-mania.path = "gamemodes/mania"
+gamemode-utyping.path = "gamemodes/utyping"
 
-[features]
-default = [ "gameplay" ]
-as_crate = []
-gameplay = [ "bass_audio", "graphics", "discord", "gilrs", "media_control", "tokio-tungstenite", "ipc-channel" ]
-discord = [ "discord-rich-presence" ]
-bass_audio = [ "bass-rs" ]
-# kira_audio = ["rustfft", "uuid"]
-debug_sliders = []
-debug_hitsounds = []
-debug_perf_rating = []
-debug_custom_menus = []
-load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
 
-storyboards = []
-texture_arrays = []
-media_control = [ "souvlaki" ]
-wgpu_graphics = [ "wgpu", "lyon_tessellation", "bytemuck" ]
-ui = [ "iced", "iced_winit", "iced_runtime", "rlua", "triple_buffer" ]
-
-# removes as much graphics-side stuff as possible
-graphics = [ "wgpu_graphics", "winit", "ui", "clipboard", "raw-window-handle", "guillotiere", "fontdue", "png", "image" ]
-
-[dependencies]
-tataku-common = { version = "0.13.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }
-tataku-common-proc-macros = { version = "0.3.0", registry = "tataku-registry" }
-# tataku-common = { path="../tataku-common" }
-tataku-client-proc-macros = { version = "0.1.1", path = "./proc_macros", registry = "tataku-registry" }
 
 # framework stuff
 lazy_static = "1.4.0"
@@ -47,53 +64,49 @@ rusqlite = { version = "0.31.0", features = ["bundled"] }
 futures-util = { version = "0.3.30", features = ["async-await", "sink", "std"] }
 async-trait = "0.1.80"
 async-recursion = "1.1.1"
-triple_buffer = { version = "7.0.0", optional = true }
+triple_buffer = { version = "7.0.0" }
 crossbeam = "0.8.4"
 global_value_manager = "0.1.1"
-ipc-channel = { version = "0.18.1", optional = true }
+ipc-channel = { version = "0.18.1" }
 
 # image stuff
-png = { version = "0.17.13", optional = true }
-image = { version = "0.25.1", optional = true }
-fontdue = { version = "0.9.0", optional = true }
+png = { version = "0.17.13" }
+image = { version = "0.25.1" }
+fontdue = { version = "0.9.0" }
 
 # math stuff
 cgmath = "0.18.0"
-guillotiere = { version = "0.6.2", optional = true }
-lyon_tessellation = { version = "1.0.15", optional = true }
+guillotiere = { version = "0.6.2" }
+lyon_tessellation = { version = "1.0.15" }
 
 # windowing
-wgpu = { version="0.20.1", optional = true }
-bytemuck = { version = "1.16.0", features = [ "derive" ], optional = true }
-winit = { version = "0.30.2", features = ["serde"], optional = true }
-raw-window-handle = { version = "0.6.2", optional = true }
-clipboard = { version = "0.5.0", optional = true }
+bytemuck = { version = "1.16.0", features = [ "derive" ] }
+winit = { version = "0.30.2", features = ["serde"] }
+raw-window-handle = { version = "0.6.2" }
+clipboard = { version = "0.5.0" }
 
 # gamepad input
-gilrs = { version = "0.10.7", features = ["serde-serialize"], optional = true }
+gilrs = { version = "0.10.7", features = ["serde-serialize"] }
 # media controls
-souvlaki = { version = "0.7.3", default-features = false, features = ["use_zbus"], optional = true }
+souvlaki = { version = "0.7.3", default-features = false, features = ["use_zbus"] }
 
 # gui
-iced = { version="0.13.0-dev", registry="tataku-registry", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false, optional = true }
-iced_runtime = { version="0.13.0-dev", registry="tataku-registry", optional = true }
-iced_winit = { version="0.13.1-dev", registry="tataku-registry", optional = true }
+iced = { version = "0.13.0-dev", registry = "tataku-registry", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false }
+iced_runtime = { version = "0.13.0-dev", registry = "tataku-registry" }
+iced_winit = { version = "0.13.1-dev", registry = "tataku-registry" }
 # iced = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20", features = ["canvas", "tokio", "debug", "image", "advanced", "lazy", "wgpu"], default-features = false }
 # iced_runtime = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
 # iced_winit = { git = "https://github.com/iced-rs/iced.git", branch = "wgpu-0.20" }
 
-# bass audio
-bass-rs = { version="0.2.3", optional = true }
-
 # other audio
 # kira = "0.7"
-# rustfft = { version = "6.0", optional = true }
+# rustfft = { version = "6.0" }
 
 # networking
 sha2 = "0.10.8"
-tokio-tungstenite = { version = "0.22.0", features = ["rustls-tls-native-roots"], optional = true }
+tokio-tungstenite = { version = "0.22.0", features = ["rustls-tls-native-roots"] }
 reqwest = { version = "0.12.4", features = ["json"] }
-discord-rich-presence = { version = "0.2.4", optional = true, registry = "tataku-registry" }
+discord-rich-presence = { version = "0.2.4", registry = "tataku-registry" }
 
 # serde
 serde = { version = "1.0.203", features = ["derive"] }
@@ -115,17 +128,14 @@ rand = "0.8.5"
 chrono = "0.4.38"
 fs_extra = "1.3.0"
 uuid = { version = "1.8.0", features = ["v4"] }
-rlua = { version = "0.20.0", optional = true }
+rlua = { version = "0.20.0" }
 
 
 # logging
-tataku-logging = { version = "0.2.0", registry = "tataku-registry" }
+tataku-logging = { version = "0.3.0", registry = "tataku-registry", path = "/home/ayyeve/Desktop/projects/tataku/tataku-logging" }
 log = "0.4.16"
 num-format = "0.4.4"
 strfmt = "0.2.4"
 
 # battery_level = { git = "https://gitlab.ayyeve.dev/ayyEve/battery-level-rs" }
 
-
-[build-dependencies]
-tataku-common = { version = "0.13.0", path = "../tataku-common/tataku-common", registry = "tataku-registry" }

@@ -1,0 +1,15 @@
+[package]
+name = "tataku-bass"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+tataku-engine.workspace = true
+
+bass-rs = { version = "0.2.3" }
+
+lazy_static.workspace = true
+parking_lot.workspace = true
+
+log.workspace = true

@@ -1,0 +1,22 @@
+[package]
+name = "tataku-client-common"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[features]
+default = [ "ui" ]
+ui = [ "iced" ]
+
+[dependencies]
+iced = { workspace = true, optional = true }
+
+cgmath = { workspace = true }
+serde = { workspace = true }
+guillotiere = { workspace = true }
+reqwest = { workspace = true }
+rlua = { workspace = true }
+image = { workspace = true }
+
+# remove once Reflect is in its own crate
+tataku-common = { workspace = true }

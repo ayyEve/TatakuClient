@@ -12,7 +12,6 @@ cargo.lock
 
 # old tataku resource files, before /game was used
 /downloads
-/resources
 /[Ss]ongs
 /replays
 /skins

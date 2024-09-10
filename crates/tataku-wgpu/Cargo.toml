@@ -1,0 +1,25 @@
+[package]
+name = "tataku-wgpu"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[features]
+texture_arrays = []
+
+[dependencies]
+tataku-engine = { workspace = true }
+tataku-resources = { workspace = true }
+tataku-client-common = { workspace = true }
+
+tokio = { workspace = true }
+log = { workspace = true }
+winit = { workspace = true }
+image = { workspace = true }
+cgmath = { workspace = true }
+
+# wgpu
+bytemuck = { workspace = true }
+wgpu = { version = "0.20.1" }
+lyon_tessellation = { workspace = true }
+
