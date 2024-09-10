@@ -1244,9 +1244,7 @@ impl GameModeProperties for TaikoGame {
     fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("taiko") }
     fn end_time(&self) -> f32 {self.end_time}
 
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
+    fn get_info(&self) -> GameModeInfo { super::GAME_INFO }
  
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![

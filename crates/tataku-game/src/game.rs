@@ -90,7 +90,7 @@ impl Game {
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
         audio_engines: Vec<Box<dyn AudioApiInit>>,
-        gamemodes: Vec<Arc<dyn GameModeInfo>>,
+        gamemodes: Vec<GameModeInfo>,
     ) -> Self {
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
         let settings = Settings::get();
@@ -776,7 +776,7 @@ impl Game {
         ] {
             if !keys_down.has_key(key) { continue }
             let Some(mode) = self.global.gamemode_infos.by_num.get(index) else { continue };
-            let mode = mode.id();
+            let mode = mode.id;
             self.actions.push(BeatmapAction::SetPlaymode(mode.to_string()));
             self.actions.push(Notification::new_text(format!("Playmode set to {mode}"), Color::CYAN, 3000.0));
         }
@@ -1852,7 +1852,7 @@ impl Game {
                 let playmode = &self.values.global.playmode_actual;
 
                 if let Ok(info) = self.global.gamemode_infos.get_info(&playmode) {
-                    groups = info.get_mods();
+                    groups = info.mods.iter().map(GameplayModGroup::from_static).collect();
                 }
 
                 self.add_dialog(Box::new(ModDialog::new(groups).await), false);
@@ -2295,7 +2295,7 @@ impl Game {
         // warn!("setting playmode: {new_mode}");
 
         // ensure playmode exists
-        if !self.global.gamemode_infos.by_id.contains_key(&playmode) { return warn!("Trying to set invalid playmode: {playmode}") }
+        if !self.global.gamemode_infos.by_id.contains_key(&*playmode) { return warn!("Trying to set invalid playmode: {playmode}") }
 
         // set playmode and playmode display
         self.values.global.update_playmode(playmode.clone());

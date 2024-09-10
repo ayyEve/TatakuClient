@@ -1114,12 +1114,10 @@ impl GameModeInput for ManiaGame {
 #[async_trait]
 impl GameModeProperties for ManiaGame {
     fn playmode(&self) -> Cow<'static, str> { Cow::Borrowed("mania") }
+    fn get_info(&self) -> GameModeInfo { crate::GAME_INFO }
 
     fn end_time(&self) -> f32 { self.end_time }
 
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
     
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         let mut list = Vec::new();

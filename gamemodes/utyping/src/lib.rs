@@ -7,7 +7,7 @@ mod utyping_info;
 mod utyping_notes;
 
 
-pub use utyping_info::UTypingGameInfo as GameInfo;
+pub use utyping_info::GAME_INFO;
 
 
 mod prelude {

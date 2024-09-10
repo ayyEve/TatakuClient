@@ -133,8 +133,8 @@ impl OsuHitJudgments {
         false,
     );
 
-    pub fn variants() -> &'static [HitJudgment] {
-        & [
+    pub const fn variants() -> &'static [HitJudgment] {
+        &[
             Self::X300,
             Self::X100,
             Self::X50,

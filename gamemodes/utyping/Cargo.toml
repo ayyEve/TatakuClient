@@ -13,6 +13,7 @@ graphics = []
 log.workspace = true
 async-trait.workspace = true
 lazy_static.workspace = true
+futures-util.workspace = true
 
 tataku-common.workspace = true
 

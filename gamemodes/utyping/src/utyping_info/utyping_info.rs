@@ -1,14 +1,28 @@
 use crate::prelude::*;
+use futures_util::future::BoxFuture;
 
-#[derive(Debug)]
-pub struct UTypingGameInfo;
-#[async_trait]
-impl GameModeInfo for UTypingGameInfo {
-    fn new() -> Self { Self }
-    fn id(&self) -> &'static str { "utyping" }
-    fn display_name(&self) -> &'static str { "UTyping" }
 
-    fn calc_acc(&self, score: &Score) -> f32 {
+pub const GAME_INFO: GameModeInfo = GameModeInfo {
+    id: "utyping",
+    display_name: "uTyping",
+    about: "utyping",
+    author: "ayyEve",
+
+    mods: &[],
+
+    judgments: UTypingHitJudgment::variants(),
+    calc_acc: &UTypingGameInfo::calc_acc,
+    get_diff_string: &UTypingGameInfo::get_diff_string,
+    create_game: &UTypingGameInfo::create_game,
+    create_diffcalc: &UTypingGameInfo::create_diffcalc,
+
+    .. GameModeInfo::DEFAULT
+};
+
+
+struct UTypingGameInfo;
+impl UTypingGameInfo {
+    fn calc_acc(score: &Score) -> f32 {
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
@@ -17,30 +31,8 @@ impl GameModeInfo for UTypingGameInfo {
         / (miss + x100 + x300)
     }
 
-    fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![
-            // GameplayModGroup::new("Skill")
-            //     .with_mod(super::FullAlt)
-            //     .with_mod(super::Relax)
-            //     .with_mod(super::NoFinisher)
-            // ,
-            // GameplayModGroup::new("Difficulty")
-            //     .with_mod(super::HardRock)
-            //     .with_mod(super::Easy)
-            //     .with_mod(super::NoBattery)
-            // ,
-        ]
-    }
 
-    fn get_stat_groups(&self) -> Vec<StatGroup> {
-        vec![
-            // StatGroup::new("press_counters", "Press Counts")
-            //     .with_stat(TaikoStatLeftPresses)
-            //     .with_stat(TaikoStatRightPresses)
-        ]
-    }
-
-    fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
+    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
         let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
@@ -75,15 +67,16 @@ impl GameModeInfo for UTypingGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Vec<HitJudgment> {
-        UTypingHitJudgment::variants().to_vec()
+    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+        Box::pin(async {
+            let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false).await?);
+            Ok(game)
+        })
     }
-    async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = UTypingGame::new(beatmap, false).await?;
-        Ok(Box::new(game))
-    }
-    async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = UTypingDifficultyCalculator::new(map).await?;
-        Ok(Box::new(calc))
+    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+        Box::pin(async {
+            let calc:Box<dyn DiffCalc> = Box::new(UTypingDifficultyCalculator::new(map).await?);
+            Ok(calc)
+        })
     }
 }

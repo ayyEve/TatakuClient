@@ -16,24 +16,22 @@ impl ModManager {
         Self::default()
     }
 
-    pub fn mods_for_playmode(
-        mode: &Arc<dyn GameModeInfo>
-    ) -> Vec<GameplayMod> {
+    fn iter_mods(mode: &GameModeInfo) -> impl Iterator<Item=GameplayMod> {
         default_mod_groups()
             .into_iter()
-            .chain(mode.get_mods().into_iter())
-            .map(|m| m.mods)
-            .flatten()
-            .collect::<Vec<_>>()
+            .chain(mode.mods.iter().map(GameplayModGroup::from_static))
+            .flat_map(|m| m.mods)
+    }
+
+    pub fn mods_for_playmode(
+        mode: &GameModeInfo
+    ) -> Vec<GameplayMod> {
+        Self::iter_mods(mode).collect()
     }
     pub fn mods_for_playmode_as_hashmap(
-        mode: &Arc<dyn GameModeInfo>
+        mode: &GameModeInfo
     ) -> HashMap<String, GameplayMod> {
-        default_mod_groups()
-            .into_iter()
-            .chain(mode.get_mods().into_iter())
-            .map(|m| m.mods)
-            .flatten()
+        Self::iter_mods(mode)
             .map(|m| (m.name.to_owned(), m))
             .collect()
     }
@@ -41,7 +39,7 @@ impl ModManager {
     pub fn short_mods_string(
         mods: &Vec<ModDefinition>, 
         none_if_empty: bool, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GameModeInfo,
     ) -> String {
         if mods.len() == 0 {
             if none_if_empty { return "None".to_owned() }
@@ -84,7 +82,7 @@ impl ModManager {
 
     pub fn map_mods_to_thing(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GameModeInfo,
     ) -> Vec<ModDefinition> {
         let ok_mods = ModManager::mods_for_playmode_as_hashmap(mode);
 
@@ -108,13 +106,12 @@ impl ModManager {
     fn mods_list(
         &self, 
         include_speed: bool, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GameModeInfo,
     ) -> String {
-        let mod_groups = mode.get_mods();
+        let mod_groups = mode.mods;
         let mods = mod_groups
             .iter()
-            .map(|mg| &mg.mods)
-            .flatten()
+            .flat_map(|mg| mg.mods)
             .map(|m| (m.name, m))
             .collect::<HashMap<_,_>>();
 
@@ -138,13 +135,13 @@ impl ModManager {
 
     pub fn mods_list_string(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GameModeInfo,
     ) -> String {
         self.mods_list(true, mode)
     }
     pub fn mods_list_string_no_speed(
         &self, 
-        mode: &Arc<dyn GameModeInfo>,
+        mode: &GameModeInfo,
     ) -> String {
         self.mods_list(false, mode)
     }

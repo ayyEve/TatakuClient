@@ -1778,6 +1778,7 @@ name = "gamemode-mania"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures-util",
  "log",
  "tataku-client-common",
  "tataku-common",
@@ -1789,6 +1790,7 @@ name = "gamemode-osu"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures-util",
  "log",
  "tataku-client-common",
  "tataku-common",
@@ -1800,6 +1802,7 @@ name = "gamemode-taiko"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures-util",
  "log",
  "tataku-client-common",
  "tataku-common",
@@ -1811,6 +1814,7 @@ name = "gamemode-utyping"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "futures-util",
  "lazy_static",
  "log",
  "tataku-client-common",

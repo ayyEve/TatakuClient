@@ -7,7 +7,7 @@ mod taiko_info;
 mod taiko_notes;
 mod taiko_helpers;
 
-pub use taiko_info::TaikoGameInfo as GameInfo;
+pub use taiko_info::GAME_INFO;
 
 
 mod prelude {

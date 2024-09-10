@@ -1451,9 +1451,7 @@ impl GameModeProperties for OsuGame {
     fn end_time(&self) -> f32 { self.end_time }
     fn show_cursor(&self) -> bool { false } // we have our own cursor
 
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(super::GameInfo)
-    }
+    fn get_info(&self) -> GameModeInfo { crate::GAME_INFO }
 
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> {
         vec![

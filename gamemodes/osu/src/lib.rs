@@ -7,7 +7,7 @@ mod osu_notes;
 mod diff_calc;
 mod osu_helpers;
 
-pub use osu_info::OsuGameInfo as GameInfo;
+pub use osu_info::GAME_INFO;
 
 /// import helper
 mod prelude {

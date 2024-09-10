@@ -1,15 +1,27 @@
 use crate::prelude::*;
+use futures_util::future::BoxFuture;
 
-#[derive(Debug)]
-pub struct ManiaGameInfo;
-#[async_trait]
-impl GameModeInfo for ManiaGameInfo {
-    fn new() -> Self { Self }
-    fn id(&self) -> &'static str { "mania" }
-    fn display_name(&self) -> &'static str { "Mania" }
+pub const GAME_INFO:GameModeInfo = GameModeInfo {
+    id: "mania",
+    display_name: "Mania",
+    about: "mania!",
+    author: "ayyEve",
 
+    mods: &[],
+
+    judgments: ManiaHitJudgments::variants(),
+    calc_acc: &ManiaGameInfo::calc_acc,
+    get_diff_string: &ManiaGameInfo::get_diff_string,
+    create_game: &ManiaGameInfo::create_game,
+    create_diffcalc: &ManiaGameInfo::create_diffcalc,
+
+    .. GameModeInfo::DEFAULT
+};
+
+struct ManiaGameInfo;
+impl ManiaGameInfo {
     /// from https://wiki.quavergame.com/docs/gameplay#accuracy
-    fn calc_acc(&self, score: &Score) -> f32 {
+    fn calc_acc(score: &Score) -> f32 {
         let marv = score.judgments.get("geki").copied().unwrap_or_default() as f32;
         let perf = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let great = score.judgments.get("katu").copied().unwrap_or_default() as f32;
@@ -38,15 +50,7 @@ impl GameModeInfo for ManiaGameInfo {
         top.max(0.0) / bottom
     }
 
-    fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![]
-    }
-
-    fn get_perf_calc(&self) -> PerformanceCalc where Self:Sized {
-        Box::new(|diff, acc| diff * (acc / 0.98).powi(6))
-    }
-
-    fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
+    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
         // let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
@@ -77,16 +81,17 @@ impl GameModeInfo for ManiaGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Vec<HitJudgment> {
-        ManiaHitJudgments::variants().to_vec()
+    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+        Box::pin(async {
+            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false).await?);
+            Ok(game)
+        })
     }
-    async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = ManiaGame::new(beatmap, false).await?;
-        Ok(Box::new(game))
-    }
-    async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = ManiaDifficultyCalculator::new(map).await?;
-        Ok(Box::new(calc))
+    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+        Box::pin(async {
+            let calc:Box<dyn DiffCalc> = Box::new(ManiaDifficultyCalculator::new(map).await?);
+            Ok(calc)
+        })
     }
 
 }

@@ -45,32 +45,32 @@ impl GameModeProperties for NoMode {
     fn timing_bar_things(&self) -> Vec<(f32,Color)> { Vec::new() }
     fn get_possible_keys(&self) -> Vec<(KeyPress, &str)> { Vec::new() }
     // fn score_hit_string(_hit:&ScoreHit) -> String where Self: Sized { String::new() }
-    fn get_info(&self) -> Arc<dyn GameModeInfo> {
-        Arc::new(EmptyGamemodeInfo)
+    fn get_info(&self) -> GameModeInfo {
+        GameModeInfo::default()
     }
 }
 
-#[derive(Debug)]
-struct EmptyGamemodeInfo;
-#[async_trait]
-impl GameModeInfo for EmptyGamemodeInfo {
-    fn new() -> Self where Self:Sized { Self }
-    fn id(&self) ->  &'static str { "none" }
+// #[derive(Debug)]
+// struct EmptyGamemodeInfo;
+// #[async_trait]
+// impl GameModeInfo for EmptyGamemodeInfo {
+//     fn new() -> Self where Self:Sized { Self }
+//     fn id(&self) ->  &'static str { "none" }
 
-    fn display_name(&self) ->  &'static str { "None" }
-    fn calc_acc(&self, _: &Score) -> f32 { 0.0 }
+//     fn display_name(&self) ->  &'static str { "None" }
+//     fn calc_acc(&self, _: &Score) -> f32 { 0.0 }
 
-    fn get_judgments(&self) -> Vec<HitJudgment> { Vec::new() }
+//     fn get_judgments(&self) -> Vec<HitJudgment> { Vec::new() }
 
-    fn get_diff_string(&self, _: &BeatmapMetaWithDiff, _: &ModManager) -> String {
-        String::new()
-    }
+//     fn get_diff_string(&self, _: &BeatmapMetaWithDiff, _: &ModManager) -> String {
+//         String::new()
+//     }
     
-    async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        unimplemented!()
-    }
-    async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        unimplemented!()
-    }
+//     async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
+//         unimplemented!()
+//     }
+//     async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
+//         unimplemented!()
+//     }
 
-}
+// }

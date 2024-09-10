@@ -4,6 +4,8 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
+# [lib]
+# type = "dylib"
 
 [features]
 default = [ "graphics" ]
@@ -12,6 +14,7 @@ graphics = []
 [dependencies]
 log.workspace = true
 async-trait.workspace = true
+futures-util.workspace = true
 
 tataku-common.workspace = true
 

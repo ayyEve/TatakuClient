@@ -5,7 +5,7 @@ pub struct DiffCalcTask {
     state: TatakuTaskState,
 
     beatmap: Arc<BeatmapMeta>,
-    info: Arc<dyn GameModeInfo>,
+    info: GameModeInfo,
 
     diff_calc: Option<Box<dyn DiffCalc>>,
     failed_to_get_diff_calc: bool,
@@ -17,7 +17,7 @@ pub struct DiffCalcTask {
 impl DiffCalcTask {
     pub fn new(
         beatmap: Arc<BeatmapMeta>, 
-        info: Arc<dyn GameModeInfo>
+        info: GameModeInfo
     ) -> Self {
         let mod_mutations = vec![HashSet::new()];
 
@@ -38,7 +38,7 @@ impl DiffCalcTask {
 
 #[async_trait]
 impl TatakuTask for DiffCalcTask {
-    fn get_name(&self) -> Cow<'static, str> { Cow::Owned(format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.info.display_name())) }
+    fn get_name(&self) -> Cow<'static, str> { Cow::Owned(format!("Diff Calc for beatmap: {} and mode {}", self.beatmap.beatmap_hash, self.info.display_name)) }
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 

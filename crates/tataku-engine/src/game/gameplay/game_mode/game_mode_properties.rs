@@ -21,5 +21,5 @@ pub trait GameModeProperties: Send + Sync {
     /// f32 is hitwindow, color is color for that window
     fn timing_bar_things(&self) -> Vec<(f32, Color)>;
     
-    fn get_info(&self) -> Arc<dyn GameModeInfo>;
+    fn get_info(&self) -> GameModeInfo;
 }

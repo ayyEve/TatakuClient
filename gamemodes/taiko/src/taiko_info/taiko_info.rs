@@ -1,14 +1,52 @@
 use crate::prelude::*;
+use futures_util::future::BoxFuture;
+
+pub const GAME_INFO: GameModeInfo = GameModeInfo {
+    id: "taiko",
+    display_name: "Taiko",
+    about: "Taiko!",
+    author: "ayyEve",
+
+    mods: &[
+        GameplayModGroupStatic {
+            name: "Skill",
+            mods: &[
+                FullAlt,
+                Relax,
+                NoFinisher,
+                NoSV,
+            ]
+        },
+        GameplayModGroupStatic {
+            name: "Difficulty",
+            mods: &[
+                HardRock,
+                Easy,
+                Flashlight,
+                NoBattery,
+            ]
+        },
+    ],
+    stat_groups: &[
+        TaikoPressCounterStatGroup
+    ],
+    judgments: super::TaikoHitJudgments::variants(),
+
+    calc_acc: &TaikoGameInfo::calc_acc,
+    get_diff_string: &TaikoGameInfo::get_diff_string,
+    stats_from_groups: &TaikoGameInfo::stats_from_groups,
+    create_game: &TaikoGameInfo::create_game,
+    create_diffcalc: &TaikoGameInfo::create_diffcalc,
+
+    ..GameModeInfo::DEFAULT
+};
+
+
 
 #[derive(Debug)]
-pub struct TaikoGameInfo;
-#[async_trait]
-impl GameModeInfo for TaikoGameInfo {
-    fn new() -> Self { Self }
-    fn id(&self) -> &'static str { "taiko" }
-    fn display_name(&self) -> &'static str { "Taiko" }
-
-    fn calc_acc(&self, score: &Score) -> f32 {
+struct TaikoGameInfo;
+impl TaikoGameInfo {
+    fn calc_acc(score: &Score) -> f32 {
         let x100 = score.judgments.get("x100").copied().unwrap_or_default() as f32;
         let x300 = score.judgments.get("x300").copied().unwrap_or_default() as f32;
         let miss = score.judgments.get("xmiss").copied().unwrap_or_default() as f32;
@@ -17,30 +55,7 @@ impl GameModeInfo for TaikoGameInfo {
         / (miss + x100 + x300)
     }
 
-    fn get_mods(&self) -> Vec<GameplayModGroup> { 
-        vec![
-            GameplayModGroup::new("Skill")
-                .with_mod(FullAlt)
-                .with_mod(Relax)
-                .with_mod(NoFinisher)
-                .with_mod(NoSV)
-            ,
-            GameplayModGroup::new("Difficulty")
-                .with_mod(HardRock)
-                .with_mod(Easy)
-                .with_mod(Flashlight)
-                .with_mod(NoBattery)
-            ,
-        ]
-    }
-
-    fn get_stat_groups(&self) -> Vec<StatGroup> {
-        vec![
-            TaikoPressCounterStatGroup,
-        ]
-    }
-
-    fn get_diff_string(&self, info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
+    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
         let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
@@ -76,21 +91,8 @@ impl GameModeInfo for TaikoGameInfo {
         txt
     }
 
-    fn get_judgments(&self) -> Vec<HitJudgment> {
-        super::TaikoHitJudgments::variants().to_vec()
-    }
-    async fn create_game(&self, beatmap: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        let game = TaikoGame::new(beatmap, false).await?;
-        Ok(Box::new(game))
-    }
-    async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        let calc = TaikoDifficultyCalculator::new(map).await?;
-        Ok(Box::new(calc))
-    }
-
-
     #[cfg(feature="graphics")]
-    fn stats_from_groups(&self, data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
+    fn stats_from_groups(data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { 
         let mut info = Vec::new();
 
         macro_rules! get_or_return {
@@ -110,4 +112,21 @@ impl GameModeInfo for TaikoGameInfo {
 
         info
     }
+
+
+    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+        Box::pin(async {
+            let game:Box<dyn GameMode> = Box::new(TaikoGame::new(beatmap, false).await?);
+            Ok(game)
+        })
+    }
+    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+        Box::pin(async {
+            let calc:Box<dyn DiffCalc> = Box::new(TaikoDifficultyCalculator::new(map).await?);
+            Ok(calc)
+        })
+    }
+
+
+
 }

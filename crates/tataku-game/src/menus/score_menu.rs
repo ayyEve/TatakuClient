@@ -57,7 +57,10 @@ impl ScoreMenu {
     ) -> ScoreMenu {
         let hit_error = score.hit_error();
 
-        let judgments = infos.get_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
+        let judgments = infos
+            .get_info(&score.playmode)
+            .map(|i| i.judgments)
+            .unwrap_or_default();
         
         // map hit types to a display string
         let mut hit_counts = Vec::new();
@@ -82,7 +85,7 @@ impl ScoreMenu {
             if score_mods.len() > 0 { score_mods = format!("Mods: {score_mods}"); }
 
 
-            let mut groups = gamemode_info.get_stat_groups();
+            let mut groups = gamemode_info.stat_groups.iter().copied().collect::<Vec<_>>();
             groups.extend(default_stat_groups());
             let data = score.stats_into_groups(&groups);
 
@@ -172,7 +175,7 @@ impl ScoreMenu {
     async fn change_score(&mut self, score: IngameScore) {
         self.hit_error = score.hit_error();
 
-        let judgments = self.infos.get_info(&score.playmode).map(|i| i.get_judgments()).unwrap_or_default();
+        let judgments = self.infos.get_info(&score.playmode).map(|i| i.judgments).unwrap_or_default();
         
         // map hit types to a display string
         self.hit_counts.clear();
@@ -198,7 +201,7 @@ impl ScoreMenu {
             if self.score_mods.len() > 0 { self.score_mods = format!("Mods: {}", self.score_mods); }
             
             // stats
-            let mut groups = gamemode_info.get_stat_groups();
+            let mut groups = gamemode_info.stat_groups.iter().copied().collect::<Vec<_>>();
             groups.extend(default_stat_groups().clone());
             let data = score.stats_into_groups(&groups);
 
@@ -253,7 +256,7 @@ impl ScoreMenu {
 
                 let BeatmapMeta { artist, title, version, .. } = &*self.beatmap;
                 let Score { playmode, username, time, .. } = &self.score.score;
-                let playmode = self.infos.get_info(playmode).unwrap().display_name();
+                let playmode = self.infos.get_info(playmode).unwrap().display_name;
 
                 let mut date = String::new();
                 if let Some(datetime) = NaiveDateTime::from_timestamp_opt(*time as i64, 0) {
@@ -444,7 +447,7 @@ impl AsyncMenu for ScoreMenu {
         use crate::prelude::iced_elements::*;
 
         // score info
-        let beatmap_label = format!("{} ({}) (x{:.2})", self.beatmap.version_string(), self.infos.get_info(&self.score.playmode).unwrap().display_name(), self.score.speed);
+        let beatmap_label = format!("{} ({}) (x{:.2})", self.beatmap.version_string(), self.infos.get_info(&self.score.playmode).unwrap().display_name, self.score.speed);
         col!(
             // beatmap label
             Text::new(beatmap_label).width(Fill),

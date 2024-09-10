@@ -47,20 +47,21 @@ impl DiffCalcSummary {
 // }
 #[derive(Default, Debug, Clone)]
 pub struct GamemodeInfos {
-    pub by_id: Arc<HashMap<String, Arc<dyn GameModeInfo>>>,
-    pub by_num: Arc<Vec<Arc<dyn GameModeInfo>>>,
+    pub by_id: Arc<HashMap<&'static str, GameModeInfo>>,
+    pub by_num: Arc<Vec<GameModeInfo>>,
 }
 impl GamemodeInfos {
-    pub fn new(list: Vec<Arc<dyn GameModeInfo>>) -> Self {
+    pub fn new(list: Vec<GameModeInfo>) -> Self {
         Self {
-            by_id: Arc::new(list.iter().cloned()
-                .map(|i| (i.id().to_string(), i))
+            by_id: Arc::new(list.iter()
+                .cloned()
+                .map(|i| (i.id, i))
                 .collect()
             ),
             by_num: Arc::new(list),
         }
     }
-    pub fn get_info(&self, gamemode: &str) -> TatakuResult<&Arc<dyn GameModeInfo>> {
+    pub fn get_info(&self, gamemode: &str) -> TatakuResult<&GameModeInfo> {
         self.by_id
             .get(gamemode)
             .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))

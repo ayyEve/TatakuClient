@@ -14,6 +14,8 @@ debug_sliders = []
 log.workspace = true
 async-trait.workspace = true
 
+futures-util.workspace = true
+
 tataku-common.workspace = true
 
 tataku-engine.workspace = true

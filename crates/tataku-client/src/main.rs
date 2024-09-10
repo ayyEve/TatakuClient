@@ -119,10 +119,10 @@ fn start_game<'window>(
                 #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
             ],
             vec![
-                Arc::new(gamemode_osu::GameInfo),
-                Arc::new(gamemode_taiko::GameInfo),
-                Arc::new(gamemode_mania::GameInfo),
-                Arc::new(gamemode_utyping::GameInfo),
+                gamemode_osu::GAME_INFO,
+                gamemode_taiko::GAME_INFO,
+                gamemode_mania::GAME_INFO,
+                gamemode_utyping::GAME_INFO,
             ]
         ).await;
         trace!("running game");

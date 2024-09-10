@@ -6,7 +6,7 @@ mod mania_info;
 mod mania_notes;
 mod mania_helpers;
 
-pub use mania_info::ManiaGameInfo as GameInfo;
+pub use mania_info::GAME_INFO;
 
 
 mod prelude {

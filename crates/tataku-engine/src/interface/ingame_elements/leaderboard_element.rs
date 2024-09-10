@@ -5,14 +5,14 @@ pub struct LeaderboardElement {
     scores: Vec<IngameScore>,
     image: Option<Image>,
 
-    info: Arc<dyn GameModeInfo>,
+    info: GameModeInfo,
 }
 impl LeaderboardElement {
-    pub async fn new(info: &Arc<dyn GameModeInfo>) -> Self {
+    pub async fn new(info: GameModeInfo) -> Self {
         Self {
             scores: Vec::new(),
             image: None,
-            info: info.clone()
+            info
         }
     }
 }
@@ -108,12 +108,12 @@ pub struct LeaderboardItem {
     // pub theme: ThemeHelper,
     theme: Theme,
 
-    info: Arc<dyn GameModeInfo>
+    info: GameModeInfo
 }
 impl LeaderboardItem {
     pub fn new(
         score: IngameScore,
-        info: Arc<dyn GameModeInfo>
+        info: GameModeInfo
     ) -> LeaderboardItem {
         let pos = Vector2::ZERO;
         let size = LEADERBOARD_ITEM_SIZE;

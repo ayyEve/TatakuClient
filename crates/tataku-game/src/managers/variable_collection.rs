@@ -416,7 +416,7 @@ impl GlobalInfo {
     ) {
         self.playmode = playmode.clone();
         let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
-        self.playmode_display = info.display_name().to_owned();
+        self.playmode_display = info.display_name.to_owned();
     }
     pub fn update_playmode_actual(
         &mut self, 
@@ -424,7 +424,7 @@ impl GlobalInfo {
     ) {
         self.playmode_actual = playmode.clone();
         let Ok(info) = self.gamemode_infos.get_info(&playmode) else { return };
-        self.playmode_actual_display = info.display_name().to_owned();
+        self.playmode_actual_display = info.display_name.to_owned();
     }
 }
 
@@ -441,9 +441,9 @@ pub struct EnumInfo {
 }
 impl EnumInfo {
     pub fn new(infos: &GamemodeInfos) -> Self {
-        let playmodes = infos.by_num.iter().map(|g| g.id().to_string()).collect::<Vec<_>>();
+        let playmodes = infos.by_num.iter().map(|g| g.id.to_string()).collect::<Vec<_>>();
         let playmodes_display = infos.by_num.iter()
-            .map(|s| s.display_name().to_owned())
+            .map(|s| s.display_name.to_owned())
             .collect();
 
         Self {

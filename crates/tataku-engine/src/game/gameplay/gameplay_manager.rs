@@ -50,7 +50,7 @@ pub struct GameplayManager {
     pub beatmap: Beatmap,
     pub metadata: Arc<BeatmapMeta>,
     pub gamemode: Box<dyn GameMode>,
-    pub gamemode_info: Arc<dyn GameModeInfo>,
+    pub gamemode_info: GameModeInfo,
     pub current_mods: Arc<ModManager>,
     pub beatmap_preferences: BeatmapPreferences,
 
@@ -195,7 +195,7 @@ impl GameplayManager {
             health: Box::new(DefaultHealthManager::new()),
             key_counter,
 
-            judgments: gamemode_info.get_judgments(),
+            judgments: gamemode_info.judgments.into_iter().copied().collect(),
             score: IngameScore::new(score, true, false),
 
             beatmap,
@@ -510,7 +510,11 @@ impl GameplayManager {
         // update score stuff now that gamemode has been updated
         
         self.score.accuracy = self.gamemode_info.calc_acc(&self.score);
-        self.score.performance = self.gamemode_info.get_perf_calc()(self.map_diff, self.score.accuracy as f32);
+        self.score.performance = self.gamemode_info.calc_perf( CalcPerfInfo {
+            score: &self.score,
+            map_difficulty: self.map_diff, 
+            accuracy: self.score.accuracy
+        });
         // self.score.take_snapshot(time, self.health.get_ratio());
 
         // do fail things

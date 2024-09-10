@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct StatGroup {
     pub name: &'static str,
     pub display_name: &'static str,
