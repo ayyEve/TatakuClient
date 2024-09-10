@@ -56,7 +56,7 @@ pub struct OsuGame {
 }
 impl OsuGame {
     async fn recalculate_playfield(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new(self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
+        let new_scale = Arc::new(ScalingHelper::new_with_settings(&self.game_settings, self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
         self.apply_playfield(new_scale).await
     }
     async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
@@ -331,18 +331,22 @@ impl OsuGame {
 
 #[async_trait]
 impl GameMode for OsuGame {
-    async fn new(map: &Beatmap, diff_calc_only: bool) -> TatakuResult<Self> {
+    async fn new(
+        map: &Beatmap, 
+        diff_calc_only: bool,
+        settings: &Settings,
+    ) -> TatakuResult<Self> {
         let metadata = map.get_beatmap_meta();
         let mods = Arc::new(Default::default());
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let settings = Settings::get().osu_settings.clone();
+        let settings = settings.osu_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
         let od = Self::get_od(&metadata, &mods);
-        let scaling_helper = Arc::new(ScalingHelper::new(cs, effective_window_size, mods.has_mod(HardRock)).await);
+        let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&settings, cs, effective_window_size, mods.has_mod(HardRock)).await);
 
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
 
@@ -676,7 +680,7 @@ impl GameMode for OsuGame {
 
     async fn update<'a>(
         &mut self, 
-        state: &mut GameplayStateForUpdate<'a>
+        state: &mut GameplayStateForUpdate<'a>,
     ) {
         // let mut pending_frames = Vec::new();
 
@@ -685,7 +689,7 @@ impl GameMode for OsuGame {
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update(state.time).await;
+        self.cursor.update(state.time, ).await;
 
         let has_autoplay = state.mods.has_autoplay();
         let has_relax = state.mods.has_mod(Relax);

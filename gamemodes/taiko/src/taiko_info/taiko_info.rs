@@ -1,7 +1,8 @@
 use crate::prelude::*;
 use futures_util::future::BoxFuture;
 
-pub const GAME_INFO: GameModeInfo = GameModeInfo {
+#[no_mangle]
+pub static GAME_INFO: GameModeInfo = GameModeInfo {
     id: "taiko",
     display_name: "Taiko",
     about: "Taiko!",
@@ -32,11 +33,11 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     ],
     judgments: super::TaikoHitJudgments::variants(),
 
-    calc_acc: &TaikoGameInfo::calc_acc,
-    get_diff_string: &TaikoGameInfo::get_diff_string,
-    stats_from_groups: &TaikoGameInfo::stats_from_groups,
-    create_game: &TaikoGameInfo::create_game,
-    create_diffcalc: &TaikoGameInfo::create_diffcalc,
+    calc_acc: TaikoGameInfo::calc_acc,
+    get_diff_string: TaikoGameInfo::get_diff_string,
+    stats_from_groups: TaikoGameInfo::stats_from_groups,
+    create_game: TaikoGameInfo::create_game,
+    create_diffcalc: TaikoGameInfo::create_diffcalc,
 
     ..GameModeInfo::DEFAULT
 };
@@ -114,15 +115,15 @@ impl TaikoGameInfo {
     }
 
 
-    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
-            let game:Box<dyn GameMode> = Box::new(TaikoGame::new(beatmap, false).await?);
+            let game:Box<dyn GameMode> = Box::new(TaikoGame::new(beatmap, false, settings).await?);
             Ok(game)
         })
     }
-    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
         Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(TaikoDifficultyCalculator::new(map).await?);
+            let calc:Box<dyn DiffCalc> = Box::new(TaikoDifficultyCalculator::new(map, settings).await?);
             Ok(calc)
         })
     }

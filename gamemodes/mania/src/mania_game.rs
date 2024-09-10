@@ -311,10 +311,10 @@ impl ManiaGame {
 
 #[async_trait]
 impl GameMode for ManiaGame {
-    async fn new(beatmap:&Beatmap, _: bool) -> TatakuResult<Self> {
+    async fn new(beatmap:&Beatmap, _: bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
-        let game_settings = Settings::get().mania_settings.clone();
+        let game_settings = settings.mania_settings.clone();
         let playfields = &game_settings.playfield_settings.clone();
         let auto_helper = ManiaAutoHelper::new();
         let window_size = WindowSize::get();

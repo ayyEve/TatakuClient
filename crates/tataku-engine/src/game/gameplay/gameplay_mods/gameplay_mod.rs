@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 use crate::prelude::*;
 
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayMod {
     /// mod identifier, used in the mods hashmap

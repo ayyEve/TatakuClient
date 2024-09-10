@@ -10,10 +10,10 @@ pub const GAME_INFO:GameModeInfo = GameModeInfo {
     mods: &[],
 
     judgments: ManiaHitJudgments::variants(),
-    calc_acc: &ManiaGameInfo::calc_acc,
-    get_diff_string: &ManiaGameInfo::get_diff_string,
-    create_game: &ManiaGameInfo::create_game,
-    create_diffcalc: &ManiaGameInfo::create_diffcalc,
+    calc_acc: ManiaGameInfo::calc_acc,
+    get_diff_string: ManiaGameInfo::get_diff_string,
+    create_game: ManiaGameInfo::create_game,
+    create_diffcalc: ManiaGameInfo::create_diffcalc,
 
     .. GameModeInfo::DEFAULT
 };
@@ -81,15 +81,15 @@ impl ManiaGameInfo {
         txt
     }
 
-    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
-            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false).await?);
+            let game: Box<dyn GameMode> = Box::new(ManiaGame::new(beatmap, false, settings).await?);
             Ok(game)
         })
     }
-    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
         Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(ManiaDifficultyCalculator::new(map).await?);
+            let calc:Box<dyn DiffCalc> = Box::new(ManiaDifficultyCalculator::new(map, settings).await?);
             Ok(calc)
         })
     }

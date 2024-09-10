@@ -140,11 +140,11 @@ impl ScoreMenu {
         // }
     }
 
-    async fn replay(&mut self) {
+    async fn replay(&mut self, settings: &Settings) {
         if self.score.replay.is_some() {
             self.do_replay((*self.score).clone()).await;
         } else {
-            match self.score.get_replay().await {
+            match self.score.get_replay(settings).await {
                 Ok(score) => self.do_replay(score).await,
                 Err(e) => self.actions.push(GameAction::AddNotification(Notification::new_error("Error loading replay", e))),
             }
@@ -501,11 +501,11 @@ impl AsyncMenu for ScoreMenu {
         )
     }
     
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
         let Some(tag) = message.tag.as_string() else { return };
         match &*tag {
             "retry" => self.retry().await,
-            "replay" => self.replay().await,
+            "replay" => self.replay(values.reflect_get::<Settings>("settings").unwrap()).await,
             "back" => self.close().await,
             "score" => if let MessageType::Number(num) = message.message_type {
                 if let ScoreMenuType::Multiplayer { lobby_items, .. } = &*self.menu_type {

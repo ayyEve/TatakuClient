@@ -4,7 +4,7 @@ use crate::prelude::*;
 /// so nothing will be directly mutable
 pub trait DirectDownloadable: Send + Sync {
     /// perform the download
-    fn download(&self);
+    fn download(&self, settings: &Settings);
 
     // get if this item is downloading
     fn is_downloading(&self) -> bool;

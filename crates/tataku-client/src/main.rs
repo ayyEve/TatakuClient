@@ -119,11 +119,12 @@ fn start_game<'window>(
                 #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
             ],
             vec![
-                gamemode_osu::GAME_INFO,
-                gamemode_taiko::GAME_INFO,
-                gamemode_mania::GAME_INFO,
-                gamemode_utyping::GAME_INFO,
-            ]
+                GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
+                // gamemode_osu::GAME_INFO,
+                // gamemode_taiko::GAME_INFO,
+                // gamemode_mania::GAME_INFO,
+                // gamemode_utyping::GAME_INFO,
+            ],
         ).await;
         trace!("running game");
         game.game_loop().await;
@@ -140,7 +141,7 @@ fn start_game<'window>(
     #[cfg(feature="graphics")]
     let game_window = window_runtime.block_on(async {
         info!("creating window");
-        let settings = Settings::get();
+        let settings = Settings::load(&mut ActionQueue::new()).await;
 
         GameWindow::new(
             game_event_sender, 

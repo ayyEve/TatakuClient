@@ -35,6 +35,7 @@ use futures_util::future::BoxFuture;
 //     fn stats_from_groups(&self, _data: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { Vec::new() }
 // }
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct GameModeInfo {
     pub id: &'static str,
@@ -48,14 +49,14 @@ pub struct GameModeInfo {
     pub stat_groups: &'static [StatGroup],
     pub judgments: &'static [HitJudgment],
 
-    pub calc_acc: &'static (dyn Fn(&Score) -> f32 + Send + Sync),
-    pub calc_perf: &'static (dyn Fn(CalcPerfInfo<'_>) -> f32 + Send + Sync),
+    pub calc_acc: fn(&Score) -> f32,
+    pub calc_perf: fn(CalcPerfInfo<'_>) -> f32,
 
-    pub get_diff_string: &'static (dyn Fn(&BeatmapMetaWithDiff, &ModManager) -> String + Send + Sync),
-    pub stats_from_groups: &'static (dyn Fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> + Send + Sync),
+    pub get_diff_string: fn(&BeatmapMetaWithDiff, &ModManager) -> String,
+    pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo>,
 
-    pub create_game: &'static (dyn Fn(&Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> + Send + Sync),
-    pub create_diffcalc: &'static (dyn Fn(&BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> + Send + Sync),
+    pub create_game: for<'a> fn(&'a Beatmap, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>>,
+    pub create_diffcalc: for<'a> fn(&'a BeatmapMeta, &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>>,
 }
 impl GameModeInfo {
     pub const DEFAULT: Self = Self {
@@ -68,12 +69,12 @@ impl GameModeInfo {
         mods: &[],
         stat_groups: &[],
         judgments: &[],
-        calc_acc: &Self::dummy_calc_acc,
-        calc_perf: &Self::dummy_calc_perf,
-        get_diff_string: &Self::dummy_diff_str,
-        stats_from_groups: &Self::dummy_stats,
-        create_game: &Self::dummy_create_game,
-        create_diffcalc: &Self::dummy_create_diffcalc,
+        calc_acc: Self::dummy_calc_acc,
+        calc_perf: Self::dummy_calc_perf,
+        get_diff_string: Self::dummy_diff_str,
+        stats_from_groups: Self::dummy_stats,
+        create_game: Self::dummy_create_game,
+        create_diffcalc: Self::dummy_create_diffcalc,
     };
 
     fn dummy_calc_acc(_:&Score) -> f32 { 0.0 }
@@ -81,8 +82,8 @@ impl GameModeInfo {
     fn dummy_diff_str(_: &BeatmapMetaWithDiff, _: &ModManager) -> String { String::new() }
     fn dummy_stats(_: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { Vec::new() }
 
-    fn dummy_create_game(_: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
-    fn dummy_create_diffcalc(_: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
+    fn dummy_create_game<'a>(_: &'a Beatmap, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
+    fn dummy_create_diffcalc<'a>(_: &'a BeatmapMeta, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
 
     pub fn calc_acc(&self, score: &Score) -> f32 {
         (self.calc_acc)(score)
@@ -98,12 +99,12 @@ impl GameModeInfo {
         (self.stats_from_groups)(stats)
     }
 
-    pub async fn create_game(&self, map: &Beatmap) -> TatakuResult<Box<dyn GameMode>> {
-        (self.create_game)(map).await
+    pub async fn create_game(&self, map: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
+        (self.create_game)(map, settings).await
     }
     
-    pub async fn create_diffcalc(&self, map: &BeatmapMeta) -> TatakuResult<Box<dyn DiffCalc>> {
-        (self.create_diffcalc)(map).await
+    pub async fn create_diffcalc(&self, map: &BeatmapMeta, settings: &Settings) -> TatakuResult<Box<dyn DiffCalc>> {
+        (self.create_diffcalc)(map, settings).await
     }
 
 

@@ -24,7 +24,7 @@ pub async fn load_osu_skins(path: impl AsRef<Path>) {
     }
 }
 
-pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError> {
+pub async fn load_osu_settings(path: impl AsRef<Path>, settings: &mut Settings) -> Result<(), TatakuError> {
     let path = path.as_ref();
     let data = Io::read_lines_resolved(path)?
         .map(|i| {
@@ -37,8 +37,6 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
         .filter_map(|i|i)
         .collect::<HashMap<String, String>>();
 
-
-    let mut settings = Settings::get_mut();
 
     // read bool from map
     macro_rules! bool {
@@ -121,7 +119,7 @@ pub async fn load_osu_settings(path: impl AsRef<Path>) -> Result<(), TatakuError
     num_big!("VolumeUniversal", master_vol, f32);
     num_big!("VolumeEffect", effect_vol, f32);
     num_big!("VolumeMusic", music_vol, f32);
-    bool!("CursorRipple", cursor_ripples);
+    bool!("CursorRipple", cursor_settings, cursor_ripples);
     bool_rev!("IgnoreBeatmapSamples", beatmap_hitsounds);
     // bool_rev!("IgnoreBeatmapSkins", beatmap_skins);
     string_lower!("LastPlayMode", last_played_mode);

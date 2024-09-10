@@ -83,9 +83,8 @@ impl OnlineManager {
     }
 
     #[cfg(feature="gameplay")]
-    pub async fn start() {
+    pub async fn start(settings: Settings) {
         info!("starting network connection");
-        let mut settings = SettingsHelper::new();
 
         // // insert multiplayer data
         // GlobalValueManager::update(Arc::new(MultiplayerData::default()));
@@ -115,12 +114,10 @@ impl OnlineManager {
                 }
 
                 while let Some(message) = reader.next().await {
-                    if settings.update() {
-                        if settings.server_url != server_url {
-                            info!("server url changed, restarting network manager");
-                            Self::restart();
-                            return;
-                        }
+                    if settings.server_url != server_url {
+                        info!("server url changed, restarting network manager");
+                        Self::restart();
+                        return;
                     }
 
                     match message {
@@ -272,13 +269,13 @@ impl OnlineManager {
                     let mut s = OnlineManager::get_mut().await;
                     s.users.insert(user_id, Arc::new(Mutex::new(user)));
 
-                    // if this is us, make sure we have the correct username text
-                    if s.user_id == user_id {
-                        let mut settings = Settings::get_mut();
-                        if settings.username != username {
-                            settings.username = username.clone()
-                        }
-                    }
+                    // // if this is us, make sure we have the correct username text
+                    // if s.user_id == user_id {
+                    //     let mut settings = Settings::get_mut();
+                    //     if settings.username != username {
+                    //         settings.username = username.clone()
+                    //     }
+                    // }
 
                     if s.friends.contains(&user_id) {
                         NotificationManager::add_text_notification(format!("{username} is online"), 5000.0, Color::BLUE).await;
@@ -486,16 +483,16 @@ impl OnlineManager {
             //     discord.change_status(&action_info, incoming_mode).await;
             // }
 
-            if Settings::get().integrations.lastfm {
-                match &action_info {
-                    SetAction::Listening { artist, title, .. } 
-                    | SetAction::Playing { artist, title, .. } 
-                    | SetAction::Spectating { artist, title, .. } => {
-                        LastFmIntegration::update(title.clone(), artist.clone()).await;
-                    }
-                    _ => {}
-                }
-            }
+            // if Settings::get().integrations.lastfm {
+            //     match &action_info {
+            //         SetAction::Listening { artist, title, .. } 
+            //         | SetAction::Playing { artist, title, .. } 
+            //         | SetAction::Spectating { artist, title, .. } => {
+            //             LastFmIntegration::update(title.clone(), artist.clone()).await;
+            //         }
+            //         _ => {}
+            //     }
+            // }
 
         });
     }

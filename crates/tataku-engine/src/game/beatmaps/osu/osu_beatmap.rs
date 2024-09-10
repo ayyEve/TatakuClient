@@ -469,6 +469,7 @@ impl TatakuBeatmap for OsuBeatmap {
             storyboard.clone(), 
             parent_dir, 
             skin_manager,
+            OsuSettings::default(), // TODO: !!!!!
         ).await {
             Ok(sb) => {
                 info!("made anim");

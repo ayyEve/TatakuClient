@@ -82,6 +82,8 @@ pub struct GameplayManager {
     pub end_time: f32,
     pub lead_in_time: f32,
     pub lead_in_timer: Instant,
+    
+    global_offset: f32,
 
     /// has something about the ui been changed?
     /// this will make the play unrankable and should not be saved
@@ -114,7 +116,7 @@ pub struct GameplayManager {
     pub judgement_indicators: Vec<Box<dyn JudgementIndicator>>,
 
     pub common_game_settings: Arc<CommonGameplaySettings>,
-    settings: SettingsHelper,
+    // settings: SettingsHelper,
     window_size: Arc<WindowSize>,
     fit_to_bounds: Option<Bounds>,
 
@@ -144,11 +146,11 @@ impl GameplayManager {
         beatmap: Beatmap,
         mut gamemode: Box<dyn GameMode>,
         mut current_mods: ModManager,
+        settings: &Settings,
     ) -> Self {
         let playmode = gamemode.playmode();
         let metadata = beatmap.get_beatmap_meta();
 
-        let settings = SettingsHelper::new();
         let beatmap_preferences = Database::get_beatmap_prefs(metadata.beatmap_hash).await;
 
         let timing_points = beatmap.get_timing_points();
@@ -175,7 +177,7 @@ impl GameplayManager {
         let gamemode_info = gamemode.get_info();
 
         let mut hitsound_manager = HitsoundManager::new(audio_playmode_prefix);
-        hitsound_manager.init(&metadata, &mut actions).await;
+        hitsound_manager.init(&metadata, &mut actions, settings).await;
 
         let events = beatmap.get_events();
         // println!("loaded events {events:?}");
@@ -209,6 +211,7 @@ impl GameplayManager {
             lead_in_time: LEAD_IN_TIME,
             lead_in_timer: Instant::now(),
             end_time: gamemode.end_time(),
+            global_offset: settings.global_offset,
 
             center_text_helper: CenteredTextHelper::new(CENTER_TEXT_DRAW_TIME).await,
             beatmap_preferences,
@@ -219,8 +222,7 @@ impl GameplayManager {
 
             scores_loaded: false,
             score_list: Vec::new(),
-            // score_loader,
-            settings,
+            // score_loader, values: &mut dyn Reflec
             window_size: WindowSize::get(),
             start_time: chrono::Utc::now().timestamp(),
 
@@ -260,6 +262,7 @@ impl GameplayManager {
 
     #[cfg(feature="graphics")]
     async fn init_ui(&mut self) {
+        let mut loader = DefaultUiElementLoader;
         // if self.ui_editor.is_some() { return }
 
         let playmode = self.gamemode.playmode();
@@ -268,89 +271,93 @@ impl GameplayManager {
         };
 
         // score
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("score"),
             Vector2::new(self.window_size.x, 0.0),
-            ScoreElement::new().await
+            Box::new(ScoreElement::new().await)
         ).await);
 
         // Acc
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("acc"),
             Vector2::new(self.window_size.x, 40.0),
-            AccuracyElement::new().await
+            Box::new(AccuracyElement::new().await)
         ).await);
 
         // Performance
         // TODO: calc diff before starting somehow?
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("perf"),
             Vector2::new(self.window_size.x, 80.0),
-            PerformanceElement::new().await
+            Box::new(PerformanceElement::new().await)
         ).await);
 
         // Healthbar
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("healthbar"),
             Vector2::ZERO,
-            HealthBarElement::new(self.common_game_settings.clone()).await
+            Box::new(HealthBarElement::new(self.common_game_settings.clone()).await)
         ).await);
 
         // Duration Bar
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("durationbar"),
             Vector2::new(0.0, self.window_size.y),
-            DurationBarElement::new(self.common_game_settings.clone())
+            Box::new(DurationBarElement::new(self.common_game_settings.clone()))
         ).await);
 
         // Judgement Bar
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("judgementbar"),
             Vector2::new(self.window_size.x/2.0, self.window_size.y),
-            JudgementBarElement::new(self.gamemode.timing_bar_things())
+            Box::new(JudgementBarElement::new(self.gamemode.timing_bar_things()))
         ).await);
 
         // Key Counter
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("key_counter"),
             Vector2::new(self.window_size.x, self.window_size.y/2.0),
-            KeyCounterElement::new().await
+            Box::new(KeyCounterElement::new().await)
         ).await);
 
         // Spectators
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("spectators"),
             Vector2::new(0.0, self.window_size.y/3.0),
-            SpectatorsElement::new()
+            Box::new(SpectatorsElement::new())
         ).await);
 
         // judgement counter
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("judgement_counter"),
             Vector2::new(self.window_size.x, self.window_size.y * (2.0/3.0)),
-            JudgementCounterElement::new().await
+            Box::new(JudgementCounterElement::new().await)
         ).await);
 
 
 
         // elapsed timer
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("elapsed_timer"),
             Vector2::new(30.0, self.window_size.y - 150.0),
-            ElapsedElement::new().await
+            Box::new(ElapsedElement::new().await)
         ).await);
 
         // remaining timer
-        self.ui_elements.push(UIElement::new(
+        self.ui_elements.push(loader.load(
             &get_name("remaining_timer"),
             Vector2::new(self.window_size.x - 300.0, self.window_size.y - 150.0),
-            RemainingElement::new().await
+            Box::new(RemainingElement::new().await)
         ).await);
 
 
 
         // anything in the gamemode itself
-        self.gamemode.get_ui_elements(self.window_size.0, &mut self.ui_elements).await;
+        self.gamemode.get_ui_elements(
+            self.window_size.0, 
+            &mut self.ui_elements,
+            &mut loader,
+        ).await;
     }
 
     pub async fn apply_mods(&mut self, mut mods: ModManager) {
@@ -364,6 +371,7 @@ impl GameplayManager {
 
     pub async fn update(&mut self, values: &mut dyn Reflect) -> Vec<TatakuAction> {
         let new_time = *values.reflect_get::<f32>("song.position").unwrap();
+        let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         // if theres a time difference of over a second from when the last update was, pause the hitsound manager because there might be audio spam
         if new_time - self.song_time > 1000.0 {
@@ -372,8 +380,8 @@ impl GameplayManager {
 
         self.song_time = new_time;
 
-        // update settings
-        self.settings.update();
+        // // update settings
+        // self.settings.update();
 
         // make sure we jump to the time we're supposed to be at
         if let Some(time) = self.pending_time_jump {
@@ -440,7 +448,7 @@ impl GameplayManager {
 
             if self.lead_in_time <= 0.0 {
                 self.actions.push(SongAction::SetRate(self.game_speed()));
-                self.actions.push(SongAction::SetVolume(self.settings.get_music_vol()));
+                self.actions.push(SongAction::SetVolume(settings.get_music_vol()));
                 self.actions.push(SongAction::SetPosition(-self.lead_in_time));
                 self.actions.push(SongAction::Play);
 
@@ -496,7 +504,7 @@ impl GameplayManager {
 
         self.gamemode.update(&mut state).await;
         for action in state.actions {
-            self.handle_gamemode_action(action).await;
+            self.handle_gamemode_action(action, settings).await;
         }
         //.into_iter().map(|f| ReplayFrame::new(time, f));
 
@@ -710,7 +718,7 @@ impl GameplayManager {
 
         // handle any pending gameplay actions
         for a in self.gameplay_actions.take() {
-            self.handle_action(a).await;
+            self.handle_action(a, settings).await;
         }
 
         // TODO: rework this? 
@@ -739,7 +747,7 @@ impl GameplayManager {
 
         // handle any frames
         for ReplayFrame { time, action } in self.pending_frames.take() {
-            self.handle_frame(action, true, Some(time), true).await;
+            self.handle_frame(action, true, Some(time), true, settings).await;
         }
 
 
@@ -821,7 +829,11 @@ impl GameplayManager {
         self.center_text_helper.draw(time, list);
     }
 
-    pub async fn handle_action(&mut self, action: GameplayAction) {
+    pub async fn handle_action(
+        &mut self, 
+        action: GameplayAction,
+        settings: &Settings,
+    ) {
         match action {
             GameplayAction::Pause => self.pause(),
             GameplayAction::Resume => self.start().await,
@@ -830,13 +842,17 @@ impl GameplayManager {
             GameplayAction::FitToArea(bounds) => self.fit_to_area(bounds).await,
             GameplayAction::SetMode(mode) => self.set_mode(mode),
 
-            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save).await,
+            GameplayAction::AddReplayAction { action, should_save } => self.handle_frame(action, true, Some(self.time()), should_save, settings).await,
             GameplayAction::SetHitsoundsEnabled(enabled) => self.hitsound_manager.enabled = enabled,
         }
     }
 
     #[async_recursion::async_recursion]
-    async fn handle_gamemode_action(&mut self, action: GamemodeAction) {
+    async fn handle_gamemode_action(
+        &mut self, 
+        action: GamemodeAction,
+        settings: &Settings
+    ) {
         match action {
             GamemodeAction::AddJudgment(judgment) => {
 
@@ -905,8 +921,8 @@ impl GameplayManager {
                 // let timing_point = self.beatmap.control_point_at(note_time);
 
                 // get volume
-                let mut vol = self.settings.get_effect_vol();
-                if self.gameplay_mode.is_preview() { vol *= self.settings.background_game_settings.hitsound_volume };
+                let mut vol = settings.get_effect_vol();
+                if self.gameplay_mode.is_preview() { vol *= settings.background_game_settings.hitsound_volume };
 
                 self.hitsound_manager.play_sound(&sounds, vol);
             }
@@ -922,7 +938,7 @@ impl GameplayManager {
 
             GamemodeAction::AddIndicator(mut indicator) => {
                 indicator.set_start_time(self.time());
-                indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration, &self.settings);
+                indicator.set_draw_duration(self.common_game_settings.hit_indicator_draw_duration, settings);
                 self.judgement_indicators.push(indicator)
             }
 
@@ -930,7 +946,7 @@ impl GameplayManager {
             GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
             GamemodeAction::ComboBreak => self.combo_break(),
             GamemodeAction::FailGame => self.fail(),
-            GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true).await,
+            GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true, settings).await,
             GamemodeAction::ResetHealth => self.health.reset(),
             GamemodeAction::ReplaceHealth(new_health) => self.health = new_health,
             GamemodeAction::MapComplete => self.completed = true,
@@ -956,8 +972,8 @@ impl GameplayManager {
 
     pub fn time(&self) -> f32 {
         //let t = self.song.get_position();
-
-        self.song_time - (self.lead_in_time + self.beatmap_preferences.audio_offset + self.settings.global_offset)
+        // TODO: !!!!!!!!!!
+        self.song_time - (self.lead_in_time + self.beatmap_preferences.audio_offset) // + settings.global_offset)
     }
 
     pub fn should_save_score(&self) -> bool {
@@ -1174,7 +1190,9 @@ impl GameplayManager {
             &playmode, 
             &self.current_mods
         ).unwrap_or_default();
-        self.score = IngameScore::new(Score::new(self.beatmap.hash(), self.settings.username.clone(), playmode), true, false);
+
+        let username = self.score.username.clone();
+        self.score = IngameScore::new(Score::new(self.beatmap.hash(), username, playmode), true, false);
         self.score.speed = self.current_mods.speed;
         self.score_multiplier = 1.0;
         self.timing_points.reset();
@@ -1248,12 +1266,14 @@ impl GameplayManager {
         debug!("failed");
     }
 
-    pub fn combo_break(&mut self) {
+    pub fn combo_break(
+        &mut self
+    ) {
         // play hitsound
         if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
             let combobreak = Hitsound::new_simple("combobreak");
             // index of 1 because we want to try beatmap sounds
-            self.hitsound_manager.play_sound_single(&combobreak, None, self.settings.get_effect_vol());
+            self.hitsound_manager.play_sound_single(&combobreak, None);
         }
 
         // reset combo to 0
@@ -1387,6 +1407,7 @@ impl GameplayManager {
         force: bool,
         force_time: Option<f32>,
         should_add: bool,
+        settings: &Settings
     ) {
         // note to self: force is used when the frames are from the gamemode's update function
         if let ReplayAction::Press(KeyPress::SkipIntro) = frame {
@@ -1423,7 +1444,7 @@ impl GameplayManager {
             self.gamemode.handle_replay_frame(frame, &mut state).await;
 
             for action in state.actions.take() {
-                self.handle_gamemode_action(action).await;
+                self.handle_gamemode_action(action, settings).await;
             }
 
             if add_frames && should_add {
@@ -1446,6 +1467,7 @@ impl GameplayManager {
         &mut self, 
         key_input: KeyInput, 
         mods: KeyModifiers,
+        settings: &Settings,
     ) {
         let Some(key) = key_input.as_key() else { return };
 
@@ -1541,11 +1563,13 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn key_up(
         &mut self, 
         key_input: KeyInput,
+        settings: &Settings,
     ) {
         if self.should_skip_input() { return }
         let Some(key) = key_input.as_key() else { return };
@@ -1562,12 +1586,14 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn on_text(
         &mut self, 
         text: &String, 
         mods: &KeyModifiers,
+        settings: &Settings,
     ) {
         if self.should_skip_input() { return }
         let Some(frame) = self.gamemode.on_text(text, mods).await else { return };
@@ -1576,6 +1602,7 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
 
@@ -1583,6 +1610,7 @@ impl GameplayManager {
     pub async fn mouse_move(
         &mut self, 
         pos: Vector2,
+        settings: &Settings,
     ) {
         // #[cfg(feature="graphics")]
         // if let Some(ui_editor) = &mut self.ui_editor {
@@ -1592,11 +1620,18 @@ impl GameplayManager {
         // !self.should_handle_input() { return }
 
         let Some(frame) = self.gamemode.mouse_move(pos).await else { return };
-        self.handle_frame(frame, false, None, true).await;
+        self.handle_frame(
+            frame, 
+            false, 
+            None, 
+            true,
+            settings,
+        ).await;
     }
     pub async fn mouse_down(
         &mut self, 
         btn: MouseButton,
+        settings: &Settings,
     ) {
         // #[cfg(feature="graphics")]
         // if let Some(ui_editor) = &mut self.ui_editor {
@@ -1611,11 +1646,13 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn mouse_up(
         &mut self, 
         btn: MouseButton,
+        settings: &Settings,
     ) {
         // #[cfg(feature="graphics")]
         // if let Some(ui_editor) = &mut self.ui_editor {
@@ -1630,11 +1667,13 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn mouse_scroll(
         &mut self, 
         delta: f32,
+        settings: &Settings,
     ) {
         // #[cfg(feature="graphics")]
         // if let Some(ui_editor) = &mut self.ui_editor {
@@ -1648,6 +1687,7 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
 
@@ -1656,6 +1696,7 @@ impl GameplayManager {
         &mut self, 
         c: &GamepadInfo, 
         btn: ControllerButton,
+        settings: &Settings,
     ) {
         if self.should_skip_input() { return }
         let Some(frame) = self.gamemode.controller_press(c, btn).await else { return };
@@ -1664,12 +1705,14 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn controller_release(
         &mut self, 
         c: &GamepadInfo, 
         btn: ControllerButton,
+        settings: &Settings,
     ) {
         if self.should_skip_input() { return }
         let Some(frame) = self.gamemode.controller_release(c, btn).await else { return };
@@ -1678,12 +1721,14 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
     pub async fn controller_axis(
         &mut self, 
         c: &GamepadInfo, 
         axis_data: HashMap<Axis, (bool, f32)>,
+        settings: &Settings,
     ) {
         if self.should_skip_input() { return }
         let Some(frame) = self.gamemode.controller_axis(c, axis_data).await else { return };
@@ -1692,6 +1737,7 @@ impl GameplayManager {
             false, 
             None, 
             true,
+            settings,
         ).await;
     }
 
@@ -1747,22 +1793,28 @@ impl GameplayManager {
 
     pub async fn increment_global_offset(&mut self, delta:f32) {
         let time = self.time();
-        let mut settings = Settings::get_mut();
-        settings.global_offset += delta;
-
-        self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", settings.global_offset), time);
+        // let mut settings = Settings::get_mut();
+        // settings.global_offset += delta;
+        self.global_offset += delta;
+        self.center_text_helper.set_value(format!("Global Offset: {:.2}ms", self.global_offset), time);
     }
 
-    pub async fn force_update_settings(&mut self) {
-        self.settings.update();
-        self.gamemode.force_update_settings(&self.settings).await;
+    pub async fn force_update_settings(&mut self, settings: &Settings) {
+        // self.settings.update();
+        self.gamemode.force_update_settings(settings).await;
+        self.global_offset = settings.global_offset;
+        self.hitsound_manager.volume = settings.get_effect_vol();
     }
 
     #[cfg(feature="graphics")]
-    pub async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
+    pub async fn reload_skin(
+        &mut self, 
+        skin_manager: &mut dyn SkinProvider,
+        settings: &Settings,
+    ) {
         let parent_folder = self.beatmap.get_parent_dir().unwrap().to_string_lossy().to_string();
         let source = self.gamemode.reload_skin(&parent_folder, skin_manager).await;
-        self.hitsound_manager.reload_skin(&self.settings, &mut self.actions).await;
+        self.hitsound_manager.reload_skin(settings, &mut self.actions).await;
 
         #[cfg(feature="storyboards")]
         if let Some(anim) = self.beatmap.get_animation(skin_manager).await {

@@ -26,10 +26,10 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     ],
 
     judgments: OsuHitJudgments::variants(),
-    calc_acc: &OsuGameInfo::calc_acc,
-    get_diff_string: &OsuGameInfo::get_diff_string,
-    create_game: &OsuGameInfo::create_game,
-    create_diffcalc: &OsuGameInfo::create_diffcalc,
+    calc_acc: OsuGameInfo::calc_acc,
+    get_diff_string: OsuGameInfo::get_diff_string,
+    create_game: OsuGameInfo::create_game,
+    create_diffcalc: OsuGameInfo::create_diffcalc,
 
     .. GameModeInfo::DEFAULT
 };
@@ -127,15 +127,15 @@ impl OsuGameInfo {
         txt
     }
 
-    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
-            let game:Box<dyn GameMode> = Box::new(OsuGame::new(beatmap, false).await?);
+            let game:Box<dyn GameMode> = Box::new(OsuGame::new(beatmap, false, settings).await?);
             Ok(game)
         })
     }
-    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
         Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(OsuDifficultyCalculator::new(map).await?);
+            let calc:Box<dyn DiffCalc> = Box::new(OsuDifficultyCalculator::new(map, settings).await?);
             Ok(calc)
         })
     }

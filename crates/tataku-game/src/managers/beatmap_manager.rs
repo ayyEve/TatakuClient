@@ -72,8 +72,8 @@ impl BeatmapManager {
         self.refresh_maps(&mods, &playmode, sort_by).await;
     }
 
-    pub fn folders_to_check() -> Vec<std::path::PathBuf> {
-        let mut dirs_to_check = Settings::get().external_games_folders.clone();
+    pub fn folders_to_check(settings: &Settings) -> Vec<std::path::PathBuf> {
+        let mut dirs_to_check = settings.external_games_folders.clone();
         dirs_to_check.push(SONGS_DIR.to_owned());
 
         dirs_to_check.iter()
@@ -87,7 +87,7 @@ impl BeatmapManager {
 
     /// clear the cache and db,
     /// and do a full rescan of the songs folder
-    pub async fn full_refresh(&mut self) {
+    pub async fn full_refresh(&mut self, settings: &Settings) {
         self.beatmaps.clear();
         self.beatmaps_by_hash.clear();
 
@@ -96,7 +96,7 @@ impl BeatmapManager {
         let mut new_beatmaps = Vec::new();
 
         info!("Reading maps");
-        let folders = Self::folders_to_check();
+        let folders = Self::folders_to_check(settings);
         for f in folders {
             if let Some(maps) = self.check_folder(f, false).await {
                 new_beatmaps.extend(maps);
@@ -223,7 +223,8 @@ impl BeatmapManager {
         &mut self, 
         beatmap: Md5Hash, 
         post_delete: PostDelete,
-        if_create: SelectBeatmapConfig,
+        if_create: SelectBeatmapConfig, 
+        settings: &Settings,
     ) {
         // remove beatmap from ourselves
         self.beatmaps.retain(|b| b.beatmap_hash != beatmap);
@@ -247,12 +248,13 @@ impl BeatmapManager {
         if self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == beatmap).is_some() {
             match post_delete {
                 // select next beatmap
-                PostDelete::Next => { self.next_beatmap(if_create).await; },
-                PostDelete::Previous => { self.previous_beatmap(if_create).await; },
+                PostDelete::Next => { self.next_beatmap(if_create, settings).await; },
+                PostDelete::Previous => { self.previous_beatmap(if_create, settings).await; },
                 PostDelete::Random => if let Some(map) = self.random_beatmap() {
                     self.set_current_beatmap(
                         &map, 
                         if_create,
+                        settings,
                     ).await
                 }
             }
@@ -264,6 +266,7 @@ impl BeatmapManager {
         &mut self,
         beatmap: &Arc<BeatmapMeta>,
         config: SelectBeatmapConfig,
+        settings: &Settings,
     ) {
         debug!("Setting current beatmap to {} ({}) and playmode {}", beatmap.beatmap_hash, beatmap.file_path, config.playmode);
         self.played.push(beatmap.clone());
@@ -315,7 +318,7 @@ impl BeatmapManager {
             play: true,
             restart: config.restart_song,
             position: Some(if config.use_preview_time { beatmap.audio_preview } else { 0.0 }),
-            volume: Some(Settings::get().get_music_vol()),
+            volume: Some(settings.get_music_vol()),
             ..Default::default()
         })));
         // make sure the song is playing
@@ -395,20 +398,21 @@ impl BeatmapManager {
 
     pub async fn next_beatmap(
         &mut self, 
-        config: SelectBeatmapConfig
+        config: SelectBeatmapConfig, 
+        settings: &Settings
     ) -> bool {
         // println!("i: {}", self.play_index);
 
         match self.played.get(self.play_index + 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(&map, config).await;
+                self.set_current_beatmap(&map, config, settings).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 true
             }
 
             None => if let Some(map) = self.random_beatmap() {
-                self.set_current_beatmap(&map, config).await;
+                self.set_current_beatmap(&map, config, settings).await;
                 true
             } else {
                 false
@@ -426,14 +430,15 @@ impl BeatmapManager {
 
     pub async fn previous_beatmap(
         &mut self, 
-        config: SelectBeatmapConfig,
+        config: SelectBeatmapConfig, 
+        settings: &Settings,
     ) -> bool {
         if self.play_index == 0 { return false }
         // println!("i: {}", self.play_index);
 
         match self.played.get(self.play_index - 1).cloned() {
             Some(map) => {
-                self.set_current_beatmap(&map, config).await;
+                self.set_current_beatmap(&map, config, settings).await;
                 // since we're playing something already in the queue, dont append it again
                 self.played.pop();
                 // undo the index bump done in set_current_beatmap

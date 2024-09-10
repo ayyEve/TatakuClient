@@ -1,11 +1,13 @@
 // pub mod diff_calc;
 mod stats;
 mod game_mode;
+mod gamemode;
 mod gameplay_mods;
 mod gameplay_manager;
 mod gameplay_helpers;
 
 pub use stats::*;
+pub use gamemode::*;
 pub use game_mode::*;
 pub use gameplay_mods::*;
 pub use gameplay_manager::*;
@@ -15,7 +17,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait DiffCalc: Send + Sync {
-    async fn new(g: &BeatmapMeta) -> TatakuResult<Self> where Self:Sized;
+    async fn new(g: &BeatmapMeta, settings: &Settings) -> TatakuResult<Self> where Self:Sized;
     async fn calc(&mut self, mods: &ModManager) -> TatakuResult<DiffCalcSummary>;
 }
 #[derive(Default, serde::Serialize)]
@@ -49,16 +51,23 @@ impl DiffCalcSummary {
 pub struct GamemodeInfos {
     pub by_id: Arc<HashMap<&'static str, GameModeInfo>>,
     pub by_num: Arc<Vec<GameModeInfo>>,
+
+    _libraries: Arc<Vec<libloading::Library>>,
 }
 impl GamemodeInfos {
-    pub fn new(list: Vec<GameModeInfo>) -> Self {
+    pub fn new(list: Vec<GamemodeLibrary>) -> Self {
+
+        let (libraries, by_num): (_, Vec<GameModeInfo>) = list.into_iter()
+            .map(|i| (i._lib, i.info))
+            .unzip();
+
         Self {
-            by_id: Arc::new(list.iter()
-                .cloned()
-                .map(|i| (i.id, i))
+            by_id: Arc::new(by_num.iter()
+                .map(|i| (i.id, *i))
                 .collect()
             ),
-            by_num: Arc::new(list),
+            by_num: Arc::new(by_num),
+            _libraries: Arc::new(libraries),
         }
     }
     pub fn get_info(&self, gamemode: &str) -> TatakuResult<&GameModeInfo> {
@@ -74,14 +83,15 @@ pub async fn manager_from_playmode_path_hash<'a>(
     map_path: String,
     map_hash: Md5Hash,
     mods: ModManager,
+    settings: &Settings,
 ) -> TatakuResult<GameplayManager> {
     let beatmap = Beatmap::from_path_and_hash(map_path, map_hash)?;
     let playmode = beatmap.playmode(incoming_mode.to_owned());
 
     let info = infos.get_info(&playmode)?;
 
-    let gamemode = info.create_game(&beatmap).await?;
-    Ok(GameplayManager::new(beatmap, gamemode, mods).await)
+    let gamemode = info.create_game(&beatmap, settings).await?;
+    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
 }
 
 pub async fn manager_from_playmode(
@@ -89,15 +99,16 @@ pub async fn manager_from_playmode(
     incoming_mode: &str,
     beatmap: &BeatmapMeta,
     mods: ModManager,
+    settings: &Settings,
 ) -> TatakuResult<GameplayManager> {
     let beatmap = Beatmap::from_metadata(beatmap)?;
     let playmode = beatmap.playmode(incoming_mode.to_owned());
 
     let info = infos.get_info(&playmode)?;
 
-    let gamemode = info.create_game(&beatmap).await?;
+    let gamemode = info.create_game(&beatmap, settings).await?;
 
-    Ok(GameplayManager::new(beatmap, gamemode, mods).await)
+    Ok(GameplayManager::new(beatmap, gamemode, mods, settings).await)
 }
 
 

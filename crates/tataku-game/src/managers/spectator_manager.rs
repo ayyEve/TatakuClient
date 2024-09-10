@@ -79,10 +79,10 @@ impl SpectatorManager {
         let hash = map.beatmap_hash;
         if hash != map_hash { return }
 
-        match manager_from_playmode_path_hash(&self.infos, &playmode, map_path, hash, mods.clone()).await {
+        match manager_from_playmode_path_hash(&self.infos, &playmode, map_path, hash, mods.clone(), &values.settings).await {
             Ok(mut manager) => {
                 // set manager things
-                manager.handle_action(GameplayAction::ApplyMods(mods)).await;
+                manager.handle_action(GameplayAction::ApplyMods(mods), &values.settings).await;
                 manager.set_mode(GameplayMode::Spectator { 
                     host_id: self.host_id,
                     host_username: self.host_username.clone(),
@@ -239,15 +239,14 @@ impl SpectatorManager {
     }
 
 
-    async fn download_beatmap(&self, beatmap_hash: Md5Hash, map_game: MapGame) {
+    async fn download_beatmap(&self, beatmap_hash: Md5Hash, map_game: MapGame, settings: &Settings) {
 
         match map_game {
             MapGame::Osu => {
                 // need to query the osu api to get the set id for this hashmap
-                match OsuApi::get_beatmap_by_hash(&beatmap_hash).await {
+                match OsuApi::get_beatmap_by_hash(&beatmap_hash, settings).await {
                     Ok(Some(map_info)) => {
                         // we have a thing! lets download it
-                        let settings = Settings::get();
                         let username = &settings.osu_username;
                         let password = &settings.osu_password;
 

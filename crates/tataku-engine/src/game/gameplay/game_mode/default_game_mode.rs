@@ -7,7 +7,7 @@ pub struct NoMode;
 
 #[async_trait]
 impl GameMode for NoMode {
-    async fn new(_:&Beatmap, _:bool) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
+    async fn new(_:&Beatmap, _:bool, _: &Settings) -> Result<Self, TatakuError> where Self: Sized {Ok(Self {})}
 
     async fn handle_replay_frame<'a>(&mut self, _: ReplayFrame, _: &mut GameplayStateForUpdate<'a>) {}
     async fn update<'a>(&mut self, _: &mut GameplayStateForUpdate<'a>) { }

@@ -45,6 +45,7 @@ triple_buffer = { workspace = true, optional = true }
 crossbeam = { workspace = true }
 global_value_manager = { workspace = true }
 ipc-channel = { workspace = true, optional = true }
+libloading.workspace = true
 
 # image stuff
 # png = { workspace = true, optional = true }

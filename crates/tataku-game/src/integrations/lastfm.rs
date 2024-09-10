@@ -21,12 +21,10 @@ impl LastFmIntegration {
         }
     }
 
-    pub async fn update(track:String, artist: String) {
-        let settings = Settings::get();
+    pub async fn update(track:String, artist: String, settings: &Settings) {
         let username = settings.username.clone();
         let password = settings.password.clone();
         let url = settings.score_url.clone();
-        drop(settings);
 
 
         let body = serde_json::to_string(&LastFmNowPlayingRequest { username, password, track, artist }).unwrap();

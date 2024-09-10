@@ -22,20 +22,22 @@ pub struct CursorManager {
     left_pressed: bool,
     right_pressed: bool,
 
-    settings: SettingsHelper,
+    // settings: SettingsHelper,
     current_skin: Arc<SkinSettings>,
 
     ripples: Vec<TransformGroup>,
     // time: Instant,
     time: f32,
+
+    settings: CursorSettings,
 }
 
 impl CursorManager {
-    pub async fn new(skin: Arc<SkinSettings>) -> Self {
+    pub async fn new(skin: Arc<SkinSettings>, settings: CursorSettings) -> Self {
         // let (sender, event_receiver) = channel(1000);
         // CURSOR_EVENT_QUEUE.set(sender).expect("Cursor event queue already exists");
 
-        let settings = SettingsHelper::new();
+        // let settings = SettingsHelper::new();
         Self {
             pos: Vector2::ZERO,
 
@@ -90,8 +92,8 @@ impl CursorManager {
         self.time = time;
         self.pos = cursor_pos;
 
-        // check settings update 
-        self.settings.update();
+        // // check settings update 
+        // self.settings.update();
 
 
         // // work through the event queue

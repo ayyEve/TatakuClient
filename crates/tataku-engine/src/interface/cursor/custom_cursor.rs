@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[async_trait]
 pub trait CustomCursor {
-    async fn update(&mut self, time: f32);
+    async fn update(&mut self, time: f32, settings: &Settings);
     #[cfg(feature="graphics")]
     async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider);
 

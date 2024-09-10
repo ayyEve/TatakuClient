@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct GameplayModGroupStatic {
     pub name: &'static str,

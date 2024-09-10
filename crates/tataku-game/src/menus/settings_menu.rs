@@ -26,11 +26,11 @@ pub struct SettingsMenu {
     last_click_was_us: bool,
 }
 impl SettingsMenu {
-    pub async fn new() -> SettingsMenu {
+    pub async fn new(settings: &Settings) -> SettingsMenu {
         SettingsMenu {
             num: 0,
             filter_text: String::new(),
-            old_settings: Settings::get().as_ref().clone(),
+            old_settings: settings.clone(),
             should_close: false,
             mouse_pos: Vector2::ZERO,
             last_click_was_us: false
@@ -38,17 +38,17 @@ impl SettingsMenu {
     }
 
     pub fn revert(&mut self) { 
-        let mut s = Settings::get_mut();
-        *s = self.old_settings.clone();
-        s.skip_autosaveing = false;
+        // let mut s = Settings::get_mut();
+        // *s = self.old_settings.clone();
+        // s.skip_autosaveing = false;
 
         self.should_close = true;
     }
     pub fn finalize(&mut self) {
         // self.update_settings().await;
-        let mut settings = Settings::get_mut();
-        settings.skip_autosaveing = false;
-        settings.check_hashes();
+        // let mut settings = Settings::get_mut();
+        // settings.skip_autosaveing = false;
+        // settings.check_hashes();
 
         self.should_close = true;
     }
@@ -75,23 +75,24 @@ impl Dialog for SettingsMenu {
         // let Some(prop) = props.next() else { return println!("no second?") };
 
 
-        match first {
-            "done" => self.finalize(),
-            "revert" => self.revert(),
-            "search" => if let Some(text) = message.message_type.as_text() { self.filter_text = text; },
+        // match first {
+        //     "done" => self.finalize(),
+        //     "revert" => self.revert(),
+        //     "search" => if let Some(text) = message.message_type.as_text() { self.filter_text = text; },
 
-            _ => Settings::get_mut().from_elements(&mut tags, message),
-        }
+        //     _ => Settings::get_mut().from_elements(&mut tags, message),
+        // }
 
     }
     
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
+    fn view(&self, values: &mut dyn Reflect) -> IcedElement {
         use iced_elements::*;
+        let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         // build settings list
         let owner = MessageOwner::new_dialog(self);
         let mut builder = SettingsBuilder::default();
-        Settings::get().into_elements(
+        settings.into_elements(
             "settings".to_owned(), 
             &ItemFilter::new(
                 self.filter_text.clone().split(" ").map(String::from).collect(), 

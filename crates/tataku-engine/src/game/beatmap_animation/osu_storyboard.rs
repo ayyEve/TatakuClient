@@ -15,8 +15,8 @@ impl OsuStoryboard {
         def: StoryboardDef, 
         dir: String, 
         skin_manager: &mut dyn SkinProvider,
+        settings: OsuSettings,
     ) -> TatakuResult<Self> {
-        let settings = Settings::get().osu_settings.clone();
         let window_size = WindowSize::get();
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings_custom_size(&settings, 0.0, window_size.0, false, GAME_SIZE));
 

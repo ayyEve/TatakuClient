@@ -4,7 +4,8 @@ use crate::prelude::*;
 pub trait GameMode: GameModeInput + GameModeProperties + Send + Sync {
     async fn new(
         beatmap: &Beatmap, 
-        diff_calc_only: bool
+        diff_calc_only: bool,
+        settings: &Settings,
     ) -> Result<Self, TatakuError> where Self:Sized;
 
     async fn handle_replay_frame<'a>(

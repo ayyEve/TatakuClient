@@ -17,7 +17,7 @@ impl LoadingMenu {
             // window_size: WindowSize::get(),
         }
     }
-    pub async fn load(&mut self) {
+    pub async fn load(&mut self, settings: &Settings) {
         macro_rules! add {
             ($fn: ident, $stage: ident) => {{
                 let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::$stage)));
@@ -38,7 +38,12 @@ impl LoadingMenu {
         }
 
         // init integrations
-        add!(init_integrations, Integrations);
+        {
+            let settings = settings.clone();
+            let status = Arc::new(RwLock::new(LoadingStatus::new(LoadingStage::Beatmaps)));
+            tokio::spawn(Self::init_integrations(status.clone(), settings));
+            self.statuses.push(status);
+        }
 
         // init fonts
         add!(init_fonts, Fonts);
@@ -153,8 +158,7 @@ impl LoadingMenu {
     }
     */
 
-    async fn init_integrations(status: Arc<RwLock<LoadingStatus>>) {
-        let settings = Settings::get();
+    async fn init_integrations(status: Arc<RwLock<LoadingStatus>>, settings: Settings) {
         status.write().item_count = 2;
 
         if settings.integrations.lastfm {

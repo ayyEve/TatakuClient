@@ -6,8 +6,8 @@ mod tasks;
 #[cfg(feature="graphics")]
 mod menus;
 mod helpers;
-pub mod prelude; 
 mod managers;
+pub mod prelude; 
 mod integrations;
 
 

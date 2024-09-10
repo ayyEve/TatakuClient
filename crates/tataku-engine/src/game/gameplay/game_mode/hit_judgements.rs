@@ -51,6 +51,7 @@ use crate::prelude::*;
 
 
 
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct HitJudgment {
     /// internal str for this judgment
@@ -135,6 +136,7 @@ impl AsRef<str> for HitJudgment {
 }
 
 
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub enum AffectsCombo {
     /// add one to the combo
@@ -148,6 +150,7 @@ pub enum AffectsCombo {
     Reset
 }
 
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub enum ComboMultiplier {
     /// There is no extra combo modifier

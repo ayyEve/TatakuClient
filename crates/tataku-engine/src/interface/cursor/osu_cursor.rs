@@ -35,7 +35,6 @@ pub struct OsuCursor {
     left_pressed: bool,
     right_pressed: bool,
 
-    settings: SettingsHelper,
     skin: SkinSettings,
     beatmap_path: String,
 
@@ -45,6 +44,8 @@ pub struct OsuCursor {
     left_emitter: Emitter,
     right_emitter: Emitter,
     pub emitter_enabled: bool,
+    
+    settings: CursorSettings,
 }
 
 impl OsuCursor {
@@ -52,6 +53,7 @@ impl OsuCursor {
         note_radius: f32,
         skin: SkinSettings,
         beatmap_path: String,
+        settings: &Settings
     ) -> Self {
         let a = PI / 4.0;
         let builder = EmitterBuilder::new()
@@ -69,7 +71,6 @@ impl OsuCursor {
         let right_emitter = builder.clone().build(0.0);
         let left_emitter = builder.angle(EmitterVal::init_only(-a-PI..a-PI)).build(0.0);
 
-        let settings = SettingsHelper::new();
         // let skin = CurrentSkinHelper::new();
 
         Self {
@@ -93,7 +94,6 @@ impl OsuCursor {
             left_pressed: false,
             right_pressed: false,
             note_radius,
-            settings,
             skin,
             beatmap_path,
 
@@ -102,6 +102,8 @@ impl OsuCursor {
 
             left_emitter,
             right_emitter,
+
+            settings: settings.cursor_settings.clone(),
         }
     }
 
@@ -196,11 +198,8 @@ impl CustomCursor for OsuCursor {
         self.pos = pos;
     }
 
-    async fn update(&mut self, _time: f32) {
+    async fn update(&mut self, _time: f32, settings: &Settings) {
         let time = self.time.as_millis();
-
-        // check settings update 
-        self.settings.update();
 
         if self.emitter_enabled {
             self.left_emitter.position = self.pos;
@@ -345,8 +344,11 @@ impl CustomCursor for OsuCursor {
 
 
     #[cfg(feature="graphics")]
-    async fn reload_skin(&mut self, skin_manager: &mut dyn SkinProvider) {
-        let source = if self.settings.osu_settings.beatmap_skin { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
+    async fn reload_skin(
+        &mut self, 
+        skin_manager: &mut dyn SkinProvider, 
+    ) {
+        let source = if self.settings.beatmap_cursor { TextureSource::Beatmap(self.beatmap_path.clone()) } else { TextureSource::Skin };
 
         self.cursor_image = skin_manager.get_texture("cursor", &source, SkinUsage::Gamemode, false).await;
         self.cursor_trail_image = skin_manager.get_texture("cursortrail", &source, SkinUsage::Gamemode, false).await;

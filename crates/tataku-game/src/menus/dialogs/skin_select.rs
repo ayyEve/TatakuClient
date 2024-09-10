@@ -52,10 +52,10 @@ impl Dialog for SkinSelect {
     async fn force_close(&mut self) { self.should_close = true; }
     
 
-    async fn handle_message(&mut self, message: Message, _values: &mut dyn Reflect) {
+    async fn handle_message(&mut self, message: Message, values: &mut dyn Reflect) {
         let Some(tag) = message.tag.as_string() else { return }; 
-
-        Settings::get_mut().current_skin = tag;
+        values.reflect_insert("settings.current_skin", tag).unwrap()
+        // Settings::get_mut().current_skin = tag;
     }
 
 
@@ -67,9 +67,9 @@ impl Dialog for SkinSelect {
     }
 
 
-    fn view(&self, _values: &mut dyn Reflect) -> IcedElement {
+    fn view(&self, values: &mut dyn Reflect) -> IcedElement {
         use iced_elements::*;
-        let current_skin = Settings::get().current_skin.clone();
+        let current_skin = values.reflect_get::<String>("settings.current_skin").unwrap().clone();
         
         let owner = MessageOwner::new_dialog(self);
         Dropdown::new(AVAILABLE_SKINS.read().clone(), Some(current_skin), move|s|Message::new(owner, "selected_skin", MessageType::Dropdown(s)))

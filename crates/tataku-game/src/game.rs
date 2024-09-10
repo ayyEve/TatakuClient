@@ -68,7 +68,6 @@ pub struct Game {
     // register_timings: (f32,f32,f32),
 
 
-    pub settings: SettingsHelper,
     #[cfg(feature="graphics")]
     window_size: WindowSizeHelper,
     #[cfg(feature="graphics")]
@@ -90,10 +89,12 @@ impl Game {
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
         audio_engines: Vec<Box<dyn AudioApiInit>>,
-        gamemodes: Vec<GameModeInfo>,
+        gamemodes: Vec<GamemodeLibrary>,
     ) -> Self {
+        let mut actions = ActionQueue::new();
+        let settings = Settings::load(&mut actions).await;
+
         GlobalValueManager::update::<DirectDownloadQueue>(Arc::new(Vec::new()));
-        let settings = Settings::get();
         let skin_manager = SkinManager::new(&settings);
         let skin = skin_manager.skin().clone();
 
@@ -108,6 +109,8 @@ impl Game {
         let values = GameValues::new(infos.clone(), &settings);
 
         let mut g = Self {
+            actions,
+
             // engine
             window_proxy,
             input_manager: InputManager::new(),
@@ -115,7 +118,6 @@ impl Game {
             // dialogs: Vec::new(),
             background_image: None,
             wallpapers: Vec::new(),
-            settings: SettingsHelper::new(),
             window_size: WindowSizeHelper::new(),
             spectator_manager: None,
             multiplayer_manager: None,
@@ -126,7 +128,7 @@ impl Game {
             task_manager: TaskManager::new(),
             custom_menu_manager: CustomMenuManager::new(),
             skin_manager,
-            cursor_manager: CursorManager::new(skin).await,
+            cursor_manager: CursorManager::new(skin, settings.cursor_settings.clone()).await,
             gameplay_managers: HashMap::new(),
 
             integrations,
@@ -156,7 +158,6 @@ impl Game {
             background_loader: None,
 
             ui_manager: UiManager::new(),
-            actions: ActionQueue::new(),
             queued_events: Vec::new(),
 
             values: ValueCollection {
@@ -262,82 +263,6 @@ impl Game {
         debug!("Done loading custom menus");
     }
 
-    /// initialize all the values in our value collection
-    /// doubles as a list of available values because i know i'm going to forget to put them in the doc at some point
-    fn init_value_collection(&mut self) {
-        // use TatakuVariableAccess as Access;
-
-        // let values = &mut self.values;
-
-        // game values
-
-        // // global variables
-        // {
-        //     let mut global = HashMap::default();
-
-        //     // // playmode, we want this to be writable by the game only, since we also need to update the display value on change
-        //     // global.set_value("playmode", TatakuVariable::new_game("osu").display("Osu"));
-
-        //     // // playmode with map's mode override
-        //     // global.set_value("playmode_actual", TatakuVariable::new_game("osu").display("Osu"));
-
-        //     // global.set_value("mods", TatakuVariable::new_game(ModManager::new()));
-        //     // global.set_value("username", TatakuVariable::new_game("Guest"));
-        //     // global.set_value("user_id", TatakuVariable::new_game(0u32));
-        //     // global.set_value("new_map_hash", TatakuVariable::new_game(String::new()));
-        //     global.set_value("lobbies", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
-        //     // global.set_value("menu_list", TatakuVariable::new_game(TatakuValue::List(Vec::new())));
-
-        //     values.set("global", TatakuVariable::new_game(global));
-        // }
-
-
-        // // enums (for use with dropdowns)
-        // {
-        //     // technically just lists but whatever
-        //     let mut enums = HashMap::default();
-        //     enums.set_value("sort_by", TatakuVariable::new((Access::ReadOnly, SortBy::list())));
-        //     enums.set_value("group_by", TatakuVariable::new((Access::ReadOnly, GroupBy::list())));
-        //     enums.set_value("score_methods", TatakuVariable::new((Access::ReadOnly, ScoreRetreivalMethod::list())));
-
-        //     let playmodes = AVAILABLE_PLAYMODES
-        //         .iter()
-        //         .map(|m| TatakuVariable::new(*m).display(gamemode_display_name(*m)))
-        //         .collect::<Vec<_>>();
-        //     enums.set_value("playmodes", TatakuVariable::new(TatakuValue::List(playmodes)));
-
-        //     values.set("enums", TatakuVariable::new_game(enums));
-        // }
-
-        // // song values
-        // {
-        //     let mut song = HashMap::default();
-        //     song.set_value("exists", TatakuVariable::new_game(false));
-        //     song.set_value("playing", TatakuVariable::new_game(false));
-        //     song.set_value("paused", TatakuVariable::new_game(false));
-        //     song.set_value("stopped", TatakuVariable::new_game(false));
-        //     song.set_value("position", TatakuVariable::new_game(0.0));
-
-        //     values.set("song", TatakuVariable::new_game(song));
-        // }
-
-        // values.set("beatmap_list", TatakuVariable::new_game(TatakuValue::Map(Default::default())));
-
-        // // map is set in BeatmapManager
-        // values.set("new_map", TatakuValue::None);
-
-        // score values
-        // values.set("score", TatakuVariable::new_game(&Score::default()));
-        // values.set("score.score", 0.0);
-        // values.set("score.combo", 0.0);
-        // values.set("score.max_combo", 0.0);
-        // values.set("score.accuracy", 0.0);
-        // values.set("score.performance", 0.0);
-        // values.set("score.placing", 0);
-        // values.set("score.health", 0.0);
-
-    }
-
     pub async fn init(
         &mut self,
         audio_engines: Vec<Box<dyn AudioApiInit>>,
@@ -346,19 +271,17 @@ impl Game {
         #[cfg(feature="graphics")]
         self.load_custom_menus();
 
-        // init value collection
-        self.init_value_collection();
-
         // init audio
         AudioManager::init_audio(audio_engines).expect("error initializing audio");
 
         let now = std::time::Instant::now();
 
         // online loop
+        let settings = self.settings.clone();
         #[cfg(feature="gameplay")]
         tokio::spawn(async move {
             loop {
-                OnlineManager::start().await;
+                OnlineManager::start(settings.clone()).await;
                 tokio::time::sleep(Duration::from_millis(1_000)).await;
             }
         });
@@ -367,12 +290,11 @@ impl Game {
 
         // set the current leaderboard filter
         // this is here so it happens before anything else
-        let settings = SettingsHelper::new();
-        self.last_skin = settings.current_skin.clone();
+        self.last_skin = self.settings.current_skin.clone();
 
         // setup double tap protection
         #[cfg(feature="gameplay")]
-        self.input_manager.set_double_tap_protection(settings.enable_double_tap_protection.then(|| settings.double_tap_protection_duration));
+        self.input_manager.set_double_tap_protection(self.settings.enable_double_tap_protection.then(|| self.settings.double_tap_protection_duration));
 
         // beatmap manager loop
         self.actions.push(TaskAction::AddTask(Box::new(BeatmapDownloadsCheckTask::new())));
@@ -382,7 +304,7 @@ impl Game {
         #[cfg(feature="graphics")]
         let mut loading_menu = LoadingMenu::new().await;
         #[cfg(feature="graphics")]
-        loading_menu.load().await;
+        loading_menu.load(&self.settings).await;
 
         // // check git updates
         // self.add_dialog(Box::new(ChangelogDialog::new().await));
@@ -406,7 +328,7 @@ impl Game {
         debug!("game init took {:.2}", now.elapsed().as_secs_f32() * 1000.0);
 
         for i in self.integrations.iter_mut() {
-            if let Err(e) = i.init(&self.settings) {
+            if let Err(e) = i.init(&self.values.settings) {
                 error!("error initializing integration: {e}");
             }
         }
@@ -431,6 +353,7 @@ impl Game {
         let mut render_rate   = 1.0 / display_settings.fps_target as f64;
         let mut update_target = 1.0 / display_settings.update_target as f64;
 
+        let mut settings = self.settings.clone();
 
 
         loop {
@@ -454,7 +377,8 @@ impl Game {
             let last_theme = self.settings.theme.clone();
             let last_server_url = self.settings.server_url.clone();
 
-            if self.settings.update() {
+            if self.settings != settings {
+                settings = self.settings.clone();
 
                 if self.settings.display_settings != display_settings {
                     display_settings = self.settings.display_settings.clone();
@@ -484,7 +408,7 @@ impl Game {
 
 
                     for (i, _) in self.gameplay_managers.values_mut() {
-                        i.reload_skin(&mut self.skin_manager).await;
+                        i.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                     }
                 }
 
@@ -516,8 +440,8 @@ impl Game {
                 // update game mode with new information
                 match &mut self.current_state {
                     GameState::Ingame(igm) => {
-                        if skin_changed { igm.reload_skin(&mut self.skin_manager).await; }
-                        igm.force_update_settings().await;
+                        if skin_changed { igm.reload_skin(&mut self.skin_manager, &self.values.settings).await; }
+                        igm.force_update_settings(&self.values.settings).await;
                     }
                     // GameState::Spectating(sm) => if let Some(igm) = &mut sm.game_manager {
                     //     if skin_changed { igm.reload_skin().await; }
@@ -528,14 +452,14 @@ impl Game {
 
                 #[cfg(feature="graphics")]
                 for (i, _) in self.gameplay_managers.values_mut() {
-                    i.force_update_settings().await;
+                    i.force_update_settings(&self.values.settings).await;
                 }
             }
 
             // wait 100ms before writing settings changes
             if let Some(last_update) = last_setting_update {
                 if last_update.as_millis() > 100.0 {
-                    self.settings.save(&mut self.actions);
+                    self.settings.clone().save(&mut self.actions);
                     last_setting_update = None;
                 }
             }
@@ -658,7 +582,7 @@ impl Game {
             self.cursor_manager.right_pressed(false);
         }
 
-        let controller_pause = controller_down.iter().find(|(_,a)|a.contains(&ControllerButton::Start)).is_some();
+        let controller_pause = controller_down.iter().find(|(_,a)| a.contains(&ControllerButton::Start)).is_some();
 
         // prevent the list from building up and just wasting memory.
         // not nuking the code because it might be a useful stat in the future
@@ -677,12 +601,12 @@ impl Game {
         // check for volume change
         if mouse_moved { self.volume_controller.on_mouse_move(mouse_pos) }
         if scroll_delta != 0.0 {
-            if let Some(action) = self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.display_settings.scroll_sensitivity * 1.5), mods).await {
+            if let Some(action) = self.volume_controller.on_mouse_wheel(scroll_delta / (self.settings.display_settings.scroll_sensitivity * 1.5), mods, &mut self.values.settings).await {
                 scroll_delta = 0.0;
                 self.actions.push(action);
             }
         }
-        self.volume_controller.on_key_press(&mut keys_down, mods).await;
+        self.volume_controller.on_key_press(&mut keys_down, mods, &mut self.values.settings).await;
 
         // check user panel
         if keys_down.has_and_remove(self.settings.key_user_panel) {
@@ -729,7 +653,7 @@ impl Game {
 
             // im sure theres a way to do this in one statement (without the ||) but i'm tired so too bad
             if !is_ingame || (is_ingame && allow_ingame) {
-                self.add_dialog(Box::new(SettingsMenu::new().await), false);
+                self.add_dialog(Box::new(SettingsMenu::new(&self.values.settings).await), false);
             }
         }
 
@@ -761,7 +685,8 @@ impl Game {
         if keys_down.has_key(Key::F5) && mods.ctrl {
             keys_down.remove_key(Key::F5);
             NotificationManager::add_text_notification("Doing a full refresh, the game will freeze for a bit", 5000.0, Color::RED).await;
-            self.beatmap_manager.full_refresh().await;
+            let settings = self.settings.clone();
+            self.beatmap_manager.full_refresh(&settings).await;
             // tokio::spawn(async {
             //     BEATMAP_MANAGER.write().await.full_refresh().await;
             // });
@@ -905,29 +830,29 @@ impl Game {
                 } else {
                     // inputs
                     // mouse
-                    if mouse_moved { manager.mouse_move(mouse_pos).await }
-                    for btn in mouse_down { manager.mouse_down(btn).await }
-                    for btn in mouse_up { manager.mouse_up(btn).await }
-                    if scroll_delta != 0.0 { manager.mouse_scroll(scroll_delta).await }
+                    if mouse_moved { manager.mouse_move(mouse_pos, &self.settings).await }
+                    for btn in mouse_down { manager.mouse_down(btn, &self.settings).await }
+                    for btn in mouse_up { manager.mouse_up(btn, &self.settings).await }
+                    if scroll_delta != 0.0 { manager.mouse_scroll(scroll_delta, &self.settings).await }
 
                     // kb
-                    for k in keys_down.0 { manager.key_down(k, mods).await }
-                    for k in keys_up.0 { manager.key_up(k).await }
-                    if text.len() > 0 { manager.on_text(&text, &mods).await }
+                    for k in keys_down.0 { manager.key_down(k, mods, &self.settings).await }
+                    for k in keys_up.0 { manager.key_up(k, &self.settings).await }
+                    if text.len() > 0 { manager.on_text(&text, &mods, &self.settings).await }
 
                     // controller
                     for (c, buttons) in controller_down {
                         for b in buttons {
-                            manager.controller_press(&c, b).await;
+                            manager.controller_press(&c, b, &self.settings).await;
                         }
                     }
                     for (c, buttons) in controller_up {
                         for b in buttons {
-                            manager.controller_release(&c, b).await;
+                            manager.controller_release(&c, b, &self.settings).await;
                         }
                     }
                     for (c, b) in controller_axis {
-                        manager.controller_axis(&c, b).await;
+                        manager.controller_axis(&c, b, &self.settings).await;
                     }
 
 
@@ -960,7 +885,7 @@ impl Game {
             // queued mode didnt change, set the unlocked's mode to the updated mode
             GameState::None => {} //self.current_state = current_state,
             GameState::Closing => {
-                self.settings.save(&mut self.actions);
+                self.settings.clone().save(&mut self.actions);
                 self.current_state = GameState::Closing;
                 let _ = self.window_proxy.send_event(Game2WindowEvent::CloseGame);
 
@@ -989,7 +914,7 @@ impl Game {
                                 song.set_position(0.0);
                             }
                         }
-                        manager.reload_skin(&mut self.skin_manager).await;
+                        manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                         manager.start().await;
 
                         let m = &manager.metadata;
@@ -1267,9 +1192,10 @@ impl Game {
                             &mode, 
                             &map, 
                             mods.clone(),
+                            &self.settings,
                         ).await {
                             Ok(mut manager) => {
-                                manager.handle_action(GameplayAction::ApplyMods(mods)).await;
+                                manager.handle_action(GameplayAction::ApplyMods(mods), &self.settings).await;
                                 self.queue_state_change(GameState::Ingame(Box::new(manager)))
                             }
                             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
@@ -1312,9 +1238,11 @@ impl Game {
                                 options.restart_song,
                                 options.use_preview_point,
                             );
+                            let settings = self.settings.clone();
                             self.beatmap_manager.set_current_beatmap(
                                 &beatmap,
-                                config
+                                config,
+                                &settings,
                             ).await;
                             return;
                         }
@@ -1346,9 +1274,11 @@ impl Game {
                             true,
                             use_preview
                         );
-                        self.beatmap_manager.set_current_beatmap(
+                        let settings = self.settings.clone();
+                        self.values.beatmap_manager.set_current_beatmap(
                             &random,
-                            config
+                            config,
+                            &settings,
                         ).await;
                     }
                     BeatmapAction::Remove => {
@@ -1362,10 +1292,12 @@ impl Game {
                             true, true
                         );
 
+                        let settings = self.settings.clone();
                         self.beatmap_manager.delete_beatmap(
                             hash,
                             PostDelete::Next,
                             config,
+                            &settings,
                         ).await;
                     }
                     BeatmapAction::DeleteCurrent(post_delete) => {
@@ -1373,20 +1305,26 @@ impl Game {
                         let config = self.create_select_beatmap_config(
                             true, true
                         );
+
+                        let settings = self.settings.clone();
                         self.beatmap_manager.delete_beatmap(
                             map_hash,
                             post_delete,
-                            config
+                            config,
+                            &settings,
                         ).await;
                     }
                     BeatmapAction::Next => {
                         let config = self.create_select_beatmap_config(true, false);
-                        self.beatmap_manager.next_beatmap(config).await;
+
+                        let settings = self.settings.clone();
+                        self.beatmap_manager.next_beatmap(config, &settings).await;
                     }
                     BeatmapAction::Previous(if_none) => {
                         let mut config = self.create_select_beatmap_config(true, false);
 
-                        if self.beatmap_manager.previous_beatmap(config.clone()).await { return }
+                        let settings = self.settings.clone();
+                        if self.beatmap_manager.previous_beatmap(config.clone(), &settings).await { return }
 
                         // no previous map availble, handle accordingly
                         match if_none {
@@ -1395,7 +1333,7 @@ impl Game {
                                 config.use_preview_time = use_preview;
 
                                 let Some(random) = self.beatmap_manager.random_beatmap() else { return };
-                                self.beatmap_manager.set_current_beatmap(&random, config).await;
+                                self.beatmap_manager.set_current_beatmap(&random, config, &settings).await;
                             }
                             MapActionIfNone::SetNone => self.beatmap_manager.remove_current_beatmap().await,
                         }
@@ -1503,7 +1441,8 @@ impl Game {
                     mode, 
                     beatmap.file_path.clone(), 
                     beatmap.beatmap_hash, 
-                    mods
+                    mods, 
+                    &self.settings
                 ).await {
                     Ok(mut manager) => {
                         manager.set_mode(GameplayMode::Replay(*score));
@@ -1595,7 +1534,8 @@ impl Game {
                             &playmode, 
                             path.clone(), 
                             *map_hash, 
-                            mods,
+                            mods, 
+                            &self.settings,
                         ).await
                     }
                     NewManager {
@@ -1612,17 +1552,18 @@ impl Game {
                             &self.global.gamemode_infos,
                             &playmode, 
                             &meta, 
-                            mods
+                            mods,
+                            &self.settings,
                         ).await
                     }
                 } {
                     Ok(mut manager) => {
-                        manager.reload_skin(&mut self.skin_manager).await;
+                        manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                         if let Some(mode) = config.gameplay_mode.clone() {
                             manager.set_mode(mode);
                         }
                         if let Some(bounds) = config.area {
-                            manager.handle_action(GameplayAction::FitToArea(bounds)).await;
+                            manager.handle_action(GameplayAction::FitToArea(bounds), &self.settings).await;
                         }
                         manager.reset().await;
 
@@ -1646,14 +1587,14 @@ impl Game {
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::GameplayAction(id, action)) => {
                 let Some((gameplay, _)) = self.gameplay_managers.get_mut(&id) else { return };
-                gameplay.handle_action(action).await;
+                gameplay.handle_action(action, &self.values.settings).await;
             }
             #[cfg(feature="graphics")]
             TatakuAction::Game(GameAction::FreeGameplay(mut gameplay)) => {
                 gameplay.cleanup_textures(&mut self.skin_manager);
 
                 if let Some(manager) = self.current_state.get_ingame() {
-                    manager.reload_skin(&mut self.skin_manager).await;
+                    manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                 }
             }
 
@@ -1777,7 +1718,7 @@ impl Game {
             #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::LobbyAction(action)) => {
                 let Some(multi_manager) = &mut self.multiplayer_manager else { return };
-                multi_manager.handle_lobby_action(action).await;
+                multi_manager.handle_lobby_action(action, &self.values.settings).await;
             }
 
             TatakuAction::Mods(mod_action) => {
@@ -1845,7 +1786,7 @@ impl Game {
     #[cfg(feature="graphics")]
     async fn handle_custom_dialog(&mut self, id: String, _allow_duplicates: bool) {
         match &*id {
-            "settings" => self.add_dialog(Box::new(SettingsMenu::new().await), false),
+            "settings" => self.add_dialog(Box::new(SettingsMenu::new(&self.values.settings).await), false),
             "create_lobby" => self.add_dialog(Box::new(CreateLobbyDialog::new()), false),
             "mods" => {
                 let mut groups = Vec::new();
@@ -2009,7 +1950,7 @@ impl Game {
                             // set as current skin
                             if let Some(folder) = Path::new(&path).file_name() {
                                 let name = folder.to_string_lossy().to_string();
-                                Settings::get_mut().current_skin = name.clone();
+                                self.values.settings.current_skin = name.clone();
                                 NotificationManager::add_text_notification(format!("Added skin {name}"), 5000.0, Color::BLUE).await
                             }
                         }
@@ -2047,10 +1988,12 @@ impl Game {
             return;
         };
 
+        let settings = self.settings.clone();
         let config = self.create_select_beatmap_config(true, true);
         self.beatmap_manager.set_current_beatmap(
             &map,
-            config
+            config,
+            &settings
         ).await;
 
         // move to a score menu with this as the score

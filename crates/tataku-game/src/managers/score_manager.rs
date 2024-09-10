@@ -60,7 +60,8 @@ impl ScoreManager {
             if let Some(abort) = self.abort_handle.take() {
                 abort.abort();
             }
-        }   
+        }
+        let settings = values.settings.clone();
 
         // let playmode = values.get_string("global.playmode_actual").ok()?;
         // let map_hash = values.try_get::<Md5Hash>("map.hash").ok()?;
@@ -100,7 +101,7 @@ impl ScoreManager {
 
                 let handle = tokio::spawn(async move {
                     let map_hash = map_hash.to_string();
-                    let mut online_scores = tataku::get_scores(&map_hash, &playmode).await;
+                    let mut online_scores = tataku::get_scores(&map_hash, &playmode, &settings).await;
 
                     if method.filter_by_mods() {
                         online_scores.retain(|s| Self::check_mods(&s.mods, &mods));
@@ -594,8 +595,8 @@ mod tataku {
         score: Score
     }
 
-    pub async fn get_scores(map_hash: &String, playmode: &String) -> Vec<IngameScore> {
-        match get_scores_internal(map_hash, playmode).await {
+    pub async fn get_scores(map_hash: &String, playmode: &String, settings: &Settings) -> Vec<IngameScore> {
+        match get_scores_internal(map_hash, playmode, settings).await {
             Ok(maps) => maps,
             Err(e) => {
                 warn!("error getting tataku scores: {e}");
@@ -604,8 +605,8 @@ mod tataku {
         }
     }
 
-    async fn get_scores_internal(map_hash: &String, playmode: &String) -> TatakuResult<Vec<IngameScore>> {
-        let base = Settings::get().score_url.clone();
+    async fn get_scores_internal(map_hash: &String, playmode: &String, settings: &Settings) -> TatakuResult<Vec<IngameScore>> {
+        let base = settings.score_url.clone();
         let url = format!("{base}/api/get_scores?hash={map_hash}&mode={playmode}");
 
         let bytes = reqwest::get(url).await?.bytes().await?.to_vec();

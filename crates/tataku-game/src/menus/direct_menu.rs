@@ -61,30 +61,31 @@ impl DirectMenu {
     }
     
     async fn do_search(&mut self) {
-        // build search params
-        let mut search_params = SearchParams::default();
-        let q = self.search_bar.get_text();
-        if q.len() > 0 {search_params.text = Some(q)}
-        search_params.mode = Some(self.mode.clone());
 
-        // perform request
-        let items = self.current_api.do_search(search_params).await;
+        // // build search params
+        // let mut search_params = SearchParams::default();
+        // let q = self.search_bar.get_text();
+        // if q.len() > 0 {search_params.text = Some(q)}
+        // search_params.mode = Some(self.mode.clone());
 
-        // clear list
-        self.scroll_area.clear();
+        // // perform request
+        // let items = self.current_api.do_search(search_params).await;
 
-        // add items to our list
-        let queue = GlobalValueManager::get::<DirectDownloadQueue>()
-            .unwrap()
-            .iter()
-            .map(|i|(i.filename(), i.clone()))
-            .collect::<HashMap<_, _>>();
+        // // clear list
+        // self.scroll_area.clear();
 
-        for mut item in items {
-            queue.get(&item.filename()).ok_do(|i|item = (*i).clone());
+        // // add items to our list
+        // let queue = GlobalValueManager::get::<DirectDownloadQueue>()
+        //     .unwrap()
+        //     .iter()
+        //     .map(|i|(i.filename(), i.clone()))
+        //     .collect::<HashMap<_, _>>();
+
+        // for mut item in items {
+        //     queue.get(&item.filename()).ok_do(|i|item = (*i).clone());
             
-            self.scroll_area.add_item(Box::new(DirectItem::new(item, false)));
-        }
+        //     self.scroll_area.add_item(Box::new(DirectItem::new(item, false)));
+        // }
 
     }
 
@@ -125,7 +126,7 @@ impl DirectMenu {
             // AudioManager::play_song_raw(url, data2).await.unwrap();
             self.actions.push(SongAction::Set(SongMenuSetAction::FromData(data, url.to_owned(), SongPlayData {
                 play: true,
-                volume: Some(Settings::get().get_music_vol()),
+                volume: None, //Some(Settings::get().get_music_vol()),
                 ..Default::default()
             })));
             
@@ -353,10 +354,10 @@ pub fn check_direct_download_queue() {
         true
     });
 
-    while download_count < max_downloads {
-        let Some(a) = queue.iter().find(|a|!a.is_downloading()) else { break };
-        a.download();
-        download_count += 1;
-    }
+    // while download_count < max_downloads {
+    //     let Some(a) = queue.iter().find(|a|!a.is_downloading()) else { break };
+    //     a.download();
+    //     download_count += 1;
+    // }
 
 }

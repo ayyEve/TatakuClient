@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-// settings helper
-pub type SettingsHelper = GlobalValue<Settings>;
-
 // window size helper
 pub type WindowSizeHelper = GlobalValue<WindowSize>;
 

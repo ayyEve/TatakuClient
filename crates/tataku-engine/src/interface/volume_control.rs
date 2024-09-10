@@ -11,7 +11,8 @@ pub struct VolumeControl {
     vol_selected_time: u64,
     timer: Instant,
 
-    settings: SettingsHelper,
+    // settings: SettingsHelper,
+    settings: VolumeSettings,
     window_size: WindowSizeHelper,
 }
 impl VolumeControl {
@@ -20,8 +21,9 @@ impl VolumeControl {
             vol_selected_index: 0,
             vol_selected_time: 0,
             timer: Instant::now(),
-            settings: SettingsHelper::new(),
+            // settings: SettingsHelper::new(),
             window_size: WindowSizeHelper::new(),
+            settings: VolumeSettings::default(),
         }
     }
 
@@ -30,9 +32,8 @@ impl VolumeControl {
         let elapsed = self.elapsed();
         elapsed - self.vol_selected_time < VOLUME_CHANGE_DISPLAY_TIME
     }
-    async fn change(&mut self, delta:f32) -> Option<SongAction> {
+    async fn change(&mut self, delta:f32, settings: &mut Settings) -> Option<SongAction> {
         let elapsed = self.elapsed();
-        let mut settings = Settings::get_mut();
 
         // reset index back to 0 (master) if the volume hasnt been touched in a while
         if elapsed - self.vol_selected_time > VOLUME_CHANGE_DISPLAY_TIME + 1000 { self.vol_selected_index = 0 }
@@ -44,6 +45,10 @@ impl VolumeControl {
             2 => settings.music_vol = (settings.music_vol + delta).clamp(0.0, 1.0),
             _ => unreachable!("lock.vol_selected_index out of bounds somehow")
         }
+        self.settings.master = settings.master_vol;
+        self.settings.effects = settings.effect_vol;
+        self.settings.music = settings.music_vol;
+        
 
         
         // if let Some(song) = AudioManager::get_song().await {
@@ -57,7 +62,7 @@ impl VolumeControl {
 
 
     pub async fn draw(&mut self, list: &mut RenderableCollection) {
-        self.settings.update();
+        // self.settings.update();
         self.window_size.update();
 
         let elapsed = self.elapsed();
@@ -97,7 +102,7 @@ impl VolumeControl {
             // fill
             let master_fill = Rectangle::new(
                 window_size - Vector2::new(border_size.x + border_padding, 90.0),
-                Vector2::new(border_size.x * self.settings.master_vol, border_size.y),
+                Vector2::new(border_size.x * self.settings.master, border_size.y),
                 Color::BLUE,
                 None
             );
@@ -121,7 +126,7 @@ impl VolumeControl {
             // fill
             let effect_fill = Rectangle::new(
                 window_size - Vector2::new(border_size.x + border_padding, 60.0),
-                Vector2::new(border_size.x * self.settings.effect_vol, border_size.y),
+                Vector2::new(border_size.x * self.settings.effects, border_size.y),
                 Color::BLUE,
                 None
             );
@@ -145,7 +150,7 @@ impl VolumeControl {
             // fill
             let music_fill = Rectangle::new(
                 window_size - Vector2::new(border_size.x + border_padding, 30.0),
-                Vector2::new(border_size.x * self.settings.music_vol, border_size.y),
+                Vector2::new(border_size.x * self.settings.music, border_size.y),
                 Color::BLUE,
                 None
             );
@@ -197,26 +202,26 @@ impl VolumeControl {
         }
     }
 
-    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers) -> Option<SongAction> {
+    pub async fn on_mouse_wheel(&mut self, delta:f32, mods:KeyModifiers, settings: &mut Settings) -> Option<SongAction> {
         if mods.alt {
-            self.change(delta / 10.0).await
+            self.change(delta / 10.0, settings).await
         } else {
             None
         }
     }
 
     #[cfg(feature="graphics")]
-    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods:KeyModifiers) -> bool {
+    pub async fn on_key_press(&mut self, keys: &mut KeyCollection, mods:KeyModifiers, settings: &mut Settings) -> bool {
         let elapsed = self.elapsed();
 
         if mods.alt {
             let mut changed = false;
 
             if keys.has_and_remove(Key::Right) {
-                self.change(0.1).await;
+                self.change(0.1, settings).await;
             }
             if keys.has_and_remove(Key::Left) {
-                self.change(-0.1).await;
+                self.change(-0.1, settings).await;
             }
 
             if keys.has_and_remove(Key::Up) {
@@ -231,4 +236,12 @@ impl VolumeControl {
 
         false
     }
+}
+
+
+#[derive(Default)]
+struct VolumeSettings {
+    master: f32,
+    music: f32,
+    effects: f32,
 }

@@ -49,10 +49,10 @@ tataku-wgpu = { path = "crates/tataku-wgpu" }
 tataku-bass = { path = "crates/tataku-bass" }
 
 
-gamemode-osu.path = "gamemodes/osu"
-gamemode-taiko.path = "gamemodes/taiko"
-gamemode-mania.path = "gamemodes/mania"
-gamemode-utyping.path = "gamemodes/utyping"
+# gamemode-osu.path = "gamemodes/osu"
+# gamemode-taiko.path = "gamemodes/taiko"
+# gamemode-mania.path = "gamemodes/mania"
+# gamemode-utyping.path = "gamemodes/utyping"
 
 
 
@@ -68,6 +68,8 @@ triple_buffer = { version = "7.0.0" }
 crossbeam = "0.8.4"
 global_value_manager = "0.1.1"
 ipc-channel = { version = "0.18.1" }
+
+libloading = { version = "*" }
 
 # image stuff
 png = { version = "0.17.13" }

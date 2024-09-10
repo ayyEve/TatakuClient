@@ -46,7 +46,7 @@ impl TatakuTask for UploadScreenshotTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(&mut self, _values: &mut dyn Reflect, _: &TaskGameState, actions: &mut ActionQueue) {
+    async fn run(&mut self, values: &mut dyn Reflect, _: &TaskGameState, actions: &mut ActionQueue) {
         let Some(task) = self.task.as_ref() else {
             self.state = TatakuTaskState::Running;
 
@@ -54,7 +54,7 @@ impl TatakuTask for UploadScreenshotTask {
                 "Uploading screenshot...", Color::YELLOW, 5000.0
             )));
 
-            let settings = Settings::get();
+            let settings = values.reflect_get::<Settings>("settings").unwrap();
             self.task = Some(AsyncLoader::new(Self::upload(
                 settings.score_url.clone(),
                 settings.username.clone(),

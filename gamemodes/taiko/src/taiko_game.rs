@@ -231,9 +231,9 @@ impl TaikoGame {
 
 #[async_trait]
 impl GameMode for TaikoGame {
-    async fn new(beatmap:&Beatmap, _diff_calc_only:bool) -> TatakuResult<Self> {
+    async fn new(beatmap:&Beatmap, _diff_calc_only:bool, settings: &Settings) -> TatakuResult<Self> {
         let metadata = beatmap.get_beatmap_meta();
-        let settings = Arc::new(Settings::get().taiko_settings.clone());
+        let settings = Arc::new(settings.taiko_settings.clone());
 
         let playfield = Arc::new(Self::get_taiko_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
 
@@ -1183,12 +1183,12 @@ impl GameModeInput for TaikoGame {
             let mut new_settings = self.taiko_settings.as_ref().clone();
             new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
 
-            // update the global settings
-            {
-                let mut settings = Settings::get_mut();
-                settings.taiko_settings = new_settings.clone();
-                // settings.save().await;
-            }
+            // // update the global settings
+            // {
+            //     let mut settings = Settings::get_mut();
+            //     settings.taiko_settings = new_settings.clone();
+            //     // settings.save().await;
+            // }
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
@@ -1220,12 +1220,12 @@ impl GameModeInput for TaikoGame {
             let mut new_settings = self.taiko_settings.as_ref().clone();
             new_settings.controller_config.insert((*c.name).clone(), TaikoControllerConfig::defaults(c.name.clone()));
 
-            // update the global settings
-            {
-                let mut settings = Settings::get_mut();
-                settings.taiko_settings = new_settings.clone();
-                // settings.save(&mut self.actions);
-            }
+            // // update the global settings
+            // {
+            //     let mut settings = Settings::get_mut();
+            //     settings.taiko_settings = new_settings.clone();
+            //     // settings.save(&mut self.actions);
+            // }
             
             self.taiko_settings = Arc::new(new_settings);
             // rerun the handler now that the thing is setup
@@ -1262,7 +1262,12 @@ impl GameModeProperties for TaikoGame {
             .collect()
     }
 
-    async fn get_ui_elements(&self, _window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+    async fn get_ui_elements(
+        &self, 
+        _window_size: Vector2, 
+        ui_elements: &mut Vec<UIElement>,
+        loader: &mut dyn UiElementLoader
+    ) {
         let playmode = self.playmode();
         let get_name = |name| {
             format!("{playmode}_{name}")
@@ -1274,25 +1279,25 @@ impl GameModeProperties for TaikoGame {
         );
         
         // combo
-        ui_elements.push(UIElement::new(
+        ui_elements.push(loader.load(
             &get_name("combo".to_owned()),
             Vector2::new(0.0, self.playfield.hit_position.y - self.taiko_settings.note_radius * self.taiko_settings.hit_area_radius_mult/2.0),
-            ComboElement::new(combo_bounds).await
+            Box::new(ComboElement::new(combo_bounds).await)
         ).await);
 
         // TODO: !!!!!
         // // Leaderboard
-        // ui_elements.push(UIElement::new(
+        // ui_elements.push(loader.load(
         //     &get_name("leaderboard".to_owned()),
         //     Vector2::with_y(self.playfield.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
-        //     LeaderboardElement::new().await
+        //     Box::new(LeaderboardElement::new().await)
         // ).await);
 
         // don chan
-        ui_elements.push(UIElement::new(
+        ui_elements.push(loader.load(
             &get_name("don_chan".to_owned()),
             self.playfield.pos,
-            DonChan::new().await
+            Box::new(DonChan::new().await)
         ).await);
     }
 

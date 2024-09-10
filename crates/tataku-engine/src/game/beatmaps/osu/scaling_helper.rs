@@ -38,10 +38,6 @@ pub struct ScalingHelper {
     pub playfield_scaled_with_cs_border: Rectangle,
 }
 impl ScalingHelper {
-    pub async fn new(cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
-        let settings = Settings::get().osu_settings.clone();
-        Self::new_with_settings(&settings, cs, window_size, flip_vertical)
-    }
     pub fn new_with_settings(settings: &OsuSettings, cs:f32, window_size: Vector2, flip_vertical: bool) -> Self {
         let (scale, offset) = settings.get_playfield();
         Self::new_offset_scale(cs, window_size, offset, scale, flip_vertical)

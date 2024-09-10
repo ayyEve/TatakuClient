@@ -9,7 +9,7 @@ pub struct GameplayPreview {
     mods: SyValueHelper<ModManager>,
     song_time: SyValueHelper<f32>,
 
-    settings: SettingsHelper,
+    // settings: SettingsHelper,
     manager: Option<GameplayId>,
 
     owner: MessageOwner,
@@ -54,7 +54,7 @@ impl GameplayPreview {
             handle_song_restart: false,
             owner,
 
-            settings: SettingsHelper::new(),
+            // settings: SettingsHelper::new(),
             manager: None,
             fit_to: None,
             use_global_playmode,
@@ -77,18 +77,20 @@ impl GameplayPreview {
         self
     }
 
-    pub fn is_enabled(&self) -> bool {
-        (self.check_enabled)(&self.settings)
+    pub fn is_enabled(&self, settings: &Settings) -> bool {
+        (self.check_enabled)(settings)
     }
 
-    pub async fn setup(&mut self, _values: &dyn Reflect, actions: &mut ActionQueue) {
+    pub async fn setup(&mut self, values: &dyn Reflect, actions: &mut ActionQueue) {
         // self.current_playmode.update();
         // self.current_beatmap.update();
         // self.current_mods.update();
-        self.settings.update();
+        // self.settings.update();
+
+        let settings = values.reflect_get::<Settings>("settings").unwrap();
 
         // make sure we're enabled before doing anything else
-        if !self.is_enabled() { return }
+        if !self.is_enabled(settings) { return }
 
         // // get the map hash and path
         // let Ok(hash) = Md5Hash::try_from(self.beatmap.as_string()) else { return trace!("manager no map") };
@@ -115,7 +117,7 @@ impl GameplayPreview {
         let draw_sender = self.widget_sender.clone();
         actions.push(GameAction::NewGameplayManager(NewManager {
             owner: self.owner,
-            playmode: (!self.use_global_playmode).then(|| self.settings.background_game_settings.mode.clone()),
+            playmode: (!self.use_global_playmode).then(|| settings.background_game_settings.mode.clone()),
             gameplay_mode: Some(GameplayMode::Preview),
             area: self.fit_to,
             draw_function: Some(Arc::new(move |group| draw_sender.lock().write(Arc::new(group)))),
@@ -147,11 +149,11 @@ impl GameplayPreview {
     }
 
     pub async fn update(&mut self, values: &mut dyn Reflect, actions: &mut ActionQueue) {
+        let settings = values.reflect_get::<Settings>("settings").unwrap();
+        
         // check for settings changes
-        if self.settings.update() {
-            if !self.is_enabled() && self.manager.is_some() {
-                self.manager = None;
-            }
+        if !self.is_enabled(settings) && self.manager.is_some() {
+            self.manager = None;
         }
 
 
@@ -224,7 +226,7 @@ impl GameplayPreview {
                         play: true,
                         position: Some(*preview),
                         rate: self.apply_rate.then_some(speed),
-                        volume: Some(self.settings.get_music_vol()),
+                        volume: Some(settings.get_music_vol()),
 
                         ..Default::default()
                     })));

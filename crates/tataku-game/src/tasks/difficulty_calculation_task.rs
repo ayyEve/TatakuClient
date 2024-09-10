@@ -42,7 +42,7 @@ impl TatakuTask for DiffCalcTask {
     fn get_type(&self) -> TatakuTaskType { TatakuTaskType::Once }
     fn get_state(&self) -> TatakuTaskState { self.state }
 
-    async fn run(&mut self, _values: &mut dyn Reflect, state: &TaskGameState, _actions: &mut ActionQueue) {
+    async fn run(&mut self, values: &mut dyn Reflect, state: &TaskGameState, _actions: &mut ActionQueue) {
         if state.ingame { 
             self.state = TatakuTaskState::Paused;
             return;
@@ -65,8 +65,10 @@ impl TatakuTask for DiffCalcTask {
                     return;
                 }
 
+                let settings = values.reflect_get("settings").unwrap();
+
                 // otherwise, try to get the diff calc
-                match self.info.create_diffcalc(&self.beatmap).await {
+                match self.info.create_diffcalc(&self.beatmap, settings).await {
                     Ok(c) => self.diff_calc = Some(c),
                     Err(e) => {
                         error!("couldnt get calc: {e}");

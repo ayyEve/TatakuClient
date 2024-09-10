@@ -152,7 +152,7 @@ impl MultiplayerManager {
         &mut self, 
         values: &mut ValueCollection, 
         packet: &MultiplayerPacket,
-        mut manager: Option<&mut Box<GameplayManager>>
+        mut manager: Option<&mut Box<GameplayManager>>, 
     ) -> TatakuResult {
         match packet {
 
@@ -214,12 +214,14 @@ impl MultiplayerManager {
                         let mods = values.global.mods.clone();
                         let infos = self.infos.clone();
                         let map = map.clone();
+                        let settings = values.settings.clone();
                         let f = async move { manager_from_playmode_path_hash(
                             &infos,
                             &mode, 
                             map.file_path.clone(), 
                             map.beatmap_hash, 
-                            mods
+                            mods,
+                            &settings
                         ).await };
                         self.beatmap_loader = Some(AsyncLoader::new(f));
                     } else {
@@ -349,7 +351,7 @@ impl MultiplayerManager {
         Ok(())
     }
 
-    pub async fn handle_lobby_action(&mut self, action: LobbyAction) {
+    pub async fn handle_lobby_action(&mut self, action: LobbyAction, settings: &Settings) {
         match action {
             LobbyAction::Ready => {
                 tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::Ready));
@@ -361,10 +363,10 @@ impl MultiplayerManager {
             LobbyAction::OpenMapLink => {
                 let Some(beatmap) = &self.lobby.current_beatmap else { return };
                 let hash = beatmap.hash;
+                let score_url = settings.score_url.clone();
 
                 tokio::spawn(async move {
-                    let settings = Settings::get();
-                    let req = reqwest::get(format!("{}/api/get_beatmap_url?hash={hash}", settings.score_url)).await;
+                    let req = reqwest::get(format!("{score_url}/api/get_beatmap_url?hash={hash}")).await;
                     match req {
                         Err(e) => NotificationManager::add_error_notification("Error with beatmap url request", e.to_string()).await,
                         Ok(resp) => {
