@@ -47,6 +47,9 @@ pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
 #[cfg(feature="graphics")]
 pub use iced::advanced::graphics::core as iced_core;
 
+// logging
+pub use tracing::*;
+
 // tataku-common imports
 pub use tataku_common::types::*;
 

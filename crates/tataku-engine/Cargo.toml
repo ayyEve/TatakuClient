@@ -100,7 +100,7 @@ rlua = { workspace = true, optional = true }
 
 
 # logging
-log = { workspace = true }
+tracing.workspace = true
 num-format = { workspace = true }
 strfmt = { workspace = true }
 

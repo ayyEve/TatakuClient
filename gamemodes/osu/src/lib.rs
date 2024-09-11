@@ -1,5 +1,3 @@
-#[macro_use] extern crate log;
-
 mod osu_math;
 mod osu_game;
 mod osu_info;
@@ -20,4 +18,6 @@ mod prelude {
     pub use super::osu_notes::*;
     pub use super::osu_helpers::*;
     pub use super::diff_calc::OsuDifficultyCalculator;
+
+    pub use tracing::*;
 }

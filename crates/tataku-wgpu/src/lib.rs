@@ -1,5 +1,3 @@
-#[macro_use] extern crate log;
-
 mod shaders;
 mod texture;
 mod last_drawn;
@@ -18,6 +16,8 @@ mod prelude {
     pub use crate::renderable_surface::*;
     pub use crate::render_buffer_type::*;
     pub use crate::render_buffer_queue_type::*;
+
+    pub use tracing::*;
 }
 
 
@@ -30,7 +30,7 @@ impl<'window> GraphicsInitializer<'window> for WgpuInit {
     fn name(&self) -> &'static str { "Wgpu Graphics" }
 
     async fn init(
-        &self, 
+        &self,
         window: &'window winit::window::Window,
         settings: DisplaySettings
     ) -> TatakuResult<Box<dyn GraphicsEngine + 'window>> {

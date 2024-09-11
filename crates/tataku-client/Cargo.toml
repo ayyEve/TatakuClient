@@ -82,8 +82,11 @@ chrono = { workspace = true }
 
 
 # logging
-tataku-logging = { workspace = true }
-log = { workspace = true }
+# tataku-logging = { workspace = true }
+# log = { workspace = true } # todo: nuke before commit
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
 num-format = { workspace = true }
 strfmt = { workspace = true }
 

@@ -1,5 +1,3 @@
-#[macro_use] extern crate log;
-
 mod utyping_game;
 mod helpers;
 mod diff_calc;
@@ -19,4 +17,6 @@ mod prelude {
     pub use super::utyping_notes::*;
     pub use super::utyping_game::UTypingGame;
     pub use super::diff_calc::UTypingDifficultyCalculator;
+
+    pub use tracing::*;
 }

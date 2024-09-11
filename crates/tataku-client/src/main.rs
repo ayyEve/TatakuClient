@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
 use tataku_game::prelude::*;
 
-#[macro_use] extern crate log;
+use tracing::*;
 
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
@@ -41,6 +41,8 @@ fn main() {
         .enable_all()
         .build()
         .unwrap();
+
+    let _guards = init_logging();
 
     // initialize the game
     runtime.block_on(startup());
@@ -84,7 +86,7 @@ fn main() {
 
 #[cfg(feature="gameplay")]
 fn start_game<'window>(
-    runtime: &tokio::runtime::Runtime, 
+    runtime: &tokio::runtime::Runtime,
 ) {
     // let main_thread = tokio::task::LocalSet::new();
     let window_runtime = Rc::new(tokio::runtime::Builder::new_current_thread()
@@ -117,7 +119,7 @@ fn start_game<'window>(
                     GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
             ];
         }
-        
+
         #[cfg(not(feature="dynamic_gamemodes"))] {
             gamemodes = vec![
                 gamemode_osu::GAME_INFO,
@@ -131,7 +133,7 @@ fn start_game<'window>(
         // start the game
         trace!("creating game");
         let game = Game::new(
-            game_event_receiver, 
+            game_event_receiver,
             proxy,
             vec![
                 #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
@@ -156,9 +158,9 @@ fn start_game<'window>(
         let settings = Settings::load(&mut ActionQueue::new()).await;
 
         GameWindow::new(
-            game_event_sender, 
-            &WINDOW, 
-            window_runtime.clone(), 
+            game_event_sender,
+            &WINDOW,
+            window_runtime.clone(),
             window_side_barrier,
             &settings,
             vec![
@@ -167,7 +169,7 @@ fn start_game<'window>(
         ).await
     });
 
-    
+
     trace!("window running");
     #[cfg(feature="graphics")]
     game_window.run(e);
@@ -193,9 +195,6 @@ async fn startup() {
     if let Err(e) = std::env::set_current_dir(GAME_DIR) {
         println!("Error changing current dir: {e}");
     }
-
-    // setup logging
-    init_logging();
 
     // finish setting up
     setup().await;
@@ -236,7 +235,7 @@ async fn setup() {
             }
         }
     }
-    
+
     // check if songs folder is empty
     if std::fs::read_dir(SONGS_DIR).unwrap().count() == 0 {
         // no songs, download some
@@ -263,7 +262,7 @@ async fn setup() {
 async fn check_bass() {
     #[cfg(target_os = "windows")]
     let filename = "bass.dll";
-    
+
     #[cfg(target_os = "linux")]
     let filename = "libbass.so";
 
@@ -277,7 +276,7 @@ async fn check_bass() {
         // check if already exists
         if library_path.exists() { return }
         info!("{:?} not found, attempting to find or download", library_path);
-        
+
         // if linux, check for lib in /usr/lib
         #[cfg(target_os = "linux")]
         if Io::exists(format!("/usr/lib/{}", filename)) {
@@ -294,30 +293,73 @@ async fn check_bass() {
     }
 }
 
+#[must_use]
+struct LogGuard {
+    _guards: [tracing_appender::non_blocking::WorkerGuard; 2],
+}
 
-pub fn init_logging() {
-    // start log handler
-    tataku_logging::init_with_level(
-        "logs/", 
-        log::Level::Debug, 
-        Some("crates/".to_owned()
-    )).unwrap();
+fn init_logging() -> LogGuard {
+    use tracing_subscriber::{
+        fmt::Layer, layer::SubscriberExt, prelude::*,
+        filter::{ LevelFilter, Targets },
+    };
 
-    // clean up any old log files
-    let Ok(files) = std::fs::read_dir("logs/") else { return };
-    let today = chrono::Utc::now().date_naive();
-    let Some(remove_date) = today.checked_sub_days(chrono::Days::new(5)) else { return warn!("Unable to determine log remove date")};
+    use tracing_appender::{
+        non_blocking,
+        rolling::{ RollingFileAppender, Rotation },
+    };
 
-    for file in files.filter_map(|f|f.ok()) {
-        let filename = file.file_name();
-        let Some(date) = filename.to_str().and_then(|s|s.split("--").next()) else { continue };
-        let Ok(date) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") else { continue };
+    const LOG_DIR: &'static str = "game/logs/";
+    const MAX_DAYS: usize = 2;
 
-        if date <= remove_date {
-            if let Err(e) = std::fs::remove_file(file.path()) {
-                error!("Error removing log file: {e}");
-            }
-        }
+    let trace_file = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("trace-log")
+        .filename_suffix(".ttk_log")
+        .max_log_files(MAX_DAYS)
+        .build(LOG_DIR)
+        .unwrap();
+
+    let (trace_file, trace_guard) = non_blocking(trace_file);
+
+    let (stdout, stdout_guard) = non_blocking(std::io::stdout());
+
+    let tataku_crates = [
+        "tataku-client",
+        "tataku-game",
+        "tataku-engine",
+        "tataku-wgpu",
+        "tataku-bass",
+        "tataku-common",
+        "gamemode-osu",
+        "gamemode-taiko",
+        "gamemode-mania",
+        "gamemode-utyping"
+    ];
+
+    tracing_subscriber::registry()
+        .with(Layer::new()
+            .pretty()
+            .with_ansi(false)
+            .with_writer(trace_file)
+            .with_filter(Targets::new()
+                .with_default(LevelFilter::INFO)
+                .with_targets(tataku_crates.iter().map(|&c| (c, LevelFilter::TRACE)))
+            )
+        )
+        .with(Layer::new()
+            .pretty()
+            .with_ansi(true)
+            .with_writer(stdout)
+            .with_filter(Targets::new()
+                .with_default(LevelFilter::INFO)
+                .with_targets(tataku_crates.iter().map(|&c| (c, LevelFilter::DEBUG)))
+            )
+        )
+        .init();
+
+    LogGuard {
+        _guards: [ trace_guard, stdout_guard ]
     }
 }
 

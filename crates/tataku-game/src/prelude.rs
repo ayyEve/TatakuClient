@@ -47,6 +47,8 @@ pub use gilrs::{ Axis, Button as ControllerButton, GamepadId };
 #[cfg(feature="graphics")]
 pub use iced::advanced::graphics::core as iced_core;
 
+// logging
+pub use tracing::*;
 
 // general game imports
 pub use crate::game::*;

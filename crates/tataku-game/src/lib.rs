@@ -1,5 +1,3 @@
-#[macro_use] extern crate log;
-
 mod cli;
 mod game;
 mod tasks;
@@ -7,7 +5,7 @@ mod tasks;
 mod menus;
 mod helpers;
 mod managers;
-pub mod prelude; 
+pub mod prelude;
 mod integrations;
 
 
