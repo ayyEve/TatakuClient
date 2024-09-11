@@ -95,8 +95,7 @@ impl SpectatorManager {
                     manager.jump_to_time(current_time.max(0.0), current_time > 0.0);
                 });
                 
-                // TODO: !!!!
-                // self.actions.push(GameAction::StartGame(Box::new(manager)));
+                self.actions.push(GameAction::StartGame(Box::new(manager)));
             }
             Err(e) => NotificationManager::add_error_notification("Error loading spec beatmap", e).await
         }

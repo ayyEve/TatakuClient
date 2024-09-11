@@ -14,6 +14,7 @@ pub const GAME_INFO:GameModeInfo = GameModeInfo {
     get_diff_string: ManiaGameInfo::get_diff_string,
     create_game: ManiaGameInfo::create_game,
     create_diffcalc: ManiaGameInfo::create_diffcalc,
+    can_load_beatmap: ManiaGameInfo::can_load_beatmap,
 
     .. GameModeInfo::DEFAULT
 };
@@ -79,6 +80,16 @@ impl ManiaGameInfo {
         }
 
         txt
+    }
+
+
+    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+        match map {
+            BeatmapType::Osu => true,
+            BeatmapType::Quaver => true,
+            BeatmapType::Stepmania => true,
+            _ => false
+        }
     }
 
     fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {

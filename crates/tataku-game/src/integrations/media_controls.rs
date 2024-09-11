@@ -141,45 +141,10 @@ impl MediaControlsManager {
     }
 }
 
-#[derive(Reflect)]
-#[derive(Copy, Clone, Debug)]
-pub struct SongStatus {
-    pub playing: bool,
-    pub paused: bool,
-    pub stopped: bool,
-}
-
-// impl Into<TatakuValue> for SongStatus {
-//     fn into(self) -> TatakuValue {
-//         ValueCollectionMapHelper::default()
-//             .insert("playing", self.playing)
-//             .insert("paused", self.paused)
-//             .insert("stopped", self.stopped)
-//             .finish()
-//     }
-// }
-// impl TryFrom<&TatakuValue> for SongStatus {
-//     type Error = TatakuValueError;
-
-//     fn try_from(value: &TatakuValue) -> Result<Self, Self::Error> {
-//         let Some(data) = value.as_map_helper() else { 
-//             return Err(TatakuValueError::ValueWrongType { 
-//                 expected: Cow::Borrowed("Map"), 
-//                 received: Cow::Borrowed(value.type_name()) 
-//             }) 
-//         };
-
-//         Ok(Self {
-//             playing: data.try_get("playing")?,
-//             paused: data.try_get("paused")?,
-//             stopped: data.try_get("stopped")?,
-//         })
-//     }
-// }
 
 
 // impl TatakuIntegration for MediaControlHelper {
-//     fn name(&self) -> Cow<'static, str> { Cow::Borrowed("Media Controls") }
+//     fn name(&self) -> Cow<'static, str> { "Media Controls".into() }
 
 //     fn init(
 //         &mut self, 
@@ -260,8 +225,6 @@ pub struct SongStatus {
 
 //         // update the playback state
 //         Self::set_playback(song_state.into());
-
-
 //     }
 // }
 

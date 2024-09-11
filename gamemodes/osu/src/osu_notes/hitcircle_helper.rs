@@ -91,7 +91,7 @@ impl HitCircleImageHelper {
                 self.pos,
                 radius,
                 self.combo_num.to_string(),
-                Color::BLACK,
+                Color::WHITE,
                 Font::Main
             );
             text.center_text(&rect);
@@ -165,7 +165,7 @@ impl HitCircleImageHelper {
                 CIRCLE_RADIUS_BASE * self.scaling_helper.scaled_cs,
                 self.color.alpha(self.alpha),
                 Some(Border::new(
-                    Color::BLACK.alpha(self.alpha),
+                    Color::WHITE.alpha(self.alpha),
                     self.scaling_helper.border_scaled
                 ))
             ));

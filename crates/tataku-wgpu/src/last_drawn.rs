@@ -2,7 +2,7 @@
 // TODO: rename this
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LastDrawn {
-    None,
+    // None,
     Vertex,
     Slider,
     Flashlight

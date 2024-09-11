@@ -30,6 +30,7 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     get_diff_string: OsuGameInfo::get_diff_string,
     create_game: OsuGameInfo::create_game,
     create_diffcalc: OsuGameInfo::create_diffcalc,
+    can_load_beatmap: OsuGameInfo::can_load_beatmap,
 
     .. GameModeInfo::DEFAULT
 };
@@ -88,6 +89,13 @@ impl OsuGameInfo {
     //     ]
     // }
 
+
+    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+        match map {
+            BeatmapType::Osu => true,
+            _ => false
+        }
+    }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();

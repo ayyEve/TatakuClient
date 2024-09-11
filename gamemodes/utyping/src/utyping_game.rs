@@ -71,8 +71,8 @@ impl UTypingGame {
 
 #[async_trait]
 impl GameMode for UTypingGame {
-    async fn new(beatmap:&Beatmap, _:bool) -> TatakuResult<Self> {
-        let settings = Arc::new(Settings::get().taiko_settings.clone());
+    async fn new(beatmap:&Beatmap, _:bool, settings: &Settings) -> TatakuResult<Self> {
+        let settings = Arc::new(settings.taiko_settings.clone());
         let playfield = Arc::new(Self::get_playfield(&settings, Bounds::new(Vector2::ZERO, WindowSize::get().0)));
 
         let mut s = Self {

@@ -4,6 +4,11 @@ use chrono::{ Datelike, Timelike };
 /// how long transitions between states should last
 const TRANSITION_TIME:f32 = 500.0;
 
+#[cfg(feature="dynamic_gamemodes")]
+pub type IncomingGamemode = GamemodeLibrary;
+#[cfg(not(feature="dynamic_gamemodes"))]
+pub type IncomingGamemode = GameModeInfo;
+
 pub struct Game {
     // engine things
     #[cfg(feature="graphics")]
@@ -89,7 +94,7 @@ impl Game {
         game_event_receiver: tokio::sync::mpsc::Receiver<Window2GameEvent>,
         window_proxy: winit::event_loop::EventLoopProxy<Game2WindowEvent>,
         audio_engines: Vec<Box<dyn AudioApiInit>>,
-        gamemodes: Vec<GamemodeLibrary>,
+        gamemodes: Vec<IncomingGamemode>,
     ) -> Self {
         let mut actions = ActionQueue::new();
         let settings = Settings::load(&mut actions).await;
@@ -422,6 +427,12 @@ impl Game {
 
                 if integrations != self.settings.integrations {
 
+                    for i in self.integrations.iter_mut() {
+                        if let Err(e) = i.check_enabled(&settings) {
+                            warn!("Integration error ({}): {e:?}", i.name())
+                        }
+                    }
+
                     // update discord
                     match (integrations.discord, self.settings.integrations.discord) {
                         (true, false) => OnlineManager::get_mut().await.discord = None,
@@ -505,6 +516,9 @@ impl Game {
     /// to tell the game to close, set the state to GameState::Closing
     fn close_game(&mut self) {
         warn!("stopping game");
+        for (i, _) in self.gameplay_managers.values_mut() {
+            i.cleanup_textures(&mut self.skin_manager);
+        }
     }
 
     #[cfg(feature="gameplay")]
@@ -1152,10 +1166,7 @@ impl Game {
     }
 
     pub async fn handle_actions(&mut self, actions: Vec<TatakuAction>) {
-        self.actions.extend(actions);
-
-        // self.actions.extend(actions);
-        for action in self.actions.take() {
+        for action in self.actions.take().into_iter().chain(actions.into_iter()) {
             self.handle_action(action).await
         }
     }
@@ -1164,6 +1175,8 @@ impl Game {
     #[async_recursion::async_recursion]
     pub async fn handle_action(&mut self, action: impl Into<TatakuAction> + Send + 'static) {
         let action = action.into();
+        // debug!("handling action: {action:?}");
+
         match action {
             TatakuAction::None => return,
 
@@ -1195,8 +1208,23 @@ impl Game {
                             &self.settings,
                         ).await {
                             Ok(mut manager) => {
+                                let start_time = manager.start_time as u64;
+
                                 manager.handle_action(GameplayAction::ApplyMods(mods), &self.settings).await;
-                                self.queue_state_change(GameState::Ingame(Box::new(manager)))
+                                self.queue_state_change(GameState::Ingame(Box::new(manager)));
+
+                                let multiplayer = self.multiplayer_manager.as_ref()
+                                    .map(|a| &a.lobby.id)
+                                    .and_then(|i| self.multiplayer_data.lobbies.get(i))
+                                    .cloned();
+
+                                self.handle_event(TatakuEvent::BeatmapStarted { 
+                                    start_time, 
+                                    beatmap: map.map.clone(), 
+                                    playmode: mode, 
+                                    multiplayer, 
+                                    spectator: self.spectator_manager.as_ref().map(|s| s.host_username.clone())
+                                })
                             }
                             Err(e) => NotificationManager::add_error_notification("Error loading beatmap", e).await
                         }
@@ -1266,7 +1294,7 @@ impl Game {
 
                     }
 
-                    BeatmapAction::SetPlaymode(new_mode) => self.update_playmode(new_mode).await,
+                    BeatmapAction::SetPlaymode(new_mode) => self.update_playmode(new_mode),
 
                     BeatmapAction::Random(use_preview) => {
                         let Some(random) = self.beatmap_manager.random_beatmap() else { return };
@@ -1501,19 +1529,10 @@ impl Game {
 
             TatakuAction::Game(GameAction::RefreshPlaymodeValues) => {
                 let playmode = self.global.playmode.clone();
-                self.values.global.update_playmode(playmode.clone());
-
-                let actual = self
-                    .beatmap_manager
-                    .current_beatmap
-                    .as_ref()
-                    .map(|b| b.check_mode_override(playmode.clone()))
-                    .unwrap_or(playmode);
-
-                self.values.global.update_playmode(actual);
+                self.update_playmode(playmode);
             }
             TatakuAction::Game(GameAction::UpdatePlaymodeActual(actual)) => {
-                self.values.global.update_playmode(actual);
+                self.values.global.update_playmode_actual(actual);
             }
 
 
@@ -1597,6 +1616,9 @@ impl Game {
                     manager.reload_skin(&mut self.skin_manager, &self.values.settings).await;
                 }
             }
+            TatakuAction::Game(GameAction::UpdateSettings(run)) => {
+                (run)(&mut self.values.settings);
+            }
 
 
             // song actions
@@ -1607,11 +1629,22 @@ impl Game {
                         if let Err(e) = self.song_manager.handle_song_set_action(action) {
                             error!("Error handling SongMenuSetAction: {e:?}");
                         }
+
+                        if let Some(audio) = self.song_manager.instance() {
+                            if let Some(current) = &self.beatmap_manager.current_beatmap {
+                                self.actions.push(TatakuEvent::SongChanged { 
+                                    artist: current.artist.clone(), 
+                                    title: current.title.clone(), 
+                                    image_path: current.image_filename.clone(), 
+                                    elapsed: audio.get_position(), 
+                                    duration: audio.get_duration()
+                                });
+                            }
+                        }
                     }
 
                     other => {
                         let Some(audio) = self.song_manager.instance() else { return };
-
                         match other {
                             SongAction::Play => audio.play(false),
                             SongAction::Restart => audio.play(true),
@@ -1624,7 +1657,7 @@ impl Game {
                             SongAction::SetRate(rate) => audio.set_rate(rate),
                             SongAction::SetVolume(vol) => audio.set_volume(vol),
                             // handled above
-                            SongAction::Set(_) => {}
+                            SongAction::Set(_) => unreachable!()
                         }
                     }
                 }
@@ -1641,22 +1674,6 @@ impl Game {
 
                 // update song state
                 self.values.song.update(self.song_manager.instance());
-                // if let Some(audio) = self.song_manager.instance() {
-
-                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
-                //         ("song.exists", true),
-                //         ("song.playing", audio.is_playing()),
-                //         ("song.paused", audio.is_paused()),
-                //         ("song.stopped", audio.is_stopped()),
-                //     ].into_iter());
-                // } else {
-                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
-                //         ("song.exists", false),
-                //         ("song.playing", false),
-                //         ("song.paused", false),
-                //         ("song.stopped", false),
-                //     ].into_iter());
-                // }
             }
 
             // multiplayer actions
@@ -1710,6 +1727,22 @@ impl Game {
                 tokio::spawn(OnlineManager::invite_user(user_id));
             }
 
+                // if let Some(audio) = self.song_manager.instance() {
+
+                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
+                //         ("song.exists", true),
+                //         ("song.playing", audio.is_playing()),
+                //         ("song.paused", audio.is_paused()),
+                //         ("song.stopped", audio.is_stopped()),
+                //     ].into_iter());
+                // } else {
+                //     self.values.update_multiple(TatakuVariableWriteSource::Game, [
+                //         ("song.exists", false),
+                //         ("song.playing", false),
+                //         ("song.paused", false),
+                //         ("song.stopped", false),
+                //     ].into_iter());
+                // }
             // lobby actions
             #[cfg(feature="gameplay")]
             TatakuAction::Multiplayer(MultiplayerAction::LobbyAction(LobbyAction::Leave)) => {
@@ -1741,6 +1774,8 @@ impl Game {
                 }
             }
 
+            // events
+            TatakuAction::Event(e) => self.handle_event(e),
 
             // task actions
             TatakuAction::Task(TaskAction::AddTask(task)) => self.task_manager.add_task(task),
@@ -1854,6 +1889,13 @@ impl Game {
         // }
         // trace!("Show user list: {}", self.show_user_list);
     }
+
+    pub fn handle_event(&mut self, event: TatakuEvent) {
+        for i in self.integrations.iter_mut() {
+            i.handle_event(&event, &self.values)
+        }
+    }
+
 
     /// shortcut for setting the game's background texture to a beatmap's image
     #[cfg(feature="graphics")]
@@ -2009,6 +2051,7 @@ impl Game {
         trace!("beatmap complete");
         manager.on_complete();
         manager.score.time = chrono::Utc::now().timestamp() as u64;
+        self.actions.push(TatakuEvent::BeatmapEnded);
 
         if manager.failed {
             trace!("player failed");
@@ -2231,23 +2274,31 @@ impl Game {
     }
 
 
-    async fn update_playmode(&mut self, playmode: String) {
+    fn update_playmode(&mut self, playmode: String) {
 
         // ensure lowercase
-        let mut playmode = playmode.to_lowercase();
+        let playmode = playmode.to_lowercase();
         // warn!("setting playmode: {new_mode}");
 
         // ensure playmode exists
-        if !self.global.gamemode_infos.by_id.contains_key(&*playmode) { return warn!("Trying to set invalid playmode: {playmode}") }
+        let Ok(info) = self.global.gamemode_infos.get_info(&*playmode).cloned() else { 
+            return warn!("Trying to set invalid playmode: {playmode}") 
+        };
 
         // set playmode and playmode display
         self.values.global.update_playmode(playmode.clone());
+        
+        // determine the actual playmode
 
         // if we have a beatmap, get the override mode and update the playmode_actual values
-        if let Some(map) = &self.beatmap_manager.current_beatmap {
-            playmode = map.check_mode_override(playmode);
-        }
-        self.values.global.update_playmode_actual(playmode);
+        let actual_playmode = self.beatmap_manager
+            .current_beatmap.as_ref()
+            .filter(|b| !info.can_load_beatmap(&b.beatmap_type))
+            .map(|b| b.mode.clone())
+            .unwrap_or(playmode)
+            ;
+
+        self.values.global.update_playmode_actual(actual_playmode);
 
         // update mods list as well
 

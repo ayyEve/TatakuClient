@@ -17,6 +17,8 @@ debug_hitsounds = []
 debug_perf_rating = []
 debug_custom_menus = []
 load_internal_menus_from_file = [] # whether to load builtin menus at runtime (if off, they're compiled into the game)
+dynamic_gamemodes = [ "libloading" ]
+
 
 storyboards = []
 texture_arrays = []
@@ -46,7 +48,7 @@ triple_buffer = { workspace = true, optional = true }
 crossbeam = { workspace = true }
 global_value_manager = { workspace = true }
 ipc-channel = { workspace = true, optional = true }
-libloading.workspace = true
+libloading = { workspace = true, optional = true }
 
 # image stuff
 png = { workspace = true, optional = true }

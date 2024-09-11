@@ -77,8 +77,8 @@ pub trait RenderBufferable: Sized {
     const VTX_PER_BUF: u64;
     const IDX_PER_BUF: u64;
 
-    /// name for this buffer (helpful for debugging)
-    fn name() -> &'static str;
+    // /// name for this buffer (helpful for debugging)
+    // fn name() -> &'static str;
 
     /// reset the render buffer's values to default
     fn reset(&mut self);

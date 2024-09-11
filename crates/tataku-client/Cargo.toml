@@ -17,6 +17,7 @@ ui = [ "iced", "triple_buffer" ]
 
 # # removes as much graphics-side stuff as possible
 graphics = [ "winit", "ui", "image" ]
+dynamic_gamemodes = [ "tataku-game/dynamic_gamemodes" ]
 
 [dependencies]
 tataku-common.workspace = true
@@ -26,10 +27,10 @@ tataku-game.workspace = true
 tataku-wgpu.workspace = true
 tataku-bass = { workspace = true, optional = true }
 
-# gamemode-osu.workspace = true
-# gamemode-taiko.workspace = true
-# gamemode-mania.workspace = true
-# gamemode-utyping.workspace = true
+gamemode-osu.workspace = true
+gamemode-taiko.workspace = true
+gamemode-mania.workspace = true
+gamemode-utyping.workspace = true
 
 
 # framework stuff

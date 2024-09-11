@@ -105,7 +105,7 @@ local menu = {
         {
             event = "song_end",
             actions = {
-                song_action({ position = variable("map.preview_time")}),
+                song_action({ position = variable("beatmaps.current.map.preview_time")}),
                 song_action("play")
             }
         },

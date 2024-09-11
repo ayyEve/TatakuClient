@@ -37,6 +37,9 @@ pub enum TatakuAction {
 
     /// Perform a window action
     WindowAction(WindowAction),
+
+    /// Handle an event
+    Event(TatakuEvent)
 }
 impl std::fmt::Debug for TatakuAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -53,6 +56,7 @@ impl std::fmt::Debug for TatakuAction {
             Self::Task(task) => write!(f, "Task({task:?})"),
             Self::CursorAction(action) => write!(f, "CursorAction({action:?})"),
             Self::WindowAction(action) => write!(f, "WindowAction({action:?})"),
+            Self::Event(e) => write!(f, "Event({e:?})"),
         }
     }
 }
@@ -60,5 +64,11 @@ impl std::fmt::Debug for TatakuAction {
 impl From<Notification> for TatakuAction {
     fn from(value: Notification) -> Self {
         Self::Game(GameAction::AddNotification(value))
+    }
+}
+
+impl From<TatakuEvent> for TatakuAction {
+    fn from(value: TatakuEvent) -> Self {
+        Self::Event(value)
     }
 }

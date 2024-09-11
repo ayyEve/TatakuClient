@@ -23,7 +23,7 @@ impl Atlas {
         }
     }
 
-    pub fn try_insert(&mut self, width: u32, height:u32) -> Option<AtlasData> {
+    pub fn try_insert(&mut self, width: u32, height: u32) -> Option<AtlasData> {
         if width == 0 || height == 0 { return Some(self.empty_tex) }
         self.allocators
             .iter_mut()

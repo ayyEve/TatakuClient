@@ -52,6 +52,8 @@ pub struct GameModeInfo {
     pub calc_acc: fn(&Score) -> f32,
     pub calc_perf: fn(CalcPerfInfo<'_>) -> f32,
 
+    pub can_load_beatmap: fn(&BeatmapType) -> bool,
+
     pub get_diff_string: fn(&BeatmapMetaWithDiff, &ModManager) -> String,
     pub stats_from_groups: fn(&HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo>,
 
@@ -73,6 +75,7 @@ impl GameModeInfo {
         calc_perf: Self::dummy_calc_perf,
         get_diff_string: Self::dummy_diff_str,
         stats_from_groups: Self::dummy_stats,
+        can_load_beatmap: Self::dummy_can_load_beatmap,
         create_game: Self::dummy_create_game,
         create_diffcalc: Self::dummy_create_diffcalc,
     };
@@ -81,6 +84,7 @@ impl GameModeInfo {
     fn dummy_calc_perf(_:CalcPerfInfo<'_>) -> f32 { 0.0 }
     fn dummy_diff_str(_: &BeatmapMetaWithDiff, _: &ModManager) -> String { String::new() }
     fn dummy_stats(_: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> { Vec::new() }
+    fn dummy_can_load_beatmap(_: &BeatmapType) -> bool { false }
 
     fn dummy_create_game<'a>(_: &'a Beatmap, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
     fn dummy_create_diffcalc<'a>(_: &'a BeatmapMeta, _: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> { Box::pin(async { Err(GameModeError::UnknownGameMode.into()) }) }
@@ -98,6 +102,12 @@ impl GameModeInfo {
     pub fn stats_from_groups(&self, stats: &HashMap<String, HashMap<String, Vec<f32>>>) -> Vec<MenuStatsInfo> {
         (self.stats_from_groups)(stats)
     }
+
+    pub fn can_load_beatmap(&self, map: &BeatmapType) -> bool {
+        (self.can_load_beatmap)(map)
+    }
+
+
 
     pub async fn create_game(&self, map: &Beatmap, settings: &Settings) -> TatakuResult<Box<dyn GameMode>> {
         (self.create_game)(map, settings).await

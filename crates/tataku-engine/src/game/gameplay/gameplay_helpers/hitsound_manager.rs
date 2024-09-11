@@ -34,13 +34,11 @@ pub struct HitsoundManager {
         HashMap<String, Arc<dyn AudioInstance>>
     >,
     playmode_prefix: String,
-    pub volume: f32,
-
     pub enabled: bool,
 }
 impl HitsoundManager {
     pub fn new(playmode_prefix: String) -> Self {
-        Self { sounds: HashMap::new(), playmode_prefix, enabled: true, volume: 0.0}
+        Self { sounds: HashMap::new(), playmode_prefix, enabled: true }
     }
 
     pub async fn init(
@@ -49,8 +47,6 @@ impl HitsoundManager {
         actions: &mut ActionQueue,
         settings: &Settings,
     ) {
-        self.volume = settings.get_effect_vol();
-
         let map_folder = Path::new(&*beatmap.file_path).parent().unwrap();
         let map_files = map_folder.read_dir().unwrap();
 
@@ -130,13 +126,13 @@ impl HitsoundManager {
 
             // if theres is a playmode prefix, try to play a prefixed sound first
             if !self.playmode_prefix.is_empty() {
-                if self.play_sound_single(sound, Some(&self.playmode_prefix)) {
+                if self.play_sound_single(sound, Some(&self.playmode_prefix), vol) {
                     return;
                 }
             }
 
             // if that failed, try without the prefix
-            if !self.play_sound_single(sound, None) {
+            if !self.play_sound_single(sound, None, vol) {
                 warn!("unable to play sound {name}");
             }
         }
@@ -176,6 +172,7 @@ impl HitsoundManager {
         &self, 
         sound: &Hitsound, 
         prefix: Option<&String>, 
+        vol: f32,
     ) -> bool {
         if !self.enabled { return false }
         // let mut play_sound = None;
@@ -210,7 +207,7 @@ impl HitsoundManager {
             if !sound.allowed_sources.contains(&source) { continue }
             let Some(sound) = self.sounds[&source].get(name.as_ref()) else { continue };
 
-            sound.set_volume(self.volume);
+            sound.set_volume(vol);
             sound.set_position(0.0);
             sound.play(true);
             return true;

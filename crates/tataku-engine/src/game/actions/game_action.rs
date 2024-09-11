@@ -59,6 +59,9 @@ pub enum GameAction {
 
     /// free up an existing gameplay manager (clean up its textures)
     FreeGameplay(Box<GameplayManager>),
+
+    /// update settings with the provided function
+    UpdateSettings(Box<dyn FnOnce(&mut Settings) + Send + Sync>)
 }
 
 impl From<GameAction> for TatakuAction {
@@ -91,6 +94,7 @@ impl core::fmt::Debug for GameAction {
             Self::ForceUiRefresh => write!(f, "ForceUiRefresh"),
             Self::RefreshPlaymodeValues => write!(f, "RefreshPlaymodeValues"),
             Self::UpdatePlaymodeActual(arg0) => f.debug_tuple("UpdatePlaymodeActual").field(arg0).finish(),
+            Self::UpdateSettings(_)=> write!(f, "UpdateSettings"),
         }
     }
 }

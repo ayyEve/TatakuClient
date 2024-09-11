@@ -11,10 +11,11 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     mods: &[],
 
     judgments: UTypingHitJudgment::variants(),
-    calc_acc: &UTypingGameInfo::calc_acc,
-    get_diff_string: &UTypingGameInfo::get_diff_string,
-    create_game: &UTypingGameInfo::create_game,
-    create_diffcalc: &UTypingGameInfo::create_diffcalc,
+    calc_acc: UTypingGameInfo::calc_acc,
+    get_diff_string: UTypingGameInfo::get_diff_string,
+    create_game: UTypingGameInfo::create_game,
+    create_diffcalc: UTypingGameInfo::create_diffcalc,
+    can_load_beatmap: UTypingGameInfo::can_load_beatmap,
 
     .. GameModeInfo::DEFAULT
 };
@@ -31,6 +32,12 @@ impl UTypingGameInfo {
         / (miss + x100 + x300)
     }
 
+    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+        match map {
+            BeatmapType::UTyping => true,
+            _ => false
+        }
+    }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
         let speed = mods.get_speed();
@@ -67,15 +74,15 @@ impl UTypingGameInfo {
         txt
     }
 
-    fn create_game(beatmap: &Beatmap) -> BoxFuture<TatakuResult<Box<dyn GameMode>>> {
+    fn create_game<'a>(beatmap: &'a Beatmap, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn GameMode>>> {
         Box::pin(async {
-            let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false).await?);
+            let game:Box<dyn GameMode> = Box::new(UTypingGame::new(beatmap, false, settings).await?);
             Ok(game)
         })
     }
-    fn create_diffcalc(map: &BeatmapMeta) -> BoxFuture<TatakuResult<Box<dyn DiffCalc>>> {
+    fn create_diffcalc<'a>(map: &'a BeatmapMeta, settings: &'a Settings) -> BoxFuture<'a, TatakuResult<Box<dyn DiffCalc>>> {
         Box::pin(async {
-            let calc:Box<dyn DiffCalc> = Box::new(UTypingDifficultyCalculator::new(map).await?);
+            let calc:Box<dyn DiffCalc> = Box::new(UTypingDifficultyCalculator::new(map, settings).await?);
             Ok(calc)
         })
     }

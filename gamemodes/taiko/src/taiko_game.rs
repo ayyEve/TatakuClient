@@ -1285,13 +1285,12 @@ impl GameModeProperties for TaikoGame {
             Box::new(ComboElement::new(combo_bounds).await)
         ).await);
 
-        // TODO: !!!!!
-        // // Leaderboard
-        // ui_elements.push(loader.load(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(self.playfield.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
-        //     Box::new(LeaderboardElement::new().await)
-        // ).await);
+        // Leaderboard
+        ui_elements.push(loader.load(
+            &get_name("leaderboard".to_owned()),
+            Vector2::with_y(self.playfield.hit_position.y + self.taiko_settings.note_radius * self.taiko_settings.big_note_multiplier + 50.0),
+            Box::new(LeaderboardElement::new(crate::GAME_INFO).await)
+        ).await);
 
         // don chan
         ui_elements.push(loader.load(

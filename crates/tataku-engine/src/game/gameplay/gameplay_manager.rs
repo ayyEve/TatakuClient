@@ -27,7 +27,7 @@ pub const SPECTATOR_BUFFER_OK_DURATION:f32 = 500.0;
 // }
 
 macro_rules! create_update_state {
-    ($self: ident, $time: expr) => {
+    ($self: ident, $time: expr, $settings: expr) => {
         GameplayStateForUpdate {
             time: $time,
             game_speed: $self.game_speed(),
@@ -39,6 +39,7 @@ macro_rules! create_update_state {
             gameplay_mode: &$self.gameplay_mode,
             score: &$self.score,
             actions: Vec::new(),
+            settings: $settings
         }
     }
 }
@@ -499,7 +500,7 @@ impl GameplayManager {
         self.judgement_indicators.retain(|a| a.should_keep(time));
 
         // update gamemode
-        let mut state = create_update_state!(self, time);
+        let mut state = create_update_state!(self, time, settings);
 
 
         self.gamemode.update(&mut state).await;
@@ -887,7 +888,7 @@ impl GameplayManager {
                         self.score.combo += 1;
                         self.score.max_combo = self.score.max_combo.max(self.score.combo);
                     }
-                    AffectsCombo::Reset => self.combo_break(), // self.actions.push(GamemodeAction::ComboBreak),
+                    AffectsCombo::Reset => self.combo_break(settings), // self.actions.push(GamemodeAction::ComboBreak),
                     AffectsCombo::Ignore => {},
                 }
 
@@ -944,7 +945,7 @@ impl GameplayManager {
 
             GamemodeAction::AddStat { stat, value } => self.score.insert_stat(stat, value),
             GamemodeAction::RemoveLastJudgment => self.judgement_indicators.pop().nope(),
-            GamemodeAction::ComboBreak => self.combo_break(),
+            GamemodeAction::ComboBreak => self.combo_break(settings),
             GamemodeAction::FailGame => self.fail(),
             GamemodeAction::ReplayAction(frame) => self.handle_frame(frame.action, true, Some(frame.time), true, settings).await,
             GamemodeAction::ResetHealth => self.health.reset(),
@@ -970,10 +971,9 @@ impl GameplayManager {
         list
     }
 
+    #[inline]
     pub fn time(&self) -> f32 {
-        //let t = self.song.get_position();
-        // TODO: !!!!!!!!!!
-        self.song_time - (self.lead_in_time + self.beatmap_preferences.audio_offset) // + settings.global_offset)
+        self.song_time - (self.lead_in_time + self.beatmap_preferences.audio_offset + self.global_offset)
     }
 
     pub fn should_save_score(&self) -> bool {
@@ -1267,13 +1267,14 @@ impl GameplayManager {
     }
 
     pub fn combo_break(
-        &mut self
+        &mut self,
+        settings: &Settings
     ) {
         // play hitsound
         if self.score.combo >= 20 && !self.gameplay_mode.is_preview() {
             let combobreak = Hitsound::new_simple("combobreak");
             // index of 1 because we want to try beatmap sounds
-            self.hitsound_manager.play_sound_single(&combobreak, None);
+            self.hitsound_manager.play_sound_single(&combobreak, None, settings.get_effect_vol());
         }
 
         // reset combo to 0
@@ -1440,7 +1441,7 @@ impl GameplayManager {
             let time = force_time.unwrap_or_else(|| self.time());
             let frame = ReplayFrame::new(time, frame);
 
-            let mut state = create_update_state!(self, self.time());
+            let mut state = create_update_state!(self, self.time(), settings);
             self.gamemode.handle_replay_frame(frame, &mut state).await;
 
             for action in state.actions.take() {
@@ -1803,7 +1804,6 @@ impl GameplayManager {
         // self.settings.update();
         self.gamemode.force_update_settings(settings).await;
         self.global_offset = settings.global_offset;
-        self.hitsound_manager.volume = settings.get_effect_vol();
     }
 
     #[cfg(feature="graphics")]
@@ -2065,6 +2065,8 @@ pub struct GameplayStateForUpdate<'a> {
 
     /// list of actions to be performed
     actions: Vec<GamemodeAction>,
+
+    pub settings: &'a Settings,
 }
 impl<'a> GameplayStateForUpdate<'a> {
     /// does the manager believe the map has been completed?

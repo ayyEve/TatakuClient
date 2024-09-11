@@ -9,6 +9,8 @@ pub struct OsuGame {
     // lists
     pub notes: Vec<Box<dyn OsuHitObject>>,
 
+    actions: ActionQueue,
+
     // hit timing bar stuff
     hit_windows: Vec<(HitJudgment, Range<f32>)>,
     miss_window: f32,
@@ -56,7 +58,13 @@ pub struct OsuGame {
 }
 impl OsuGame {
     async fn recalculate_playfield(&mut self) {
-        let new_scale = Arc::new(ScalingHelper::new_with_settings(&self.game_settings, self.cs, self.window_size.0, self.mods.has_mod(HardRock)).await);
+        let new_scale = Arc::new(ScalingHelper::new_with_settings(
+            &self.game_settings, 
+            self.cs, 
+            self.window_size.0, 
+            self.mods.has_mod(HardRock)
+        ));
+
         self.apply_playfield(new_scale).await
     }
     async fn apply_playfield(&mut self, playfield: Arc<ScalingHelper>) {
@@ -341,24 +349,24 @@ impl GameMode for OsuGame {
         let window_size = WindowSize::get();
         let effective_window_size = if diff_calc_only { super::diff_calc::WINDOW_SIZE } else { window_size.0 };
         
-        let settings = settings.osu_settings.clone();
+        let game_settings = settings.osu_settings.clone();
 
         let cs = Self::get_cs(&metadata, &mods);
         let ar = Self::get_ar(&metadata, &mods);
         let od = Self::get_od(&metadata, &mods);
-        let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&settings, cs, effective_window_size, mods.has_mod(HardRock)).await);
+        let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
         let judgment_helper = JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()).await;
 
         let timing_points = TimingPointHelper::new(map.get_timing_points(), map.slider_velocity());
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
-        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default(), parent_dir).await;
+        let cursor = OsuCursor::new(scaling_helper.scaled_circle_size.x / 2.0, SkinSettings::default(), parent_dir, settings).await;
 
         let mut s = match map {
             Beatmap::Osu(beatmap) => {
                 let stack_leniency = beatmap.stack_leniency;
-                let std_settings = Arc::new(settings);
+                let std_settings = Arc::new(game_settings);
 
                 let get_hitsounds = |time, hitsound, hitsamples| {
                     let tp = timing_points.timing_point_at(time, true);
@@ -366,6 +374,7 @@ impl GameMode for OsuGame {
                 };
 
                 let mut s = Self {
+                    actions: ActionQueue::new(),
                     notes: Vec::new(),
                     mouse_pos: Vector2::ZERO,
                     window_mouse_pos: Vector2::ZERO,
@@ -689,7 +698,7 @@ impl GameMode for OsuGame {
         if state.gameplay_mode.is_preview() && self.cursor.emitter_enabled {
             self.cursor.emitter_enabled = false;
         }
-        self.cursor.update(state.time, ).await;
+        self.cursor.update(state.time, state.settings).await;
 
         let has_autoplay = state.mods.has_autoplay();
         let has_relax = state.mods.has_mod(Relax);
@@ -1302,7 +1311,10 @@ impl GameModeInput for OsuGame {
     }
     
 
-    async fn mouse_move(&mut self, pos: Vector2) -> Option<ReplayAction> {
+    async fn mouse_move(
+        &mut self, 
+        pos: Vector2
+    ) -> Option<ReplayAction> {
         if self.use_controller_cursor {
             // info!("switched to mouse");
             self.use_controller_cursor = false;
@@ -1310,29 +1322,33 @@ impl GameModeInput for OsuGame {
         self.window_mouse_pos = pos;
         
         if let Some((original, mouse_start)) = self.move_playfield {
-            {
-                let settings = &mut Settings::get_mut().osu_settings;
-                let mut change = original + (pos - mouse_start);
+            
+            let mut settings = (&*self.game_settings).clone();
+            let mut change = original + (pos - mouse_start);
 
-                // check playfield snapping
-                // TODO: can this be simplified?
-                let playfield_size = self.scaling_helper.playfield_scaled_with_cs_border.size;
+            // check playfield snapping
+            // TODO: can this be simplified?
+            let playfield_size = self.scaling_helper.playfield_scaled_with_cs_border.size;
 
-                // what the offset should be if playfield is centered
-                let center_offset = (self.window_size.0 - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.window_size.0 - playfield_size) / 2.0;
+            // what the offset should be if playfield is centered
+            let center_offset = (self.window_size.0 - FIELD_SIZE * self.scaling_helper.scale) / 2.0 - (self.window_size.0 - playfield_size) / 2.0;
 
-                let snap_threshold = settings.playfield_snap;
-                if (center_offset.x - change.x).abs() < snap_threshold {
-                    change.x = center_offset.x;
-                }
-                if (center_offset.y - change.y).abs() < snap_threshold {
-                    change.y = center_offset.y;
-                }
-
-                settings.playfield_x_offset = change.x;
-                settings.playfield_y_offset = change.y;
+            let snap_threshold = settings.playfield_snap;
+            if (center_offset.x - change.x).abs() < snap_threshold {
+                change.x = center_offset.x;
+            }
+            if (center_offset.y - change.y).abs() < snap_threshold {
+                change.y = center_offset.y;
             }
 
+            settings.playfield_x_offset = change.x;
+            settings.playfield_y_offset = change.y;
+            
+            
+            let settings2 = settings.clone();
+            self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.osu_settings = settings2 )));
+
+            self.game_settings = Arc::new(settings);
             self.recalculate_playfield().await;
             return None;
         }
@@ -1373,12 +1389,14 @@ impl GameModeInput for OsuGame {
         Some(ReplayAction::Release(button))
     }
 
-    async fn mouse_scroll(&mut self, delta:f32) -> Option<ReplayAction> {
+    async fn mouse_scroll(&mut self, delta: f32) -> Option<ReplayAction> {
         if self.move_playfield.is_some() {
-            {
-                let settings = &mut Settings::get_mut().osu_settings;
-                settings.playfield_scale += delta / 40.0;
-            }
+            let delta = delta / 40.0;
+            let mut a = (&*self.game_settings).clone();
+            a.playfield_scale += delta;
+            self.game_settings = Arc::new(a);
+
+            self.actions.push(GameAction::UpdateSettings(Box::new(move |settings| settings.osu_settings.playfield_scale += delta )));
 
             self.recalculate_playfield().await;
         }
@@ -1473,7 +1491,12 @@ impl GameModeProperties for OsuGame {
             .collect()
     }
 
-    async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+    async fn get_ui_elements(
+        &self, 
+        window_size: Vector2, 
+        ui_elements: &mut Vec<UIElement>,
+        loader: &mut dyn UiElementLoader
+    ) {
         let playmode = self.playmode();
         let get_name = |name| {
             format!("{playmode}_{name}")
@@ -1486,19 +1509,18 @@ impl GameModeProperties for OsuGame {
         );
         
         // combo
-        ui_elements.push(UIElement::new(
+        ui_elements.push(loader.load(
             &get_name("combo".to_owned()),
             Vector2::new(0.0, window_size.y - (size.y + DURATION_HEIGHT + 10.0)),
-            ComboElement::new(combo_bounds).await
+            Box::new(ComboElement::new(combo_bounds).await)
         ).await);
 
-        // TODO: !!!!!!!
-        // // Leaderboard
-        // ui_elements.push(UIElement::new(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(window_size.y / 3.0),
-        //     LeaderboardElement::new().await
-        // ).await);
+        // Leaderboard
+        ui_elements.push(loader.load(
+            &get_name("leaderboard".to_owned()),
+            Vector2::with_y(window_size.y / 3.0),
+            Box::new(LeaderboardElement::new(crate::GAME_INFO).await)
+        ).await);
         
     }
     

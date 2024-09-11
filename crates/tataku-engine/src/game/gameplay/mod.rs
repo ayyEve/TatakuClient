@@ -1,17 +1,20 @@
 // pub mod diff_calc;
 mod stats;
 mod game_mode;
-mod gamemode;
 mod gameplay_mods;
 mod gameplay_manager;
 mod gameplay_helpers;
+#[cfg(feature="dynamic_gamemodes")]
+mod gamemode_library;
 
 pub use stats::*;
-pub use gamemode::*;
 pub use game_mode::*;
 pub use gameplay_mods::*;
 pub use gameplay_manager::*;
 pub use gameplay_helpers::*;
+
+#[cfg(feature="dynamic_gamemodes")]
+pub use gamemode_library::*;
 
 use crate::prelude::*;
 
@@ -52,9 +55,22 @@ pub struct GamemodeInfos {
     pub by_id: Arc<HashMap<&'static str, GameModeInfo>>,
     pub by_num: Arc<Vec<GameModeInfo>>,
 
+    #[cfg(feature="dynamic_gamemodes")]
     _libraries: Arc<Vec<libloading::Library>>,
 }
 impl GamemodeInfos {
+    #[cfg(not(feature="dynamic_gamemodes"))]
+    pub fn new(list: Vec<GameModeInfo>) -> Self {
+        Self {
+            by_id: Arc::new(list.iter()
+                .map(|i| (i.id, *i))
+                .collect()
+            ),
+            by_num: Arc::new(list),
+        }
+    }
+
+    #[cfg(feature="dynamic_gamemodes")]
     pub fn new(list: Vec<GamemodeLibrary>) -> Self {
 
         let (libraries, by_num): (_, Vec<GameModeInfo>) = list.into_iter()
@@ -74,6 +90,15 @@ impl GamemodeInfos {
         self.by_id
             .get(gamemode)
             .ok_or(TatakuError::GameMode(GameModeError::UnknownGameMode))
+    }
+
+    pub fn get_playmode_actual<'a>(&self, playmode: &'a String, beatmap: Option<&'a BeatmapMeta>) -> &'a String {
+        let Ok(info) = self.get_info(playmode) else { return playmode };
+        
+        beatmap
+            .filter(|b| !info.can_load_beatmap(&b.beatmap_type))
+            .map(|b| &b.mode)
+            .unwrap_or(playmode)
     }
 }
 

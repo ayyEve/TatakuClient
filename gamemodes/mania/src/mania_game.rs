@@ -1146,7 +1146,12 @@ impl GameModeProperties for ManiaGame {
             .collect()
     }
 
-    async fn get_ui_elements(&self, window_size: Vector2, ui_elements: &mut Vec<UIElement>) {
+    async fn get_ui_elements(
+        &self, 
+        window_size: Vector2, 
+        ui_elements: &mut Vec<UIElement>,
+        loader: &mut dyn UiElementLoader
+    ) {
         let playmode = self.playmode();
         let get_name = |name| {
             format!("{playmode}_{name}")
@@ -1162,19 +1167,18 @@ impl GameModeProperties for ManiaGame {
         );
         
         // combo
-        ui_elements.push(UIElement::new(
+        ui_elements.push(loader.load(
             &get_name("combo".to_owned()),
             Vector2::new(start_x, window_size.y * (1.0/3.0)),
-            ComboElement::new(combo_bounds).await
+            Box::new(ComboElement::new(combo_bounds).await)
         ).await);
 
-        // TODO: !!!
-        // // Leaderboard
-        // ui_elements.push(UIElement::new(
-        //     &get_name("leaderboard".to_owned()),
-        //     Vector2::with_y(window_size.y / 3.0),
-        //     LeaderboardElement::new().await
-        // ).await);
+        // Leaderboard
+        ui_elements.push(loader.load(
+            &get_name("leaderboard".to_owned()),
+            Vector2::with_y(window_size.y / 3.0),
+            Box::new(LeaderboardElement::new(crate::GAME_INFO).await)
+        ).await);
         
     }
 

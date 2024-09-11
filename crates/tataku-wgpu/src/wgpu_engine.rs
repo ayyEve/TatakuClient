@@ -18,9 +18,8 @@ use wgpu::{
 
 use winit::raw_window_handle::{ HasWindowHandle, HasDisplayHandle };
 
-// the sum of these two must not go past 16
-const LAYER_COUNT:u32 = 2;
-const RENDER_TARGET_LAYERS:u32 = 2;
+// must not go past 16
+const LAYER_COUNT:u32 = 4;
 const MAX_DEPTH:f32 = 8192.0 * 8192.0;
 
 /// background color
@@ -50,7 +49,6 @@ pub struct WgpuEngine<'window> {
     projection_matrix_bind_group: wgpu::BindGroup,
 
     atlas: Atlas,
-    render_target_atlas: Atlas,
     atlas_texture: WgpuTexture,
 
     screenshot_pending: Option<Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>>,
@@ -94,7 +92,7 @@ impl<'window> WgpuEngine<'window> {
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 #[cfg(feature="texture_arrays")]
-                features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
+                required_features: wgpu::Features::TEXTURE_BINDING_ARRAY | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING,
                 #[cfg(not(feature="texture_arrays"))]
                 required_features: wgpu::Features::default(),
                 required_limits: wgpu::Limits::default(),
@@ -149,7 +147,7 @@ impl<'window> WgpuEngine<'window> {
                         multisampled: false,
                     },
                     // count: None,
-                    count: std::num::NonZeroU32::new(LAYER_COUNT + RENDER_TARGET_LAYERS),
+                    count: std::num::NonZeroU32::new(LAYER_COUNT),
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
@@ -334,7 +332,6 @@ impl<'window> WgpuEngine<'window> {
         let atlas_texture = Self::create_texture(&device, &texture_bind_group_layout, &sampler, atlas_size, atlas_size, config.format);
 
         let atlas = Atlas::new(atlas_size, atlas_size, LAYER_COUNT);
-        let render_target_atlas = Atlas::new(atlas_size, atlas_size, RENDER_TARGET_LAYERS);
 
         let particle_system = ParticleSystem::new(&device);
 
@@ -351,7 +348,6 @@ impl<'window> WgpuEngine<'window> {
             config,
             pipelines,
             atlas,
-            render_target_atlas,
             atlas_texture,
 
             current_render_buffer: None,
@@ -379,7 +375,12 @@ impl<'window> WgpuEngine<'window> {
         // don't draw if our draw surface has no area
         if size.width == 0 || size.height == 0 { return Ok(()) }
 
-        self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR, Vector2::new(size.width as f32, size.height as f32)))?;
+        self.render(RenderableSurface::new(
+            &view, 
+            GFX_CLEAR_COLOR, 
+            Vector2::new(size.width as f32, size.height as f32),
+            false,
+        ))?;
 
         let width = output.texture.width();
         let height = output.texture.height();
@@ -409,7 +410,12 @@ impl<'window> WgpuEngine<'window> {
                 ..Default::default()
             });
 
-            self.render(&RenderableSurface::new(&view, GFX_CLEAR_COLOR, Vector2::new(width as f32, height as f32)))?;
+            self.render(RenderableSurface::new(
+                &view, 
+                GFX_CLEAR_COLOR, 
+                Vector2::new(width as f32, height as f32), 
+                true
+            ))?;
 
             self.finish_screenshot(texture, screenshot);
         }
@@ -418,7 +424,7 @@ impl<'window> WgpuEngine<'window> {
         Ok(())
     }
 
-    fn render(&self, renderable: &RenderableSurface) -> Result<(), wgpu::SurfaceError> {
+    fn render(&self, renderable: RenderableSurface) -> Result<(), wgpu::SurfaceError> {
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
 
         {
@@ -429,7 +435,7 @@ impl<'window> WgpuEngine<'window> {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(renderable.get_clear_color()),
-                        store: wgpu::StoreOp::Store, // must be store for render targets to work apparently
+                        store: renderable.render_target.then_some(wgpu::StoreOp::Store).unwrap_or(wgpu::StoreOp::Discard) , // must be store for render targets to work apparently
                     },
                 })],
                 depth_stencil_attachment: None,
@@ -524,7 +530,7 @@ impl<'w> WgpuEngine<'w> {
             depth_or_array_layers: 1,
         };
 
-        let textures = (0..(LAYER_COUNT+RENDER_TARGET_LAYERS)).map(|_| {
+        let textures = (0..LAYER_COUNT).map(|_| {
             let texture = device.create_texture(
                 &wgpu::TextureDescriptor {
                     size: texture_size,
@@ -1097,10 +1103,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
     fn create_render_target(&mut self, [w, h]: [u32; 2], clear_color: Color, do_render: Box<dyn FnOnce(&mut dyn GraphicsEngine, Matrix)>) -> Option<RenderTarget> {
         // find space in the render target atlas
-        let mut atlased = self.render_target_atlas.try_insert(w, h)?;
-
-        // offset the texture layer so it accesses the render target atlas
-        atlased.layer += LAYER_COUNT;
+        let atlased = self.atlas.try_insert(w, h)?;
 
         // create a projection and render target
         let projection = Self::create_projection(Vector2::new(w as f32, h as f32));
@@ -1119,7 +1122,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
 
         // write the projection matrix
         self.queue.write_buffer(&self.projection_matrix_buffer, 0, bytemuck::cast_slice(&target.projection.to_raw()));
-        self.queue.submit([].into_iter());
+        self.queue.submit([]);
 
         let width = target.width;
         let height = target.height;
@@ -1151,7 +1154,12 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         });
 
         // create renderable surface
-        let renderable = RenderableSurface::new(&view, target.clear_color, Vector2::new(width as f32, height as f32));
+        let renderable = RenderableSurface::new(
+            &view, 
+            target.clear_color, 
+            Vector2::new(width as f32, height as f32),
+            true
+        );
 
         // clear buffers
         self.begin_render();
@@ -1164,7 +1172,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         self.end_render();
 
         // perform render
-        if let Err(e) = self.render(&renderable) {
+        if let Err(e) = self.render(renderable) {
             error!("Error rendering render target: {e:?}")
         }
 
@@ -1258,7 +1266,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         Ok(info)
     }
 
-    fn free_tex(&mut self, mut tex: TextureReference) {
+    fn free_tex(&mut self, tex: TextureReference) {
         if tex.is_empty() { return }
 
         // write empty data to where the texture was
@@ -1296,12 +1304,7 @@ impl<'w> GraphicsEngine for WgpuEngine<'w> {
         );
 
         // remove from texture atlas
-        if tex.layer >= LAYER_COUNT {
-            tex.layer -= LAYER_COUNT;
-            self.render_target_atlas.remove_entry(tex);
-        } else {
-            self.atlas.remove_entry(tex);
-        }
+        self.atlas.remove_entry(tex);
     }
 
     fn screenshot(&mut self, callback: Box<dyn FnOnce((Vec<u8>, [u32; 2]))+Send+Sync>) {

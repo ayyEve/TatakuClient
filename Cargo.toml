@@ -39,20 +39,20 @@ tataku-common = { version = "0.13.2", path = "../tataku-common/tataku-common", r
 
 tataku-client-proc-macros = { version = "0.1.1", path = "crates/proc_macros", registry = "tataku-registry" }
 
-tataku-engine = { path = "crates/tataku-engine" }
-tataku-game = { path = "crates/tataku-game" }
-tataku-resources = { path = "crates/tataku-resources" }
-tataku-client = { path = "crates/tataku-client" }
-tataku-client-common = { path = "crates/common" }
+tataku-engine.path = "crates/tataku-engine"
+tataku-game.path = "crates/tataku-game"
+tataku-resources.path = "crates/tataku-resources"
+tataku-client.path = "crates/tataku-client"
+tataku-client-common.path = "crates/common"
 
-tataku-wgpu = { path = "crates/tataku-wgpu" }
-tataku-bass = { path = "crates/tataku-bass" }
+tataku-wgpu.path = "crates/tataku-wgpu"
+tataku-bass.path = "crates/tataku-bass"
 
 
-# gamemode-osu.path = "gamemodes/osu"
-# gamemode-taiko.path = "gamemodes/taiko"
-# gamemode-mania.path = "gamemodes/mania"
-# gamemode-utyping.path = "gamemodes/utyping"
+gamemode-osu.path = "gamemodes/osu"
+gamemode-taiko.path = "gamemodes/taiko"
+gamemode-mania.path = "gamemodes/mania"
+gamemode-utyping.path = "gamemodes/utyping"
 
 
 

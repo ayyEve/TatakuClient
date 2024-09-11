@@ -32,7 +32,7 @@ impl RenderBufferable for FlashlightBuffer {
     const VTX_PER_BUF: u64 = VTX_PER_BUF;
     const IDX_PER_BUF: u64 = IDX_PER_BUF;
 
-    fn name() -> &'static str { "Flashlight buffer" }
+    // fn name() -> &'static str { "Flashlight buffer" }
     fn should_write(&self) -> bool { self.used_flashlights > 0 }
 
     fn reset(&mut self) {

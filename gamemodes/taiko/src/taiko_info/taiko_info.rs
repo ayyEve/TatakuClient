@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use futures_util::future::BoxFuture;
 
-#[no_mangle]
 pub static GAME_INFO: GameModeInfo = GameModeInfo {
     id: "taiko",
     display_name: "Taiko",
@@ -38,6 +37,7 @@ pub static GAME_INFO: GameModeInfo = GameModeInfo {
     stats_from_groups: TaikoGameInfo::stats_from_groups,
     create_game: TaikoGameInfo::create_game,
     create_diffcalc: TaikoGameInfo::create_diffcalc,
+    can_load_beatmap: TaikoGameInfo::can_load_beatmap,
 
     ..GameModeInfo::DEFAULT
 };
@@ -54,6 +54,14 @@ impl TaikoGameInfo {
 
         (x100 / 2.0 + x300) 
         / (miss + x100 + x300)
+    }
+
+    fn can_load_beatmap(map: &BeatmapType) -> bool { 
+        match map {
+            BeatmapType::Osu => true,
+            BeatmapType::Tja => true,
+            _ => false
+        }
     }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {

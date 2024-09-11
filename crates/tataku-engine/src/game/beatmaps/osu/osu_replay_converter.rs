@@ -310,7 +310,7 @@ impl OsuReplay {
 
     pub fn replay_from_score_and_lzma(score: &Score, lzma: &mut impl std::io::BufRead) -> TatakuResult<Score> {
         let frames = parse_lzma_stream(lzma)?;
-        let mut replay = Self::parse_frames(&score.playmode, &frames);
+        let replay = Self::parse_frames(&score.playmode, &frames);
         // replay.score_data = Some(score.clone());
         let mut score = score.clone();
         score.replay = Some(replay);

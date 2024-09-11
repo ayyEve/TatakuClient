@@ -75,15 +75,7 @@ impl BeatmapMeta {
         format!("{} - {} [{}]", artist, title, self.version)  
     }
 
-
-    pub fn check_mode_override(&self, override_mode:String) -> String {
-        if self.mode == "osu" {
-            override_mode
-        } else {
-            self.mode.clone()
-        }
-    }
-
+    
     /// helper function for checking hashes
     pub fn comp_hash(&self, other: Md5Hash) -> bool {
         self.beatmap_hash == other

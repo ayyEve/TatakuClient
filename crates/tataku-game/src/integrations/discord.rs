@@ -253,7 +253,8 @@ impl TatakuIntegration for Discord {
 
     fn handle_event(
         &mut self, 
-        event: &TatakuEvent
+        event: &TatakuEvent,
+        values: &ValueCollection
     ) {
         if !self.enabled || !self.connected { return }
 
@@ -261,7 +262,7 @@ impl TatakuIntegration for Discord {
 
         let mut assets = Assets::new()
             .large_image("icon-new")
-            .large_text("Tataku!"); // TODO: make the username of the logged-in user
+            .large_text(&values.global.username); // TODO: make the username of the logged-in user
 
         match event {
             TatakuEvent::BeatmapStarted { 
@@ -277,11 +278,9 @@ impl TatakuIntegration for Discord {
                 let creator = &beatmap.creator;
                 let version = &beatmap.version;
 
-                // TODO:!!!!!
-                // assets = assets
-                //     .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
-                //     .small_text(gamemode_display_name(&**playmode));
-
+                assets = assets
+                    .small_image("icon") // TODO: use a url for the image, where if it doesnt exist, it gives some default, so we always have the mode text
+                    .small_text(values.global.gamemode_infos.get_info(playmode).map(|a| a.display_name.to_owned()).unwrap_or(playmode.to_owned()));
 
                 activity = if let Some(player) = spectator {
                     activity
@@ -312,7 +311,7 @@ impl TatakuIntegration for Discord {
                 let end = start + (duration / 1000.0) as i64;
                 activity = activity
                     .timestamps(Timestamps::new().start(start).end(end))
-                    .state(format!("{artist} - {title}"))
+                    .state(format!("Listening to {artist} - {title}"))
                 ;
             }
             TatakuEvent::BeatmapEnded => {

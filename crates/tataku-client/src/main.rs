@@ -110,6 +110,24 @@ fn start_game<'window>(
             trace!("window ready");
         }
 
+
+        let gamemodes;
+        #[cfg(feature="dynamic_gamemodes")] {
+            gamemodes = vec![
+                    GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
+            ];
+        }
+        
+        #[cfg(not(feature="dynamic_gamemodes"))] {
+            gamemodes = vec![
+                gamemode_osu::GAME_INFO,
+                gamemode_taiko::GAME_INFO,
+                gamemode_mania::GAME_INFO,
+                gamemode_utyping::GAME_INFO,
+            ]
+        }
+
+
         // start the game
         trace!("creating game");
         let game = Game::new(
@@ -118,13 +136,7 @@ fn start_game<'window>(
             vec![
                 #[cfg(feature="bass_audio")] Box::new(tataku_bass::BassAudioInit),
             ],
-            vec![
-                GamemodeLibrary::load_gamemode("/home/ayyeve/Desktop/projects/tataku/tataku-client/target/release/gamemode_taiko").unwrap(),
-                // gamemode_osu::GAME_INFO,
-                // gamemode_taiko::GAME_INFO,
-                // gamemode_mania::GAME_INFO,
-                // gamemode_utyping::GAME_INFO,
-            ],
+            gamemodes,
         ).await;
         trace!("running game");
         game.game_loop().await;

@@ -25,7 +25,7 @@ impl RenderBufferable for VertexBuffer {
     const VTX_PER_BUF: u64 = VTX_PER_BUF;
     const IDX_PER_BUF: u64 = IDX_PER_BUF;
     
-    fn name() -> &'static str { "vertex buffer" }
+    // fn name() -> &'static str { "vertex buffer" }
     fn should_write(&self) -> bool { self.used_indices > 0 }
 
     fn reset(&mut self) {

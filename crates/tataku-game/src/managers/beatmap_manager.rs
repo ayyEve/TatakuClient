@@ -276,14 +276,12 @@ impl BeatmapManager {
         {
             // let mut map: TatakuValue = beatmap.deref().into();
             // let map2 = map.as_map_mut().unwrap();
-
-            let mode = config.playmode;
-            let actual_mode = beatmap.check_mode_override(mode.clone());
+            let actual_mode = self.infos.get_playmode_actual(&config.playmode, Some(beatmap));
 
             // let mods = &values.mods;
-            let diff = get_diff(&beatmap, &actual_mode, &config.mods);
+            let diff = get_diff(&beatmap, actual_mode, &config.mods);
 
-            let diff_info = if let Ok(info) = self.infos.get_info(&mode) {
+            let diff_info = if let Ok(info) = self.infos.get_info(actual_mode) {
                 let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
                 let diff_info = info.get_diff_string(&diff_meta, &config.mods);
                 diff_info
@@ -306,7 +304,7 @@ impl BeatmapManager {
 
             // values.set("map", TatakuVariable::new_game(map));
             // let display = gamemode_display_name(&actual_mode);
-            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode));
+            self.actions.push(GameAction::UpdatePlaymodeActual(actual_mode.clone()));
 
             // values.update_display("global.playmode_actual", TatakuVariableWriteSource::Game, &actual_mode, Some(display));
             // values.set("global.playmode_actual", &actual_mode);
@@ -340,7 +338,6 @@ impl BeatmapManager {
         self.actions.push(GameAction::ForceUiRefresh);
     }
 
-    // #[async_recursion::async_recursion]
     pub async fn remove_current_beatmap(&mut self) {
         trace!("Setting current beatmap to None");
         self.current_beatmap = None;
@@ -348,10 +345,6 @@ impl BeatmapManager {
         // stop song
         self.actions.push(SongAction::Stop);
         self.actions.push(GameAction::UpdateBackground);
-        // AudioManager::stop_song().await;
-
-        // // set bg
-        // game.remove_background_beatmap().await;
     }
 
 
@@ -454,7 +447,6 @@ impl BeatmapManager {
 
 
 impl BeatmapManager {
-
     pub async fn refresh_maps(
         &mut self, 
         current_mods: &ModManager,
@@ -486,8 +478,8 @@ impl BeatmapManager {
         for group in self.unfiltered_groups.iter() {
             // let mut selected = false;
             let mut maps = group.maps.iter().map(|m| {
-                let mode = m.check_mode_override(playmode.clone());
-                let diff = get_diff(&m, &mode, mods);
+                let mode = self.infos.get_playmode_actual(playmode, Some(m));
+                let diff = get_diff(&m, mode, mods);
                 // selected |= self.current_beatmap.as_ref().filter(|b| b.beatmap_hash == m.beatmap_hash).is_some();
 
                 BeatmapMetaWithDiff::new(m.clone(), diff)
@@ -555,7 +547,7 @@ impl BeatmapManager {
     }
 
     pub fn select_set(&mut self, set_num: usize) {
-        debug!("selecting set: {set_num}");
+        trace!("selecting set: {set_num}");
 
         self.selected_set = set_num;
         self.select_map(0);

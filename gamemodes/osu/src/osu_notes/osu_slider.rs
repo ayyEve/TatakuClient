@@ -663,7 +663,7 @@ impl HitObject for OsuSlider {
                 self.radius,
                 color,
                 Some(Border::new(
-                    if end_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
+                    if end_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
                     self.scaling_helper.border_scaled
                 ))
             ));
@@ -702,7 +702,7 @@ impl HitObject for OsuSlider {
                     self.radius,
                     self.color.alpha(alpha),
                     Some(Border::new(
-                        if start_repeat { Color::RED } else { Color::BLACK }.alpha(alpha),
+                        if start_repeat { Color::YELLOW } else { Color::WHITE }.alpha(alpha),
                         self.scaling_helper.border_scaled
                     ))
                 ));
@@ -1071,8 +1071,8 @@ impl SliderDot {
             list.push(Circle::new(
                 self.pos,
                 SLIDER_DOT_RADIUS * self.scale * beat_scale,
-                Color::WHITE,
-                Some(Border::new(Color::BLACK, OSU_NOTE_BORDER_SIZE * self.scale))
+                Color::YELLOW,
+                Some(Border::new(Color::WHITE, OSU_NOTE_BORDER_SIZE * self.scale))
             ));
         }
     }

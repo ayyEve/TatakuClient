@@ -9,13 +9,6 @@ mod taiko_helpers;
 
 pub use taiko_info::GAME_INFO;
 
-
-// #[no_mangle]
-// pub extern fn get_info(a: &mut tataku_engine::prelude::GameModeInfo) {
-//     *a = GAME_INFO
-// }
-
-
 mod prelude {
     pub use async_trait::async_trait;
     pub use tataku_engine::prelude::*;

@@ -20,7 +20,7 @@ pub trait TatakuIntegration: Send + Sync {
     ) -> TatakuResult<()>;
 
     /// handle a tataku event 
-    fn handle_event(&mut self, _event: &TatakuEvent) {}
+    fn handle_event(&mut self, _event: &TatakuEvent, _values: &ValueCollection) {}
 
     /// update the integration
     fn update(

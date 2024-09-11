@@ -37,7 +37,6 @@ impl PauseMenu {
 
     async fn exit(&mut self) {
         let Some(manager) = self.manager.take() else { return };
-        // TODO: !!!!!!!!
         self.actions.push(GameAction::FreeGameplay(manager));
         self.actions.push(MenuAction::set_menu("beatmap_select"));
     }

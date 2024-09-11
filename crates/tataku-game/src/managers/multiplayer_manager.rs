@@ -244,8 +244,7 @@ impl MultiplayerManager {
                     if let Some(loader) = &self.beatmap_loader {
                         if let Some(Ok(mut manager)) = loader.check().await {
                             manager.set_mode(GameplayMode::Multiplayer);
-                            // TODO: !!!!!!
-                            // self.actions.push(GameAction::StartGame(Box::new(manager)));
+                            self.actions.push(GameAction::StartGame(Box::new(manager)));
                             tokio::spawn(OnlineManager::update_lobby_state(LobbyUserState::InGame));
                         }
                     }
