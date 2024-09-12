@@ -265,23 +265,6 @@ impl<'lua> FromLua<'lua> for CustomEventValueType {
     }
 }
 
-impl<'lua> FromLua<'lua> for TatakuValue {
-    fn from_lua(lua_value: Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
-        #[cfg(feature="debug_custom_menus")] info!("Reading CustomElementValue");
-
-        match &lua_value {
-            Value::Boolean(b) => Ok(Self::Bool(*b)),
-            // Value::Integer(i) => Ok(Self::I64(*i)),
-            Value::Number(f) => Ok(Self::F32(*f as f32)),
-            Value::String(s) => Ok(Self::String(s.to_str()?.to_owned())),
-            // Value::Table(table) => {
-            //     if let Ok(list) = table.get()
-            // }
-            other => Err(FromLuaConversionError { from: other.type_name(), to: "CustomElementValue", message: None }),
-        }
-
-    }
-}
 
 
 pub enum MaybeOwned<'a, T: ?Sized> {

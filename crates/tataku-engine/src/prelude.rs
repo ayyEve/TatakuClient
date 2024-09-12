@@ -33,8 +33,8 @@ pub use winit::event::MouseButton;
 
 // tokio imports
 pub use tokio::sync::{ OnceCell, Mutex as AsyncMutex, RwLock as AsyncRwLock };
-pub use tokio::sync::mpsc::{UnboundedSender as AsyncUnboundedSender, UnboundedReceiver as AsyncUnboundedReceiver, unbounded_channel as async_unbounded_channel};
-pub use tokio::sync::mpsc::{Sender as AsyncSender, Receiver as AsyncReceiver, channel as async_channel};
+pub use tokio::sync::mpsc::{ UnboundedSender as AsyncUnboundedSender, UnboundedReceiver as AsyncUnboundedReceiver, unbounded_channel as async_unbounded_channel };
+pub use tokio::sync::mpsc::{ Sender as AsyncSender, Receiver as AsyncReceiver, channel as async_channel };
 
 pub use parking_lot::{ Mutex, RwLock };
 
@@ -76,7 +76,7 @@ pub use tataku_common::prelude::*;
 pub use tataku_client_common::prelude::*;
 
 
-// iced imports, in its own mod since it has some comflicting names
+// iced imports, in its own mod since it has some conflicting names
 #[cfg(feature="graphics")]
 pub mod iced_elements {
     // macro imports

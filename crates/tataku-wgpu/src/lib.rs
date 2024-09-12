@@ -20,7 +20,15 @@ mod prelude {
     pub use tracing::*;
 }
 
-
+mod shader_files {
+    pub const FLASHLIGHT: &str = include_str!("../shaders/flashlight.wgsl");
+    pub const PARTICLES: &str = include_str!("../shaders/particles.wgsl");
+    #[cfg(feature="texture_arrays")] 
+    pub const SHADER_TEX_ARRAY: &str = include_str!("../shaders/shader_with_tex_array.wgsl");
+    #[cfg(not(feature="texture_arrays"))] 
+    pub const SHADER: &str = include_str!("../shaders/shader.wgsl");
+    pub const SLIDER: &str = include_str!("../shaders/slider.wgsl");
+}
 
 use tataku_engine::prelude::*;
 

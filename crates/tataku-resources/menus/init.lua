@@ -180,11 +180,18 @@ function mod_action(mods)
         mods = mods
     }
 end
+function cursor_action(tag)
+    return {
+        id = "action",
+        cursor = tag
+    }
+end
 function no_action()
     return {
         id = "none",
     }
 end
+
 
 
 function variable(var) 

@@ -1,8 +1,6 @@
 #![cfg_attr(not(feature="graphics"), allow(unused))]
 use tataku_game::prelude::*;
 
-use tracing::*;
-
 
 const DOWNLOAD_URL_BASE:&str = "https://cdn.ayyeve.dev/tataku";
 

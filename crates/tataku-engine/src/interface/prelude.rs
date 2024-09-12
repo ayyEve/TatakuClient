@@ -74,7 +74,7 @@ pub use tataku_common::serialization::*;
 pub use tataku_common_proc_macros::Reflect;
 
 
-// iced imports, in its own mod since it has some comflicting names
+// iced imports, in its own mod since it has some conflicting names
 #[cfg(feature="graphics")]
 pub mod iced_elements {
     // macro imports

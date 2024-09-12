@@ -10,7 +10,7 @@ pub fn create_slider_pipeline(
 
     let slider_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Slider Shader"),
-        source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::SLIDER.into()),
+        source: wgpu::ShaderSource::Wgsl(crate::shader_files::SLIDER.into()),
     });
 
     let slider_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

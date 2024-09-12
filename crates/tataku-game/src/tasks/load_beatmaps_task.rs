@@ -37,13 +37,13 @@ impl TatakuTask for LoadBeatmapsTask {
             // self.existing_maps.reverse(); // because they're added in reverse order later, but it doesnt really matter
 
             self.state = TatakuTaskState::Running;
-            info!("got existing maps");
+            debug!("Got existing maps");
             return;
         }
 
         // load all maps from the database
         if let Some(map) = self.existing_maps.pop() {
-            info!("Adding map {}", map.beatmap_hash);
+            trace!("Adding map {}", map.beatmap_hash);
 
             // make sure the beatmap exists before adding it
             if !std::path::Path::new(&map.file_path).exists() {
@@ -54,7 +54,7 @@ impl TatakuTask for LoadBeatmapsTask {
 
             // if that was the last map, tell the beatmap manager it has been initialized
             if self.existing_maps.is_empty() {
-                debug!("all existing maps loaded");
+                debug!("All existing maps loaded");
                 // actions.push(BeatmapAction::InitializeManager);
             }
 
@@ -100,7 +100,7 @@ impl TatakuTask for LoadBeatmapsTask {
 
 
         // otherwise, we're done!
-        info!("done adding maps");
+        debug!("Done adding maps");
         actions.push(BeatmapAction::InitializeManager);
         self.status.write().complete = true;
         self.state = TatakuTaskState::Complete;

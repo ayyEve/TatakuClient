@@ -27,6 +27,9 @@ pub enum CustomMenuAction {
     /// Perform a multiplayer action
     Multiplayer(CustomMenuMultiplayerAction),
 
+    /// Perform a cursor action
+    Cursor(CustomMenuCursorAction),
+
     /// set a value
     SetValue(String, TatakuValue),
 }
@@ -51,7 +54,8 @@ impl CustomMenuAction {
             Self::Song(action) => action.into_action(values).map(TatakuAction::Song),
             Self::Game(action) => action.into_action(values, passed_in).map(TatakuAction::Game),
             Self::Multiplayer(action) => action.into_action(values).map(TatakuAction::Multiplayer),
-            
+            Self::Cursor(action) => action.into_action(values, passed_in).map(TatakuAction::CursorAction),
+
             Self::SetValue(key, val) => Some(TatakuAction::Game(GameAction::SetValue(key, val))),
         }
     }
@@ -64,6 +68,7 @@ impl CustomMenuAction {
             Self::Song(action) => action.build(values),
             Self::Game(action) => action.build(values),
             Self::Multiplayer(action) => action.build(values),
+            Self::Cursor(action) => action.build(values),
 
 
             Self::SetMenu(menu) => {
@@ -98,24 +103,28 @@ impl CustomMenuAction {
             Ok(Self::AddDialog(action_str))
         }
         // beatmap actions
-        else if let Some(map_action) = table.get::<_, Option<CustomMenuMapAction>>("map")? {
-            Ok(Self::Map(map_action))
+        else if let Some(action) = table.get::<_, Option<CustomMenuMapAction>>("map")? {
+            Ok(Self::Map(action))
         }
         // mod actions
-        else if let Some(mod_action) = table.get::<_, Option<_>>("mods")? {
-            Ok(Self::Mods(mod_action))
+        else if let Some(action) = table.get::<_, Option<_>>("mods")? {
+            Ok(Self::Mods(action))
         }
         // song actions
-        else if let Some(song_action) = table.get::<_, Option<CustomMenuSongAction>>("song")? {
-            Ok(Self::Song(song_action))
+        else if let Some(action) = table.get::<_, Option<CustomMenuSongAction>>("song")? {
+            Ok(Self::Song(action))
         }
         // multiplayer actions
-        else if let Some(multiplayer_action) = table.get::<_, Option<CustomMenuMultiplayerAction>>("multiplayer")? {
-            Ok(Self::Multiplayer(multiplayer_action))
+        else if let Some(action) = table.get::<_, Option<CustomMenuMultiplayerAction>>("multiplayer")? {
+            Ok(Self::Multiplayer(action))
         }
         // game actions
-        else if let Some(game_action) = table.get::<_, Option<CustomMenuGameAction>>("game")? {
-            Ok(Self::Game(game_action))
+        else if let Some(action) = table.get::<_, Option<CustomMenuGameAction>>("game")? {
+            Ok(Self::Game(action))
+        }
+        // cursor actions
+        else if let Some(action) = table.get::<_, Option<CustomMenuCursorAction>>("cursor")? {
+            Ok(Self::Cursor(action))
         }
 
         // nope

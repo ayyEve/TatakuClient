@@ -32,7 +32,7 @@ impl ParticleSystem {
     pub fn new(device: &wgpu::Device) -> Self {
         let particle_compute_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Particle Compute Shader"),
-            source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::PARTICLES.into()),
+            source: wgpu::ShaderSource::Wgsl(crate::shader_files::PARTICLES.into()),
         });
 
         let buffer = ParticleBuffer::new(device, 0);

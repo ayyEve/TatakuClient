@@ -1,14 +1,10 @@
 mod menu;
 mod dialog;
 mod empty_menu;
-#[cfg(feature="graphics")]
-mod custom_menus;
 
 pub use menu::*;
 pub use dialog::*;
 pub use empty_menu::*;
-#[cfg(feature="graphics")]
-pub use custom_menus::*;
 
 
 #[derive(Clone, Debug)]

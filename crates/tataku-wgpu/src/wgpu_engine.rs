@@ -129,8 +129,8 @@ impl<'window> WgpuEngine<'window> {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
-            #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::SHADER_TEX_ARRAY.into()),
-            #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(tataku_resources::shaders::SHADER.into()),
+            #[cfg(feature="texture_arrays")] source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER_TEX_ARRAY.into()),
+            #[cfg(not(feature="texture_arrays"))] source: wgpu::ShaderSource::Wgsl(crate::shader_files::SHADER.into()),
         });
 
 

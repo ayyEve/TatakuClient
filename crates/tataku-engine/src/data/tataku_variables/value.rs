@@ -350,6 +350,24 @@ impl PartialOrd for TatakuValue {
 }
 
 
+impl<'lua> rlua::FromLua<'lua> for TatakuValue {
+    fn from_lua(lua_value: rlua::Value<'lua>, _lua: rlua::Context<'lua>) -> rlua::Result<Self> {
+        #[cfg(feature="debug_custom_menus")] info!("Reading TatakuValue");
+
+        match &lua_value {
+            rlua::Value::Boolean(b) => Ok(Self::Bool(*b)),
+            // Value::Integer(i) => Ok(Self::I64(*i)),
+            rlua::Value::Number(f) => Ok(Self::F32(*f as f32)),
+            rlua::Value::String(s) => Ok(Self::String(s.to_str()?.to_owned())),
+            // Value::Table(table) => {
+            //     if let Ok(list) = table.get()
+            // }
+            other => Err(rlua::Error::FromLuaConversionError { from: other.type_name(), to: "TatakuValue", message: None }),
+        }
+
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum TatakuNumber {
     F32(f32),

@@ -98,6 +98,7 @@ local menu = {
             actions = {
                 song_action({ rate = 1.0 }),
                 cond("!song.playing", song_action("play")),
+                cursor_action("show"), -- also make sure the cursor is visible
             }
         },
 
