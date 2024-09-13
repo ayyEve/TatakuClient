@@ -9,9 +9,15 @@ pub const GAME_INFO:GameModeInfo = GameModeInfo {
 
     mods: &[],
 
+    diff_values: &[
+        KEYS_DIFF_VALUE,
+        BPM_DIFF_VALUE,
+        DURATION_DIFF_VALUE,
+    ],
+
     judgments: ManiaHitJudgments::variants(),
     calc_acc: ManiaGameInfo::calc_acc,
-    get_diff_string: ManiaGameInfo::get_diff_string,
+    // get_diff_string: ManiaGameInfo::get_diff_string,
     create_game: ManiaGameInfo::create_game,
     create_diffcalc: ManiaGameInfo::create_diffcalc,
     can_load_beatmap: ManiaGameInfo::can_load_beatmap,
@@ -51,36 +57,36 @@ impl ManiaGameInfo {
         top.max(0.0) / bottom
     }
 
-    fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
-        let speed = mods.get_speed();
-        // let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
+    // fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
+    //     let speed = mods.get_speed();
+    //     // let symb = if speed > 1.0 {"+"} else if speed < 1.0 {"-"} else {""};
 
-        let mut secs = format!("{}", info.secs(speed));
-        if secs.len() == 1 {secs = format!("0{}", secs)}
+    //     let mut secs = format!("{}", info.secs(speed));
+    //     if secs.len() == 1 {secs = format!("0{}", secs)}
 
-        let mut txt = format!("Keys: {:0} Len: {}:{}", info.cs, info.mins(speed), secs);
+    //     let mut txt = format!("Keys: {:0} Len: {}:{}", info.cs, info.mins(speed), secs);
 
-        // make sure at least one has a value
-        if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
-            // one bpm
-            if info.bpm_min == info.bpm_max {
-                txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
-            } else { // multi bpm
-                // i think i had it backwards when setting, just make sure its the right way :/
-                let min = info.bpm_min.min(info.bpm_max);
-                let max = info.bpm_max.max(info.bpm_min);
-                txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
-            }
-        }
+    //     // make sure at least one has a value
+    //     if info.bpm_min != 0.0 || info.bpm_max != 0.0 {
+    //         // one bpm
+    //         if info.bpm_min == info.bpm_max {
+    //             txt += &format!(" BPM: {:.2}", info.bpm_min * speed);
+    //         } else { // multi bpm
+    //             // i think i had it backwards when setting, just make sure its the right way :/
+    //             let min = info.bpm_min.min(info.bpm_max);
+    //             let max = info.bpm_max.max(info.bpm_min);
+    //             txt += &format!(" BPM: {:.2}-{:.2}", min * speed, max * speed);
+    //         }
+    //     }
 
-        if let Some(diff) = &info.diff {
-            txt += &format!(", Diff: {:.2}", diff);
-        } else {
-            txt += &format!(", Diff: ...");
-        }
+    //     if let Some(diff) = &info.diff {
+    //         txt += &format!(", Diff: {:.2}", diff);
+    //     } else {
+    //         txt += &format!(", Diff: ...");
+    //     }
 
-        txt
-    }
+    //     txt
+    // }
 
 
     fn can_load_beatmap(map: &BeatmapType) -> bool { 
@@ -105,4 +111,19 @@ impl ManiaGameInfo {
         })
     }
 
+}
+
+const KEYS_DIFF_VALUE: DifficultyValue = DifficultyValue {
+    id: "keys",
+    name: "Keys",
+    modifiable: false,
+    number_type: DifficultyNumberType::WholeNumber,
+    min: 1.0,
+    max: 9.0,
+    step: None,
+    unit: Some("k"),
+    get_diff_value: get_key_count,
+};
+fn get_key_count(map: &BeatmapMetaWithDiff, _: &ModManager) -> f32 {
+    map.cs
 }

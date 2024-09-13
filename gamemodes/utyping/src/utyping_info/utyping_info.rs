@@ -9,10 +9,15 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
     author: "ayyEve",
 
     mods: &[],
+    diff_values: &[
+
+        BPM_DIFF_VALUE,
+        DURATION_DIFF_VALUE,
+    ],
 
     judgments: UTypingHitJudgment::variants(),
     calc_acc: UTypingGameInfo::calc_acc,
-    get_diff_string: UTypingGameInfo::get_diff_string,
+    // get_diff_string: UTypingGameInfo::get_diff_string,
     create_game: UTypingGameInfo::create_game,
     create_diffcalc: UTypingGameInfo::create_diffcalc,
     can_load_beatmap: UTypingGameInfo::can_load_beatmap,

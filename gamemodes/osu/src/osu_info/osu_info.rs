@@ -25,9 +25,18 @@ pub const GAME_INFO: GameModeInfo = GameModeInfo {
         },
     ],
 
+    diff_values: &[
+        OVERALL_DIFFICULTY,
+        APPROACH_DIFFICULTY,
+        CIRCLE_SIZE_DIFFICULTY,
+        
+        BPM_DIFF_VALUE,
+        DURATION_DIFF_VALUE,
+    ],
+
     judgments: OsuHitJudgments::variants(),
     calc_acc: OsuGameInfo::calc_acc,
-    get_diff_string: OsuGameInfo::get_diff_string,
+    // get_diff_string: OsuGameInfo::get_diff_string,
     create_game: OsuGameInfo::create_game,
     create_diffcalc: OsuGameInfo::create_diffcalc,
     can_load_beatmap: OsuGameInfo::can_load_beatmap,
@@ -149,3 +158,51 @@ impl OsuGameInfo {
     }
 
 }
+
+pub const OVERALL_DIFFICULTY: DifficultyValue = DifficultyValue {
+    id: "od",
+    name: "OD",
+    modifiable: true,
+    number_type: DifficultyNumberType::Float,
+    min: 0.0,
+    max: 11.0,
+    step: Some(0.1),
+    unit: None,
+    get_diff_value: |map, mods| OsuGame::get_od(map, mods),
+};
+
+pub const APPROACH_DIFFICULTY: DifficultyValue = DifficultyValue {
+    id: "ar",
+    name: "AR",
+    modifiable: true,
+    number_type: DifficultyNumberType::Float,
+    min: 0.0,
+    max: 11.0,
+    step: Some(0.1),
+    unit: None,
+    get_diff_value: |map, mods| OsuGame::get_ar(map, mods),
+};
+
+pub const CIRCLE_SIZE_DIFFICULTY: DifficultyValue = DifficultyValue {
+    id: "cs",
+    name: "CS",
+    modifiable: true,
+    number_type: DifficultyNumberType::Float,
+    min: 0.0,
+    max: 10.0,
+    step: Some(0.1),
+    unit: None,
+    get_diff_value: |map, mods| OsuGame::get_cs(map, mods),
+};
+
+// pub const HEALTH_DIFFICULTY: DifficultyValue = DifficultyValue {
+//     id: "hp",
+//     name: "HP",
+//     modifiable: true,
+//     number_type: DifficultyNumberType::Float,
+//     min: 0.0,
+//     max: 10.0,
+//     step: Some(0.1),
+//     unit: None,
+//     get_diff_value: |map, mods| OsuGame::get_hp(map, mods),
+// };

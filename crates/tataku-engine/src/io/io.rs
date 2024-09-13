@@ -57,7 +57,7 @@ impl Io {
         path.as_ref().exists()
     }
     /// check if folder exists, creating it if it doesnt
-    pub fn check_folder(dir:&str) -> io::Result<()> {
+    pub fn check_folder(dir: &str) -> io::Result<()> {
         if !Path::new(dir).exists() {
             std::fs::create_dir(dir)?;
         }

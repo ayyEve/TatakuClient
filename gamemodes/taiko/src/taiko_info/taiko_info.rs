@@ -27,24 +27,33 @@ pub static GAME_INFO: GameModeInfo = GameModeInfo {
             ]
         },
     ],
+    diff_values: &[
+        OVERALL_DIFFICULTY,
+
+        BPM_DIFF_VALUE,
+        DURATION_DIFF_VALUE,
+    ],
+
     stat_groups: &[
         TaikoPressCounterStatGroup
     ],
     judgments: super::TaikoHitJudgments::variants(),
 
     calc_acc: TaikoGameInfo::calc_acc,
-    get_diff_string: TaikoGameInfo::get_diff_string,
+    // get_diff_string: TaikoGameInfo::get_diff_string,
     stats_from_groups: TaikoGameInfo::stats_from_groups,
     create_game: TaikoGameInfo::create_game,
     create_diffcalc: TaikoGameInfo::create_diffcalc,
-    can_load_beatmap: TaikoGameInfo::can_load_beatmap,
+    can_load_beatmap: |map| match map {
+            BeatmapType::Osu => true,
+            BeatmapType::Tja => true,
+            _ => false
+    },
 
     ..GameModeInfo::DEFAULT
 };
 
 
-
-#[derive(Debug)]
 struct TaikoGameInfo;
 impl TaikoGameInfo {
     fn calc_acc(score: &Score) -> f32 {
@@ -54,14 +63,6 @@ impl TaikoGameInfo {
 
         (x100 / 2.0 + x300) 
         / (miss + x100 + x300)
-    }
-
-    fn can_load_beatmap(map: &BeatmapType) -> bool { 
-        match map {
-            BeatmapType::Osu => true,
-            BeatmapType::Tja => true,
-            _ => false
-        }
     }
 
     fn get_diff_string(info: &BeatmapMetaWithDiff, mods: &ModManager) -> String {
@@ -136,6 +137,17 @@ impl TaikoGameInfo {
         })
     }
 
-
-
 }
+
+
+pub const OVERALL_DIFFICULTY: DifficultyValue = DifficultyValue {
+    id: "od",
+    name: "OD",
+    modifiable: true,
+    number_type: DifficultyNumberType::Float,
+    min: 0.0,
+    max: 11.0,
+    step: Some(0.1),
+    unit: None,
+    get_diff_value: |map, mods| TaikoGame::get_od(map, mods),
+};

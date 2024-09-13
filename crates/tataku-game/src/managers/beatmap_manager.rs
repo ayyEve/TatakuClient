@@ -283,7 +283,14 @@ impl BeatmapManager {
 
             let diff_info = if let Ok(info) = self.infos.get_info(actual_mode) {
                 let diff_meta = BeatmapMetaWithDiff::new(beatmap.clone(), diff);
-                let diff_info = info.get_diff_string(&diff_meta, &config.mods);
+
+                let diff_info = info.diff_values.into_iter()
+                    .map(|dv| dv.format((dv.get_diff_value)(&diff_meta, &config.mods)))
+                    .collect::<Vec<_>>()
+                    .join(" | ");
+
+
+                // let diff_info = info.get_diff_string(&diff_meta, &config.mods);
                 diff_info
                 // map2.set_value("diff_info", TatakuVariable::new_game(diff_info));
             } else {
