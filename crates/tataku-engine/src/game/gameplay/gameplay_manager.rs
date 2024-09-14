@@ -1448,6 +1448,10 @@ impl GameplayManager {
         }
     }
 
+
+    pub fn set_diff_provider(&mut self, provider: Box<dyn DifficultyProvider>) {
+        self.diff_provider = provider;
+    }
 }
 
 // Input Handlers

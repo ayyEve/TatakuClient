@@ -2,17 +2,34 @@ use crate::prelude::*;
 
 const DIFF_FILE:&str = "diffs.db";
 
-// lazy_static::lazy_static! {
-//     pub static ref BEATMAP_DIFFICULTIES: Arc<HashMap<String, ShardedLock<HashMap<DifficultyEntry, f32>>>> = Arc::new(AVAILABLE_PLAYMODES.iter().map(|i|(i.to_owned().to_owned(), ShardedLock::new(HashMap::new()))).collect());
-// }
 
 #[derive(Default)]
 pub struct DifficultyManager {
     difficulties: HashMap<DifficultyEntry, f32>,
 }
+impl DifficultyManager {
+
+    pub fn save_all_diffs(&self) -> TatakuResult<()> {
+        let mut writer = SerializationWriter::new();
+
+        for (entry, value) in self.difficulties.iter() {
+            writer.write(entry);
+            writer.write(value);
+        }
+        
+        std::fs::write(DIFF_FILE, writer.data())?;
+
+        Ok(())
+    }
+}
 impl DifficultyProvider for DifficultyManager {
     fn get_diff(&mut self, map: &Arc<BeatmapMeta>, playmode: &str, mods: &ModManager) -> TatakuResult<f32> {
-        Ok(0.0)
+        let playmode_hash = md5(playmode);
+        let diff_entry = DifficultyEntry::new(playmode_hash, map.beatmap_hash, mods);
+        self.difficulties
+            .get(&diff_entry)
+            .copied()
+            .ok_or("No Diff".into())
         // if !AVAILABLE_PLAYMODES.contains(&&**playmode) { return Some(-1.0) }
 
         // // we dont have mod mutations setup yet so we need to clear mods before we get the diff for a map
@@ -22,10 +39,6 @@ impl DifficultyProvider for DifficultyManager {
         // let diff_key = DifficultyEntry::new(map.beatmap_hash, &mods);
         // BEATMAP_DIFFICULTIES.get(playmode)?.read().unwrap().get(&diff_key).cloned()
     }
-}
-
-impl DifficultyManager {
-
 }
 
 
@@ -168,18 +181,8 @@ fn load_all_diffs() -> TatakuResult<HashMap<String, HashMap<DifficultyEntry, f32
     }
 }
 
-fn save_all_diffs() -> TatakuResult<()> {
-    Ok(())
-    // let entries = BEATMAP_DIFFICULTIES
-    //     .iter()
-    //     .map(|k| (k.0.clone(), k.1.read().unwrap().deref().clone()))
-    //     .collect::<HashMap<String, HashMap<DifficultyEntry, f32>>>();
 
-    // let bytes = SimpleWriter::new().write(entries.clone()).done();
-    // Ok(std::fs::write(DIFF_FILE, bytes)?)
-}
-
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct DifficultyEntry {
     pub playmode: Md5Hash,
     pub map_hash: Md5Hash,
@@ -197,7 +200,7 @@ impl DifficultyEntry {
 }
 
 impl Serializable for DifficultyEntry {
-    fn read(sr:&mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
+    fn read(sr: &mut SerializationReader) -> SerializationResult<Self> where Self: Sized {
         let playmode = sr.read::<u128>("map_hash")?.into();
         let map_hash = sr.read::<u128>("map_hash")?.into();
         let mods = sr.read::<u128>("mods")?.into();

@@ -284,6 +284,4 @@ impl Dialog for SettingsMenu {
     //     true
     // }
 
-
 }
-
